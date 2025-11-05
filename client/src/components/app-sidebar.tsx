@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Wrench,
   BookOpen,
+  Bot,
   BarChart3,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -52,6 +53,12 @@ const menuItems = [
     titleTr: "Bilgi Bankası",
     url: "/bilgi-bankasi",
     icon: BookOpen,
+  },
+  {
+    title: "AI Asistan",
+    titleTr: "AI Asistan",
+    url: "/ai-asistan",
+    icon: Bot,
   },
   {
     title: "Performans",

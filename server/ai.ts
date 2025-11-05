@@ -17,6 +17,15 @@ export interface FaultPhotoAnalysis {
   recommendations: string[];
 }
 
+export interface RAGResponse {
+  answer: string;
+  sources: Array<{
+    articleId: number;
+    title: string;
+    relevantChunk: string;
+  }>;
+}
+
 export async function analyzeTaskPhoto(
   photoUrl: string,
   taskDescription: string
@@ -144,5 +153,107 @@ JSON formatında yanıt verin:
       severity: "medium",
       recommendations: ["Bir teknisyen ile iletişime geçin", "Ekipmanın kullanımını durdurun", "Arızayı detaylı olarak belgeleyin"],
     };
+  }
+}
+
+// Helper function to chunk text for embedding
+function chunkText(text: string, maxChunkSize: number = 1000): string[] {
+  const chunks: string[] = [];
+  const sentences = text.split(/[.!?]\s+/);
+  let currentChunk = "";
+
+  for (const sentence of sentences) {
+    if ((currentChunk + sentence).length > maxChunkSize) {
+      if (currentChunk) chunks.push(currentChunk.trim());
+      currentChunk = sentence;
+    } else {
+      currentChunk += (currentChunk ? ". " : "") + sentence;
+    }
+  }
+  
+  if (currentChunk) chunks.push(currentChunk.trim());
+  return chunks.length > 0 ? chunks : [text];
+}
+
+// Generate embedding for a text chunk
+export async function generateEmbedding(text: string): Promise<number[]> {
+  try {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: text,
+      encoding_format: "float",
+    });
+    
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error("Embedding oluşturma hatası:", error);
+    throw new Error("Embedding oluşturulamadı");
+  }
+}
+
+// Generate embeddings for article content (splits into chunks)
+export async function generateArticleEmbeddings(
+  articleId: number,
+  title: string,
+  content: string
+): Promise<Array<{ chunkText: string; chunkIndex: number; embedding: number[] }>> {
+  try {
+    const fullText = `${title}\n\n${content}`;
+    const chunks = chunkText(fullText, 800);
+    
+    const embeddings = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const embedding = await generateEmbedding(chunks[i]);
+      embeddings.push({
+        chunkText: chunks[i],
+        chunkIndex: i,
+        embedding,
+      });
+    }
+    
+    return embeddings;
+  } catch (error) {
+    console.error("Makale embedding oluşturma hatası:", error);
+    throw error;
+  }
+}
+
+// Answer a question using RAG (Retrieval Augmented Generation)
+export async function answerQuestionWithRAG(
+  question: string,
+  relevantChunks: Array<{ chunkText: string; articleId: number; articleTitle: string }>
+): Promise<RAGResponse> {
+  try {
+    const context = relevantChunks
+      .map((chunk, i) => `[${i + 1}] ${chunk.chunkText}`)
+      .join("\n\n");
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [
+        {
+          role: "system",
+          content: `Sen DOSPRESSO kahve dükkanları için bir AI asistanısın. Sadece verilen bilgi bankası içeriğinden yararlanarak Türkçe cevap ver. Eğer cevap bilgi bankasında yoksa, "Bu konuda bilgi bankasında bilgi bulamadım" de.`,
+        },
+        {
+          role: "user",
+          content: `Bilgi Bankası İçeriği:\n${context}\n\nSoru: ${question}`,
+        },
+      ],
+      max_completion_tokens: 8192,
+    });
+
+    const answer = response.choices[0]?.message?.content || "Cevap oluşturulamadı";
+
+    const sources = relevantChunks.map((chunk) => ({
+      articleId: chunk.articleId,
+      title: chunk.articleTitle,
+      relevantChunk: chunk.chunkText.substring(0, 200) + "...",
+    }));
+
+    return { answer, sources };
+  } catch (error) {
+    console.error("RAG soru-cevap hatası:", error);
+    throw new Error("Soru cevaplanamadı");
   }
 }

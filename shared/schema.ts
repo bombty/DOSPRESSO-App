@@ -8,11 +8,25 @@ import {
   index,
   serial,
   boolean,
-  integer
+  integer,
+  customType
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
+
+// Custom type for pgvector
+const vector = customType<{ data: number[]; driverData: string }>({
+  dataType() {
+    return 'vector(1536)';
+  },
+  toDriver(value: number[]): string {
+    return JSON.stringify(value);
+  },
+  fromDriver(value: string): number[] {
+    return JSON.parse(value);
+  },
+});
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -53,6 +67,8 @@ export const branches = pgTable("branches", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export type Branch = typeof branches.$inferSelect;
 
 // Users table (Replit Auth compatible)
 export const users = pgTable("users", {
@@ -183,6 +199,26 @@ export const insertKnowledgeBaseArticleSchema = createInsertSchema(knowledgeBase
 
 export type InsertKnowledgeBaseArticle = z.infer<typeof insertKnowledgeBaseArticleSchema>;
 export type KnowledgeBaseArticle = typeof knowledgeBaseArticles.$inferSelect;
+
+// Knowledge Base Embeddings table (for RAG/semantic search)
+export const knowledgeBaseEmbeddings = pgTable("knowledge_base_embeddings", {
+  id: serial("id").primaryKey(),
+  articleId: integer("article_id").notNull().references(() => knowledgeBaseArticles.id, { onDelete: "cascade" }),
+  chunkText: text("chunk_text").notNull(),
+  chunkIndex: integer("chunk_index").notNull(), // For ordering chunks within an article
+  embedding: vector("embedding").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("kb_embeddings_article_idx").on(table.articleId),
+]);
+
+export const insertKnowledgeBaseEmbeddingSchema = createInsertSchema(knowledgeBaseEmbeddings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertKnowledgeBaseEmbedding = z.infer<typeof insertKnowledgeBaseEmbeddingSchema>;
+export type KnowledgeBaseEmbedding = typeof knowledgeBaseEmbeddings.$inferSelect;
 
 // Reminders table
 export const reminders = pgTable("reminders", {

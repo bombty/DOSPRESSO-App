@@ -45,9 +45,16 @@ Preferred communication style: Simple, everyday language.
 **Authentication**: Replit Auth using OpenID Connect (OIDC) with Passport.js strategy. Session management via express-session with PostgreSQL-backed session store for persistence.
 
 **AI Integration**: OpenAI API (GPT-5) for:
-- Task photo analysis and scoring
-- Equipment fault diagnosis and recommendations
-- Knowledge base retrieval and assistance
+- Task photo analysis and scoring (Vision API)
+- Equipment fault diagnosis and recommendations (Vision API)
+- Knowledge base semantic search and RAG (Retrieval-Augmented Generation)
+- AI-powered Q&A system with source attribution
+
+**RAG System**: PostgreSQL with pgvector extension for:
+- Automatic embedding generation for published knowledge base articles
+- Semantic search using OpenAI text-embedding-3-small model
+- Vector similarity search with cosine distance
+- Context-aware question answering with GPT-5
 
 **Background Jobs**: Custom reminder system running on interval timers to check incomplete tasks and send notifications every 10 minutes.
 
@@ -67,9 +74,12 @@ Preferred communication style: Simple, everyday language.
 - **ChecklistTasks**: Many-to-many relationship linking checklists to specific tasks
 - **EquipmentFaults**: Fault reports with severity levels and AI analysis
 - **KnowledgeBaseArticles**: SOPs, recipes, calibration guides, troubleshooting docs with categorization and publishing workflow
+- **KnowledgeBaseEmbeddings**: Vector embeddings (1536 dimensions) for semantic search with article chunks and similarity indexing
 - **Reminders**: Automated notification tracking with reminder count and scheduling
 - **PerformanceMetrics**: KPI snapshots with completion rates and AI scores
 - **Sessions**: PostgreSQL-backed session storage for authentication
+
+**Vector Search**: pgvector extension enabled for semantic similarity search using cosine distance operator (<=>)
 
 **Migrations**: Managed via Drizzle Kit with schema push capability
 
@@ -88,10 +98,15 @@ Preferred communication style: Simple, everyday language.
 ### Third-Party Services
 
 **OpenAI API**: 
-- Purpose: AI-powered photo analysis, fault diagnosis, and knowledge retrieval
+- Purpose: AI-powered photo analysis, fault diagnosis, semantic search, and RAG-based Q&A
 - Integration: Direct HTTP calls via openai npm package
-- Model: GPT-5 (latest as of August 2025)
-- Features used: Vision API for image analysis, chat completions for text-based assistance
+- Models: 
+  - GPT-5 for vision analysis and chat completions
+  - text-embedding-3-small for generating 1536-dimensional embeddings
+- Features used: 
+  - Vision API for task and fault photo analysis
+  - Chat completions for Q&A with RAG context
+  - Embeddings API for knowledge base semantic search
 
 **Replit Auth**:
 - Purpose: User authentication and session management

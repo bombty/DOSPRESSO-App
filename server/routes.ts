@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertTaskSchema, insertChecklistSchema, insertEquipmentFaultSchema, insertKnowledgeBaseArticleSchema } from "@shared/schema";
-import { analyzeTaskPhoto, analyzeFaultPhoto } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
 import { startReminderSystem } from "./reminders";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -233,6 +233,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertKnowledgeBaseArticleSchema.parse(req.body);
       const article = await storage.createArticle(validatedData);
+      
+      if (article.isPublished) {
+        try {
+          await storage.deleteEmbeddingsByArticle(article.id);
+          const embeddings = await generateArticleEmbeddings(article.id, article.title, article.content);
+          await storage.createEmbeddings(embeddings.map(e => ({
+            articleId: article.id,
+            chunkText: e.chunkText,
+            chunkIndex: e.chunkIndex,
+            embedding: e.embedding,
+          })));
+        } catch (embeddingError) {
+          console.error("Error generating embeddings:", embeddingError);
+        }
+      }
+      
       res.json(article);
     } catch (error: any) {
       console.error("Error creating article:", error);
@@ -240,6 +256,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid article data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create article" });
+    }
+  });
+
+  app.post('/api/knowledge-base/:id/reindex', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const article = await storage.getArticle(id);
+      
+      if (!article) {
+        return res.status(404).json({ message: "Makale bulunamadı" });
+      }
+
+      await storage.deleteEmbeddingsByArticle(id);
+      
+      if (article.isPublished) {
+        const embeddings = await generateArticleEmbeddings(id, article.title, article.content);
+        await storage.createEmbeddings(embeddings.map(e => ({
+          articleId: id,
+          chunkText: e.chunkText,
+          chunkIndex: e.chunkIndex,
+          embedding: e.embedding,
+        })));
+      }
+
+      res.json({ message: "Makale yeniden indekslendi", articleId: id });
+    } catch (error) {
+      console.error("Error reindexing article:", error);
+      res.status(500).json({ message: "Makale yeniden indekslenemedi" });
+    }
+  });
+
+  app.post('/api/knowledge-base/ask', isAuthenticated, async (req, res) => {
+    try {
+      const { question } = req.body;
+      
+      if (!question || typeof question !== 'string') {
+        return res.status(400).json({ message: "Soru gereklidir" });
+      }
+
+      const queryEmbedding = await generateEmbedding(question);
+      const relevantChunks = await storage.semanticSearch(queryEmbedding, 5);
+
+      if (relevantChunks.length === 0) {
+        return res.json({
+          answer: "Bu konuda bilgi bankasında bilgi bulamadım. Lütfen daha fazla içerik ekleyin veya sorunuzu farklı şekilde sorun.",
+          sources: [],
+          noKnowledgeFound: true,
+        });
+      }
+
+      const response = await answerQuestionWithRAG(question, relevantChunks);
+      res.json({ ...response, noKnowledgeFound: false });
+    } catch (error) {
+      console.error("Error answering question:", error);
+      res.status(500).json({ message: "Soru cevaplanamadı" });
     }
   });
 

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import type {
   User,
   UpsertUser,
@@ -14,6 +14,8 @@ import type {
   InsertEquipmentFault,
   KnowledgeBaseArticle,
   InsertKnowledgeBaseArticle,
+  KnowledgeBaseEmbedding,
+  InsertKnowledgeBaseEmbedding,
   Reminder,
   InsertReminder,
   PerformanceMetric,
@@ -27,6 +29,7 @@ import {
   checklistTasks,
   equipmentFaults,
   knowledgeBaseArticles,
+  knowledgeBaseEmbeddings,
   reminders,
   performanceMetrics,
 } from "@shared/schema";
@@ -70,6 +73,16 @@ export interface IStorage {
   getArticle(id: number): Promise<KnowledgeBaseArticle | undefined>;
   createArticle(article: InsertKnowledgeBaseArticle): Promise<KnowledgeBaseArticle>;
   incrementArticleViews(id: number): Promise<void>;
+  
+  // Knowledge Base Embedding operations
+  createEmbeddings(embeddings: InsertKnowledgeBaseEmbedding[]): Promise<void>;
+  deleteEmbeddingsByArticle(articleId: number): Promise<void>;
+  semanticSearch(queryEmbedding: number[], limit?: number): Promise<Array<{ 
+    chunkText: string; 
+    articleId: number; 
+    articleTitle: string;
+    similarity: number;
+  }>>;
   
   // Reminder operations
   getReminders(userId?: string): Promise<Reminder[]>;
@@ -299,6 +312,50 @@ export class DatabaseStorage implements IStorage {
   async createPerformanceMetric(metric: InsertPerformanceMetric): Promise<PerformanceMetric> {
     const [newMetric] = await db.insert(performanceMetrics).values(metric).returning();
     return newMetric;
+  }
+
+  // Knowledge Base Embedding operations
+  async createEmbeddings(embeddings: InsertKnowledgeBaseEmbedding[]): Promise<void> {
+    if (embeddings.length === 0) return;
+    await db.insert(knowledgeBaseEmbeddings).values(embeddings as any);
+  }
+
+  async deleteEmbeddingsByArticle(articleId: number): Promise<void> {
+    await db.delete(knowledgeBaseEmbeddings).where(eq(knowledgeBaseEmbeddings.articleId, articleId));
+  }
+
+  async semanticSearch(queryEmbedding: number[], limit: number = 5): Promise<Array<{ 
+    chunkText: string; 
+    articleId: number; 
+    articleTitle: string;
+    similarity: number;
+  }>> {
+    const embeddingString = `'[${queryEmbedding.join(',')}]'`;
+    
+    const results = await db.execute<{
+      chunk_text: string;
+      article_id: number;
+      article_title: string;
+      similarity: number;
+    }>(sql`
+      SELECT 
+        e.chunk_text,
+        e.article_id,
+        a.title as article_title,
+        1 - (e.embedding <=> ${sql.raw(embeddingString)}::vector) as similarity
+      FROM knowledge_base_embeddings e
+      JOIN knowledge_base_articles a ON e.article_id = a.id
+      WHERE a.is_published = true
+      ORDER BY e.embedding <=> ${sql.raw(embeddingString)}::vector
+      LIMIT ${limit}
+    `);
+
+    return results.rows.map(row => ({
+      chunkText: row.chunk_text,
+      articleId: row.article_id,
+      articleTitle: row.article_title,
+      similarity: row.similarity,
+    }));
   }
 }
 
