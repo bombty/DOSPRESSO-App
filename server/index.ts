@@ -9,6 +9,10 @@ declare module 'http' {
     rawBody: unknown
   }
 }
+
+// Important: Set trust proxy BEFORE session middleware
+app.set("trust proxy", 1);
+
 app.use(express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;
