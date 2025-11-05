@@ -103,16 +103,24 @@ export async function setupAuth(app: Express) {
           return res.status(500).json({ error: "Giriş işlemi başarısız" });
         }
         
-        return res.json({ 
-          success: true,
-          user: {
-            id: user.id,
-            username: user.username,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            role: user.role,
-            branchId: user.branchId,
+        // Explicitly save session to ensure cookie is set
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ error: "Oturum kaydedilemedi" });
           }
+          
+          return res.json({ 
+            success: true,
+            user: {
+              id: user.id,
+              username: user.username,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              role: user.role,
+              branchId: user.branchId,
+            }
+          });
         });
       });
     })(req, res, next);
