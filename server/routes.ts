@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertTaskSchema, insertChecklistSchema, insertEquipmentFaultSchema, insertKnowledgeBaseArticleSchema } from "@shared/schema";
+import { analyzeTaskPhoto, analyzeFaultPhoto } from "./ai";
+import { startReminderSystem } from "./reminders";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
@@ -75,11 +77,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const { photoUrl } = req.body;
+      
       const task = await storage.completeTask(id, photoUrl);
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
-      res.json(task);
+
+      if (photoUrl) {
+        try {
+          const analysis = await analyzeTaskPhoto(photoUrl, task.description);
+          const updatedTask = await storage.updateTask(id, {
+            aiAnalysis: analysis.analysis,
+            aiScore: analysis.score,
+          });
+          res.json(updatedTask || task);
+        } catch (aiError) {
+          console.error("AI analysis error:", aiError);
+          res.json(task);
+        }
+      } else {
+        res.json(task);
+      }
     } catch (error) {
       console.error("Error completing task:", error);
       res.status(500).json({ message: "Failed to complete task" });
@@ -154,11 +172,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const { photoUrl } = req.body;
+      
       const fault = await storage.updateFault(id, { photoUrl });
       if (!fault) {
         return res.status(404).json({ message: "Fault not found" });
       }
-      res.json(fault);
+
+      if (photoUrl) {
+        try {
+          const analysis = await analyzeFaultPhoto(
+            photoUrl,
+            fault.equipmentName,
+            fault.description
+          );
+          const updatedFault = await storage.updateFault(id, {
+            aiAnalysis: analysis.analysis,
+            aiSeverity: analysis.severity,
+            aiRecommendations: analysis.recommendations,
+          });
+          res.json(updatedFault || fault);
+        } catch (aiError) {
+          console.error("AI analysis error:", aiError);
+          res.json(fault);
+        }
+      } else {
+        res.json(fault);
+      }
     } catch (error) {
       console.error("Error updating fault photo:", error);
       res.status(500).json({ message: "Failed to update fault photo" });
@@ -251,6 +290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get upload URL" });
     }
   });
+
+  startReminderSystem();
 
   const httpServer = createServer(app);
   return httpServer;

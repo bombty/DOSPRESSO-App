@@ -144,6 +144,7 @@ export const equipmentFaults = pgTable("equipment_faults", {
   photoUrl: text("photo_url"),
   aiAnalysis: text("ai_analysis"),
   aiSeverity: varchar("ai_severity", { length: 50 }), // low, medium, high, critical
+  aiRecommendations: text("ai_recommendations").array(),
   status: varchar("status", { length: 50 }).notNull().default("acik"), // acik, devam_ediyor, cozuldu
   priority: varchar("priority", { length: 50 }).default("orta"), // dusuk, orta, yuksek
   resolvedAt: timestamp("resolved_at"),

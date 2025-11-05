@@ -307,13 +307,28 @@ export default function EquipmentFaults() {
                   </div>
                 )}
                 {fault.aiAnalysis && (
-                  <div className="bg-muted p-3 rounded-md">
-                    <p className="text-sm font-medium mb-1">AI Analizi:</p>
-                    <p className="text-sm text-muted-foreground">{fault.aiAnalysis}</p>
+                  <div className="bg-muted p-3 rounded-md space-y-2">
+                    <div>
+                      <p className="text-sm font-medium mb-1">AI Analizi:</p>
+                      <p className="text-sm text-muted-foreground">{fault.aiAnalysis}</p>
+                    </div>
                     {fault.aiSeverity && (
-                      <Badge variant="outline" className="mt-2">
+                      <Badge variant="outline">
                         Ciddiyet: {severityLabels[fault.aiSeverity]}
                       </Badge>
+                    )}
+                    {fault.aiRecommendations && fault.aiRecommendations.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-sm font-medium mb-2">Öneriler:</p>
+                        <ul className="space-y-1">
+                          {fault.aiRecommendations.map((recommendation, index) => (
+                            <li key={index} className="text-sm text-muted-foreground flex gap-2">
+                              <span className="text-primary">•</span>
+                              <span>{recommendation}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                 )}
