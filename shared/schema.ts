@@ -43,32 +43,7 @@ export const UserRole = {
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
 
-// Users table (Replit Auth compatible)
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default(UserRole.BARISTA),
-  branchId: integer("branch_id"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const usersRelations = relations(users, ({ one, many }) => ({
-  branch: one(branches, {
-    fields: [users.branchId],
-    references: [branches.id],
-  }),
-  tasksCreated: many(tasks),
-  faultsReported: many(equipmentFaults),
-}));
-
-export type UpsertUser = typeof users.$inferInsert;
-export type User = typeof users.$inferSelect;
-
-// Branches table
+// Branches table (declared first since users references it)
 export const branches = pgTable("branches", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
@@ -79,20 +54,21 @@ export const branches = pgTable("branches", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const branchesRelations = relations(branches, ({ many }) => ({
-  users: many(users),
-  tasks: many(tasks),
-  faults: many(equipmentFaults),
-  metrics: many(performanceMetrics),
-}));
-
-export const insertBranchSchema = createInsertSchema(branches).omit({
-  id: true,
-  createdAt: true,
+// Users table (Replit Auth compatible)
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  role: varchar("role").notNull().default(UserRole.BARISTA),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export type InsertBranch = z.infer<typeof insertBranchSchema>;
-export type Branch = typeof branches.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
 
 // Checklists table
 export const checklists = pgTable("checklists", {
@@ -105,10 +81,6 @@ export const checklists = pgTable("checklists", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const checklistsRelations = relations(checklists, ({ many }) => ({
-  checklistTasks: many(checklistTasks),
-}));
-
 export const insertChecklistSchema = createInsertSchema(checklists).omit({
   id: true,
   createdAt: true,
@@ -120,19 +92,12 @@ export type Checklist = typeof checklists.$inferSelect;
 // Checklist Tasks (many-to-many between checklists and task templates)
 export const checklistTasks = pgTable("checklist_tasks", {
   id: serial("id").primaryKey(),
-  checklistId: integer("checklist_id").notNull(),
+  checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
   taskDescription: text("task_description").notNull(),
   requiresPhoto: boolean("requires_photo").default(false),
   order: integer("order").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
-export const checklistTasksRelations = relations(checklistTasks, ({ one }) => ({
-  checklist: one(checklists, {
-    fields: [checklistTasks.checklistId],
-    references: [checklists.id],
-  }),
-}));
 
 export const insertChecklistTaskSchema = createInsertSchema(checklistTasks).omit({
   id: true,
@@ -145,10 +110,10 @@ export type ChecklistTask = typeof checklistTasks.$inferSelect;
 // Tasks table (actual task instances)
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
-  checklistId: integer("checklist_id"),
-  checklistTaskId: integer("checklist_task_id"),
-  branchId: integer("branch_id").notNull(),
-  assignedToId: varchar("assigned_to_id"),
+  checklistId: integer("checklist_id").references(() => checklists.id, { onDelete: "set null" }),
+  checklistTaskId: integer("checklist_task_id").references(() => checklistTasks.id, { onDelete: "set null" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
   description: text("description").notNull(),
   status: varchar("status", { length: 50 }).notNull().default("beklemede"), // beklemede, tamamlandi, gecikmiş
   photoUrl: text("photo_url"),
@@ -159,25 +124,6 @@ export const tasks = pgTable("tasks", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
-
-export const tasksRelations = relations(tasks, ({ one }) => ({
-  checklist: one(checklists, {
-    fields: [tasks.checklistId],
-    references: [checklists.id],
-  }),
-  checklistTask: one(checklistTasks, {
-    fields: [tasks.checklistTaskId],
-    references: [checklistTasks.id],
-  }),
-  branch: one(branches, {
-    fields: [tasks.branchId],
-    references: [branches.id],
-  }),
-  assignedTo: one(users, {
-    fields: [tasks.assignedToId],
-    references: [users.id],
-  }),
-}));
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
@@ -191,8 +137,8 @@ export type Task = typeof tasks.$inferSelect;
 // Equipment Faults table
 export const equipmentFaults = pgTable("equipment_faults", {
   id: serial("id").primaryKey(),
-  branchId: integer("branch_id").notNull(),
-  reportedById: varchar("reported_by_id").notNull(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  reportedById: varchar("reported_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   equipmentName: varchar("equipment_name", { length: 255 }).notNull(),
   description: text("description").notNull(),
   photoUrl: text("photo_url"),
@@ -204,17 +150,6 @@ export const equipmentFaults = pgTable("equipment_faults", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
-
-export const equipmentFaultsRelations = relations(equipmentFaults, ({ one }) => ({
-  branch: one(branches, {
-    fields: [equipmentFaults.branchId],
-    references: [branches.id],
-  }),
-  reportedBy: one(users, {
-    fields: [equipmentFaults.reportedById],
-    references: [users.id],
-  }),
-}));
 
 export const insertEquipmentFaultSchema = createInsertSchema(equipmentFaults).omit({
   id: true,
@@ -251,25 +186,14 @@ export type KnowledgeBaseArticle = typeof knowledgeBaseArticles.$inferSelect;
 // Reminders table
 export const reminders = pgTable("reminders", {
   id: serial("id").primaryKey(),
-  taskId: integer("task_id").notNull(),
-  userId: varchar("user_id").notNull(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   reminderCount: integer("reminder_count").default(0),
   lastReminderAt: timestamp("last_reminder_at"),
   nextReminderAt: timestamp("next_reminder_at"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
-export const remindersRelations = relations(reminders, ({ one }) => ({
-  task: one(tasks, {
-    fields: [reminders.taskId],
-    references: [tasks.id],
-  }),
-  user: one(users, {
-    fields: [reminders.userId],
-    references: [users.id],
-  }),
-}));
 
 export const insertReminderSchema = createInsertSchema(reminders).omit({
   id: true,
@@ -282,7 +206,7 @@ export type Reminder = typeof reminders.$inferSelect;
 // Performance Metrics table
 export const performanceMetrics = pgTable("performance_metrics", {
   id: serial("id").primaryKey(),
-  branchId: integer("branch_id").notNull(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   date: timestamp("date").notNull(),
   tasksCompleted: integer("tasks_completed").default(0),
   tasksTotal: integer("tasks_total").default(0),
@@ -293,13 +217,6 @@ export const performanceMetrics = pgTable("performance_metrics", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const performanceMetricsRelations = relations(performanceMetrics, ({ one }) => ({
-  branch: one(branches, {
-    fields: [performanceMetrics.branchId],
-    references: [branches.id],
-  }),
-}));
-
 export const insertPerformanceMetricSchema = createInsertSchema(performanceMetrics).omit({
   id: true,
   createdAt: true,
@@ -307,3 +224,79 @@ export const insertPerformanceMetricSchema = createInsertSchema(performanceMetri
 
 export type InsertPerformanceMetric = z.infer<typeof insertPerformanceMetricSchema>;
 export type PerformanceMetric = typeof performanceMetrics.$inferSelect;
+
+// Relations (defined after all tables to avoid temporal dead zone)
+export const branchesRelations = relations(branches, ({ many }) => ({
+  users: many(users),
+  tasks: many(tasks),
+  faults: many(equipmentFaults),
+  metrics: many(performanceMetrics),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  branch: one(branches, {
+    fields: [users.branchId],
+    references: [branches.id],
+  }),
+  tasksCreated: many(tasks),
+  faultsReported: many(equipmentFaults),
+}));
+
+export const checklistsRelations = relations(checklists, ({ many }) => ({
+  checklistTasks: many(checklistTasks),
+}));
+
+export const checklistTasksRelations = relations(checklistTasks, ({ one }) => ({
+  checklist: one(checklists, {
+    fields: [checklistTasks.checklistId],
+    references: [checklists.id],
+  }),
+}));
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  checklist: one(checklists, {
+    fields: [tasks.checklistId],
+    references: [checklists.id],
+  }),
+  checklistTask: one(checklistTasks, {
+    fields: [tasks.checklistTaskId],
+    references: [checklistTasks.id],
+  }),
+  branch: one(branches, {
+    fields: [tasks.branchId],
+    references: [branches.id],
+  }),
+  assignedTo: one(users, {
+    fields: [tasks.assignedToId],
+    references: [users.id],
+  }),
+}));
+
+export const equipmentFaultsRelations = relations(equipmentFaults, ({ one }) => ({
+  branch: one(branches, {
+    fields: [equipmentFaults.branchId],
+    references: [branches.id],
+  }),
+  reportedBy: one(users, {
+    fields: [equipmentFaults.reportedById],
+    references: [users.id],
+  }),
+}));
+
+export const remindersRelations = relations(reminders, ({ one }) => ({
+  task: one(tasks, {
+    fields: [reminders.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [reminders.userId],
+    references: [users.id],
+  }),
+}));
+
+export const performanceMetricsRelations = relations(performanceMetrics, ({ one }) => ({
+  branch: one(branches, {
+    fields: [performanceMetrics.branchId],
+    references: [branches.id],
+  }),
+}));
