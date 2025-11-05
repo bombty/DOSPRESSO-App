@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -18,11 +19,11 @@ export default function Landing() {
             Şube operasyonlarınızı yönetin, görevleri takip edin, ekipman arızalarını raporlayın ve performansı analiz edin.
           </p>
           <div className="space-y-2">
-            <a href="/api/login" className="block w-full">
+            <Link href="/login" className="block w-full">
               <Button className="w-full" size="lg" data-testid="button-login">
                 Giriş Yap
               </Button>
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./localAuth";
 import { insertTaskSchema, insertChecklistSchema, insertEquipmentFaultSchema, insertKnowledgeBaseArticleSchema } from "@shared/schema";
 import { analyzeTaskPhoto, analyzeFaultPhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
 import { startReminderSystem } from "./reminders";
@@ -11,7 +11,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertTaskSchema.parse(req.body);
       const task = await storage.createTask({
         ...validatedData,
@@ -152,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/faults', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertEquipmentFaultSchema.parse(req.body);
       const fault = await storage.createFault({
         ...validatedData,

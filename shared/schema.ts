@@ -70,9 +70,11 @@ export const branches = pgTable("branches", {
 
 export type Branch = typeof branches.$inferSelect;
 
-// Users table (Replit Auth compatible)
+// Users table (Username/Password Auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: varchar("username", { length: 100 }).notNull().unique(),
+  hashedPassword: varchar("hashed_password", { length: 255 }).notNull(),
   email: varchar("email"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),

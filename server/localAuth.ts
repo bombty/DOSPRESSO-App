@@ -1,0 +1,117 @@
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import session from "express-session";
+import type { Express, RequestHandler } from "express";
+import connectPg from "connect-pg-simple";
+import bcrypt from "bcrypt";
+import { storage } from "./storage";
+
+export function getSession() {
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: false,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
+  return session({
+    secret: process.env.SESSION_SECRET!,
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: sessionTtl,
+    },
+  });
+}
+
+export async function setupAuth(app: Express) {
+  app.set("trust proxy", 1);
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  // Passport Local Strategy
+  passport.use(
+    new LocalStrategy(async (username, password, done) => {
+      try {
+        const user = await storage.getUserByUsername(username);
+        
+        if (!user) {
+          return done(null, false, { message: "Kullanıcı adı veya şifre hatalı" });
+        }
+
+        const isValidPassword = await bcrypt.compare(password, user.hashedPassword);
+        
+        if (!isValidPassword) {
+          return done(null, false, { message: "Kullanıcı adı veya şifre hatalı" });
+        }
+
+        return done(null, user);
+      } catch (error) {
+        return done(error);
+      }
+    })
+  );
+
+  passport.serializeUser((user: any, cb) => {
+    cb(null, user.id);
+  });
+
+  passport.deserializeUser(async (id: string, cb) => {
+    try {
+      const user = await storage.getUserById(id);
+      cb(null, user);
+    } catch (error) {
+      cb(error);
+    }
+  });
+
+  // Login endpoint
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ error: "Sunucu hatası" });
+      }
+      
+      if (!user) {
+        return res.status(401).json({ error: info?.message || "Giriş başarısız" });
+      }
+
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Giriş işlemi başarısız" });
+        }
+        
+        return res.json({ 
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+            branchId: user.branchId,
+          }
+        });
+      });
+    })(req, res, next);
+  });
+
+  // Logout endpoint
+  app.get("/api/logout", (req, res) => {
+    req.logout(() => {
+      res.json({ success: true });
+    });
+  });
+}
+
+export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
