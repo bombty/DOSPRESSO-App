@@ -44,7 +44,12 @@ export default function Login() {
       const response = await apiRequest("POST", "/api/login", data);
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (data: any) => {
+      // Save JWT token to localStorage
+      if (data.token) {
+        localStorage.setItem('dospresso_token', data.token);
+      }
+      
       // Invalidate auth cache to refetch user data
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       

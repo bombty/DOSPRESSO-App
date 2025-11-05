@@ -82,7 +82,7 @@ const roleLabels: Record<string, string> = {
 };
 
 export function AppSidebar() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user } = useAuth();
 
   const getUserInitials = () => {
@@ -93,6 +93,11 @@ export function AppSidebar() {
       return user.email.substring(0, 2).toUpperCase();
     }
     return "U";
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('dospresso_token');
+    navigate('/login');
   };
 
   return (
@@ -136,13 +141,13 @@ export function AppSidebar() {
             </Badge>
           </div>
         </div>
-        <a
-          href="/api/logout"
-          className="mt-2 text-sm text-muted-foreground hover:text-foreground"
-          data-testid="link-logout"
+        <button
+          onClick={handleLogout}
+          className="mt-2 text-sm text-muted-foreground hover:text-foreground text-left"
+          data-testid="button-logout"
         >
           Çıkış Yap
-        </a>
+        </button>
       </SidebarFooter>
     </Sidebar>
   );
