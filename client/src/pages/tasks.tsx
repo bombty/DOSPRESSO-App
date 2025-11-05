@@ -17,7 +17,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch } from "@shared/schema";
 import { Camera, Check } from "lucide-react";
-import type { UploadResult } from "@uppy/core";
 
 export default function Tasks() {
   const { toast } = useToast();
@@ -28,7 +27,7 @@ export default function Tasks() {
     queryKey: ["/api/tasks"],
   });
 
-  const { data: branches } = useQuery<Branch[]>({
+  const { data: branches, isLoading: isBranchesLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
   });
 
@@ -109,7 +108,7 @@ export default function Tasks() {
     return { method: "PUT" as const, url: data.uploadURL };
   };
 
-  const handleUploadComplete = (taskId: number) => (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+  const handleUploadComplete = (taskId: number) => (result: { successful: Array<{ uploadURL: string }> }) => {
     if (result.successful && result.successful[0]) {
       const photoUrl = result.successful[0].uploadURL;
       completeMutation.mutate({ taskId, photoUrl });
@@ -155,18 +154,25 @@ export default function Tasks() {
                       <Select
                         onValueChange={(value) => field.onChange(Number(value))}
                         value={field.value?.toString()}
+                        disabled={isBranchesLoading}
                       >
                         <FormControl>
                           <SelectTrigger data-testid="select-branch">
-                            <SelectValue placeholder="Şube seçin" />
+                            <SelectValue placeholder={isBranchesLoading ? "Yükleniyor..." : "Şube seçin"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {branches?.map((branch) => (
-                            <SelectItem key={branch.id} value={branch.id.toString()}>
-                              {branch.name}
+                          {!branches || branches.length === 0 ? (
+                            <SelectItem value="no-branches" disabled>
+                              Henüz şube yok
                             </SelectItem>
-                          ))}
+                          ) : (
+                            branches.map((branch) => (
+                              <SelectItem key={branch.id} value={branch.id.toString()}>
+                                {branch.name}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
