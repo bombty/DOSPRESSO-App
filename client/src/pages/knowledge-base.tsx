@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertKnowledgeBaseArticleSchema, type KnowledgeBaseArticle, type InsertKnowledgeBaseArticle } from "@shared/schema";
-import { BookOpen, Eye, Plus } from "lucide-react";
+import { BookOpen, Eye, Plus, CheckCircle, XCircle } from "lucide-react";
 
 export default function KnowledgeBase() {
   const { toast } = useToast();
@@ -35,7 +35,9 @@ export default function KnowledgeBase() {
       category: "sop",
       content: "",
       tags: [],
+      attachmentUrls: [],
       isPublished: false,
+      viewCount: 0,
     },
   });
 
@@ -66,6 +68,20 @@ export default function KnowledgeBase() {
         description: "Makale oluşturulamadı",
         variant: "destructive",
       });
+    },
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: async ({ id, publish }: { id: number; publish: boolean }) => {
+      const endpoint = publish ? `/api/knowledge-base/${id}/publish` : `/api/knowledge-base/${id}/unpublish`;
+      await apiRequest(endpoint, "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });
+      toast({ title: "Başarılı", description: "Makale durumu güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "İşlem başarısız", variant: "destructive" });
     },
   });
 
@@ -237,9 +253,33 @@ export default function KnowledgeBase() {
                         <Eye className="h-3 w-3" />
                         {article.viewCount || 0} görüntüleme
                       </div>
-                      <Badge variant={article.isPublished ? "default" : "outline"}>
-                        {article.isPublished ? "Yayında" : "Taslak"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={article.isPublished ? "default" : "outline"}>
+                          {article.isPublished ? "Yayında" : "Taslak"}
+                        </Badge>
+                        {article.isPublished ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => publishMutation.mutate({ id: article.id, publish: false })}
+                            disabled={publishMutation.isPending}
+                            data-testid={`button-unpublish-${article.id}`}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Yayından Kaldır
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => publishMutation.mutate({ id: article.id, publish: true })}
+                            disabled={publishMutation.isPending}
+                            data-testid={`button-publish-${article.id}`}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Yayınla
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
