@@ -70,9 +70,12 @@ export async function setupAuth(app: Express) {
 
   passport.deserializeUser(async (id: string, cb) => {
     try {
+      console.log("[Auth] Deserializing user with ID:", id);
       const user = await storage.getUserById(id);
+      console.log("[Auth] User found:", user ? user.username : "null");
       cb(null, user);
     } catch (error) {
+      console.error("[Auth] Deserialize error:", error);
       cb(error);
     }
   });
@@ -100,15 +103,21 @@ export async function setupAuth(app: Express) {
 
       req.login(user, (err) => {
         if (err) {
+          console.error("[Auth] req.login error:", err);
           return res.status(500).json({ error: "Giriş işlemi başarısız" });
         }
+        
+        console.log("[Auth] req.login successful, session ID:", req.sessionID);
+        console.log("[Auth] Session data:", req.session);
         
         // Explicitly save session to ensure cookie is set
         req.session.save((saveErr) => {
           if (saveErr) {
-            console.error("Session save error:", saveErr);
+            console.error("[Auth] Session save error:", saveErr);
             return res.status(500).json({ error: "Oturum kaydedilemedi" });
           }
+          
+          console.log("[Auth] Session saved successfully, cookie should be set");
           
           return res.json({ 
             success: true,
@@ -135,7 +144,12 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  console.log("[Auth] isAuthenticated check - sessionID:", req.sessionID);
+  console.log("[Auth] isAuthenticated check - user:", req.user ? (req.user as any).username : "null");
+  console.log("[Auth] isAuthenticated check - session:", req.session);
+  
   if (!req.isAuthenticated()) {
+    console.log("[Auth] Not authenticated!");
     return res.status(401).json({ message: "Unauthorized" });
   }
   next();
