@@ -1,0 +1,31 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default function Landing() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold text-primary">
+            DOSPRESSO
+          </CardTitle>
+          <CardDescription className="text-lg mt-2">
+            Franchise Yönetim Platformu
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-center text-muted-foreground">
+            Şube operasyonlarınızı yönetin, görevleri takip edin, ekipman arızalarını raporlayın ve performansı analiz edin.
+          </p>
+          <div className="space-y-2">
+            <a href="/api/login" className="block w-full">
+              <Button className="w-full" size="lg" data-testid="button-login">
+                Giriş Yap
+              </Button>
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
