@@ -4,7 +4,13 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import bcrypt from "bcrypt";
+import { z } from "zod";
 import { storage } from "./storage";
+
+const loginSchema = z.object({
+  username: z.string().min(1, "Kullanıcı adı zorunludur"),
+  password: z.string().min(1, "Şifre zorunludur"),
+});
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -23,6 +29,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       maxAge: sessionTtl,
     },
   });
@@ -70,8 +77,18 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  // Login endpoint
+  // Login endpoint with validation
   app.post("/api/login", (req, res, next) => {
+    // Validate request body
+    const validationResult = loginSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: "Geçersiz giriş bilgileri",
+        details: validationResult.error.errors 
+      });
+    }
+
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
         return res.status(500).json({ error: "Sunucu hatası" });
