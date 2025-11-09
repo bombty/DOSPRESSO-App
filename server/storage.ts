@@ -46,7 +46,9 @@ export interface IStorage {
   // Branch operations
   getBranches(): Promise<Branch[]>;
   getBranch(id: number): Promise<Branch | undefined>;
-  createBranch(branch: Omit<Branch, "id" | "createdAt">): Promise<Branch>;
+  createBranch(branch: Omit<Branch, "id" | "createdAt" | "isActive">): Promise<Branch>;
+  updateBranch(id: number, updates: Partial<Omit<Branch, "id" | "createdAt" | "isActive">>): Promise<Branch | undefined>;
+  deleteBranch(id: number): Promise<void>;
   
   // Task operations
   getTasks(branchId?: number): Promise<Task[]>;
@@ -155,9 +157,18 @@ export class DatabaseStorage implements IStorage {
     return branch;
   }
 
-  async createBranch(branch: Omit<Branch, "id" | "createdAt">): Promise<Branch> {
+  async createBranch(branch: Omit<Branch, "id" | "createdAt" | "isActive">): Promise<Branch> {
     const [newBranch] = await db.insert(branches).values(branch).returning();
     return newBranch;
+  }
+
+  async updateBranch(id: number, updates: Partial<Omit<Branch, "id" | "createdAt" | "isActive">>): Promise<Branch | undefined> {
+    const [updated] = await db.update(branches).set(updates).where(eq(branches.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBranch(id: number): Promise<void> {
+    await db.delete(branches).where(eq(branches.id, id));
   }
 
   // Task operations

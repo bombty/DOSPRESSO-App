@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./jwtAuth";
-import { insertTaskSchema, insertChecklistSchema, insertEquipmentFaultSchema, insertKnowledgeBaseArticleSchema } from "@shared/schema";
+import { insertTaskSchema, insertChecklistSchema, insertEquipmentFaultSchema, insertKnowledgeBaseArticleSchema, insertBranchSchema } from "@shared/schema";
 import { analyzeTaskPhoto, analyzeFaultPhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
 import { startReminderSystem } from "./reminders";
 
@@ -41,6 +41,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching branch:", error);
       res.status(500).json({ message: "Failed to fetch branch" });
+    }
+  });
+
+  app.post('/api/branches', isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertBranchSchema.parse(req.body);
+      const branchData = {
+        ...validatedData,
+        address: validatedData.address ?? null,
+        city: validatedData.city ?? null,
+        phoneNumber: validatedData.phoneNumber ?? null,
+        managerName: validatedData.managerName ?? null,
+      };
+      const branch = await storage.createBranch(branchData);
+      res.json(branch);
+    } catch (error: any) {
+      console.error("Error creating branch:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid branch data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create branch" });
+    }
+  });
+
+  app.patch('/api/branches/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertBranchSchema.partial().parse(req.body);
+      const branch = await storage.updateBranch(id, validatedData);
+      if (!branch) {
+        return res.status(404).json({ message: "Branch not found" });
+      }
+      res.json(branch);
+    } catch (error: any) {
+      console.error("Error updating branch:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid branch data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update branch" });
+    }
+  });
+
+  app.delete('/api/branches/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteBranch(id);
+      res.json({ message: "Branch deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting branch:", error);
+      res.status(500).json({ message: "Failed to delete branch" });
     }
   });
 
