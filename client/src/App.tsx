@@ -11,6 +11,8 @@ import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Branches from "@/pages/branches";
+import Subeler from "@/pages/subeler";
+import SubeDetay from "@/pages/sube-detay";
 import Tasks from "@/pages/tasks";
 import Checklists from "@/pages/checklists";
 import Equipment from "@/pages/equipment";
@@ -33,7 +35,8 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Dashboard} />
-          <Route path="/subeler" component={Branches} />
+          <Route path="/subeler/:id" component={SubeDetay} />
+          <Route path="/subeler" component={Subeler} />
           <Route path="/gorevler" component={Tasks} />
           <Route path="/checklistler" component={Checklists} />
           <Route path="/ekipman" component={Equipment} />

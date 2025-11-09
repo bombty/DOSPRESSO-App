@@ -40,6 +40,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/branches', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
+      
+      // Authorization: Supervisor can only see their own branch
+      if (user.role === 'supervisor') {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        const branch = await storage.getBranch(user.branchId);
+        return res.json(branch ? [branch] : []);
+      }
+      
+      // Admin/Coach can see all branches
       const branches = await storage.getBranches();
       res.json(branches);
     } catch (error) {
@@ -50,7 +62,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/branches/:id', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
       const id = parseInt(req.params.id);
+      
+      // Authorization: Supervisor can only access their own branch
+      if (user.role === 'supervisor' && user.branchId !== id) {
+        return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+      }
+      
       const branch = await storage.getBranch(id);
       if (!branch) {
         return res.status(404).json({ message: "Branch not found" });
@@ -114,8 +133,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/tasks', isAuthenticated, async (req, res) => {
     try {
-      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
-      const tasks = await storage.getTasks(branchId);
+      const user = req.user!;
+      const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      
+      // Authorization: Supervisor can only access their own branch
+      if (user.role === 'supervisor') {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        if (requestedBranchId && requestedBranchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+        }
+        // Force supervisor to see only their branch
+        const tasks = await storage.getTasks(user.branchId);
+        return res.json(tasks);
+      }
+      
+      // Admin/Coach can access all or filter by branch
+      const tasks = await storage.getTasks(requestedBranchId);
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -369,8 +404,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Equipment routes
   app.get('/api/equipment', isAuthenticated, async (req, res) => {
     try {
-      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
-      const equipment = await storage.getEquipment(branchId);
+      const user = req.user!;
+      const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      
+      // Authorization: Supervisor can only access their own branch
+      if (user.role === 'supervisor') {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        if (requestedBranchId && requestedBranchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+        }
+        // Force supervisor to see only their branch
+        const equipment = await storage.getEquipment(user.branchId);
+        return res.json(equipment);
+      }
+      
+      // Admin/Coach can access all or filter by branch
+      const equipment = await storage.getEquipment(requestedBranchId);
       res.json(equipment);
     } catch (error) {
       console.error("Error fetching equipment:", error);
@@ -581,11 +632,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Çalışan listesine erişim yetkiniz yok" });
       }
 
+      // Authorization: Supervisor must have a valid branchId
+      if (role === 'supervisor' && !userBranchId) {
+        return res.status(403).json({ message: "Şube ataması yapılmamış" });
+      }
+
       // Branch filtering for supervisor/coach
       let branchFilter: number | undefined;
-      if (role === 'supervisor' && userBranchId) {
+      if (role === 'supervisor') {
         // Supervisor can only see their own branch
-        branchFilter = userBranchId;
+        branchFilter = userBranchId!;
       } else if (role === 'coach' || role === 'admin') {
         // Coach/Admin can optionally filter by branchId query param
         branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
