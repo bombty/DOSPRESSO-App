@@ -22,6 +22,7 @@ import Training from "@/pages/training";
 import IK from "@/pages/ik";
 import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
+import AdminSeed from "@/pages/admin-seed";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -46,6 +47,7 @@ function Router() {
           <Route path="/ik" component={IK} />
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/performans" component={Performance} />
+          <Route path="/admin/seed" component={AdminSeed} />
         </>
       )}
       <Route component={NotFound} />
