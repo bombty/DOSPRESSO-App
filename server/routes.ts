@@ -288,6 +288,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Equipment routes
+  app.get('/api/equipment', isAuthenticated, async (req, res) => {
+    try {
+      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const equipment = await storage.getEquipment(branchId);
+      res.json(equipment);
+    } catch (error) {
+      console.error("Error fetching equipment:", error);
+      res.status(500).json({ message: "Failed to fetch equipment" });
+    }
+  });
+
+  app.get('/api/equipment/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const equipmentItem = await storage.getEquipmentById(id);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      res.json(equipmentItem);
+    } catch (error) {
+      console.error("Error fetching equipment:", error);
+      res.status(500).json({ message: "Failed to fetch equipment" });
+    }
+  });
+
+  app.post('/api/equipment', isAuthenticated, async (req, res) => {
+    try {
+      const { insertEquipmentSchema } = await import('@shared/schema');
+      const validatedData = insertEquipmentSchema.parse(req.body);
+      
+      // Generate QR code URL (simple ID-based URL for now)
+      const qrCodeUrl = `/equipment/${Date.now()}`;
+      
+      const equipment = await storage.createEquipment({
+        ...validatedData,
+        qrCodeUrl,
+      });
+      res.json(equipment);
+    } catch (error) {
+      console.error("Error creating equipment:", error);
+      res.status(500).json({ message: "Failed to create equipment" });
+    }
+  });
+
+  app.put('/api/equipment/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { insertEquipmentSchema } = await import('@shared/schema');
+      const validatedData = insertEquipmentSchema.partial().parse(req.body);
+      
+      const equipment = await storage.updateEquipment(id, validatedData);
+      if (!equipment) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      res.json(equipment);
+    } catch (error) {
+      console.error("Error updating equipment:", error);
+      res.status(500).json({ message: "Failed to update equipment" });
+    }
+  });
+
+  app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const equipmentItem = await storage.getEquipmentById(id);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      const intervalDays = equipmentItem.maintenanceIntervalDays || 30;
+      const updated = await storage.logMaintenance(id, intervalDays);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error logging maintenance:", error);
+      res.status(500).json({ message: "Failed to log maintenance" });
+    }
+  });
+
   app.get('/api/knowledge-base', isAuthenticated, async (req, res) => {
     try {
       const category = req.query.category as string | undefined;

@@ -47,6 +47,7 @@ import {
   checklistTasks,
   equipment,
   equipmentFaults,
+  faultStageTransitions,
   knowledgeBaseArticles,
   knowledgeBaseEmbeddings,
   reminders,
@@ -105,6 +106,7 @@ export interface IStorage {
   getEquipmentById(id: number): Promise<Equipment | undefined>;
   createEquipment(equipment: InsertEquipment): Promise<Equipment>;
   updateEquipment(id: number, updates: Partial<InsertEquipment>): Promise<Equipment | undefined>;
+  logMaintenance(equipmentId: number, maintenanceIntervalDays: number): Promise<Equipment | undefined>;
   
   // Equipment Fault operations
   getFaults(branchId?: number): Promise<EquipmentFault[]>;
@@ -359,6 +361,24 @@ export class DatabaseStorage implements IStorage {
       .update(equipment)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(equipment.id, id))
+      .returning();
+    return updated;
+  }
+
+  async logMaintenance(equipmentId: number, maintenanceIntervalDays: number): Promise<Equipment | undefined> {
+    const today = new Date().toISOString().split('T')[0];
+    const nextMaintenanceDate = new Date(Date.now() + maintenanceIntervalDays * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
+    
+    const [updated] = await db
+      .update(equipment)
+      .set({
+        lastMaintenanceDate: today,
+        nextMaintenanceDate,
+        updatedAt: new Date(),
+      })
+      .where(eq(equipment.id, equipmentId))
       .returning();
     return updated;
   }
