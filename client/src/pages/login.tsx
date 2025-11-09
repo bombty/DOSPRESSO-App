@@ -48,6 +48,8 @@ export default function Login() {
       // Save JWT token to localStorage
       if (data.token) {
         localStorage.setItem('dospresso_token', data.token);
+        // Dispatch custom event to notify useAuth hook
+        window.dispatchEvent(new Event('tokenChanged'));
       }
       
       // Invalidate auth cache to refetch user data
