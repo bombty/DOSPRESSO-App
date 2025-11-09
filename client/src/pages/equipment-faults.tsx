@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,14 +16,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertEquipmentFaultSchema, type EquipmentFault, type InsertEquipmentFault, type Branch } from "@shared/schema";
-import { AlertTriangle, Camera, CheckCircle } from "lucide-react";
+import { insertEquipmentFaultSchema, type EquipmentFault, type InsertEquipmentFault, type Branch, FAULT_STAGES, type FaultStageType, type FaultStageTransition } from "@shared/schema";
+import { AlertTriangle, Camera, CheckCircle, Clock, ChevronRight } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
+import { z } from "zod";
+
+const stageChangeSchema = z.object({
+  stage: z.string(),
+  notes: z.string().optional(),
+});
+
+type StageChangeFormData = z.infer<typeof stageChangeSchema>;
 
 export default function EquipmentFaults() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [uploadingFaultId, setUploadingFaultId] = useState<number | null>(null);
+  const [stageChangeFaultId, setStageChangeFaultId] = useState<number | null>(null);
+  const [viewHistoryFaultId, setViewHistoryFaultId] = useState<number | null>(null);
 
   const { data: faults, isLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
@@ -41,6 +53,14 @@ export default function EquipmentFaults() {
       priority: "orta",
       branchId: undefined,
       reportedById: "",
+    },
+  });
+
+  const stageForm = useForm<StageChangeFormData>({
+    resolver: zodResolver(stageChangeSchema),
+    defaultValues: {
+      stage: "",
+      notes: "",
     },
   });
 
@@ -121,6 +141,50 @@ export default function EquipmentFaults() {
     }
   };
 
+  const stageChangeMutation = useMutation({
+    mutationFn: async (data: { faultId: number; stage: string; notes?: string }) => {
+      await apiRequest(`/api/faults/${data.faultId}/stage`, "PUT", {
+        stage: data.stage,
+        notes: data.notes,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
+      toast({ title: "Başarılı", description: "Arıza aşaması güncellendi" });
+      setStageChangeFaultId(null);
+      stageForm.reset();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Hata",
+        description: error.message || "Aşama güncellenemedi",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { data: stageHistory } = useQuery<FaultStageTransition[]>({
+    queryKey: ['/api/faults', viewHistoryFaultId, 'history'],
+    queryFn: async () => {
+      if (!viewHistoryFaultId) return [];
+      const response = await fetch(`/api/faults/${viewHistoryFaultId}/history`);
+      if (!response.ok) throw new Error('Failed to fetch history');
+      return response.json();
+    },
+    enabled: !!viewHistoryFaultId,
+  });
+
   const priorityLabels: Record<string, string> = {
     dusuk: "Düşük",
     orta: "Orta",
@@ -138,6 +202,26 @@ export default function EquipmentFaults() {
     medium: "Orta",
     high: "Yüksek",
     critical: "Kritik",
+  };
+
+  const stageLabels: Record<FaultStageType, string> = {
+    [FAULT_STAGES.BEKLIYOR]: "Bekliyor",
+    [FAULT_STAGES.ISLEME_ALINDI]: "İşleme Alındı",
+    [FAULT_STAGES.SERVIS_CAGRILDI]: "Servis Çağrıldı",
+    [FAULT_STAGES.KARGOYA_VERILDI]: "Kargoya Verildi",
+    [FAULT_STAGES.TESLIM_ALINDI]: "Teslim Alındı",
+    [FAULT_STAGES.TAKIP_EDILIYOR]: "Takip Ediliyor",
+    [FAULT_STAGES.KAPATILDI]: "Kapatıldı",
+  };
+
+  // Permission check: can user change fault stage?
+  const canChangeStage = (fault: EquipmentFault) => {
+    if (!user) return false;
+    // Teknik can change any fault
+    if (user.role === 'teknik') return true;
+    // Branch users can only change their own branch's faults
+    const isBranchUser = ['supervisor', 'barista', 'stajyer'].includes(user.role);
+    return isBranchUser && user.branchId === fault.branchId;
   };
 
   return (
@@ -249,6 +333,154 @@ export default function EquipmentFaults() {
         </Dialog>
       </div>
 
+      {/* Stage Change Dialog */}
+      <Dialog open={stageChangeFaultId !== null} onOpenChange={(open) => !open && setStageChangeFaultId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Arıza Aşaması Güncelle</DialogTitle>
+            <DialogDescription>
+              Arızanın mevcut aşamasını güncelleyin. İsteğe bağlı olarak not ekleyebilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...stageForm}>
+            <form
+              onSubmit={stageForm.handleSubmit((data) => {
+                if (stageChangeFaultId) {
+                  stageChangeMutation.mutate({
+                    faultId: stageChangeFaultId,
+                    stage: data.stage,
+                    notes: data.notes,
+                  });
+                }
+              })}
+              className="space-y-4"
+            >
+              <FormField
+                control={stageForm.control}
+                name="stage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Yeni Aşama</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-new-stage">
+                          <SelectValue placeholder="Aşama seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.values(FAULT_STAGES).map((stage) => (
+                          <SelectItem key={stage} value={stage}>
+                            {stageLabels[stage as FaultStageType]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={stageForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notlar (Opsiyonel)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        value={field.value || ''}
+                        placeholder="Aşama değişikliği hakkında notlar"
+                        data-testid="input-stage-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStageChangeFaultId(null)}
+                >
+                  İptal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={stageChangeMutation.isPending}
+                  data-testid="button-submit-stage-change"
+                >
+                  {stageChangeMutation.isPending ? "Güncelleniyor..." : "Güncelle"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stage History Dialog */}
+      <Dialog open={viewHistoryFaultId !== null} onOpenChange={(open) => {
+        if (!open) {
+          // Clear cache when closing to avoid stale data
+          if (viewHistoryFaultId) {
+            queryClient.removeQueries({ queryKey: ['/api/faults', viewHistoryFaultId, 'history'] });
+          }
+          setViewHistoryFaultId(null);
+        }
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Arıza Aşama Geçmişi</DialogTitle>
+            <DialogDescription>
+              Arızanın tüm aşama değişikliklerinin zaman çizelgesi
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {stageHistory && stageHistory.length > 0 ? (
+              <div className="relative pl-6 space-y-4">
+                {stageHistory.map((transition, index) => (
+                  <div key={transition.id} className="relative">
+                    <div className="absolute left-[-1.5rem] top-2 h-3 w-3 rounded-full bg-primary border-2 border-background" />
+                    {index < stageHistory.length - 1 && (
+                      <div className="absolute left-[-1.15rem] top-5 bottom-[-1rem] w-0.5 bg-border" />
+                    )}
+                    <div className="bg-muted p-3 rounded-md">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <p className="text-sm font-medium">
+                          {transition.fromStage && (
+                            <>
+                              {stageLabels[transition.fromStage as FaultStageType]} →{' '}
+                            </>
+                          )}
+                          {stageLabels[transition.toStage as FaultStageType]}
+                        </p>
+                        <Badge variant="outline" className="text-xs">
+                          {new Date(transition.changedAt).toLocaleDateString("tr-TR", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Badge>
+                      </div>
+                      {transition.notes && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {transition.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                Henüz aşama değişikliği yok
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
@@ -280,14 +512,15 @@ export default function EquipmentFaults() {
                   <div className="flex flex-col gap-2">
                     <Badge
                       variant={
-                        fault.status === "cozuldu"
+                        fault.currentStage === FAULT_STAGES.KAPATILDI
                           ? "default"
-                          : fault.priority === "yuksek"
-                          ? "destructive"
-                          : "secondary"
+                          : fault.currentStage === FAULT_STAGES.BEKLIYOR
+                          ? "secondary"
+                          : "outline"
                       }
+                      data-testid={`badge-stage-${fault.id}`}
                     >
-                      {statusLabels[fault.status]}
+                      {stageLabels[fault.currentStage as FaultStageType]}
                     </Badge>
                     <Badge variant="outline">
                       {priorityLabels[fault.priority || "orta"]}
@@ -332,31 +565,45 @@ export default function EquipmentFaults() {
                     )}
                   </div>
                 )}
-                {fault.status !== "cozuldu" && (
-                  <div className="flex gap-2">
-                    {!fault.photoUrl && (
-                      <ObjectUploader
-                        maxNumberOfFiles={1}
-                        maxFileSize={10485760}
-                        onGetUploadParameters={handleGetUploadParams}
-                        onComplete={handleUploadComplete(fault.id)}
-                        buttonClassName="flex-1"
-                      >
-                        <Camera className="mr-2 h-4 w-4" />
-                        Fotoğraf Yükle
-                      </ObjectUploader>
-                    )}
+                <div className="flex flex-wrap gap-2">
+                  {!fault.photoUrl && fault.status !== "cozuldu" && (
+                    <ObjectUploader
+                      maxNumberOfFiles={1}
+                      maxFileSize={10485760}
+                      onGetUploadParameters={handleGetUploadParams}
+                      onComplete={handleUploadComplete(fault.id)}
+                      buttonClassName="flex-1"
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      Fotoğraf Yükle
+                    </ObjectUploader>
+                  )}
+                  {canChangeStage(fault) && fault.currentStage !== FAULT_STAGES.KAPATILDI && (
                     <Button
                       variant="outline"
-                      onClick={() => resolveMutation.mutate(fault.id)}
-                      disabled={resolveMutation.isPending}
-                      data-testid={`button-resolve-fault-${fault.id}`}
+                      onClick={() => {
+                        setStageChangeFaultId(fault.id);
+                        stageForm.setValue("stage", fault.currentStage);
+                      }}
+                      data-testid={`button-change-stage-${fault.id}`}
                     >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Çözüldü Olarak İşaretle
+                      <ChevronRight className="mr-2 h-4 w-4" />
+                      Aşama Değiştir
                     </Button>
-                  </div>
-                )}
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setViewHistoryFaultId(fault.id);
+                      // Invalidate to force fresh fetch
+                      queryClient.invalidateQueries({ queryKey: ['/api/faults', fault.id, 'history'] });
+                    }}
+                    data-testid={`button-view-history-${fault.id}`}
+                  >
+                    <Clock className="mr-2 h-4 w-4" />
+                    Geçmiş
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
