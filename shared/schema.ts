@@ -9,7 +9,8 @@ import {
   serial,
   boolean,
   integer,
-  customType
+  customType,
+  uniqueIndex
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -505,6 +506,164 @@ export const insertPerformanceMetricSchema = createInsertSchema(performanceMetri
 
 export type InsertPerformanceMetric = z.infer<typeof insertPerformanceMetricSchema>;
 export type PerformanceMetric = typeof performanceMetrics.$inferSelect;
+
+// ========================================
+// TRAINING SYSTEM TABLES
+// ========================================
+
+// Training Modules (e.g., "Espresso Basics", "Latte Art", "Customer Service")
+export const trainingModules = pgTable("training_modules", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }), // "barista", "supervisor", "hygiene", etc.
+  level: varchar("level", { length: 50 }).default("beginner"), // beginner, intermediate, advanced
+  estimatedDuration: integer("estimated_duration").default(30), // minutes
+  isPublished: boolean("is_published").default(false),
+  requiredForRole: varchar("required_for_role", { length: 100 }).array(), // ["barista", "supervisor"]
+  prerequisiteModuleIds: integer("prerequisite_module_ids").array(), // Must complete these first
+  createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Module Videos
+export const moduleVideos = pgTable("module_videos", {
+  id: serial("id").primaryKey(),
+  moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  videoUrl: text("video_url").notNull(), // S3 URL or YouTube embed
+  duration: integer("duration").default(0), // seconds
+  orderIndex: integer("order_index").default(0),
+  transcript: text("transcript"), // For AI assistant context
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Module Quizzes
+export const moduleQuizzes = pgTable("module_quizzes", {
+  id: serial("id").primaryKey(),
+  moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  passingScore: integer("passing_score").default(70), // percentage
+  timeLimit: integer("time_limit"), // minutes, null = unlimited
+  isExam: boolean("is_exam").default(false), // Requires supervisor approval
+  randomizeQuestions: boolean("randomize_questions").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Quiz Questions
+export const quizQuestions = pgTable("quiz_questions", {
+  id: serial("id").primaryKey(),
+  quizId: integer("quiz_id").notNull().references(() => moduleQuizzes.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  questionType: varchar("question_type", { length: 50 }).default("multiple_choice"), // multiple_choice, true_false, short_answer
+  options: text("options").array(), // JSON array for multiple choice
+  correctAnswer: text("correct_answer").notNull(),
+  explanation: text("explanation"),
+  points: integer("points").default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Flashcards (AI-generated and cached for cost optimization)
+export const flashcards = pgTable("flashcards", {
+  id: serial("id").primaryKey(),
+  moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+  front: text("front").notNull(), // Question/term
+  back: text("back").notNull(), // Answer/definition
+  category: varchar("category", { length: 100 }),
+  difficulty: varchar("difficulty", { length: 50 }).default("medium"),
+  isAiGenerated: boolean("is_ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User Training Progress
+export const userTrainingProgress = pgTable("user_training_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // VARCHAR - users.id is UUID
+  moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 50 }).default("not_started"), // not_started, in_progress, completed
+  progressPercentage: integer("progress_percentage").default(0),
+  videosWatched: integer("videos_watched").array().default([]), // Array of video IDs
+  lastAccessedAt: timestamp("last_accessed_at"),
+  completedAt: timestamp("completed_at"),
+  certificateIssued: boolean("certificate_issued").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // Unique constraint for upsert on (userId, moduleId)
+  uniqueUserModule: uniqueIndex("user_training_progress_user_module_idx").on(table.userId, table.moduleId),
+}));
+
+// User Quiz Attempts
+export const userQuizAttempts = pgTable("user_quiz_attempts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // VARCHAR - users.id is UUID
+  quizId: integer("quiz_id").notNull().references(() => moduleQuizzes.id, { onDelete: "cascade" }),
+  score: integer("score").default(0), // percentage
+  answers: text("answers"), // JSON storing question_id -> user_answer
+  isPassed: boolean("is_passed").default(false),
+  timeSpent: integer("time_spent"), // seconds
+  attemptNumber: integer("attempt_number").default(1),
+  isExamAttempt: boolean("is_exam_attempt").default(false),
+  approvedBy: varchar("approved_by").references(() => users.id), // VARCHAR - Supervisor/coach approval
+  approvalStatus: varchar("approval_status", { length: 50 }).default("pending"), // pending, approved, rejected
+  feedback: text("feedback"),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertTrainingModuleSchema = createInsertSchema(trainingModules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertModuleVideoSchema = createInsertSchema(moduleVideos).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertModuleQuizSchema = createInsertSchema(moduleQuizzes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertQuizQuestionSchema = createInsertSchema(quizQuestions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertFlashcardSchema = createInsertSchema(flashcards).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserTrainingProgressSchema = createInsertSchema(userTrainingProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserQuizAttemptSchema = createInsertSchema(userQuizAttempts).omit({
+  id: true,
+  startedAt: true,
+});
+
+export type InsertTrainingModule = z.infer<typeof insertTrainingModuleSchema>;
+export type TrainingModule = typeof trainingModules.$inferSelect;
+export type InsertModuleVideo = z.infer<typeof insertModuleVideoSchema>;
+export type ModuleVideo = typeof moduleVideos.$inferSelect;
+export type InsertModuleQuiz = z.infer<typeof insertModuleQuizSchema>;
+export type ModuleQuiz = typeof moduleQuizzes.$inferSelect;
+export type InsertQuizQuestion = z.infer<typeof insertQuizQuestionSchema>;
+export type QuizQuestion = typeof quizQuestions.$inferSelect;
+export type InsertFlashcard = z.infer<typeof insertFlashcardSchema>;
+export type Flashcard = typeof flashcards.$inferSelect;
+export type InsertUserTrainingProgress = z.infer<typeof insertUserTrainingProgressSchema>;
+export type UserTrainingProgress = typeof userTrainingProgress.$inferSelect;
+export type InsertUserQuizAttempt = z.infer<typeof insertUserQuizAttemptSchema>;
+export type UserQuizAttempt = typeof userQuizAttempts.$inferSelect;
 
 // Relations (defined after all tables to avoid temporal dead zone)
 export const branchesRelations = relations(branches, ({ many }) => ({

@@ -20,6 +20,20 @@ import type {
   InsertReminder,
   PerformanceMetric,
   InsertPerformanceMetric,
+  TrainingModule,
+  InsertTrainingModule,
+  ModuleVideo,
+  InsertModuleVideo,
+  ModuleQuiz,
+  InsertModuleQuiz,
+  QuizQuestion,
+  InsertQuizQuestion,
+  Flashcard,
+  InsertFlashcard,
+  UserTrainingProgress,
+  InsertUserTrainingProgress,
+  UserQuizAttempt,
+  InsertUserQuizAttempt,
 } from "@shared/schema";
 import {
   users,
@@ -32,6 +46,13 @@ import {
   knowledgeBaseEmbeddings,
   reminders,
   performanceMetrics,
+  trainingModules,
+  moduleVideos,
+  moduleQuizzes,
+  quizQuestions,
+  flashcards,
+  userTrainingProgress,
+  userQuizAttempts,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -97,6 +118,39 @@ export interface IStorage {
   // Performance Metrics operations
   getPerformanceMetrics(branchId?: number): Promise<PerformanceMetric[]>;
   createPerformanceMetric(metric: InsertPerformanceMetric): Promise<PerformanceMetric>;
+  
+  // Training Module operations
+  getTrainingModules(isPublished?: boolean): Promise<TrainingModule[]>;
+  getTrainingModule(id: number): Promise<TrainingModule | undefined>;
+  createTrainingModule(module: InsertTrainingModule): Promise<TrainingModule>;
+  updateTrainingModule(id: number, updates: Partial<InsertTrainingModule>): Promise<TrainingModule | undefined>;
+  deleteTrainingModule(id: number): Promise<void>;
+  
+  // Module Video operations
+  getModuleVideos(moduleId: number): Promise<ModuleVideo[]>;
+  createModuleVideo(video: InsertModuleVideo): Promise<ModuleVideo>;
+  
+  // Module Quiz operations
+  getModuleQuizzes(moduleId: number): Promise<ModuleQuiz[]>;
+  getModuleQuiz(id: number): Promise<ModuleQuiz | undefined>;
+  createModuleQuiz(quiz: InsertModuleQuiz): Promise<ModuleQuiz>;
+  
+  // Quiz Question operations
+  getQuizQuestions(quizId: number): Promise<QuizQuestion[]>;
+  createQuizQuestion(question: InsertQuizQuestion): Promise<QuizQuestion>;
+  
+  // Flashcard operations
+  getFlashcards(moduleId: number): Promise<Flashcard[]>;
+  createFlashcard(flashcard: InsertFlashcard): Promise<Flashcard>;
+  
+  // User Training Progress operations
+  getUserTrainingProgress(userId: string, moduleId?: number): Promise<UserTrainingProgress[]>;
+  updateUserProgress(userId: string, moduleId: number, updates: Partial<InsertUserTrainingProgress>): Promise<UserTrainingProgress | undefined>;
+  
+  // User Quiz Attempt operations
+  getUserQuizAttempts(userId: string, quizId?: number): Promise<UserQuizAttempt[]>;
+  createQuizAttempt(attempt: InsertUserQuizAttempt): Promise<UserQuizAttempt>;
+  approveQuizAttempt(id: number, approverId: string, status: string, feedback?: string): Promise<UserQuizAttempt | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -388,6 +442,145 @@ export class DatabaseStorage implements IStorage {
       articleTitle: row.article_title,
       similarity: row.similarity,
     }));
+  }
+
+  // Training Module operations
+  async getTrainingModules(isPublished?: boolean): Promise<TrainingModule[]> {
+    if (isPublished !== undefined) {
+      return db.select().from(trainingModules).where(eq(trainingModules.isPublished, isPublished)).orderBy(desc(trainingModules.createdAt));
+    }
+    return db.select().from(trainingModules).orderBy(desc(trainingModules.createdAt));
+  }
+
+  async getTrainingModule(id: number): Promise<TrainingModule | undefined> {
+    const [module] = await db.select().from(trainingModules).where(eq(trainingModules.id, id));
+    return module;
+  }
+
+  async createTrainingModule(module: InsertTrainingModule): Promise<TrainingModule> {
+    const [newModule] = await db.insert(trainingModules).values(module).returning();
+    return newModule;
+  }
+
+  async updateTrainingModule(id: number, updates: Partial<InsertTrainingModule>): Promise<TrainingModule | undefined> {
+    const [updated] = await db
+      .update(trainingModules)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(trainingModules.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTrainingModule(id: number): Promise<void> {
+    await db.delete(trainingModules).where(eq(trainingModules.id, id));
+  }
+
+  // Module Video operations
+  async getModuleVideos(moduleId: number): Promise<ModuleVideo[]> {
+    return db.select().from(moduleVideos).where(eq(moduleVideos.moduleId, moduleId)).orderBy(moduleVideos.orderIndex);
+  }
+
+  async createModuleVideo(video: InsertModuleVideo): Promise<ModuleVideo> {
+    const [newVideo] = await db.insert(moduleVideos).values(video).returning();
+    return newVideo;
+  }
+
+  // Module Quiz operations
+  async getModuleQuizzes(moduleId: number): Promise<ModuleQuiz[]> {
+    return db.select().from(moduleQuizzes).where(eq(moduleQuizzes.moduleId, moduleId));
+  }
+
+  async getModuleQuiz(id: number): Promise<ModuleQuiz | undefined> {
+    const [quiz] = await db.select().from(moduleQuizzes).where(eq(moduleQuizzes.id, id));
+    return quiz;
+  }
+
+  async createModuleQuiz(quiz: InsertModuleQuiz): Promise<ModuleQuiz> {
+    const [newQuiz] = await db.insert(moduleQuizzes).values(quiz).returning();
+    return newQuiz;
+  }
+
+  // Quiz Question operations
+  async getQuizQuestions(quizId: number): Promise<QuizQuestion[]> {
+    return db.select().from(quizQuestions).where(eq(quizQuestions.quizId, quizId));
+  }
+
+  async createQuizQuestion(question: InsertQuizQuestion): Promise<QuizQuestion> {
+    const [newQuestion] = await db.insert(quizQuestions).values(question).returning();
+    return newQuestion;
+  }
+
+  // Flashcard operations
+  async getFlashcards(moduleId: number): Promise<Flashcard[]> {
+    return db.select().from(flashcards).where(eq(flashcards.moduleId, moduleId));
+  }
+
+  async createFlashcard(flashcard: InsertFlashcard): Promise<Flashcard> {
+    const [newFlashcard] = await db.insert(flashcards).values(flashcard).returning();
+    return newFlashcard;
+  }
+
+  // User Training Progress operations
+  async getUserTrainingProgress(userId: string, moduleId?: number): Promise<UserTrainingProgress[]> {
+    if (moduleId !== undefined) {
+      return db.select().from(userTrainingProgress).where(
+        and(eq(userTrainingProgress.userId, userId), eq(userTrainingProgress.moduleId, moduleId))
+      );
+    }
+    return db.select().from(userTrainingProgress).where(eq(userTrainingProgress.userId, userId));
+  }
+
+  async updateUserProgress(userId: string, moduleId: number, updates: Partial<InsertUserTrainingProgress>): Promise<UserTrainingProgress | undefined> {
+    // True upsert using Postgres ON CONFLICT
+    const [result] = await db
+      .insert(userTrainingProgress)
+      .values({
+        userId,
+        moduleId,
+        status: 'not_started',
+        progressPercentage: 0,
+        videosWatched: [],
+        ...updates,
+      })
+      .onConflictDoUpdate({
+        target: [userTrainingProgress.userId, userTrainingProgress.moduleId],
+        set: { ...updates, updatedAt: new Date() },
+      })
+      .returning();
+    return result;
+  }
+
+  // User Quiz Attempt operations
+  async getUserQuizAttempts(userId: string, quizId?: number): Promise<UserQuizAttempt[]> {
+    if (quizId !== undefined) {
+      return db.select().from(userQuizAttempts).where(
+        and(eq(userQuizAttempts.userId, userId), eq(userQuizAttempts.quizId, quizId))
+      ).orderBy(desc(userQuizAttempts.startedAt));
+    }
+    return db.select().from(userQuizAttempts).where(eq(userQuizAttempts.userId, userId)).orderBy(desc(userQuizAttempts.startedAt));
+  }
+
+  async createQuizAttempt(attempt: InsertUserQuizAttempt): Promise<UserQuizAttempt> {
+    const [newAttempt] = await db.insert(userQuizAttempts).values(attempt).returning();
+    return newAttempt;
+  }
+
+  async approveQuizAttempt(id: number, approverId: string, status: string, feedback?: string): Promise<UserQuizAttempt | undefined> {
+    // Validate status
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+      throw new Error(`Invalid approval status: ${status}. Must be 'approved', 'rejected', or 'pending'`);
+    }
+
+    const [updated] = await db
+      .update(userQuizAttempts)
+      .set({
+        approvedBy: approverId,
+        approvalStatus: status,
+        feedback: feedback,
+      })
+      .where(eq(userQuizAttempts.id, id))
+      .returning();
+    return updated;
   }
 }
 
