@@ -10,6 +10,7 @@ import {
   serial,
   boolean,
   integer,
+  numeric,
   customType,
   uniqueIndex
 } from "drizzle-orm/pg-core";
@@ -571,10 +572,33 @@ export const insertEquipmentSchema = createInsertSchema(equipment).omit({
 export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
 export type Equipment = typeof equipment.$inferSelect;
 
+// Fault Stage enum for tracking workflow
+export const FAULT_STAGES = {
+  BEKLIYOR: 'bekliyor',              // Waiting (just reported)
+  ISLEME_ALINDI: 'isleme_alindi',    // Acknowledged by branch/HQ
+  SERVIS_CAGRILDI: 'servis_cagrildi', // Service called (external repair)
+  KARGOYA_VERILDI: 'kargoya_verildi', // Shipped to manufacturer
+  TESLIM_ALINDI: 'teslim_alindi',    // Delivered back from repair
+  TAKIP_EDILIYOR: 'takip_ediliyor',  // In progress (internal tracking)
+  KAPATILDI: 'kapatildi',            // Closed (resolved)
+} as const;
+
+export type FaultStageType = typeof FAULT_STAGES[keyof typeof FAULT_STAGES];
+
+// Priority levels for faults
+export const PRIORITY_LEVELS = {
+  GREEN: 'green',   // Low priority (can wait)
+  YELLOW: 'yellow', // Medium priority (needs attention)
+  RED: 'red',       // High priority (urgent, production impact)
+} as const;
+
+export type PriorityLevel = typeof PRIORITY_LEVELS[keyof typeof PRIORITY_LEVELS];
+
 // Equipment Faults table
 export const equipmentFaults = pgTable("equipment_faults", {
   id: serial("id").primaryKey(),
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  equipmentId: integer("equipment_id").references(() => equipment.id, { onDelete: "set null" }), // Link to equipment table
   reportedById: varchar("reported_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   equipmentName: varchar("equipment_name", { length: 255 }).notNull(),
   description: text("description").notNull(),
@@ -582,8 +606,21 @@ export const equipmentFaults = pgTable("equipment_faults", {
   aiAnalysis: text("ai_analysis"),
   aiSeverity: varchar("ai_severity", { length: 50 }), // low, medium, high, critical
   aiRecommendations: text("ai_recommendations").array(),
-  status: varchar("status", { length: 50 }).notNull().default("acik"), // acik, devam_ediyor, cozuldu
-  priority: varchar("priority", { length: 50 }).default("orta"), // dusuk, orta, yuksek
+  status: varchar("status", { length: 50 }).notNull().default("acik"), // acik, devam_ediyor, cozuldu (legacy)
+  priority: varchar("priority", { length: 50 }).default("orta"), // dusuk, orta, yuksek (legacy)
+  // New multi-stage fault tracking
+  priorityLevel: varchar("priority_level", { length: 20 }).notNull().default(PRIORITY_LEVELS.YELLOW), // green, yellow, red
+  currentStage: varchar("current_stage", { length: 50 }).notNull().default(FAULT_STAGES.BEKLIYOR),
+  assignedTo: varchar("assigned_to").references(() => users.id, { onDelete: "set null" }), // Assigned user (branch or HQ teknik)
+  stageHistory: jsonb("stage_history").$type<Array<{
+    stage: FaultStageType;
+    changedBy: string;
+    changedAt: string;
+    notes?: string;
+  }>>().default([]),
+  // Cost tracking
+  estimatedCost: numeric("estimated_cost", { precision: 10, scale: 2 }),
+  actualCost: numeric("actual_cost", { precision: 10, scale: 2 }),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -597,6 +634,25 @@ export const insertEquipmentFaultSchema = createInsertSchema(equipmentFaults).om
 
 export type InsertEquipmentFault = z.infer<typeof insertEquipmentFaultSchema>;
 export type EquipmentFault = typeof equipmentFaults.$inferSelect;
+
+// Fault Stage Transitions table (audit log for stage changes)
+export const faultStageTransitions = pgTable("fault_stage_transitions", {
+  id: serial("id").primaryKey(),
+  faultId: integer("fault_id").notNull().references(() => equipmentFaults.id, { onDelete: "cascade" }),
+  fromStage: varchar("from_stage", { length: 50 }), // null for initial creation
+  toStage: varchar("to_stage", { length: 50 }).notNull(),
+  changedBy: varchar("changed_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+  notes: text("notes"),
+});
+
+export const insertFaultStageTransitionSchema = createInsertSchema(faultStageTransitions).omit({
+  id: true,
+  changedAt: true,
+});
+
+export type InsertFaultStageTransition = z.infer<typeof insertFaultStageTransitionSchema>;
+export type FaultStageTransition = typeof faultStageTransitions.$inferSelect;
 
 // Knowledge Base Articles table
 export const knowledgeBaseArticles = pgTable("knowledge_base_articles", {
