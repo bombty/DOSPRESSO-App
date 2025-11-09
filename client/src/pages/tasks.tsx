@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -12,16 +12,19 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch } from "@shared/schema";
-import { Camera, Check } from "lucide-react";
+import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search } from "lucide-react";
 
 export default function Tasks() {
   const { toast } = useToast();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -115,18 +118,141 @@ export default function Tasks() {
     }
   };
 
+  const stats = useMemo(() => {
+    if (!tasks) return { beklemede: 0, devamEden: 0, tamamlanmayan: 0, tamamlanan: 0 };
+    
+    return {
+      beklemede: tasks.filter(t => t.status === 'beklemede').length,
+      devamEden: tasks.filter(t => t.status === 'devam ediyor').length,
+      tamamlanmayan: tasks.filter(t => t.status === 'gecikmiş').length,
+      tamamlanan: tasks.filter(t => t.status === 'tamamlandi').length,
+    };
+  }, [tasks]);
+
+  const filteredTasks = useMemo(() => {
+    if (!tasks) return [];
+    
+    let filtered = tasks;
+    
+    if (searchQuery) {
+      filtered = filtered.filter(task => 
+        task.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    if (activeTab !== 'all') {
+      const categoryMap: Record<string, string> = {
+        'acilis': 'açılış',
+        'kapanis': 'kapanış',
+        'gunluk': 'günlük kontrol'
+      };
+      const category = categoryMap[activeTab];
+      if (category) {
+        filtered = filtered.filter(task => 
+          task.description.toLowerCase().includes(category)
+        );
+      }
+    }
+    
+    return filtered;
+  }, [tasks, searchQuery, activeTab]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-page-title">Görevler</h1>
-          <p className="text-muted-foreground mt-1">Günlük görevleri yönetin ve fotoğraflarla doğrulayın</p>
+          <h1 className="text-3xl font-semibold" data-testid="text-page-title">Açılış Çizelgeleri</h1>
+          <p className="text-muted-foreground mt-1">İşte bugünün operasyonel özeti</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-task">Yeni Görev Ekle</Button>
-          </DialogTrigger>
-          <DialogContent>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card data-testid="card-stat-beklemede">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Bekleyen</p>
+                <p className="text-3xl font-bold mt-1">{stats.beklemede}</p>
+                <p className="text-xs text-muted-foreground mt-1">Oran %12</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-stat-devam-eden">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Devam Eden</p>
+                <p className="text-3xl font-bold mt-1">{stats.devamEden}</p>
+                <p className="text-xs text-muted-foreground mt-1">Oran %1</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                <PlayCircle className="h-6 w-6 text-blue-600 dark:text-blue-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-stat-tamamlanmayan">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Tamamlanmayan</p>
+                <p className="text-3xl font-bold mt-1">{stats.tamamlanmayan}</p>
+                <p className="text-xs text-muted-foreground mt-1">Oran %60</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-stat-tamamlanan">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Tamamlanan</p>
+                <p className="text-3xl font-bold mt-1">{stats.tamamlanan}</p>
+                <p className="text-xs text-muted-foreground mt-1">Oran %30</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <TabsList data-testid="tabs-task-filter">
+            <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
+            <TabsTrigger value="acilis" data-testid="tab-acilis">Açılış</TabsTrigger>
+            <TabsTrigger value="kapanis" data-testid="tab-kapanis">Kapanış</TabsTrigger>
+            <TabsTrigger value="gunluk" data-testid="tab-gunluk">Günlük Kontrol</TabsTrigger>
+          </TabsList>
+          
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-initial sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Çizelge veya personel ara..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-search-tasks"
+              />
+            </div>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-task">Yeni Çizelge Ekle</Button>
+              </DialogTrigger>
+              <DialogContent>
             <DialogHeader>
               <DialogTitle>Yeni Görev Ekle</DialogTitle>
             </DialogHeader>
@@ -191,109 +317,115 @@ export default function Tasks() {
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
+          </div>
+        </div>
 
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {tasks?.map((task) => (
-            <Card key={task.id} data-testid={`card-task-${task.id}`}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{task.description}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {new Date(task.createdAt!).toLocaleDateString("tr-TR", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      task.status === "tamamlandi"
-                        ? "default"
-                        : task.status === "gecikmiş"
-                        ? "destructive"
-                        : "secondary"
-                    }
-                    data-testid={`badge-task-status-${task.id}`}
-                  >
-                    {task.status === "tamamlandi"
-                      ? "Tamamlandı"
-                      : task.status === "gecikmiş"
-                      ? "Gecikmiş"
-                      : "Beklemede"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {task.photoUrl && (
-                  <div>
-                    <img
-                      src={task.photoUrl}
-                      alt="Görev fotoğrafı"
-                      className="rounded-md max-h-48 object-cover"
-                      data-testid={`img-task-photo-${task.id}`}
-                    />
-                  </div>
-                )}
-                {task.aiAnalysis && (
-                  <div className="bg-muted p-3 rounded-md">
-                    <p className="text-sm font-medium mb-1">AI Analizi:</p>
-                    <p className="text-sm text-muted-foreground">{task.aiAnalysis}</p>
-                    {task.aiScore !== null && (
-                      <p className="text-sm font-medium mt-2">
-                        Skor: <span className="text-primary">{task.aiScore}/100</span>
+        {["all", "acilis", "kapanis", "gunluk"].map((tabValue) => (
+          <TabsContent key={tabValue} value={tabValue} className="space-y-4">
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-24 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {filteredTasks?.map((task) => (
+                  <Card key={task.id} data-testid={`card-task-${task.id}`}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{task.description}</CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {new Date(task.createdAt!).toLocaleDateString("tr-TR", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            task.status === "tamamlandi"
+                              ? "default"
+                              : task.status === "gecikmiş"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                          data-testid={`badge-task-status-${task.id}`}
+                        >
+                          {task.status === "tamamlandi"
+                            ? "Tamamlandı"
+                            : task.status === "gecikmiş"
+                            ? "Gecikmiş"
+                            : "Beklemede"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {task.photoUrl && (
+                        <div>
+                          <img
+                            src={task.photoUrl}
+                            alt="Görev fotoğrafı"
+                            className="rounded-md max-h-48 object-cover"
+                            data-testid={`img-task-photo-${task.id}`}
+                          />
+                        </div>
+                      )}
+                      {task.aiAnalysis && (
+                        <div className="bg-muted p-3 rounded-md">
+                          <p className="text-sm font-medium mb-1">AI Analizi:</p>
+                          <p className="text-sm text-muted-foreground">{task.aiAnalysis}</p>
+                          {task.aiScore !== null && (
+                            <p className="text-sm font-medium mt-2">
+                              Skor: <span className="text-primary">{task.aiScore}/100</span>
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {task.status !== "tamamlandi" && (
+                        <div className="flex gap-2">
+                          <ObjectUploader
+                            maxNumberOfFiles={1}
+                            maxFileSize={10485760}
+                            onGetUploadParameters={handleGetUploadParams}
+                            onComplete={handleUploadComplete(task.id)}
+                            buttonClassName="flex-1"
+                          >
+                            <Camera className="mr-2 h-4 w-4" />
+                            Fotoğraf Yükle ve Tamamla
+                          </ObjectUploader>
+                          <Button
+                            variant="outline"
+                            onClick={() => completeMutation.mutate({ taskId: task.id })}
+                            disabled={completeMutation.isPending}
+                            data-testid={`button-complete-task-${task.id}`}
+                          >
+                            <Check className="mr-2 h-4 w-4" />
+                            Fotoğrafsız Tamamla
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+                {(!filteredTasks || filteredTasks.length === 0) && !isLoading && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <p className="text-center text-muted-foreground">
+                        Henüz görev yok. Yeni görev eklemek için yukarıdaki butonu kullanın.
                       </p>
-                    )}
-                  </div>
+                    </CardContent>
+                  </Card>
                 )}
-                {task.status !== "tamamlandi" && (
-                  <div className="flex gap-2">
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={10485760}
-                      onGetUploadParameters={handleGetUploadParams}
-                      onComplete={handleUploadComplete(task.id)}
-                      buttonClassName="flex-1"
-                    >
-                      <Camera className="mr-2 h-4 w-4" />
-                      Fotoğraf Yükle ve Tamamla
-                    </ObjectUploader>
-                    <Button
-                      variant="outline"
-                      onClick={() => completeMutation.mutate({ taskId: task.id })}
-                      disabled={completeMutation.isPending}
-                      data-testid={`button-complete-task-${task.id}`}
-                    >
-                      <Check className="mr-2 h-4 w-4" />
-                      Fotoğrafsız Tamamla
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-          {(!tasks || tasks.length === 0) && (
-            <Card>
-              <CardContent className="py-8">
-                <p className="text-center text-muted-foreground">
-                  Henüz görev yok. Yeni görev eklemek için yukarıdaki butonu kullanın.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
+              </div>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 }

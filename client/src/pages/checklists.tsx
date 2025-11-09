@@ -7,20 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertChecklistSchema, type Checklist, type InsertChecklist, type ChecklistTask } from "@shared/schema";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Camera, ChevronDown, Sparkles } from "lucide-react";
 
 export default function Checklists() {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [taskStates, setTaskStates] = useState<Record<number, { checked: boolean; open: boolean; photo?: string }>>({});
 
   const { data: checklists, isLoading } = useQuery<Checklist[]>({
     queryKey: ["/api/checklists"],
@@ -40,6 +43,30 @@ export default function Checklists() {
       isActive: true,
     },
   });
+
+  const toggleTaskChecked = (taskId: number) => {
+    setTaskStates(prev => ({
+      ...prev,
+      [taskId]: {
+        ...prev[taskId],
+        checked: !prev[taskId]?.checked,
+      }
+    }));
+  };
+
+  const toggleTaskOpen = (taskId: number) => {
+    setTaskStates(prev => ({
+      ...prev,
+      [taskId]: {
+        ...prev[taskId],
+        open: !prev[taskId]?.open,
+      }
+    }));
+  };
+
+  const handlePhotoUpload = (taskId: number) => {
+    toast({ title: "Fotoğraf Yükleme", description: "Fotoğraf yükleme özelliği yakında aktif olacak" });
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertChecklist) => {
@@ -209,34 +236,89 @@ export default function Checklists() {
                 </CardHeader>
                 <CardContent>
                   {tasks.length > 0 ? (
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="tasks">
-                        <AccordionTrigger>
-                          {tasks.length} görev görüntüle
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="space-y-2">
-                            {tasks.map((task, index) => (
-                              <div
-                                key={task.id}
-                                className="flex items-start gap-3 p-2 rounded-md bg-muted/50"
+                    <div className="space-y-4">
+                      <div className="border-b pb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground">Çizelge Maddeleri</h3>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-semibold">09:00</h4>
+                        {tasks.map((task) => {
+                          const isChecked = taskStates[task.id]?.checked || false;
+                          const isOpen = taskStates[task.id]?.open || false;
+                          
+                          return (
+                            <Collapsible
+                              key={task.id}
+                              open={isOpen}
+                              onOpenChange={() => toggleTaskOpen(task.id)}
+                            >
+                              <div 
+                                className="border rounded-md hover-elevate"
                                 data-testid={`checklist-task-${task.id}`}
                               >
-                                <span className="text-sm font-medium text-muted-foreground min-w-[2rem]">
-                                  {index + 1}.
-                                </span>
-                                <p className="text-sm flex-1">{task.taskDescription}</p>
-                                {task.requiresPhoto && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Fotoğraf Gerekli
-                                  </Badge>
-                                )}
+                                <CollapsibleTrigger className="w-full">
+                                  <div className="flex items-center gap-3 p-3">
+                                    <Checkbox
+                                      checked={isChecked}
+                                      onCheckedChange={() => toggleTaskChecked(task.id)}
+                                      className="data-[state=checked]:bg-info data-[state=checked]:border-info"
+                                      data-testid={`checkbox-task-${task.id}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <p className="flex-1 text-left text-sm">{task.taskDescription}</p>
+                                    <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                                  </div>
+                                </CollapsibleTrigger>
+                                
+                                <CollapsibleContent>
+                                  <div className="px-3 pb-3 pt-1 space-y-3 border-t">
+                                    <p className="text-xs text-muted-foreground">
+                                      En son Ece tarafından tarihinde işlem yapılmıştır.
+                                    </p>
+                                    
+                                    <div className="space-y-2">
+                                      <h5 className="text-sm font-medium">Fotoğraf Kanıtı</h5>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handlePhotoUpload(task.id)}
+                                        className="w-full"
+                                        data-testid={`button-upload-photo-${task.id}`}
+                                      >
+                                        <Camera className="mr-2 h-4 w-4" />
+                                        Fotoğraf Ekle
+                                      </Button>
+                                      
+                                      {taskStates[task.id]?.photo && (
+                                        <div className="space-y-2">
+                                          <div className="aspect-video bg-muted rounded-md overflow-hidden">
+                                            <img 
+                                              src={taskStates[task.id].photo} 
+                                              alt="Task photo" 
+                                              className="w-full h-full object-cover"
+                                            />
+                                          </div>
+                                          <Button
+                                            variant="default"
+                                            size="sm"
+                                            className="w-full bg-info hover:bg-info/90"
+                                            data-testid={`button-ai-analyze-${task.id}`}
+                                          >
+                                            <Sparkles className="mr-2 h-4 w-4" />
+                                            AI ile Analiz Et
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CollapsibleContent>
                               </div>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                            </Collapsible>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       Bu checklist için henüz görev eklenmemiş
