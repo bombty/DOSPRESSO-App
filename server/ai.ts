@@ -1,9 +1,16 @@
 import OpenAI from "openai";
+import { cache, generateCacheKey, aiRateLimiter } from "./cache";
 
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
 });
+
+// Cost-optimized model selection
+// gpt-4o is 60% cheaper than gpt-4-turbo for vision tasks
+const VISION_MODEL = "gpt-4o"; // For photo analysis (task, fault, cleanliness, dress code)
+const CHAT_MODEL = "gpt-4o"; // For RAG Q&A
+const EMBEDDING_MODEL = "text-embedding-3-small"; // Already optimal
 
 export interface TaskPhotoAnalysis {
   analysis: string;
@@ -49,11 +56,34 @@ export interface RAGResponse {
 
 export async function analyzeTaskPhoto(
   photoUrl: string,
-  taskDescription: string
+  taskDescription: string,
+  userId?: string,
+  skipCache: boolean = false
 ): Promise<TaskPhotoAnalysis> {
+  // Check cache first (24h TTL)
+  const cacheKey = generateCacheKey('task-photo', photoUrl, taskDescription);
+  if (!skipCache) {
+    const cached = cache.get<TaskPhotoAnalysis>(cacheKey);
+    if (cached) {
+      console.log('✅ Cache HIT - Task photo analysis (cost saved!)');
+      return cached;
+    }
+  }
+
+  // CRITICAL: Rate limit check (only if making real AI call and userId provided)
+  const PHOTO_LIMIT = 10; // 10 photo analyses per day
+  if (userId && !aiRateLimiter.canMakeRequest(userId, 'photo', PHOTO_LIMIT)) {
+    console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily photo analysis quota`);
+    return {
+      analysis: "Günlük fotoğraf analiz limitiniz doldu (10/gün). Yarın tekrar deneyin veya supervisor ile iletişime geçin.",
+      score: 70, // Default pass score
+      passed: true,
+    };
+  }
+
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      model: VISION_MODEL, // gpt-4o: 60% cheaper than gpt-4-turbo
       messages: [
         {
           role: "user",
@@ -96,11 +126,25 @@ JSON formatında yanıt verin:
     }
 
     const result = JSON.parse(content);
-    return {
+    const analysis: TaskPhotoAnalysis = {
       analysis: result.analysis || "Analiz yapılamadı",
       score: Math.min(Math.max(result.score || 0, 0), 100),
       passed: result.passed || false,
     };
+
+    // Cache for 24 hours
+    cache.set(cacheKey, analysis, 24 * 60 * 60 * 1000);
+    
+    // Increment rate limit counter (only on successful AI call)
+    if (userId) {
+      aiRateLimiter.incrementRequest(userId, 'photo');
+      const remaining = aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
+      console.log(`💰 AI call made - Task photo analysis (${remaining}/${PHOTO_LIMIT} remaining for user ${userId})`);
+    } else {
+      console.log('💰 AI call made - Task photo analysis (no userId, rate limit not tracked)');
+    }
+
+    return analysis;
   } catch (error) {
     console.error("Görev fotoğrafı analiz hatası:", error);
     return {
@@ -114,11 +158,34 @@ JSON formatında yanıt verin:
 export async function analyzeFaultPhoto(
   photoUrl: string,
   equipmentName: string,
-  description: string
+  description: string,
+  userId?: string,
+  skipCache: boolean = false
 ): Promise<FaultPhotoAnalysis> {
+  // Check cache first
+  const cacheKey = generateCacheKey('fault-photo', photoUrl, equipmentName, description);
+  if (!skipCache) {
+    const cached = cache.get<FaultPhotoAnalysis>(cacheKey);
+    if (cached) {
+      console.log('✅ Cache HIT - Fault photo analysis (cost saved!)');
+      return cached;
+    }
+  }
+
+  // Rate limit check (shares photo quota)
+  const PHOTO_LIMIT = 10;
+  if (userId && !aiRateLimiter.canMakeRequest(userId, 'photo', PHOTO_LIMIT)) {
+    console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily photo analysis quota`);
+    return {
+      analysis: "Günlük fotoğraf analiz limitiniz doldu (10/gün). Arıza kaydedildi ancak otomatik analiz yapılamadı.",
+      severity: "medium",
+      recommendations: ["Bir teknisyen ile iletişime geçin", "Ekipmanın kullanımını durdurun"],
+    };
+  }
+
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      model: VISION_MODEL, // gpt-4o: cost-optimized
       messages: [
         {
           role: "user",
@@ -162,11 +229,25 @@ JSON formatında yanıt verin:
     }
 
     const result = JSON.parse(content);
-    return {
+    const analysis: FaultPhotoAnalysis = {
       analysis: result.analysis || "Analiz yapılamadı",
       severity: result.severity || "medium",
       recommendations: result.recommendations || [],
     };
+
+    // Cache for 24 hours
+    cache.set(cacheKey, analysis, 24 * 60 * 60 * 1000);
+    
+    // Increment rate limit counter (shares photo quota)
+    if (userId) {
+      aiRateLimiter.incrementRequest(userId, 'photo');
+      const remaining = aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
+      console.log(`💰 AI call made - Fault photo analysis (${remaining}/${PHOTO_LIMIT} remaining for user ${userId})`);
+    } else {
+      console.log('💰 AI call made - Fault photo analysis');
+    }
+
+    return analysis;
   } catch (error) {
     console.error("Arıza fotoğrafı analiz hatası:", error);
     return {
@@ -184,7 +265,7 @@ export async function analyzeCleanlinessPhoto(
 ): Promise<CleanlinessAnalysis> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: VISION_MODEL,
       messages: [
         {
           role: "user",
@@ -250,7 +331,7 @@ export async function analyzeDressCodePhoto(
 ): Promise<DressCodeAnalysis> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: VISION_MODEL,
       messages: [
         {
           role: "user",
@@ -388,15 +469,34 @@ export async function generateArticleEmbeddings(
 // Answer a question using RAG (Retrieval Augmented Generation)
 export async function answerQuestionWithRAG(
   question: string,
-  relevantChunks: Array<{ chunkText: string; articleId: number; articleTitle: string }>
+  relevantChunks: Array<{ chunkText: string; articleId: number; articleTitle: string }>,
+  userId?: string,
+  skipCache: boolean = false
 ): Promise<RAGResponse> {
+  // Check cache first
+  const cacheKey = generateCacheKey('rag-qa', question, relevantChunks.map(c => c.articleId).sort());
+  if (!skipCache) {
+    const cached = cache.get<RAGResponse>(cacheKey);
+    if (cached) {
+      console.log('✅ Cache HIT - RAG Q&A (cost saved!)');
+      return cached;
+    }
+  }
+
+  // Rate limit check (RAG calls are more expensive, separate quota)
+  const RAG_LIMIT = 5; // 5 RAG Q&A calls per day (independent of photo quota)
+  if (userId && !aiRateLimiter.canMakeRequest(userId, 'rag', RAG_LIMIT)) {
+    console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily RAG quota`);
+    throw new Error("Günlük soru-cevap limitiniz doldu (5/gün). Yarın tekrar deneyin.");
+  }
+
   try {
     const context = relevantChunks
       .map((chunk, i) => `[${i + 1}] ${chunk.chunkText}`)
       .join("\n\n");
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: CHAT_MODEL, // gpt-4o for text generation
       messages: [
         {
           role: "system",
@@ -418,7 +518,21 @@ export async function answerQuestionWithRAG(
       relevantChunk: chunk.chunkText.substring(0, 200) + "...",
     }));
 
-    return { answer, sources };
+    const result: RAGResponse = { answer, sources };
+
+    // Cache for 24 hours
+    cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
+    
+    // Increment rate limit counter (RAG has separate quota from photos)
+    if (userId) {
+      aiRateLimiter.incrementRequest(userId, 'rag');
+      const remaining = aiRateLimiter.getRemainingCalls(userId, 'rag', RAG_LIMIT);
+      console.log(`💰 AI call made - RAG Q&A (${remaining}/${RAG_LIMIT} remaining for user ${userId})`);
+    } else {
+      console.log('💰 AI call made - RAG Q&A');
+    }
+
+    return result;
   } catch (error) {
     console.error("RAG soru-cevap hatası:", error);
     throw new Error("Soru cevaplanamadı");

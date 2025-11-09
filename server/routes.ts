@@ -140,10 +140,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/tasks/:id/complete', isAuthenticated, async (req, res) => {
+  app.post('/api/tasks/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const { photoUrl } = req.body;
+      const userId = req.user.id; // For rate limiting
       
       const task = await storage.completeTask(id, photoUrl);
       if (!task) {
@@ -152,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (photoUrl) {
         try {
-          const analysis = await analyzeTaskPhoto(photoUrl, task.description);
+          const analysis = await analyzeTaskPhoto(photoUrl, task.description, userId);
           const updatedTask = await storage.updateTask(id, {
             aiAnalysis: analysis.analysis,
             aiScore: analysis.score,
@@ -235,10 +236,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/faults/:id/photo', isAuthenticated, async (req, res) => {
+  app.post('/api/faults/:id/photo', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const { photoUrl } = req.body;
+      const userId = req.user.id; // For rate limiting
       
       const fault = await storage.updateFault(id, { photoUrl });
       if (!fault) {
@@ -250,7 +252,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const analysis = await analyzeFaultPhoto(
             photoUrl,
             fault.equipmentName,
-            fault.description
+            fault.description,
+            userId
           );
           const updatedFault = await storage.updateFault(id, {
             aiAnalysis: analysis.analysis,
@@ -354,9 +357,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/knowledge-base/ask', isAuthenticated, async (req, res) => {
+  app.post('/api/knowledge-base/ask', isAuthenticated, async (req: any, res) => {
     try {
       const { question } = req.body;
+      const userId = req.user.id; // For rate limiting
       
       if (!question || typeof question !== 'string') {
         return res.status(400).json({ message: "Soru gereklidir" });
@@ -373,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const response = await answerQuestionWithRAG(question, relevantChunks);
+      const response = await answerQuestionWithRAG(question, relevantChunks, userId);
       res.json({ ...response, noKnowledgeFound: false });
     } catch (error) {
       console.error("Error answering question:", error);
