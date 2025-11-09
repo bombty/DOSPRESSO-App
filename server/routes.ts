@@ -687,6 +687,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TRAINING SYSTEM ROUTES
   // ========================================
 
+  // Get training progress summary for all users (for İK filters and dashboards)
+  app.get('/api/training/progress/summary', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role;
+
+      // Permission check: employees view permission required
+      if (!hasPermission(role as UserRoleType, 'employees', 'view')) {
+        return res.status(403).json({ message: "Eğitim durumu görüntüleme yetkiniz yok" });
+      }
+
+      const summary = await storage.getAllTrainingProgressSummary();
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching training progress summary:", error);
+      res.status(500).json({ message: "Eğitim durumu getirilemedi" });
+    }
+  });
+
   // Get training modules (published only for users, all for admin/coach)
   app.get('/api/training/modules', isAuthenticated, async (req, res) => {
     try {

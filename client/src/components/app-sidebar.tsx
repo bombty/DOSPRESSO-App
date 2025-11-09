@@ -8,6 +8,7 @@ import {
   Bot,
   BarChart3,
   Building2,
+  Users,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -83,6 +84,13 @@ const menuItems: Array<{
     url: "/egitim",
     icon: GraduationCap,
     module: "training",
+  },
+  {
+    title: "İK Yönetimi",
+    titleTr: "İK Yönetimi",
+    url: "/ik",
+    icon: Users,
+    module: "employees",
   },
   {
     title: "AI Asistan",

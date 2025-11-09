@@ -156,6 +156,7 @@ export interface IStorage {
   // User Training Progress operations
   getUserTrainingProgress(userId: string, moduleId?: number): Promise<UserTrainingProgress[]>;
   updateUserProgress(userId: string, moduleId: number, updates: Partial<InsertUserTrainingProgress>): Promise<UserTrainingProgress | undefined>;
+  getAllTrainingProgressSummary(): Promise<Array<{ userId: string; totalModules: number; completedModules: number }>>;
   
   // User Quiz Attempt operations
   getUserQuizAttempts(userId: string, quizId?: number): Promise<UserQuizAttempt[]>;
@@ -578,6 +579,27 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return result;
+  }
+
+  async getAllTrainingProgressSummary(): Promise<Array<{ userId: string; totalModules: number; completedModules: number }>> {
+    const results = await db.execute<{
+      user_id: string;
+      total_modules: number;
+      completed_modules: number;
+    }>(sql`
+      SELECT 
+        user_id,
+        COUNT(*) as total_modules,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_modules
+      FROM user_training_progress
+      GROUP BY user_id
+    `);
+
+    return results.rows.map(row => ({
+      userId: row.user_id,
+      totalModules: Number(row.total_modules),
+      completedModules: Number(row.completed_modules),
+    }));
   }
 
   // User Quiz Attempt operations
