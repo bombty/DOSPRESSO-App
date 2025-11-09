@@ -1,15 +1,72 @@
 # DOSPRESSO Franchise Management WebApp - Design Guidelines
 
-## Design Approach: Enterprise Design System
+## Design System - Figma Implementation
 
-**Selected System**: Material Design 3 with enterprise customization
-**Rationale**: Information-dense dashboard application requiring consistent, scalable component patterns with strong data visualization capabilities and mobile-first responsive behavior.
+**Visual Design**: Based on provided Figma mockups with DOSPRESSO branding
+**Approach**: Material Design 3 principles with custom color palette and Turkish language support
 
 **Key Principles**:
 - Clarity over decoration
 - Information hierarchy through typography and spacing
 - Consistent patterns across all modules
 - Mobile-responsive layouts for field operations
+- Red primary color for active states and CTAs
+- Dark navy sidebar for contrast
+
+---
+
+## Color Palette (Figma-based)
+
+### Primary Colors
+- **Primary Red**: `#EF4444` (HSL: 0 91% 62%)
+  - Usage: Active menu items, primary buttons, selected tabs, important actions, active sidebar indicator
+  - Foreground: White text on red background
+  - Example: Active menu item in sidebar, "Yeni Çizelge Ekle" button
+
+- **Sidebar Dark Navy**: `#0F172A` (HSL: 222 47% 11%)
+  - Usage: Left sidebar background
+  - Foreground: White text
+  - Example: Main navigation sidebar
+
+### Status Colors
+- **Success Green**: `#22C55E` (HSL: 142 71% 45%)
+  - Usage: Completed tasks, "Tamamlanan" badges, positive states
+  - Badge: Green background with white text
+  - Example: Task status "Tamamlanan"
+
+- **Warning Yellow/Orange**: `#FCD34D` / `#FB923C` (HSL: 48 96% 59% / 25 91% 61%)
+  - Usage: Pending/incomplete tasks, "Beklemede" badges
+  - Badge: Yellow background with dark text
+  - Example: Task status "Tamamlanmayan"
+
+- **Info Blue**: `#3B82F6` (HSL: 221 83% 60%)
+  - Usage: In progress tasks, "Devam Ediyor" badges, AI features, checkboxes
+  - Badge: Blue background with white text
+  - Example: Task status "Devam Ediyor", AI analysis button
+
+### Neutral Colors
+- **Background**: `#FAFAF9` (HSL: 24 33% 97%)
+  - Main page background with subtle warm beige tone
+
+- **Card White**: `#FFFFFF` (HSL: 0 0% 100%)
+  - Card backgrounds, elevated surfaces, white containers
+
+- **Text Dark**: `#0F172A` / `#1F2937`
+  - Primary text color, headings
+
+- **Text Secondary**: `#6B7280`
+  - Secondary text, metadata, timestamps
+
+### Semantic Color Mapping
+```css
+--primary: 0 91% 62% (Red #EF4444)
+--sidebar: 222 47% 11% (Dark Navy #0F172A)
+--background: 24 33% 97% (Warm Beige #FAFAF9)
+--card: 0 0% 100% (White)
+--success: 142 71% 45% (Green #22C55E)
+--warning: 48 96% 59% (Yellow #FCD34D)
+--info: 221 83% 60% (Blue #3B82F6)
+```
 
 ---
 

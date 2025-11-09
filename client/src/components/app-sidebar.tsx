@@ -22,6 +22,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import dospressoLogo from "@assets/IMG_5044_1762707935781.png";
 
 const menuItems = [
   {
@@ -104,8 +105,13 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-lg font-semibold text-primary">
-            DOSPRESSO
+          <SidebarGroupLabel className="px-2 py-4">
+            <img 
+              src={dospressoLogo} 
+              alt="DOSPRESSO" 
+              className="h-12 w-auto"
+              data-testid="img-dospresso-logo"
+            />
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
