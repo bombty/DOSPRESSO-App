@@ -970,6 +970,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // ADMIN: Seed Demo Data (admin-only)
+  // ========================================
+  app.post('/api/admin/seed-demo', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only admin can seed demo data
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admin can seed demo data" });
+      }
+
+      console.log("🌱 Starting demo data seed...");
+
+      // Import bcrypt dynamically (CommonJS module requires .default)
+      const { default: bcrypt } = await import('bcrypt');
+      const hashedPassword = await bcrypt.hash("0000", 10);
+
+      // Create branches
+      const branches = await Promise.all([
+        storage.createBranch({
+          name: "Kadıköy Şubesi",
+          address: "Kadıköy Moda Caddesi No:45",
+          city: "İstanbul",
+          phoneNumber: "0216 xxx xx 01",
+          managerName: "Ahmet Yılmaz",
+        }),
+        storage.createBranch({
+          name: "Beşiktaş Şubesi",
+          address: "Beşiktaş Barbaros Bulvarı No:102",
+          city: "İstanbul",
+          phoneNumber: "0212 xxx xx 02",
+          managerName: "Mehmet Kaya",
+        }),
+        storage.createBranch({
+          name: "Üsküdar Şubesi",
+          address: "Üsküdar Çarşı Caddesi No:23",
+          city: "İstanbul",
+          phoneNumber: "0216 xxx xx 03",
+          managerName: "Ayşe Demir",
+        }),
+      ]);
+
+      // Create HQ users
+      const hqUserData = [
+        { username: "muhasebe", email: "muhasebe@dospresso.com", firstName: "Zeynep", lastName: "Çelik", role: "muhasebe" },
+        { username: "satinalma", email: "satinalma@dospresso.com", firstName: "Can", lastName: "Arslan", role: "satinalma" },
+        { username: "coach", email: "coach@dospresso.com", firstName: "Elif", lastName: "Yıldız", role: "coach" },
+        { username: "teknik", email: "teknik@dospresso.com", firstName: "Burak", lastName: "Şahin", role: "teknik" },
+        { username: "destek", email: "destek@dospresso.com", firstName: "Selin", lastName: "Öztürk", role: "destek" },
+        { username: "fabrika", email: "fabrika@dospresso.com", firstName: "Emre", lastName: "Aydın", role: "fabrika" },
+        { username: "yatirimci-hq", email: "yatirimci@dospresso.com", firstName: "Deniz", lastName: "Koç", role: "yatirimci_hq" },
+      ];
+
+      const hqUsers = await Promise.all(
+        hqUserData.map(u => storage.createUser({ ...u, hashedPassword, branchId: null }))
+      );
+
+      // Create branch users
+      const branchRoles = ["supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer"];
+      const firstNames = ["Ali", "Fatma", "Mehmet", "Ayşe", "Mustafa"];
+      const branchLastNames = ["Yılmaz", "Demir", "Şahin"];
+
+      const branchUserPromises: Promise<any>[] = [];
+      branches.forEach((branch, branchIndex) => {
+        const branchPrefix = branch.name.split(" ")[0].toLowerCase();
+        branchRoles.forEach((role, roleIndex) => {
+          branchUserPromises.push(
+            storage.createUser({
+              username: `${branchPrefix}-${role}`,
+              hashedPassword,
+              email: `${branchPrefix}.${role}@dospresso.com`,
+              firstName: firstNames[roleIndex],
+              lastName: branchLastNames[branchIndex],
+              role,
+              branchId: branch.id,
+              hireDate: new Date(2024, 0, 1 + branchIndex * 10 + roleIndex).toISOString().split('T')[0],
+              probationEndDate: (role === "stajyer" || role === "bar_buddy")
+                ? new Date(2025, 2, 1).toISOString().split('T')[0]
+                : null,
+            })
+          );
+        });
+      });
+
+      const branchUsers = await Promise.all(branchUserPromises);
+
+      // Create checklists
+      const checklists = await Promise.all([
+        storage.createChecklist({
+          title: "Açılış Prosedürü",
+          description: "Sabah açılış rutini",
+          frequency: "daily",
+          category: "opening",
+        }),
+        storage.createChecklist({
+          title: "Kapanış Prosedürü",
+          description: "Gün sonu kapanış rutini",
+          frequency: "daily",
+          category: "closing",
+        }),
+        storage.createChecklist({
+          title: "Haftalık Temizlik",
+          description: "Ekipman derin temizliği",
+          frequency: "weekly",
+          category: "cleaning",
+        }),
+      ]);
+
+      // Create knowledge base articles
+      await storage.createKnowledgeBaseArticle({
+        title: "Espresso Makine Kalibrasyonu",
+        category: "maintenance",
+        content: "# Espresso Makine Kalibrasyonu\n\nDetaylı kalibrasyon rehberi...",
+        tags: ["espresso", "kalibrasyon", "bakım"],
+        isPublished: true,
+      });
+
+      await storage.createKnowledgeBaseArticle({
+        title: "Cappuccino Tarifi",
+        category: "recipe",
+        content: "# Cappuccino Tarifi\n\nDOSPRESSO standardı cappuccino hazırlama...",
+        tags: ["cappuccino", "tarif"],
+        isPublished: true,
+      });
+
+      res.json({
+        success: true,
+        message: "Demo data seeded successfully",
+        data: {
+          branches: branches.length,
+          hqUsers: hqUsers.length,
+          branchUsers: branchUsers.length,
+          checklists: checklists.length,
+        }
+      });
+
+      console.log("✅ Demo data seed completed!");
+    } catch (error) {
+      console.error("❌ Seed failed:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Seed failed" });
+    }
+  });
+
   startReminderSystem();
 
   const httpServer = createServer(app);
