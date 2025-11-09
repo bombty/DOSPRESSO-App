@@ -1264,6 +1264,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========================================
+  // ADMIN: Seed Equipment & Training (admin-only, idempotent)
+  // ========================================
+  app.post('/api/admin/seed-equipment-training', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only admin can seed data
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Sadece admin veri ekleyebilir" });
+      }
+
+      console.log("🌱 Ekipman ve eğitim modülleri ekleniyor...");
+
+      const { seedEquipmentForBranches, seedTrainingModules } = await import('./seed-utils');
+      
+      // Seed equipment for all existing branches
+      const equipmentResult = await seedEquipmentForBranches();
+      console.log(`✅ Ekipman: ${equipmentResult.created} eklendi, ${equipmentResult.skipped} atlandı`);
+      
+      // Seed baseline training modules
+      const trainingResult = await seedTrainingModules(user.id);
+      console.log(`✅ Eğitim: ${trainingResult.created} eklendi, ${trainingResult.skipped} atlandı`);
+
+      res.json({
+        success: true,
+        message: "Ekipman ve eğitim modülleri başarıyla eklendi",
+        data: {
+          equipment: equipmentResult,
+          training: trainingResult,
+        }
+      });
+
+      console.log("✅ Ekipman ve eğitim ekleme tamamlandı!");
+    } catch (error) {
+      console.error("❌ Ekleme başarısız:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Ekleme başarısız" });
+    }
+  });
+
+  // ========================================
   // ADMIN: Seed Demo Data (admin-only)
   // ========================================
   app.post('/api/admin/seed-demo', isAuthenticated, async (req, res) => {
