@@ -71,6 +71,7 @@ export interface IStorage {
   getUserById(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getEmployeeForBranch(employeeId: string, allowedBranchId: number | null): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   createUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
@@ -89,7 +90,7 @@ export interface IStorage {
   deleteBranch(id: number): Promise<void>;
   
   // Task operations
-  getTasks(branchId?: number): Promise<Task[]>;
+  getTasks(branchId?: number, assignedToId?: string, status?: string): Promise<Task[]>;
   getTask(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, updates: Partial<InsertTask>): Promise<Task | undefined>;
@@ -202,6 +203,21 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getEmployeeForBranch(employeeId: string, allowedBranchId: number | null): Promise<User | undefined> {
+    // If allowedBranchId is null, allow access to any branch (admin/coach)
+    if (allowedBranchId === null) {
+      return this.getUserById(employeeId);
+    }
+    
+    // For branch-scoped roles (supervisor), enforce branch match
+    // Returns undefined if employee doesn't exist OR if branch doesn't match
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, employeeId), eq(users.branchId, allowedBranchId)));
+    return user;
+  }
+
   async createUser(insertUser: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -273,9 +289,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Task operations
-  async getTasks(branchId?: number): Promise<Task[]> {
-    if (branchId) {
-      return db.select().from(tasks).where(eq(tasks.branchId, branchId)).orderBy(desc(tasks.createdAt));
+  async getTasks(branchId?: number, assignedToId?: string, status?: string): Promise<Task[]> {
+    const conditions = [];
+    if (branchId !== undefined) {
+      conditions.push(eq(tasks.branchId, branchId));
+    }
+    if (assignedToId !== undefined) {
+      conditions.push(eq(tasks.assignedToId, assignedToId));
+    }
+    if (status !== undefined) {
+      conditions.push(eq(tasks.status, status));
+    }
+    
+    if (conditions.length > 0) {
+      return db.select().from(tasks).where(and(...conditions)).orderBy(desc(tasks.createdAt));
     }
     return db.select().from(tasks).orderBy(desc(tasks.createdAt));
   }

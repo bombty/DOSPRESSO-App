@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./jwtAuth";
+import { sanitizeUser, sanitizeUsers } from "./security";
 import { 
   insertTaskSchema, 
   insertChecklistSchema, 
@@ -592,9 +593,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const employees = await storage.getAllEmployees(branchFilter);
       
-      // Sanitize: Remove hashedPassword from response
-      const sanitized = employees.map(({ hashedPassword, ...employee }) => employee);
-      res.json(sanitized);
+      // Sanitize: Remove sensitive fields using security helper
+      res.json(sanitizeUsers(employees));
     } catch (error) {
       console.error("Error fetching employees:", error);
       res.status(500).json({ message: "Çalışanlar yüklenirken hata oluştu" });
@@ -613,20 +613,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Çalışan bilgilerine erişim yetkiniz yok" });
       }
 
-      // Get employee
-      const employee = await storage.getUserById(employeeId);
+      // Get employee with branch authorization
+      const allowedBranchId = role === 'supervisor' ? userBranchId : null;
+      const employee = await storage.getEmployeeForBranch(employeeId, allowedBranchId);
       if (!employee) {
+        if (role === 'supervisor') {
+          return res.status(403).json({ message: "Çalışan bulunamadı veya erişim yetkiniz yok" });
+        }
         return res.status(404).json({ message: "Çalışan bulunamadı" });
       }
 
-      // Branch access check for supervisor
-      if (role === 'supervisor' && employee.branchId !== userBranchId) {
-        return res.status(403).json({ message: "Bu çalışana erişim yetkiniz yok" });
-      }
-
-      // Sanitize: Remove hashedPassword from response
-      const { hashedPassword, ...sanitizedEmployee } = employee;
-      res.json(sanitizedEmployee);
+      // Sanitize: Remove sensitive fields using security helper
+      res.json(sanitizeUser(employee));
     } catch (error) {
       console.error("Error fetching employee:", error);
       res.status(500).json({ message: "Çalışan bilgileri yüklenirken hata oluştu" });
@@ -645,15 +643,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Çalışan düzenleme yetkiniz yok" });
       }
 
-      // Get employee
-      const employee = await storage.getUserById(employeeId);
+      // Get employee with branch authorization
+      const allowedBranchId = role === 'supervisor' ? userBranchId : null;
+      const employee = await storage.getEmployeeForBranch(employeeId, allowedBranchId);
       if (!employee) {
+        if (role === 'supervisor') {
+          return res.status(403).json({ message: "Çalışan bulunamadı veya erişim yetkiniz yok" });
+        }
         return res.status(404).json({ message: "Çalışan bulunamadı" });
-      }
-
-      // Branch access check for supervisor (coach has access to all branches)
-      if (role === 'supervisor' && employee.branchId !== userBranchId) {
-        return res.status(403).json({ message: "Bu çalışanı düzenleme yetkiniz yok" });
       }
 
       // Validate base schema
@@ -692,9 +689,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update employee
       const updated = await storage.updateUser(employeeId, filteredUpdates);
       
-      // Sanitize: Remove hashedPassword from response
-      const { hashedPassword, ...sanitizedUpdated } = updated;
-      res.json(sanitizedUpdated);
+      // Sanitize: Remove sensitive fields using security helper
+      res.json(sanitizeUser(updated));
     } catch (error) {
       console.error("Error updating employee:", error);
       res.status(500).json({ message: "Çalışan güncellenirken hata oluştu" });
@@ -713,15 +709,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Uyarı kayıtlarına erişim yetkiniz yok" });
       }
 
-      // Get employee
-      const employee = await storage.getUserById(employeeId);
+      // Get employee with branch authorization
+      const allowedBranchId = role === 'supervisor' ? userBranchId : null;
+      const employee = await storage.getEmployeeForBranch(employeeId, allowedBranchId);
       if (!employee) {
+        if (role === 'supervisor') {
+          return res.status(403).json({ message: "Çalışan bulunamadı veya erişim yetkiniz yok" });
+        }
         return res.status(404).json({ message: "Çalışan bulunamadı" });
-      }
-
-      // Branch access check for supervisor
-      if (role === 'supervisor' && employee.branchId !== userBranchId) {
-        return res.status(403).json({ message: "Bu çalışanın uyarılarına erişim yetkiniz yok" });
       }
 
       const warnings = await storage.getEmployeeWarnings(employeeId);
@@ -729,6 +724,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching employee warnings:", error);
       res.status(500).json({ message: "Uyarı kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
+  // Get employee training progress (with permissions and branch filtering)
+  app.get('/api/employees/:id/training', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId } = user;
+      const employeeId = req.params.id;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'training', 'view')) {
+        return res.status(403).json({ message: "Eğitim bilgilerine erişim yetkiniz yok" });
+      }
+
+      // Get employee with branch authorization
+      const allowedBranchId = role === 'supervisor' ? userBranchId : null;
+      const employee = await storage.getEmployeeForBranch(employeeId, allowedBranchId);
+      if (!employee) {
+        if (role === 'supervisor') {
+          return res.status(403).json({ message: "Çalışan bulunamadı veya erişim yetkiniz yok" });
+        }
+        return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      const trainingProgress = await storage.getUserTrainingProgress(employeeId);
+      res.json(trainingProgress);
+    } catch (error) {
+      console.error("Error fetching employee training:", error);
+      res.status(500).json({ message: "Eğitim bilgileri yüklenirken hata oluştu" });
+    }
+  });
+
+  // Get employee tasks (with permissions and branch filtering)
+  app.get('/api/employees/:id/tasks', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId } = user;
+      const employeeId = req.params.id;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'tasks', 'view')) {
+        return res.status(403).json({ message: "Görev kayıtlarına erişim yetkiniz yok" });
+      }
+
+      // Get employee with branch authorization
+      const allowedBranchId = role === 'supervisor' ? userBranchId : null;
+      const employee = await storage.getEmployeeForBranch(employeeId, allowedBranchId);
+      if (!employee) {
+        if (role === 'supervisor') {
+          return res.status(403).json({ message: "Çalışan bulunamadı veya erişim yetkiniz yok" });
+        }
+        return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      // Get tasks assigned to this employee (with branch scoping)
+      const status = req.query.status as string | undefined;
+      const tasks = await storage.getTasks(employee.branchId!, employeeId, status);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching employee tasks:", error);
+      res.status(500).json({ message: "Görev kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
+  // Get employee detail (orchestrated endpoint with all metrics)
+  app.get('/api/employees/:id/detail', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId } = user;
+      const employeeId = req.params.id;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'employees', 'view')) {
+        return res.status(403).json({ message: "Çalışan detaylarına erişim yetkiniz yok" });
+      }
+
+      // Get employee with branch authorization (prevents unauthorized data fetch)
+      const allowedBranchId = role === 'supervisor' ? userBranchId : null;
+      const employee = await storage.getEmployeeForBranch(employeeId, allowedBranchId);
+      if (!employee) {
+        // For supervisor, could be not found OR unauthorized - return generic 403
+        if (role === 'supervisor') {
+          return res.status(403).json({ message: "Çalışan bulunamadı veya erişim yetkiniz yok" });
+        }
+        // For admin/coach, definitely not found
+        return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      // Fetch all related data in parallel
+      const [warnings, trainingProgress, allTasks] = await Promise.all([
+        storage.getEmployeeWarnings(employeeId),
+        storage.getUserTrainingProgress(employeeId),
+        storage.getTasks(undefined, employeeId),
+      ]);
+
+      // Calculate KPIs from task data
+      const now = new Date();
+      const completedTasks = allTasks.filter(t => t.status === 'tamamlandi');
+      const overdueTasks = allTasks.filter(t => 
+        t.status === 'beklemede' && t.dueDate && new Date(t.dueDate) < now
+      );
+      
+      const tasksWithAiScore = completedTasks.filter(t => t.aiScore !== null && t.aiScore !== undefined);
+      const averageAiScore = tasksWithAiScore.length > 0
+        ? Math.round(tasksWithAiScore.reduce((sum, t) => sum + (t.aiScore || 0), 0) / tasksWithAiScore.length)
+        : 0;
+      
+      const completionRate = allTasks.length > 0
+        ? Math.round((completedTasks.length / allTasks.length) * 100)
+        : 0;
+
+      // Training progress summary
+      const totalModules = trainingProgress.length;
+      const completedModules = trainingProgress.filter(p => p.completedAt !== null).length;
+      const trainingCompletionRate = totalModules > 0
+        ? Math.round((completedModules / totalModules) * 100)
+        : 0;
+
+      // Sanitize employee data using security helper
+      res.json({
+        employee: sanitizeUser(employee),
+        kpis: {
+          tasksTotal: allTasks.length,
+          tasksCompleted: completedTasks.length,
+          tasksOverdue: overdueTasks.length,
+          completionRate,
+          averageAiScore,
+          trainingModulesTotal: totalModules,
+          trainingModulesCompleted: completedModules,
+          trainingCompletionRate,
+          warningsTotal: warnings.length,
+          activeWarnings: warnings.filter(w => 
+            w.severity === 'kritik' || w.severity === 'yuksek'
+          ).length,
+        },
+        warnings,
+        trainingProgress,
+        recentTasks: allTasks.slice(0, 10), // Last 10 tasks
+      });
+    } catch (error) {
+      console.error("Error fetching employee detail:", error);
+      res.status(500).json({ message: "Çalışan detayları yüklenirken hata oluştu" });
     }
   });
 
@@ -762,9 +900,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create employee (storage layer handles password hashing if provided)
       const newEmployee = await storage.createUser(employeeData);
       
-      // Sanitize: Remove hashedPassword from response
-      const { hashedPassword, ...sanitizedEmployee } = newEmployee;
-      res.status(201).json(sanitizedEmployee);
+      // Sanitize: Remove sensitive fields using security helper
+      res.status(201).json(sanitizeUser(newEmployee));
     } catch (error) {
       console.error("Error creating employee:", error);
       res.status(500).json({ message: "Çalışan eklenirken hata oluştu" });
