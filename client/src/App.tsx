@@ -12,6 +12,7 @@ import Dashboard from "@/pages/dashboard";
 import Branches from "@/pages/branches";
 import Tasks from "@/pages/tasks";
 import Checklists from "@/pages/checklists";
+import Equipment from "@/pages/equipment";
 import EquipmentFaults from "@/pages/equipment-faults";
 import KnowledgeBase from "@/pages/knowledge-base";
 import Training from "@/pages/training";
@@ -34,6 +35,7 @@ function Router() {
           <Route path="/subeler" component={Branches} />
           <Route path="/gorevler" component={Tasks} />
           <Route path="/checklistler" component={Checklists} />
+          <Route path="/ekipman" component={Equipment} />
           <Route path="/ekipman-arizalari" component={EquipmentFaults} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
           <Route path="/egitim" component={Training} />

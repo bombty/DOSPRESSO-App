@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   CheckSquare,
   ClipboardList,
+  Settings,
   Wrench,
   BookOpen,
   GraduationCap,
@@ -63,6 +64,13 @@ const menuItems: Array<{
     url: "/checklistler",
     icon: ClipboardList,
     module: "checklists",
+  },
+  {
+    title: "Ekipman",
+    titleTr: "Ekipman",
+    url: "/ekipman",
+    icon: Settings,
+    module: "equipment",
   },
   {
     title: "Ekipman Arızaları",
