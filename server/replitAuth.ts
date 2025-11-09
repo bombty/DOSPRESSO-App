@@ -52,6 +52,8 @@ function updateUserSession(
 async function upsertUser(claims: any) {
   await storage.upsertUser({
     id: claims["sub"],
+    username: claims["email"] || claims["sub"], // Use email or sub as username
+    hashedPassword: "", // OIDC users don't have passwords
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
@@ -71,9 +73,24 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
+    const claims = tokens.claims();
+    if (!claims || !claims["sub"]) {
+      return verified(new Error("Invalid claims"));
+    }
+
+    await upsertUser(claims);
+    
+    // Fetch the persisted user with role and other business fields
+    const dbUser = await storage.getUserById(claims["sub"]);
+    if (!dbUser) {
+      return verified(new Error("User not found after upsert"));
+    }
+
+    const user: Express.User = {
+      id: dbUser.id,
+      role: dbUser.role,
+    };
     updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
     verified(null, user);
   };
 

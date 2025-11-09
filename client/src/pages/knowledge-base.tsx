@@ -178,7 +178,7 @@ export default function KnowledgeBase() {
                     <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox
-                          checked={field.value}
+                          checked={field.value || false}
                           onCheckedChange={field.onChange}
                           data-testid="checkbox-published"
                         />

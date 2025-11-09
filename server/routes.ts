@@ -2,7 +2,19 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./jwtAuth";
-import { insertTaskSchema, insertChecklistSchema, insertEquipmentFaultSchema, insertKnowledgeBaseArticleSchema, insertBranchSchema } from "@shared/schema";
+import { 
+  insertTaskSchema, 
+  insertChecklistSchema, 
+  insertEquipmentFaultSchema, 
+  insertKnowledgeBaseArticleSchema, 
+  insertBranchSchema,
+  insertTrainingModuleSchema,
+  insertModuleVideoSchema,
+  insertModuleQuizSchema,
+  insertQuizQuestionSchema,
+  insertUserQuizAttemptSchema,
+  insertUserTrainingProgressSchema
+} from "@shared/schema";
 import { analyzeTaskPhoto, analyzeFaultPhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
 import { startReminderSystem } from "./reminders";
 
@@ -385,6 +397,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching latest performance metrics:", error);
       res.status(500).json({ message: "Failed to fetch latest performance metrics" });
+    }
+  });
+
+  // ========================================
+  // TRAINING SYSTEM ROUTES
+  // ========================================
+
+  // Get training modules (published only for users, all for admin/coach)
+  app.get('/api/training/modules', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const isAdminOrCoach = user.role === 'admin' || user.role === 'coach';
+      
+      const modules = await storage.getTrainingModules(isAdminOrCoach ? undefined : true);
+      res.json(modules);
+    } catch (error) {
+      console.error("Error fetching training modules:", error);
+      res.status(500).json({ message: "Failed to fetch training modules" });
+    }
+  });
+
+  // Get single training module with all content
+  app.get('/api/training/modules/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const moduleId = parseInt(req.params.id);
+      const module = await storage.getTrainingModule(moduleId);
+      
+      if (!module) {
+        return res.status(404).json({ message: "Module not found" });
+      }
+
+      // Authorization: Only admin/coach can see unpublished modules
+      const isAdminOrCoach = user.role === 'admin' || user.role === 'coach';
+      if (!module.isPublished && !isAdminOrCoach) {
+        return res.status(403).json({ message: "Access denied to unpublished module" });
+      }
+
+      const [videos, quizzes, flashcards] = await Promise.all([
+        storage.getModuleVideos(moduleId),
+        storage.getModuleQuizzes(moduleId),
+        storage.getFlashcards(moduleId),
+      ]);
+
+      res.json({ ...module, videos, quizzes, flashcards });
+    } catch (error) {
+      console.error("Error fetching training module:", error);
+      res.status(500).json({ message: "Failed to fetch training module" });
+    }
+  });
+
+  // Create training module (admin/coach only)
+  app.post('/api/training/modules', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Only admin and coach can create modules" });
+      }
+
+      const validated = insertTrainingModuleSchema.parse(req.body);
+      const module = await storage.createTrainingModule({
+        ...validated,
+        createdBy: user.id,
+      });
+      
+      res.status(201).json(module);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating training module:", error);
+      res.status(500).json({ message: "Failed to create training module" });
+    }
+  });
+
+  // Update training module (admin/coach only)
+  app.put('/api/training/modules/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Only admin and coach can update modules" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const validated = insertTrainingModuleSchema.partial().parse(req.body);
+      const updated = await storage.updateTrainingModule(moduleId, validated);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Module not found" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error updating training module:", error);
+      res.status(500).json({ message: "Failed to update training module" });
+    }
+  });
+
+  // Delete training module (admin/coach only)
+  app.delete('/api/training/modules/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Only admin and coach can delete modules" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      await storage.deleteTrainingModule(moduleId);
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting training module:", error);
+      res.status(500).json({ message: "Failed to delete training module" });
+    }
+  });
+
+  // Add video to module (admin/coach only)
+  app.post('/api/training/modules/:id/videos', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Only admin and coach can add videos" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const validated = insertModuleVideoSchema.parse(req.body);
+      const video = await storage.createModuleVideo({
+        ...validated,
+        moduleId,
+      });
+      
+      res.status(201).json(video);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating module video:", error);
+      res.status(500).json({ message: "Failed to create module video" });
+    }
+  });
+
+  // Add quiz to module (admin/coach only)
+  app.post('/api/training/modules/:id/quizzes', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Only admin and coach can add quizzes" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const validated = insertModuleQuizSchema.parse(req.body);
+      const quiz = await storage.createModuleQuiz({
+        ...validated,
+        moduleId,
+      });
+      
+      res.status(201).json(quiz);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating module quiz:", error);
+      res.status(500).json({ message: "Failed to create module quiz" });
+    }
+  });
+
+  // Get user's training progress
+  app.get('/api/training/progress', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const progress = await storage.getUserTrainingProgress(userId);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error fetching training progress:", error);
+      res.status(500).json({ message: "Failed to fetch training progress" });
+    }
+  });
+
+  // Update user's training progress
+  app.put('/api/training/progress/:moduleId', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const moduleId = parseInt(req.params.moduleId);
+      
+      const validated = insertUserTrainingProgressSchema.partial().parse(req.body);
+      const updated = await storage.updateUserProgress(userId, moduleId, validated);
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error updating training progress:", error);
+      res.status(500).json({ message: "Failed to update training progress" });
+    }
+  });
+
+  // Submit quiz attempt
+  app.post('/api/training/quiz-attempts', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const validated = insertUserQuizAttemptSchema.parse(req.body);
+      const attempt = await storage.createQuizAttempt({
+        ...validated,
+        userId,
+      });
+      
+      res.status(201).json(attempt);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating quiz attempt:", error);
+      res.status(500).json({ message: "Failed to create quiz attempt" });
+    }
+  });
+
+  // Approve/reject quiz attempt (supervisor/coach only)
+  app.put('/api/training/quiz-attempts/:id/approve', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'supervisor' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Only supervisors and coaches can approve quizzes" });
+      }
+
+      const attemptId = parseInt(req.params.id);
+      const { status, feedback } = req.body;
+      
+      const updated = await storage.approveQuizAttempt(attemptId, user.id, status, feedback);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Quiz attempt not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error approving quiz attempt:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to approve quiz attempt" });
     }
   });
 

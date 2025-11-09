@@ -14,6 +14,7 @@ import Tasks from "@/pages/tasks";
 import Checklists from "@/pages/checklists";
 import EquipmentFaults from "@/pages/equipment-faults";
 import KnowledgeBase from "@/pages/knowledge-base";
+import Training from "@/pages/training";
 import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
 import NotFound from "@/pages/not-found";
@@ -34,6 +35,7 @@ function Router() {
           <Route path="/checklistler" component={Checklists} />
           <Route path="/ekipman-arizalari" component={EquipmentFaults} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
+          <Route path="/egitim" component={Training} />
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/performans" component={Performance} />
         </>

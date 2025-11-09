@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Wrench,
   BookOpen,
+  GraduationCap,
   Bot,
   BarChart3,
   Building2,
@@ -75,6 +76,13 @@ const menuItems: Array<{
     url: "/bilgi-bankasi",
     icon: BookOpen,
     module: "knowledge_base",
+  },
+  {
+    title: "Eğitim",
+    titleTr: "Eğitim",
+    url: "/egitim",
+    icon: GraduationCap,
+    module: "training",
   },
   {
     title: "AI Asistan",
