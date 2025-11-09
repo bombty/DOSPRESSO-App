@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { EQUIPMENT_TYPES, EQUIPMENT_METADATA, type EquipmentType } from "@shared/schema";
+import type { InsertUser } from "@shared/schema";
 
 /**
  * Seed equipment for all existing branches (idempotent)
@@ -20,8 +21,9 @@ export async function seedEquipmentForBranches() {
   
   for (const branch of branches) {
     // Check existing equipment for this branch
-    const existing = await storage.getEquipmentByBranch(branch.id);
-    const existingTypes = new Set(existing.map(e => e.equipmentType));
+    const allEquipment = await storage.getEquipment();
+    const existing = allEquipment.filter((e: any) => e.branchId === branch.id);
+    const existingTypes = new Set(existing.map((e: any) => e.equipmentType));
     
     for (const type of equipmentTypes) {
       // Skip if this type already exists for this branch
@@ -138,4 +140,105 @@ export async function seedTrainingModules(adminUserId: string) {
   }
   
   return { created, skipped };
+}
+
+/**
+ * Seed sample personnel for all existing branches (idempotent)
+ * Creates supervisor(1) + barista(2) + stajyer(1) per branch = 4 employees per branch
+ */
+export async function seedBranchPersonnel(hashedPassword: string) {
+  const branches = await storage.getBranches();
+  
+  let created = 0;
+  let skipped = 0;
+  
+  // Turkish first names pool
+  const firstNames = ["Ahmet", "Mehmet", "Ayşe", "Fatma", "Ali", "Zeynep", "Mustafa", "Elif", "Hüseyin", "Hatice", "Can", "Selin", "Emre", "Deniz", "Burak", "Esra"];
+  // Turkish last names pool
+  const lastNames = ["Yılmaz", "Kaya", "Demir", "Çelik", "Şahin", "Öztürk", "Aydın", "Arslan", "Polat", "Koç", "Kurt", "Erdoğan", "Taş", "Yavuz"];
+  
+  for (const branch of branches) {
+    // Check existing users for this branch
+    const allUsers = await storage.getUsers();
+    const existingUsers = allUsers.filter((u: any) => u.branchId === branch.id);
+    const existingRoles = new Set(existingUsers.map((u: any) => u.role));
+    
+    // Generate branch-specific username suffix (city-based)
+    const branchSuffix = (branch.city || 'unknown').toLowerCase().replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ı/g, 'i').replace(/\s+/g, '');
+    
+    // 1. Supervisor (1 per branch)
+    if (!existingRoles.has('supervisor')) {
+      const firstName = firstNames[branch.id % firstNames.length];
+      const lastName = lastNames[(branch.id + 1) % lastNames.length];
+      
+      await storage.createUser({
+        username: `supervisor_${branchSuffix}`,
+        email: `supervisor@${branchSuffix}.dospresso.com`,
+        hashedPassword: hashedPassword,
+        fullName: `${firstName} ${lastName}`,
+        role: "supervisor",
+        branchId: branch.id,
+        phoneNumber: `05${(20 + branch.id).toString().padStart(2, '0')} ${(100 + branch.id).toString()} ${(1000 + branch.id).toString()}`,
+        hireDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year ago
+        probationEndDate: new Date(Date.now() - 275 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Completed
+        isActive: true,
+      });
+      created++;
+    } else {
+      skipped++;
+    }
+    
+    // 2. Barista (2 per branch)
+    for (let i = 1; i <= 2; i++) {
+      const roleKey = `barista_${i}`;
+      const firstName = firstNames[(branch.id * 2 + i) % firstNames.length];
+      const lastName = lastNames[(branch.id * 2 + i + 2) % lastNames.length];
+      
+      // Check if this specific barista already exists (by username pattern)
+      const existingBarista = existingUsers.find((u: any) => u.username === `barista${i}_${branchSuffix}`);
+      if (existingBarista) {
+        skipped++;
+        continue;
+      }
+      
+      await storage.createUser({
+        username: `barista${i}_${branchSuffix}`,
+        email: `barista${i}@${branchSuffix}.dospresso.com`,
+        hashedPassword: hashedPassword,
+        fullName: `${firstName} ${lastName}`,
+        role: "barista",
+        branchId: branch.id,
+        phoneNumber: `05${(30 + branch.id).toString().padStart(2, '0')} ${(200 + branch.id * 2 + i).toString()} ${(2000 + branch.id * 2 + i).toString()}`,
+        hireDate: new Date(Date.now() - (180 + i * 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        probationEndDate: new Date(Date.now() - (90 + i * 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        isActive: true,
+      });
+      created++;
+    }
+    
+    // 3. Stajyer (1 per branch - in probation)
+    const existingStajyer = existingUsers.find((u: any) => u.username === `stajyer_${branchSuffix}`);
+    if (!existingStajyer) {
+      const firstName = firstNames[(branch.id * 3) % firstNames.length];
+      const lastName = lastNames[(branch.id * 3 + 1) % lastNames.length];
+      
+      await storage.createUser({
+        username: `stajyer_${branchSuffix}`,
+        email: `stajyer@${branchSuffix}.dospresso.com`,
+        hashedPassword: hashedPassword,
+        fullName: `${firstName} ${lastName}`,
+        role: "stajyer",
+        branchId: branch.id,
+        phoneNumber: `05${(40 + branch.id).toString().padStart(2, '0')} ${(300 + branch.id).toString()} ${(3000 + branch.id).toString()}`,
+        hireDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 45 days ago
+        probationEndDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 45 days from now
+        isActive: true,
+      });
+      created++;
+    } else {
+      skipped++;
+    }
+  }
+  
+  return { created, skipped, branches: branches.length };
 }

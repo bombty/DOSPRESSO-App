@@ -1275,9 +1275,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Sadece admin veri ekleyebilir" });
       }
 
-      console.log("🌱 Ekipman ve eğitim modülleri ekleniyor...");
+      console.log("🌱 Ekipman, eğitim modülleri ve personel ekleniyor...");
 
-      const { seedEquipmentForBranches, seedTrainingModules } = await import('./seed-utils');
+      const { seedEquipmentForBranches, seedTrainingModules, seedBranchPersonnel } = await import('./seed-utils');
+      
+      // Import bcrypt for password hashing
+      const { default: bcrypt } = await import('bcrypt');
+      const hashedPassword = await bcrypt.hash("0000", 10);
       
       // Seed equipment for all existing branches
       const equipmentResult = await seedEquipmentForBranches();
@@ -1286,13 +1290,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Seed baseline training modules
       const trainingResult = await seedTrainingModules(user.id);
       console.log(`✅ Eğitim: ${trainingResult.created} eklendi, ${trainingResult.skipped} atlandı`);
+      
+      // Seed branch personnel
+      const personnelResult = await seedBranchPersonnel(hashedPassword);
+      console.log(`✅ Personel: ${personnelResult.created} eklendi, ${personnelResult.skipped} atlandı`);
 
       res.json({
         success: true,
-        message: "Ekipman ve eğitim modülleri başarıyla eklendi",
+        message: "Ekipman, eğitim ve personel başarıyla eklendi",
         data: {
           equipment: equipmentResult,
           training: trainingResult,
+          personnel: personnelResult,
         }
       });
 
