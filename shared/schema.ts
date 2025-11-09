@@ -64,10 +64,18 @@ export const branches = pgTable("branches", {
   address: text("address"),
   city: varchar("city", { length: 100 }),
   phoneNumber: varchar("phone_number", { length: 20 }),
+  managerName: varchar("manager_name", { length: 255 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const insertBranchSchema = createInsertSchema(branches).omit({
+  id: true,
+  createdAt: true,
+  isActive: true,
+});
+
+export type InsertBranch = z.infer<typeof insertBranchSchema>;
 export type Branch = typeof branches.$inferSelect;
 
 // Users table (Username/Password Auth)

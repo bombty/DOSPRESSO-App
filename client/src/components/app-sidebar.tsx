@@ -6,6 +6,7 @@ import {
   BookOpen,
   Bot,
   BarChart3,
+  Building2,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -30,6 +31,12 @@ const menuItems = [
     titleTr: "Gösterge Paneli",
     url: "/",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Şubeler",
+    titleTr: "Şubeler",
+    url: "/subeler",
+    icon: Building2,
   },
   {
     title: "Görevler",

@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import Branches from "@/pages/branches";
 import Tasks from "@/pages/tasks";
 import Checklists from "@/pages/checklists";
 import EquipmentFaults from "@/pages/equipment-faults";
@@ -28,6 +29,7 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Dashboard} />
+          <Route path="/subeler" component={Branches} />
           <Route path="/gorevler" component={Tasks} />
           <Route path="/checklistler" component={Checklists} />
           <Route path="/ekipman-arizalari" component={EquipmentFaults} />
