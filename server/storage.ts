@@ -14,6 +14,9 @@ import type {
   InsertEquipment,
   EquipmentFault,
   InsertEquipmentFault,
+  FaultStageTransition,
+  InsertFaultStageTransition,
+  FaultStageType,
   KnowledgeBaseArticle,
   InsertKnowledgeBaseArticle,
   KnowledgeBaseEmbedding,
@@ -114,6 +117,8 @@ export interface IStorage {
   createFault(fault: InsertEquipmentFault): Promise<EquipmentFault>;
   updateFault(id: number, updates: Partial<InsertEquipmentFault>): Promise<EquipmentFault | undefined>;
   resolveFault(id: number): Promise<EquipmentFault | undefined>;
+  changeFaultStage(faultId: number, newStage: FaultStageType, changedBy: string, notes?: string): Promise<EquipmentFault | undefined>;
+  getFaultStageHistory(faultId: number): Promise<FaultStageTransition[]>;
   
   // Knowledge Base operations
   getArticles(category?: string): Promise<KnowledgeBaseArticle[]>;
@@ -421,6 +426,51 @@ export class DatabaseStorage implements IStorage {
       .where(eq(equipmentFaults.id, id))
       .returning();
     return updated;
+  }
+
+  async changeFaultStage(faultId: number, newStage: FaultStageType, changedBy: string, notes?: string): Promise<EquipmentFault | undefined> {
+    const fault = await this.getFault(faultId);
+    if (!fault) return undefined;
+
+    const fromStage = fault.currentStage as FaultStageType | null;
+    
+    // Record stage transition in audit table
+    await db.insert(faultStageTransitions).values({
+      faultId,
+      fromStage: fromStage || null,
+      toStage: newStage,
+      changedBy,
+      notes,
+    });
+
+    // Update stageHistory JSONB array and currentStage in one operation
+    const historyEntry = {
+      stage: newStage,
+      changedBy,
+      changedAt: new Date().toISOString(),
+      notes,
+    };
+    
+    const existingHistory = (fault.stageHistory as any[]) || [];
+    const [updated] = await db
+      .update(equipmentFaults)
+      .set({
+        currentStage: newStage,
+        stageHistory: [...existingHistory, historyEntry],
+        updatedAt: new Date(),
+      })
+      .where(eq(equipmentFaults.id, faultId))
+      .returning();
+
+    return updated;
+  }
+
+  async getFaultStageHistory(faultId: number): Promise<FaultStageTransition[]> {
+    return db
+      .select()
+      .from(faultStageTransitions)
+      .where(eq(faultStageTransitions.faultId, faultId))
+      .orderBy(faultStageTransitions.changedAt);
   }
 
   // Knowledge Base operations

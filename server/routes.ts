@@ -288,6 +288,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/faults/:id/stage', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { stage, notes } = req.body;
+      const userId = req.user.id;
+      const userRole = req.user.role;
+      
+      if (!stage) {
+        return res.status(400).json({ message: "Stage is required" });
+      }
+      
+      // Validate stage value
+      const { FAULT_STAGES } = await import('@shared/schema');
+      const validStages = Object.values(FAULT_STAGES);
+      if (!validStages.includes(stage)) {
+        return res.status(400).json({ message: "Invalid stage value" });
+      }
+      
+      // Check permissions: branch vs hq_teknik
+      const faultToUpdate = await storage.getFault(id);
+      if (!faultToUpdate) {
+        return res.status(404).json({ message: "Fault not found" });
+      }
+      
+      // Permission logic:
+      // - HQ teknik role can change any fault stage
+      // - Branch roles (supervisor, barista, stajyer) can only change their own branch's faults
+      const isTeknik = userRole === 'teknik';
+      const isBranchUser = ['supervisor', 'barista', 'stajyer'].includes(userRole);
+      const userBranchId = req.user.branchId;
+      
+      if (!isTeknik) {
+        // Branch users MUST have a branchId assigned
+        if (!isBranchUser || !userBranchId || faultToUpdate.branchId !== userBranchId) {
+          return res.status(403).json({ message: "Yetkisiz işlem - Bu arızanın aşamasını değiştirme yetkiniz yok" });
+        }
+      }
+      
+      const fault = await storage.changeFaultStage(id, stage, userId, notes);
+      res.json(fault);
+    } catch (error) {
+      console.error("Error changing fault stage:", error);
+      res.status(500).json({ message: "Failed to change fault stage" });
+    }
+  });
+
+  app.get('/api/faults/:id/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userRole = req.user.role;
+      
+      // Check permissions for viewing history
+      const fault = await storage.getFault(id);
+      if (!fault) {
+        return res.status(404).json({ message: "Fault not found" });
+      }
+      
+      // Permission logic: same as stage change
+      const isTeknik = userRole === 'teknik';
+      const isBranchUser = ['supervisor', 'barista', 'stajyer'].includes(userRole);
+      const userBranchId = req.user.branchId;
+      
+      if (!isTeknik) {
+        // Branch users MUST have a branchId assigned
+        if (!isBranchUser || !userBranchId || fault.branchId !== userBranchId) {
+          return res.status(403).json({ message: "Yetkisiz işlem - Bu arızanın geçmişini görüntüleme yetkiniz yok" });
+        }
+      }
+      
+      const history = await storage.getFaultStageHistory(id);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching fault history:", error);
+      res.status(500).json({ message: "Failed to fetch fault history" });
+    }
+  });
+
   // Equipment routes
   app.get('/api/equipment', isAuthenticated, async (req, res) => {
     try {
