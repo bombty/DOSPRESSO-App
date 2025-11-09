@@ -4,6 +4,7 @@ import {
   text, 
   varchar, 
   timestamp,
+  date,
   jsonb,
   index,
   serial,
@@ -75,6 +76,7 @@ export type PermissionModule =
   | 'performance'
   | 'branches'
   | 'users'
+  | 'employees'
   | 'training'
   | 'schedules';
 
@@ -91,6 +93,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: ['view', 'create', 'edit', 'delete'],
     users: ['view', 'create', 'edit', 'delete'],
+    employees: ['view', 'create', 'edit', 'delete', 'approve'],
     training: ['view', 'create', 'edit', 'delete', 'approve'],
     schedules: ['view', 'create', 'edit', 'delete'],
   },
@@ -105,6 +108,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: ['view'],
     users: [],
+    employees: ['view'],
     training: ['view'],
     schedules: ['view'],
   },
@@ -118,6 +122,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: ['view'],
     users: [],
+    employees: ['view'],
     training: ['view'],
     schedules: ['view'],
   },
@@ -131,6 +136,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: ['view'],
     users: [],
+    employees: ['view', 'create', 'edit', 'delete', 'approve'],
     training: ['view', 'create', 'edit', 'delete', 'approve'],
     schedules: ['view'],
   },
@@ -144,6 +150,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: ['view'],
     users: [],
+    employees: ['view'],
     training: ['view'],
     schedules: ['view'],
   },
@@ -157,6 +164,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: ['view'],
     users: [],
+    employees: ['view'],
     training: ['view'],
     schedules: ['view'],
   },
@@ -170,6 +178,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: ['view'],
     users: [],
+    employees: ['view'],
     training: ['view'],
     schedules: ['view'],
   },
@@ -183,6 +192,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: ['view'],
     users: [],
+    employees: ['view'],
     training: [],
     schedules: [],
   },
@@ -197,6 +207,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: [],
     users: [],
+    employees: ['view', 'create', 'edit', 'approve'],
     training: ['view', 'approve'],
     schedules: ['view', 'create', 'edit'],
   },
@@ -210,6 +221,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: [],
     users: [],
+    employees: [],
     training: ['view'],
     schedules: ['view', 'edit'],
   },
@@ -223,6 +235,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: [],
     users: [],
+    employees: [],
     training: ['view'],
     schedules: ['view'],
   },
@@ -236,6 +249,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: [],
     branches: [],
     users: [],
+    employees: [],
     training: ['view'],
     schedules: ['view'],
   },
@@ -249,6 +263,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: [],
     branches: [],
     users: [],
+    employees: [],
     training: ['view'],
     schedules: ['view'],
   },
@@ -262,6 +277,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     performance: ['view'],
     branches: [],
     users: [],
+    employees: [],
     training: [],
     schedules: [],
   },
@@ -315,12 +331,56 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default(UserRole.BARISTA),
   branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  // HR/Employee fields
+  hireDate: date("hire_date"),
+  probationEndDate: date("probation_end_date"),
+  birthDate: date("birth_date"),
+  phoneNumber: varchar("phone_number", { length: 20 }),
+  emergencyContactName: varchar("emergency_contact_name", { length: 255 }),
+  emergencyContactPhone: varchar("emergency_contact_phone", { length: 20 }),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  hashedPassword: true, // Password updates handled separately
+}).partial();
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Employee Warnings table
+export const employeeWarnings = pgTable("employee_warnings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  warningType: varchar("warning_type", { length: 50 }).notNull(), // verbal, written, final
+  description: text("description").notNull(),
+  issuedBy: varchar("issued_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  issuedAt: timestamp("issued_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertEmployeeWarningSchema = createInsertSchema(employeeWarnings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEmployeeWarning = z.infer<typeof insertEmployeeWarningSchema>;
+export type EmployeeWarning = typeof employeeWarnings.$inferSelect;
 
 // Checklists table
 export const checklists = pgTable("checklists", {

@@ -34,6 +34,8 @@ import type {
   InsertUserTrainingProgress,
   UserQuizAttempt,
   InsertUserQuizAttempt,
+  EmployeeWarning,
+  InsertEmployeeWarning,
 } from "@shared/schema";
 import {
   users,
@@ -53,6 +55,7 @@ import {
   flashcards,
   userTrainingProgress,
   userQuizAttempts,
+  employeeWarnings,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -63,6 +66,13 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   createUser(user: UpsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<void>;
+  getAllEmployees(branchId?: number): Promise<User[]>;
+  
+  // Employee Warnings operations
+  getEmployeeWarnings(userId: string): Promise<EmployeeWarning[]>;
+  createEmployeeWarning(warning: InsertEmployeeWarning): Promise<EmployeeWarning>;
   
   // Branch operations
   getBranches(): Promise<Branch[]>;
@@ -199,6 +209,26 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async getAllEmployees(branchId?: number): Promise<User[]> {
+    if (branchId !== undefined) {
+      return db.select().from(users).where(eq(users.branchId, branchId));
+    }
+    return db.select().from(users);
   }
 
   // Branch operations
@@ -581,6 +611,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userQuizAttempts.id, id))
       .returning();
     return updated;
+  }
+
+  // Employee Warnings operations
+  async getEmployeeWarnings(userId: string): Promise<EmployeeWarning[]> {
+    return db.select().from(employeeWarnings).where(eq(employeeWarnings.userId, userId)).orderBy(desc(employeeWarnings.issuedAt));
+  }
+
+  async createEmployeeWarning(warning: InsertEmployeeWarning): Promise<EmployeeWarning> {
+    const [newWarning] = await db.insert(employeeWarnings).values(warning).returning();
+    return newWarning;
   }
 }
 

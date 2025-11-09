@@ -13,7 +13,12 @@ import {
   insertModuleQuizSchema,
   insertQuizQuestionSchema,
   insertUserQuizAttemptSchema,
-  insertUserTrainingProgressSchema
+  insertUserTrainingProgressSchema,
+  updateUserSchema,
+  insertEmployeeWarningSchema,
+  hasPermission,
+  type UpdateUser,
+  type UserRoleType
 } from "@shared/schema";
 import { analyzeTaskPhoto, analyzeFaultPhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
 import { startReminderSystem } from "./reminders";
@@ -397,6 +402,284 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching latest performance metrics:", error);
       res.status(500).json({ message: "Failed to fetch latest performance metrics" });
+    }
+  });
+
+  // ========================================
+  // EMPLOYEE/HR ROUTES
+  // ========================================
+
+  // Get employees list (with permissions and branch filtering)
+  app.get('/api/employees', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId } = user;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'employees', 'view')) {
+        return res.status(403).json({ message: "Çalışan listesine erişim yetkiniz yok" });
+      }
+
+      // Branch filtering for supervisor/coach
+      let branchFilter: number | undefined;
+      if (role === 'supervisor' && userBranchId) {
+        // Supervisor can only see their own branch
+        branchFilter = userBranchId;
+      } else if (role === 'coach' || role === 'admin') {
+        // Coach/Admin can optionally filter by branchId query param
+        branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      }
+
+      const employees = await storage.getAllEmployees(branchFilter);
+      
+      // Sanitize: Remove hashedPassword from response
+      const sanitized = employees.map(({ hashedPassword, ...employee }) => employee);
+      res.json(sanitized);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      res.status(500).json({ message: "Çalışanlar yüklenirken hata oluştu" });
+    }
+  });
+
+  // Get single employee (with permissions and branch filtering)
+  app.get('/api/employees/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId } = user;
+      const employeeId = req.params.id;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'employees', 'view')) {
+        return res.status(403).json({ message: "Çalışan bilgilerine erişim yetkiniz yok" });
+      }
+
+      // Get employee
+      const employee = await storage.getUserById(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      // Branch access check for supervisor
+      if (role === 'supervisor' && employee.branchId !== userBranchId) {
+        return res.status(403).json({ message: "Bu çalışana erişim yetkiniz yok" });
+      }
+
+      // Sanitize: Remove hashedPassword from response
+      const { hashedPassword, ...sanitizedEmployee } = employee;
+      res.json(sanitizedEmployee);
+    } catch (error) {
+      console.error("Error fetching employee:", error);
+      res.status(500).json({ message: "Çalışan bilgileri yüklenirken hata oluştu" });
+    }
+  });
+
+  // Update employee (with field-level restrictions)
+  app.put('/api/employees/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId } = user;
+      const employeeId = req.params.id;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'employees', 'edit')) {
+        return res.status(403).json({ message: "Çalışan düzenleme yetkiniz yok" });
+      }
+
+      // Get employee
+      const employee = await storage.getUserById(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      // Branch access check for supervisor (coach has access to all branches)
+      if (role === 'supervisor' && employee.branchId !== userBranchId) {
+        return res.status(403).json({ message: "Bu çalışanı düzenleme yetkiniz yok" });
+      }
+
+      // Validate base schema
+      const parsed = updateUserSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: parsed.error.errors });
+      }
+
+      // Field-level restrictions based on role
+      let allowedFields: (keyof UpdateUser)[] = [];
+      
+      if (role === 'admin') {
+        // Admin can update all fields
+        allowedFields = Object.keys(parsed.data) as (keyof UpdateUser)[];
+      } else if (role === 'coach') {
+        // Coach can only update notes (training-related)
+        allowedFields = ['notes'];
+      } else if (role === 'supervisor') {
+        // Supervisor can update contact info and notes
+        allowedFields = ['phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'notes'];
+      }
+
+      // Filter updates to only allowed fields
+      const filteredUpdates: Partial<UpdateUser> = {};
+      for (const field of allowedFields) {
+        if (parsed.data[field] !== undefined) {
+          filteredUpdates[field] = parsed.data[field];
+        }
+      }
+
+      // Check if there are any valid updates
+      if (Object.keys(filteredUpdates).length === 0) {
+        return res.status(400).json({ message: "Güncellenecek geçerli alan bulunamadı" });
+      }
+
+      // Update employee
+      const updated = await storage.updateUser(employeeId, filteredUpdates);
+      
+      // Sanitize: Remove hashedPassword from response
+      const { hashedPassword, ...sanitizedUpdated } = updated;
+      res.json(sanitizedUpdated);
+    } catch (error) {
+      console.error("Error updating employee:", error);
+      res.status(500).json({ message: "Çalışan güncellenirken hata oluştu" });
+    }
+  });
+
+  // Get employee warnings (with permissions and branch filtering)
+  app.get('/api/employees/:id/warnings', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId } = user;
+      const employeeId = req.params.id;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'employees', 'view')) {
+        return res.status(403).json({ message: "Uyarı kayıtlarına erişim yetkiniz yok" });
+      }
+
+      // Get employee
+      const employee = await storage.getUserById(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      // Branch access check for supervisor
+      if (role === 'supervisor' && employee.branchId !== userBranchId) {
+        return res.status(403).json({ message: "Bu çalışanın uyarılarına erişim yetkiniz yok" });
+      }
+
+      const warnings = await storage.getEmployeeWarnings(employeeId);
+      res.json(warnings);
+    } catch (error) {
+      console.error("Error fetching employee warnings:", error);
+      res.status(500).json({ message: "Uyarı kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
+  // Create new employee (admin/coach/supervisor with branch scoping)
+  app.post('/api/employees', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId } = user;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'employees', 'create')) {
+        return res.status(403).json({ message: "Çalışan ekleme yetkiniz yok" });
+      }
+
+      // Validate employee data
+      const parsed = insertUserSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Geçersiz çalışan verisi", errors: parsed.error.errors });
+      }
+
+      // Branch scoping for supervisor: force branchId to their own branch
+      let employeeData = parsed.data;
+      if (role === 'supervisor') {
+        if (!userBranchId) {
+          return res.status(400).json({ message: "Supervisor branchId eksik" });
+        }
+        // Override branchId to supervisor's branch (prevent creating employee in other branches)
+        employeeData = { ...parsed.data, branchId: userBranchId };
+      }
+
+      // Create employee (storage layer handles password hashing if provided)
+      const newEmployee = await storage.createUser(employeeData);
+      
+      // Sanitize: Remove hashedPassword from response
+      const { hashedPassword, ...sanitizedEmployee } = newEmployee;
+      res.status(201).json(sanitizedEmployee);
+    } catch (error) {
+      console.error("Error creating employee:", error);
+      res.status(500).json({ message: "Çalışan eklenirken hata oluştu" });
+    }
+  });
+
+  // Delete employee (admin/coach only - no branch restriction for coach)
+  app.delete('/api/employees/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role } = user;
+      const employeeId = req.params.id;
+
+      // Permission check (admin/coach only)
+      if (!hasPermission(role as UserRoleType, 'employees', 'delete')) {
+        return res.status(403).json({ message: "Çalışan silme yetkiniz yok" });
+      }
+
+      // Check if employee exists
+      const employee = await storage.getUserById(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      // Coach can delete employees from any branch (no branch restriction)
+      // Admin can delete anyone
+
+      // Delete employee (cascades to warnings via foreign key)
+      await storage.deleteUser(employeeId);
+      res.json({ message: "Çalışan silindi", deletedId: employeeId });
+    } catch (error) {
+      console.error("Error deleting employee:", error);
+      res.status(500).json({ message: "Çalışan silinirken hata oluştu" });
+    }
+  });
+
+  // Create employee warning (with permissions and branch filtering)
+  app.post('/api/employees/:id/warnings', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId, id: issuerId } = user;
+      const employeeId = req.params.id;
+
+      // Permission check (approve = can issue warnings)
+      if (!hasPermission(role as UserRoleType, 'employees', 'approve')) {
+        return res.status(403).json({ message: "Uyarı verme yetkiniz yok" });
+      }
+
+      // Get employee
+      const employee = await storage.getUserById(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      // Branch access check for supervisor
+      if (role === 'supervisor' && employee.branchId !== userBranchId) {
+        return res.status(403).json({ message: "Bu çalışana uyarı verme yetkiniz yok" });
+      }
+
+      // Validate warning data
+      const parsed = insertEmployeeWarningSchema.safeParse({
+        ...req.body,
+        userId: employeeId,
+        issuedBy: issuerId, // Force issuer to authenticated user
+      });
+
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Geçersiz uyarı verisi", errors: parsed.error.errors });
+      }
+
+      const warning = await storage.createEmployeeWarning(parsed.data);
+      res.status(201).json(warning);
+    } catch (error) {
+      console.error("Error creating employee warning:", error);
+      res.status(500).json({ message: "Uyarı kaydedilirken hata oluştu" });
     }
   });
 
