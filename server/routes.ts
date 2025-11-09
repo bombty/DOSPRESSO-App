@@ -1144,30 +1144,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { default: bcrypt } = await import('bcrypt');
       const hashedPassword = await bcrypt.hash("0000", 10);
 
-      // Create branches
-      const branches = await Promise.all([
-        storage.createBranch({
-          name: "Kadıköy Şubesi",
-          address: "Kadıköy Moda Caddesi No:45",
-          city: "İstanbul",
-          phoneNumber: "0216 xxx xx 01",
-          managerName: "Ahmet Yılmaz",
-        }),
-        storage.createBranch({
-          name: "Beşiktaş Şubesi",
-          address: "Beşiktaş Barbaros Bulvarı No:102",
-          city: "İstanbul",
-          phoneNumber: "0212 xxx xx 02",
-          managerName: "Mehmet Kaya",
-        }),
-        storage.createBranch({
-          name: "Üsküdar Şubesi",
-          address: "Üsküdar Çarşı Caddesi No:23",
-          city: "İstanbul",
-          phoneNumber: "0216 xxx xx 03",
-          managerName: "Ayşe Demir",
-        }),
-      ]);
+      // Create 18 real DOSPRESSO branches
+      const branchData = [
+        // ANTALYA (5 branches)
+        { name: "Antalya Işıklar", address: "Işıklar Caddesi, 07100 Muratpaşa", city: "Antalya", phoneNumber: "0242 xxx 10 01", managerName: "Ahmet Yılmaz" },
+        { name: "Antalya Mallof", address: "Mall of Antalya AVM, Lara", city: "Antalya", phoneNumber: "0242 xxx 10 02", managerName: "Elif Kaya" },
+        { name: "Antalya Markantalya", address: "MarkAntalya AVM, Kepez", city: "Antalya", phoneNumber: "0242 xxx 10 03", managerName: "Mehmet Demir" },
+        { name: "Antalya Lara", address: "Lara Bulvarı, Muratpaşa", city: "Antalya", phoneNumber: "0242 xxx 10 04", managerName: "Zeynep Şahin" },
+        { name: "Antalya Beachpark", address: "Beach Park AVM, Konyaaltı", city: "Antalya", phoneNumber: "0242 xxx 10 05", managerName: "Can Arslan" },
+        // GAZIANTEP (3 branches)
+        { name: "Gaziantep İbrahimli", address: "İbrahimli Mahallesi, Şehitkamil", city: "Gaziantep", phoneNumber: "0342 xxx 20 01", managerName: "Fatma Yıldız" },
+        { name: "Gaziantep İbnisina", address: "İbnisina Hastanesi Yanı, Şahinbey", city: "Gaziantep", phoneNumber: "0342 xxx 20 02", managerName: "Burak Öztürk" },
+        { name: "Gaziantep Üniversite", address: "Üniversite Caddesi, Şehitkamil", city: "Gaziantep", phoneNumber: "0342 xxx 20 03", managerName: "Selin Aydın" },
+        // KONYA (2 branches)
+        { name: "Konya Meram", address: "Meram Yeni Yol Caddesi", city: "Konya", phoneNumber: "0332 xxx 30 01", managerName: "Emre Çelik" },
+        { name: "Konya Bosna", address: "Bosna Hersek Mahallesi, Selçuklu", city: "Konya", phoneNumber: "0332 xxx 30 02", managerName: "Ayşe Kurt" },
+        // SAMSUN (2 branches)
+        { name: "Samsun Marina", address: "Piazza AVM, İlkadım", city: "Samsun", phoneNumber: "0362 xxx 40 01", managerName: "Deniz Koç" },
+        { name: "Samsun Atakum", address: "Atakum Bulvarı, Atakum", city: "Samsun", phoneNumber: "0362 xxx 40 02", managerName: "Ali Erdoğan" },
+        // OTHER
+        { name: "Batman", address: "Cumhuriyet Caddesi, Merkez", city: "Batman", phoneNumber: "0488 xxx 50 01", managerName: "Mustafa Yaman" },
+        { name: "Düzce", address: "Kadir Has Caddesi, Merkez", city: "Düzce", phoneNumber: "0380 xxx 60 01", managerName: "Sevgi Polat" },
+        { name: "Siirt", address: "Atatürk Caddesi, Merkez", city: "Siirt", phoneNumber: "0484 xxx 70 01", managerName: "Hakan Acar" },
+        { name: "Kilis", address: "Meydan Caddesi, Merkez", city: "Kilis", phoneNumber: "0348 xxx 80 01", managerName: "Gül Yavuz" },
+        { name: "Şanlıurfa", address: "Balıklıgöl Yanı, Haliliye", city: "Şanlıurfa", phoneNumber: "0414 xxx 90 01", managerName: "Murat Kaplan" },
+        { name: "Nizip", address: "Cumhuriyet Meydanı, Nizip", city: "Gaziantep", phoneNumber: "0342 xxx 91 01", managerName: "Esra Taş" },
+      ];
+
+      const branches = await Promise.all(branchData.map(b => storage.createBranch(b)));
 
       // Create HQ users
       const hqUserData = [
@@ -1184,31 +1188,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hqUserData.map(u => storage.createUser({ ...u, hashedPassword, branchId: null }))
       );
 
-      // Create branch users
-      const branchRoles = ["supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer"];
-      const firstNames = ["Ali", "Fatma", "Mehmet", "Ayşe", "Mustafa"];
-      const branchLastNames = ["Yılmaz", "Demir", "Şahin"];
+      // Create branch users (1 supervisor, 2-3 baristas, 1-2 stajyer per branch)
+      const supervisorNames = ["Ahmet", "Mehmet", "Ali", "Mustafa", "Hasan", "Ayşe", "Fatma", "Elif", "Zeynep", "Selin", "Can", "Emre", "Burak", "Murat", "Deniz", "Esra", "Gül", "Sevgi", "Hakan"];
+      const baristaNames = ["Furkan", "Cem", "Ömer", "Yusuf", "İbrahim", "Merve", "Simge", "Dilara", "Beyza", "Ecrin", "Berkay", "Kaan", "Enes", "Oğuz", "Serkan", "Gizem", "Damla", "Ebru", "Tuba", "İrem", "Bora", "Barış", "Taner", "Koray"];
+      const stajyerNames = ["Kerem", "Arda", "Doruk", "Emir", "Berat", "Defne", "Ela", "Mira", "Zehra", "Nehir", "Kuzey", "Atlas", "Çınar", "Alp", "Ege", "Azra", "Lara", "Derin", "Aslı", "Pelin"];
+      const lastNames = ["Yılmaz", "Demir", "Şahin", "Kaya", "Arslan", "Yıldız", "Öztürk", "Aydın", "Çelik", "Kurt", "Koç", "Erdoğan", "Yaman", "Polat", "Acar", "Yavuz", "Kaplan", "Taş"];
 
       const branchUserPromises: Promise<any>[] = [];
       branches.forEach((branch, branchIndex) => {
-        const branchPrefix = branch.name.split(" ")[0].toLowerCase();
-        branchRoles.forEach((role, roleIndex) => {
+        const branchPrefix = branch.name.toLowerCase().replace(/\s+/g, '-');
+        
+        // 1 Supervisor
+        branchUserPromises.push(
+          storage.createUser({
+            username: `${branchPrefix}-supervisor`,
+            hashedPassword,
+            email: `${branchPrefix}.supervisor@dospresso.com`,
+            firstName: supervisorNames[branchIndex % supervisorNames.length],
+            lastName: lastNames[branchIndex % lastNames.length],
+            role: "supervisor",
+            branchId: branch.id,
+            hireDate: new Date(2024, 0, 1 + branchIndex).toISOString().split('T')[0],
+            probationEndDate: null,
+          })
+        );
+
+        // 2-3 Baristas (alternating between 2 and 3)
+        const baristaCount = branchIndex % 2 === 0 ? 3 : 2;
+        for (let i = 0; i < baristaCount; i++) {
           branchUserPromises.push(
             storage.createUser({
-              username: `${branchPrefix}-${role}`,
+              username: `${branchPrefix}-barista${i + 1}`,
               hashedPassword,
-              email: `${branchPrefix}.${role}@dospresso.com`,
-              firstName: firstNames[roleIndex],
-              lastName: branchLastNames[branchIndex],
-              role,
+              email: `${branchPrefix}.barista${i + 1}@dospresso.com`,
+              firstName: baristaNames[(branchIndex + i) % baristaNames.length],
+              lastName: lastNames[branchIndex % lastNames.length],
+              role: "barista",
               branchId: branch.id,
-              hireDate: new Date(2024, 0, 1 + branchIndex * 10 + roleIndex).toISOString().split('T')[0],
-              probationEndDate: (role === "stajyer" || role === "bar_buddy")
-                ? new Date(2025, 2, 1).toISOString().split('T')[0]
-                : null,
+              hireDate: new Date(2024, 2, 1 + branchIndex + i * 5).toISOString().split('T')[0],
+              probationEndDate: null,
             })
           );
-        });
+        }
+
+        // 1-2 Stajyer (alternating between 1 and 2)
+        const stajyerCount = branchIndex % 3 === 0 ? 2 : 1;
+        for (let i = 0; i < stajyerCount; i++) {
+          branchUserPromises.push(
+            storage.createUser({
+              username: `${branchPrefix}-stajyer${i + 1}`,
+              hashedPassword,
+              email: `${branchPrefix}.stajyer${i + 1}@dospresso.com`,
+              firstName: stajyerNames[(branchIndex + i) % stajyerNames.length],
+              lastName: lastNames[branchIndex % lastNames.length],
+              role: "stajyer",
+              branchId: branch.id,
+              hireDate: new Date(2024, 10, 1 + branchIndex + i * 3).toISOString().split('T')[0],
+              probationEndDate: new Date(2025, 4, 1).toISOString().split('T')[0], // May 2025
+            })
+          );
+        }
       });
 
       const branchUsers = await Promise.all(branchUserPromises);
