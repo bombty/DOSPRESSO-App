@@ -107,9 +107,24 @@ export default function IKPage() {
     queryKey: ["/api/branches"],
   });
 
-  // Fetch employees
+  // Fetch employees (with branchId filter for admin/coach)
   const { data: employees = [], isLoading } = useQuery<User[]>({
-    queryKey: ["/api/employees"],
+    queryKey: ["/api/employees", branchFilter],
+    queryFn: async () => {
+      const token = localStorage.getItem('dospresso_token');
+      const headers: HeadersInit = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const url = branchFilter !== "all" 
+        ? `/api/employees?branchId=${branchFilter}`
+        : `/api/employees`;
+      
+      const res = await fetch(url, { headers });
+      if (!res.ok) throw new Error(res.statusText);
+      return res.json();
+    },
     enabled: !!user,
   });
 
