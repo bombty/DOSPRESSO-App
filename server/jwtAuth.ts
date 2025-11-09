@@ -17,6 +17,7 @@ export interface JWTPayload {
   userId: string;
   username: string;
   role: string;
+  branchId: number | null;
 }
 
 export function generateToken(payload: JWTPayload): string {
@@ -62,6 +63,7 @@ export async function setupAuth(app: Express) {
         userId: user.id,
         username: user.username,
         role: user.role,
+        branchId: user.branchId,
       });
 
       return res.json({ 
@@ -107,6 +109,7 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
         id: payload.userId,
         username: payload.username,
         role: payload.role,
+        branchId: payload.branchId,
       };
       
       next();

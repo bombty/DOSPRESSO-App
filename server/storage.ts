@@ -41,6 +41,8 @@ import type {
   InsertUserQuizAttempt,
   EmployeeWarning,
   InsertEmployeeWarning,
+  Message,
+  InsertMessage,
 } from "@shared/schema";
 import {
   users,
@@ -63,6 +65,9 @@ import {
   userTrainingProgress,
   userQuizAttempts,
   employeeWarnings,
+  messages,
+  messageReads,
+  UserRole,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -179,6 +184,13 @@ export interface IStorage {
   getUserQuizAttempts(userId: string, quizId?: number): Promise<UserQuizAttempt[]>;
   createQuizAttempt(attempt: InsertUserQuizAttempt): Promise<UserQuizAttempt>;
   approveQuizAttempt(id: number, approverId: string, status: string, feedback?: string): Promise<UserQuizAttempt | undefined>;
+
+  // Message operations
+  getMessages(userId: string, role: string, branchId: number | null): Promise<Message[]>;
+  getMessage(id: number): Promise<Message | undefined>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  markMessageAsRead(id: number, userId: string): Promise<void>;
+  getUnreadCount(userId: string, role: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -776,6 +788,77 @@ export class DatabaseStorage implements IStorage {
   async createEmployeeWarning(warning: InsertEmployeeWarning): Promise<EmployeeWarning> {
     const [newWarning] = await db.insert(employeeWarnings).values(warning).returning();
     return newWarning;
+  }
+
+  // Message operations
+  async getMessages(userId: string, role: string, branchId: number | null): Promise<Message[]> {
+    // Get messages where:
+    // 1. User is direct recipient (recipientId matches)
+    // 2. User's role matches recipientRole (role-based broadcast)
+    // LEFT JOIN with messageReads to check if user has read the message
+    const roleMessages = await db
+      .select({
+        ...messages,
+        isReadByUser: sql<boolean>`${messageReads.id} IS NOT NULL`.as('is_read_by_user'),
+      })
+      .from(messages)
+      .leftJoin(
+        messageReads,
+        and(
+          eq(messageReads.messageId, messages.id),
+          eq(messageReads.userId, userId)
+        )
+      )
+      .where(
+        sql`${messages.recipientId} = ${userId} OR ${messages.recipientRole} = ${role}`
+      )
+      .orderBy(desc(messages.createdAt)) as any;
+
+    // Map isReadByUser to isRead for compatibility
+    return roleMessages.map((msg: any) => ({
+      ...msg,
+      isRead: msg.isReadByUser || false,
+    }));
+  }
+
+  async getMessage(id: number): Promise<Message | undefined> {
+    const [message] = await db.select().from(messages).where(eq(messages.id, id));
+    return message;
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db.insert(messages).values(message).returning();
+    return newMessage;
+  }
+
+  async markMessageAsRead(id: number, userId: string): Promise<void> {
+    // Insert into messageReads junction table (supports broadcast messages)
+    // Uses ON CONFLICT DO NOTHING to prevent duplicate reads
+    await db
+      .insert(messageReads)
+      .values({ messageId: id, userId })
+      .onConflictDoNothing();
+  }
+
+  async getUnreadCount(userId: string, role: string): Promise<number> {
+    // Count messages where user is recipient AND hasn't read yet (no messageReads entry)
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .leftJoin(
+        messageReads,
+        and(
+          eq(messageReads.messageId, messages.id),
+          eq(messageReads.userId, userId)
+        )
+      )
+      .where(
+        and(
+          sql`${messages.recipientId} = ${userId} OR ${messages.recipientRole} = ${role}`,
+          sql`${messageReads.id} IS NULL` // Not read yet
+        )
+      );
+    return Number(result[0]?.count || 0);
   }
 }
 

@@ -1487,6 +1487,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Message Routes
+  // Get user's inbox messages
+  app.get('/api/messages', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { id: userId, role, branchId } = user;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'messages', 'view')) {
+        return res.status(403).json({ message: "Mesajlara erişim yetkiniz yok" });
+      }
+
+      const inbox = await storage.getMessages(userId, role, branchId);
+      res.json(inbox);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Mesajlar yüklenirken hata oluştu" });
+    }
+  });
+
+  // Get unread message count
+  app.get('/api/messages/unread-count', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { id: userId, role } = user;
+
+      const count = await storage.getUnreadCount(userId, role);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ message: "Okunmamış mesaj sayısı alınamadı" });
+    }
+  });
+
+  // Send a message
+  app.post('/api/messages', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { id: senderId, role, branchId } = user;
+
+      // Permission check
+      if (!hasPermission(role as UserRoleType, 'messages', 'create')) {
+        return res.status(403).json({ message: "Mesaj gönderme yetkiniz yok" });
+      }
+
+      const { recipientId, recipientRole, subject, body, type } = req.body;
+
+      // Validation
+      if (!subject || !body || !type) {
+        return res.status(400).json({ message: "Konu, içerik ve tip gerekli" });
+      }
+
+      if (!recipientId && !recipientRole) {
+        return res.status(400).json({ message: "Alıcı ID veya rol belirtilmeli" });
+      }
+
+      // Enforce XOR: exactly one of recipientId or recipientRole must be set
+      if (recipientId && recipientRole) {
+        return res.status(400).json({ message: "recipientId ve recipientRole birlikte kullanılamaz" });
+      }
+
+      // Authorization check for Supervisor
+      if (role === 'supervisor') {
+        // Supervisor can only message their own branch staff + HQ roles
+        if (recipientId) {
+          const recipient = await storage.getUserById(recipientId);
+          if (!recipient) {
+            return res.status(404).json({ message: "Alıcı bulunamadı" });
+          }
+
+          // Check if recipient is in same branch OR is HQ role
+          const isHQRole = !recipient.branchId;
+          const isSameBranch = recipient.branchId === branchId;
+
+          if (!isHQRole && !isSameBranch) {
+            return res.status(403).json({ message: "Bu kullanıcıya mesaj gönderme yetkiniz yok" });
+          }
+        }
+
+        if (recipientRole) {
+          // Supervisor can only broadcast to HQ roles
+          const hqRoles = ['admin', 'coach', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+          if (!hqRoles.includes(recipientRole)) {
+            return res.status(403).json({ message: "Bu role mesaj gönderme yetkiniz yok" });
+          }
+        }
+      }
+
+      const newMessage = await storage.createMessage({
+        senderId,
+        recipientId: recipientId || null,
+        recipientRole: recipientRole || null,
+        subject,
+        body,
+        type,
+        isRead: false,
+      });
+
+      res.status(201).json(newMessage);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Mesaj gönderilirken hata oluştu" });
+    }
+  });
+
+  // Mark message as read
+  app.patch('/api/messages/:id/read', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const messageId = parseInt(req.params.id);
+
+      // Verify message exists and user is recipient
+      const message = await storage.getMessage(messageId);
+      if (!message) {
+        return res.status(404).json({ message: "Mesaj bulunamadı" });
+      }
+
+      if (message.recipientId !== user.id) {
+        return res.status(403).json({ message: "Bu mesajı okuma yetkiniz yok" });
+      }
+
+      await storage.markMessageAsRead(messageId, user.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking message as read:", error);
+      res.status(500).json({ message: "Mesaj güncellenirken hata oluştu" });
+    }
+  });
+
   startReminderSystem();
 
   const httpServer = createServer(app);

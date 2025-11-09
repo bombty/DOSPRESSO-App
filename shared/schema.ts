@@ -80,7 +80,8 @@ export type PermissionModule =
   | 'users'
   | 'employees'
   | 'training'
-  | 'schedules';
+  | 'schedules'
+  | 'messages';
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -99,6 +100,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: ['view', 'create', 'edit', 'delete', 'approve'],
     training: ['view', 'create', 'edit', 'delete', 'approve'],
     schedules: ['view', 'create', 'edit', 'delete'],
+    messages: ['view', 'create', 'delete'],
   },
   // HQ ROLES
   muhasebe: {
@@ -115,6 +117,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: ['view'],
     training: ['view'],
     schedules: ['view'],
+    messages: ['view', 'create'],
   },
   satinalma: {
     dashboard: ['view'],
@@ -130,6 +133,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: ['view'],
     training: ['view'],
     schedules: ['view'],
+    messages: ['view', 'create'],
   },
   coach: {
     dashboard: ['view'],
@@ -145,6 +149,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: ['view', 'create', 'edit', 'delete', 'approve'],
     training: ['view', 'create', 'edit', 'delete', 'approve'],
     schedules: ['view'],
+    messages: ['view', 'create'],
   },
   teknik: {
     dashboard: ['view'],
@@ -160,6 +165,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: ['view'],
     training: ['view'],
     schedules: ['view'],
+    messages: ['view', 'create'],
   },
   destek: {
     dashboard: ['view'],
@@ -175,6 +181,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: ['view'],
     training: ['view'],
     schedules: ['view'],
+    messages: ['view', 'create'],
   },
   fabrika: {
     dashboard: ['view'],
@@ -190,6 +197,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: ['view'],
     training: ['view'],
     schedules: ['view'],
+    messages: ['view', 'create'],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -205,6 +213,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: ['view'],
     training: [],
     schedules: [],
+    messages: ['view', 'create'],
   },
   // BRANCH ROLES
   supervisor: {
@@ -221,6 +230,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: ['view', 'create', 'edit', 'approve'],
     training: ['view', 'approve'],
     schedules: ['view', 'create', 'edit'],
+    messages: ['view', 'create'],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -236,6 +246,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: [],
     training: ['view'],
     schedules: ['view', 'edit'],
+    messages: ['view', 'create'],
   },
   barista: {
     dashboard: ['view'],
@@ -251,6 +262,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: [],
     training: ['view'],
     schedules: ['view'],
+    messages: ['view', 'create'],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -266,6 +278,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: [],
     training: ['view'],
     schedules: ['view'],
+    messages: ['view', 'create'],
   },
   stajyer: {
     dashboard: ['view'],
@@ -281,6 +294,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: [],
     training: ['view'],
     schedules: ['view'],
+    messages: ['view', 'create'],
   },
   yatirimci: {
     dashboard: ['view'],
@@ -296,6 +310,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     employees: [],
     training: [],
     schedules: [],
+    messages: ['view'],
   },
 };
 
@@ -911,6 +926,50 @@ export type InsertUserTrainingProgress = z.infer<typeof insertUserTrainingProgre
 export type UserTrainingProgress = typeof userTrainingProgress.$inferSelect;
 export type InsertUserQuizAttempt = z.infer<typeof insertUserQuizAttemptSchema>;
 export type UserQuizAttempt = typeof userQuizAttempts.$inferSelect;
+
+// Messages table - Inter-user and system messaging
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  recipientId: varchar("recipient_id").references(() => users.id, { onDelete: "cascade" }), // null for role-based broadcast
+  recipientRole: varchar("recipient_role", { length: 50 }), // null for specific user messages
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // task_assignment, hq_message, branch_message, notification
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // Index for fast inbox queries
+  recipientIdx: index("messages_recipient_idx").on(table.recipientId),
+  recipientRoleIdx: index("messages_recipient_role_idx").on(table.recipientRole),
+  senderIdx: index("messages_sender_idx").on(table.senderId),
+}));
+
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = typeof messages.$inferSelect;
+
+// Message Reads - Junction table for tracking read status per user (supports broadcasts)
+export const messageReads = pgTable("message_reads", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  readAt: timestamp("read_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueUserMessage: uniqueIndex("message_reads_user_message_idx").on(table.messageId, table.userId),
+}));
+
+export const insertMessageReadSchema = createInsertSchema(messageReads).omit({
+  id: true,
+  readAt: true,
+});
+
+export type InsertMessageRead = z.infer<typeof insertMessageReadSchema>;
+export type MessageRead = typeof messageReads.$inferSelect;
 
 // Relations (defined after all tables to avoid temporal dead zone)
 export const branchesRelations = relations(branches, ({ many }) => ({
