@@ -23,6 +23,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient } from "@/lib/queryClient";
 import dospressoLogo from "@assets/IMG_5044_1762707935781.png";
 
 const menuItems = [
@@ -104,7 +105,16 @@ export function AppSidebar() {
   };
 
   const handleLogout = () => {
+    // Remove token from localStorage
     localStorage.removeItem('dospresso_token');
+    
+    // Dispatch custom event to notify useAuth hook
+    window.dispatchEvent(new Event('tokenChanged'));
+    
+    // Clear all cached queries
+    queryClient.clear();
+    
+    // Navigate to login page
     navigate('/login');
   };
 
