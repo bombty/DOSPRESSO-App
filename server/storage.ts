@@ -10,6 +10,8 @@ import type {
   InsertChecklist,
   ChecklistTask,
   InsertChecklistTask,
+  Equipment,
+  InsertEquipment,
   EquipmentFault,
   InsertEquipmentFault,
   KnowledgeBaseArticle,
@@ -43,6 +45,7 @@ import {
   tasks,
   checklists,
   checklistTasks,
+  equipment,
   equipmentFaults,
   knowledgeBaseArticles,
   knowledgeBaseEmbeddings,
@@ -96,6 +99,12 @@ export interface IStorage {
   // Checklist Task operations
   getChecklistTasks(checklistId?: number): Promise<ChecklistTask[]>;
   createChecklistTask(task: InsertChecklistTask): Promise<ChecklistTask>;
+  
+  // Equipment operations
+  getEquipment(branchId?: number): Promise<Equipment[]>;
+  getEquipmentById(id: number): Promise<Equipment | undefined>;
+  createEquipment(equipment: InsertEquipment): Promise<Equipment>;
+  updateEquipment(id: number, updates: Partial<InsertEquipment>): Promise<Equipment | undefined>;
   
   // Equipment Fault operations
   getFaults(branchId?: number): Promise<EquipmentFault[]>;
@@ -325,6 +334,33 @@ export class DatabaseStorage implements IStorage {
   async createChecklistTask(task: InsertChecklistTask): Promise<ChecklistTask> {
     const [newTask] = await db.insert(checklistTasks).values(task).returning();
     return newTask;
+  }
+
+  // Equipment operations
+  async getEquipment(branchId?: number): Promise<Equipment[]> {
+    if (branchId) {
+      return db.select().from(equipment).where(eq(equipment.branchId, branchId)).orderBy(equipment.equipmentType);
+    }
+    return db.select().from(equipment).orderBy(equipment.equipmentType);
+  }
+
+  async getEquipmentById(id: number): Promise<Equipment | undefined> {
+    const [item] = await db.select().from(equipment).where(eq(equipment.id, id));
+    return item;
+  }
+
+  async createEquipment(equipmentData: InsertEquipment): Promise<Equipment> {
+    const [newEquipment] = await db.insert(equipment).values(equipmentData).returning();
+    return newEquipment;
+  }
+
+  async updateEquipment(id: number, updates: Partial<InsertEquipment>): Promise<Equipment | undefined> {
+    const [updated] = await db
+      .update(equipment)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(equipment.id, id))
+      .returning();
+    return updated;
   }
 
   // Equipment Fault operations

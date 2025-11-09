@@ -455,6 +455,122 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 
+// ========================================
+// EQUIPMENT MANAGEMENT TABLES
+// ========================================
+
+// Equipment Types (8 types)
+export const EQUIPMENT_TYPES = {
+  ESPRESSO: "espresso",          // Thermoplan Espresso Machine
+  KREMA: "krema",                // Krema Machine
+  MIXER: "mixer",                // Artemis Mixer
+  BLENDER: "blender",            // Blendtech Blender
+  CASH: "cash",                  // Cash System
+  KIOSK: "kiosk",                // Kiosk System
+  TEA: "tea",                    // Tea Machine
+  ICE: "ice",                    // Manitowock Ice Machine
+} as const;
+
+export type EquipmentType = typeof EQUIPMENT_TYPES[keyof typeof EQUIPMENT_TYPES];
+
+// Equipment static metadata (Turkish names, maintenance intervals, routing)
+export const EQUIPMENT_METADATA: Record<EquipmentType, {
+  nameTr: string;
+  category: string;
+  maintenanceInterval: number; // days
+  maintenanceResponsible: 'branch' | 'hq';
+  faultProtocol: 'branch' | 'hq_teknik';
+}> = {
+  espresso: {
+    nameTr: "Thermoplan Espresso Makinesi",
+    category: "kahve",
+    maintenanceInterval: 30, // Monthly
+    maintenanceResponsible: "branch",
+    faultProtocol: "hq_teknik", // HQ technical team handles espresso machine faults
+  },
+  krema: {
+    nameTr: "Krema Makinesi",
+    category: "kahve",
+    maintenanceInterval: 30,
+    maintenanceResponsible: "branch",
+    faultProtocol: "hq_teknik",
+  },
+  mixer: {
+    nameTr: "Artemis Karıştırıcı",
+    category: "mutfak",
+    maintenanceInterval: 90, // Quarterly
+    maintenanceResponsible: "branch",
+    faultProtocol: "branch", // Branch can handle mixer issues
+  },
+  blender: {
+    nameTr: "Blendtech Blender",
+    category: "mutfak",
+    maintenanceInterval: 60, // Bi-monthly
+    maintenanceResponsible: "branch",
+    faultProtocol: "branch",
+  },
+  cash: {
+    nameTr: "Kasa Sistemi",
+    category: "sistem",
+    maintenanceInterval: 180, // Semi-annual
+    maintenanceResponsible: "hq",
+    faultProtocol: "hq_teknik",
+  },
+  kiosk: {
+    nameTr: "Kiosk Sistemi",
+    category: "sistem",
+    maintenanceInterval: 90,
+    maintenanceResponsible: "hq",
+    faultProtocol: "hq_teknik",
+  },
+  tea: {
+    nameTr: "Çay Makinesi",
+    category: "mutfak",
+    maintenanceInterval: 90,
+    maintenanceResponsible: "branch",
+    faultProtocol: "branch",
+  },
+  ice: {
+    nameTr: "Manitowock Buz Makinesi",
+    category: "mutfak",
+    maintenanceInterval: 60,
+    maintenanceResponsible: "branch",
+    faultProtocol: "branch",
+  },
+};
+
+// Equipment table
+export const equipment = pgTable("equipment", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  equipmentType: varchar("equipment_type", { length: 50 }).notNull(), // espresso, krema, mixer, etc.
+  serialNumber: varchar("serial_number", { length: 255 }),
+  purchaseDate: date("purchase_date"),
+  warrantyEndDate: date("warranty_end_date"),
+  // Routing: Who maintains / handles faults
+  maintenanceResponsible: varchar("maintenance_responsible", { length: 20 }).notNull().default("branch"), // 'branch' | 'hq'
+  faultProtocol: varchar("fault_protocol", { length: 20 }).notNull().default("branch"), // 'branch' | 'hq_teknik'
+  // Maintenance tracking
+  lastMaintenanceDate: date("last_maintenance_date"),
+  nextMaintenanceDate: date("next_maintenance_date"),
+  maintenanceIntervalDays: integer("maintenance_interval_days").default(30),
+  // QR code for quick access
+  qrCodeUrl: text("qr_code_url"),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
+export type Equipment = typeof equipment.$inferSelect;
+
 // Equipment Faults table
 export const equipmentFaults = pgTable("equipment_faults", {
   id: serial("id").primaryKey(),

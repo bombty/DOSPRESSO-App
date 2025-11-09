@@ -1096,6 +1096,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPublished: true,
       });
 
+      // Create equipment for each branch (8 types × 3 branches = 24 equipment)
+      const { EQUIPMENT_TYPES, EQUIPMENT_METADATA } = await import('@shared/schema');
+      const equipmentTypes = Object.values(EQUIPMENT_TYPES);
+      const equipmentPromises: Promise<any>[] = [];
+
+      // Purchase date: 1 year ago
+      const purchaseDateMs = Date.now() - 365 * 24 * 60 * 60 * 1000;
+      const purchaseDate = new Date(purchaseDateMs).toISOString().split('T')[0];
+      // Warranty: 2 years from purchase
+      const warrantyEndDate = new Date(purchaseDateMs + 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      branches.forEach((branch, branchIndex) => {
+        equipmentTypes.forEach((type, typeIndex) => {
+          const metadata = EQUIPMENT_METADATA[type];
+          
+          // Calculate next maintenance date based on purchase date + interval
+          const nextMaintenanceDate = new Date(purchaseDateMs + metadata.maintenanceInterval * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0];
+
+          equipmentPromises.push(
+            storage.createEquipment({
+              branchId: branch.id,
+              equipmentType: type,
+              serialNumber: `${type.toUpperCase()}-${branchIndex + 1}-${typeIndex + 1}-${Date.now()}`,
+              purchaseDate,
+              warrantyEndDate,
+              maintenanceResponsible: metadata.maintenanceResponsible,
+              faultProtocol: metadata.faultProtocol,
+              maintenanceIntervalDays: metadata.maintenanceInterval,
+              nextMaintenanceDate,
+              notes: `${metadata.nameTr} - ${branch.name}`,
+              isActive: true,
+            })
+          );
+        });
+      });
+
+      const equipmentItems = await Promise.all(equipmentPromises);
+
       res.json({
         success: true,
         message: "Demo data seeded successfully",
@@ -1104,6 +1144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hqUsers: hqUsers.length,
           branchUsers: branchUsers.length,
           checklists: checklists.length,
+          equipment: equipmentItems.length,
         }
       });
 
