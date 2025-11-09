@@ -24,75 +24,103 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
+import { canAccessModule, type PermissionModule } from "@shared/schema";
 import dospressoLogo from "@assets/IMG_5044_1762707935781.png";
 
-const menuItems = [
+const menuItems: Array<{
+  title: string;
+  titleTr: string;
+  url: string;
+  icon: any;
+  module: PermissionModule;
+}> = [
   {
     title: "Dashboard",
     titleTr: "Gösterge Paneli",
     url: "/",
     icon: LayoutDashboard,
+    module: "dashboard",
   },
   {
     title: "Şubeler",
     titleTr: "Şubeler",
     url: "/subeler",
     icon: Building2,
+    module: "branches",
   },
   {
     title: "Görevler",
     titleTr: "Görevler",
     url: "/gorevler",
     icon: CheckSquare,
+    module: "tasks",
   },
   {
     title: "Checklistler",
     titleTr: "Checklistler",
     url: "/checklistler",
     icon: ClipboardList,
+    module: "checklists",
   },
   {
     title: "Ekipman Arızaları",
     titleTr: "Ekipman Arızaları",
     url: "/ekipman-arizalari",
     icon: Wrench,
+    module: "equipment_faults",
   },
   {
     title: "Bilgi Bankası",
     titleTr: "Bilgi Bankası",
     url: "/bilgi-bankasi",
     icon: BookOpen,
+    module: "knowledge_base",
   },
   {
     title: "AI Asistan",
     titleTr: "AI Asistan",
     url: "/ai-asistan",
     icon: Bot,
+    module: "ai_assistant",
   },
   {
     title: "Performans",
     titleTr: "Performans",
     url: "/performans",
     icon: BarChart3,
+    module: "performance",
   },
 ];
 
 const roleLabels: Record<string, string> = {
+  // System
+  admin: "Admin",
+  // HQ
   muhasebe: "Muhasebe",
   satinalma: "Satınalma",
   coach: "Coach",
   teknik: "Teknik",
   destek: "Destek",
   fabrika: "Fabrika",
-  yatirimci: "Yatırımcı",
-  supervisor: "Supervisor",
-  barista: "Barista",
+  yatirimci_hq: "Yatırımcı (HQ)",
+  // Branch
   stajyer: "Stajyer",
+  bar_buddy: "Bar Buddy",
+  barista: "Barista",
+  supervisor_buddy: "Supervisor Buddy",
+  supervisor: "Supervisor",
+  yatirimci: "Yatırımcı",
 };
 
 export function AppSidebar() {
   const [location, navigate] = useLocation();
   const { user } = useAuth();
+
+  // Filter menu items based on user role permissions
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (!user?.role) return false;
+    return canAccessModule(user.role as any, item.module);
+  });
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -132,7 +160,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={location === item.url}>
                     <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>

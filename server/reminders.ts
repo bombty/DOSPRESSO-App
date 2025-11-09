@@ -1,7 +1,7 @@
 import { storage } from "./storage";
 import type { Task } from "@shared/schema";
 
-const REMINDER_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
+const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 let reminderInterval: NodeJS.Timeout | null = null;
 
@@ -56,7 +56,7 @@ export function startReminderSystem() {
     return;
   }
 
-  console.log("Hatırlatma sistemi başlatıldı - Her 10 dakikada bir kontrol edilecek");
+  console.log("Hatırlatma sistemi başlatıldı - Her 5 dakikada bir kontrol edilecek");
   
   checkAndSendReminders();
   

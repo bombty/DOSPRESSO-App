@@ -17,6 +17,27 @@ export interface FaultPhotoAnalysis {
   recommendations: string[];
 }
 
+export interface CleanlinessAnalysis {
+  isClean: boolean;
+  score: number; // 0-100
+  summary: string;
+  issues: string[]; // List of cleanliness issues found
+  recommendations: string[];
+}
+
+export interface DressCodeAnalysis {
+  isCompliant: boolean;
+  score: number; // 0-100
+  summary: string;
+  violations: string[]; // List of dress code violations
+  details: {
+    uniform: boolean;
+    hair: boolean;
+    facial: boolean; // beard/mustache
+    hygiene: boolean;
+  };
+}
+
 export interface RAGResponse {
   answer: string;
   sources: Array<{
@@ -152,6 +173,152 @@ JSON formatında yanıt verin:
       analysis: "AI analizi yapılamadı. Fotoğraf başarıyla yüklendi ancak otomatik değerlendirme mevcut değil. Lütfen bir teknisyen ile iletişime geçin.",
       severity: "medium",
       recommendations: ["Bir teknisyen ile iletişime geçin", "Ekipmanın kullanımını durdurun", "Arızayı detaylı olarak belgeleyin"],
+    };
+  }
+}
+
+// Analyze cleanliness from photo (optimized for batch processing)
+export async function analyzeCleanlinessPhoto(
+  photoUrl: string,
+  locationDescription: string = "cafe alanı"
+): Promise<CleanlinessAnalysis> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `DOSPRESSO kahve dükkanında ${locationDescription} temizlik fotoğrafını değerlendirin.
+
+Kritik temizlik standartları:
+- Yüzeyler temiz ve lekesiz olmalı
+- Çöp kutuları dolu olmamalı
+- Zemin temiz ve kuru olmalı
+- Ekipmanlar parlak ve bakımlı olmalı
+- Hiçbir yiyecek artığı görünmemeli
+
+JSON formatında yanıt verin:
+{
+  "isClean": true/false,
+  "score": 85,
+  "summary": "Kısa genel değerlendirme",
+  "issues": ["Sorun 1", "Sorun 2"],
+  "recommendations": ["Öneri 1", "Öneri 2"]
+}`,
+            },
+            {
+              type: "image_url",
+              image_url: { url: photoUrl, detail: "low" }, // Low detail for cost optimization
+            },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 500, // Limit tokens for cost
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Boş yanıt");
+
+    const result = JSON.parse(content);
+    return {
+      isClean: result.isClean ?? true,
+      score: Math.min(Math.max(result.score || 0, 0), 100),
+      summary: result.summary || "Analiz tamamlandı",
+      issues: result.issues || [],
+      recommendations: result.recommendations || [],
+    };
+  } catch (error) {
+    console.error("Temizlik analiz hatası:", error);
+    return {
+      isClean: false, // FALSE - requires manual review
+      score: 0,
+      summary: "⚠️ Otomatik analiz BAŞARISIZ - Supervisor incelemesi zorunlu",
+      issues: ["AI analizi yapılamadı - manuel kontrol gerekli"],
+      recommendations: ["Fotoğrafı supervisor ile inceleyin", "Tekrar fotoğraf çekin"],
+    };
+  }
+}
+
+// Analyze dress code compliance from employee photo
+export async function analyzeDressCodePhoto(
+  photoUrl: string,
+  employeeName: string = "Çalışan"
+): Promise<DressCodeAnalysis> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `DOSPRESSO çalışanı ${employeeName} için dress code kontrolü yapın.
+
+Dress code standartları:
+1. Üniforma: Temiz DOSPRESSO önlüğü/gömleği, lekesiz
+2. Saç: Toplı, temiz, doğal renk, varsa boneli
+3. Sakal: Düzgün kesilmiş veya tıraşlı, hijyenik
+4. Genel hijyen: Temiz, bakımlı görünüm
+
+JSON formatında yanıt verin:
+{
+  "isCompliant": true/false,
+  "score": 90,
+  "summary": "Genel değerlendirme",
+  "violations": ["İhlal 1", "İhlal 2"],
+  "details": {
+    "uniform": true,
+    "hair": true,
+    "facial": true,
+    "hygiene": true
+  }
+}`,
+            },
+            {
+              type: "image_url",
+              image_url: { url: photoUrl, detail: "low" }, // Low detail for cost
+            },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 400,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Boş yanıt");
+
+    const result = JSON.parse(content);
+    return {
+      isCompliant: result.isCompliant ?? true,
+      score: Math.min(Math.max(result.score || 0, 0), 100),
+      summary: result.summary || "Analiz tamamlandı",
+      violations: result.violations || [],
+      details: result.details || {
+        uniform: true,
+        hair: true,
+        facial: true,
+        hygiene: true,
+      },
+    };
+  } catch (error) {
+    console.error("Dress code analiz hatası:", error);
+    return {
+      isCompliant: false, // FALSE - requires manual review
+      score: 0,
+      summary: "⚠️ Otomatik analiz BAŞARISIZ - Supervisor incelemesi zorunlu",
+      violations: ["AI analizi yapılamadı - manuel kontrol gerekli"],
+      details: {
+        uniform: false,
+        hair: false,
+        facial: false,
+        hygiene: false,
+      },
     };
   }
 }

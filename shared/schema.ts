@@ -41,6 +41,8 @@ export const sessions = pgTable(
 
 // User roles enum
 export const UserRole = {
+  // System Role
+  ADMIN: "admin",
   // HQ Roles
   MUHASEBE: "muhasebe",
   SATINALMA: "satinalma", 
@@ -48,14 +50,237 @@ export const UserRole = {
   TEKNIK: "teknik",
   DESTEK: "destek",
   FABRIKA: "fabrika",
-  YATIRIMCI: "yatirimci",
-  // Branch Roles
-  SUPERVISOR: "supervisor",
-  BARISTA: "barista",
+  YATIRIMCI_HQ: "yatirimci_hq",
+  // Branch Roles (Hierarchical - lowest to highest)
   STAJYER: "stajyer",
+  BAR_BUDDY: "bar_buddy",
+  BARISTA: "barista",
+  SUPERVISOR_BUDDY: "supervisor_buddy",
+  SUPERVISOR: "supervisor",
+  YATIRIMCI: "yatirimci", // Branch investor (read-only)
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
+
+// Permission types
+export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve';
+export type PermissionModule = 
+  | 'dashboard'
+  | 'tasks'
+  | 'checklists'
+  | 'equipment_faults'
+  | 'knowledge_base'
+  | 'ai_assistant'
+  | 'performance'
+  | 'branches'
+  | 'users'
+  | 'training'
+  | 'schedules';
+
+// Permission Matrix: Define what each role can do
+export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
+  // ADMIN - Full access to everything
+  admin: {
+    dashboard: ['view'],
+    tasks: ['view', 'create', 'edit', 'delete', 'approve'],
+    checklists: ['view', 'create', 'edit', 'delete'],
+    equipment_faults: ['view', 'create', 'edit', 'delete', 'approve'],
+    knowledge_base: ['view', 'create', 'edit', 'delete', 'approve'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: ['view', 'create', 'edit', 'delete'],
+    users: ['view', 'create', 'edit', 'delete'],
+    training: ['view', 'create', 'edit', 'delete', 'approve'],
+    schedules: ['view', 'create', 'edit', 'delete'],
+  },
+  // HQ ROLES
+  muhasebe: {
+    dashboard: ['view'],
+    tasks: ['view'],
+    checklists: ['view'],
+    equipment_faults: ['view'],
+    knowledge_base: ['view'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: ['view'],
+    users: [],
+    training: ['view'],
+    schedules: ['view'],
+  },
+  satinalma: {
+    dashboard: ['view'],
+    tasks: ['view', 'create', 'edit'],
+    checklists: ['view'],
+    equipment_faults: ['view', 'edit', 'approve'],
+    knowledge_base: ['view'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: ['view'],
+    users: [],
+    training: ['view'],
+    schedules: ['view'],
+  },
+  coach: {
+    dashboard: ['view'],
+    tasks: ['view', 'create', 'edit', 'approve'],
+    checklists: ['view', 'create', 'edit'],
+    equipment_faults: ['view'],
+    knowledge_base: ['view', 'create', 'edit', 'approve'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: ['view'],
+    users: [],
+    training: ['view', 'create', 'edit', 'delete', 'approve'],
+    schedules: ['view'],
+  },
+  teknik: {
+    dashboard: ['view'],
+    tasks: ['view'],
+    checklists: ['view'],
+    equipment_faults: ['view', 'edit', 'approve'],
+    knowledge_base: ['view', 'create', 'edit'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: ['view'],
+    users: [],
+    training: ['view'],
+    schedules: ['view'],
+  },
+  destek: {
+    dashboard: ['view'],
+    tasks: ['view', 'create'],
+    checklists: ['view'],
+    equipment_faults: ['view', 'create', 'edit'],
+    knowledge_base: ['view'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: ['view'],
+    users: [],
+    training: ['view'],
+    schedules: ['view'],
+  },
+  fabrika: {
+    dashboard: ['view'],
+    tasks: ['view'],
+    checklists: ['view'],
+    equipment_faults: ['view'],
+    knowledge_base: ['view'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: ['view'],
+    users: [],
+    training: ['view'],
+    schedules: ['view'],
+  },
+  yatirimci_hq: {
+    dashboard: ['view'],
+    tasks: [],
+    checklists: [],
+    equipment_faults: [],
+    knowledge_base: ['view'],
+    ai_assistant: [],
+    performance: ['view'],
+    branches: ['view'],
+    users: [],
+    training: [],
+    schedules: [],
+  },
+  // BRANCH ROLES
+  supervisor: {
+    dashboard: ['view'],
+    tasks: ['view', 'create', 'edit', 'approve'],
+    checklists: ['view', 'approve'],
+    equipment_faults: ['view', 'create', 'edit'],
+    knowledge_base: ['view'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: [],
+    users: [],
+    training: ['view', 'approve'],
+    schedules: ['view', 'create', 'edit'],
+  },
+  supervisor_buddy: {
+    dashboard: ['view'],
+    tasks: ['view', 'create', 'edit'],
+    checklists: ['view'],
+    equipment_faults: ['view', 'create', 'edit'],
+    knowledge_base: ['view'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: [],
+    users: [],
+    training: ['view'],
+    schedules: ['view', 'edit'],
+  },
+  barista: {
+    dashboard: ['view'],
+    tasks: ['view', 'edit'],
+    checklists: ['view', 'edit'],
+    equipment_faults: ['view', 'create'],
+    knowledge_base: ['view'],
+    ai_assistant: ['view'],
+    performance: ['view'],
+    branches: [],
+    users: [],
+    training: ['view'],
+    schedules: ['view'],
+  },
+  bar_buddy: {
+    dashboard: ['view'],
+    tasks: ['view', 'edit'],
+    checklists: ['view', 'edit'],
+    equipment_faults: ['view', 'create'],
+    knowledge_base: ['view'],
+    ai_assistant: ['view'],
+    performance: [],
+    branches: [],
+    users: [],
+    training: ['view'],
+    schedules: ['view'],
+  },
+  stajyer: {
+    dashboard: ['view'],
+    tasks: ['view'],
+    checklists: ['view'],
+    equipment_faults: [],
+    knowledge_base: ['view'],
+    ai_assistant: ['view'],
+    performance: [],
+    branches: [],
+    users: [],
+    training: ['view'],
+    schedules: ['view'],
+  },
+  yatirimci: {
+    dashboard: ['view'],
+    tasks: [],
+    checklists: [],
+    equipment_faults: [],
+    knowledge_base: ['view'],
+    ai_assistant: [],
+    performance: ['view'],
+    branches: [],
+    users: [],
+    training: [],
+    schedules: [],
+  },
+};
+
+// Helper function to check permissions
+export function hasPermission(
+  role: UserRoleType,
+  module: PermissionModule,
+  action: PermissionAction
+): boolean {
+  const modulePermissions = PERMISSIONS[role]?.[module];
+  return modulePermissions?.includes(action) ?? false;
+}
+
+// Helper function to check if user can access a module at all
+export function canAccessModule(role: UserRoleType, module: PermissionModule): boolean {
+  const modulePermissions = PERMISSIONS[role]?.[module];
+  return (modulePermissions?.length ?? 0) > 0;
+}
 
 // Branches table (declared first since users references it)
 export const branches = pgTable("branches", {
@@ -140,13 +365,22 @@ export const tasks = pgTable("tasks", {
   checklistTaskId: integer("checklist_task_id").references(() => checklistTasks.id, { onDelete: "set null" }),
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+  assignedById: varchar("assigned_by_id").references(() => users.id, { onDelete: "set null" }), // Who assigned the task
   description: text("description").notNull(),
   status: varchar("status", { length: 50 }).notNull().default("beklemede"), // beklemede, tamamlandi, gecikmiş
+  priority: varchar("priority", { length: 20 }).default("orta"), // düşük, orta, yüksek
+  requiresPhoto: boolean("requires_photo").default(false), // Photo mandatory
   photoUrl: text("photo_url"),
   aiAnalysis: text("ai_analysis"),
   aiScore: integer("ai_score"), // 0-100
   completedAt: timestamp("completed_at"),
   dueDate: timestamp("due_date"),
+  // Recurring task fields
+  isRecurring: boolean("is_recurring").default(false),
+  recurrenceType: varchar("recurrence_type", { length: 20 }), // daily, weekly, monthly
+  recurrenceInterval: integer("recurrence_interval").default(1), // Every N days/weeks/months
+  lastRecurredAt: timestamp("last_recurred_at"),
+  nextRunAt: timestamp("next_run_at"), // When the next recurrence should trigger
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
