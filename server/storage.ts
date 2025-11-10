@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, type SQL } from "drizzle-orm";
 import type {
   User,
   UpsertUser,
@@ -293,6 +293,7 @@ export interface IStorage {
   getShiftAttendance(id: number): Promise<ShiftAttendance | undefined>;
   createShiftAttendance(attendance: InsertShiftAttendance): Promise<ShiftAttendance>;
   updateShiftAttendance(id: number, updates: Partial<InsertShiftAttendance>): Promise<ShiftAttendance | undefined>;
+  deleteShiftAttendance(id: number): Promise<void>;
   
   // Performance Metrics scoring
   recordPerformanceScore(data: {
@@ -1611,6 +1612,10 @@ export class DatabaseStorage implements IStorage {
     
     const [updated] = await db.update(shiftAttendance).set({ ...calculatedUpdates, updatedAt: new Date() }).where(eq(shiftAttendance.id, id)).returning();
     return updated;
+  }
+
+  async deleteShiftAttendance(id: number): Promise<void> {
+    await db.delete(shiftAttendance).where(eq(shiftAttendance.id, id));
   }
 
   async recordPerformanceScore(data: {

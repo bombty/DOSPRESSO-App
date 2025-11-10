@@ -19,6 +19,8 @@ import {
   updateUserSchema,
   insertUserSchema,
   insertEmployeeWarningSchema,
+  insertLeaveRequestSchema,
+  insertShiftAttendanceSchema,
   hasPermission,
   isHQRole,
   isBranchRole,
@@ -3042,6 +3044,384 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user performance:", error);
       res.status(500).json({ message: "Performans verileri getirilemedi" });
+    }
+  });
+
+  // ==================== HR: LEAVE REQUESTS ====================
+  
+  // Get leave requests (HQ: all, Supervisor: branch, Employee: self)
+  app.get('/api/leave-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const { status } = req.query;
+      
+      let requests;
+      
+      if (isHQRole(role)) {
+        // HQ sees all requests
+        requests = await storage.getLeaveRequests(undefined, undefined, status);
+      } else if (role === 'supervisor' || role === 'supervisor_buddy') {
+        // Supervisors see their branch
+        const branchId = assertBranchScope(user);
+        requests = await storage.getLeaveRequests(undefined, branchId, status);
+      } else {
+        // Employees see only their own
+        requests = await storage.getLeaveRequests(user.id, undefined, status);
+      }
+      
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching leave requests:", error);
+      res.status(500).json({ message: "İzin talepleri getirilemedi" });
+    }
+  });
+  
+  // Get single leave request
+  app.get('/api/leave-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      const request = await storage.getLeaveRequest(id);
+      if (!request) {
+        return res.status(404).json({ message: "İzin talebi bulunamadı" });
+      }
+      
+      // Authorization: HQ sees all, supervisor sees branch, employee sees self
+      if (!isHQRole(role)) {
+        if (role === 'supervisor' || role === 'supervisor_buddy') {
+          const requestUser = await storage.getUserById(request.userId);
+          if (requestUser?.branchId !== user.branchId) {
+            return res.status(403).json({ message: "Bu izin talebini görüntüleme yetkiniz yok" });
+          }
+        } else {
+          if (request.userId !== user.id) {
+            return res.status(403).json({ message: "Bu izin talebini görüntüleme yetkiniz yok" });
+          }
+        }
+      }
+      
+      res.json(request);
+    } catch (error) {
+      console.error("Error fetching leave request:", error);
+      res.status(500).json({ message: "İzin talebi getirilemedi" });
+    }
+  });
+  
+  // Create leave request
+  app.post('/api/leave-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      const validatedData = insertLeaveRequestSchema.parse({
+        ...req.body,
+        userId: user.id, // Always use authenticated user
+        status: 'pending', // Force pending status
+      });
+      
+      const request = await storage.createLeaveRequest(validatedData);
+      res.status(201).json(request);
+    } catch (error: any) {
+      console.error("Error creating leave request:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz izin talebi verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "İzin talebi oluşturulamadı" });
+    }
+  });
+  
+  // Update leave request
+  app.patch('/api/leave-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      const existing = await storage.getLeaveRequest(id);
+      if (!existing) {
+        return res.status(404).json({ message: "İzin talebi bulunamadı" });
+      }
+      
+      // Authorization: Only owner can update (and only if pending)
+      if (existing.userId !== user.id) {
+        return res.status(403).json({ message: "Bu izin talebini güncelleme yetkiniz yok" });
+      }
+      
+      if (existing.status !== 'pending') {
+        return res.status(400).json({ message: "Sadece beklemedeki talepler güncellenebilir" });
+      }
+      
+      // Validate partial update
+      const validatedData = insertLeaveRequestSchema.partial().parse(req.body);
+      
+      // Prevent status change via this endpoint
+      delete validatedData.status;
+      
+      const updated = await storage.updateLeaveRequest(id, validatedData);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating leave request:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz izin talebi verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "İzin talebi güncellenemedi" });
+    }
+  });
+  
+  // Approve/reject leave request (Supervisor + HQ)
+  app.patch('/api/leave-requests/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Geçersiz durum. 'approved' veya 'rejected' olmalı" });
+      }
+      
+      const existing = await storage.getLeaveRequest(id);
+      if (!existing) {
+        return res.status(404).json({ message: "İzin talebi bulunamadı" });
+      }
+      
+      // Authorization: Supervisors can approve their branch, HQ can approve all
+      if (!isHQRole(role)) {
+        if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+          return res.status(403).json({ message: "İzin talebi onaylama/reddetme yetkiniz yok" });
+        }
+        
+        // Check branch scope for supervisors
+        const requestUser = await storage.getUserById(existing.userId);
+        if (requestUser?.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu şubeye ait olmayan izin taleplerini onaylayamazsınız" });
+        }
+      }
+      
+      const updated = await storage.updateLeaveRequest(id, { 
+        status,
+        approvedBy: status === 'approved' ? user.id : undefined,
+        approvedAt: status === 'approved' ? new Date() : undefined,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating leave request status:", error);
+      res.status(500).json({ message: "İzin talebi durumu güncellenemedi" });
+    }
+  });
+  
+  // Delete leave request (only owner, only pending)
+  app.delete('/api/leave-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      const existing = await storage.getLeaveRequest(id);
+      if (!existing) {
+        return res.status(404).json({ message: "İzin talebi bulunamadı" });
+      }
+      
+      // Authorization: Only owner can delete, only if pending
+      if (existing.userId !== user.id) {
+        return res.status(403).json({ message: "Bu izin talebini silme yetkiniz yok" });
+      }
+      
+      if (existing.status !== 'pending') {
+        return res.status(400).json({ message: "Sadece beklemedeki talepler silinebilir" });
+      }
+      
+      await storage.deleteLeaveRequest(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting leave request:", error);
+      res.status(500).json({ message: "İzin talebi silinemedi" });
+    }
+  });
+  
+  // ==================== HR: SHIFT ATTENDANCE ====================
+  
+  // Get shift attendance records (HQ: all, Supervisor: branch, Employee: self)
+  app.get('/api/shift-attendance', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const { shiftId, dateFrom, dateTo } = req.query;
+      
+      let records;
+      
+      if (isHQRole(role)) {
+        // HQ sees all attendance
+        records = await storage.getShiftAttendances(
+          shiftId ? parseInt(shiftId) : undefined,
+          undefined,
+          dateFrom,
+          dateTo
+        );
+      } else if (role === 'supervisor' || role === 'supervisor_buddy') {
+        // Supervisors see their branch
+        const branchId = assertBranchScope(user);
+        records = await storage.getShiftAttendances(
+          shiftId ? parseInt(shiftId) : undefined,
+          undefined,
+          dateFrom,
+          dateTo
+        );
+        
+        // Filter by branch (get shift details)
+        const filteredRecords = [];
+        for (const record of records) {
+          const shift = await storage.getShift(record.shiftId);
+          if (shift?.branchId === branchId) {
+            filteredRecords.push(record);
+          }
+        }
+        records = filteredRecords;
+      } else {
+        // Employees see only their own attendance
+        records = await storage.getShiftAttendances(
+          shiftId ? parseInt(shiftId) : undefined,
+          user.id,
+          dateFrom,
+          dateTo
+        );
+      }
+      
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching shift attendance:", error);
+      res.status(500).json({ message: "Yoklama kayıtları getirilemedi" });
+    }
+  });
+  
+  // Get single attendance record
+  app.get('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      const record = await storage.getShiftAttendance(id);
+      if (!record) {
+        return res.status(404).json({ message: "Yoklama kaydı bulunamadı" });
+      }
+      
+      // Authorization check
+      if (!isHQRole(role)) {
+        if (role === 'supervisor' || role === 'supervisor_buddy') {
+          const shift = await storage.getShift(record.shiftId);
+          if (shift?.branchId !== user.branchId) {
+            return res.status(403).json({ message: "Bu yoklama kaydını görüntüleme yetkiniz yok" });
+          }
+        } else {
+          if (record.userId !== user.id) {
+            return res.status(403).json({ message: "Bu yoklama kaydını görüntüleme yetkiniz yok" });
+          }
+        }
+      }
+      
+      res.json(record);
+    } catch (error) {
+      console.error("Error fetching attendance record:", error);
+      res.status(500).json({ message: "Yoklama kaydı getirilemedi" });
+    }
+  });
+  
+  // Create attendance record (check-in)
+  app.post('/api/shift-attendance', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      const validatedData = insertShiftAttendanceSchema.parse({
+        ...req.body,
+        userId: user.id, // Always use authenticated user
+        checkInTime: new Date(), // Auto timestamp
+      });
+      
+      const record = await storage.createShiftAttendance(validatedData);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error creating attendance record:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz yoklama verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Yoklama kaydı oluşturulamadı" });
+    }
+  });
+  
+  // Update attendance record (check-out, break times)
+  app.patch('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      const existing = await storage.getShiftAttendance(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Yoklama kaydı bulunamadı" });
+      }
+      
+      // Authorization: Owner or supervisor can update
+      if (!isHQRole(role)) {
+        if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+          // Regular employees can only update their own
+          if (existing.userId !== user.id) {
+            return res.status(403).json({ message: "Bu yoklama kaydını güncelleme yetkiniz yok" });
+          }
+        } else {
+          // Supervisors can update their branch
+          const shift = await storage.getShift(existing.shiftId);
+          if (shift?.branchId !== user.branchId) {
+            return res.status(403).json({ message: "Bu yoklama kaydını güncelleme yetkiniz yok" });
+          }
+        }
+      }
+      
+      // Validate partial update
+      const validatedData = insertShiftAttendanceSchema.partial().parse(req.body);
+      
+      const updated = await storage.updateShiftAttendance(id, validatedData);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating attendance record:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz yoklama verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Yoklama kaydı güncellenemedi" });
+    }
+  });
+  
+  // Delete attendance record (supervisor + HQ only)
+  app.delete('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      const existing = await storage.getShiftAttendance(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Yoklama kaydı bulunamadı" });
+      }
+      
+      // Authorization: Only supervisors and HQ can delete
+      if (!isHQRole(role)) {
+        if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+          return res.status(403).json({ message: "Yoklama kaydı silme yetkiniz yok" });
+        }
+        
+        const shift = await storage.getShift(existing.shiftId);
+        if (shift?.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu yoklama kaydını silme yetkiniz yok" });
+        }
+      }
+      
+      await storage.deleteShiftAttendance(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting attendance record:", error);
+      res.status(500).json({ message: "Yoklama kaydı silinemedi" });
     }
   });
 
