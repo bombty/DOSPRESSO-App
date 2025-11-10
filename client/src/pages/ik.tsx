@@ -86,6 +86,8 @@ const warningTypeLabels: Record<string, string> = {
   final: "Son Uyarı",
 };
 
+const branchRoles = ["supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer"];
+
 export default function IKPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -693,11 +695,13 @@ function AddEmployeeDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {Object.entries(roleLabels).map(([key, label]) => (
-                          <SelectItem key={key} value={key}>
-                            {label}
-                          </SelectItem>
-                        ))}
+                        {Object.entries(roleLabels)
+                          .filter(([key]) => branchRoles.includes(key))
+                          .map(([key, label]) => (
+                            <SelectItem key={key} value={key}>
+                              {label}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -968,11 +972,13 @@ function EditEmployeeDialog({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {Object.entries(roleLabels).map(([key, label]) => (
-                              <SelectItem key={key} value={key}>
-                                {label}
-                              </SelectItem>
-                            ))}
+                            {Object.entries(roleLabels)
+                              .filter(([key]) => branchRoles.includes(key))
+                              .map(([key, label]) => (
+                                <SelectItem key={key} value={key}>
+                                  {label}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
