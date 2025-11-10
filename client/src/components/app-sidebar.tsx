@@ -11,6 +11,7 @@ import {
   Building2,
   Users,
   MessageSquare,
+  Bell,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -30,6 +31,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
 import { canAccessModule, type PermissionModule } from "@shared/schema";
 import dospressoLogo from "@assets/IMG_5044_1762707935781.png";
+import { useQuery } from "@tanstack/react-query";
+import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 
 const menuItems: Array<{
   title: string;
@@ -102,6 +105,13 @@ const menuItems: Array<{
     module: "employees",
   },
   {
+    title: "Bildirimler",
+    titleTr: "Bildirimler",
+    url: "/bildirimler",
+    icon: Bell,
+    module: "dashboard",
+  },
+  {
     title: "HQ Destek",
     titleTr: "HQ Destek",
     url: "/hq-destek",
@@ -147,6 +157,15 @@ const roleLabels: Record<string, string> = {
 export function AppSidebar() {
   const [location, navigate] = useLocation();
   const { user } = useAuth();
+
+  // Fetch unread notification count with adaptive polling
+  const pollingInterval = useAdaptivePolling();
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ['/api/notifications/unread-count'],
+    enabled: !!user,
+    refetchInterval: pollingInterval,
+  });
+  const unreadCount = unreadData?.count || 0;
 
   // Filter menu items based on user role permissions
   const visibleMenuItems = menuItems.filter((item) => {
@@ -198,6 +217,11 @@ export function AppSidebar() {
                     <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
                       <item.icon />
                       <span>{item.titleTr}</span>
+                      {item.url === '/bildirimler' && unreadCount > 0 && (
+                        <Badge variant="destructive" className="ml-auto" data-testid="badge-unread-count">
+                          {unreadCount}
+                        </Badge>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
