@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -13,16 +13,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Megaphone, Plus, AlertCircle, Calendar, User, Download, FileText, FileImage } from "lucide-react";
+import { Megaphone, Plus, AlertCircle, Calendar, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import Uppy from "@uppy/core";
-import { Dashboard as UppyDashboard } from "@uppy/react";
-import AwsS3 from "@uppy/aws-s3";
-import "@uppy/core/dist/style.min.css";
-import "@uppy/dashboard/dist/style.min.css";
 
 const priorityLabels: Record<string, string> = {
   normal: "Normal",
@@ -39,75 +34,8 @@ export default function Announcements() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [showUploadStep, setShowUploadStep] = useState(false);
-  const [createdAnnouncementId, setCreatedAnnouncementId] = useState<number | null>(null);
-  const [uppy, setUppy] = useState<Uppy | null>(null);
 
   const isHQ = user?.role && isHQRole(user.role as any);
-
-  useEffect(() => {
-    if (showUploadStep && createdAnnouncementId) {
-      const uppyInstance = new Uppy({
-        restrictions: {
-          maxFileSize: 10 * 1024 * 1024,
-          allowedFileTypes: ['image/*', 'application/pdf'],
-        },
-        autoProceed: false,
-      }).use(AwsS3, {
-        async getUploadParameters(file) {
-          const token = localStorage.getItem('dospresso_token');
-          const response = await fetch(
-            `/api/object-storage/presigned-url?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`,
-            {
-              headers: token ? { Authorization: `Bearer ${token}` } : {},
-            }
-          );
-          
-          if (!response.ok) throw new Error('Failed to get presigned URL');
-          
-          const data = await response.json();
-          return {
-            method: 'PUT',
-            url: data.url,
-            fields: {},
-            headers: {
-              'Content-Type': file.type || 'application/octet-stream',
-            },
-          };
-        },
-      });
-
-      uppyInstance.on('complete', async (result) => {
-        if (result.successful.length > 0 && createdAnnouncementId) {
-          for (const file of result.successful) {
-            const s3Url = (file.uploadURL as string).split('?')[0];
-            const fileType = file.type?.startsWith('image/') ? 'image' : 'pdf';
-            
-            await apiRequest('POST', `/api/announcements/${createdAnnouncementId}/attachments`, {
-              url: s3Url,
-              fileType,
-            });
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
-          toast({
-            title: "Başarılı",
-            description: `${result.successful.length} dosya yüklendi`,
-          });
-          
-          setShowUploadStep(false);
-          setCreatedAnnouncementId(null);
-          setIsCreateDialogOpen(false);
-        }
-      });
-
-      setUppy(uppyInstance);
-
-      return () => {
-        uppyInstance.close();
-      };
-    }
-  }, [showUploadStep, createdAnnouncementId]);
 
   const { data: announcements, isLoading } = useQuery<AnnouncementWithUser[]>({
     queryKey: ['/api/announcements'],
@@ -131,17 +59,15 @@ export default function Announcements() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertAnnouncement) => {
-      const response = await apiRequest('POST', '/api/announcements', data);
-      return response as { id: number };
+      await apiRequest('POST', '/api/announcements', data);
     },
-    onSuccess: (response) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
       toast({
         title: "Başarılı",
-        description: "Duyuru oluşturuldu. Şimdi dosya ekleyebilirsiniz (opsiyonel).",
+        description: "Duyuru yayınlandı",
       });
-      setCreatedAnnouncementId(response.id);
-      setShowUploadStep(true);
+      setIsCreateDialogOpen(false);
       form.reset();
     },
     onError: () => {
@@ -155,13 +81,6 @@ export default function Announcements() {
 
   const handleSubmit = (data: InsertAnnouncement) => {
     createMutation.mutate(data);
-  };
-
-  const handleSkipUpload = () => {
-    setShowUploadStep(false);
-    setCreatedAnnouncementId(null);
-    setIsCreateDialogOpen(false);
-    queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
   };
 
   return (
