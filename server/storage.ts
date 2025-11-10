@@ -1125,7 +1125,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Shift operations
-  async getShifts(branchId?: number, assignedToId?: string, dateFrom?: string, dateTo?: string): Promise<Shift[]> {
+  async getShifts(branchId?: number, assignedToId?: string, dateFrom?: string, dateTo?: string): Promise<any[]> {
     const conditions = [];
     if (branchId !== undefined) {
       conditions.push(eq(shifts.branchId, branchId));
@@ -1140,10 +1140,50 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${shifts.shiftDate} <= ${dateTo}`);
     }
 
-    return db.select()
+    const results = await db.select({
+      id: shifts.id,
+      shiftDate: shifts.shiftDate,
+      startTime: shifts.startTime,
+      endTime: shifts.endTime,
+      shiftType: shifts.shiftType,
+      status: shifts.status,
+      notes: shifts.notes,
+      branchId: shifts.branchId,
+      assignedToId: shifts.assignedToId,
+      createdById: shifts.createdById,
+      createdAt: shifts.createdAt,
+      updatedAt: shifts.updatedAt,
+      branch: {
+        id: branches.id,
+        name: branches.name,
+        city: branches.city,
+        address: branches.address,
+      },
+      assignedTo: {
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+      },
+      createdBy: {
+        id: sql<string>`created_by_user.id`,
+        username: sql<string>`created_by_user.username`,
+        email: sql<string>`created_by_user.email`,
+        firstName: sql<string>`created_by_user.first_name`,
+        lastName: sql<string>`created_by_user.last_name`,
+        role: sql<string>`created_by_user.role`,
+      },
+    })
       .from(shifts)
+      .leftJoin(branches, eq(shifts.branchId, branches.id))
+      .leftJoin(users, eq(shifts.assignedToId, users.id))
+      .leftJoin(sql`users AS created_by_user`, sql`${shifts.createdById} = created_by_user.id`)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(shifts.shiftDate), shifts.startTime);
+
+    return results;
   }
 
   async getShift(id: number): Promise<Shift | undefined> {

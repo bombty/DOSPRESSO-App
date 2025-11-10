@@ -107,7 +107,13 @@ export default function Vardiyalar() {
     queryKey: ['/api/shifts', dateFrom, dateTo, selectedUserFilter],
     queryFn: async () => {
       const queryParams = buildQueryParams();
+      const token = localStorage.getItem('dospresso_token');
+      const headers: HeadersInit = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
       const response = await fetch(`/api/shifts${queryParams}`, {
+        headers,
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch shifts');
@@ -139,7 +145,7 @@ export default function Vardiyalar() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertShift) => {
-      await apiRequest('/api/shifts', 'POST', data);
+      await apiRequest('POST', '/api/shifts', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
@@ -161,7 +167,7 @@ export default function Vardiyalar() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<InsertShift> }) => {
-      await apiRequest(`/api/shifts/${id}`, 'PATCH', data);
+      await apiRequest('PATCH', `/api/shifts/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
@@ -182,7 +188,7 @@ export default function Vardiyalar() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest(`/api/shifts/${id}`, 'DELETE');
+      await apiRequest('DELETE', `/api/shifts/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
