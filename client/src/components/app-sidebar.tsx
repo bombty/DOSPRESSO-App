@@ -12,6 +12,7 @@ import {
   Users,
   MessageSquare,
   Bell,
+  Megaphone,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -109,6 +110,13 @@ const menuItems: Array<{
     titleTr: "Bildirimler",
     url: "/bildirimler",
     icon: Bell,
+    module: "dashboard",
+  },
+  {
+    title: "Duyurular",
+    titleTr: "Duyurular",
+    url: "/duyurular",
+    icon: Megaphone,
     module: "dashboard",
   },
   {

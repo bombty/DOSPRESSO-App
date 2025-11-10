@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AnnouncementBanner } from "@/components/announcement-banner";
 import { CheckCircle, Clock, AlertTriangle, TrendingUp } from "lucide-react";
 import type { Task, EquipmentFault, PerformanceMetric } from "@shared/schema";
 
@@ -32,6 +33,8 @@ export default function Dashboard() {
         <h1 className="text-3xl font-semibold" data-testid="text-page-title">Gösterge Paneli</h1>
         <p className="text-muted-foreground mt-1">DOSPRESSO operasyon özeti</p>
       </div>
+
+      <AnnouncementBanner />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
