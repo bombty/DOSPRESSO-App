@@ -2520,6 +2520,204 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =========================================
+  // SHIFTS API (Vardiya Yönetimi)
+  // =========================================
+
+  // Get shifts (supervisor: own branch, employees: own shifts, HQ IK: all branches read-only)
+  app.get('/api/shifts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+      const assignedToId = req.query.assignedToId as string | undefined;
+
+      let branchId: number | undefined;
+      let userIdFilter: string | undefined;
+      
+      // Supervisor: can see their branch shifts
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+        }
+        branchId = user.branchId;
+      }
+      // Regular employees (barista, stajyer): can only see their own shifts
+      else if (isBranchRole(role)) {
+        userIdFilter = user.id;
+      }
+      // HQ IK can see all branches (no filter)
+      else if (role !== 'destek') {
+        return res.status(403).json({ message: "Vardiyaları görüntüleme yetkiniz yok" });
+      }
+
+      const shifts = await storage.getShifts(
+        branchId, 
+        userIdFilter || assignedToId, 
+        dateFrom, 
+        dateTo
+      );
+      res.json(shifts);
+    } catch (error) {
+      console.error("Error fetching shifts:", error);
+      res.status(500).json({ message: "Vardiyalar getirilemedi" });
+    }
+  });
+
+  // Get single shift by ID
+  app.get('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+
+      const shift = await storage.getShift(id);
+      if (!shift) {
+        return res.status(404).json({ message: "Vardiya bulunamadı" });
+      }
+
+      // Check access: supervisor can view own branch, employees can view own shifts, HQ IK can view all
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        if (!user.branchId || shift.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu vardiyayı görüntüleme yetkiniz yok" });
+        }
+      } else if (isBranchRole(role)) {
+        if (shift.assignedToId !== user.id) {
+          return res.status(403).json({ message: "Bu vardiyayı görüntüleme yetkiniz yok" });
+        }
+      } else if (role !== 'destek') {
+        return res.status(403).json({ message: "Vardiyaları görüntüleme yetkiniz yok" });
+      }
+
+      res.json(shift);
+    } catch (error) {
+      console.error("Error fetching shift:", error);
+      res.status(500).json({ message: "Vardiya getirilemedi" });
+    }
+  });
+
+  // Create shift (supervisor only)
+  app.post('/api/shifts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      // Only supervisors can create shifts
+      if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Vardiya oluşturma yetkiniz yok" });
+      }
+
+      // Validate request body
+      const { insertShiftSchema } = await import('@shared/schema');
+      const validatedData = insertShiftSchema.parse(req.body);
+
+      // Ensure branchId matches user's branch
+      if (!user.branchId) {
+        return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+      }
+      if (validatedData.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Başka şube için vardiya oluşturamazsınız" });
+      }
+
+      // Create shift with auto-set createdById
+      const shift = await storage.createShift({
+        ...validatedData,
+        createdById: user.id,
+      });
+
+      res.status(201).json(shift);
+    } catch (error: any) {
+      console.error("Error creating shift:", error);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Geçersiz vardiya verisi", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Vardiya oluşturulamadı" });
+    }
+  });
+
+  // Update shift (supervisor: own branch only)
+  app.patch('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+
+      // Only supervisors can update shifts
+      if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Vardiya güncelleme yetkiniz yok" });
+      }
+
+      // Get existing shift
+      const existingShift = await storage.getShift(id);
+      if (!existingShift) {
+        return res.status(404).json({ message: "Vardiya bulunamadı" });
+      }
+
+      // Check access: supervisor can only update own branch
+      if (!user.branchId || existingShift.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu vardiyayı güncelleme yetkiniz yok" });
+      }
+
+      // Validate updates (partial schema)
+      const { insertShiftSchema } = await import('@shared/schema');
+      const validatedData = insertShiftSchema.partial().parse(req.body);
+
+      // Prevent changing branchId or createdById (immutable after creation)
+      const { branchId, createdById, ...allowedUpdates } = validatedData;
+
+      const updated = await storage.updateShift(id, allowedUpdates);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating shift:", error);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Geçersiz vardiya verisi", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Vardiya güncellenemedi" });
+    }
+  });
+
+  // Delete shift (supervisor: own branch only)
+  app.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+
+      // Only supervisors can delete shifts
+      if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Vardiya silme yetkiniz yok" });
+      }
+
+      // Get existing shift
+      const existingShift = await storage.getShift(id);
+      if (!existingShift) {
+        return res.status(404).json({ message: "Vardiya bulunamadı" });
+      }
+
+      // Check access: supervisor can only delete own branch
+      if (!user.branchId || existingShift.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu vardiyayı silme yetkiniz yok" });
+      }
+
+      await storage.deleteShift(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting shift:", error);
+      res.status(500).json({ message: "Vardiya silinemedi" });
+    }
+  });
+
   startReminderSystem();
 
   const httpServer = createServer(app);

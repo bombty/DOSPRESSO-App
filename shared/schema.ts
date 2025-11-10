@@ -5,6 +5,7 @@ import {
   varchar, 
   timestamp,
   date,
+  time,
   jsonb,
   index,
   serial,
@@ -1284,3 +1285,32 @@ export const insertDailyCashReportSchema = createInsertSchema(dailyCashReports).
 
 export type InsertDailyCashReport = z.infer<typeof insertDailyCashReportSchema>;
 export type DailyCashReport = typeof dailyCashReports.$inferSelect;
+
+// Shifts table - Employee shift scheduling for supervisors and HR
+export const shifts = pgTable("shifts", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+  createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  shiftDate: date("shift_date").notNull(),
+  startTime: time("start_time", { precision: 0 }).notNull(),
+  endTime: time("end_time", { precision: 0 }).notNull(),
+  shiftType: varchar("shift_type", { length: 20 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  branchDateIdx: index("shifts_branch_date_idx").on(table.branchId, table.shiftDate),
+  assignedToIdx: index("shifts_assigned_to_idx").on(table.assignedToId),
+  createdByIdx: index("shifts_created_by_idx").on(table.createdById),
+}));
+
+export const insertShiftSchema = createInsertSchema(shifts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertShift = z.infer<typeof insertShiftSchema>;
+export type Shift = typeof shifts.$inferSelect;

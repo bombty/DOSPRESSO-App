@@ -57,6 +57,8 @@ import type {
   InsertAnnouncement,
   DailyCashReport,
   InsertDailyCashReport,
+  Shift,
+  InsertShift,
 } from "@shared/schema";
 import {
   users,
@@ -89,6 +91,7 @@ import {
   notifications,
   announcements,
   dailyCashReports,
+  shifts,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -247,6 +250,13 @@ export interface IStorage {
   createDailyCashReport(report: InsertDailyCashReport): Promise<DailyCashReport>;
   updateDailyCashReport(id: number, updates: Partial<InsertDailyCashReport>): Promise<DailyCashReport | undefined>;
   deleteDailyCashReport(id: number): Promise<void>;
+
+  // Shift operations
+  getShifts(branchId?: number, assignedToId?: string, dateFrom?: string, dateTo?: string): Promise<Shift[]>;
+  getShift(id: number): Promise<Shift | undefined>;
+  createShift(shift: InsertShift): Promise<Shift>;
+  updateShift(id: number, updates: Partial<InsertShift>): Promise<Shift | undefined>;
+  deleteShift(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1112,6 +1122,56 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDailyCashReport(id: number): Promise<void> {
     await db.delete(dailyCashReports).where(eq(dailyCashReports.id, id));
+  }
+
+  // Shift operations
+  async getShifts(branchId?: number, assignedToId?: string, dateFrom?: string, dateTo?: string): Promise<Shift[]> {
+    const conditions = [];
+    if (branchId !== undefined) {
+      conditions.push(eq(shifts.branchId, branchId));
+    }
+    if (assignedToId) {
+      conditions.push(eq(shifts.assignedToId, assignedToId));
+    }
+    if (dateFrom) {
+      conditions.push(sql`${shifts.shiftDate} >= ${dateFrom}`);
+    }
+    if (dateTo) {
+      conditions.push(sql`${shifts.shiftDate} <= ${dateTo}`);
+    }
+
+    return db.select()
+      .from(shifts)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(shifts.shiftDate), shifts.startTime);
+  }
+
+  async getShift(id: number): Promise<Shift | undefined> {
+    const [shift] = await db.select().from(shifts).where(eq(shifts.id, id));
+    return shift;
+  }
+
+  async createShift(shift: InsertShift): Promise<Shift> {
+    const [newShift] = await db.insert(shifts).values({
+      ...shift,
+      updatedAt: new Date(),
+    }).returning();
+    return newShift;
+  }
+
+  async updateShift(id: number, updates: Partial<InsertShift>): Promise<Shift | undefined> {
+    const [updated] = await db.update(shifts)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(shifts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteShift(id: number): Promise<void> {
+    await db.delete(shifts).where(eq(shifts.id, id));
   }
 }
 
