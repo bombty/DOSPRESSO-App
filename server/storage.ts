@@ -60,6 +60,7 @@ import type {
   InsertDailyCashReport,
   Shift,
   InsertShift,
+  BulkCreateShifts,
 } from "@shared/schema";
 import {
   users,
@@ -1389,10 +1390,26 @@ export class DatabaseStorage implements IStorage {
     
     const days: Date[] = [];
     const current = new Date(start);
+    const anchorDay = start.getDate(); // Persist original day-of-month across iterations
     
+    // Period-based date advancement
     while (current <= end) {
       days.push(new Date(current));
-      current.setDate(current.getDate() + 1);
+      
+      if (period === 'weekly') {
+        current.setDate(current.getDate() + 7);
+      } else if (period === '2weekly') {
+        current.setDate(current.getDate() + 14);
+      } else if (period === 'monthly') {
+        // Month-aware advancement: set to 1st, advance month, then clamp to anchorDay
+        current.setDate(1); // Reset to 1st to prevent month overflow
+        current.setMonth(current.getMonth() + 1); // Advance to next month
+        // Clamp to last day of target month using persistent anchorDay
+        const daysInTargetMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+        current.setDate(Math.min(anchorDay, daysInTargetMonth));
+      } else {
+        throw new Error(`Unsupported period: ${period}`);
+      }
     }
     
     const shiftsToCreate: InsertShift[] = days.map(date => ({
