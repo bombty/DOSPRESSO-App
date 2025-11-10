@@ -26,6 +26,8 @@ import {
 } from "@shared/schema";
 import { analyzeTaskPhoto, analyzeFaultPhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
 import { startReminderSystem } from "./reminders";
+import bcrypt from "bcrypt";
+import { z } from "zod";
 
 // Helper function to assert branch scope for branch users
 function assertBranchScope(user: Express.User): number {
@@ -1141,6 +1143,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting employee:", error);
       res.status(500).json({ message: "Çalışan silinirken hata oluştu" });
+    }
+  });
+
+  // Reset employee password (admin/coach only)
+  app.post('/api/employees/:id/reset-password', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role } = user;
+      const employeeId = req.params.id;
+
+      // Permission check (admin/coach only can reset passwords)
+      if (role !== 'admin' && role !== 'coach') {
+        return res.status(403).json({ message: "Şifre sıfırlama yetkiniz yok" });
+      }
+
+      // Check if employee exists
+      const employee = await storage.getUserById(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      // Validate new password - enforce strong password policy
+      const resetPasswordSchema = z.object({
+        newPassword: z.string()
+          .min(8, "Şifre en az 8 karakter olmalıdır")
+          .regex(/[A-Za-z]/, "Şifre en az bir harf içermelidir")
+          .regex(/[0-9]/, "Şifre en az bir rakam içermelidir"),
+      });
+
+      const parsed = resetPasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ 
+          message: "Geçersiz şifre", 
+          errors: parsed.error.errors 
+        });
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(parsed.data.newPassword, 10);
+
+      // Update employee password
+      await storage.updateUser(employeeId, { hashedPassword });
+
+      // Audit log: Record password reset event
+      // TODO: Store in dedicated audit_logs table for compliance and security tracking
+      const auditLog = {
+        timestamp: new Date().toISOString(),
+        action: 'password_reset',
+        targetUserId: employeeId,
+        performedBy: user.id,
+        performedByRole: role,
+        ipAddress: req.ip,
+      };
+      console.log('[AUDIT] Password reset:', JSON.stringify(auditLog));
+
+      res.json({ message: "Şifre başarıyla sıfırlandı" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Şifre sıfırlanırken hata oluştu" });
     }
   });
 

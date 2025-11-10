@@ -59,6 +59,7 @@ import {
   Eye,
   Calendar,
   Filter,
+  Key,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 
@@ -100,7 +101,9 @@ export default function IKPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [warningsDialogOpen, setWarningsDialogOpen] = useState(false);
   const [addWarningDialogOpen, setAddWarningDialogOpen] = useState(false);
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   // Fetch branches
   const { data: branches = [] } = useQuery<{ id: number; name: string }[]>({
@@ -440,6 +443,20 @@ export default function IKPage() {
                                 <AlertTriangle className="h-4 w-4" />
                               </Button>
                             )}
+                            {(user?.role === 'admin' || user?.role === 'coach') && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedEmployee(employee);
+                                  setNewPassword("");
+                                  setResetPasswordDialogOpen(true);
+                                }}
+                                data-testid={`button-reset-password-${employee.id}`}
+                              >
+                                <Key className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -490,6 +507,17 @@ export default function IKPage() {
           open={addWarningDialogOpen}
           onOpenChange={setAddWarningDialogOpen}
           employee={selectedEmployee}
+        />
+      )}
+
+      {/* Reset Password Dialog */}
+      {(user?.role === 'admin' || user?.role === 'coach') && selectedEmployee && (
+        <ResetPasswordDialog
+          open={resetPasswordDialogOpen}
+          onOpenChange={setResetPasswordDialogOpen}
+          employee={selectedEmployee}
+          newPassword={newPassword}
+          setNewPassword={setNewPassword}
         />
       )}
     </div>
@@ -1298,6 +1326,117 @@ function AddWarningDialog({
             </DialogFooter>
           </form>
         </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+// Reset Password Dialog Component
+function ResetPasswordDialog({
+  open,
+  onOpenChange,
+  employee,
+  newPassword,
+  setNewPassword,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  employee: User;
+  newPassword: string;
+  setNewPassword: (password: string) => void;
+}) {
+  const { toast } = useToast();
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: { newPassword: string }) => {
+      return apiRequest("POST", `/api/employees/${employee.id}/reset-password`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Başarılı",
+        description: "Şifre başarıyla sıfırlandı",
+      });
+      onOpenChange(false);
+      setNewPassword("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Şifre sıfırlanırken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      toast({
+        title: "Hata",
+        description: "Şifre en az 8 karakter olmalıdır",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!/[A-Za-z]/.test(newPassword)) {
+      toast({
+        title: "Hata",
+        description: "Şifre en az bir harf içermelidir",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      toast({
+        title: "Hata",
+        description: "Şifre en az bir rakam içermelidir",
+        variant: "destructive",
+      });
+      return;
+    }
+    resetPasswordMutation.mutate({ newPassword });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Şifre Sıfırla</DialogTitle>
+          <DialogDescription>
+            {employee.firstName} {employee.lastName} - Yeni Şifre Belirle
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Yeni Şifre</label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="En az 8 karakter (harf ve rakam)"
+              data-testid="input-new-password"
+              autoComplete="new-password"
+            />
+            <p className="text-xs text-muted-foreground">
+              Şifre en az 8 karakter olmalı, en az bir harf ve bir rakam içermelidir
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              İptal
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={resetPasswordMutation.isPending || newPassword.length < 8}
+              data-testid="button-submit-reset-password"
+            >
+              {resetPasswordMutation.isPending ? "Sıfırlanıyor..." : "Şifreyi Sıfırla"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
