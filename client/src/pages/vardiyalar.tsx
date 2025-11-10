@@ -463,6 +463,39 @@ export default function Vardiyalar() {
     handleEdit(event.shift);
   }, []);
 
+  const handleSelectSlot = useCallback((slotInfo: { start: Date; end: Date }) => {
+    if (!isSupervisor) return;
+    
+    // Preserve current branchId or use filter (never 0)
+    const targetBranchId = user?.branchId || selectedBranchFilter || form.getValues().branchId;
+    
+    // Validate branchId exists
+    if (!targetBranchId) {
+      toast({
+        title: "Uyarı",
+        description: "Lütfen önce şube seçin",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Partial reset - only update date/time fields, preserve context
+    const currentValues = form.getValues();
+    form.reset({
+      ...currentValues,
+      shiftDate: format(slotInfo.start, 'yyyy-MM-dd'),
+      startTime: '09:00:00',
+      endTime: '17:00:00',
+      shiftType: 'morning',
+      status: 'draft',
+      assignedToId: null,
+      branchId: targetBranchId,
+      createdById: user?.id || '',
+    });
+    setEditingShift(null);
+    setIsCreateDialogOpen(true);
+  }, [form, user, isSupervisor, selectedBranchFilter, toast]);
+
   const eventStyleGetter = useCallback((event: CalendarEvent) => {
     const shiftType = event.shift.shiftType;
     let backgroundColor = '#3174ad';
@@ -980,6 +1013,8 @@ export default function Vardiyalar() {
               onEventDrop={handleEventDrop}
               onEventResize={handleEventResize}
               onSelectEvent={handleSelectEvent}
+              onSelectSlot={handleSelectSlot}
+              selectable={isSupervisor}
               eventPropGetter={eventStyleGetter}
               resizable={isSupervisor}
               draggableAccessor={() => isSupervisor}
