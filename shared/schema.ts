@@ -12,7 +12,8 @@ import {
   integer,
   numeric,
   customType,
-  uniqueIndex
+  uniqueIndex,
+  unique
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1255,3 +1256,30 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
 
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type Announcement = typeof announcements.$inferSelect;
+
+// Daily Cash Reports table - Supervisor daily cash summary for accounting
+export const dailyCashReports = pgTable("daily_cash_reports", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  reportedById: varchar("reported_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reportDate: date("report_date").notNull(),
+  openingCash: numeric("opening_cash", { precision: 10, scale: 2 }).notNull(),
+  closingCash: numeric("closing_cash", { precision: 10, scale: 2 }).notNull(),
+  totalSales: numeric("total_sales", { precision: 10, scale: 2 }).notNull(),
+  cashSales: numeric("cash_sales", { precision: 10, scale: 2 }),
+  cardSales: numeric("card_sales", { precision: 10, scale: 2 }),
+  expenses: numeric("expenses", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  branchDateIdx: index("daily_cash_reports_branch_date_idx").on(table.branchId, table.reportDate),
+  uniqueBranchDate: unique("unique_branch_date").on(table.branchId, table.reportDate),
+}));
+
+export const insertDailyCashReportSchema = createInsertSchema(dailyCashReports).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDailyCashReport = z.infer<typeof insertDailyCashReportSchema>;
+export type DailyCashReport = typeof dailyCashReports.$inferSelect;
