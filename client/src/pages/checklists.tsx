@@ -24,15 +24,14 @@ import { insertChecklistSchema, updateChecklistSchema, type Checklist, type Inse
 import { z } from "zod";
 import { FileText, Plus, Camera, ChevronDown, Sparkles, Edit, Trash2, MoveUp, MoveDown } from "lucide-react";
 
-const EditChecklistFormSchema = updateChecklistSchema.pick({
-  title: true,
-  description: true,
-  frequency: true,
-  category: true,
-  isEditable: true,
-  timeWindowStart: true,
-  timeWindowEnd: true,
-}).extend({
+const EditChecklistFormSchema = z.object({
+  title: z.string().min(1, "Başlık gerekli"),
+  description: z.string().optional(),
+  frequency: z.enum(["daily", "weekly", "monthly"]),
+  category: z.string().optional(),
+  isEditable: z.boolean().default(true),
+  timeWindowStart: z.string().optional(),
+  timeWindowEnd: z.string().optional(),
   tasks: z.array(z.object({
     id: z.number().optional(),
     taskDescription: z.string().min(1, "Görev açıklaması gerekli"),
@@ -153,7 +152,7 @@ export default function Checklists() {
     editForm.reset({
       title: checklist.title,
       description: checklist.description || "",
-      frequency: checklist.frequency,
+      frequency: checklist.frequency as "daily" | "weekly" | "monthly",
       category: checklist.category || "",
       isEditable: checklist.isEditable ?? true,
       timeWindowStart: checklist.timeWindowStart || "",
@@ -162,7 +161,6 @@ export default function Checklists() {
         id: t.id,
         taskDescription: t.taskDescription,
         requiresPhoto: t.requiresPhoto ?? false,
-        order: t.order,
       })),
     });
     
@@ -652,7 +650,7 @@ export default function Checklists() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => append({ id: undefined, taskDescription: "", requiresPhoto: false, order: fields.length })}
+                      onClick={() => append({ id: undefined, taskDescription: "", requiresPhoto: false })}
                       data-testid="button-add-task"
                     >
                       <Plus className="h-4 w-4 mr-1" />
