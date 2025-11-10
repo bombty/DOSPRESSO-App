@@ -24,8 +24,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Calendar as CalendarIcon, Edit, Trash2, Clock, User as UserIcon } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Plus, Calendar as CalendarIcon, Edit, Trash2, Clock, User as UserIcon, Sparkles } from "lucide-react";
+import { format, parseISO, startOfWeek, endOfWeek, addWeeks } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +69,21 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
 };
 
+type AIShiftSuggestion = {
+  shiftDate: string;
+  shiftType: string;
+  suggestedAssignee: { id: string; name: string; confidenceScore: number } | null;
+  reasoning: string;
+  startTime: string;
+  endTime: string;
+};
+
+type AIShiftPlanResponse = {
+  suggestions: AIShiftSuggestion[];
+  summary: string;
+  cached?: boolean;
+};
+
 export default function Vardiyalar() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -78,6 +93,9 @@ export default function Vardiyalar() {
   const [selectedUserFilter, setSelectedUserFilter] = useState<string | undefined>(undefined);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [aiSuggestions, setAiSuggestions] = useState<AIShiftPlanResponse | null>(null);
 
   const isSupervisor = user?.role && (user.role === 'supervisor' || user.role === 'supervisor_buddy');
   const isHQIK = user?.role === 'destek';
@@ -206,6 +224,27 @@ export default function Vardiyalar() {
     },
   });
 
+  const aiSuggestMutation = useMutation({
+    mutationFn: async (data: { branchId: number; weekStart: string; weekEnd: string }) => {
+      const response = await apiRequest('POST', '/api/shifts/ai-suggest', data);
+      return await response.json();
+    },
+    onSuccess: (data: AIShiftPlanResponse) => {
+      setAiSuggestions(data);
+      toast({
+        title: "AI Öneri Hazır",
+        description: data.cached ? "Önbelleğe alınmış plan kullanıldı" : `${data.suggestions.length} vardiya önerisi oluşturuldu`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "AI öneri oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: InsertShift) => {
     if (editingShift) {
       updateMutation.mutate({ id: editingShift.id, data });
@@ -235,6 +274,16 @@ export default function Vardiyalar() {
     form.reset();
   };
 
+  const handleAISuggest = () => {
+    if (!user?.branchId) return;
+    const weekEnd = endOfWeek(selectedWeekStart, { weekStartsOn: 1 });
+    aiSuggestMutation.mutate({
+      branchId: user.branchId,
+      weekStart: format(selectedWeekStart, 'yyyy-MM-dd'),
+      weekEnd: format(weekEnd, 'yyyy-MM-dd'),
+    });
+  };
+
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -250,16 +299,113 @@ export default function Vardiyalar() {
         </div>
 
         {isSupervisor && (
-          <Dialog open={isCreateDialogOpen || !!editingShift} onOpenChange={(open) => {
-            if (!open) handleCloseDialog();
-            else setIsCreateDialogOpen(true);
-          }}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-create-shift">
-                <Plus className="w-4 h-4 mr-2" />
-                Yeni Vardiya
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Dialog open={isAIDialogOpen} onOpenChange={setIsAIDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" data-testid="button-ai-suggest">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  🤖 AI Vardiya Öner
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>AI Vardiya Önerisi</DialogTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Geçmiş verilerinizi analiz ederek optimal vardiya planı oluşturulur. (Günde 3 öneri hakkınız var)
+                  </p>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Hafta Seçin</label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedWeekStart(addWeeks(selectedWeekStart, -1))}
+                        data-testid="button-prev-week"
+                      >
+                        ← Önceki Hafta
+                      </Button>
+                      <div className="flex-1 text-center py-2">
+                        {format(selectedWeekStart, "d MMM", { locale: tr })} - {format(endOfWeek(selectedWeekStart, { weekStartsOn: 1 }), "d MMM yyyy", { locale: tr })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedWeekStart(addWeeks(selectedWeekStart, 1))}
+                        data-testid="button-next-week"
+                      >
+                        Sonraki Hafta →
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleAISuggest}
+                    disabled={aiSuggestMutation.isPending}
+                    className="w-full"
+                    data-testid="button-generate-ai-plan"
+                  >
+                    {aiSuggestMutation.isPending ? "AI Analiz Ediyor..." : "✨ AI Öneri Oluştur"}
+                  </Button>
+
+                  {aiSuggestions && (
+                    <div className="space-y-4 mt-4">
+                      <div className="p-4 bg-muted rounded-lg">
+                        <h3 className="font-semibold mb-2">AI Özeti:</h3>
+                        <p className="text-sm text-muted-foreground">{aiSuggestions.summary}</p>
+                        {aiSuggestions.cached && (
+                          <Badge variant="outline" className="mt-2">
+                            Önbellekten Yüklendi
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <h3 className="font-semibold">Önerilen Vardiyalar:</h3>
+                        {aiSuggestions.suggestions.map((suggestion, idx) => (
+                          <div key={idx} className="p-3 border rounded-lg space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <CalendarIcon className="w-4 h-4" />
+                                <span className="font-medium">
+                                  {format(parseISO(suggestion.shiftDate), "d MMMM yyyy", { locale: tr })}
+                                </span>
+                                <Badge className={shiftTypeColors[suggestion.shiftType]}>
+                                  {shiftTypeLabels[suggestion.shiftType]}
+                                </Badge>
+                              </div>
+                              <span className="text-sm text-muted-foreground">
+                                {suggestion.startTime} - {suggestion.endTime}
+                              </span>
+                            </div>
+                            {suggestion.suggestedAssignee && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <UserIcon className="w-3 h-3" />
+                                <span>{suggestion.suggestedAssignee.name}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {Math.round(suggestion.suggestedAssignee.confidenceScore)}% güven
+                                </Badge>
+                              </div>
+                            )}
+                            <p className="text-sm text-muted-foreground">{suggestion.reasoning}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isCreateDialogOpen || !!editingShift} onOpenChange={(open) => {
+              if (!open) handleCloseDialog();
+              else setIsCreateDialogOpen(true);
+            }}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-create-shift">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Yeni Vardiya
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
@@ -470,6 +616,7 @@ export default function Vardiyalar() {
               </Form>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 
