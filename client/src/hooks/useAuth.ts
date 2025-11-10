@@ -26,15 +26,17 @@ export function useAuth() {
     };
   }, []);
   
+  // Always try to fetch user - supports both session-based (OIDC) and token-based auth
   const { data: user, isLoading } = useQuery<User>({
     queryKey: ["/api/auth/user"],
     retry: false,
-    enabled: hasToken, // Only fetch if token exists
+    // Enable query always to support session auth (OIDC cookies) in addition to JWT tokens
   });
 
   return {
     user,
     isLoading,
-    isAuthenticated: !!user && hasToken,
+    // User is authenticated if user data exists (either from session or token)
+    isAuthenticated: !!user,
   };
 }
