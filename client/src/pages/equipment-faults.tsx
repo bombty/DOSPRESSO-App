@@ -150,13 +150,14 @@ export default function EquipmentFaults() {
     return { method: "PUT" as const, url: data.uploadURL };
   };
 
-  const handleUploadComplete = (faultId: number) => async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+  const handleUploadComplete = (faultId: number) => (result: { successful: Array<{ uploadURL: string }> }) => {
     if (result.successful && result.successful[0]) {
       const photoUrl = result.successful[0].uploadURL;
-      await apiRequest(`/api/faults/${faultId}/photo`, "POST", { photoUrl });
-      queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
-      toast({ title: "Başarılı", description: "Fotoğraf yüklendi ve AI analizi yapıldı" });
-      setUploadingFaultId(null);
+      apiRequest(`/api/faults/${faultId}/photo`, "POST", { photoUrl }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
+        toast({ title: "Başarılı", description: "Fotoğraf yüklendi ve AI analizi yapıldı" });
+        setUploadingFaultId(null);
+      });
     }
   };
 
