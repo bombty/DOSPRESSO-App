@@ -15,6 +15,7 @@ import {
   Megaphone,
   Wallet,
   Clock,
+  Calendar,
   ChevronRight,
   QrCode,
 } from "lucide-react";
@@ -119,6 +120,13 @@ const menuGroups: MenuGroup[] = [
         titleTr: "Personel",
         url: "/ik",
         icon: Users,
+        module: "employees",
+      },
+      {
+        title: "İzin Talepleri",
+        titleTr: "İzin Talepleri",
+        url: "/izin-talepleri",
+        icon: Calendar,
         module: "employees",
       },
     ],
