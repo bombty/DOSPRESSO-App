@@ -3115,10 +3115,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       
+      // Calculate totalDays server-side (inclusive calendar days)
+      const startDate = new Date(req.body.startDate);
+      const endDate = new Date(req.body.endDate);
+      const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
       const validatedData = insertLeaveRequestSchema.parse({
         ...req.body,
         userId: user.id, // Always use authenticated user
         status: 'pending', // Force pending status
+        totalDays, // Server-side calculation
       });
       
       const request = await storage.createLeaveRequest(validatedData);

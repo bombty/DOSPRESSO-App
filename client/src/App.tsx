@@ -24,6 +24,7 @@ import Training from "@/pages/training";
 import TrainingDetail from "@/pages/training-detail";
 import IK from "@/pages/ik";
 import LeaveRequests from "@/pages/leave-requests";
+import Attendance from "@/pages/attendance";
 import HQSupport from "@/pages/hq-support";
 import Notifications from "@/pages/notifications";
 import Announcements from "@/pages/announcements";
@@ -59,6 +60,7 @@ function Router() {
           <Route path="/egitim" component={Training} />
           <Route path="/ik" component={IK} />
           <Route path="/izin-talepleri" component={LeaveRequests} />
+          <Route path="/devam-takibi" component={Attendance} />
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular" component={Announcements} />
           <Route path="/kasa-raporlari" component={CashReports} />

@@ -346,7 +346,7 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
                 <FormItem>
                   <FormLabel>Sebep (Opsiyonel)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={3} data-testid="textarea-reason" />
+                    <Textarea {...field} value={field.value || ""} rows={3} data-testid="textarea-reason" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

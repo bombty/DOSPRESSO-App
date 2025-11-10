@@ -129,6 +129,13 @@ const menuGroups: MenuGroup[] = [
         icon: Calendar,
         module: "employees",
       },
+      {
+        title: "Devam Takibi",
+        titleTr: "Devam Takibi",
+        url: "/devam-takibi",
+        icon: Clock,
+        module: "employees",
+      },
     ],
   },
   {
