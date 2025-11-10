@@ -1185,3 +1185,73 @@ export const insertHQSupportMessageSchema = createInsertSchema(hqSupportMessages
 
 export type InsertHQSupportMessage = z.infer<typeof insertHQSupportMessageSchema>;
 export type HQSupportMessage = typeof hqSupportMessages.$inferSelect;
+
+// Notification types enum
+export const NotificationType = {
+  TASK_ASSIGNED: "task_assigned",
+  TASK_COMPLETE: "task_complete",
+  FAULT_REPORTED: "fault_reported",
+  FAULT_RESOLVED: "fault_resolved",
+  TRAINING_ASSIGNED: "training_assigned",
+  ANNOUNCEMENT: "announcement",
+  SYSTEM: "system",
+} as const;
+
+export type NotificationTypeType = typeof NotificationType[keyof typeof NotificationType];
+
+// Notifications table - User-specific notifications
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  link: text("link"),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userReadCreatedIdx: index("notifications_user_read_created_idx").on(table.userId, table.isRead, table.createdAt),
+}));
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+// Announcement priority enum
+export const AnnouncementPriority = {
+  LOW: "low",
+  NORMAL: "normal",
+  HIGH: "high",
+  URGENT: "urgent",
+} as const;
+
+export type AnnouncementPriorityType = typeof AnnouncementPriority[keyof typeof AnnouncementPriority];
+
+// Announcements table - HQ broadcasts to branches/roles
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  targetRoles: text("target_roles").array(),
+  targetBranches: integer("target_branches").array(),
+  priority: text("priority").notNull().default("normal"),
+  publishedAt: timestamp("published_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  publishedIdx: index("announcements_published_idx").on(table.publishedAt),
+}));
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+  publishedAt: true,
+});
+
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type Announcement = typeof announcements.$inferSelect;

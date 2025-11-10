@@ -51,6 +51,10 @@ import type {
   InsertHQSupportTicket,
   HQSupportMessage,
   InsertHQSupportMessage,
+  Notification,
+  InsertNotification,
+  Announcement,
+  InsertAnnouncement,
 } from "@shared/schema";
 import {
   users,
@@ -80,6 +84,8 @@ import {
   equipmentComments,
   hqSupportTickets,
   hqSupportMessages,
+  notifications,
+  announcements,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -218,6 +224,19 @@ export interface IStorage {
   updateHQSupportTicketStatus(id: number, status: string, closedBy?: string): Promise<HQSupportTicket | undefined>;
   getHQSupportMessages(ticketId: number): Promise<HQSupportMessage[]>;
   createHQSupportMessage(message: InsertHQSupportMessage): Promise<HQSupportMessage>;
+
+  // Notification operations
+  getNotifications(userId: string, isRead?: boolean): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: number, userId: string): Promise<boolean>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+
+  // Announcement operations
+  getAnnouncements(userId: string, branchId: number | null, role: string): Promise<Announcement[]>;
+  getAnnouncementById(id: number): Promise<Announcement | undefined>;
+  createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
+  deleteAnnouncement(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -966,6 +985,82 @@ export class DatabaseStorage implements IStorage {
   async createHQSupportMessage(message: InsertHQSupportMessage): Promise<HQSupportMessage> {
     const [newMessage] = await db.insert(hqSupportMessages).values(message).returning();
     return newMessage;
+  }
+
+  // Notification operations
+  async getNotifications(userId: string, isRead?: boolean): Promise<Notification[]> {
+    const conditions = [eq(notifications.userId, userId)];
+    if (isRead !== undefined) {
+      conditions.push(eq(notifications.isRead, isRead));
+    }
+    return db.select().from(notifications)
+      .where(and(...conditions))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
+    return result[0]?.count || 0;
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+
+  async markNotificationAsRead(id: number, userId: string): Promise<boolean> {
+    const result = await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(notifications.id, id),
+        eq(notifications.userId, userId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.userId, userId));
+  }
+
+  // Announcement operations
+  async getAnnouncements(userId: string, branchId: number | null, role: string): Promise<Announcement[]> {
+    const allAnnouncements = await db.select().from(announcements)
+      .where(sql`
+        (${announcements.expiresAt} IS NULL OR ${announcements.expiresAt} > NOW())
+      `)
+      .orderBy(desc(announcements.publishedAt));
+
+    return allAnnouncements.filter(announcement => {
+      const targetRoles = announcement.targetRoles || [];
+      const targetBranches = announcement.targetBranches || [];
+
+      const roleMatches = targetRoles.length === 0 || targetRoles.includes(role);
+      const branchMatches = targetBranches.length === 0 || (branchId !== null && targetBranches.includes(branchId));
+
+      return roleMatches && branchMatches;
+    });
+  }
+
+  async getAnnouncementById(id: number): Promise<Announcement | undefined> {
+    const [announcement] = await db.select().from(announcements).where(eq(announcements.id, id));
+    return announcement;
+  }
+
+  async createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement> {
+    const [newAnnouncement] = await db.insert(announcements).values(announcement).returning();
+    return newAnnouncement;
+  }
+
+  async deleteAnnouncement(id: number): Promise<void> {
+    await db.delete(announcements).where(eq(announcements.id, id));
   }
 }
 

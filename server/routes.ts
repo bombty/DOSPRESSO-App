@@ -2087,7 +2087,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticket = await storage.createHQSupportTicket({
         ...validatedData,
         branchId: ticketBranchId,
-        createdBy: userId,
+        createdById: userId,
       });
       res.status(201).json(ticket);
     } catch (error: any) {
@@ -2167,6 +2167,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid message data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // =========================================
+  // NOTIFICATIONS API
+  // =========================================
+
+  // Get user notifications
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const isRead = req.query.isRead === 'true' ? true : req.query.isRead === 'false' ? false : undefined;
+      
+      const notifications = await storage.getNotifications(userId, isRead);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Get unread notification count
+  app.get('/api/notifications/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread notification count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  // Create notification (HQ only)
+  app.post('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ users can create notifications
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bildirim oluşturma yetkiniz yok" });
+      }
+
+      const { insertNotificationSchema } = await import('@shared/schema');
+      const validatedData = insertNotificationSchema.parse(req.body);
+      const notification = await storage.createNotification(validatedData);
+      res.status(201).json(notification);
+    } catch (error: any) {
+      console.error("Error creating notification:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid notification data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create notification" });
+    }
+  });
+
+  // Mark notification as read
+  app.patch('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const id = parseInt(req.params.id);
+      const success = await storage.markNotificationAsRead(id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Bildirim bulunamadı veya size ait değil" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Mark all notifications as read
+  app.patch('/api/notifications/mark-all-read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // =========================================
+  // ANNOUNCEMENTS API
+  // =========================================
+
+  // Get announcements for user
+  app.get('/api/announcements', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = user.id;
+      const branchId = user.branchId;
+      const role = user.role;
+
+      const announcements = await storage.getAnnouncements(userId, branchId, role);
+      res.json(announcements);
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
+      res.status(500).json({ message: "Failed to fetch announcements" });
+    }
+  });
+
+  // Get single announcement
+  app.get('/api/announcements/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const announcement = await storage.getAnnouncementById(id);
+      if (!announcement) {
+        return res.status(404).json({ message: "Duyuru bulunamadı" });
+      }
+      res.json(announcement);
+    } catch (error) {
+      console.error("Error fetching announcement:", error);
+      res.status(500).json({ message: "Failed to fetch announcement" });
+    }
+  });
+
+  // Create announcement (HQ only)
+  app.post('/api/announcements', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+
+      // Only HQ users can create announcements
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Duyuru oluşturma yetkiniz yok" });
+      }
+
+      const { insertAnnouncementSchema } = await import('@shared/schema');
+      const validatedData = insertAnnouncementSchema.parse(req.body);
+      const announcement = await storage.createAnnouncement({
+        ...validatedData,
+        createdById: userId,
+      });
+      res.status(201).json(announcement);
+    } catch (error: any) {
+      console.error("Error creating announcement:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid announcement data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create announcement" });
+    }
+  });
+
+  // Delete announcement (HQ only)
+  app.delete('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ users can delete announcements
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Duyuru silme yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+      await storage.deleteAnnouncement(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting announcement:", error);
+      res.status(500).json({ message: "Failed to delete announcement" });
     }
   });
 
