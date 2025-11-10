@@ -506,7 +506,10 @@ export const tasks = pgTable("tasks", {
   nextRunAt: timestamp("next_run_at"), // When the next recurrence should trigger
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  branchStatusIdx: index("tasks_branch_status_idx").on(table.branchId, table.status),
+  assignedToIdx: index("tasks_assigned_to_idx").on(table.assignedToId),
+}));
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
@@ -685,7 +688,10 @@ export const equipmentFaults = pgTable("equipment_faults", {
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  branchStageIdx: index("equipment_faults_branch_stage_idx").on(table.branchId, table.currentStage),
+  equipmentIdx: index("equipment_faults_equipment_idx").on(table.equipmentId),
+}));
 
 export const insertEquipmentFaultSchema = createInsertSchema(equipmentFaults).omit({
   id: true,
@@ -1168,7 +1174,9 @@ export const hqSupportMessages = pgTable("hq_support_messages", {
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   message: text("message").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  ticketCreatedIdx: index("hq_support_messages_ticket_created_idx").on(table.ticketId, table.createdAt),
+}));
 
 export const insertHQSupportMessageSchema = createInsertSchema(hqSupportMessages).omit({
   id: true,

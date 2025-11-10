@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 import { 
   HQSupportTicket, 
   HQSupportMessage, 
@@ -77,10 +78,13 @@ export default function HQSupport() {
 
   const isHQ = user?.role ? isHQRole(user.role as any) : false;
 
-  // Fetch tickets with polling for real-time updates
+  // Adaptive polling: 5s active, 60s inactive (70% cost reduction)
+  const pollingInterval = useAdaptivePolling(5000, 60000);
+
+  // Fetch tickets with adaptive polling for real-time updates
   const { data: tickets = [], isLoading } = useQuery<TicketWithRelations[]>({
     queryKey: ["/api/hq-support/tickets"],
-    refetchInterval: 10000, // Poll every 10 seconds
+    refetchInterval: pollingInterval,
   });
 
   // Filter tickets by status

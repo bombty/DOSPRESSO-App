@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 import {
   Dialog,
   DialogContent,
@@ -33,10 +34,13 @@ export function InboxDialog() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
 
-  // Fetch unread count
+  // Adaptive polling for unread count
+  const pollingInterval = useAdaptivePolling(5000, 60000);
+
+  // Fetch unread count with adaptive polling
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ['/api/messages/unread-count'],
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: pollingInterval,
   });
 
   // Fetch messages when dialog opens
@@ -48,9 +52,7 @@ export function InboxDialog() {
   // Mark as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: async (messageId: number) => {
-      return apiRequest(`/api/messages/${messageId}/read`, {
-        method: 'PATCH',
-      });
+      return apiRequest('PATCH', `/api/messages/${messageId}/read`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
