@@ -2332,6 +2332,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =========================================
+  // DAILY CASH REPORTS API
+  // =========================================
+
+  // Get daily cash reports (supervisor: own branch, muhasebe: all branches)
+  app.get('/api/cash-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+
+      let branchId: number | undefined;
+      
+      // Supervisors can only see their own branch reports
+      if (isBranchRole(role)) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+        }
+        branchId = user.branchId;
+      }
+      // Muhasebe can see all branches (no branchId filter)
+      else if (role !== 'muhasebe') {
+        return res.status(403).json({ message: "Kasa raporlarını görüntüleme yetkiniz yok" });
+      }
+
+      const reports = await storage.getDailyCashReports(branchId, dateFrom, dateTo);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching cash reports:", error);
+      res.status(500).json({ message: "Kasa raporları getirilemedi" });
+    }
+  });
+
+  // Get single cash report by ID
+  app.get('/api/cash-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+
+      const report = await storage.getDailyCashReportById(id);
+      if (!report) {
+        return res.status(404).json({ message: "Kasa raporu bulunamadı" });
+      }
+
+      // Check access: supervisor can only view own branch, muhasebe can view all
+      if (isBranchRole(role)) {
+        if (!user.branchId || report.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu raporu görüntüleme yetkiniz yok" });
+        }
+      } else if (role !== 'muhasebe') {
+        return res.status(403).json({ message: "Kasa raporlarını görüntüleme yetkiniz yok" });
+      }
+
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching cash report:", error);
+      res.status(500).json({ message: "Kasa raporu getirilemedi" });
+    }
+  });
+
+  // Create daily cash report (supervisor only)
+  app.post('/api/cash-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      // Only supervisors can create cash reports
+      if (!['supervisor', 'supervisor_buddy'].includes(role)) {
+        return res.status(403).json({ message: "Kasa raporu oluşturma yetkiniz yok" });
+      }
+
+      // Validate request body
+      const { insertDailyCashReportSchema } = await import('@shared/schema');
+      const validatedData = insertDailyCashReportSchema.parse(req.body);
+
+      // Ensure branchId matches user's branch
+      if (!user.branchId) {
+        return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+      }
+      if (validatedData.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Başka şube için rapor oluşturamazsınız" });
+      }
+
+      // Create report with auto-set reportedById
+      const report = await storage.createDailyCashReport({
+        ...validatedData,
+        reportedById: user.id,
+      });
+
+      res.status(201).json(report);
+    } catch (error: any) {
+      console.error("Error creating cash report:", error);
+      
+      // Handle unique constraint violation (duplicate report)
+      if (error.code === '23505') {
+        return res.status(409).json({ 
+          message: "Bu tarih için zaten bir kasa raporu mevcut" 
+        });
+      }
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Geçersiz kasa raporu verisi", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Kasa raporu oluşturulamadı" });
+    }
+  });
+
+  // Update daily cash report (supervisor: own branch, muhasebe: all branches)
+  app.patch('/api/cash-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+
+      // Get existing report
+      const existingReport = await storage.getDailyCashReportById(id);
+      if (!existingReport) {
+        return res.status(404).json({ message: "Kasa raporu bulunamadı" });
+      }
+
+      // Check access: supervisor can only update own branch, muhasebe can update all
+      if (isBranchRole(role)) {
+        if (!user.branchId || existingReport.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu raporu güncelleme yetkiniz yok" });
+        }
+      } else if (role !== 'muhasebe') {
+        return res.status(403).json({ message: "Kasa raporlarını güncelleme yetkiniz yok" });
+      }
+
+      // Validate updates (partial schema)
+      const { insertDailyCashReportSchema } = await import('@shared/schema');
+      const validatedData = insertDailyCashReportSchema.partial().parse(req.body);
+
+      // Prevent changing branchId or reportDate (immutable after creation)
+      const { branchId, reportDate, reportedById, ...allowedUpdates } = validatedData;
+
+      const updated = await storage.updateDailyCashReport(id, allowedUpdates);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating cash report:", error);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Geçersiz kasa raporu verisi", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Kasa raporu güncellenemedi" });
+    }
+  });
+
+  // Delete daily cash report (supervisor: own branch, muhasebe: all branches)
+  app.delete('/api/cash-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+
+      // Get existing report
+      const existingReport = await storage.getDailyCashReportById(id);
+      if (!existingReport) {
+        return res.status(404).json({ message: "Kasa raporu bulunamadı" });
+      }
+
+      // Check access: supervisor can only delete own branch, muhasebe can delete all
+      if (isBranchRole(role)) {
+        if (!user.branchId || existingReport.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu raporu silme yetkiniz yok" });
+        }
+      } else if (role !== 'muhasebe') {
+        return res.status(403).json({ message: "Kasa raporlarını silme yetkiniz yok" });
+      }
+
+      await storage.deleteDailyCashReport(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting cash report:", error);
+      res.status(500).json({ message: "Kasa raporu silinemedi" });
+    }
+  });
+
   startReminderSystem();
 
   const httpServer = createServer(app);

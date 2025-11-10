@@ -55,6 +55,8 @@ import type {
   InsertNotification,
   Announcement,
   InsertAnnouncement,
+  DailyCashReport,
+  InsertDailyCashReport,
 } from "@shared/schema";
 import {
   users,
@@ -86,6 +88,7 @@ import {
   hqSupportMessages,
   notifications,
   announcements,
+  dailyCashReports,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -237,6 +240,13 @@ export interface IStorage {
   getAnnouncementById(id: number): Promise<Announcement | undefined>;
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
   deleteAnnouncement(id: number): Promise<void>;
+  
+  // Daily Cash Report operations
+  getDailyCashReports(branchId?: number, dateFrom?: string, dateTo?: string): Promise<DailyCashReport[]>;
+  getDailyCashReportById(id: number): Promise<DailyCashReport | undefined>;
+  createDailyCashReport(report: InsertDailyCashReport): Promise<DailyCashReport>;
+  updateDailyCashReport(id: number, updates: Partial<InsertDailyCashReport>): Promise<DailyCashReport | undefined>;
+  deleteDailyCashReport(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1061,6 +1071,47 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAnnouncement(id: number): Promise<void> {
     await db.delete(announcements).where(eq(announcements.id, id));
+  }
+
+  // Daily Cash Report operations
+  async getDailyCashReports(branchId?: number, dateFrom?: string, dateTo?: string): Promise<DailyCashReport[]> {
+    const conditions = [];
+    if (branchId !== undefined) {
+      conditions.push(eq(dailyCashReports.branchId, branchId));
+    }
+    if (dateFrom) {
+      conditions.push(sql`${dailyCashReports.reportDate} >= ${dateFrom}`);
+    }
+    if (dateTo) {
+      conditions.push(sql`${dailyCashReports.reportDate} <= ${dateTo}`);
+    }
+
+    return db.select()
+      .from(dailyCashReports)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(dailyCashReports.reportDate));
+  }
+
+  async getDailyCashReportById(id: number): Promise<DailyCashReport | undefined> {
+    const [report] = await db.select().from(dailyCashReports).where(eq(dailyCashReports.id, id));
+    return report;
+  }
+
+  async createDailyCashReport(report: InsertDailyCashReport): Promise<DailyCashReport> {
+    const [newReport] = await db.insert(dailyCashReports).values(report).returning();
+    return newReport;
+  }
+
+  async updateDailyCashReport(id: number, updates: Partial<InsertDailyCashReport>): Promise<DailyCashReport | undefined> {
+    const [updated] = await db.update(dailyCashReports)
+      .set(updates)
+      .where(eq(dailyCashReports.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDailyCashReport(id: number): Promise<void> {
+    await db.delete(dailyCashReports).where(eq(dailyCashReports.id, id));
   }
 }
 
