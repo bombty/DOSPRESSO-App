@@ -136,6 +136,13 @@ const menuGroups: MenuGroup[] = [
         icon: Clock,
         module: "employees",
       },
+      {
+        title: "İK Raporları",
+        titleTr: "İK Raporları",
+        url: "/ik-raporlari",
+        icon: BarChart3,
+        module: "employees",
+      },
     ],
   },
   {
