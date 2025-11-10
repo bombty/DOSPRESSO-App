@@ -43,6 +43,14 @@ import type {
   InsertEmployeeWarning,
   Message,
   InsertMessage,
+  EquipmentMaintenanceLog,
+  InsertEquipmentMaintenanceLog,
+  EquipmentComment,
+  InsertEquipmentComment,
+  HQSupportTicket,
+  InsertHQSupportTicket,
+  HQSupportMessage,
+  InsertHQSupportMessage,
 } from "@shared/schema";
 import {
   users,
@@ -68,6 +76,10 @@ import {
   messages,
   messageReads,
   UserRole,
+  equipmentMaintenanceLogs,
+  equipmentComments,
+  hqSupportTickets,
+  hqSupportMessages,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -191,6 +203,21 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: number, userId: string): Promise<void>;
   getUnreadCount(userId: string, role: string): Promise<number>;
+
+  // Equipment detail operations
+  getEquipmentDetail(id: number): Promise<Equipment | undefined>;
+  getEquipmentMaintenanceLogs(equipmentId: number): Promise<EquipmentMaintenanceLog[]>;
+  createEquipmentMaintenanceLog(log: InsertEquipmentMaintenanceLog): Promise<EquipmentMaintenanceLog>;
+  getEquipmentComments(equipmentId: number): Promise<EquipmentComment[]>;
+  createEquipmentComment(comment: InsertEquipmentComment): Promise<EquipmentComment>;
+
+  // HQ Support Ticket operations
+  getHQSupportTickets(branchId?: number, status?: string): Promise<HQSupportTicket[]>;
+  getHQSupportTicket(id: number): Promise<HQSupportTicket | undefined>;
+  createHQSupportTicket(ticket: InsertHQSupportTicket): Promise<HQSupportTicket>;
+  updateHQSupportTicketStatus(id: number, status: string, closedBy?: string): Promise<HQSupportTicket | undefined>;
+  getHQSupportMessages(ticketId: number): Promise<HQSupportMessage[]>;
+  createHQSupportMessage(message: InsertHQSupportMessage): Promise<HQSupportMessage>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -859,6 +886,86 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return Number(result[0]?.count || 0);
+  }
+
+  // Equipment detail operations
+  async getEquipmentDetail(id: number): Promise<Equipment | undefined> {
+    return this.getEquipmentById(id);
+  }
+
+  async getEquipmentMaintenanceLogs(equipmentId: number): Promise<EquipmentMaintenanceLog[]> {
+    return db.select().from(equipmentMaintenanceLogs)
+      .where(eq(equipmentMaintenanceLogs.equipmentId, equipmentId))
+      .orderBy(desc(equipmentMaintenanceLogs.performedAt));
+  }
+
+  async createEquipmentMaintenanceLog(log: InsertEquipmentMaintenanceLog): Promise<EquipmentMaintenanceLog> {
+    const [newLog] = await db.insert(equipmentMaintenanceLogs).values(log).returning();
+    return newLog;
+  }
+
+  async getEquipmentComments(equipmentId: number): Promise<EquipmentComment[]> {
+    return db.select().from(equipmentComments)
+      .where(eq(equipmentComments.equipmentId, equipmentId))
+      .orderBy(desc(equipmentComments.createdAt));
+  }
+
+  async createEquipmentComment(comment: InsertEquipmentComment): Promise<EquipmentComment> {
+    const [newComment] = await db.insert(equipmentComments).values(comment).returning();
+    return newComment;
+  }
+
+  // HQ Support Ticket operations
+  async getHQSupportTickets(branchId?: number, status?: string): Promise<HQSupportTicket[]> {
+    const conditions = [];
+    if (branchId !== undefined) {
+      conditions.push(eq(hqSupportTickets.branchId, branchId));
+    }
+    if (status !== undefined) {
+      conditions.push(eq(hqSupportTickets.status, status));
+    }
+    
+    if (conditions.length > 0) {
+      return db.select().from(hqSupportTickets)
+        .where(and(...conditions))
+        .orderBy(desc(hqSupportTickets.createdAt));
+    }
+    return db.select().from(hqSupportTickets).orderBy(desc(hqSupportTickets.createdAt));
+  }
+
+  async getHQSupportTicket(id: number): Promise<HQSupportTicket | undefined> {
+    const [ticket] = await db.select().from(hqSupportTickets).where(eq(hqSupportTickets.id, id));
+    return ticket;
+  }
+
+  async createHQSupportTicket(ticket: InsertHQSupportTicket): Promise<HQSupportTicket> {
+    const [newTicket] = await db.insert(hqSupportTickets).values(ticket).returning();
+    return newTicket;
+  }
+
+  async updateHQSupportTicketStatus(id: number, status: string, closedBy?: string): Promise<HQSupportTicket | undefined> {
+    const updates: any = { status };
+    if (status === 'closed' && closedBy) {
+      updates.closedAt = new Date();
+      updates.closedBy = closedBy;
+    }
+    const [updated] = await db
+      .update(hqSupportTickets)
+      .set(updates)
+      .where(eq(hqSupportTickets.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getHQSupportMessages(ticketId: number): Promise<HQSupportMessage[]> {
+    return db.select().from(hqSupportMessages)
+      .where(eq(hqSupportMessages.ticketId, ticketId))
+      .orderBy(hqSupportMessages.createdAt);
+  }
+
+  async createHQSupportMessage(message: InsertHQSupportMessage): Promise<HQSupportMessage> {
+    const [newMessage] = await db.insert(hqSupportMessages).values(message).returning();
+    return newMessage;
   }
 }
 

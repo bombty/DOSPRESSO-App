@@ -547,12 +547,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/equipment/:id', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
       const id = parseInt(req.params.id);
       const equipmentItem = await storage.getEquipmentById(id);
       if (!equipmentItem) {
         return res.status(404).json({ message: "Equipment not found" });
       }
-      res.json(equipmentItem);
+
+      // Authorization: Branch users can only access their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId || equipmentItem.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu ekipmana erişim yetkiniz yok" });
+        }
+      }
+
+      // Fetch related data
+      const [maintenanceLogs, faults, comments] = await Promise.all([
+        storage.getEquipmentMaintenanceLogs(id),
+        storage.getFaults(equipmentItem.branchId),
+        storage.getEquipmentComments(id)
+      ]);
+
+      // Filter faults to only those for this equipment
+      const equipmentFaults = faults.filter(f => f.equipmentId === id);
+
+      res.json({
+        ...equipmentItem,
+        maintenanceLogs,
+        faults: equipmentFaults,
+        comments
+      });
     } catch (error) {
       console.error("Error fetching equipment:", error);
       res.status(500).json({ message: "Failed to fetch equipment" });
@@ -619,10 +643,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req, res) => {
+  app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
+      const { insertEquipmentMaintenanceLogSchema } = await import('@shared/schema');
       
       const equipmentItem = await storage.getEquipmentById(id);
       if (!equipmentItem) {
@@ -637,12 +663,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      const validatedData = insertEquipmentMaintenanceLogSchema.parse(req.body);
+      const maintenanceLog = await storage.createEquipmentMaintenanceLog({
+        ...validatedData,
+        equipmentId: id,
+        performedBy: userId,
+      });
+
+      // Update equipment maintenance dates
       const intervalDays = equipmentItem.maintenanceIntervalDays || 30;
-      const updated = await storage.logMaintenance(id, intervalDays);
-      res.json(updated);
-    } catch (error) {
+      await storage.logMaintenance(id, intervalDays);
+      
+      res.json(maintenanceLog);
+    } catch (error: any) {
       console.error("Error logging maintenance:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid maintenance log data", errors: error.errors });
+      }
       res.status(500).json({ message: "Failed to log maintenance" });
+    }
+  });
+
+  app.post('/api/equipment/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const id = parseInt(req.params.id);
+      const { insertEquipmentCommentSchema } = await import('@shared/schema');
+      
+      const equipmentItem = await storage.getEquipmentById(id);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      // Authorization: Branch users can only comment on their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (equipmentItem.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu ekipman için yorum oluşturma yetkiniz yok" });
+        }
+      }
+      
+      const validatedData = insertEquipmentCommentSchema.parse(req.body);
+      const comment = await storage.createEquipmentComment({
+        ...validatedData,
+        equipmentId: id,
+        userId,
+      });
+      res.json(comment);
+    } catch (error: any) {
+      console.error("Error creating equipment comment:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid comment data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create comment" });
     }
   });
 
@@ -1932,6 +2006,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking message as read:", error);
       res.status(500).json({ message: "Mesaj güncellenirken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // HQ SUPPORT TICKET ROUTES
+  // ========================================
+
+  // Get HQ support tickets (list with filtering)
+  app.get('/api/hq-support/tickets', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const status = req.query.status as string | undefined;
+
+      // Authorization: Branch users can only see their own branch tickets
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        if (requestedBranchId && requestedBranchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+        }
+        // Force branch users to see only their branch
+        const tickets = await storage.getHQSupportTickets(user.branchId, status);
+        return res.json(tickets);
+      }
+
+      // HQ users can access all or filter by branch
+      const tickets = await storage.getHQSupportTickets(requestedBranchId, status);
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching HQ support tickets:", error);
+      res.status(500).json({ message: "Failed to fetch tickets" });
+    }
+  });
+
+  // Get single HQ support ticket with messages
+  app.get('/api/hq-support/tickets/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      const ticket = await storage.getHQSupportTicket(id);
+
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Authorization: Branch users can only access their own branch tickets
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId || ticket.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu destek talebine erişim yetkiniz yok" });
+        }
+      }
+
+      // Fetch ticket messages
+      const messages = await storage.getHQSupportMessages(id);
+      res.json({ ...ticket, messages });
+    } catch (error) {
+      console.error("Error fetching HQ support ticket:", error);
+      res.status(500).json({ message: "Failed to fetch ticket" });
+    }
+  });
+
+  // Create HQ support ticket
+  app.post('/api/hq-support/tickets', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const { insertHQSupportTicketSchema } = await import('@shared/schema');
+      const validatedData = insertHQSupportTicketSchema.parse(req.body);
+
+      // Authorization: Branch users can only create tickets for their own branch
+      let ticketBranchId = validatedData.branchId;
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        ticketBranchId = branchId; // Override payload branchId
+      }
+
+      const ticket = await storage.createHQSupportTicket({
+        ...validatedData,
+        branchId: ticketBranchId,
+        createdBy: userId,
+      });
+      res.status(201).json(ticket);
+    } catch (error: any) {
+      console.error("Error creating HQ support ticket:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid ticket data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create ticket" });
+    }
+  });
+
+  // Update HQ support ticket status
+  app.patch('/api/hq-support/tickets/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const id = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      // Get existing ticket for authorization
+      const existingTicket = await storage.getHQSupportTicket(id);
+      if (!existingTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Authorization: Branch users can only update their own branch tickets
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId || existingTicket.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu destek talebini güncelleme yetkiniz yok" });
+        }
+      }
+
+      const closedBy = status === 'closed' ? userId : undefined;
+      const ticket = await storage.updateHQSupportTicketStatus(id, status, closedBy);
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error updating HQ support ticket status:", error);
+      res.status(500).json({ message: "Failed to update ticket status" });
+    }
+  });
+
+  // Send message to HQ support ticket
+  app.post('/api/hq-support/tickets/:id/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const ticketId = parseInt(req.params.id);
+      const { insertHQSupportMessageSchema } = await import('@shared/schema');
+
+      // Get existing ticket for authorization
+      const existingTicket = await storage.getHQSupportTicket(ticketId);
+      if (!existingTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Authorization: Branch users can only message on their own branch tickets
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId || existingTicket.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu destek talebine mesaj gönderme yetkiniz yok" });
+        }
+      }
+
+      const validatedData = insertHQSupportMessageSchema.parse(req.body);
+      const message = await storage.createHQSupportMessage({
+        ...validatedData,
+        ticketId,
+        senderId: userId,
+      });
+      res.status(201).json(message);
+    } catch (error: any) {
+      console.error("Error creating HQ support message:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid message data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to send message" });
     }
   });
 

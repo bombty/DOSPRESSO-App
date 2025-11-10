@@ -1077,3 +1077,103 @@ export const performanceMetricsRelations = relations(performanceMetrics, ({ one 
     references: [branches.id],
   }),
 }));
+
+// Equipment Maintenance Logs table
+export const equipmentMaintenanceLogs = pgTable("equipment_maintenance_logs", {
+  id: serial("id").primaryKey(),
+  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+  performedBy: varchar("performed_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  maintenanceType: varchar("maintenance_type", { length: 50 }).notNull(), // routine, repair, calibration, cleaning
+  description: text("description").notNull(),
+  cost: numeric("cost", { precision: 10, scale: 2 }),
+  performedAt: timestamp("performed_at").notNull().defaultNow(),
+  nextScheduledDate: date("next_scheduled_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertEquipmentMaintenanceLogSchema = createInsertSchema(equipmentMaintenanceLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEquipmentMaintenanceLog = z.infer<typeof insertEquipmentMaintenanceLogSchema>;
+export type EquipmentMaintenanceLog = typeof equipmentMaintenanceLogs.$inferSelect;
+
+// Equipment Comments table
+export const equipmentComments = pgTable("equipment_comments", {
+  id: serial("id").primaryKey(),
+  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  comment: text("comment").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertEquipmentCommentSchema = createInsertSchema(equipmentComments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEquipmentComment = z.infer<typeof insertEquipmentCommentSchema>;
+export type EquipmentComment = typeof equipmentComments.$inferSelect;
+
+// HQ Support Ticket Status
+export const HQ_SUPPORT_STATUS = {
+  AKTIF: 'aktif',
+  KAPATILDI: 'kapatildi',
+} as const;
+
+export type HQSupportStatusType = typeof HQ_SUPPORT_STATUS[keyof typeof HQ_SUPPORT_STATUS];
+
+// HQ Support Category (which HQ department)
+export const HQ_SUPPORT_CATEGORY = {
+  MUHASEBE: 'muhasebe',
+  SATINALMA: 'satinalma',
+  COACH: 'coach',
+  TEKNIK: 'teknik',
+  DESTEK: 'destek',
+  FABRIKA: 'fabrika',
+  GENEL: 'genel',
+} as const;
+
+export type HQSupportCategoryType = typeof HQ_SUPPORT_CATEGORY[keyof typeof HQ_SUPPORT_CATEGORY];
+
+// HQ Support Tickets table
+export const hqSupportTickets = pgTable("hq_support_tickets", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  category: varchar("category", { length: 50 }).notNull(), // muhasebe, satinalma, coach, teknik, destek, fabrika, genel
+  status: varchar("status", { length: 20 }).notNull().default(HQ_SUPPORT_STATUS.AKTIF),
+  closedAt: timestamp("closed_at"),
+  closedBy: varchar("closed_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertHQSupportTicketSchema = createInsertSchema(hqSupportTickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertHQSupportTicket = z.infer<typeof insertHQSupportTicketSchema>;
+export type HQSupportTicket = typeof hqSupportTickets.$inferSelect;
+
+// HQ Support Messages table
+export const hqSupportMessages = pgTable("hq_support_messages", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull().references(() => hqSupportTickets.id, { onDelete: "cascade" }),
+  senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertHQSupportMessageSchema = createInsertSchema(hqSupportMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertHQSupportMessage = z.infer<typeof insertHQSupportMessageSchema>;
+export type HQSupportMessage = typeof hqSupportMessages.$inferSelect;
