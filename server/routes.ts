@@ -2729,6 +2729,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk create shifts (supervisor only)
+  app.post('/api/shifts/bulk', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Toplu vardiya oluşturma yetkiniz yok" });
+      }
+
+      const { bulkCreateShiftsSchema } = await import('@shared/schema');
+      const validatedData = bulkCreateShiftsSchema.parse(req.body);
+
+      if (!user.branchId) {
+        return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+      }
+      if (validatedData.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Başka şube için vardiya oluşturamazsınız" });
+      }
+
+      const preview = req.query.preview === 'true';
+      const shifts = await storage.createShiftsBulk(validatedData, user.id, preview);
+
+      res.status(preview ? 200 : 201).json({ shifts, preview });
+    } catch (error: any) {
+      console.error("Error bulk creating shifts:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Toplu vardiya oluşturulamadı" });
+    }
+  });
+
   // Create shift (supervisor only)
   app.post('/api/shifts', isAuthenticated, async (req: any, res) => {
     try {

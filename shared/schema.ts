@@ -1359,6 +1359,7 @@ export const shifts = pgTable("shifts", {
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
   createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  checklistId: integer("checklist_id").references(() => checklists.id, { onDelete: "set null" }),
   shiftDate: date("shift_date").notNull(),
   startTime: time("start_time", { precision: 0 }).notNull(),
   endTime: time("end_time", { precision: 0 }).notNull(),
@@ -1371,6 +1372,7 @@ export const shifts = pgTable("shifts", {
   branchDateIdx: index("shifts_branch_date_idx").on(table.branchId, table.shiftDate),
   assignedToIdx: index("shifts_assigned_to_idx").on(table.assignedToId),
   createdByIdx: index("shifts_created_by_idx").on(table.createdById),
+  checklistIdx: index("shifts_checklist_idx").on(table.checklistId),
 }));
 
 export const insertShiftSchema = createInsertSchema(shifts).omit({
@@ -1401,3 +1403,17 @@ export const insertShiftChecklistSchema = createInsertSchema(shiftChecklists).om
 
 export type InsertShiftChecklist = z.infer<typeof insertShiftChecklistSchema>;
 export type ShiftChecklist = typeof shiftChecklists.$inferSelect;
+
+// Bulk shift creation schema for shift planning
+export const bulkCreateShiftsSchema = z.object({
+  branchId: z.number().int().positive(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
+  period: z.enum(['weekly', '2weekly', 'monthly']),
+  checklistId: z.number().int().positive().optional().nullable(),
+  openingHour: z.string().regex(/^\d{2}:\d{2}$/).optional(), // HH:MM
+  closingHour: z.string().regex(/^\d{2}:\d{2}$/).optional(), // HH:MM
+  shiftType: z.string().min(1).default('regular'),
+});
+
+export type BulkCreateShifts = z.infer<typeof bulkCreateShiftsSchema>;

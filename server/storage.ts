@@ -266,6 +266,7 @@ export interface IStorage {
   getShifts(branchId?: number, assignedToId?: string, dateFrom?: string, dateTo?: string): Promise<Shift[]>;
   getShift(id: number): Promise<Shift | undefined>;
   createShift(shift: InsertShift): Promise<Shift>;
+  createShiftsBulk(params: BulkCreateShifts, createdById: string, preview?: boolean): Promise<Shift[]>;
   updateShift(id: number, updates: Partial<InsertShift>): Promise<Shift | undefined>;
   deleteShift(id: number): Promise<void>;
   
@@ -1374,6 +1375,50 @@ export class DatabaseStorage implements IStorage {
       updatedAt: new Date(),
     }).returning();
     return newShift;
+  }
+
+  async createShiftsBulk(params: BulkCreateShifts, createdById: string, preview?: boolean): Promise<Shift[]> {
+    const { branchId, startDate, endDate, period, checklistId, openingHour, closingHour, shiftType } = params;
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (start > end) {
+      throw new Error("Start date must be before or equal to end date");
+    }
+    
+    const days: Date[] = [];
+    const current = new Date(start);
+    
+    while (current <= end) {
+      days.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+    
+    const shiftsToCreate: InsertShift[] = days.map(date => ({
+      branchId,
+      createdById,
+      checklistId: checklistId ?? null,
+      shiftDate: date.toISOString().split('T')[0],
+      startTime: openingHour || '08:00',
+      endTime: closingHour || '22:00',
+      shiftType: shiftType || 'regular',
+      status: 'draft',
+      assignedToId: null,
+      notes: null,
+    }));
+    
+    if (preview) {
+      return shiftsToCreate.map((shift, idx) => ({
+        id: -(idx + 1),
+        ...shift,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as Shift));
+    }
+    
+    const created = await db.insert(shifts).values(shiftsToCreate).returning();
+    return created;
   }
 
   async updateShift(id: number, updates: Partial<InsertShift>): Promise<Shift | undefined> {
