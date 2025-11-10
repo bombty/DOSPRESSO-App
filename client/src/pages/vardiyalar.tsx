@@ -42,29 +42,29 @@ type ShiftWithRelations = Shift & {
 };
 
 const shiftTypeLabels: Record<string, string> = {
-  sabah: "Sabah",
-  ogle: "Öğle",
-  aksam: "Akşam",
-  gece: "Gece",
+  morning: "Sabah",
+  evening: "Akşam",
+  night: "Gece",
 };
 
 const shiftTypeColors: Record<string, string> = {
-  sabah: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  ogle: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  aksam: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  gece: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  morning: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  evening: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  night: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
 };
 
 const statusLabels: Record<string, string> = {
   draft: "Taslak",
-  published: "Yayınlandı",
+  pending_hq: "HQ Onayı Bekliyor",
+  confirmed: "Onaylandı",
   completed: "Tamamlandı",
   cancelled: "İptal",
 };
 
 const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-  published: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  pending_hq: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  confirmed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   completed: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
 };
@@ -135,7 +135,7 @@ export default function Vardiyalar() {
       shiftDate: format(new Date(), 'yyyy-MM-dd'),
       startTime: '09:00:00',
       endTime: '17:00:00',
-      shiftType: 'sabah',
+      shiftType: 'morning',
       status: 'draft',
       assignedToId: null,
       notes: null,
@@ -221,8 +221,8 @@ export default function Vardiyalar() {
       shiftDate: shift.shiftDate,
       startTime: shift.startTime,
       endTime: shift.endTime,
-      shiftType: shift.shiftType,
-      status: shift.status,
+      shiftType: shift.shiftType as "morning" | "evening" | "night",
+      status: shift.status as "draft" | "pending_hq" | "confirmed" | "completed" | "cancelled",
       assignedToId: shift.assignedToId,
       notes: shift.notes,
       createdById: shift.createdById,
@@ -365,10 +365,9 @@ export default function Vardiyalar() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="sabah">Sabah</SelectItem>
-                            <SelectItem value="ogle">Öğle</SelectItem>
-                            <SelectItem value="aksam">Akşam</SelectItem>
-                            <SelectItem value="gece">Gece</SelectItem>
+                            <SelectItem value="morning">Sabah (08:00-16:00)</SelectItem>
+                            <SelectItem value="evening">Akşam (16:00-00:00)</SelectItem>
+                            <SelectItem value="night">Gece (00:00-08:00)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -390,7 +389,8 @@ export default function Vardiyalar() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="draft">Taslak</SelectItem>
-                            <SelectItem value="published">Yayınlandı</SelectItem>
+                            <SelectItem value="pending_hq">HQ Onayı Bekliyor</SelectItem>
+                            <SelectItem value="confirmed">Onaylandı</SelectItem>
                             <SelectItem value="completed">Tamamlandı</SelectItem>
                             <SelectItem value="cancelled">İptal</SelectItem>
                           </SelectContent>
