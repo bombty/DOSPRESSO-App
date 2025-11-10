@@ -3,11 +3,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { EQUIPMENT_METADATA, insertEquipmentCommentSchema, type EquipmentMaintenanceLog, type EquipmentFault, type EquipmentComment, FAULT_STAGES, type FaultStageType } from "@shared/schema";
+import { EQUIPMENT_METADATA, insertEquipmentCommentSchema, insertEquipmentServiceRequestSchema, insertEquipmentFaultSchema, type EquipmentMaintenanceLog, type EquipmentFault, type EquipmentComment, type EquipmentServiceRequest, FAULT_STAGES, type FaultStageType, SERVICE_REQUEST_STATUS, SERVICE_DECISION } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,8 +16,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 
 interface EquipmentDetailResponse {
   id: number;
@@ -38,10 +45,74 @@ interface EquipmentDetailResponse {
   maintenanceLogs: EquipmentMaintenanceLog[];
   faults: EquipmentFault[];
   comments: EquipmentComment[];
+  serviceRequests?: EquipmentServiceRequest[];
 }
 
 const commentFormSchema = insertEquipmentCommentSchema.pick({ comment: true });
 type CommentFormData = z.infer<typeof commentFormSchema>;
+
+const serviceRequestFormSchema = insertEquipmentServiceRequestSchema
+  .pick({
+    serviceProvider: true,
+    contactInfo: true,
+    serviceDecision: true,
+    estimatedCost: true,
+    notes: true,
+  })
+  .extend({
+    estimatedCost: z.string().optional().refine(
+      (val) => !val || !isNaN(parseFloat(val)) && parseFloat(val) >= 0,
+      { message: "Tahmini maliyet 0 veya daha büyük olmalıdır" }
+    ),
+  });
+type ServiceRequestFormData = z.infer<typeof serviceRequestFormSchema>;
+
+const statusUpdateFormSchema = z.object({
+  status: z.string(),
+  actualCost: z.string().optional().refine(
+    (val) => !val || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0),
+    { message: "Gerçek maliyet 0 veya daha büyük olmalıdır" }
+  ),
+  notes: z.string().optional(),
+});
+type StatusUpdateFormData = z.infer<typeof statusUpdateFormSchema>;
+
+// State machine for allowed status transitions
+const getAllowedTransitions = (currentStatus: string): string[] => {
+  switch (currentStatus) {
+    case SERVICE_REQUEST_STATUS.CREATED:
+      return [SERVICE_REQUEST_STATUS.SERVICE_CALLED, SERVICE_REQUEST_STATUS.IN_PROGRESS];
+    case SERVICE_REQUEST_STATUS.SERVICE_CALLED:
+      return [SERVICE_REQUEST_STATUS.IN_PROGRESS, SERVICE_REQUEST_STATUS.CREATED];
+    case SERVICE_REQUEST_STATUS.IN_PROGRESS:
+      return [
+        SERVICE_REQUEST_STATUS.FIXED,
+        SERVICE_REQUEST_STATUS.NOT_FIXED,
+        SERVICE_REQUEST_STATUS.WARRANTY_CLAIMED,
+        SERVICE_REQUEST_STATUS.DEVICE_SHIPPED,
+      ];
+    case SERVICE_REQUEST_STATUS.FIXED:
+    case SERVICE_REQUEST_STATUS.NOT_FIXED:
+    case SERVICE_REQUEST_STATUS.WARRANTY_CLAIMED:
+    case SERVICE_REQUEST_STATUS.DEVICE_SHIPPED:
+      return [SERVICE_REQUEST_STATUS.CLOSED, SERVICE_REQUEST_STATUS.IN_PROGRESS]; // Rollback for rework
+    case SERVICE_REQUEST_STATUS.CLOSED:
+      return [SERVICE_REQUEST_STATUS.IN_PROGRESS]; // Reopen if needed
+    default:
+      return [];
+  }
+};
+
+const statusLabels: Record<string, string> = {
+  [SERVICE_REQUEST_STATUS.CREATED]: "Oluşturuldu",
+  [SERVICE_REQUEST_STATUS.SERVICE_CALLED]: "Servis Çağrıldı",
+  [SERVICE_REQUEST_STATUS.IN_PROGRESS]: "İşlemde",
+  [SERVICE_REQUEST_STATUS.FIXED]: "Tamir Edildi",
+  [SERVICE_REQUEST_STATUS.NOT_FIXED]: "Tamir Edilemedi",
+  [SERVICE_REQUEST_STATUS.WARRANTY_CLAIMED]: "Garanti Kullanıldı",
+  [SERVICE_REQUEST_STATUS.DEVICE_SHIPPED]: "Cihaz Kargoya Verildi",
+  [SERVICE_REQUEST_STATUS.CLOSED]: "Kapatıldı",
+};
 
 export default function EquipmentDetail() {
   const { id } = useParams();
@@ -54,10 +125,148 @@ export default function EquipmentDetail() {
     enabled: !!equipmentId,
   });
 
+  const { data: serviceRequests = [] } = useQuery<EquipmentServiceRequest[]>({
+    queryKey: ['/api/equipment', equipmentId, 'service-requests'],
+    enabled: !!equipmentId,
+  });
+
+  // Dialog state
+  const [serviceRequestDialogOpen, setServiceRequestDialogOpen] = useState(false);
+  const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
+  const [selectedServiceRequest, setSelectedServiceRequest] = useState<EquipmentServiceRequest | null>(null);
+  const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
+  const [selectedTimeline, setSelectedTimeline] = useState<EquipmentServiceRequest | null>(null);
+  const [isFaultDialogOpen, setIsFaultDialogOpen] = useState(false);
+
   const form = useForm<CommentFormData>({
     resolver: zodResolver(commentFormSchema),
     defaultValues: {
       comment: "",
+    },
+  });
+
+  const serviceRequestForm = useForm<ServiceRequestFormData>({
+    resolver: zodResolver(serviceRequestFormSchema),
+    defaultValues: {
+      serviceProvider: "",
+      contactInfo: "",
+      serviceDecision: equipment?.maintenanceResponsible || SERVICE_DECISION.BRANCH,
+      estimatedCost: "",
+      notes: "",
+    },
+  });
+
+  const statusUpdateForm = useForm<StatusUpdateFormData>({
+    resolver: zodResolver(statusUpdateFormSchema),
+    defaultValues: {
+      status: "",
+      actualCost: "",
+      notes: "",
+    },
+  });
+
+  const faultFormSchema = insertEquipmentFaultSchema.extend({
+    equipmentId: z.number(),
+  });
+  type FaultFormData = z.infer<typeof faultFormSchema>;
+
+  const faultForm = useForm<FaultFormData>({
+    resolver: zodResolver(faultFormSchema),
+    defaultValues: {
+      equipmentId: equipmentId,
+      equipmentName: equipment?.equipmentType || "",
+      description: "",
+      status: "acik",
+      priority: "orta",
+      branchId: equipment?.branchId || 0,
+      reportedById: user?.id || "",
+    },
+  });
+
+  useEffect(() => {
+    if (equipment && user) {
+      faultForm.reset({
+        equipmentId: parseInt(id!),
+        equipmentName: equipment.equipmentType || "",
+        description: "",
+        status: "acik",
+        priority: "orta",
+        branchId: equipment.branchId || 0,
+        reportedById: user.id || "",
+      });
+    }
+  }, [equipment, user, id, faultForm]);
+
+  const createServiceRequestMutation = useMutation({
+    mutationFn: async (data: ServiceRequestFormData) => {
+      const payload = {
+        ...data,
+        equipmentId,
+        estimatedCost: data.estimatedCost ? parseFloat(data.estimatedCost) : undefined,
+      };
+      await apiRequest(`/api/equipment/${equipmentId}/service-requests`, "POST", payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment', equipmentId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment', equipmentId, 'service-requests'] });
+      toast({ title: "Başarılı", description: "Servis talebi oluşturuldu" });
+      serviceRequestForm.reset();
+      setServiceRequestDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Hata",
+        description: "Servis talebi oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async (data: StatusUpdateFormData & { requestId: number }) => {
+      const payload = {
+        status: data.status,
+        actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,
+        notes: data.notes,
+      };
+      await apiRequest(`/api/equipment/service-requests/${data.requestId}/status`, "PATCH", payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment', equipmentId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment', equipmentId, 'service-requests'] });
+      toast({ title: "Başarılı", description: "Durum güncellendi" });
+      statusUpdateForm.reset();
+      setStatusUpdateDialogOpen(false);
+      setSelectedServiceRequest(null);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Hata",
+        description: "Durum güncellenemedi",
+        variant: "destructive",
+      });
     },
   });
 
@@ -85,6 +294,37 @@ export default function EquipmentDetail() {
       toast({
         title: "Hata",
         description: "Yorum eklenemedi",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createFaultMutation = useMutation({
+    mutationFn: async (data: FaultFormData) => {
+      await apiRequest("/api/faults", "POST", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment", equipmentId] });
+      toast({ title: "Başarılı", description: "Arıza raporu oluşturuldu" });
+      setIsFaultDialogOpen(false);
+      faultForm.reset();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Hata",
+        description: "Arıza raporu oluşturulamadı",
         variant: "destructive",
       });
     },
@@ -171,9 +411,35 @@ export default function EquipmentDetail() {
                 </div>
               </CardDescription>
             </div>
-            <Badge variant="outline" data-testid="badge-equipment-type">
-              {equipment.equipmentType}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setIsFaultDialogOpen(true)}
+                variant="destructive"
+                data-testid="button-fault-create"
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Arıza Kaydı Aç
+              </Button>
+              <Button
+                onClick={() => {
+                  serviceRequestForm.reset({
+                    serviceProvider: "",
+                    contactInfo: "",
+                    serviceDecision: equipment.maintenanceResponsible,
+                    estimatedCost: "",
+                    notes: "",
+                  });
+                  setServiceRequestDialogOpen(true);
+                }}
+                data-testid="button-start-maintenance"
+              >
+                <Wrench className="mr-2 h-4 w-4" />
+                Bakım Başlat
+              </Button>
+              <Badge variant="outline" data-testid="badge-equipment-type">
+                {equipment.equipmentType}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -243,6 +509,10 @@ export default function EquipmentDetail() {
           </TabsTrigger>
           <TabsTrigger value="faults" data-testid="tab-faults">
             Arızalar
+          </TabsTrigger>
+          <TabsTrigger value="service-requests" data-testid="tab-service-requests">
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Servis Talepleri
           </TabsTrigger>
           <TabsTrigger value="comments" data-testid="tab-comments">
             Yorumlar
@@ -385,6 +655,179 @@ export default function EquipmentDetail() {
                   <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-muted-foreground text-center">
                     Henüz arıza bildirimi yok
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="service-requests" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <CardTitle>Servis Talepleri</CardTitle>
+                  <CardDescription>
+                    Bu ekipman için oluşturulan servis talepleri
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => {
+                    serviceRequestForm.reset({
+                      serviceProvider: "",
+                      contactInfo: "",
+                      serviceDecision: SERVICE_DECISION.BRANCH,
+                      estimatedCost: "",
+                      notes: "",
+                    });
+                    setServiceRequestDialogOpen(true);
+                  }}
+                  data-testid="button-create-service-request"
+                >
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  Yeni Talep
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {serviceRequests && serviceRequests.length > 0 ? (
+                <div className="space-y-4">
+                  {serviceRequests.map((request) => (
+                    <div key={request.id} className="rounded-lg border p-4 space-y-4" data-testid={`service-request-${request.id}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={
+                              request.status === SERVICE_REQUEST_STATUS.CLOSED ? 'default' :
+                              request.status === SERVICE_REQUEST_STATUS.FIXED ? 'default' :
+                              request.status === SERVICE_REQUEST_STATUS.CREATED ? 'secondary' :
+                              'outline'
+                            } data-testid={`badge-status-${request.id}`}>
+                              {statusLabels[request.status] || request.status}
+                            </Badge>
+                            <Badge variant="outline">
+                              {request.serviceDecision === SERVICE_DECISION.HQ ? 'Merkez Servisi' : 'Şube Servisi'}
+                            </Badge>
+                          </div>
+                          {request.serviceProvider && (
+                            <div>
+                              <p className="text-sm font-medium">Servis Sağlayıcı</p>
+                              <p className="text-sm text-muted-foreground">{request.serviceProvider}</p>
+                            </div>
+                          )}
+                          {request.contactInfo && (
+                            <div>
+                              <p className="text-sm font-medium">İletişim Bilgisi</p>
+                              <p className="text-sm text-muted-foreground">{request.contactInfo}</p>
+                            </div>
+                          )}
+                          {(request.estimatedCost || request.actualCost) && (
+                            <div className="space-y-1">
+                              {request.estimatedCost && (
+                                <div className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                  <p className="text-sm">
+                                    Tahmini Maliyet: ₺{parseFloat(request.estimatedCost).toFixed(2)}
+                                  </p>
+                                </div>
+                              )}
+                              {request.actualCost && (
+                                <div className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                  <p className="text-sm font-medium">
+                                    Gerçek Maliyet: ₺{parseFloat(request.actualCost).toFixed(2)}
+                                  </p>
+                                </div>
+                              )}
+                              {request.estimatedCost && request.actualCost && (
+                                <p className="text-xs text-muted-foreground">
+                                  Fark: ₺{(parseFloat(request.actualCost) - parseFloat(request.estimatedCost)).toFixed(2)}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          {request.notes && (
+                            <div>
+                              <p className="text-sm font-medium">Notlar</p>
+                              <p className="text-sm text-muted-foreground">{request.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(request.createdAt!).toLocaleDateString('tr-TR', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedServiceRequest(request);
+                              statusUpdateForm.reset({
+                                status: "",
+                                actualCost: "",
+                                notes: "",
+                              });
+                              setStatusUpdateDialogOpen(true);
+                            }}
+                            data-testid={`button-update-status-${request.id}`}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Durumu Güncelle
+                          </Button>
+                        </div>
+                      </div>
+                      {request.timeline && request.timeline.length > 0 && (
+                        <div className="pt-4 border-t space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium">Geçmiş (Son 3)</p>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedTimeline(request);
+                                setTimelineDialogOpen(true);
+                              }}
+                              data-testid={`button-view-timeline-${request.id}`}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              Tümünü Gör
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {request.timeline.slice(-3).reverse().map((entry: any) => (
+                              <div key={entry.id} className="text-xs text-muted-foreground flex items-start gap-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarFallback className="text-xs">
+                                    {entry.actorId?.substring(0, 2).toUpperCase() || '??'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono">{format(new Date(entry.timestamp), 'dd MMM yyyy HH:mm', { locale: tr })}</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {statusLabels[entry.status] || entry.status}
+                                    </Badge>
+                                  </div>
+                                  {entry.notes && <p className="mt-1">{entry.notes}</p>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <ClipboardList className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground text-center">
+                    Henüz servis talebi yok
                   </p>
                 </div>
               )}
@@ -535,6 +978,332 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Service Request Dialog */}
+      <Dialog open={serviceRequestDialogOpen} onOpenChange={setServiceRequestDialogOpen}>
+        <DialogContent data-testid="dialog-service-request">
+          <DialogHeader>
+            <DialogTitle>Yeni Servis Talebi Oluştur</DialogTitle>
+            <DialogDescription>
+              Ekipman için servis talebi oluşturun. Tüm alanlar isteğe bağlıdır.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...serviceRequestForm}>
+            <form onSubmit={serviceRequestForm.handleSubmit((data) => createServiceRequestMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={serviceRequestForm.control}
+                name="serviceDecision"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Servis Kararı</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-service-decision">
+                          <SelectValue placeholder="Servis kararı seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={SERVICE_DECISION.HQ}>Merkez Servisi</SelectItem>
+                        <SelectItem value={SERVICE_DECISION.BRANCH}>Şube Servisi</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={serviceRequestForm.control}
+                name="serviceProvider"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Servis Sağlayıcı</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Servis sağlayıcı adı" data-testid="input-service-provider" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={serviceRequestForm.control}
+                name="contactInfo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>İletişim Bilgisi</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Telefon veya e-posta" data-testid="input-contact-info" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={serviceRequestForm.control}
+                name="estimatedCost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tahmini Maliyet (₺)</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" step="0.01" min="0" placeholder="0.00" data-testid="input-estimated-cost" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={serviceRequestForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notlar</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Ek notlar..." rows={3} data-testid="input-service-notes" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setServiceRequestDialogOpen(false)}
+                  data-testid="button-cancel-service-request"
+                >
+                  İptal
+                </Button>
+                <Button type="submit" disabled={createServiceRequestMutation.isPending} data-testid="button-submit-service-request">
+                  {createServiceRequestMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Update Dialog */}
+      <Dialog open={statusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
+        <DialogContent data-testid="dialog-status-update">
+          <DialogHeader>
+            <DialogTitle>Durum Güncelle</DialogTitle>
+            <DialogDescription>
+              Servis talebi durumunu güncelleyin
+            </DialogDescription>
+          </DialogHeader>
+          {selectedServiceRequest && (
+            <Form {...statusUpdateForm}>
+              <form onSubmit={statusUpdateForm.handleSubmit((data) => updateStatusMutation.mutate({ ...data, requestId: selectedServiceRequest.id }))} className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Mevcut Durum</p>
+                  <Badge variant="outline" data-testid="badge-current-status">
+                    {statusLabels[selectedServiceRequest.status] || selectedServiceRequest.status}
+                  </Badge>
+                </div>
+                <FormField
+                  control={statusUpdateForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Yeni Durum</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-new-status">
+                            <SelectValue placeholder="Yeni durum seçin" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {getAllowedTransitions(selectedServiceRequest.status).map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {statusLabels[status] || status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {(statusUpdateForm.watch("status") === SERVICE_REQUEST_STATUS.FIXED || 
+                  statusUpdateForm.watch("status") === SERVICE_REQUEST_STATUS.NOT_FIXED) && (
+                  <FormField
+                    control={statusUpdateForm.control}
+                    name="actualCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gerçek Maliyet (₺)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" min="0" placeholder="0.00" data-testid="input-actual-cost" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                <FormField
+                  control={statusUpdateForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notlar</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Güncelleme notları..." rows={3} data-testid="input-status-notes" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setStatusUpdateDialogOpen(false)}
+                    data-testid="button-cancel-status-update"
+                  >
+                    İptal
+                  </Button>
+                  <Button type="submit" disabled={updateStatusMutation.isPending} data-testid="button-submit-status-update">
+                    {updateStatusMutation.isPending ? "Güncelleniyor..." : "Güncelle"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Full Timeline Dialog */}
+      <Dialog open={timelineDialogOpen} onOpenChange={setTimelineDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-timeline">
+          <DialogHeader>
+            <DialogTitle>Tam Geçmiş</DialogTitle>
+            <DialogDescription>
+              Servis talebinin tüm geçmişi
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTimeline && selectedTimeline.timeline && selectedTimeline.timeline.length > 0 ? (
+            <div className="space-y-4">
+              {[...selectedTimeline.timeline].reverse().map((entry: any) => (
+                <div key={entry.id} className="flex items-start gap-3 pb-4 border-b last:border-0" data-testid={`timeline-entry-${entry.id}`}>
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback>
+                      {entry.actorId?.substring(0, 2).toUpperCase() || '??'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium">
+                        {entry.actorId}
+                      </p>
+                      <Badge variant="outline">
+                        {statusLabels[entry.status] || entry.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(entry.timestamp), 'PPp', { locale: tr })}
+                    </p>
+                    {entry.notes && (
+                      <p className="text-sm">{entry.notes}</p>
+                    )}
+                    {entry.meta && Object.keys(entry.meta).length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {Object.entries(entry.meta).map(([key, value]) => (
+                          <div key={key}>
+                            <span className="font-medium">{key}:</span> {String(value)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-center">
+                Henüz geçmiş kaydı yok
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Fault Creation Dialog */}
+      <Dialog open={isFaultDialogOpen} onOpenChange={setIsFaultDialogOpen}>
+        <DialogContent data-testid="dialog-fault-create">
+          <DialogHeader>
+            <DialogTitle>Yeni Arıza Kaydı</DialogTitle>
+            <DialogDescription>
+              Ekipman arızası bildirimini oluşturun
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...faultForm}>
+            <form onSubmit={faultForm.handleSubmit((data) => createFaultMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={faultForm.control}
+                name="equipmentName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ekipman Adı</FormLabel>
+                    <FormControl>
+                      <Input {...field} readOnly data-testid="input-fault-equipment-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={faultForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Arıza Açıklaması *</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Arızayı detaylı açıklayın" rows={4} data-testid="input-fault-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={faultForm.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Öncelik</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "orta"}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-fault-priority">
+                          <SelectValue placeholder="Öncelik seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="dusuk">Düşük</SelectItem>
+                        <SelectItem value="orta">Orta</SelectItem>
+                        <SelectItem value="yuksek">Yüksek</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsFaultDialogOpen(false)}
+                  data-testid="button-cancel-fault"
+                >
+                  İptal
+                </Button>
+                <Button type="submit" disabled={createFaultMutation.isPending} data-testid="button-submit-fault">
+                  {createFaultMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

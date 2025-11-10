@@ -48,6 +48,9 @@ import type {
   InsertEquipmentMaintenanceLog,
   EquipmentComment,
   InsertEquipmentComment,
+  EquipmentServiceRequest,
+  InsertEquipmentServiceRequest,
+  ServiceRequestStatusType,
   HQSupportTicket,
   InsertHQSupportTicket,
   HQSupportMessage,
@@ -92,6 +95,7 @@ import {
   UserRole,
   equipmentMaintenanceLogs,
   equipmentComments,
+  equipmentServiceRequests,
   hqSupportTickets,
   hqSupportMessages,
   notifications,
@@ -238,6 +242,21 @@ export interface IStorage {
   createEquipmentMaintenanceLog(log: InsertEquipmentMaintenanceLog): Promise<EquipmentMaintenanceLog>;
   getEquipmentComments(equipmentId: number): Promise<EquipmentComment[]>;
   createEquipmentComment(comment: InsertEquipmentComment): Promise<EquipmentComment>;
+
+  // Equipment Service Request operations
+  createServiceRequest(data: InsertEquipmentServiceRequest): Promise<EquipmentServiceRequest>;
+  getServiceRequest(id: number): Promise<EquipmentServiceRequest | undefined>;
+  listServiceRequests(equipmentId?: number, status?: ServiceRequestStatusType): Promise<EquipmentServiceRequest[]>;
+  updateServiceRequest(id: number, data: Partial<InsertEquipmentServiceRequest>): Promise<EquipmentServiceRequest | undefined>;
+  deleteServiceRequest(id: number): Promise<void>;
+  appendTimelineEntry(requestId: number, entry: {
+    timestamp: string;
+    status: ServiceRequestStatusType;
+    actorId: string;
+    notes?: string;
+    meta?: Record<string, any>;
+  }): Promise<EquipmentServiceRequest | undefined>;
+  updateServiceRequestStatus(id: number, newStatus: ServiceRequestStatusType, actorId: string, notes?: string): Promise<EquipmentServiceRequest | undefined>;
 
   // HQ Support Ticket operations
   getHQSupportTickets(branchId?: number, status?: string): Promise<HQSupportTicket[]>;
@@ -1121,6 +1140,158 @@ export class DatabaseStorage implements IStorage {
   async createEquipmentComment(comment: InsertEquipmentComment): Promise<EquipmentComment> {
     const [newComment] = await db.insert(equipmentComments).values(comment).returning();
     return newComment;
+  }
+
+  // Equipment Service Request operations
+  async createServiceRequest(data: InsertEquipmentServiceRequest): Promise<EquipmentServiceRequest> {
+    // Initialize timeline with creation entry
+    const initialTimeline = [{
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      status: data.status || 'created',
+      actorId: data.createdById,
+      notes: 'Servis talebi oluşturuldu',
+    }];
+
+    const [newRequest] = await db
+      .insert(equipmentServiceRequests)
+      .values({
+        ...data,
+        timeline: initialTimeline,
+      })
+      .returning();
+    return newRequest;
+  }
+
+  async getServiceRequest(id: number): Promise<EquipmentServiceRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(equipmentServiceRequests)
+      .where(eq(equipmentServiceRequests.id, id));
+    return request;
+  }
+
+  async listServiceRequests(
+    equipmentId?: number,
+    status?: ServiceRequestStatusType
+  ): Promise<EquipmentServiceRequest[]> {
+    const conditions = [];
+    if (equipmentId !== undefined) {
+      conditions.push(eq(equipmentServiceRequests.equipmentId, equipmentId));
+    }
+    if (status !== undefined) {
+      conditions.push(eq(equipmentServiceRequests.status, status));
+    }
+
+    if (conditions.length > 0) {
+      return db
+        .select()
+        .from(equipmentServiceRequests)
+        .where(and(...conditions))
+        .orderBy(desc(equipmentServiceRequests.createdAt));
+    }
+    return db
+      .select()
+      .from(equipmentServiceRequests)
+      .orderBy(desc(equipmentServiceRequests.createdAt));
+  }
+
+  async updateServiceRequest(
+    id: number,
+    data: Partial<InsertEquipmentServiceRequest>
+  ): Promise<EquipmentServiceRequest | undefined> {
+    const [updated] = await db
+      .update(equipmentServiceRequests)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(equipmentServiceRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteServiceRequest(id: number): Promise<void> {
+    await db
+      .delete(equipmentServiceRequests)
+      .where(eq(equipmentServiceRequests.id, id));
+  }
+
+  async appendTimelineEntry(
+    requestId: number,
+    entry: {
+      timestamp: string;
+      status: ServiceRequestStatusType;
+      actorId: string;
+      notes?: string;
+      meta?: Record<string, any>;
+    }
+  ): Promise<EquipmentServiceRequest | undefined> {
+    const request = await this.getServiceRequest(requestId);
+    if (!request) return undefined;
+
+    const timelineEntry = {
+      id: crypto.randomUUID(),
+      ...entry,
+    };
+
+    const updatedTimeline = [...(request.timeline || []), timelineEntry];
+
+    const [updated] = await db
+      .update(equipmentServiceRequests)
+      .set({
+        timeline: updatedTimeline,
+        updatedAt: new Date(),
+      })
+      .where(eq(equipmentServiceRequests.id, requestId))
+      .returning();
+    return updated;
+  }
+
+  async updateServiceRequestStatus(
+    id: number,
+    newStatus: ServiceRequestStatusType,
+    actorId: string,
+    notes?: string
+  ): Promise<EquipmentServiceRequest | undefined> {
+    const request = await this.getServiceRequest(id);
+    if (!request) return undefined;
+
+    const currentStatus = request.status as ServiceRequestStatusType;
+
+    // State machine validation
+    const validTransitions: Record<ServiceRequestStatusType, ServiceRequestStatusType[]> = {
+      created: ['service_called', 'in_progress', 'closed'],
+      service_called: ['in_progress', 'closed'],
+      in_progress: ['fixed', 'not_fixed', 'warranty_claimed', 'device_shipped', 'closed'],
+      fixed: ['in_progress', 'closed'],
+      not_fixed: ['in_progress', 'closed'],
+      warranty_claimed: ['in_progress', 'closed'],
+      device_shipped: ['in_progress', 'closed'],
+      closed: [], // Terminal state
+    };
+
+    if (!validTransitions[currentStatus]?.includes(newStatus)) {
+      throw new Error(
+        `Invalid status transition from ${currentStatus} to ${newStatus}`
+      );
+    }
+
+    // Append timeline entry
+    const updated = await this.appendTimelineEntry(id, {
+      timestamp: new Date().toISOString(),
+      status: newStatus,
+      actorId,
+      notes: notes || `Durum güncellendi: ${newStatus}`,
+    });
+
+    if (!updated) return undefined;
+
+    // Update the status field
+    const [finalUpdated] = await db
+      .update(equipmentServiceRequests)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(eq(equipmentServiceRequests.id, id))
+      .returning();
+
+    return finalUpdated;
   }
 
   // HQ Support Ticket operations

@@ -1093,6 +1093,105 @@ export const insertMessageReadSchema = createInsertSchema(messageReads).omit({
 export type InsertMessageRead = z.infer<typeof insertMessageReadSchema>;
 export type MessageRead = typeof messageReads.$inferSelect;
 
+// Equipment Maintenance Logs table
+export const equipmentMaintenanceLogs = pgTable("equipment_maintenance_logs", {
+  id: serial("id").primaryKey(),
+  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+  performedBy: varchar("performed_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  maintenanceType: varchar("maintenance_type", { length: 50 }).notNull(),
+  description: text("description").notNull(),
+  cost: numeric("cost", { precision: 10, scale: 2 }),
+  performedAt: timestamp("performed_at").notNull().defaultNow(),
+  nextScheduledDate: date("next_scheduled_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertEquipmentMaintenanceLogSchema = createInsertSchema(equipmentMaintenanceLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEquipmentMaintenanceLog = z.infer<typeof insertEquipmentMaintenanceLogSchema>;
+export type EquipmentMaintenanceLog = typeof equipmentMaintenanceLogs.$inferSelect;
+
+// Equipment Comments table
+export const equipmentComments = pgTable("equipment_comments", {
+  id: serial("id").primaryKey(),
+  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  comment: text("comment").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertEquipmentCommentSchema = createInsertSchema(equipmentComments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEquipmentComment = z.infer<typeof insertEquipmentCommentSchema>;
+export type EquipmentComment = typeof equipmentComments.$inferSelect;
+
+// Equipment Service Request Status enum
+export const SERVICE_REQUEST_STATUS = {
+  CREATED: 'created',
+  SERVICE_CALLED: 'service_called',
+  IN_PROGRESS: 'in_progress',
+  FIXED: 'fixed',
+  NOT_FIXED: 'not_fixed',
+  WARRANTY_CLAIMED: 'warranty_claimed',
+  DEVICE_SHIPPED: 'device_shipped',
+  CLOSED: 'closed',
+} as const;
+
+export type ServiceRequestStatusType = typeof SERVICE_REQUEST_STATUS[keyof typeof SERVICE_REQUEST_STATUS];
+
+// Service Decision enum
+export const SERVICE_DECISION = {
+  HQ: 'hq',
+  BRANCH: 'branch',
+} as const;
+
+export type ServiceDecisionType = typeof SERVICE_DECISION[keyof typeof SERVICE_DECISION];
+
+// Equipment Service Requests table
+export const equipmentServiceRequests = pgTable("equipment_service_requests", {
+  id: serial("id").primaryKey(),
+  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+  faultId: integer("fault_id").references(() => equipmentFaults.id, { onDelete: "set null" }),
+  serviceDecision: varchar("service_decision", { length: 20 }).notNull(),
+  serviceProvider: text("service_provider"),
+  contactInfo: text("contact_info"),
+  estimatedCost: numeric("estimated_cost", { precision: 10, scale: 2 }),
+  actualCost: numeric("actual_cost", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  status: varchar("status", { length: 50 }).notNull().default(SERVICE_REQUEST_STATUS.CREATED),
+  timeline: jsonb("timeline").$type<Array<{
+    id: string;
+    timestamp: string;
+    status: ServiceRequestStatusType;
+    actorId: string;
+    notes?: string;
+    meta?: Record<string, any>;
+  }>>().default([]),
+  createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  equipmentIdx: index("equipment_service_requests_equipment_idx").on(table.equipmentId),
+  statusIdx: index("equipment_service_requests_status_idx").on(table.status),
+  faultIdx: index("equipment_service_requests_fault_idx").on(table.faultId),
+}));
+
+export const insertEquipmentServiceRequestSchema = createInsertSchema(equipmentServiceRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  timeline: true,
+});
+
+export type InsertEquipmentServiceRequest = z.infer<typeof insertEquipmentServiceRequestSchema>;
+export type EquipmentServiceRequest = typeof equipmentServiceRequests.$inferSelect;
+
 // Relations (defined after all tables to avoid temporal dead zone)
 export const branchesRelations = relations(branches, ({ many }) => ({
   users: many(users),
@@ -1169,43 +1268,31 @@ export const performanceMetricsRelations = relations(performanceMetrics, ({ one 
   }),
 }));
 
-// Equipment Maintenance Logs table
-export const equipmentMaintenanceLogs = pgTable("equipment_maintenance_logs", {
-  id: serial("id").primaryKey(),
-  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
-  performedBy: varchar("performed_by").notNull().references(() => users.id, { onDelete: "cascade" }),
-  maintenanceType: varchar("maintenance_type", { length: 50 }).notNull(), // routine, repair, calibration, cleaning
-  description: text("description").notNull(),
-  cost: numeric("cost", { precision: 10, scale: 2 }),
-  performedAt: timestamp("performed_at").notNull().defaultNow(),
-  nextScheduledDate: date("next_scheduled_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const equipmentRelations = relations(equipment, ({ one, many }) => ({
+  branch: one(branches, {
+    fields: [equipment.branchId],
+    references: [branches.id],
+  }),
+  faults: many(equipmentFaults),
+  maintenanceLogs: many(equipmentMaintenanceLogs),
+  comments: many(equipmentComments),
+  serviceRequests: many(equipmentServiceRequests),
+}));
 
-export const insertEquipmentMaintenanceLogSchema = createInsertSchema(equipmentMaintenanceLogs).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertEquipmentMaintenanceLog = z.infer<typeof insertEquipmentMaintenanceLogSchema>;
-export type EquipmentMaintenanceLog = typeof equipmentMaintenanceLogs.$inferSelect;
-
-// Equipment Comments table
-export const equipmentComments = pgTable("equipment_comments", {
-  id: serial("id").primaryKey(),
-  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  comment: text("comment").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertEquipmentCommentSchema = createInsertSchema(equipmentComments).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertEquipmentComment = z.infer<typeof insertEquipmentCommentSchema>;
-export type EquipmentComment = typeof equipmentComments.$inferSelect;
+export const equipmentServiceRequestsRelations = relations(equipmentServiceRequests, ({ one }) => ({
+  equipment: one(equipment, {
+    fields: [equipmentServiceRequests.equipmentId],
+    references: [equipment.id],
+  }),
+  fault: one(equipmentFaults, {
+    fields: [equipmentServiceRequests.faultId],
+    references: [equipmentFaults.id],
+  }),
+  createdBy: one(users, {
+    fields: [equipmentServiceRequests.createdById],
+    references: [users.id],
+  }),
+}));
 
 // HQ Support Ticket Status
 export const HQ_SUPPORT_STATUS = {

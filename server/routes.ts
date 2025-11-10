@@ -887,6 +887,248 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Equipment Service Request routes
+  app.get('/api/equipment/:id/service-requests', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      const equipmentItem = await storage.getEquipmentById(id);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      // Authorization: Branch users can only view requests for their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (equipmentItem.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu ekipman için servis taleplerini görüntüleme yetkiniz yok" });
+        }
+      }
+      
+      const serviceRequests = await storage.listServiceRequests(id);
+      res.json(serviceRequests);
+    } catch (error: any) {
+      console.error("Error fetching service requests:", error);
+      res.status(500).json({ message: "Failed to fetch service requests" });
+    }
+  });
+
+  app.post('/api/equipment/:id/service-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const id = parseInt(req.params.id);
+      const { insertEquipmentServiceRequestSchema } = await import('@shared/schema');
+      
+      const equipmentItem = await storage.getEquipmentById(id);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      // Authorization: Branch users can only create requests for their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (equipmentItem.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu ekipman için servis talebi oluşturma yetkiniz yok" });
+        }
+      }
+      
+      const validatedData = insertEquipmentServiceRequestSchema.parse(req.body);
+      const serviceRequest = await storage.createServiceRequest({
+        ...validatedData,
+        equipmentId: id,
+        createdById: userId,
+      });
+      res.json(serviceRequest);
+    } catch (error: any) {
+      console.error("Error creating service request:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid service request data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create service request" });
+    }
+  });
+
+  app.get('/api/equipment/service-requests/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      const serviceRequest = await storage.getServiceRequest(id);
+      if (!serviceRequest) {
+        return res.status(404).json({ message: "Service request not found" });
+      }
+      
+      // Get equipment to check authorization
+      const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      // Authorization: Branch users can only view requests for their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (equipmentItem.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu servis talebini görüntüleme yetkiniz yok" });
+        }
+      }
+      
+      res.json(serviceRequest);
+    } catch (error: any) {
+      console.error("Error fetching service request:", error);
+      res.status(500).json({ message: "Failed to fetch service request" });
+    }
+  });
+
+  app.patch('/api/equipment/service-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      const serviceRequest = await storage.getServiceRequest(id);
+      if (!serviceRequest) {
+        return res.status(404).json({ message: "Service request not found" });
+      }
+      
+      // Get equipment to check authorization
+      const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      // Authorization: Branch users can only update requests for their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (equipmentItem.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu servis talebini güncelleme yetkiniz yok" });
+        }
+      }
+      
+      const updated = await storage.updateServiceRequest(id, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating service request:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid service request data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update service request" });
+    }
+  });
+
+  app.delete('/api/equipment/service-requests/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      const serviceRequest = await storage.getServiceRequest(id);
+      if (!serviceRequest) {
+        return res.status(404).json({ message: "Service request not found" });
+      }
+      
+      // Get equipment to check authorization
+      const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      // Authorization: Branch users can only delete requests for their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (equipmentItem.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu servis talebini silme yetkiniz yok" });
+        }
+      }
+      
+      await storage.deleteServiceRequest(id);
+      res.json({ message: "Service request deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting service request:", error);
+      res.status(500).json({ message: "Failed to delete service request" });
+    }
+  });
+
+  app.patch('/api/equipment/service-requests/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const id = parseInt(req.params.id);
+      const { newStatus, notes } = req.body;
+      
+      if (!newStatus) {
+        return res.status(400).json({ message: "newStatus is required" });
+      }
+      
+      const serviceRequest = await storage.getServiceRequest(id);
+      if (!serviceRequest) {
+        return res.status(404).json({ message: "Service request not found" });
+      }
+      
+      // Get equipment to check authorization
+      const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      // Authorization: Branch users can only update status for their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (equipmentItem.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu servis talebinin durumunu güncelleme yetkiniz yok" });
+        }
+      }
+      
+      const updated = await storage.updateServiceRequestStatus(id, newStatus, userId, notes);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating service request status:", error);
+      if (error.message?.includes("Invalid status transition")) {
+        return res.status(400).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to update service request status" });
+    }
+  });
+
+  app.post('/api/equipment/service-requests/:id/timeline', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const id = parseInt(req.params.id);
+      const { notes, meta } = req.body;
+      
+      const serviceRequest = await storage.getServiceRequest(id);
+      if (!serviceRequest) {
+        return res.status(404).json({ message: "Service request not found" });
+      }
+      
+      // Get equipment to check authorization
+      const equipmentItem = await storage.getEquipmentById(serviceRequest.equipmentId);
+      if (!equipmentItem) {
+        return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      // Authorization: Branch users can only add timeline entries for their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (equipmentItem.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu servis talebine not ekleme yetkiniz yok" });
+        }
+      }
+      
+      const updated = await storage.appendTimelineEntry(id, {
+        timestamp: new Date().toISOString(),
+        status: serviceRequest.status,
+        actorId: userId,
+        notes: notes || '',
+        meta: meta || {},
+      });
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error adding timeline entry:", error);
+      res.status(500).json({ message: "Failed to add timeline entry" });
+    }
+  });
+
   app.get('/api/knowledge-base', isAuthenticated, async (req, res) => {
     try {
       const category = req.query.category as string | undefined;
