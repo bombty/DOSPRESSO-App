@@ -15,7 +15,8 @@ import {
   real,
   customType,
   uniqueIndex,
-  unique
+  unique,
+  check
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -371,6 +372,8 @@ export const branches = pgTable("branches", {
   city: varchar("city", { length: 100 }),
   phoneNumber: varchar("phone_number", { length: 20 }),
   managerName: varchar("manager_name", { length: 255 }),
+  openingHours: time("opening_hours", { precision: 0 }).default(sql`'08:00'::time`),
+  closingHours: time("closing_hours", { precision: 0 }).default(sql`'22:00'::time`),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -454,6 +457,9 @@ export const checklists = pgTable("checklists", {
   description: text("description"),
   frequency: varchar("frequency", { length: 50 }).notNull(), // daily, weekly, monthly
   category: varchar("category", { length: 100 }), // opening, closing, cleaning, etc.
+  isEditable: boolean("is_editable").default(true),
+  timeWindowStart: time("time_window_start", { precision: 0 }),
+  timeWindowEnd: time("time_window_end", { precision: 0 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -461,7 +467,15 @@ export const checklists = pgTable("checklists", {
 export const insertChecklistSchema = createInsertSchema(checklists).omit({
   id: true,
   createdAt: true,
-});
+}).refine(
+  (data) => {
+    if (data.timeWindowStart && data.timeWindowEnd) {
+      return data.timeWindowStart < data.timeWindowEnd;
+    }
+    return true;
+  },
+  { message: "Time window start must be before end" }
+);
 
 export type InsertChecklist = z.infer<typeof insertChecklistSchema>;
 export type Checklist = typeof checklists.$inferSelect;
@@ -790,21 +804,41 @@ export type Reminder = typeof reminders.$inferSelect;
 // Performance Metrics table
 export const performanceMetrics = pgTable("performance_metrics", {
   id: serial("id").primaryKey(),
-  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
   date: timestamp("date").notNull(),
   tasksCompleted: integer("tasks_completed").default(0),
   tasksTotal: integer("tasks_total").default(0),
   completionRate: integer("completion_rate").default(0), // percentage
   averageAiScore: integer("average_ai_score").default(0),
+  taskScore: integer("task_score").default(0), // 0-100 (task completion rate)
+  photoScore: integer("photo_score").default(0), // 0-100 (AI photo analysis average)
+  timeScore: integer("time_score").default(0), // 0-100 (on-time completion rate)
+  supervisorScore: integer("supervisor_score").default(0), // 0-100 (manual supervisor rating)
+  totalScore: integer("total_score").default(0), // Weighted: task 40% + photo 25% + time 25% + supervisor 10%
   faultsReported: integer("faults_reported").default(0),
   faultsResolved: integer("faults_resolved").default(0),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  branchDateIdx: index("performance_metrics_branch_date_idx").on(table.branchId, table.date),
+  userDateIdx: index("performance_metrics_user_date_idx").on(table.userId, table.date),
+  ownershipCheck: check("ownership_check", sql`branch_id IS NOT NULL OR user_id IS NOT NULL`),
+}));
 
 export const insertPerformanceMetricSchema = createInsertSchema(performanceMetrics).omit({
   id: true,
   createdAt: true,
-});
+  totalScore: true, // Calculated field
+}).refine(
+  (data) => data.branchId !== undefined || data.userId !== undefined,
+  { message: "Either branchId or userId must be provided" }
+).refine(
+  (data) => {
+    const scores = [data.taskScore, data.photoScore, data.timeScore, data.supervisorScore];
+    return scores.every(s => s === undefined || s === null || (s >= 0 && s <= 100));
+  },
+  { message: "All scores must be between 0 and 100" }
+);
 
 export type InsertPerformanceMetric = z.infer<typeof insertPerformanceMetricSchema>;
 export type PerformanceMetric = typeof performanceMetrics.$inferSelect;
@@ -1243,6 +1277,7 @@ export const announcements = pgTable("announcements", {
   targetRoles: text("target_roles").array(),
   targetBranches: integer("target_branches").array(),
   priority: text("priority").notNull().default("normal"),
+  attachments: text("attachments").array().default(sql`ARRAY[]::text[]`),
   publishedAt: timestamp("published_at").defaultNow(),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -1254,6 +1289,8 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
   id: true,
   createdAt: true,
   publishedAt: true,
+}).extend({
+  attachments: z.array(z.string()).default([]),
 });
 
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
@@ -1314,3 +1351,23 @@ export const insertShiftSchema = createInsertSchema(shifts).omit({
 
 export type InsertShift = z.infer<typeof insertShiftSchema>;
 export type Shift = typeof shifts.$inferSelect;
+
+// Shift Checklists (many-to-many) - Assign checklists to shifts
+export const shiftChecklists = pgTable("shift_checklists", {
+  id: serial("id").primaryKey(),
+  shiftId: integer("shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+  checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueShiftChecklist: unique("unique_shift_checklist").on(table.shiftId, table.checklistId),
+  shiftIdx: index("shift_checklists_shift_idx").on(table.shiftId),
+  checklistIdx: index("shift_checklists_checklist_idx").on(table.checklistId),
+}));
+
+export const insertShiftChecklistSchema = createInsertSchema(shiftChecklists).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertShiftChecklist = z.infer<typeof insertShiftChecklistSchema>;
+export type ShiftChecklist = typeof shiftChecklists.$inferSelect;
