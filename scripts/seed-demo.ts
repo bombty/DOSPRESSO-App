@@ -512,7 +512,127 @@ async function main() {
   console.log(`✅ Created ${articles.length} knowledge base articles\n`);
 
   // ========================================
-  // 8. SUMMARY
+  // 8. CREATE EQUIPMENT (Core items per branch)
+  // ========================================
+  console.log("⚙️ Creating equipment...");
+
+  const equipmentData: typeof schema.equipment.$inferInsert[] = [];
+
+  // For each branch, create 2-3 core equipment items
+  branches.forEach((branch, branchIndex) => {
+    const purchaseDateOffset = branchIndex * 15; // Stagger purchase dates
+    const purchaseDate = new Date(2023, 0, 1 + purchaseDateOffset);
+    const warrantyEndDate = new Date(2026, 0, 1 + purchaseDateOffset);
+
+    // 1. Espresso Machine (all branches)
+    const espressoBrand = branchIndex % 3 === 0 ? "La Marzocco" : branchIndex % 3 === 1 ? "Nuova Simonelli" : "Rancilio";
+    const espressoModel = branchIndex % 3 === 0 ? "Linea PB" : branchIndex % 3 === 1 ? "Aurelia II" : "Classe 9";
+    const cityPrefix = branch.city ? branch.city.substring(0, 3).toUpperCase() : "XXX";
+    
+    equipmentData.push({
+      branchId: branch.id,
+      equipmentType: "Espresso Makinesi",
+      serialNumber: `ESP-${cityPrefix}-${branchIndex + 1}`,
+      purchaseDate: purchaseDate.toISOString().split('T')[0],
+      warrantyEndDate: warrantyEndDate.toISOString().split('T')[0],
+      maintenanceIntervalDays: 30, // Every 30 days
+      nextMaintenanceDate: new Date(Date.now() + (branchIndex % 5 + 5) * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5-10 days from now
+      maintenanceResponsible: "hq",
+      isActive: true,
+      notes: `${espressoBrand} ${espressoModel} - Ana espresso makinesi - günlük temizlik gerektirir`,
+    });
+
+    // 2. Coffee Grinder (all branches)
+    const grinderBrand = branchIndex % 2 === 0 ? "Mazzer" : "Eureka";
+    const grinderModel = branchIndex % 2 === 0 ? "Super Jolly" : "Atom 75";
+    
+    equipmentData.push({
+      branchId: branch.id,
+      equipmentType: "Kahve Değirmeni",
+      serialNumber: `GRN-${cityPrefix}-${branchIndex + 1}`,
+      purchaseDate: purchaseDate.toISOString().split('T')[0],
+      warrantyEndDate: new Date(2025, 0, 1 + purchaseDateOffset).toISOString().split('T')[0],
+      maintenanceIntervalDays: 60, // Every 60 days
+      nextMaintenanceDate: new Date(Date.now() + (branchIndex % 10 + 20) * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 20-30 days from now
+      maintenanceResponsible: "branch",
+      isActive: true,
+      notes: `${grinderBrand} ${grinderModel} - Ana değirmen - ayda bir kez kalibre edilmeli`,
+    });
+
+    // 3. Refrigerator (larger branches only)
+    if (branchIndex % 2 === 0) {
+      equipmentData.push({
+        branchId: branch.id,
+        equipmentType: "Buzdolabı",
+        serialNumber: `FRG-${cityPrefix}-${branchIndex + 1}`,
+        purchaseDate: purchaseDate.toISOString().split('T')[0],
+        warrantyEndDate: new Date(2025, 0, 1 + purchaseDateOffset).toISOString().split('T')[0],
+        maintenanceIntervalDays: 90, // Every 90 days
+        nextMaintenanceDate: new Date(Date.now() + (branchIndex % 15 + 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30-45 days from now
+        maintenanceResponsible: "branch",
+        isActive: true,
+        notes: "Vestel NFK540 E - Süt ve malzeme depolama",
+      });
+    }
+  });
+
+  const insertedEquipment = await db.insert(schema.equipment).values(equipmentData).returning();
+  console.log(`✅ Created ${insertedEquipment.length} equipment items\n`);
+
+  // ========================================
+  // 9. CREATE SAMPLE EQUIPMENT FAULTS (for testing)
+  // ========================================
+  console.log("🔧 Creating sample equipment faults...");
+
+  const sampleFaults: typeof schema.equipmentFaults.$inferInsert[] = [];
+
+  // Create 2-3 sample faults
+  if (insertedEquipment.length > 0) {
+    const firstEspresso = insertedEquipment.find(e => e.equipmentType === "Espresso Makinesi");
+    const firstGrinder = insertedEquipment.find(e => e.equipmentType === "Kahve Değirmeni");
+
+    if (firstEspresso) {
+      const supervisor = branchUsers.find(u => u.branchId === firstEspresso.branchId && u.role === schema.UserRole.SUPERVISOR);
+      if (supervisor) {
+        sampleFaults.push({
+          branchId: firstEspresso.branchId,
+          equipmentId: firstEspresso.id,
+          reportedById: supervisor.id,
+          equipmentName: `${firstEspresso.equipmentType} - ${firstEspresso.serialNumber}`,
+          description: "Espresso makinesi basınç problemi yaşıyor. Kahve akışı normalden daha yavaş.",
+          aiSeverity: "medium",
+          status: "acik",
+          priorityLevel: schema.PRIORITY_LEVELS.YELLOW,
+          currentStage: schema.FAULT_STAGES.BEKLIYOR,
+        });
+      }
+    }
+
+    if (firstGrinder) {
+      const barista = branchUsers.find(u => u.branchId === firstGrinder.branchId && u.role === schema.UserRole.BARISTA);
+      if (barista) {
+        sampleFaults.push({
+          branchId: firstGrinder.branchId,
+          equipmentId: firstGrinder.id,
+          reportedById: barista.id,
+          equipmentName: `${firstGrinder.equipmentType} - ${firstGrinder.serialNumber}`,
+          description: "Değirmen sesli çalışıyor, taş sesi geliyor. Kalibrasyon gerekebilir.",
+          aiSeverity: "low",
+          status: "acik",
+          priorityLevel: schema.PRIORITY_LEVELS.GREEN,
+          currentStage: schema.FAULT_STAGES.BEKLIYOR,
+        });
+      }
+    }
+  }
+
+  if (sampleFaults.length > 0) {
+    await db.insert(schema.equipmentFaults).values(sampleFaults);
+    console.log(`✅ Created ${sampleFaults.length} sample equipment faults\n`);
+  }
+
+  // ========================================
+  // 10. SUMMARY
   // ========================================
   console.log("\n🎉 Demo data seed completed!\n");
   console.log("📊 Summary:");
@@ -520,6 +640,8 @@ async function main() {
   console.log(`   - HQ Users: ${hqUsers.length}`);
   console.log(`   - Branch Users: ${branchUsers.length}`);
   console.log(`   - Total Users: ${hqUsers.length + branchUsers.length}`);
+  console.log(`   - Equipment: ${insertedEquipment.length} (espresso machines, grinders, fridges)`);
+  console.log(`   - Equipment Faults: ${sampleFaults.length}`);
   console.log(`   - Checklists: 3`);
   console.log(`   - Tasks: ${sampleTasks.length}`);
   console.log(`   - Knowledge Base Articles: ${articles.length}\n`);
