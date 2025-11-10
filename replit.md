@@ -5,12 +5,14 @@
 DOSPRESSO is a comprehensive franchise management platform designed for managing coffee shop operations across multiple branches. The system provides centralized control for HQ staff to monitor branches, assign tasks, track equipment, manage training, and leverage AI-powered verification and analytics. The entire user interface is in Turkish, serving the Turkish market with role-based access for both HQ personnel and branch staff.
 
 The platform enables:
-- Task assignment and AI-powered photo verification
-- Equipment fault reporting and tracking
+- Task assignment and AI-powered photo verification with supervisor assignment to branch employees
+- Equipment fault reporting and tracking with detailed equipment history (maintenance logs, fault history, collaborative comments)
 - Knowledge base management for SOPs, recipes, and procedures
 - Performance metrics and KPI dashboards
 - Automated reminder system for incomplete tasks
 - Checklist management for routine operations
+- Training academy with interactive module detail pages (videos, quizzes, flashcards)
+- HQ support ticket system for branch-to-headquarters communication and issue tracking
 
 ## User Preferences
 
@@ -69,14 +71,20 @@ Preferred communication style: Simple, everyday language.
 **Schema Design**:
 - **Users**: Role-based access with HQ roles (muhasebe, satinalma, coach, teknik, destek, fabrika, yatirimci) and branch roles (supervisor, barista, stajyer)
 - **Branches**: Store locations with contact information
-- **Tasks**: Assignable work items with status tracking, AI scoring, and photo verification
+- **Tasks**: Assignable work items with status tracking, AI scoring, photo verification, assignedToId and assignedById for supervisor task delegation
 - **Checklists**: Reusable task templates with category and frequency settings
 - **ChecklistTasks**: Many-to-many relationship linking checklists to specific tasks
-- **EquipmentFaults**: Fault reports with severity levels and AI analysis
+- **Equipment**: Equipment registry with maintenance intervals, warranty tracking, QR codes for quick access
+- **EquipmentFaults**: Fault reports with severity levels, AI analysis, and equipmentId linking to Equipment table
+- **EquipmentMaintenanceLogs**: Maintenance history per equipment (routine, repair, calibration, cleaning) with cost tracking
+- **EquipmentComments**: Collaborative comments on equipment for team communication
 - **KnowledgeBaseArticles**: SOPs, recipes, calibration guides, troubleshooting docs with categorization and publishing workflow
 - **KnowledgeBaseEmbeddings**: Vector embeddings (1536 dimensions) for semantic search with article chunks and similarity indexing
 - **Reminders**: Automated notification tracking with reminder count and scheduling
 - **PerformanceMetrics**: KPI snapshots with completion rates and AI scores
+- **HQSupportTickets**: Support tickets from branches to HQ departments (muhasebe, satinalma, coach, teknik, destek, fabrika, genel) with status tracking
+- **HQSupportMessages**: Threaded messages within support tickets for chat-style communication
+- **TrainingModules**: Training content with videos, quizzes, and flashcards
 - **Sessions**: PostgreSQL-backed session storage for authentication
 
 **Vector Search**: pgvector extension enabled for semantic similarity search using cosine distance operator (<=>)
