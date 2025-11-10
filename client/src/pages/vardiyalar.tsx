@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -24,10 +24,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Calendar as CalendarIcon, Edit, Trash2, Clock, User as UserIcon, Sparkles } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Edit, Trash2, Clock, User as UserIcon, Sparkles, List, LayoutGrid } from "lucide-react";
 import { format, parseISO, startOfWeek, endOfWeek, addWeeks } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Calendar as BigCalendar, dateFnsLocalizer, Event } from 'react-big-calendar';
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
+import { getDay, parse, startOfWeek as startOfWeekFns, getISOWeek } from 'date-fns';
+
+const locales = {
+  'tr': tr,
+};
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek: () => startOfWeekFns(new Date(), { weekStartsOn: 1 }),
+  getDay,
+  locales,
+});
+
+const DragDropCalendar = withDragAndDrop(BigCalendar);
 
 type ShiftWithRelations = Shift & {
   branch: {
@@ -84,6 +101,10 @@ type AIShiftPlanResponse = {
   cached?: boolean;
 };
 
+type CalendarEvent = Event & {
+  shift: ShiftWithRelations;
+};
+
 export default function Vardiyalar() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -96,6 +117,7 @@ export default function Vardiyalar() {
   const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [aiSuggestions, setAiSuggestions] = useState<AIShiftPlanResponse | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'month'>('list');
 
   const isSupervisor = user?.role && (user.role === 'supervisor' || user.role === 'supervisor_buddy');
   const isHQIK = user?.role === 'destek';
@@ -284,6 +306,183 @@ export default function Vardiyalar() {
     });
   };
 
+  const calendarEvents: CalendarEvent[] = useMemo(() => {
+    if (!shifts) return [];
+    return shifts.map((shift) => {
+      const start = parseISO(`${shift.shiftDate}T${shift.startTime}`);
+      const end = parseISO(`${shift.shiftDate}T${shift.endTime}`);
+      return {
+        start,
+        end,
+        title: `${shift.assignedTo?.fullName || 'Atanmamış'} - ${shiftTypeLabels[shift.shiftType]}`,
+        shift,
+        resourceId: shift.assignedToId || undefined,
+      };
+    });
+  }, [shifts]);
+
+  // Client-side validation for shift updates
+  const validateShiftUpdate = useCallback((
+    shiftId: number,
+    newData: Partial<InsertShift>
+  ): { valid: boolean; error?: string } => {
+    if (!shifts || !branchUsers) return { valid: true };
+
+    const shift = shifts.find(s => s.id === shiftId);
+    if (!shift) return { valid: true };
+
+    const employeeId = newData.assignedToId !== undefined ? newData.assignedToId : shift.assignedToId;
+    if (!employeeId) return { valid: true };
+
+    const shiftDate = newData.shiftDate || shift.shiftDate;
+    const startTime = newData.startTime || shift.startTime;
+    const endTime = newData.endTime || shift.endTime;
+
+    // 1. Check 1-hour break validation (shift duration)
+    const start = parseISO(`${shiftDate}T${startTime}`);
+    const end = parseISO(`${shiftDate}T${endTime}`);
+    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    
+    if (durationHours > 6 && durationHours < 7) {
+      return { 
+        valid: false, 
+        error: "6 saatten uzun vardiyalar için 1 saat mola gereklidir. Toplam vardiya süresi en az 7 saat olmalıdır." 
+      };
+    }
+
+    // Get week boundaries
+    const weekStart = startOfWeek(parseISO(shiftDate), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(parseISO(shiftDate), { weekStartsOn: 1 });
+
+    // Get all shifts for this employee in this week
+    const employeeWeekShifts = shifts.filter(s => {
+      if (s.assignedToId !== employeeId) return false;
+      const sDate = parseISO(s.shiftDate);
+      return sDate >= weekStart && sDate <= weekEnd;
+    });
+
+    // Calculate total weekly hours and days worked
+    let totalWeeklyHours = 0;
+    const daysWorked = new Set<string>();
+
+    employeeWeekShifts.forEach(s => {
+      if (s.id === shiftId) {
+        totalWeeklyHours += durationHours;
+        daysWorked.add(shiftDate);
+      } else {
+        const sStart = parseISO(`${s.shiftDate}T${s.startTime}`);
+        const sEnd = parseISO(`${s.shiftDate}T${s.endTime}`);
+        const sDuration = (sEnd.getTime() - sStart.getTime()) / (1000 * 60 * 60);
+        totalWeeklyHours += sDuration;
+        daysWorked.add(s.shiftDate);
+      }
+    });
+
+    // 2. Check 45h/week limit
+    if (totalWeeklyHours > 45) {
+      return { 
+        valid: false, 
+        error: `Bu çalışan haftalık 45 saat sınırını aşacak (${totalWeeklyHours.toFixed(1)} saat). Lütfen vardiya süresini azaltın.` 
+      };
+    }
+
+    // 3. Check minimum 1 day off per week (must work max 6 days)
+    if (daysWorked.size > 6) {
+      return { 
+        valid: false, 
+        error: "Çalışanlar haftada en az 1 gün izinli olmalıdır. Bu çalışan zaten 7 gün çalışıyor." 
+      };
+    }
+
+    return { valid: true };
+  }, [shifts, branchUsers]);
+
+  const handleEventDrop = useCallback(({ event, start, end, resourceId }: { event: CalendarEvent; start: Date; end: Date; resourceId?: string }) => {
+    if (!isSupervisor) return;
+    
+    const shiftDate = format(start, 'yyyy-MM-dd');
+    const startTime = format(start, 'HH:mm:ss');
+    const endTime = format(end, 'HH:mm:ss');
+
+    const updateData: Partial<InsertShift> = {
+      shiftDate,
+      startTime,
+      endTime,
+    };
+
+    if (resourceId && resourceId !== event.shift.assignedToId) {
+      updateData.assignedToId = resourceId;
+    }
+
+    // Validate before mutation
+    const validation = validateShiftUpdate(event.shift.id, updateData);
+    if (!validation.valid) {
+      toast({
+        title: "Uyarı",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateMutation.mutate({
+      id: event.shift.id,
+      data: updateData,
+    });
+  }, [isSupervisor, updateMutation, validateShiftUpdate, toast]);
+
+  const handleEventResize = useCallback(({ event, start, end }: { event: CalendarEvent; start: Date; end: Date }) => {
+    if (!isSupervisor) return;
+
+    const startTime = format(start, 'HH:mm:ss');
+    const endTime = format(end, 'HH:mm:ss');
+
+    const updateData = {
+      startTime,
+      endTime,
+    };
+
+    // Validate before mutation
+    const validation = validateShiftUpdate(event.shift.id, updateData);
+    if (!validation.valid) {
+      toast({
+        title: "Uyarı",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateMutation.mutate({
+      id: event.shift.id,
+      data: updateData,
+    });
+  }, [isSupervisor, updateMutation, validateShiftUpdate, toast]);
+
+  const handleSelectEvent = useCallback((event: CalendarEvent) => {
+    handleEdit(event.shift);
+  }, []);
+
+  const eventStyleGetter = useCallback((event: CalendarEvent) => {
+    const shiftType = event.shift.shiftType;
+    let backgroundColor = '#3174ad';
+    
+    if (shiftType === 'morning') backgroundColor = '#f59e0b';
+    if (shiftType === 'evening') backgroundColor = '#3b82f6';
+    if (shiftType === 'night') backgroundColor = '#8b5cf6';
+
+    return {
+      style: {
+        backgroundColor,
+        borderRadius: '4px',
+        opacity: 0.9,
+        color: 'white',
+        border: '0px',
+        display: 'block',
+      },
+    };
+  }, []);
+
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -300,6 +499,24 @@ export default function Vardiyalar() {
 
         {isSupervisor && (
           <div className="flex gap-2">
+            <div className="flex gap-1 mr-2">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => setViewMode('list')}
+                data-testid="button-view-list"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'month' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => setViewMode('month')}
+                data-testid="button-view-month"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+            </div>
             <Dialog open={isAIDialogOpen} onOpenChange={setIsAIDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" data-testid="button-ai-suggest">
@@ -745,17 +962,63 @@ export default function Vardiyalar() {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
-          ))
-        ) : filteredShifts && filteredShifts.length > 0 ? (
-          filteredShifts.map((shift) => (
+      {viewMode === 'month' ? (
+        <Card className="p-4">
+          <div style={{ height: '700px' }}>
+            <DragDropCalendar
+              localizer={localizer}
+              events={calendarEvents}
+              startAccessor="start"
+              endAccessor="end"
+              resources={branchUsers?.map((u: User) => ({
+                id: u.id,
+                title: `${u.firstName} ${u.lastName}`,
+              })) || []}
+              resourceIdAccessor="id"
+              resourceTitleAccessor="title"
+              style={{ height: '100%' }}
+              onEventDrop={handleEventDrop}
+              onEventResize={handleEventResize}
+              onSelectEvent={handleSelectEvent}
+              eventPropGetter={eventStyleGetter}
+              resizable={isSupervisor}
+              draggableAccessor={() => isSupervisor}
+              views={['month']}
+              defaultView="month"
+              culture="tr"
+              messages={{
+                next: "Sonraki",
+                previous: "Önceki",
+                today: "Bugün",
+                month: "Ay",
+                week: "Hafta",
+                day: "Gün",
+                agenda: "Gündem",
+                date: "Tarih",
+                time: "Saat",
+                event: "Vardiya",
+                noEventsInRange: "Bu tarih aralığında vardiya yok",
+                showMore: (total) => `+${total} daha`,
+                allDay: "Tüm Gün",
+                work_week: "Çalışma Haftası",
+                yesterday: "Dün",
+                tomorrow: "Yarın",
+              }}
+            />
+          </div>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <Skeleton className="h-20 w-full" />
+                </CardContent>
+              </Card>
+            ))
+          ) : filteredShifts && filteredShifts.length > 0 ? (
+            filteredShifts.map((shift) => (
             <Card key={shift.id} className="hover-elevate" data-testid={`card-shift-${shift.id}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -868,7 +1131,8 @@ export default function Vardiyalar() {
             </CardContent>
           </Card>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

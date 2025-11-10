@@ -2857,6 +2857,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Başka şube için vardiya oluşturamazsınız" });
       }
 
+      // Validate business rules (45h/week, 1 day off, 1h break)
+      const validation = await validateShiftRules(null, validatedData, null);
+      if (!validation.valid) {
+        return res.status(400).json({ message: validation.error });
+      }
+
       // Create shift with auto-set createdById
       const shift = await storage.createShift({
         ...validatedData,
@@ -2877,6 +2883,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Vardiya oluşturulamadı" });
     }
   });
+
+  // Validation helper for shift updates and creation
+  async function validateShiftRules(
+    shiftId: number | null,
+    updateData: Partial<any>,
+    existingShift: any | null
+  ): Promise<{ valid: boolean; error?: string }> {
+    try {
+      // Determine final values (for updates, merge with existing; for creation, use updateData)
+      const employeeId = updateData.assignedToId !== undefined 
+        ? updateData.assignedToId 
+        : existingShift?.assignedToId;
+      if (!employeeId) return { valid: true }; // No employee assigned, no validation needed
+
+      const shiftDate = updateData.shiftDate || existingShift?.shiftDate;
+      const startTime = updateData.startTime || existingShift?.startTime;
+      const endTime = updateData.endTime || existingShift?.endTime;
+
+      // 1. Check 1-hour break validation (shift duration)
+      const startDate = new Date(`${shiftDate}T${startTime}`);
+      const endDate = new Date(`${shiftDate}T${endTime}`);
+      const durationMs = endDate.getTime() - startDate.getTime();
+      const durationHours = durationMs / (1000 * 60 * 60);
+
+      if (durationHours > 6 && durationHours < 7) {
+        return { 
+          valid: false, 
+          error: "6 saatten uzun vardiyalar için 1 saat mola gereklidir. Toplam vardiya süresi en az 7 saat olmalıdır." 
+        };
+      }
+
+      // Get week boundaries (Monday to Sunday)
+      const shiftDateObj = new Date(shiftDate);
+      const dayOfWeek = shiftDateObj.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const weekStart = new Date(shiftDateObj);
+      weekStart.setDate(shiftDateObj.getDate() + mondayOffset);
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      // Get all shifts for this employee in this week
+      const employeeWeekShifts = await storage.getShifts(
+        undefined, // branchId - not filtering by branch
+        employeeId, // assignedToId
+        weekStart.toISOString().split('T')[0], // dateFrom
+        weekEnd.toISOString().split('T')[0] // dateTo
+      );
+
+      // Calculate total weekly hours and days worked
+      let totalWeeklyHours = 0;
+      const daysWorked = new Set<string>();
+
+      for (const shift of employeeWeekShifts) {
+        // If this is the shift being updated, use new data; otherwise use existing data
+        if (shiftId && shift.id === shiftId) {
+          totalWeeklyHours += durationHours;
+          daysWorked.add(shiftDate);
+        } else {
+          const sStart = new Date(`${shift.shiftDate}T${shift.startTime}`);
+          const sEnd = new Date(`${shift.shiftDate}T${shift.endTime}`);
+          const sDuration = (sEnd.getTime() - sStart.getTime()) / (1000 * 60 * 60);
+          totalWeeklyHours += sDuration;
+          daysWorked.add(shift.shiftDate);
+        }
+      }
+
+      // For new shifts (shiftId is null), add the new shift hours
+      if (!shiftId) {
+        totalWeeklyHours += durationHours;
+        daysWorked.add(shiftDate);
+      }
+
+      // 2. Check 45h/week limit
+      if (totalWeeklyHours > 45) {
+        return { 
+          valid: false, 
+          error: `Bu çalışan haftalık 45 saat sınırını aşacak (${totalWeeklyHours.toFixed(1)} saat). Lütfen vardiya süresini azaltın.` 
+        };
+      }
+
+      // 3. Check minimum 1 day off per week (must work max 6 days)
+      if (daysWorked.size > 6) {
+        return { 
+          valid: false, 
+          error: "Çalışanlar haftada en az 1 gün izinli olmalıdır. Bu çalışan zaten 7 gün çalışıyor." 
+        };
+      }
+
+      return { valid: true };
+    } catch (error) {
+      console.error("Error in shift validation:", error);
+      return { valid: true }; // Don't block on validation errors
+    }
+  }
 
   // Update shift (supervisor: own branch only)
   app.patch('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
@@ -2907,6 +3010,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Prevent changing branchId or createdById (immutable after creation)
       const { branchId, createdById, ...allowedUpdates } = validatedData;
+
+      // Validate business rules (45h/week, 1 day off, 1h break)
+      const validation = await validateShiftRules(id, allowedUpdates, existingShift);
+      if (!validation.valid) {
+        return res.status(400).json({ message: validation.error });
+      }
 
       const updated = await storage.updateShift(id, allowedUpdates);
       res.json(updated);
@@ -2997,8 +3106,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Fetch branch employees
-      const branchUsers = await storage.getUsersByBranch(branchId);
-      const employees = branchUsers.map(u => ({
+      const branchUsers = await storage.getAllEmployees(branchId);
+      const employees = branchUsers.map((u: any) => ({
         id: u.id,
         name: `${u.firstName} ${u.lastName}`,
         role: u.role || 'barista',
