@@ -39,21 +39,28 @@ export async function seedEquipmentForBranches() {
         .toISOString()
         .split('T')[0];
       
-      await storage.createEquipment({
-        branchId: branch.id,
-        equipmentType: type,
-        serialNumber: `${type.toUpperCase()}-B${branch.id}-${Date.now()}`,
-        purchaseDate,
-        warrantyEndDate,
-        maintenanceResponsible: metadata.maintenanceResponsible,
-        faultProtocol: metadata.faultProtocol,
-        maintenanceIntervalDays: metadata.maintenanceInterval,
-        nextMaintenanceDate,
-        notes: `${metadata.nameTr} - ${branch.name}`,
-        isActive: true,
-      });
-      
-      created++;
+      try {
+        await storage.createEquipment({
+          branchId: branch.id,
+          equipmentType: type,
+          serialNumber: `${type.toUpperCase()}-${branch.id.toString().padStart(3, '0')}-001`,
+          purchaseDate,
+          warrantyEndDate,
+          maintenanceResponsible: metadata.maintenanceResponsible,
+          faultProtocol: metadata.faultProtocol,
+          maintenanceIntervalDays: metadata.maintenanceInterval,
+          nextMaintenanceDate,
+          notes: `${metadata.nameTr} - ${branch.name}`,
+          isActive: true,
+        });
+        created++;
+      } catch (error: any) {
+        if (error.code === '23505') { // Unique constraint violation
+          skipped++;
+        } else {
+          throw error;
+        }
+      }
     }
   }
   
@@ -159,7 +166,7 @@ export async function seedBranchPersonnel(hashedPassword: string) {
   
   for (const branch of branches) {
     // Check existing users for this branch
-    const allUsers = await storage.getUsers();
+    const allUsers = await storage.getAllEmployees();
     const existingUsers = allUsers.filter((u: any) => u.branchId === branch.id);
     const existingRoles = new Set(existingUsers.map((u: any) => u.role));
     
@@ -167,23 +174,35 @@ export async function seedBranchPersonnel(hashedPassword: string) {
     const branchSuffix = (branch.city || 'unknown').toLowerCase().replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ı/g, 'i').replace(/\s+/g, '');
     
     // 1. Supervisor (1 per branch)
-    if (!existingRoles.has('supervisor')) {
-      const firstName = firstNames[branch.id % firstNames.length];
-      const lastName = lastNames[(branch.id + 1) % lastNames.length];
-      
-      await storage.createUser({
-        username: `supervisor_${branchSuffix}`,
-        email: `supervisor@${branchSuffix}.dospresso.com`,
-        hashedPassword: hashedPassword,
-        fullName: `${firstName} ${lastName}`,
-        role: "supervisor",
-        branchId: branch.id,
-        phoneNumber: `05${(20 + branch.id).toString().padStart(2, '0')} ${(100 + branch.id).toString()} ${(1000 + branch.id).toString()}`,
-        hireDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year ago
-        probationEndDate: new Date(Date.now() - 275 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Completed
-        isActive: true,
-      });
-      created++;
+    const supervisorUsername = `supervisor_${branchSuffix}`;
+    const existingSupervisor = existingUsers.find((u: any) => u.username === supervisorUsername);
+    
+    if (!existingSupervisor) {
+      try {
+        const firstName = firstNames[branch.id % firstNames.length];
+        const lastName = lastNames[(branch.id + 1) % lastNames.length];
+        
+        await storage.createUser({
+          username: supervisorUsername,
+          email: `supervisor@${branchSuffix}.dospresso.com`,
+          hashedPassword: hashedPassword,
+          firstName: firstName,
+          lastName: lastName,
+          role: "supervisor",
+          branchId: branch.id,
+          phoneNumber: `05${(20 + branch.id).toString().padStart(2, '0')} ${(100 + branch.id).toString()} ${(1000 + branch.id).toString()}`,
+          hireDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year ago
+          probationEndDate: new Date(Date.now() - 275 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Completed
+          isActive: true,
+        });
+        created++;
+      } catch (error: any) {
+        if (error.code === '23505') { // Unique constraint violation
+          skipped++;
+        } else {
+          throw error;
+        }
+      }
     } else {
       skipped++;
     }
@@ -195,46 +214,66 @@ export async function seedBranchPersonnel(hashedPassword: string) {
       const lastName = lastNames[(branch.id * 2 + i + 2) % lastNames.length];
       
       // Check if this specific barista already exists (by username pattern)
-      const existingBarista = existingUsers.find((u: any) => u.username === `barista${i}_${branchSuffix}`);
+      const baristaUsername = `barista${i}_${branchSuffix}`;
+      const existingBarista = existingUsers.find((u: any) => u.username === baristaUsername);
       if (existingBarista) {
         skipped++;
         continue;
       }
       
-      await storage.createUser({
-        username: `barista${i}_${branchSuffix}`,
-        email: `barista${i}@${branchSuffix}.dospresso.com`,
-        hashedPassword: hashedPassword,
-        fullName: `${firstName} ${lastName}`,
-        role: "barista",
-        branchId: branch.id,
-        phoneNumber: `05${(30 + branch.id).toString().padStart(2, '0')} ${(200 + branch.id * 2 + i).toString()} ${(2000 + branch.id * 2 + i).toString()}`,
-        hireDate: new Date(Date.now() - (180 + i * 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        probationEndDate: new Date(Date.now() - (90 + i * 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        isActive: true,
-      });
-      created++;
+      try {
+        await storage.createUser({
+          username: baristaUsername,
+          email: `barista${i}@${branchSuffix}.dospresso.com`,
+          hashedPassword: hashedPassword,
+          firstName: firstName,
+          lastName: lastName,
+          role: "barista",
+          branchId: branch.id,
+          phoneNumber: `05${(30 + branch.id).toString().padStart(2, '0')} ${(200 + branch.id * 2 + i).toString()} ${(2000 + branch.id * 2 + i).toString()}`,
+          hireDate: new Date(Date.now() - (180 + i * 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          probationEndDate: new Date(Date.now() - (90 + i * 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          isActive: true,
+        });
+        created++;
+      } catch (error: any) {
+        if (error.code === '23505') { // Unique constraint violation
+          skipped++;
+        } else {
+          throw error;
+        }
+      }
     }
     
     // 3. Stajyer (1 per branch - in probation)
-    const existingStajyer = existingUsers.find((u: any) => u.username === `stajyer_${branchSuffix}`);
+    const stajyerUsername = `stajyer_${branchSuffix}`;
+    const existingStajyer = existingUsers.find((u: any) => u.username === stajyerUsername);
     if (!existingStajyer) {
-      const firstName = firstNames[(branch.id * 3) % firstNames.length];
-      const lastName = lastNames[(branch.id * 3 + 1) % lastNames.length];
-      
-      await storage.createUser({
-        username: `stajyer_${branchSuffix}`,
-        email: `stajyer@${branchSuffix}.dospresso.com`,
-        hashedPassword: hashedPassword,
-        fullName: `${firstName} ${lastName}`,
-        role: "stajyer",
-        branchId: branch.id,
-        phoneNumber: `05${(40 + branch.id).toString().padStart(2, '0')} ${(300 + branch.id).toString()} ${(3000 + branch.id).toString()}`,
-        hireDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 45 days ago
-        probationEndDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 45 days from now
-        isActive: true,
-      });
-      created++;
+      try {
+        const firstName = firstNames[(branch.id * 3) % firstNames.length];
+        const lastName = lastNames[(branch.id * 3 + 1) % lastNames.length];
+        
+        await storage.createUser({
+          username: stajyerUsername,
+          email: `stajyer@${branchSuffix}.dospresso.com`,
+          hashedPassword: hashedPassword,
+          firstName: firstName,
+          lastName: lastName,
+          role: "stajyer",
+          branchId: branch.id,
+          phoneNumber: `05${(40 + branch.id).toString().padStart(2, '0')} ${(300 + branch.id).toString()} ${(3000 + branch.id).toString()}`,
+          hireDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 45 days ago
+          probationEndDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 45 days from now
+          isActive: true,
+        });
+        created++;
+      } catch (error: any) {
+        if (error.code === '23505') { // Unique constraint violation
+          skipped++;
+        } else {
+          throw error;
+        }
+      }
     } else {
       skipped++;
     }
