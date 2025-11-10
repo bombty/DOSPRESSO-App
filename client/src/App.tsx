@@ -26,6 +26,7 @@ import HQSupport from "@/pages/hq-support";
 import Notifications from "@/pages/notifications";
 import Announcements from "@/pages/announcements";
 import CashReports from "@/pages/cash-reports";
+import Vardiyalar from "@/pages/vardiyalar";
 import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
 import AdminSeed from "@/pages/admin-seed";
@@ -56,6 +57,7 @@ function Router() {
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular" component={Announcements} />
           <Route path="/kasa-raporlari" component={CashReports} />
+          <Route path="/vardiyalar" component={Vardiyalar} />
           <Route path="/hq-destek" component={HQSupport} />
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/performans" component={Performance} />

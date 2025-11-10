@@ -14,6 +14,7 @@ import {
   Bell,
   Megaphone,
   Wallet,
+  Clock,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -125,6 +126,13 @@ const menuItems: Array<{
     titleTr: "Kasa Raporları",
     url: "/kasa-raporlari",
     icon: Wallet,
+    module: "dashboard",
+  },
+  {
+    title: "Vardiya Yönetimi",
+    titleTr: "Vardiya Yönetimi",
+    url: "/vardiyalar",
+    icon: Clock,
     module: "dashboard",
   },
   {
