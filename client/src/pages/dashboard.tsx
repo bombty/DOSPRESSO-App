@@ -1,12 +1,24 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AnnouncementBanner } from "@/components/announcement-banner";
-import { CheckCircle, Clock, AlertTriangle, TrendingUp } from "lucide-react";
-import type { Task, EquipmentFault, PerformanceMetric } from "@shared/schema";
+import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
+import type { Task, EquipmentFault, PerformanceMetric, AISummaryResponse, SummaryCategoryType } from "@shared/schema";
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<SummaryCategoryType | null>(null);
+  const [currentSummary, setCurrentSummary] = useState<AISummaryResponse | null>(null);
+
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
   });
@@ -26,6 +38,73 @@ export default function Dashboard() {
 
   const latestMetric = metrics?.[0];
   const completionRate = latestMetric?.completionRate || 0;
+
+  // Check if user has access to AI summaries (HQ users or supervisors)
+  const HQ_ROLES = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+  const canAccessAISummaries = user && (HQ_ROLES.includes(user.role) || user.role === 'supervisor');
+
+  // AI Summary mutation
+  const generateSummaryMutation = useMutation({
+    mutationFn: async (category: SummaryCategoryType) => {
+      const response = await apiRequest('POST', '/api/ai-summary', { category });
+      return response.json() as Promise<AISummaryResponse>;
+    },
+    onSuccess: (data: AISummaryResponse) => {
+      setCurrentSummary(data);
+      setSummaryDialogOpen(true);
+      if (data.cached) {
+        toast({
+          title: "Önbellekten Yüklendi",
+          description: "Bu özet daha önce oluşturulmuştu ve önbellekten getirildi.",
+        });
+      } else {
+        toast({
+          title: "AI Özeti Oluşturuldu",
+          description: "Özet başarıyla oluşturuldu ve 24 saat boyunca önbellekte saklanacak.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      console.error('AI summary error:', error);
+      toast({
+        title: "Hata",
+        description: error.message || "AI özeti oluşturulamadı. Lütfen tekrar deneyin.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGenerateSummary = (category: SummaryCategoryType) => {
+    setSelectedCategory(category);
+    generateSummaryMutation.mutate(category);
+  };
+
+  const getCategoryTitle = (category: SummaryCategoryType) => {
+    switch (category) {
+      case 'personel':
+        return 'Personel Özeti';
+      case 'cihazlar':
+        return 'Cihaz Özeti';
+      case 'gorevler':
+        return 'Görev Özeti';
+      default:
+        return 'AI Özeti';
+    }
+  };
+
+  const getCategoryDescription = (category: SummaryCategoryType, branchName?: string) => {
+    const prefix = branchName || 'Tüm şubeler';
+    switch (category) {
+      case 'personel':
+        return `${prefix} - Son 7 günlük personel verilerine dayalı AI analizi`;
+      case 'cihazlar':
+        return `${prefix} - Son 7 günlük cihaz verilerine dayalı AI analizi`;
+      case 'gorevler':
+        return `${prefix} - Son 7 günlük görev verilerine dayalı AI analizi`;
+      default:
+        return `${prefix} - Son 7 günlük verilere dayalı AI analizi`;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -129,6 +208,78 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {canAccessAISummaries && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              AI Özetler
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Son 7 günlük verilere dayalı AI destekli analizler (Günlük limit: 3 özet)
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() => handleGenerateSummary('personel')}
+                disabled={generateSummaryMutation.isPending}
+                variant="outline"
+                data-testid="button-ai-summary-personel"
+              >
+                {generateSummaryMutation.isPending && selectedCategory === 'personel' ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Oluşturuluyor...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Personel Özeti
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => handleGenerateSummary('cihazlar')}
+                disabled={generateSummaryMutation.isPending}
+                variant="outline"
+                data-testid="button-ai-summary-cihazlar"
+              >
+                {generateSummaryMutation.isPending && selectedCategory === 'cihazlar' ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Oluşturuluyor...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Cihaz Özeti
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => handleGenerateSummary('gorevler')}
+                disabled={generateSummaryMutation.isPending}
+                variant="outline"
+                data-testid="button-ai-summary-gorevler"
+              >
+                {generateSummaryMutation.isPending && selectedCategory === 'gorevler' ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Oluşturuluyor...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Görev Özeti
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -239,6 +390,83 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={summaryDialogOpen} onOpenChange={setSummaryDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              {currentSummary ? getCategoryTitle(currentSummary.category) : 'AI Özeti'}
+            </DialogTitle>
+            <DialogDescription>
+              {currentSummary 
+                ? getCategoryDescription(currentSummary.category, currentSummary.scope?.branchName)
+                : 'Son 7 günlük verilere dayalı yapay zeka analizi'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {currentSummary && (
+              <>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(currentSummary.generatedAt).toLocaleString('tr-TR')}
+                    </span>
+                    {currentSummary.cached && (
+                      <Badge variant="secondary" className="text-xs">
+                        Önbellekten
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleGenerateSummary(currentSummary.category)}
+                    disabled={generateSummaryMutation.isPending}
+                  >
+                    {generateSummaryMutation.isPending ? (
+                      <>
+                        <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
+                        Yenileniyor...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-3 w-3" />
+                        Yenile
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {currentSummary.summary}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    💡 AI özetleri GPT-4o-mini ile oluşturulur ve 24 saat boyunca önbellekte saklanır. 
+                    Günlük limit: 3 özet.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {generateSummaryMutation.isPending && (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

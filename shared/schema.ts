@@ -1509,3 +1509,26 @@ export const insertShiftAttendanceSchema = createInsertSchema(shiftAttendance).o
 
 export type InsertShiftAttendance = z.infer<typeof insertShiftAttendanceSchema>;
 export type ShiftAttendance = typeof shiftAttendance.$inferSelect;
+
+// AI Summary types for HQ Dashboard
+export const SummaryCategory = z.enum(["personel", "cihazlar", "gorevler"]);
+export type SummaryCategoryType = z.infer<typeof SummaryCategory>;
+
+export const aiSummaryRequestSchema = z.object({
+  category: SummaryCategory,
+});
+
+export type AISummaryRequest = z.infer<typeof aiSummaryRequestSchema>;
+
+export const aiSummaryResponseSchema = z.object({
+  summary: z.string(),
+  cached: z.boolean(),
+  generatedAt: z.string(), // ISO timestamp
+  category: SummaryCategory,
+  scope: z.object({
+    branchId: z.number().optional(),
+    branchName: z.string().optional(),
+  }).optional(),
+});
+
+export type AISummaryResponse = z.infer<typeof aiSummaryResponseSchema>;

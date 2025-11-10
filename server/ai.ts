@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 import { cache, generateCacheKey, aiRateLimiter } from "./cache";
+import { storage } from "./storage";
+import type { SummaryCategoryType, AISummaryResponse } from "@shared/schema";
 
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -10,6 +12,7 @@ const openai = new OpenAI({
 // gpt-4o is 60% cheaper than gpt-4-turbo for vision tasks
 const VISION_MODEL = "gpt-4o"; // For photo analysis (task, fault, cleanliness, dress code)
 const CHAT_MODEL = "gpt-4o"; // For RAG Q&A
+const SUMMARY_MODEL = "gpt-4o-mini"; // For dashboard summaries (most cost-efficient)
 const EMBEDDING_MODEL = "text-embedding-3-small"; // Already optimal
 
 export interface TaskPhotoAnalysis {
@@ -725,5 +728,216 @@ JSON formatında yanıt ver:
   } catch (error) {
     console.error("Vardiya planı oluşturma hatası:", error);
     throw new Error("Vardiya planı oluşturulamadı");
+  }
+}
+
+// AI Dashboard Summary (HQ + Branch Supervisors only)
+const SUMMARY_LIMIT = 3; // 3 summaries per day
+
+interface SummaryUser {
+  id: string;
+  role: string;
+  branchId?: number;
+  username?: string;
+}
+
+async function buildSummaryPrompt(
+  category: SummaryCategoryType,
+  user: SummaryUser
+): Promise<string> {
+  const isHQ = user.branchId === null || user.branchId === undefined;
+  const branchId = isHQ ? undefined : user.branchId;
+  
+  // Fetch last 7 days data (fallback to 30 if insufficient)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  let branchName = "Tüm Şubeler";
+  if (branchId) {
+    const branch = await storage.getBranch(branchId);
+    branchName = branch?.name || `Şube #${branchId}`;
+  }
+
+  const scope = isHQ ? "HQ (Tüm Şubeler)" : branchName;
+
+  if (category === "personel") {
+    // Fetch attendance data
+    const sevenDayDateStr = sevenDaysAgo.toISOString().split('T')[0];
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    
+    const attendances = await storage.getShiftAttendances(
+      undefined,
+      undefined,
+      sevenDayDateStr,
+      todayDateStr
+    );
+    
+    const totalAttendances = attendances.length;
+    const checkedIn = attendances.filter(a => a.checkInTime).length;
+    const absent = attendances.filter(a => a.status === 'absent').length;
+    const late = attendances.filter(a => a.status === 'late').length;
+    const dressCodeViolations = attendances.filter(a => 
+      a.aiWarnings && a.aiWarnings.length > 0
+    ).length;
+
+    return `DOSPRESSO ${scope} için son 7 günlük personel özeti oluştur:
+
+**Yoklama İstatistikleri:**
+- Toplam vardiya: ${totalAttendances}
+- Giriş yapan: ${checkedIn}
+- Devamsız: ${absent}
+- Geç kalan: ${late}
+- Kıyafet ihlali: ${dressCodeViolations}
+
+**Görev:** Yukarıdaki verileri analiz et ve şu konularda kısa, öz ve Türkçe bir özet sun:
+1. Genel devam durumu (katılım oranı, trend)
+2. Problemli alanlar (devamsızlık, gecikmeler)
+3. Kıyafet uyumu (varsa ihlaller)
+4. Öneriler (HQ/supervisor için aksiyonlar)
+
+Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
+  } else if (category === "cihazlar") {
+    // Fetch equipment faults
+    const faults = await storage.getFaults(branchId);
+    const sevenDayFaults = faults.filter(f => {
+      const created = f.createdAt ? new Date(f.createdAt) : new Date(0);
+      return created >= sevenDaysAgo;
+    });
+
+    const openFaults = sevenDayFaults.filter(f => f.status === 'acik').length;
+    const resolvedFaults = sevenDayFaults.filter(f => f.status === 'cozuldu').length;
+    const criticalFaults = sevenDayFaults.filter(f => f.priority === 'high' || f.priority === 'critical').length;
+
+    return `DOSPRESSO ${scope} için son 7 günlük cihaz arıza özeti oluştur:
+
+**Arıza İstatistikleri:**
+- Toplam arıza: ${sevenDayFaults.length}
+- Açık arıza: ${openFaults}
+- Çözülmüş: ${resolvedFaults}
+- Kritik arıza: ${criticalFaults}
+
+**Görev:** Yukarıdaki verileri analiz et ve şu konularda kısa, öz ve Türkçe bir özet sun:
+1. Genel durum (arıza oranı, trend)
+2. Kritik problemler (acil müdahale gereken)
+3. Bakım önerileri (önleyici tedbirler)
+4. Aksiyonlar (HQ/supervisor için)
+
+Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
+  } else if (category === "gorevler") {
+    // Fetch tasks
+    const tasks = await storage.getTasks(branchId);
+    const sevenDayTasks = tasks.filter(t => {
+      const created = t.createdAt ? new Date(t.createdAt) : new Date(0);
+      return created >= sevenDaysAgo;
+    });
+
+    const completed = sevenDayTasks.filter(t => t.status === 'tamamlandi').length;
+    const pending = sevenDayTasks.filter(t => t.status === 'beklemede').length;
+    const overdue = sevenDayTasks.filter(t => t.status === 'gecikmiş').length;
+    const completionRate = sevenDayTasks.length > 0 
+      ? Math.round((completed / sevenDayTasks.length) * 100) 
+      : 0;
+
+    return `DOSPRESSO ${scope} için son 7 günlük görev özeti oluştur:
+
+**Görev İstatistikleri:**
+- Toplam görev: ${sevenDayTasks.length}
+- Tamamlanan: ${completed}
+- Bekleyen: ${pending}
+- Gecikmiş: ${overdue}
+- Tamamlanma oranı: %${completionRate}
+
+**Görev:** Yukarıdaki verileri analiz et ve şu konularda kısa, öz ve Türkçe bir özet sun:
+1. Genel performans (tamamlanma oranı, trend)
+2. Problemli alanlar (geciken görevler)
+3. Takım verimliliği
+4. Öneriler (HQ/supervisor için)
+
+Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
+  }
+
+  throw new Error(`Geçersiz kategori: ${category}`);
+}
+
+export async function generateAISummary(
+  category: SummaryCategoryType,
+  user: SummaryUser,
+  skipCache: boolean = false
+): Promise<AISummaryResponse> {
+  const isHQ = user.branchId === null || user.branchId === undefined;
+  const role = user.role || 'unknown';
+  const branchId = user.branchId;
+
+  // Generate cache key based on role and scope
+  const cacheKey = generateCacheKey('ai-summary', category, role, branchId || 'hq');
+  
+  // Check cache first (24h TTL)
+  if (!skipCache) {
+    const cached = cache.get<AISummaryResponse>(cacheKey);
+    if (cached) {
+      console.log(`✅ Cache HIT - AI Summary [${category}] (cost saved!)`);
+      return { ...cached, cached: true };
+    }
+  }
+
+  // Rate limit check (3 summaries per day)
+  if (!aiRateLimiter.canMakeRequest(user.id, 'summary', SUMMARY_LIMIT)) {
+    const remaining = aiRateLimiter.getRemainingCalls(user.id, 'summary', SUMMARY_LIMIT);
+    throw new Error(`Günlük AI özet limitiniz doldu (${SUMMARY_LIMIT}/gün). Kalan: ${remaining}. Yarın tekrar deneyin.`);
+  }
+
+  try {
+    // Build prompt with data
+    const prompt = await buildSummaryPrompt(category, user);
+
+    // Call OpenAI with GPT-4o-mini (cost-efficient)
+    const response = await openai.chat.completions.create({
+      model: SUMMARY_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: "Sen DOSPRESSO franchise yönetim sisteminin AI asistanısın. Kısa, öz ve aksiyona yönelik özetler sunarsın.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_completion_tokens: 500, // Keep it short for cost
+      temperature: 0.7,
+    });
+
+    const summary = response.choices[0]?.message?.content?.trim() || "Özet oluşturulamadı.";
+    const generatedAt = new Date().toISOString();
+
+    // Get branch info if applicable
+    let branchName: string | undefined;
+    if (branchId) {
+      const branch = await storage.getBranch(branchId);
+      branchName = branch?.name;
+    }
+
+    const result: AISummaryResponse = {
+      summary,
+      cached: false,
+      generatedAt,
+      category,
+      scope: branchId ? { branchId, branchName } : undefined,
+    };
+
+    // Cache for 24 hours
+    cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
+
+    // Increment rate limit counter
+    aiRateLimiter.incrementRequest(user.id, 'summary');
+    const remaining = aiRateLimiter.getRemainingCalls(user.id, 'summary', SUMMARY_LIMIT);
+    console.log(`💰 AI call made - Summary [${category}] (${remaining}/${SUMMARY_LIMIT} remaining for user ${user.id})`);
+
+    return result;
+  } catch (error) {
+    console.error(`AI özet oluşturma hatası [${category}]:`, error);
+    throw error;
   }
 }

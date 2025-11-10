@@ -27,7 +27,7 @@ import {
   type UpdateUser,
   type UserRoleType
 } from "@shared/schema";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, generateAISummary } from "./ai";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -981,6 +981,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error answering question:", error);
       res.status(500).json({ message: "Soru cevaplanamadı" });
+    }
+  });
+
+  // AI Dashboard Summary (HQ + Branch Supervisors only)
+  app.post('/api/ai-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { category } = req.body;
+
+      // Validate category
+      if (!category || !['personel', 'cihazlar', 'gorevler'].includes(category)) {
+        return res.status(400).json({ message: "Geçersiz kategori. Geçerli değerler: personel, cihazlar, gorevler" });
+      }
+
+      // Authorization: Only HQ users and branch supervisors
+      const role = user.role as UserRoleType;
+      const isHQ = isHQRole(role);
+      const isSupervisor = role === 'supervisor';
+
+      if (!isHQ && !isSupervisor) {
+        return res.status(403).json({ message: "Bu özellik sadece HQ kullanıcıları ve şube supervisorları için kullanılabilir." });
+      }
+
+      // Call AI summary generation
+      const summary = await generateAISummary(category, {
+        id: user.id,
+        role: user.role || 'unknown',
+        branchId: user.branchId,
+        username: user.username,
+      });
+
+      res.json(summary);
+    } catch (error: any) {
+      console.error("Error generating AI summary:", error);
+      
+      // Handle rate limit errors
+      if (error.message?.includes('limit')) {
+        return res.status(429).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: "AI özeti oluşturulamadı" });
     }
   });
 
