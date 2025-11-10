@@ -550,14 +550,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFault(fault: InsertEquipmentFault): Promise<EquipmentFault> {
-    const [newFault] = await db.insert(equipmentFaults).values(fault).returning();
+    const [newFault] = await db.insert(equipmentFaults).values(fault as any).returning();
     return newFault;
   }
 
   async updateFault(id: number, updates: Partial<InsertEquipmentFault>): Promise<EquipmentFault | undefined> {
     const [updated] = await db
       .update(equipmentFaults)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date() } as any)
       .where(eq(equipmentFaults.id, id))
       .returning();
     return updated;
@@ -907,8 +907,15 @@ export class DatabaseStorage implements IStorage {
     // LEFT JOIN with messageReads to check if user has read the message
     const roleMessages = await db
       .select({
-        ...messages,
-        isReadByUser: sql<boolean>`${messageReads.id} IS NOT NULL`.as('is_read_by_user'),
+        id: messages.id,
+        senderId: messages.senderId,
+        recipientId: messages.recipientId,
+        recipientRole: messages.recipientRole,
+        subject: messages.subject,
+        body: messages.body,
+        type: messages.type,
+        createdAt: messages.createdAt,
+        isReadByUser: sql<boolean>`${messageReads.id} IS NOT NULL`,
       })
       .from(messages)
       .leftJoin(
@@ -921,11 +928,18 @@ export class DatabaseStorage implements IStorage {
       .where(
         sql`${messages.recipientId} = ${userId} OR ${messages.recipientRole} = ${role}`
       )
-      .orderBy(desc(messages.createdAt)) as any;
+      .orderBy(desc(messages.createdAt));
 
     // Map isReadByUser to isRead for compatibility
     return roleMessages.map((msg: any) => ({
-      ...msg,
+      id: msg.id,
+      senderId: msg.senderId,
+      recipientId: msg.recipientId,
+      recipientRole: msg.recipientRole,
+      subject: msg.subject,
+      body: msg.body,
+      type: msg.type,
+      createdAt: msg.createdAt,
       isRead: msg.isReadByUser || false,
     }));
   }

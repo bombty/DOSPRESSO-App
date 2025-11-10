@@ -112,6 +112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         city: validatedData.city ?? null,
         phoneNumber: validatedData.phoneNumber ?? null,
         managerName: validatedData.managerName ?? null,
+        openingHours: validatedData.openingHours ?? '08:00',
+        closingHours: validatedData.closingHours ?? '22:00',
       };
       const branch = await storage.createBranch(branchData);
       res.json(branch);
@@ -146,6 +148,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid branch data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update branch" });
+    }
+  });
+
+  // Update branch settings (HQ + supervisors for own branch)
+  app.patch('/api/branches/:id/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+
+      // Authorization: HQ users or supervisors (own branch only)
+      if (!isHQRole(role) && role !== 'supervisor') {
+        return res.status(403).json({ message: "Şube ayarlarını düzenleme yetkiniz yok" });
+      }
+
+      // Supervisors can only edit their own branch
+      if (role === 'supervisor' && user.branchId !== id) {
+        return res.status(403).json({ message: "Sadece kendi şubenizin ayarlarını değiştirebilirsiniz" });
+      }
+
+      const { openingHours, closingHours } = req.body;
+
+      if (!openingHours && !closingHours) {
+        return res.status(400).json({ message: "En az bir ayar değeri gerekli" });
+      }
+
+      // Validate time format (HH:MM)
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (openingHours && !timeRegex.test(openingHours)) {
+        return res.status(400).json({ message: "Açılış saati geçersiz format (HH:MM)" });
+      }
+      if (closingHours && !timeRegex.test(closingHours)) {
+        return res.status(400).json({ message: "Kapanış saati geçersiz format (HH:MM)" });
+      }
+
+      // Fetch current branch to preserve unspecified fields
+      const currentBranch = await storage.getBranch(id);
+      if (!currentBranch) {
+        return res.status(404).json({ message: "Şube bulunamadı" });
+      }
+
+      const branch = await storage.updateBranchSettings(id, {
+        openingHours: openingHours || currentBranch.openingHours || '08:00',
+        closingHours: closingHours || currentBranch.closingHours || '22:00',
+      });
+
+      res.json(branch);
+    } catch (error) {
+      console.error("Error updating branch settings:", error);
+      res.status(500).json({ message: "Şube ayarları güncellenemedi" });
     }
   });
 
@@ -289,6 +341,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid checklist data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create checklist" });
+    }
+  });
+
+  // Update checklist settings (HQ coach + supervisors for own branch)
+  app.patch('/api/checklists/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+
+      // Authorization: HQ coach or supervisors
+      if (role !== 'coach' && role !== 'supervisor' && role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Checklist düzenleme yetkiniz yok" });
+      }
+
+      // Fetch checklist to verify ownership for supervisors
+      const existingChecklist = await storage.getChecklist(id);
+      if (!existingChecklist) {
+        return res.status(404).json({ message: "Checklist bulunamadı" });
+      }
+
+      // Supervisors can only edit checklists from their own branch
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        if (!user.branchId || existingChecklist.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubenizin checklist'lerini düzenleyebilirsiniz" });
+        }
+      }
+
+      const { isEditable, timeWindowStart, timeWindowEnd, isPhotoRequired } = req.body;
+
+      // Validate time window if provided
+      if (timeWindowStart && timeWindowEnd && timeWindowStart >= timeWindowEnd) {
+        return res.status(400).json({ message: "Başlangıç saati bitiş saatinden önce olmalı" });
+      }
+
+      const updates: any = {};
+      if (isEditable !== undefined) updates.isEditable = isEditable;
+      if (timeWindowStart !== undefined) updates.timeWindowStart = timeWindowStart;
+      if (timeWindowEnd !== undefined) updates.timeWindowEnd = timeWindowEnd;
+      if (isPhotoRequired !== undefined) updates.isPhotoRequired = isPhotoRequired;
+
+      const checklist = await storage.updateChecklistSettings(id, updates);
+
+      res.json(checklist!);
+    } catch (error) {
+      console.error("Error updating checklist:", error);
+      res.status(500).json({ message: "Checklist güncellenemedi" });
     }
   });
 
@@ -1701,7 +1800,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { name: "Nizip", address: "Cumhuriyet Meydanı, Nizip", city: "Gaziantep", phoneNumber: "0342 xxx 91 01", managerName: "Esra Taş" },
       ];
 
-      const branches = await Promise.all(branchData.map(b => storage.createBranch(b)));
+      const branches = await Promise.all(
+        branchData.map((b: any) => storage.createBranch({
+          ...b,
+          openingHours: '08:00',
+          closingHours: '22:00',
+        }))
+      );
 
       // Create HQ users
       const hqUserData = [
@@ -2332,6 +2437,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add attachments to announcement (HQ destek + supervisors)
+  app.post('/api/announcements/:id/attachments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      // Only HQ destek or supervisors can add attachments
+      if (role !== 'destek' && role !== 'supervisor') {
+        return res.status(403).json({ message: "Duyuru ekleri yükleme yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+      const { attachments } = req.body;
+
+      if (!Array.isArray(attachments) || attachments.length === 0) {
+        return res.status(400).json({ message: "Geçersiz ek listesi" });
+      }
+
+      const announcement = await storage.addAnnouncementAttachments(id, attachments);
+      if (!announcement) {
+        return res.status(404).json({ message: "Duyuru bulunamadı" });
+      }
+
+      res.json(announcement);
+    } catch (error) {
+      console.error("Error adding announcement attachments:", error);
+      res.status(500).json({ message: "Ekler yüklenemedi" });
+    }
+  });
+
   // =========================================
   // DAILY CASH REPORTS API
   // =========================================
@@ -2715,6 +2850,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting shift:", error);
       res.status(500).json({ message: "Vardiya silinemedi" });
+    }
+  });
+
+  // Bulk create shifts (supervisor: own branch only)
+  app.post('/api/shifts/bulk-create', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      // Authorization: supervisors only
+      if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Toplu vardiya oluşturma yetkiniz yok" });
+      }
+
+      if (!user.branchId) {
+        return res.status(403).json({ message: "Şube ataması bulunamadı" });
+      }
+
+      const { shifts: shiftsData, checklistIds } = req.body;
+
+      if (!Array.isArray(shiftsData) || shiftsData.length === 0) {
+        return res.status(400).json({ message: "Geçersiz vardiya listesi" });
+      }
+
+      // Create all shifts
+      const createdShifts = await Promise.all(
+        shiftsData.map(async (shiftData: any) => {
+          const { insertShiftSchema } = await import('@shared/schema');
+          const validatedData = insertShiftSchema.parse({
+            ...shiftData,
+            branchId: user.branchId,
+            createdById: user.id,
+          });
+          return storage.createShift(validatedData);
+        })
+      );
+
+      // Assign checklists to all created shifts if provided
+      if (checklistIds && Array.isArray(checklistIds) && checklistIds.length > 0) {
+        await Promise.all(
+          createdShifts.map((shift: any) =>
+            storage.setShiftChecklists(shift.id, checklistIds)
+          )
+        );
+      }
+
+      res.status(201).json(createdShifts);
+    } catch (error: any) {
+      console.error("Error bulk creating shifts:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz vardiya verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Vardiyalar oluşturulamadı" });
+    }
+  });
+
+  // Get performance metrics by user (HQ + supervisor + self)
+  app.get('/api/performance/user/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const targetUserId = req.params.id;
+
+      // Authorization: HQ can see all, supervisors can see own branch, users can see self
+      const targetUser = await storage.getUserById(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      // Check access
+      if (!isHQRole(role)) {
+        // Supervisors can only see their own branch employees
+        if (role === 'supervisor' || role === 'supervisor_buddy') {
+          if (!user.branchId || targetUser.branchId !== user.branchId) {
+            return res.status(403).json({ message: "Bu kullanıcının performansını görüntüleme yetkiniz yok" });
+          }
+        } else {
+          // Regular employees can only see themselves
+          if (user.id !== targetUserId) {
+            return res.status(403).json({ message: "Sadece kendi performansınızı görüntüleyebilirsiniz" });
+          }
+        }
+      }
+
+      // Get performance metrics for the user
+      const metrics = await storage.getPerformanceMetrics();
+      const userMetrics = metrics.filter((m: any) => m.userId === targetUserId);
+
+      res.json(userMetrics);
+    } catch (error) {
+      console.error("Error fetching user performance:", error);
+      res.status(500).json({ message: "Performans verileri getirilemedi" });
     }
   });
 
