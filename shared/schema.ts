@@ -262,7 +262,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
   supervisor: {
     dashboard: ['view'],
     tasks: ['view', 'create', 'edit', 'approve'],
-    checklists: ['view', 'approve'],
+    checklists: ['view', 'create', 'edit', 'approve'],
     equipment: ['view'],
     equipment_faults: ['view', 'create', 'edit'],
     knowledge_base: ['view'],

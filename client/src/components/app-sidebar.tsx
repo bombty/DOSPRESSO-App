@@ -39,7 +39,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
-import { canAccessModule, type PermissionModule } from "@shared/schema";
+import { canAccessModule, isHQRole, isBranchRole, type PermissionModule } from "@shared/schema";
 import dospressoLogo from "@assets/IMG_5044_1762707935781.png";
 import { useQuery } from "@tanstack/react-query";
 import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
@@ -50,11 +50,13 @@ type MenuItem = {
   url: string;
   icon: any;
   module: PermissionModule;
+  scope?: 'branch' | 'hq' | 'both';
 };
 
 type MenuGroup = {
   groupTr: string;
   icon: any;
+  scope?: 'branch' | 'hq' | 'both';
   items: MenuItem[];
 };
 
@@ -65,6 +67,7 @@ const standaloneItems: MenuItem[] = [
     url: "/",
     icon: LayoutDashboard,
     module: "dashboard",
+    scope: "both",
   },
   {
     title: "Şubeler",
@@ -72,6 +75,7 @@ const standaloneItems: MenuItem[] = [
     url: "/subeler",
     icon: Building2,
     module: "branches",
+    scope: "hq",
   },
   {
     title: "Bildirimler",
@@ -79,6 +83,7 @@ const standaloneItems: MenuItem[] = [
     url: "/bildirimler",
     icon: Bell,
     module: "dashboard",
+    scope: "both",
   },
   {
     title: "Duyurular",
@@ -86,6 +91,7 @@ const standaloneItems: MenuItem[] = [
     url: "/duyurular",
     icon: Megaphone,
     module: "dashboard",
+    scope: "both",
   },
   {
     title: "Performans",
@@ -93,61 +99,16 @@ const standaloneItems: MenuItem[] = [
     url: "/performans",
     icon: BarChart3,
     module: "performance",
+    scope: "hq",
   },
 ];
 
 const menuGroups: MenuGroup[] = [
-  {
-    groupTr: "İK Yönetimi",
-    icon: Users,
-    items: [
-      {
-        title: "Eğitim",
-        titleTr: "Eğitim",
-        url: "/egitim",
-        icon: GraduationCap,
-        module: "training",
-      },
-      {
-        title: "Vardiya Yönetimi",
-        titleTr: "Vardiya Yönetimi",
-        url: "/vardiyalar",
-        icon: Clock,
-        module: "dashboard",
-      },
-      {
-        title: "Personel",
-        titleTr: "Personel",
-        url: "/ik",
-        icon: Users,
-        module: "employees",
-      },
-      {
-        title: "İzin Talepleri",
-        titleTr: "İzin Talepleri",
-        url: "/izin-talepleri",
-        icon: Calendar,
-        module: "employees",
-      },
-      {
-        title: "Devam Takibi",
-        titleTr: "Devam Takibi",
-        url: "/devam-takibi",
-        icon: Clock,
-        module: "employees",
-      },
-      {
-        title: "İK Raporları",
-        titleTr: "İK Raporları",
-        url: "/ik-raporlari",
-        icon: BarChart3,
-        module: "employees",
-      },
-    ],
-  },
+  // BRANCH - Şube Operasyonları
   {
     groupTr: "Operasyon",
     icon: CheckSquare,
+    scope: "branch",
     items: [
       {
         title: "Görevler",
@@ -187,21 +148,30 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    groupTr: "Bilgi Bankası",
-    icon: BookOpen,
+    groupTr: "Vardiya & Devam",
+    icon: Clock,
+    scope: "branch",
     items: [
       {
-        title: "Bilgi Bankası",
-        titleTr: "Bilgi Bankası",
-        url: "/bilgi-bankasi",
-        icon: BookOpen,
-        module: "knowledge_base",
+        title: "Vardiya Yönetimi",
+        titleTr: "Vardiya Yönetimi",
+        url: "/vardiyalar",
+        icon: Clock,
+        module: "dashboard",
+      },
+      {
+        title: "Devam Takibi",
+        titleTr: "Devam Takibi",
+        url: "/devam-takibi",
+        icon: Clock,
+        module: "employees",
       },
     ],
   },
   {
     groupTr: "Finans",
     icon: Wallet,
+    scope: "branch",
     items: [
       {
         title: "Kasa Raporları",
@@ -212,9 +182,61 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
+  // HQ - Merkez Yönetim
+  {
+    groupTr: "İK Yönetimi",
+    icon: Users,
+    scope: "hq",
+    items: [
+      {
+        title: "Eğitim",
+        titleTr: "Eğitim",
+        url: "/egitim",
+        icon: GraduationCap,
+        module: "training",
+      },
+      {
+        title: "Personel",
+        titleTr: "Personel",
+        url: "/ik",
+        icon: Users,
+        module: "employees",
+      },
+      {
+        title: "İzin Talepleri",
+        titleTr: "İzin Talepleri",
+        url: "/izin-talepleri",
+        icon: Calendar,
+        module: "employees",
+      },
+      {
+        title: "İK Raporları",
+        titleTr: "İK Raporları",
+        url: "/ik-raporlari",
+        icon: BarChart3,
+        module: "employees",
+      },
+    ],
+  },
+  {
+    groupTr: "Bilgi Bankası",
+    icon: BookOpen,
+    scope: "hq",
+    items: [
+      {
+        title: "Bilgi Bankası",
+        titleTr: "Bilgi Bankası",
+        url: "/bilgi-bankasi",
+        icon: BookOpen,
+        module: "knowledge_base",
+      },
+    ],
+  },
+  // BOTH - Herkes
   {
     groupTr: "Destek",
     icon: MessageSquare,
+    scope: "both",
     items: [
       {
         title: "HQ Destek",
@@ -267,22 +289,37 @@ export function AppSidebar() {
   });
   const unreadCount = unreadData?.count || 0;
 
-  // Filter standalone items based on user role permissions
+  // Helper to check if user can see item based on scope
+  const canSeeScope = (scope?: 'branch' | 'hq' | 'both') => {
+    if (!scope || scope === 'both' || user?.role === 'admin') return true;
+    if (scope === 'branch') return isBranchRole(user?.role as any);
+    if (scope === 'hq') return isHQRole(user?.role as any);
+    return false;
+  };
+
+  // Filter standalone items based on scope and permissions
   const visibleStandaloneItems = standaloneItems.filter((item) => {
     if (!user?.role) return false;
-    return canAccessModule(user.role as any, item.module);
+    return canSeeScope(item.scope) && canAccessModule(user.role as any, item.module);
   });
 
-  // Filter menu groups based on user role permissions (only show groups with visible items)
-  const visibleMenuGroups = menuGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => {
-        if (!user?.role) return false;
-        return canAccessModule(user.role as any, item.module);
-      }),
-    }))
-    .filter((group) => group.items.length > 0);
+  // Filter menu groups based on scope and permissions (exact match only)
+  const filterMenuGroups = (targetScope: 'branch' | 'hq' | 'both') => {
+    return menuGroups
+      .filter((group) => canSeeScope(group.scope) && group.scope === targetScope)
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          if (!user?.role) return false;
+          return canAccessModule(user.role as any, item.module);
+        }),
+      }))
+      .filter((group) => group.items.length > 0);
+  };
+
+  const branchMenuGroups = filterMenuGroups('branch');
+  const hqMenuGroups = filterMenuGroups('hq');
+  const bothMenuGroups = filterMenuGroups('both');
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -338,7 +375,77 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
               
-              {visibleMenuGroups.map((group) => (
+              {branchMenuGroups.length > 0 && (
+                <>
+                  <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
+                    Şube Operasyonları
+                  </div>
+                  {branchMenuGroups.map((group) => (
+                    <Collapsible key={group.groupTr} defaultOpen className="group/collapsible">
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton data-testid={`button-${group.groupTr.toLowerCase().replace(/\s+/g, '-')}`}>
+                            <group.icon />
+                            <span>{group.groupTr}</span>
+                            <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {group.items.map((item) => (
+                              <SidebarMenuSubItem key={item.url}>
+                                <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                  <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                                    <item.icon />
+                                    <span>{item.titleTr}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  ))}
+                </>
+              )}
+              
+              {hqMenuGroups.length > 0 && (
+                <>
+                  <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
+                    Merkez (HQ)
+                  </div>
+                  {hqMenuGroups.map((group) => (
+                    <Collapsible key={group.groupTr} defaultOpen className="group/collapsible">
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton data-testid={`button-${group.groupTr.toLowerCase().replace(/\s+/g, '-')}`}>
+                            <group.icon />
+                            <span>{group.groupTr}</span>
+                            <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {group.items.map((item) => (
+                              <SidebarMenuSubItem key={item.url}>
+                                <SidebarMenuSubButton asChild isActive={location === item.url}>
+                                  <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                                    <item.icon />
+                                    <span>{item.titleTr}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  ))}
+                </>
+              )}
+              
+              {bothMenuGroups.map((group) => (
                 <Collapsible key={group.groupTr} defaultOpen className="group/collapsible">
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
