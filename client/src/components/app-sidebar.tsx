@@ -16,6 +16,7 @@ import {
   Wallet,
   Clock,
   ChevronRight,
+  QrCode,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -153,6 +154,13 @@ const menuGroups: MenuGroup[] = [
         url: "/ekipman-arizalari",
         icon: Wrench,
         module: "equipment_faults",
+      },
+      {
+        title: "QR Tara",
+        titleTr: "QR Tara",
+        url: "/qr-tara",
+        icon: QrCode,
+        module: "equipment",
       },
     ],
   },

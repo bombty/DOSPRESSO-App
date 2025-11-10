@@ -18,6 +18,7 @@ import Checklists from "@/pages/checklists";
 import Equipment from "@/pages/equipment";
 import EquipmentDetail from "@/pages/equipment-detail";
 import EquipmentFaults from "@/pages/equipment-faults";
+import QRScanner from "@/pages/qr-scanner";
 import KnowledgeBase from "@/pages/knowledge-base";
 import Training from "@/pages/training";
 import TrainingDetail from "@/pages/training-detail";
@@ -48,8 +49,10 @@ function Router() {
           <Route path="/gorevler" component={Tasks} />
           <Route path="/checklistler" component={Checklists} />
           <Route path="/ekipman/:id" component={EquipmentDetail} />
+          <Route path="/equipment/:id" component={EquipmentDetail} />
           <Route path="/ekipman" component={Equipment} />
           <Route path="/ekipman-arizalari" component={EquipmentFaults} />
+          <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
           <Route path="/egitim/:id" component={TrainingDetail} />
           <Route path="/egitim" component={Training} />

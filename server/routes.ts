@@ -757,15 +757,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         equipmentBranchId = branchId; // Override payload branchId
       }
       
-      // Generate QR code URL (simple ID-based URL for now)
-      const qrCodeUrl = `/equipment/${Date.now()}`;
-      
+      // Create equipment first to get ID
       const equipment = await storage.createEquipment({
         ...validatedData,
         branchId: equipmentBranchId,
-        qrCodeUrl,
+        qrCodeUrl: '', // Temporary empty string
       });
-      res.json(equipment);
+      
+      // Generate absolute QR code URL from request origin
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+      const qrCodeUrl = `${protocol}://${host}/ekipman/${equipment.id}`;
+      await storage.updateEquipment(equipment.id, { qrCodeUrl });
+      
+      res.json({ ...equipment, qrCodeUrl });
     } catch (error) {
       console.error("Error creating equipment:", error);
       res.status(500).json({ message: "Failed to create equipment" });

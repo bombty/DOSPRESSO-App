@@ -15,7 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode } from "lucide-react";
+import { QRCodeSVG } from 'qrcode.react';
 
 interface EquipmentDetailResponse {
   id: number;
@@ -246,6 +247,10 @@ export default function EquipmentDetail() {
           <TabsTrigger value="comments" data-testid="tab-comments">
             Yorumlar
           </TabsTrigger>
+          <TabsTrigger value="qr" data-testid="tab-qr">
+            <QrCode className="h-4 w-4 mr-2" />
+            QR Kod
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="maintenance" className="space-y-4">
@@ -457,6 +462,75 @@ export default function EquipmentDetail() {
                   </form>
                 </Form>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="qr" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                QR Kod
+              </CardTitle>
+              <CardDescription>
+                Bu ekipmana hızlı erişim için QR kodu tarayın
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-6">
+              {equipment.qrCodeUrl ? (
+                <>
+                  <div className="bg-white p-6 rounded-lg border" data-testid="qr-code-container">
+                    <QRCodeSVG
+                      value={equipment.qrCodeUrl}
+                      size={256}
+                      level="H"
+                      includeMargin={true}
+                    />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      QR kodu mobil cihazınızla tarayarak bu ekipman sayfasına hızlıca ulaşabilirsiniz
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono break-all max-w-md">
+                      {equipment.qrCodeUrl}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const svg = document.querySelector('[data-testid="qr-code-container"] svg');
+                      if (svg) {
+                        const svgData = new XMLSerializer().serializeToString(svg);
+                        const canvas = document.createElement("canvas");
+                        const ctx = canvas.getContext("2d");
+                        const img = new Image();
+                        img.onload = () => {
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          ctx?.drawImage(img, 0, 0);
+                          const pngFile = canvas.toDataURL("image/png");
+                          const downloadLink = document.createElement("a");
+                          downloadLink.download = `equipment-${equipment.id}-qr.png`;
+                          downloadLink.href = pngFile;
+                          downloadLink.click();
+                        };
+                        img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                      }
+                    }}
+                    data-testid="button-download-qr"
+                  >
+                    QR Kodu İndir
+                  </Button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <QrCode className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground text-center">
+                    QR kod henüz oluşturulmadı
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
