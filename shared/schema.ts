@@ -1432,3 +1432,64 @@ export const bulkCreateShiftsSchema = z.object({
 });
 
 export type BulkCreateShifts = z.infer<typeof bulkCreateShiftsSchema>;
+
+// Leave Requests table - Employee leave/time-off management
+export const leaveRequests = pgTable("leave_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  leaveType: varchar("leave_type", { length: 20 }).notNull(), // annual, sick, personal, unpaid
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  totalDays: integer("total_days").notNull(),
+  reason: text("reason"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("leave_requests_user_idx").on(table.userId),
+  statusIdx: index("leave_requests_status_idx").on(table.status),
+  dateIdx: index("leave_requests_date_idx").on(table.startDate, table.endDate),
+}));
+
+export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLeaveRequest = z.infer<typeof insertLeaveRequestSchema>;
+export type LeaveRequest = typeof leaveRequests.$inferSelect;
+
+// Shift Attendance table - Employee check-in/out and break tracking
+export const shiftAttendance = pgTable("shift_attendance", {
+  id: serial("id").primaryKey(),
+  shiftId: integer("shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  checkInTime: timestamp("check_in_time"),
+  checkOutTime: timestamp("check_out_time"),
+  breakStartTime: timestamp("break_start_time"),
+  breakEndTime: timestamp("break_end_time"),
+  totalBreakMinutes: integer("total_break_minutes").default(0),
+  totalWorkedMinutes: integer("total_worked_minutes").default(0),
+  status: varchar("status", { length: 20 }).notNull().default("scheduled"), // scheduled, checked_in, on_break, checked_out, absent, late
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueShiftUser: unique("unique_shift_user_attendance").on(table.shiftId, table.userId),
+  shiftIdx: index("shift_attendance_shift_idx").on(table.shiftId),
+  userIdx: index("shift_attendance_user_idx").on(table.userId),
+  statusIdx: index("shift_attendance_status_idx").on(table.status),
+}));
+
+export const insertShiftAttendanceSchema = createInsertSchema(shiftAttendance).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertShiftAttendance = z.infer<typeof insertShiftAttendanceSchema>;
+export type ShiftAttendance = typeof shiftAttendance.$inferSelect;
