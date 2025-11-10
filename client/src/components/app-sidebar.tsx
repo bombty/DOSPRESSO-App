@@ -15,6 +15,7 @@ import {
   Megaphone,
   Wallet,
   Clock,
+  ChevronRight,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -27,7 +28,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,13 +42,21 @@ import dospressoLogo from "@assets/IMG_5044_1762707935781.png";
 import { useQuery } from "@tanstack/react-query";
 import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 
-const menuItems: Array<{
+type MenuItem = {
   title: string;
   titleTr: string;
   url: string;
   icon: any;
   module: PermissionModule;
-}> = [
+};
+
+type MenuGroup = {
+  groupTr: string;
+  icon: any;
+  items: MenuItem[];
+};
+
+const standaloneItems: MenuItem[] = [
   {
     title: "Dashboard",
     titleTr: "Gösterge Paneli",
@@ -57,55 +70,6 @@ const menuItems: Array<{
     url: "/subeler",
     icon: Building2,
     module: "branches",
-  },
-  {
-    title: "Görevler",
-    titleTr: "Görevler",
-    url: "/gorevler",
-    icon: CheckSquare,
-    module: "tasks",
-  },
-  {
-    title: "Checklistler",
-    titleTr: "Checklistler",
-    url: "/checklistler",
-    icon: ClipboardList,
-    module: "checklists",
-  },
-  {
-    title: "Ekipman",
-    titleTr: "Ekipman",
-    url: "/ekipman",
-    icon: Settings,
-    module: "equipment",
-  },
-  {
-    title: "Ekipman Arızaları",
-    titleTr: "Ekipman Arızaları",
-    url: "/ekipman-arizalari",
-    icon: Wrench,
-    module: "equipment_faults",
-  },
-  {
-    title: "Bilgi Bankası",
-    titleTr: "Bilgi Bankası",
-    url: "/bilgi-bankasi",
-    icon: BookOpen,
-    module: "knowledge_base",
-  },
-  {
-    title: "Eğitim",
-    titleTr: "Eğitim",
-    url: "/egitim",
-    icon: GraduationCap,
-    module: "training",
-  },
-  {
-    title: "İK Yönetimi",
-    titleTr: "İK Yönetimi",
-    url: "/ik",
-    icon: Users,
-    module: "employees",
   },
   {
     title: "Bildirimler",
@@ -122,39 +86,121 @@ const menuItems: Array<{
     module: "dashboard",
   },
   {
-    title: "Kasa Raporları",
-    titleTr: "Kasa Raporları",
-    url: "/kasa-raporlari",
-    icon: Wallet,
-    module: "dashboard",
-  },
-  {
-    title: "Vardiya Yönetimi",
-    titleTr: "Vardiya Yönetimi",
-    url: "/vardiyalar",
-    icon: Clock,
-    module: "dashboard",
-  },
-  {
-    title: "HQ Destek",
-    titleTr: "HQ Destek",
-    url: "/hq-destek",
-    icon: MessageSquare,
-    module: "messages",
-  },
-  {
-    title: "AI Asistan",
-    titleTr: "AI Asistan",
-    url: "/ai-asistan",
-    icon: Bot,
-    module: "ai_assistant",
-  },
-  {
     title: "Performans",
     titleTr: "Performans",
     url: "/performans",
     icon: BarChart3,
     module: "performance",
+  },
+];
+
+const menuGroups: MenuGroup[] = [
+  {
+    groupTr: "İK Yönetimi",
+    icon: Users,
+    items: [
+      {
+        title: "Eğitim",
+        titleTr: "Eğitim",
+        url: "/egitim",
+        icon: GraduationCap,
+        module: "training",
+      },
+      {
+        title: "Vardiya Yönetimi",
+        titleTr: "Vardiya Yönetimi",
+        url: "/vardiyalar",
+        icon: Clock,
+        module: "dashboard",
+      },
+      {
+        title: "Personel",
+        titleTr: "Personel",
+        url: "/ik",
+        icon: Users,
+        module: "employees",
+      },
+    ],
+  },
+  {
+    groupTr: "Operasyon",
+    icon: CheckSquare,
+    items: [
+      {
+        title: "Görevler",
+        titleTr: "Görevler",
+        url: "/gorevler",
+        icon: CheckSquare,
+        module: "tasks",
+      },
+      {
+        title: "Checklistler",
+        titleTr: "Checklistler",
+        url: "/checklistler",
+        icon: ClipboardList,
+        module: "checklists",
+      },
+      {
+        title: "Ekipman",
+        titleTr: "Ekipman",
+        url: "/ekipman",
+        icon: Settings,
+        module: "equipment",
+      },
+      {
+        title: "Ekipman Arızaları",
+        titleTr: "Ekipman Arızaları",
+        url: "/ekipman-arizalari",
+        icon: Wrench,
+        module: "equipment_faults",
+      },
+    ],
+  },
+  {
+    groupTr: "Bilgi Bankası",
+    icon: BookOpen,
+    items: [
+      {
+        title: "Bilgi Bankası",
+        titleTr: "Bilgi Bankası",
+        url: "/bilgi-bankasi",
+        icon: BookOpen,
+        module: "knowledge_base",
+      },
+    ],
+  },
+  {
+    groupTr: "Finans",
+    icon: Wallet,
+    items: [
+      {
+        title: "Kasa Raporları",
+        titleTr: "Kasa Raporları",
+        url: "/kasa-raporlari",
+        icon: Wallet,
+        module: "dashboard",
+      },
+    ],
+  },
+  {
+    groupTr: "Destek",
+    icon: MessageSquare,
+    items: [
+      {
+        title: "HQ Destek",
+        titleTr: "HQ Destek",
+        url: "/hq-destek",
+        icon: MessageSquare,
+        module: "messages",
+      },
+      {
+        title: "AI Asistan",
+        titleTr: "AI Asistan",
+        url: "/ai-asistan",
+        icon: Bot,
+        module: "ai_assistant",
+      },
+    ],
   },
 ];
 
@@ -191,11 +237,22 @@ export function AppSidebar() {
   });
   const unreadCount = unreadData?.count || 0;
 
-  // Filter menu items based on user role permissions
-  const visibleMenuItems = menuItems.filter((item) => {
+  // Filter standalone items based on user role permissions
+  const visibleStandaloneItems = standaloneItems.filter((item) => {
     if (!user?.role) return false;
     return canAccessModule(user.role as any, item.module);
   });
+
+  // Filter menu groups based on user role permissions (only show groups with visible items)
+  const visibleMenuGroups = menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (!user?.role) return false;
+        return canAccessModule(user.role as any, item.module);
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -235,7 +292,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleMenuItems.map((item) => (
+              {visibleStandaloneItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={location === item.url}>
                     <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -249,6 +306,34 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+              ))}
+              
+              {visibleMenuGroups.map((group) => (
+                <Collapsible key={group.groupTr} defaultOpen className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton data-testid={`button-${group.groupTr.toLowerCase().replace(/\s+/g, '-')}`}>
+                        <group.icon />
+                        <span>{group.groupTr}</span>
+                        <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {group.items.map((item) => (
+                          <SidebarMenuSubItem key={item.url}>
+                            <SidebarMenuSubButton asChild isActive={location === item.url}>
+                              <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                                <item.icon />
+                                <span>{item.titleTr}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
