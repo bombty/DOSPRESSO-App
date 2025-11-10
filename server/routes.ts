@@ -5,7 +5,8 @@ import { setupAuth, isAuthenticated } from "./jwtAuth";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "./security";
 import { 
   insertTaskSchema, 
-  insertChecklistSchema, 
+  insertChecklistSchema,
+  updateChecklistSchema,
   insertEquipmentFaultSchema, 
   insertKnowledgeBaseArticleSchema, 
   insertBranchSchema,
@@ -344,49 +345,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update checklist settings (HQ coach + supervisors for own branch)
+  // Update checklist with tasks (HQ coach always, supervisors only if isEditable=true)
   app.patch('/api/checklists/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
       const id = parseInt(req.params.id);
 
-      // Authorization: HQ coach or supervisors
-      if (role !== 'coach' && role !== 'supervisor' && role !== 'supervisor_buddy') {
-        return res.status(403).json({ message: "Checklist düzenleme yetkiniz yok" });
-      }
-
-      // Fetch checklist to verify ownership for supervisors
+      // Fetch checklist first to check isEditable
       const existingChecklist = await storage.getChecklist(id);
       if (!existingChecklist) {
         return res.status(404).json({ message: "Checklist bulunamadı" });
       }
 
-      // Supervisors can only edit checklists from their own branch
-      if (role === 'supervisor' || role === 'supervisor_buddy') {
-        if (!user.branchId || existingChecklist.branchId !== user.branchId) {
-          return res.status(403).json({ message: "Sadece kendi şubenizin checklist'lerini düzenleyebilirsiniz" });
+      // Authorization:
+      // - HQ coach: Always allowed
+      // - Supervisors: Only if isEditable=true
+      // - Others: Denied
+      if (role === 'coach') {
+        // HQ coach can always edit
+      } else if (role === 'supervisor' || role === 'supervisor_buddy') {
+        // Supervisors can only edit if isEditable=true
+        if (!existingChecklist.isEditable) {
+          return res.status(403).json({ message: "Bu checklist düzenlenemez (isEditable=false)" });
         }
+      } else {
+        // All other roles denied
+        return res.status(403).json({ message: "Checklist düzenleme yetkiniz yok" });
       }
 
-      const { isEditable, timeWindowStart, timeWindowEnd, isPhotoRequired } = req.body;
-
-      // Validate time window if provided
-      if (timeWindowStart && timeWindowEnd && timeWindowStart >= timeWindowEnd) {
-        return res.status(400).json({ message: "Başlangıç saati bitiş saatinden önce olmalı" });
-      }
-
-      const updates: any = {};
-      if (isEditable !== undefined) updates.isEditable = isEditable;
-      if (timeWindowStart !== undefined) updates.timeWindowStart = timeWindowStart;
-      if (timeWindowEnd !== undefined) updates.timeWindowEnd = timeWindowEnd;
-      if (isPhotoRequired !== undefined) updates.isPhotoRequired = isPhotoRequired;
-
-      const checklist = await storage.updateChecklistSettings(id, updates);
+      // Validate and update using new storage method
+      const validatedData = updateChecklistSchema.parse(req.body);
+      const checklist = await storage.updateChecklistWithTasks(id, validatedData);
 
       res.json(checklist!);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating checklist:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid checklist data", errors: error.errors });
+      }
       res.status(500).json({ message: "Checklist güncellenemedi" });
     }
   });

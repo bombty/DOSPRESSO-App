@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import type {
   User,
   UpsertUser,
@@ -8,6 +8,7 @@ import type {
   InsertTask,
   Checklist,
   InsertChecklist,
+  UpdateChecklist,
   ChecklistTask,
   InsertChecklistTask,
   Equipment,
@@ -135,8 +136,8 @@ export interface IStorage {
     isEditable: boolean;
     timeWindowStart: string;
     timeWindowEnd: string;
-    isPhotoRequired: boolean;
   }>): Promise<Checklist | undefined>;
+  updateChecklistWithTasks(id: number, updates: UpdateChecklist): Promise<Checklist | undefined>;
   
   // Checklist Task operations
   getChecklistTasks(checklistId?: number): Promise<ChecklistTask[]>;
@@ -468,7 +469,6 @@ export class DatabaseStorage implements IStorage {
     isEditable: boolean;
     timeWindowStart: string;
     timeWindowEnd: string;
-    isPhotoRequired: boolean;
   }>): Promise<Checklist | undefined> {
     const [updated] = await db
       .update(checklists)
@@ -476,6 +476,96 @@ export class DatabaseStorage implements IStorage {
       .where(eq(checklists.id, id))
       .returning();
     return updated;
+  }
+
+  async updateChecklistWithTasks(id: number, updates: UpdateChecklist): Promise<Checklist | undefined> {
+    return db.transaction(async (tx) => {
+      const existingChecklist = await tx.query.checklists.findFirst({
+        where: eq(checklists.id, id),
+      });
+
+      if (!existingChecklist) {
+        throw new Error("Checklist not found");
+      }
+
+      const { tasks: tasksPayload, ...checklistUpdates } = updates;
+
+      const updateData: any = {};
+      if (checklistUpdates.title !== undefined) updateData.title = checklistUpdates.title;
+      if (checklistUpdates.description !== undefined) updateData.description = checklistUpdates.description;
+      if (checklistUpdates.frequency !== undefined) updateData.frequency = checklistUpdates.frequency;
+      if (checklistUpdates.category !== undefined) updateData.category = checklistUpdates.category;
+      if (checklistUpdates.isEditable !== undefined) updateData.isEditable = checklistUpdates.isEditable;
+      if (checklistUpdates.timeWindowStart !== undefined) updateData.timeWindowStart = checklistUpdates.timeWindowStart;
+      if (checklistUpdates.timeWindowEnd !== undefined) updateData.timeWindowEnd = checklistUpdates.timeWindowEnd;
+      if (checklistUpdates.isActive !== undefined) updateData.isActive = checklistUpdates.isActive;
+
+      let updatedChecklist = existingChecklist;
+      if (Object.keys(updateData).length > 0) {
+        const [updated] = await tx
+          .update(checklists)
+          .set(updateData)
+          .where(eq(checklists.id, id))
+          .returning();
+        updatedChecklist = updated;
+      }
+
+      if (tasksPayload && Array.isArray(tasksPayload)) {
+        const existingTasks = await tx
+          .select()
+          .from(checklistTasks)
+          .where(eq(checklistTasks.checklistId, id));
+
+        const existingTaskIds = existingTasks.map(t => t.id);
+        const payloadTaskIds = tasksPayload
+          .filter(t => t.id && t._action !== 'delete')
+          .map(t => t.id as number);
+
+        const tasksToInsert = tasksPayload.filter(t => !t.id && t._action !== 'delete');
+        const tasksToUpdate = tasksPayload.filter(t => t.id && t._action !== 'delete');
+        const tasksToDeleteIds = [
+          ...tasksPayload.filter(t => t._action === 'delete' && t.id).map(t => t.id as number),
+          ...existingTaskIds.filter(existingId => !payloadTaskIds.includes(existingId)),
+        ];
+
+        if (tasksToInsert.length > 0) {
+          await tx.insert(checklistTasks).values(
+            tasksToInsert.map(t => ({
+              checklistId: id,
+              taskDescription: t.taskDescription,
+              requiresPhoto: t.requiresPhoto ?? false,
+              order: t.order,
+            }))
+          );
+        }
+
+        if (tasksToUpdate.length > 0) {
+          await Promise.all(
+            tasksToUpdate.map(t =>
+              tx
+                .update(checklistTasks)
+                .set({
+                  taskDescription: t.taskDescription,
+                  requiresPhoto: t.requiresPhoto ?? false,
+                  order: t.order,
+                })
+                .where(eq(checklistTasks.id, t.id as number))
+            )
+          );
+        }
+
+        if (tasksToDeleteIds.length > 0) {
+          await tx
+            .delete(checklistTasks)
+            .where(and(
+              eq(checklistTasks.checklistId, id),
+              inArray(checklistTasks.id, tasksToDeleteIds)
+            ));
+        }
+      }
+
+      return updatedChecklist;
+    });
   }
 
   // Checklist Task operations

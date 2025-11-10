@@ -498,6 +498,36 @@ export const insertChecklistTaskSchema = createInsertSchema(checklistTasks).omit
 export type InsertChecklistTask = z.infer<typeof insertChecklistTaskSchema>;
 export type ChecklistTask = typeof checklistTasks.$inferSelect;
 
+export const updateChecklistSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().nullable().optional(),
+  frequency: z.string().optional(),
+  category: z.string().nullable().optional(),
+  isEditable: z.boolean().optional(),
+  timeWindowStart: z.string().nullable().optional(),
+  timeWindowEnd: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
+  tasks: z.array(
+    z.object({
+      id: z.number().nullable().optional(),
+      taskDescription: z.string().min(1),
+      requiresPhoto: z.boolean().default(false),
+      order: z.number(),
+      _action: z.enum(['delete']).optional(),
+    })
+  ).optional(),
+}).refine(
+  (data) => {
+    if (data.timeWindowStart && data.timeWindowEnd) {
+      return data.timeWindowStart < data.timeWindowEnd;
+    }
+    return true;
+  },
+  { message: "Time window start must be before end" }
+);
+
+export type UpdateChecklist = z.infer<typeof updateChecklistSchema>;
+
 // Tasks table (actual task instances)
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
