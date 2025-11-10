@@ -50,6 +50,12 @@ export default function Tasks() {
   const selectedBranchId = form.watch("branchId");
   const isHQ = user?.role && checkIsHQRole(user.role as any);
 
+  const overdueTasks = useMemo(() => {
+    if (!tasks) return [];
+    const now = new Date();
+    return tasks.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'tamamlandi');
+  }, [tasks]);
+
   const { data: employees, isLoading: isEmployeesLoading } = useQuery<User[]>({
     queryKey: ["/api/employees", isHQ ? { branchId: selectedBranchId } : {}],
     enabled: isHQ ? !!selectedBranchId : true,
@@ -186,6 +192,23 @@ export default function Tasks() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {overdueTasks.length > 0 && (
+          <Card data-testid="card-stat-overdue" className="border-destructive">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Gecikmiş</p>
+                  <p className="text-3xl font-bold mt-1 text-destructive">{overdueTasks.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Deadline geçti</p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                  <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <Card data-testid="card-stat-beklemede">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">

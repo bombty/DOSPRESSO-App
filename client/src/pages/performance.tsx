@@ -20,13 +20,13 @@ export default function Performance() {
   const latestMetric = metrics?.[0];
   const previousMetric = metrics?.[1];
 
-  const calculateTrend = (current: number | undefined, previous: number | undefined) => {
+  const calculateTrend = (current: number | null | undefined, previous: number | null | undefined) => {
     if (!current || !previous || previous === 0) return 0;
     return Math.round(((current - previous) / previous) * 100);
   };
 
-  const completionTrend = calculateTrend(latestMetric?.completionRate, previousMetric?.completionRate);
-  const aiScoreTrend = calculateTrend(latestMetric?.averageAiScore, previousMetric?.averageAiScore);
+  const completionTrend = calculateTrend(latestMetric?.completionRate ?? 0, previousMetric?.completionRate ?? 0);
+  const aiScoreTrend = calculateTrend(latestMetric?.averageAiScore ?? 0, previousMetric?.averageAiScore ?? 0);
 
   return (
     <div className="space-y-6">
@@ -152,6 +152,34 @@ export default function Performance() {
                 <p className="text-center text-muted-foreground">
                   Henüz performans verisi yok.
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {latestMetric && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Performans Skorları</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Görev Skoru</p>
+                    <div className="text-2xl font-bold mt-1">{latestMetric.taskScore || 0}/100</div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Fotoğraf Skoru</p>
+                    <div className="text-2xl font-bold mt-1">{latestMetric.photoScore || 0}/100</div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Zaman Skoru</p>
+                    <div className="text-2xl font-bold mt-1">{latestMetric.timeScore || 0}/100</div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Süpervizör Skoru</p>
+                    <div className="text-2xl font-bold mt-1">{latestMetric.supervisorScore || 0}/100</div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
