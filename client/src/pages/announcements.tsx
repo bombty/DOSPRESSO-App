@@ -13,11 +13,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Megaphone, Plus, AlertCircle, Calendar, User } from "lucide-react";
+import { Megaphone, Plus, AlertCircle, Calendar, User, Paperclip } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 const priorityLabels: Record<string, string> = {
   normal: "Normal",
@@ -34,6 +36,7 @@ export default function Announcements() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
 
   const isHQ = user?.role && isHQRole(user.role as any);
 
@@ -59,7 +62,7 @@ export default function Announcements() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertAnnouncement) => {
-      await apiRequest('POST', '/api/announcements', data);
+      await apiRequest('POST', '/api/announcements', { ...data, attachments });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
@@ -69,6 +72,7 @@ export default function Announcements() {
       });
       setIsCreateDialogOpen(false);
       form.reset();
+      setAttachments([]);
     },
     onError: () => {
       toast({
@@ -275,6 +279,54 @@ export default function Announcements() {
                       </FormItem>
                     )}
                   />
+
+                  <div className="space-y-4">
+                    <div>
+                      <FormLabel>Dosya Ekle (Opsiyonel)</FormLabel>
+                      <div className="mt-2">
+                        <ObjectUploader
+                          maxFileSize={10 * 1024 * 1024}
+                          maxNumberOfFiles={5}
+                          onGetUploadParameters={async () => {
+                            const response = await apiRequest('POST', '/api/object-storage/presigned-url', {
+                              filename: `announcement-${Date.now()}.file`,
+                              contentType: 'application/octet-stream',
+                            });
+                            const data = await response.json();
+                            return { method: 'PUT' as const, url: data.url };
+                          }}
+                          onComplete={(result) => {
+                            const urls = result.successful.map(f => f.uploadURL || '');
+                            setAttachments([...attachments, ...urls]);
+                            toast({ title: "Başarılı", description: `${urls.length} dosya yüklendi` });
+                          }}
+                        >
+                          <Button type="button" variant="outline" size="sm">
+                            <Paperclip className="w-4 h-4 mr-2" />
+                            Dosya Seç
+                          </Button>
+                        </ObjectUploader>
+                      </div>
+                      {attachments.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {attachments.map((url, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-sm">
+                              <Paperclip className="w-3 h-3" />
+                              <span className="truncate flex-1">{url.split('/').pop()}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAttachments(attachments.filter((_, i) => i !== idx))}
+                              >
+                                Sil
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   <div className="flex gap-2">
                     <Button
