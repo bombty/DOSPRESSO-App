@@ -115,7 +115,8 @@ export type PermissionModule =
   | 'employees'
   | 'training'
   | 'schedules'
-  | 'messages';
+  | 'messages'
+  | 'announcements';
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -135,6 +136,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view', 'create', 'edit', 'delete', 'approve'],
     schedules: ['view', 'create', 'edit', 'delete'],
     messages: ['view', 'create', 'delete'],
+    announcements: ['view', 'create', 'edit', 'delete'],
   },
   // HQ ROLES
   muhasebe: {
@@ -152,6 +154,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view'],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   satinalma: {
     dashboard: ['view'],
@@ -168,6 +171,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view'],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   coach: {
     dashboard: ['view'],
@@ -184,6 +188,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view', 'create', 'edit', 'delete', 'approve'],
     schedules: ['view'],
     messages: ['view', 'create'],
+    announcements: ['view', 'create', 'edit', 'delete'],
   },
   teknik: {
     dashboard: ['view'],
@@ -200,6 +205,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view'],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   destek: {
     dashboard: ['view'],
@@ -216,6 +222,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view'],
     messages: ['view', 'create'],
+    announcements: ['view', 'create', 'edit'],
   },
   fabrika: {
     dashboard: ['view'],
@@ -232,6 +239,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view'],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -248,6 +256,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: [],
     schedules: [],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   // BRANCH ROLES
   supervisor: {
@@ -265,6 +274,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view', 'approve'],
     schedules: ['view', 'create', 'edit'],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -281,6 +291,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view', 'edit'],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   barista: {
     dashboard: ['view'],
@@ -297,6 +308,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view'],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -313,6 +325,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view'],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   stajyer: {
     dashboard: ['view'],
@@ -329,6 +342,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view'],
     messages: ['view', 'create'],
+    announcements: ['view'],
   },
   yatirimci: {
     dashboard: ['view'],
@@ -345,6 +359,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: [],
     schedules: [],
     messages: ['view'],
+    announcements: ['view'],
   },
 };
 

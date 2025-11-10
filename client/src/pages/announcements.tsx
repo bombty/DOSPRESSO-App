@@ -169,6 +169,92 @@ export default function Announcements() {
 
                   <FormField
                     control={form.control}
+                    name="targetRoles"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hedef Roller (Opsiyonel)</FormLabel>
+                        <FormControl>
+                          <Select 
+                            onValueChange={(value) => {
+                              const current = field.value || [];
+                              if (value === 'all') {
+                                field.onChange(null);
+                              } else if (current.includes(value)) {
+                                field.onChange(current.filter((r: string) => r !== value));
+                              } else {
+                                field.onChange([...current, value]);
+                              }
+                            }}
+                            value={field.value?.[0] || ''}
+                          >
+                            <SelectTrigger data-testid="select-target-roles">
+                              <SelectValue placeholder={field.value && field.value.length > 0 ? `${field.value.length} rol seçildi` : "Tüm roller"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tüm Roller</SelectItem>
+                              <SelectItem value="supervisor">Supervisorler</SelectItem>
+                              <SelectItem value="barista">Baristalar</SelectItem>
+                              <SelectItem value="stajyer">Stajyerler</SelectItem>
+                              <SelectItem value="coach">Coach'lar (HQ)</SelectItem>
+                              <SelectItem value="muhasebe">Muhasebe (HQ)</SelectItem>
+                              <SelectItem value="teknik">Teknik (HQ)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormDescription>
+                          Boş bırakırsan tüm rollere gönderilir
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="targetBranches"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hedef Şubeler (Opsiyonel)</FormLabel>
+                        <FormControl>
+                          <Select 
+                            onValueChange={(value) => {
+                              const current = field.value || [];
+                              if (value === 'all') {
+                                field.onChange(null);
+                              } else {
+                                const branchId = parseInt(value);
+                                if (current.includes(branchId)) {
+                                  field.onChange(current.filter((id: number) => id !== branchId));
+                                } else {
+                                  field.onChange([...current, branchId]);
+                                }
+                              }
+                            }}
+                            value={field.value?.[0]?.toString() || ''}
+                          >
+                            <SelectTrigger data-testid="select-target-branches">
+                              <SelectValue placeholder={field.value && field.value.length > 0 ? `${field.value.length} şube seçildi` : "Tüm şubeler"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tüm Şubeler</SelectItem>
+                              {branches?.map((branch) => (
+                                <SelectItem key={branch.id} value={branch.id.toString()}>
+                                  {branch.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormDescription>
+                          Boş bırakırsan tüm şubelere gönderilir
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name="expiresAt"
                     render={({ field }) => (
                       <FormItem>
@@ -189,6 +275,21 @@ export default function Announcements() {
                       </FormItem>
                     )}
                   />
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        form.setValue('targetRoles', null);
+                        form.setValue('targetBranches', null);
+                      }}
+                      data-testid="button-send-all"
+                    >
+                      Herkese Gönder
+                    </Button>
+                  </div>
 
                   <DialogFooter>
                     <Button 

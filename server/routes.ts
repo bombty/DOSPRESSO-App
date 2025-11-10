@@ -38,6 +38,21 @@ function assertBranchScope(user: Express.User): number {
   return user.branchId;
 }
 
+// Custom error for permission denial
+class AuthorizationError extends Error {
+  constructor(message?: string) {
+    super(message || 'Yetkisiz işlem');
+    this.name = 'AuthorizationError';
+  }
+}
+
+// Permission enforcement helper
+function ensurePermission(user: any, module: string, action: string, errorMessage?: string): void {
+  if (!hasPermission(user.role as UserRoleType, module as any, action as any)) {
+    throw new AuthorizationError(errorMessage || `Bu işlem için ${module} ${action} yetkiniz yok`);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
@@ -225,6 +240,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       
+      // Permission check
+      ensurePermission(user, 'tasks', 'view');
+      
       // Authorization: Branch users can only access their own branch
       if (user.role && isBranchRole(user.role as UserRoleType)) {
         if (!user.branchId) {
@@ -243,6 +261,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
       res.status(500).json({ message: "Failed to fetch tasks" });
     }
   });
@@ -252,6 +273,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const userId = req.user.id;
       const validatedData = insertTaskSchema.parse(req.body);
+      
+      // Permission check
+      ensurePermission(user, 'tasks', 'create');
       
       // Authorization: Branch users can only create tasks for their own branch
       // FORCE branchId to user's branch for branch users (ignore payload)
@@ -272,6 +296,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid task data", errors: error.errors });
       }
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
       res.status(500).json({ message: "Failed to create task" });
     }
   });
@@ -282,6 +309,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const { photoUrl } = req.body;
       const userId = req.user.id; // For rate limiting
+      
+      // Permission check
+      ensurePermission(user, 'tasks', 'edit');
       
       // Authorization: Branch users can only complete tasks from their own branch
       const existingTask = await storage.getTask(id);
@@ -317,22 +347,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Error completing task:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
       res.status(500).json({ message: "Failed to complete task" });
     }
   });
 
   app.get('/api/checklists', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'view');
       const checklists = await storage.getChecklists();
       res.json(checklists);
     } catch (error) {
       console.error("Error fetching checklists:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
       res.status(500).json({ message: "Failed to fetch checklists" });
     }
   });
 
   app.post('/api/checklists', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'create');
       const validatedData = insertChecklistSchema.parse(req.body);
       const checklist = await storage.createChecklist(validatedData);
       res.json(checklist);
@@ -340,6 +380,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating checklist:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid checklist data", errors: error.errors });
+      }
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Failed to create checklist" });
     }
@@ -404,6 +447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       
+      ensurePermission(user, 'equipment_faults', 'view');
+      
       // Authorization: Branch users can only access their own branch faults
       if (user.role && isBranchRole(user.role as UserRoleType)) {
         const branchId = assertBranchScope(user);
@@ -420,6 +465,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(faults);
     } catch (error) {
       console.error("Error fetching faults:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
       res.status(500).json({ message: "Failed to fetch faults" });
     }
   });
@@ -429,6 +477,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const userId = req.user.id;
       const validatedData = insertEquipmentFaultSchema.parse(req.body);
+      
+      ensurePermission(user, 'equipment_faults', 'create');
       
       // Authorization: Branch users can only create faults for their own branch
       let faultBranchId = validatedData.branchId;
@@ -448,6 +498,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating fault:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid fault data", errors: error.errors });
+      }
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Failed to create fault" });
     }
@@ -619,6 +672,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       
+      ensurePermission(user, 'equipment', 'view');
+      
       // Authorization: Branch users can only access their own branch
       if (user.role && isBranchRole(user.role as UserRoleType)) {
         if (!user.branchId) {
@@ -637,6 +692,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(equipment);
     } catch (error) {
       console.error("Error fetching equipment:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
       res.status(500).json({ message: "Failed to fetch equipment" });
     }
   });
@@ -645,6 +703,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
+      
+      ensurePermission(user, 'equipment', 'view');
+      
       const equipmentItem = await storage.getEquipmentById(id);
       if (!equipmentItem) {
         return res.status(404).json({ message: "Equipment not found" });
@@ -675,6 +736,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching equipment:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
       res.status(500).json({ message: "Failed to fetch equipment" });
     }
   });
@@ -2394,10 +2458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const userId = req.user.id;
 
-      // Only HQ users can create announcements
-      if (!isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: "Duyuru oluşturma yetkiniz yok" });
-      }
+      ensurePermission(user, 'announcements', 'create');
 
       const { insertAnnouncementSchema } = await import('@shared/schema');
       const validatedData = insertAnnouncementSchema.parse(req.body);
@@ -2411,6 +2472,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid announcement data", errors: error.errors });
       }
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
       res.status(500).json({ message: "Failed to create announcement" });
     }
   });
@@ -2420,7 +2484,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       
-      // Only HQ users can delete announcements
+      ensurePermission(user, 'announcements', 'delete');
+      
       if (!isHQRole(user.role as UserRoleType)) {
         return res.status(403).json({ message: "Duyuru silme yetkiniz yok" });
       }
