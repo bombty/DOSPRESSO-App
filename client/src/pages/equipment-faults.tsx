@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertEquipmentFaultSchema, type EquipmentFault, type InsertEquipmentFault, type Branch, FAULT_STAGES, type FaultStageType, type FaultStageTransition } from "@shared/schema";
+import { insertEquipmentFaultSchema, type EquipmentFault, type InsertEquipmentFault, type Branch, type Equipment, FAULT_STAGES, type FaultStageType, type FaultStageTransition, EQUIPMENT_METADATA, isBranchRole } from "@shared/schema";
 import { AlertTriangle, Camera, CheckCircle, Clock, ChevronRight } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
 import { z } from "zod";
@@ -27,6 +27,12 @@ const stageChangeSchema = z.object({
 });
 
 type StageChangeFormData = z.infer<typeof stageChangeSchema>;
+
+const faultFormSchema = insertEquipmentFaultSchema.extend({
+  equipmentId: z.number({ required_error: "Ekipman seçimi zorunludur" }),
+});
+
+type FaultFormData = z.infer<typeof faultFormSchema>;
 
 export default function EquipmentFaults() {
   const { toast } = useToast();
@@ -44,9 +50,22 @@ export default function EquipmentFaults() {
     queryKey: ["/api/branches"],
   });
 
-  const form = useForm<InsertEquipmentFault>({
-    resolver: zodResolver(insertEquipmentFaultSchema),
+  const { data: equipment } = useQuery<Equipment[]>({
+    queryKey: ["/api/equipment"],
+  });
+
+  // Filter equipment by user's branch if branch role
+  const availableEquipment = equipment?.filter((eq) => {
+    if (user?.role && isBranchRole(user.role as any)) {
+      return user.branchId && eq.branchId === user.branchId;
+    }
+    return true;
+  });
+
+  const form = useForm<FaultFormData>({
+    resolver: zodResolver(faultFormSchema),
     defaultValues: {
+      equipmentId: undefined,
       equipmentName: "",
       description: "",
       status: "acik",
@@ -65,7 +84,7 @@ export default function EquipmentFaults() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertEquipmentFault) => {
+    mutationFn: async (data: FaultFormData) => {
       await apiRequest("/api/faults", "POST", data);
     },
     onSuccess: () => {
@@ -246,13 +265,39 @@ export default function EquipmentFaults() {
               <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="equipmentName"
+                  name="equipmentId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ekipman Adı</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Örn: Espresso Makinesi" data-testid="input-equipment-name" />
-                      </FormControl>
+                      <FormLabel>Ekipman *</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          const selectedEquipmentId = Number(value);
+                          field.onChange(selectedEquipmentId);
+                          
+                          const selectedEquipment = availableEquipment?.find(eq => eq.id === selectedEquipmentId);
+                          if (selectedEquipment) {
+                            const equipmentLabel = `${EQUIPMENT_METADATA[selectedEquipment.equipmentType as keyof typeof EQUIPMENT_METADATA]?.nameTr} - ${selectedEquipment.serialNumber || 'S/N Yok'}`;
+                            form.setValue('equipmentName', equipmentLabel);
+                            if (selectedEquipment.branchId) {
+                              form.setValue('branchId', selectedEquipment.branchId);
+                            }
+                          }
+                        }}
+                        value={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-equipment">
+                            <SelectValue placeholder="Ekipman seçin" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableEquipment?.map((eq) => (
+                            <SelectItem key={eq.id} value={eq.id.toString()}>
+                              {EQUIPMENT_METADATA[eq.equipmentType as keyof typeof EQUIPMENT_METADATA]?.nameTr} - {eq.serialNumber || 'S/N Yok'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -266,33 +311,6 @@ export default function EquipmentFaults() {
                       <FormControl>
                         <Textarea {...field} placeholder="Arızayı detaylı açıklayın" data-testid="input-fault-description" />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="branchId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Şube</FormLabel>
-                      <Select
-                        onValueChange={(value) => field.onChange(Number(value))}
-                        value={field.value?.toString()}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-branch">
-                            <SelectValue placeholder="Şube seçin" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {branches?.map((branch) => (
-                            <SelectItem key={branch.id} value={branch.id.toString()}>
-                              {branch.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

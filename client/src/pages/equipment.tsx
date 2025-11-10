@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -367,7 +368,11 @@ export default function Equipment() {
                     <div className="flex-1">
                       <CardTitle className="flex items-center gap-2">
                         <Settings className="h-5 w-5" />
-                        {metadata.nameTr}
+                        <Link href={`/ekipman/${item.id}`} data-testid={`link-equipment-${item.id}`}>
+                          <span className="hover-elevate rounded-sm px-1 -mx-1 cursor-pointer">
+                            {metadata.nameTr}
+                          </span>
+                        </Link>
                       </CardTitle>
                       <CardDescription className="mt-1">
                         S/N: {item.serialNumber}

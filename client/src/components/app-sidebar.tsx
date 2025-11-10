@@ -10,6 +10,7 @@ import {
   BarChart3,
   Building2,
   Users,
+  MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -99,6 +100,13 @@ const menuItems: Array<{
     url: "/ik",
     icon: Users,
     module: "employees",
+  },
+  {
+    title: "HQ Destek",
+    titleTr: "HQ Destek",
+    url: "/hq-destek",
+    icon: MessageSquare,
+    module: "messages",
   },
   {
     title: "AI Asistan",

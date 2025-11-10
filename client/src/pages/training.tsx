@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +28,7 @@ import { BookOpen, Plus, Play, Trash2 } from "lucide-react";
 export default function Training() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const isAdminOrCoach = user?.role === 'admin' || user?.role === 'coach';
@@ -340,6 +342,7 @@ export default function Training() {
                       variant="outline" 
                       size="sm" 
                       className="w-full"
+                      onClick={() => setLocation(`/egitim/${module.id}`)}
                       data-testid={`button-view-${module.id}`}
                     >
                       <Play className="h-4 w-4 mr-2" />

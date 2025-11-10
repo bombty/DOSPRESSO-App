@@ -16,10 +16,13 @@ import SubeDetay from "@/pages/sube-detay";
 import Tasks from "@/pages/tasks";
 import Checklists from "@/pages/checklists";
 import Equipment from "@/pages/equipment";
+import EquipmentDetail from "@/pages/equipment-detail";
 import EquipmentFaults from "@/pages/equipment-faults";
 import KnowledgeBase from "@/pages/knowledge-base";
 import Training from "@/pages/training";
+import TrainingDetail from "@/pages/training-detail";
 import IK from "@/pages/ik";
+import HQSupport from "@/pages/hq-support";
 import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
 import AdminSeed from "@/pages/admin-seed";
@@ -40,11 +43,14 @@ function Router() {
           <Route path="/subeler" component={Subeler} />
           <Route path="/gorevler" component={Tasks} />
           <Route path="/checklistler" component={Checklists} />
+          <Route path="/ekipman/:id" component={EquipmentDetail} />
           <Route path="/ekipman" component={Equipment} />
           <Route path="/ekipman-arizalari" component={EquipmentFaults} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
+          <Route path="/egitim/:id" component={TrainingDetail} />
           <Route path="/egitim" component={Training} />
           <Route path="/ik" component={IK} />
+          <Route path="/hq-destek" component={HQSupport} />
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/performans" component={Performance} />
           <Route path="/admin/seed" component={AdminSeed} />

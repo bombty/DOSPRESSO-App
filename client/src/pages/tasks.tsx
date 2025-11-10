@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertTaskSchema, type Task, type InsertTask, type Branch } from "@shared/schema";
+import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole } from "@shared/schema";
 import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search } from "lucide-react";
 
 export default function Tasks() {
@@ -42,8 +42,17 @@ export default function Tasks() {
     defaultValues: {
       description: "",
       status: "beklemede",
-      branchId: undefined,
+      branchId: user?.branchId || undefined,
+      assignedToId: undefined,
     },
+  });
+
+  const selectedBranchId = form.watch("branchId");
+  const isHQ = user?.role && checkIsHQRole(user.role as any);
+
+  const { data: employees, isLoading: isEmployeesLoading } = useQuery<User[]>({
+    queryKey: ["/api/employees", isHQ ? { branchId: selectedBranchId } : {}],
+    enabled: isHQ ? !!selectedBranchId : true,
   });
 
   const createMutation = useMutation({
@@ -281,33 +290,93 @@ export default function Tasks() {
                     </FormItem>
                   )}
                 />
+                {isHQ && (
+                  <FormField
+                    control={form.control}
+                    name="branchId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Şube</FormLabel>
+                        <Select
+                          onValueChange={(value) => field.onChange(Number(value))}
+                          value={field.value?.toString()}
+                          disabled={isBranchesLoading}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-branch">
+                              <SelectValue placeholder={isBranchesLoading ? "Yükleniyor..." : "Şube seçin"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {!branches || branches.length === 0 ? (
+                              <SelectItem value="no-branches" disabled>
+                                Henüz şube yok
+                              </SelectItem>
+                            ) : (
+                              branches.map((branch) => (
+                                <SelectItem key={branch.id} value={branch.id.toString()}>
+                                  {branch.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
-                  name="branchId"
+                  name="assignedToId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Şube</FormLabel>
+                      <FormLabel>Atanan Kişi</FormLabel>
                       <Select
-                        onValueChange={(value) => field.onChange(Number(value))}
-                        value={field.value?.toString()}
-                        disabled={isBranchesLoading}
+                        onValueChange={field.onChange}
+                        value={field.value || undefined}
+                        disabled={isEmployeesLoading || (isHQ && !selectedBranchId) || false}
                       >
                         <FormControl>
-                          <SelectTrigger data-testid="select-branch">
-                            <SelectValue placeholder={isBranchesLoading ? "Yükleniyor..." : "Şube seçin"} />
+                          <SelectTrigger data-testid="select-assignee">
+                            <SelectValue 
+                              placeholder={
+                                isEmployeesLoading ? "Yükleniyor..." : 
+                                (isHQ && !selectedBranchId) ? "Önce şube seçin" : 
+                                "Çalışan seçin"
+                              } 
+                            />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {!branches || branches.length === 0 ? (
-                            <SelectItem value="no-branches" disabled>
-                              Henüz şube yok
+                          {!employees || employees.length === 0 ? (
+                            <SelectItem value="no-employees" disabled>
+                              Henüz çalışan yok
                             </SelectItem>
                           ) : (
-                            branches.map((branch) => (
-                              <SelectItem key={branch.id} value={branch.id.toString()}>
-                                {branch.name}
-                              </SelectItem>
-                            ))
+                            employees.map((emp) => {
+                              const roleLabels: Record<string, string> = {
+                                admin: "Yönetici",
+                                muhasebe: "Muhasebe",
+                                satinalma: "Satın Alma",
+                                coach: "Koç",
+                                teknik: "Teknik",
+                                destek: "Destek",
+                                fabrika: "Fabrika",
+                                yatirimci_hq: "Yatırımcı HQ",
+                                stajyer: "Stajyer",
+                                bar_buddy: "Bar Buddy",
+                                barista: "Barista",
+                                supervisor_buddy: "Supervisor Buddy",
+                                supervisor: "Süpervizör",
+                                yatirimci: "Yatırımcı",
+                              };
+                              return (
+                                <SelectItem key={emp.id} value={emp.id}>
+                                  {emp.firstName} {emp.lastName} - {roleLabels[emp.role] || emp.role}
+                                </SelectItem>
+                              );
+                            })
                           )}
                         </SelectContent>
                       </Select>
