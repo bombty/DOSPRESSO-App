@@ -126,7 +126,7 @@ export default function EquipmentDetail() {
   if (!equipment) {
     return (
       <div className="space-y-6">
-        <Link href="/ekipman">
+        <Link href="/ekipman" asChild>
           <Button variant="outline" data-testid="button-back">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Geri Dön
@@ -147,7 +147,7 @@ export default function EquipmentDetail() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/ekipman">
+        <Link href="/ekipman" asChild>
           <Button variant="outline" data-testid="button-back">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Geri Dön
