@@ -65,6 +65,36 @@ export const UserRole = {
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
 
+// HQ and Branch role sets
+export const HQ_ROLES: ReadonlySet<UserRoleType> = new Set([
+  UserRole.ADMIN,
+  UserRole.MUHASEBE,
+  UserRole.SATINALMA,
+  UserRole.COACH,
+  UserRole.TEKNIK,
+  UserRole.DESTEK,
+  UserRole.FABRIKA,
+  UserRole.YATIRIMCI_HQ,
+]);
+
+export const BRANCH_ROLES: ReadonlySet<UserRoleType> = new Set([
+  UserRole.STAJYER,
+  UserRole.BAR_BUDDY,
+  UserRole.BARISTA,
+  UserRole.SUPERVISOR_BUDDY,
+  UserRole.SUPERVISOR,
+  UserRole.YATIRIMCI,
+]);
+
+// Helper functions for role checking
+export function isHQRole(role: UserRoleType): boolean {
+  return HQ_ROLES.has(role);
+}
+
+export function isBranchRole(role: UserRoleType): boolean {
+  return BRANCH_ROLES.has(role);
+}
+
 // Permission types
 export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve';
 export type PermissionModule = 

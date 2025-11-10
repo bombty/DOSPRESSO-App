@@ -2,7 +2,9 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,7 @@ import { insertTaskSchema, type Task, type InsertTask, type Branch } from "@shar
 import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search } from "lucide-react";
 
 export default function Tasks() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -134,6 +137,13 @@ export default function Tasks() {
     
     let filtered = tasks;
     
+    // Branch-level filtering: non-HQ users only see their branch tasks
+    if (user?.role && !isHQRole(user.role as any)) {
+      if (user.branchId) {
+        filtered = filtered.filter(task => task.branchId === user.branchId);
+      }
+    }
+    
     if (searchQuery) {
       filtered = filtered.filter(task => 
         task.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -155,7 +165,7 @@ export default function Tasks() {
     }
     
     return filtered;
-  }, [tasks, searchQuery, activeTab]);
+  }, [tasks, searchQuery, activeTab, user]);
 
   return (
     <div className="space-y-6">

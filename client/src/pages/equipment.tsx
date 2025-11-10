@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { Equipment as EquipmentType, InsertEquipment, insertEquipmentSchema, Branch, hasPermission, EQUIPMENT_METADATA, EQUIPMENT_TYPES } from "@shared/schema";
+import { Equipment as EquipmentType, InsertEquipment, insertEquipmentSchema, Branch, hasPermission, isHQRole, EQUIPMENT_METADATA, EQUIPMENT_TYPES } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +106,12 @@ export default function Equipment() {
   });
 
   const filteredEquipment = equipment?.filter((item) => {
+    // Branch-level filtering: non-HQ users can only see their branch equipment
+    if (user?.role && !isHQRole(user.role as any)) {
+      if (user.branchId && item.branchId !== user.branchId) return false;
+    }
+    
+    // Manual filters (for HQ users)
     if (selectedType && item.equipmentType !== selectedType) return false;
     if (selectedBranch && item.branchId !== parseInt(selectedBranch)) return false;
     if (maintenanceFilter === "overdue") {
@@ -291,7 +297,8 @@ export default function Equipment() {
           </SelectContent>
         </Select>
 
-        {branches && branches.length > 1 && (
+        {/* Branch filter - only for HQ users */}
+        {user?.role && isHQRole(user.role as any) && branches && branches.length > 1 && (
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
             <SelectTrigger className="w-[200px]" data-testid="filter-branch">
               <SelectValue placeholder="Tüm Şubeler" />

@@ -16,13 +16,24 @@ import {
   insertUserQuizAttemptSchema,
   insertUserTrainingProgressSchema,
   updateUserSchema,
+  insertUserSchema,
   insertEmployeeWarningSchema,
   hasPermission,
+  isHQRole,
+  isBranchRole,
   type UpdateUser,
   type UserRoleType
 } from "@shared/schema";
 import { analyzeTaskPhoto, analyzeFaultPhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
 import { startReminderSystem } from "./reminders";
+
+// Helper function to assert branch scope for branch users
+function assertBranchScope(user: Express.User): number {
+  if (!user.branchId) {
+    throw new Error("Şube ataması yapılmamış");
+  }
+  return user.branchId;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
@@ -42,8 +53,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       
-      // Authorization: Supervisor can only see their own branch
-      if (user.role === 'supervisor') {
+      // Authorization: Branch users can only see their own branch
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
         if (!user.branchId) {
           return res.status(403).json({ message: "Şube ataması yapılmamış" });
         }
@@ -51,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(branch ? [branch] : []);
       }
       
-      // Admin/Coach can see all branches
+      // HQ users can see all branches
       const branches = await storage.getBranches();
       res.json(branches);
     } catch (error) {
@@ -65,9 +76,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const id = parseInt(req.params.id);
       
-      // Authorization: Supervisor can only access their own branch
-      if (user.role === 'supervisor' && user.branchId !== id) {
-        return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+      // Authorization: Branch users can only access their own branch
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (user.branchId !== id) {
+          return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+        }
       }
       
       const branch = await storage.getBranch(id);
@@ -83,6 +96,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/branches', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
+      
+      // Authorization: Only HQ users can create branches
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
       const validatedData = insertBranchSchema.parse(req.body);
       const branchData = {
         ...validatedData,
@@ -104,7 +124,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/branches/:id', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
       const id = parseInt(req.params.id);
+      
+      // Authorization: Only HQ users can update branches
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
       const validatedData = insertBranchSchema.partial().parse(req.body);
       const branch = await storage.updateBranch(id, validatedData);
       if (!branch) {
@@ -122,7 +149,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/branches/:id', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
       const id = parseInt(req.params.id);
+      
+      // Authorization: Only HQ users can delete branches
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
       await storage.deleteBranch(id);
       res.json({ message: "Branch deleted successfully" });
     } catch (error) {
@@ -136,15 +170,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       
-      // Authorization: Supervisor can only access their own branch
-      if (user.role === 'supervisor') {
+      // Authorization: Branch users can only access their own branch
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
         if (!user.branchId) {
           return res.status(403).json({ message: "Şube ataması yapılmamış" });
         }
         if (requestedBranchId && requestedBranchId !== user.branchId) {
           return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
         }
-        // Force supervisor to see only their branch
+        // Force branch users to see only their branch
         const tasks = await storage.getTasks(user.branchId);
         return res.json(tasks);
       }
@@ -160,10 +194,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {
+      const user = req.user!;
       const userId = req.user.id;
       const validatedData = insertTaskSchema.parse(req.body);
+      
+      // Authorization: Branch users can only create tasks for their own branch
+      // FORCE branchId to user's branch for branch users (ignore payload)
+      let taskBranchId = validatedData.branchId;
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        taskBranchId = branchId; // Override payload branchId
+      }
+      
       const task = await storage.createTask({
         ...validatedData,
+        branchId: taskBranchId,
         assignedToId: validatedData.assignedToId || userId,
       });
       res.json(task);
@@ -178,9 +223,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tasks/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
+      const user = req.user!;
       const id = parseInt(req.params.id);
       const { photoUrl } = req.body;
       const userId = req.user.id; // For rate limiting
+      
+      // Authorization: Branch users can only complete tasks from their own branch
+      const existingTask = await storage.getTask(id);
+      if (!existingTask) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId || existingTask.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu görevi tamamlama yetkiniz yok" });
+        }
+      }
       
       const task = await storage.completeTask(id, photoUrl);
       if (!task) {
@@ -245,8 +303,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/faults', isAuthenticated, async (req, res) => {
     try {
-      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
-      const faults = await storage.getFaults(branchId);
+      const user = req.user!;
+      const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      
+      // Authorization: Branch users can only access their own branch faults
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (requestedBranchId && requestedBranchId !== branchId) {
+          return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+        }
+        // Force branch users to see only their branch
+        const faults = await storage.getFaults(branchId);
+        return res.json(faults);
+      }
+      
+      // HQ users can access all or filter by branch
+      const faults = await storage.getFaults(requestedBranchId);
       res.json(faults);
     } catch (error) {
       console.error("Error fetching faults:", error);
@@ -256,10 +328,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/faults', isAuthenticated, async (req: any, res) => {
     try {
+      const user = req.user!;
       const userId = req.user.id;
       const validatedData = insertEquipmentFaultSchema.parse(req.body);
+      
+      // Authorization: Branch users can only create faults for their own branch
+      let faultBranchId = validatedData.branchId;
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        // Force branch users to create faults only for their branch
+        faultBranchId = branchId;
+      }
+      
       const fault = await storage.createFault({
         ...validatedData,
+        branchId: faultBranchId,
         reportedById: userId,
       });
       res.json(fault);
@@ -274,16 +357,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/faults/:id/photo', isAuthenticated, async (req: any, res) => {
     try {
+      const user = req.user!;
       const id = parseInt(req.params.id);
       const { photoUrl } = req.body;
       const userId = req.user.id; // For rate limiting
       
-      const fault = await storage.updateFault(id, { photoUrl });
-      if (!fault) {
+      // Authorization: Branch users can only update faults from their own branch
+      const existingFault = await storage.getFault(id);
+      if (!existingFault) {
         return res.status(404).json({ message: "Fault not found" });
       }
-
+      
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (existingFault.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu arızayı düzenleme yetkiniz yok" });
+        }
+      }
+      
+      // Update photo URL after authorization check
       if (photoUrl) {
+        const fault = await storage.updateFault(id, { photoUrl });
+        if (!fault) {
+          return res.status(404).json({ message: "Fault not found" });
+        }
+
         try {
           const analysis = await analyzeFaultPhoto(
             photoUrl,
@@ -302,7 +400,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.json(fault);
         }
       } else {
-        res.json(fault);
+        // If no photo URL provided, just return existing fault
+        res.json(existingFault);
       }
     } catch (error) {
       console.error("Error updating fault photo:", error);
@@ -312,7 +411,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/faults/:id/resolve', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
       const id = parseInt(req.params.id);
+      
+      // Authorization: Branch users can only resolve faults from their own branch
+      const existingFault = await storage.getFault(id);
+      if (!existingFault) {
+        return res.status(404).json({ message: "Fault not found" });
+      }
+      
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (existingFault.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu arızayı çözme yetkiniz yok" });
+        }
+      }
+      
       const fault = await storage.resolveFault(id);
       if (!fault) {
         return res.status(404).json({ message: "Fault not found" });
@@ -407,20 +521,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       
-      // Authorization: Supervisor can only access their own branch
-      if (user.role === 'supervisor') {
+      // Authorization: Branch users can only access their own branch
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
         if (!user.branchId) {
           return res.status(403).json({ message: "Şube ataması yapılmamış" });
         }
         if (requestedBranchId && requestedBranchId !== user.branchId) {
           return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
         }
-        // Force supervisor to see only their branch
+        // Force branch users to see only their branch
         const equipment = await storage.getEquipment(user.branchId);
         return res.json(equipment);
       }
       
-      // Admin/Coach can access all or filter by branch
+      // HQ users can access all or filter by branch
       const equipment = await storage.getEquipment(requestedBranchId);
       res.json(equipment);
     } catch (error) {
@@ -445,14 +559,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/equipment', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
       const { insertEquipmentSchema } = await import('@shared/schema');
       const validatedData = insertEquipmentSchema.parse(req.body);
+      
+      // Authorization: Branch users can only create equipment for their own branch
+      // FORCE branchId to user's branch for branch users (ignore payload)
+      let equipmentBranchId = validatedData.branchId;
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        equipmentBranchId = branchId; // Override payload branchId
+      }
       
       // Generate QR code URL (simple ID-based URL for now)
       const qrCodeUrl = `/equipment/${Date.now()}`;
       
       const equipment = await storage.createEquipment({
         ...validatedData,
+        branchId: equipmentBranchId,
         qrCodeUrl,
       });
       res.json(equipment);
@@ -464,14 +588,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/equipment/:id', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
       const id = parseInt(req.params.id);
       const { insertEquipmentSchema } = await import('@shared/schema');
       const validatedData = insertEquipmentSchema.partial().parse(req.body);
       
-      const equipment = await storage.updateEquipment(id, validatedData);
-      if (!equipment) {
+      // Authorization: Branch users can only update equipment from their own branch
+      const existingEquipment = await storage.getEquipmentById(id);
+      if (!existingEquipment) {
         return res.status(404).json({ message: "Equipment not found" });
       }
+      
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId || existingEquipment.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu ekipmanı düzenleme yetkiniz yok" });
+        }
+        // Prevent changing branchId
+        if (validatedData.branchId && validatedData.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Ekipmanın şubesini değiştiremezsiniz" });
+        }
+      }
+      
+      const equipment = await storage.updateEquipment(id, validatedData);
       res.json(equipment);
     } catch (error) {
       console.error("Error updating equipment:", error);
@@ -481,10 +619,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user!;
       const id = parseInt(req.params.id);
+      
       const equipmentItem = await storage.getEquipmentById(id);
       if (!equipmentItem) {
         return res.status(404).json({ message: "Equipment not found" });
+      }
+      
+      // Authorization: Branch users can only log maintenance for their own branch equipment
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (equipmentItem.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu ekipman için bakım kaydı oluşturma yetkiniz yok" });
+        }
       }
       
       const intervalDays = equipmentItem.maintenanceIntervalDays || 30;
@@ -733,7 +881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filteredUpdates: Partial<UpdateUser> = {};
       for (const field of allowedFields) {
         if (parsed.data[field] !== undefined) {
-          filteredUpdates[field] = parsed.data[field];
+          filteredUpdates[field] = parsed.data[field] as any;
         }
       }
 
@@ -744,6 +892,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update employee
       const updated = await storage.updateUser(employeeId, filteredUpdates);
+      if (!updated) {
+        return res.status(404).json({ message: "Çalışan güncellenemedi" });
+      }
       
       // Sanitize: Remove sensitive fields using security helper
       res.json(sanitizeUser(updated));
@@ -913,7 +1064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           trainingCompletionRate,
           warningsTotal: warnings.length,
           activeWarnings: warnings.filter(w => 
-            w.severity === 'kritik' || w.severity === 'yuksek'
+            w.warningType === 'written' || w.warningType === 'final'
           ).length,
         },
         warnings,
@@ -943,14 +1094,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Geçersiz çalışan verisi", errors: parsed.error.errors });
       }
 
-      // Branch scoping for supervisor: force branchId to their own branch
+      // Authorization: Branch users can only create employees for their own branch
+      // FORCE branchId to user's branch for ALL branch roles (ignore payload)
       let employeeData = parsed.data;
-      if (role === 'supervisor') {
-        if (!userBranchId) {
-          return res.status(400).json({ message: "Supervisor branchId eksik" });
-        }
-        // Override branchId to supervisor's branch (prevent creating employee in other branches)
-        employeeData = { ...parsed.data, branchId: userBranchId };
+      if (role && isBranchRole(role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        // Override branchId to user's branch (prevent creating employee in other branches)
+        employeeData = { ...parsed.data, branchId };
       }
 
       // Create employee (storage layer handles password hashing if provided)
@@ -1012,9 +1162,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Çalışan bulunamadı" });
       }
 
-      // Branch access check for supervisor
-      if (role === 'supervisor' && employee.branchId !== userBranchId) {
-        return res.status(403).json({ message: "Bu çalışana uyarı verme yetkiniz yok" });
+      // Authorization: Branch users can only issue warnings to employees in their own branch
+      if (role && isBranchRole(role as UserRoleType)) {
+        const branchId = assertBranchScope(user);
+        if (employee.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu çalışana uyarı verme yetkiniz yok" });
+        }
       }
 
       // Validate warning data
@@ -1517,7 +1670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ]);
 
       // Create knowledge base articles
-      await storage.createKnowledgeBaseArticle({
+      await storage.createArticle({
         title: "Espresso Makine Kalibrasyonu",
         category: "maintenance",
         content: "# Espresso Makine Kalibrasyonu\n\nDetaylı kalibrasyon rehberi...",
@@ -1525,7 +1678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPublished: true,
       });
 
-      await storage.createKnowledgeBaseArticle({
+      await storage.createArticle({
         title: "Cappuccino Tarifi",
         category: "recipe",
         content: "# Cappuccino Tarifi\n\nDOSPRESSO standardı cappuccino hazırlama...",

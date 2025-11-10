@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, MapPin, Phone, User } from "lucide-react";
 import { Link } from "wouter";
@@ -21,8 +22,19 @@ export default function SubelerPage() {
     enabled: !!user,
   });
 
-  // No client-side filtering needed - backend already restricts supervisor to their branch
-  const filteredBranches = branches;
+  // Filter branches based on user role
+  // Branch users can only see their own branch, HQ users see all branches
+  const filteredBranches = branches.filter((branch) => {
+    if (!user?.role) return false;
+    
+    // HQ users see all branches
+    if (isHQRole(user.role as any)) {
+      return true;
+    }
+    
+    // Branch users only see their own branch
+    return user.branchId === branch.id;
+  });
 
   if (isLoading) {
     return (

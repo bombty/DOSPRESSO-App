@@ -6,6 +6,7 @@ declare global {
     interface User {
       id: string;
       role: string;
+      branchId: number | null;
       claims?: any;
       access_token?: string;
       refresh_token?: string;

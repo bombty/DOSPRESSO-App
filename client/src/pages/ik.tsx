@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { hasPermission, type User, type EmployeeWarning, insertUserSchema, insertEmployeeWarningSchema } from "@shared/schema";
+import { hasPermission, isHQRole, type User, type EmployeeWarning, insertUserSchema, insertEmployeeWarningSchema } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -107,9 +107,9 @@ export default function IKPage() {
     queryKey: ["/api/branches"],
   });
 
-  // Fetch employees (with branchId filter for admin/coach)
+  // Fetch employees (with branch filtering for non-HQ users)
   const { data: employees = [], isLoading } = useQuery<User[]>({
-    queryKey: ["/api/employees", branchFilter],
+    queryKey: ["/api/employees", branchFilter, user?.branchId],
     queryFn: async () => {
       const token = localStorage.getItem('dospresso_token');
       const headers: HeadersInit = {};
@@ -117,9 +117,21 @@ export default function IKPage() {
         headers.Authorization = `Bearer ${token}`;
       }
       
-      const url = branchFilter !== "all" 
-        ? `/api/employees?branchId=${branchFilter}`
-        : `/api/employees`;
+      // Branch users can only see their own branch employees
+      // HQ users can see all or filter by branch
+      let url = '/api/employees';
+      
+      if (user?.role && !isHQRole(user.role as any)) {
+        // Branch user: force filter to their branch
+        if (user.branchId) {
+          url = `/api/employees?branchId=${user.branchId}`;
+        }
+      } else {
+        // HQ user: respect the branch filter dropdown
+        if (branchFilter !== "all") {
+          url = `/api/employees?branchId=${branchFilter}`;
+        }
+      }
       
       const res = await fetch(url, { headers });
       if (!res.ok) throw new Error(res.statusText);
@@ -230,22 +242,25 @@ export default function IKPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium">Şube</label>
-            <Select value={branchFilter} onValueChange={setBranchFilter}>
-              <SelectTrigger data-testid="select-branch-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tüm Şubeler</SelectItem>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id.toString()}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Branch filter - only for HQ users */}
+          {user?.role && isHQRole(user.role as any) && (
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium">Şube</label>
+              <Select value={branchFilter} onValueChange={setBranchFilter}>
+                <SelectTrigger data-testid="select-branch-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Şubeler</SelectItem>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id.toString()}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex-1 min-w-[200px]">
             <label className="text-sm font-medium">Rol</label>
