@@ -25,6 +25,7 @@ import IK from "@/pages/ik";
 import HQSupport from "@/pages/hq-support";
 import Notifications from "@/pages/notifications";
 import Announcements from "@/pages/announcements";
+import CashReports from "@/pages/cash-reports";
 import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
 import AdminSeed from "@/pages/admin-seed";
@@ -54,6 +55,7 @@ function Router() {
           <Route path="/ik" component={IK} />
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular" component={Announcements} />
+          <Route path="/kasa-raporlari" component={CashReports} />
           <Route path="/hq-destek" component={HQSupport} />
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/performans" component={Performance} />

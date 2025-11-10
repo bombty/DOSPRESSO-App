@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Bell,
   Megaphone,
+  Wallet,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -117,6 +118,13 @@ const menuItems: Array<{
     titleTr: "Duyurular",
     url: "/duyurular",
     icon: Megaphone,
+    module: "dashboard",
+  },
+  {
+    title: "Kasa Raporları",
+    titleTr: "Kasa Raporları",
+    url: "/kasa-raporlari",
+    icon: Wallet,
     module: "dashboard",
   },
   {

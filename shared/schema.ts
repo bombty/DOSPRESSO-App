@@ -11,6 +11,7 @@ import {
   boolean,
   integer,
   numeric,
+  real,
   customType,
   uniqueIndex,
   unique
