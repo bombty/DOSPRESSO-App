@@ -61,6 +61,10 @@ import type {
   Shift,
   InsertShift,
   BulkCreateShifts,
+  LeaveRequest,
+  InsertLeaveRequest,
+  ShiftAttendance,
+  InsertShiftAttendance,
 } from "@shared/schema";
 import {
   users,
@@ -95,6 +99,8 @@ import {
   dailyCashReports,
   shifts,
   shiftChecklists,
+  leaveRequests,
+  shiftAttendance,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -274,6 +280,19 @@ export interface IStorage {
   // Shift-Checklist junction operations
   setShiftChecklists(shiftId: number, checklistIds: number[]): Promise<void>;
   getShiftChecklists(shiftId: number): Promise<Checklist[]>;
+  
+  // Leave Request operations
+  getLeaveRequests(userId?: string, branchId?: number, status?: string): Promise<LeaveRequest[]>;
+  getLeaveRequest(id: number): Promise<LeaveRequest | undefined>;
+  createLeaveRequest(request: InsertLeaveRequest): Promise<LeaveRequest>;
+  updateLeaveRequest(id: number, updates: Partial<InsertLeaveRequest>): Promise<LeaveRequest | undefined>;
+  deleteLeaveRequest(id: number): Promise<void>;
+  
+  // Shift Attendance operations
+  getShiftAttendances(shiftId?: number, userId?: string, dateFrom?: string, dateTo?: string): Promise<ShiftAttendance[]>;
+  getShiftAttendance(id: number): Promise<ShiftAttendance | undefined>;
+  createShiftAttendance(attendance: InsertShiftAttendance): Promise<ShiftAttendance>;
+  updateShiftAttendance(id: number, updates: Partial<InsertShiftAttendance>): Promise<ShiftAttendance | undefined>;
   
   // Performance Metrics scoring
   recordPerformanceScore(data: {
@@ -1480,6 +1499,118 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(checklists)
       .where(sql`${checklists.id} IN ${sql.raw(`(${checklistIds.map((c: { checklistId: number }) => c.checklistId).join(',')})`)}`);
+  }
+
+  // Leave Request operations
+  async getLeaveRequests(userId?: string, branchId?: number, status?: string): Promise<LeaveRequest[]> {
+    const conditions: SQL[] = [];
+    if (userId) conditions.push(eq(leaveRequests.userId, userId));
+    if (status) conditions.push(eq(leaveRequests.status, status));
+    if (branchId) {
+      const branchUsers = await db.select({ id: users.id }).from(users).where(eq(users.branchId, branchId));
+      const userIds = branchUsers.map(u => u.id);
+      if (userIds.length > 0) {
+        conditions.push(inArray(leaveRequests.userId, userIds));
+      } else {
+        return []; // No users in branch
+      }
+    }
+    return db.select().from(leaveRequests).where(conditions.length > 0 ? and(...conditions) : undefined).orderBy(desc(leaveRequests.createdAt));
+  }
+
+  async getLeaveRequest(id: number): Promise<LeaveRequest | undefined> {
+    const [request] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, id));
+    return request;
+  }
+
+  async createLeaveRequest(request: InsertLeaveRequest): Promise<LeaveRequest> {
+    // Calculate totalDays server-side (inclusive calendar days)
+    const start = new Date(request.startDate);
+    const end = new Date(request.endDate);
+    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    
+    const [created] = await db.insert(leaveRequests).values({ ...request, totalDays }).returning();
+    return created;
+  }
+
+  async updateLeaveRequest(id: number, updates: Partial<InsertLeaveRequest>): Promise<LeaveRequest | undefined> {
+    let finalUpdates = { ...updates };
+    
+    // Recalculate totalDays if dates are being updated
+    if (updates.startDate || updates.endDate) {
+      const [current] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, id));
+      if (current) {
+        const start = new Date(updates.startDate || current.startDate);
+        const end = new Date(updates.endDate || current.endDate);
+        finalUpdates.totalDays = Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+      }
+    }
+    
+    const [updated] = await db.update(leaveRequests).set({ ...finalUpdates, updatedAt: new Date() }).where(eq(leaveRequests.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLeaveRequest(id: number): Promise<void> {
+    await db.delete(leaveRequests).where(eq(leaveRequests.id, id));
+  }
+
+  // Shift Attendance operations
+  async getShiftAttendances(shiftId?: number, userId?: string, dateFrom?: string, dateTo?: string): Promise<ShiftAttendance[]> {
+    const conditions: SQL[] = [];
+    if (shiftId) conditions.push(eq(shiftAttendance.shiftId, shiftId));
+    if (userId) conditions.push(eq(shiftAttendance.userId, userId));
+    if (dateFrom || dateTo) {
+      const dateConditions: SQL[] = [];
+      if (dateFrom) dateConditions.push(sql`${shifts.shiftDate} >= ${dateFrom}`);
+      if (dateTo) dateConditions.push(sql`${shifts.shiftDate} <= ${dateTo}`);
+      const attendanceIds = await db.select({ id: shiftAttendance.id }).from(shiftAttendance).innerJoin(shifts, eq(shiftAttendance.shiftId, shifts.id)).where(and(...dateConditions));
+      const ids = attendanceIds.map(a => a.id);
+      if (ids.length > 0) {
+        conditions.push(inArray(shiftAttendance.id, ids));
+      } else {
+        return [];
+      }
+    }
+    return db.select().from(shiftAttendance).where(conditions.length > 0 ? and(...conditions) : undefined).orderBy(desc(shiftAttendance.createdAt));
+  }
+
+  async getShiftAttendance(id: number): Promise<ShiftAttendance | undefined> {
+    const [attendance] = await db.select().from(shiftAttendance).where(eq(shiftAttendance.id, id));
+    return attendance;
+  }
+
+  async createShiftAttendance(attendance: InsertShiftAttendance): Promise<ShiftAttendance> {
+    const [created] = await db.insert(shiftAttendance).values(attendance).returning();
+    return created;
+  }
+
+  async updateShiftAttendance(id: number, updates: Partial<InsertShiftAttendance>): Promise<ShiftAttendance | undefined> {
+    // Calculate server-side minutes if timestamps provided
+    let calculatedUpdates = { ...updates };
+    
+    // Get current record to merge timestamps
+    const [current] = await db.select().from(shiftAttendance).where(eq(shiftAttendance.id, id));
+    if (current) {
+      const checkIn = updates.checkInTime || current.checkInTime;
+      const checkOut = updates.checkOutTime || current.checkOutTime;
+      const breakStart = updates.breakStartTime || current.breakStartTime;
+      const breakEnd = updates.breakEndTime || current.breakEndTime;
+      
+      // Calculate break minutes if both timestamps exist
+      if (breakStart && breakEnd) {
+        calculatedUpdates.totalBreakMinutes = Math.floor((new Date(breakEnd).getTime() - new Date(breakStart).getTime()) / (60 * 1000));
+      }
+      
+      // Calculate worked minutes if check-in/out exist
+      if (checkIn && checkOut) {
+        const totalMinutes = Math.floor((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (60 * 1000));
+        const breakMinutes = calculatedUpdates.totalBreakMinutes || current.totalBreakMinutes || 0;
+        calculatedUpdates.totalWorkedMinutes = Math.max(0, totalMinutes - breakMinutes);
+      }
+    }
+    
+    const [updated] = await db.update(shiftAttendance).set({ ...calculatedUpdates, updatedAt: new Date() }).where(eq(shiftAttendance.id, id)).returning();
+    return updated;
   }
 
   async recordPerformanceScore(data: {
