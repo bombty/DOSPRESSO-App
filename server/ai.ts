@@ -345,8 +345,38 @@ JSON formatında yanıt verin:
 // Analyze dress code compliance from employee photo
 export async function analyzeDressCodePhoto(
   photoUrl: string,
-  employeeName: string = "Çalışan"
+  employeeName: string = "Çalışan",
+  userId?: string,
+  skipCache: boolean = false
 ): Promise<DressCodeAnalysis> {
+  // Check cache first (24h TTL)
+  const cacheKey = generateCacheKey('dress-code', photoUrl, employeeName);
+  if (!skipCache) {
+    const cached = cache.get<DressCodeAnalysis>(cacheKey);
+    if (cached) {
+      console.log('✅ Cache HIT - Dress code analysis (cost saved!)');
+      return cached;
+    }
+  }
+
+  // CRITICAL: Rate limit check (shares photo quota with task/fault analysis)
+  const PHOTO_LIMIT = 10; // 10 photo analyses per day
+  if (userId && !aiRateLimiter.canMakeRequest(userId, 'photo', PHOTO_LIMIT)) {
+    console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily photo analysis quota`);
+    return {
+      isCompliant: false,
+      score: 0,
+      summary: "Günlük fotoğraf analiz limitiniz doldu (10/gün). Yarın tekrar deneyin.",
+      violations: ["Günlük limit aşıldı - manuel kontrol gerekli"],
+      details: {
+        uniform: false,
+        hair: false,
+        facial: false,
+        hygiene: false,
+      },
+    };
+  }
+
   try {
     const response = await openai.chat.completions.create({
       model: VISION_MODEL,
@@ -359,16 +389,17 @@ export async function analyzeDressCodePhoto(
               text: `DOSPRESSO çalışanı ${employeeName} için dress code kontrolü yapın.
 
 Dress code standartları:
-1. Üniforma: Temiz DOSPRESSO önlüğü/gömleği, lekesiz
-2. Saç: Toplı, temiz, doğal renk, varsa boneli
-3. Sakal: Düzgün kesilmiş veya tıraşlı, hijyenik
-4. Genel hijyen: Temiz, bakımlı görünüm
+1. Üniforma: Kırmızı DOSPRESSO önlüğü/logosu, temiz ve lekesiz
+2. Saç: Toplı, temiz, doğal renk, hijyenik görünüm
+3. Sakal/bıyık: Düzgün kesilmiş veya tıraşlı, bakımlı
+4. Genel hijyen: Temiz, profesyonel görünüm, takılar minimal
+5. Lokasyon: Çalışma alanında (kafe bar/counter görünümlü)
 
-JSON formatında yanıt verin:
+JSON formatında TÜRKÇE yanıt verin:
 {
   "isCompliant": true/false,
   "score": 90,
-  "summary": "Genel değerlendirme",
+  "summary": "Kısa genel değerlendirme (2-3 cümle)",
   "violations": ["İhlal 1", "İhlal 2"],
   "details": {
     "uniform": true,
@@ -386,14 +417,14 @@ JSON formatında yanıt verin:
         },
       ],
       response_format: { type: "json_object" },
-      max_completion_tokens: 400,
+      max_completion_tokens: 500,
     });
 
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error("Boş yanıt");
 
     const result = JSON.parse(content);
-    return {
+    const analysis: DressCodeAnalysis = {
       isCompliant: result.isCompliant ?? true,
       score: Math.min(Math.max(result.score || 0, 0), 100),
       summary: result.summary || "Analiz tamamlandı",
@@ -405,12 +436,26 @@ JSON formatında yanıt verin:
         hygiene: true,
       },
     };
+
+    // Cache for 24 hours
+    cache.set(cacheKey, analysis, 24 * 60 * 60 * 1000);
+    
+    // Increment rate limit counter (only on successful AI call)
+    if (userId) {
+      aiRateLimiter.incrementRequest(userId, 'photo');
+      const remaining = aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
+      console.log(`💰 AI call made - Dress code analysis (${remaining}/${PHOTO_LIMIT} remaining for user ${userId})`);
+    } else {
+      console.log('💰 AI call made - Dress code analysis (no userId, rate limit not tracked)');
+    }
+
+    return analysis;
   } catch (error) {
     console.error("Dress code analiz hatası:", error);
     return {
       isCompliant: false, // FALSE - requires manual review
       score: 0,
-      summary: "⚠️ Otomatik analiz BAŞARISIZ - Supervisor incelemesi zorunlu",
+      summary: "⚠️ Otomatik analiz başarısız - Supervisor incelemesi zorunlu",
       violations: ["AI analizi yapılamadı - manuel kontrol gerekli"],
       details: {
         uniform: false,

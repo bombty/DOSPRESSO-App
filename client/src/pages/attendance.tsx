@@ -21,13 +21,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, LogIn, LogOut, Coffee, Calendar } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import { Clock, LogIn, LogOut, Coffee, Calendar, Camera, ChevronDown, CheckCircle, AlertCircle, Loader2, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AttendancePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
+  const [photoQuota, setPhotoQuota] = useState({ remaining: 10, total: 10, used: 0 });
 
   const { data: activeShift, isLoading: activeLoading } = useQuery<any>({
     queryKey: ["/api/shift-attendance/active"],
@@ -85,16 +93,29 @@ export default function AttendancePage() {
 
   const checkInMutation = useMutation({
     mutationFn: async () => {
+      if (!uploadedPhotoUrl) {
+        throw new Error("Fotoğraf yüklemesi zorunludur");
+      }
       return apiRequest("POST", "/api/shift-attendance", {
-        shiftDate: new Date().toISOString(),
-        checkInTime: new Date().toISOString(),
+        photoUrl: uploadedPhotoUrl,
       });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      const analysisResult = data.analysisDetails;
+      const isCompliant = analysisResult?.isCompliant ?? true;
+      
       toast({
-        title: "Başarılı",
-        description: "Vardiyaya giriş yapıldı",
+        title: isCompliant ? "✅ Giriş Başarılı" : "⚠️ Giriş Yapıldı - Uyarı",
+        description: isCompliant 
+          ? "Dress code uyumlu. Vardiyaya giriş yapıldı." 
+          : "Dress code uyumsuzluk tespit edildi. Supervisor ile görüşün.",
+        variant: isCompliant ? "default" : "destructive",
       });
+      
+      setUploadedPhotoUrl(null);
+      if (data.quota) {
+        setPhotoQuota(data.quota);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
     },
     onError: (error: any) => {
@@ -223,6 +244,53 @@ export default function AttendancePage() {
                       Molada
                     </Badge>
                   )}
+
+                  {activeShift.analysisDetails && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Dress Code</span>
+                        {activeShift.analysisStatus === 'completed' ? (
+                          activeShift.analysisDetails.isCompliant ? (
+                            <Badge variant="default" className="bg-green-600" data-testid="badge-dress-code-compliant">
+                              <CheckCircle className="mr-1 h-3 w-3" />
+                              Uyumlu
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" data-testid="badge-dress-code-noncompliant">
+                              <AlertCircle className="mr-1 h-3 w-3" />
+                              Uyumsuz
+                            </Badge>
+                          )
+                        ) : activeShift.analysisStatus === 'pending' ? (
+                          <Badge variant="secondary" data-testid="badge-dress-code-pending">
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Beklemede
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" data-testid="badge-dress-code-error">
+                            <AlertCircle className="mr-1 h-3 w-3" />
+                            Hata
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {activeShift.aiWarnings && activeShift.aiWarnings.length > 0 && (
+                        <Collapsible>
+                          <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" data-testid="button-toggle-warnings">
+                            <ChevronDown className="h-4 w-4" />
+                            Uyarılar ({activeShift.aiWarnings.length})
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pt-2">
+                            <ul className="text-sm space-y-1 list-disc pl-5" data-testid="list-ai-warnings">
+                              {activeShift.aiWarnings.map((warning: string, idx: number) => (
+                                <li key={idx} className="text-destructive">{warning}</li>
+                              ))}
+                            </ul>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2">
                   {canStartBreak && (
@@ -259,16 +327,78 @@ export default function AttendancePage() {
                 </div>
               </>
             ) : (
-              <Button
-                onClick={() => checkInMutation.mutate()}
-                disabled={checkInMutation.isPending}
-                className="w-full"
-                size="lg"
-                data-testid="button-checkin"
-              >
-                <LogIn className="mr-2 h-4 w-4" />
-                Vardiyaya Giriş
-              </Button>
+              <div className="space-y-4">
+                {uploadedPhotoUrl ? (
+                  <div className="space-y-2">
+                    <div className="relative aspect-video rounded-lg overflow-hidden border">
+                      <img 
+                        src={uploadedPhotoUrl} 
+                        alt="Giriş fotoğrafı" 
+                        className="w-full h-full object-cover"
+                        data-testid="img-uploaded-photo"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => setUploadedPhotoUrl(null)}
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      data-testid="button-remove-photo"
+                    >
+                      Fotoğrafı Değiştir
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground text-center">
+                      Giriş yapmak için fotoğraf yüklemesi zorunludur
+                    </p>
+                    <ObjectUploader
+                      maxFileSize={10485760}
+                      onGetUploadParameters={async () => {
+                        const res = await fetch("/api/objects/upload", { method: "POST" });
+                        if (!res.ok) throw new Error("Upload URL alınamadı");
+                        return res.json();
+                      }}
+                      onComplete={(result) => {
+                        if (result.successful && result.successful[0]) {
+                          setUploadedPhotoUrl(result.successful[0].uploadURL);
+                          toast({
+                            title: "Başarılı",
+                            description: "Fotoğraf yüklendi",
+                          });
+                        }
+                      }}
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      Fotoğraf Yükle
+                    </ObjectUploader>
+                    <p className="text-xs text-muted-foreground text-center" data-testid="text-photo-quota">
+                      Kalan analiz hakkı: {photoQuota.remaining}/{photoQuota.total}
+                    </p>
+                  </div>
+                )}
+                
+                <Button
+                  onClick={() => checkInMutation.mutate()}
+                  disabled={checkInMutation.isPending || !uploadedPhotoUrl}
+                  className="w-full"
+                  size="lg"
+                  data-testid="button-checkin"
+                >
+                  {checkInMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analiz Ediliyor...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Vardiyaya Giriş
+                    </>
+                  )}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -322,12 +452,12 @@ export default function AttendancePage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Fotoğraf</TableHead>
                   <TableHead>Tarih</TableHead>
                   <TableHead>Giriş</TableHead>
                   <TableHead>Çıkış</TableHead>
-                  <TableHead>Çalışma Süresi</TableHead>
-                  <TableHead>Mola Süresi</TableHead>
-                  <TableHead>Durum</TableHead>
+                  <TableHead>Çalışma</TableHead>
+                  <TableHead>Dress Code</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -340,6 +470,22 @@ export default function AttendancePage() {
                 ) : (
                   attendanceHistory.map((record) => (
                     <TableRow key={record.id} data-testid={`row-attendance-${record.id}`}>
+                      <TableCell>
+                        {record.photoUrl ? (
+                          <div className="w-12 h-12 rounded overflow-hidden border">
+                            <img 
+                              src={record.photoUrl} 
+                              alt="Check-in" 
+                              className="w-full h-full object-cover"
+                              data-testid={`img-photo-${record.id}`}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium">
                         {format(new Date(record.shiftDate), "dd.MM.yyyy")}
                       </TableCell>
@@ -359,14 +505,23 @@ export default function AttendancePage() {
                           : "-"}
                       </TableCell>
                       <TableCell>
-                        {record.totalBreakMinutes
-                          ? `${Math.floor(record.totalBreakMinutes / 60)}s ${record.totalBreakMinutes % 60}d`
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="default" data-testid={`badge-status-${record.id}`}>
-                          Tamamlandı
-                        </Badge>
+                        {record.analysisDetails ? (
+                          record.analysisDetails.isCompliant ? (
+                            <Badge variant="default" className="bg-green-600" data-testid={`badge-compliant-${record.id}`}>
+                              <CheckCircle className="mr-1 h-3 w-3" />
+                              Uyumlu
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" data-testid={`badge-noncompliant-${record.id}`}>
+                              <AlertCircle className="mr-1 h-3 w-3" />
+                              Uyumsuz
+                            </Badge>
+                          )
+                        ) : (
+                          <Badge variant="secondary" data-testid={`badge-no-analysis-${record.id}`}>
+                            -
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

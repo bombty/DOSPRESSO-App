@@ -422,6 +422,9 @@ export const users = pgTable("users", {
   emergencyContactPhone: varchar("emergency_contact_phone", { length: 20 }),
   notes: text("notes"),
   isActive: boolean("is_active").default(true).notNull(),
+  // AI Photo Analysis Quota (10/day for dress code, task verification, etc.)
+  dailyPhotoCount: integer("daily_photo_count").default(0).notNull(),
+  lastPhotoDate: date("last_photo_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1483,6 +1486,12 @@ export const shiftAttendance = pgTable("shift_attendance", {
   totalWorkedMinutes: integer("total_worked_minutes").default(0),
   status: varchar("status", { length: 20 }).notNull().default("scheduled"), // scheduled, checked_in, on_break, checked_out, absent, late
   notes: text("notes"),
+  // Dress Code AI Analysis fields
+  photoUrl: text("photo_url"),
+  analysisStatus: varchar("analysis_status", { length: 20 }).default("pending"), // pending, completed, error
+  analysisDetails: jsonb("analysis_details"), // Structured AI response
+  analysisTimestamp: timestamp("analysis_timestamp"),
+  aiWarnings: text("ai_warnings").array(), // Turkish warnings array
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

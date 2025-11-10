@@ -27,7 +27,7 @@ import {
   type UpdateUser,
   type UserRoleType
 } from "@shared/schema";
-import { analyzeTaskPhoto, analyzeFaultPhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG } from "./ai";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -3522,19 +3522,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Create attendance record (check-in)
+  // Create attendance record (check-in with mandatory photo and dress code analysis)
   app.post('/api/shift-attendance', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
+      const { photoUrl, shiftId: providedShiftId, ...otherData } = req.body;
+
+      // MANDATORY: Photo required for check-in
+      if (!photoUrl) {
+        return res.status(400).json({ 
+          message: "Fotoğraf yüklemesi zorunludur. Lütfen vardiyaya giriş yapmadan önce fotoğraf yükleyin." 
+        });
+      }
+
+      // Check daily photo quota (10/day)
+      const today = new Date().toISOString().split('T')[0];
+      const userRecord = await storage.getUser(user.id);
       
+      if (!userRecord) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      // Reset counter if it's a new day
+      const lastPhotoDate = userRecord.lastPhotoDate;
+      const dailyPhotoCount = (lastPhotoDate === today) ? (userRecord.dailyPhotoCount || 0) : 0;
+      
+      if (dailyPhotoCount >= 10) {
+        return res.status(429).json({ 
+          message: "Günlük fotoğraf analiz limitiniz doldu (10/gün). Yarın tekrar deneyin veya supervisor ile iletişime geçin.",
+          quotaExceeded: true,
+          remaining: 0,
+          total: 10
+        });
+      }
+
+      // AUTO-DERIVE shiftId: Find user's shift for today
+      let shiftId = providedShiftId;
+      
+      if (!shiftId) {
+        // Query shifts table for user's shift today
+        const todayShifts = await storage.getShifts(
+          userRecord.branchId || undefined,
+          user.id,
+          today,
+          today
+        );
+        
+        if (todayShifts.length === 0) {
+          return res.status(400).json({ 
+            message: "Bugün için atanmış vardiya bulunamadı. Lütfen supervisor ile iletişime geçin." 
+          });
+        }
+        
+        // Use the first shift found for today
+        shiftId = todayShifts[0].id;
+      } else {
+        // VALIDATION: If shiftId provided, ensure it belongs to this user
+        const shift = await storage.getShift(shiftId);
+        
+        if (!shift) {
+          return res.status(400).json({ 
+            message: "Belirtilen vardiya bulunamadı." 
+          });
+        }
+        
+        if (shift.assignedToId !== user.id) {
+          return res.status(403).json({ 
+            message: "Bu vardiya size atanmamış. Lütfen supervisor ile iletişime geçin." 
+          });
+        }
+        
+        if (shift.shiftDate !== today) {
+          return res.status(400).json({ 
+            message: "Bu vardiya bugün için değil. Lütfen doğru tarih için giriş yapın." 
+          });
+        }
+      }
+
+      // Validate base attendance data
       const validatedData = insertShiftAttendanceSchema.parse({
-        ...req.body,
-        userId: user.id, // Always use authenticated user
-        checkInTime: new Date(), // Auto timestamp
+        ...otherData,
+        shiftId,
+        userId: user.id,
+        checkInTime: new Date(),
+        photoUrl,
+        analysisStatus: 'pending',
       });
-      
-      const record = await storage.createShiftAttendance(validatedData);
-      res.status(201).json(record);
+
+      // Run AI dress code analysis (synchronous with 10s timeout)
+      const employeeName = userRecord.firstName 
+        ? `${userRecord.firstName} ${userRecord.lastName || ''}`.trim() 
+        : userRecord.username;
+
+      let analysisResult;
+      try {
+        analysisResult = await Promise.race([
+          analyzeDressCodePhoto(photoUrl, employeeName, user.id),
+          new Promise<null>((_, reject) => 
+            setTimeout(() => reject(new Error('AI timeout')), 10000)
+          )
+        ]);
+      } catch (error: any) {
+        console.warn("AI analysis timeout or error:", error.message);
+        analysisResult = null;
+      }
+
+      // Prepare final attendance data with analysis results
+      const attendanceData = {
+        ...validatedData,
+        analysisStatus: analysisResult ? 'completed' : 'error',
+        analysisDetails: analysisResult ? {
+          isCompliant: analysisResult.isCompliant,
+          score: analysisResult.score,
+          summary: analysisResult.summary,
+          details: analysisResult.details,
+        } : null,
+        analysisTimestamp: analysisResult ? new Date() : null,
+        aiWarnings: analysisResult?.violations || [],
+      };
+
+      // Create attendance record
+      const record = await storage.createShiftAttendance(attendanceData);
+
+      // Update user's photo quota
+      await storage.updateUser(user.id, {
+        dailyPhotoCount: dailyPhotoCount + 1,
+        lastPhotoDate: today,
+      });
+
+      // Return response with analysis verdict
+      const remaining = 10 - (dailyPhotoCount + 1);
+      res.status(201).json({
+        ...record,
+        quota: {
+          remaining,
+          total: 10,
+          used: dailyPhotoCount + 1,
+        },
+      });
     } catch (error: any) {
       console.error("Error creating attendance record:", error);
       if (error.name === 'ZodError') {
