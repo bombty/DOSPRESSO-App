@@ -54,6 +54,24 @@ export interface RAGResponse {
   }>;
 }
 
+export interface ShiftSuggestion {
+  shiftDate: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  shiftType: "morning" | "evening" | "night";
+  assignedCandidateIds: string[]; // User IDs of recommended employees
+  confidence: number; // 0-100
+  notes: string; // AI reasoning
+}
+
+export interface ShiftPlanResponse {
+  suggestions: ShiftSuggestion[];
+  totalShifts: number;
+  weekStart: string;
+  weekEnd: string;
+  cached: boolean;
+}
+
 export async function analyzeTaskPhoto(
   photoUrl: string,
   taskDescription: string,
@@ -536,5 +554,131 @@ export async function answerQuestionWithRAG(
   } catch (error) {
     console.error("RAG soru-cevap hatası:", error);
     throw new Error("Soru cevaplanamadı");
+  }
+}
+
+// Generate AI-powered shift plan based on historical data and workload
+export async function generateShiftPlan(
+  branchId: number,
+  weekStart: string, // YYYY-MM-DD
+  weekEnd: string, // YYYY-MM-DD
+  historicalShifts: Array<{ shiftDate: string; shiftType: string; assignedToId: string | null; status: string }>,
+  employees: Array<{ id: string; name: string; role: string }>,
+  workloadMetrics?: { averageDailySales?: number; peakHours?: string[] },
+  userId?: string,
+  skipCache: boolean = false
+): Promise<ShiftPlanResponse> {
+  // Check cache first (24h TTL, branch+week hash)
+  const cacheKey = generateCacheKey('shift-plan', branchId, weekStart, weekEnd);
+  if (!skipCache) {
+    const cached = cache.get<ShiftPlanResponse>(cacheKey);
+    if (cached) {
+      console.log('✅ Cache HIT - Shift plan (cost saved!)');
+      return { ...cached, cached: true };
+    }
+  }
+
+  // Rate limit check (shift planning calls are expensive, separate quota)
+  const SHIFT_PLAN_LIMIT = 3; // 3 shift plan calls per day per supervisor
+  if (userId && !aiRateLimiter.canMakeRequest(userId, 'shift_plan', SHIFT_PLAN_LIMIT)) {
+    console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily shift plan quota`);
+    throw new Error("Günlük vardiya planlama limitiniz doldu (3/gün). Yarın tekrar deneyin.");
+  }
+
+  try {
+    // Prepare historical data summary
+    const shiftStats = {
+      totalShifts: historicalShifts.length,
+      morningShifts: historicalShifts.filter(s => s.shiftType === 'morning').length,
+      eveningShifts: historicalShifts.filter(s => s.shiftType === 'evening').length,
+      nightShifts: historicalShifts.filter(s => s.shiftType === 'night').length,
+      assignedShifts: historicalShifts.filter(s => s.assignedToId !== null).length,
+      completedShifts: historicalShifts.filter(s => s.status === 'completed').length,
+    };
+
+    const employeeList = employees.map(e => `${e.name} (${e.role}) [ID: ${e.id}]`).join('\n');
+
+    const response = await openai.chat.completions.create({
+      model: CHAT_MODEL, // gpt-4o for planning
+      messages: [
+        {
+          role: "system",
+          content: `Sen DOSPRESSO kahve dükkanları için bir AI vardiya planlamacısısın. Geçmiş verileri analiz ederek optimal vardiya planları oluşturursun. Her vardiya için en uygun çalışanları öner ve güven skoru ver.`,
+        },
+        {
+          role: "user",
+          content: `DOSPRESSO Şube #${branchId} için ${weekStart} - ${weekEnd} tarihleri arası vardiya planı oluştur.
+
+Geçmiş Vardiya İstatistikleri (son 6 hafta):
+- Toplam vardiya: ${shiftStats.totalShifts}
+- Sabah vardiyas ı: ${shiftStats.morningShifts}
+- Akşam vardiyası: ${shiftStats.eveningShifts}
+- Gece vardiyası: ${shiftStats.nightShifts}
+- Atanmış vardiya: ${shiftStats.assignedShifts}
+- Tamamlanan vardiya: ${shiftStats.completedShifts}
+
+Mevcut Çalışanlar:
+${employeeList}
+
+${workloadMetrics ? `Yoğunluk Metrikleri:
+- Ortalama günlük satış: ${workloadMetrics.averageDailySales || 'Bilinmiyor'}
+- Yoğun saatler: ${workloadMetrics.peakHours?.join(', ') || 'Bilinmiyor'}` : ''}
+
+GÖREV: ${weekStart} - ${weekEnd} tarihleri arası her gün için vardiya planı oluştur. Her vardiya için:
+1. Vardiya tipi (morning: 08:00-16:00, evening: 16:00-00:00, night: 00:00-08:00)
+2. En uygun çalışan(lar)ın ID'lerini öner
+3. Güven skoru (0-100: ne kadar emin olduğun)
+4. Kısa açıklama (neden bu çalışanları seçtin?)
+
+JSON formatında yanıt ver:
+{
+  "suggestions": [
+    {
+      "shiftDate": "YYYY-MM-DD",
+      "startTime": "HH:MM",
+      "endTime": "HH:MM",
+      "shiftType": "morning",
+      "assignedCandidateIds": ["user-id-1", "user-id-2"],
+      "confidence": 85,
+      "notes": "Açıklama"
+    }
+  ]
+}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4096, // Limit tokens for cost
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("OpenAI yanıt içeriği boş");
+    }
+
+    const result = JSON.parse(content);
+    const planResponse: ShiftPlanResponse = {
+      suggestions: result.suggestions || [],
+      totalShifts: result.suggestions?.length || 0,
+      weekStart,
+      weekEnd,
+      cached: false,
+    };
+
+    // Cache for 24 hours
+    cache.set(cacheKey, planResponse, 24 * 60 * 60 * 1000);
+    
+    // Increment rate limit counter
+    if (userId) {
+      aiRateLimiter.incrementRequest(userId, 'shift_plan');
+      const remaining = aiRateLimiter.getRemainingCalls(userId, 'shift_plan', SHIFT_PLAN_LIMIT);
+      console.log(`💰 AI call made - Shift plan (${remaining}/${SHIFT_PLAN_LIMIT} remaining for user ${userId})`);
+    } else {
+      console.log('💰 AI call made - Shift plan');
+    }
+
+    return planResponse;
+  } catch (error) {
+    console.error("Vardiya planı oluşturma hatası:", error);
+    throw new Error("Vardiya planı oluşturulamadı");
   }
 }

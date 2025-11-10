@@ -1380,6 +1380,8 @@ export const shifts = pgTable("shifts", {
   endTime: time("end_time", { precision: 0 }).notNull(),
   shiftType: varchar("shift_type", { length: 20 }).notNull(),
   status: varchar("status", { length: 20 }).notNull().default("draft"),
+  workloadScore: numeric("workload_score", { precision: 5, scale: 2 }),
+  aiPlanId: varchar("ai_plan_id", { length: 50 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1394,10 +1396,15 @@ export const insertShiftSchema = createInsertSchema(shifts).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  shiftType: z.enum(["morning", "evening", "night"]),
+  status: z.enum(["draft", "pending_hq", "confirmed", "completed", "cancelled"]).default("draft"),
 });
 
 export type InsertShift = z.infer<typeof insertShiftSchema>;
 export type Shift = typeof shifts.$inferSelect;
+export type ShiftType = "morning" | "evening" | "night";
+export type ShiftStatus = "draft" | "pending_hq" | "confirmed" | "completed" | "cancelled";
 
 // Shift Checklists (many-to-many) - Assign checklists to shifts
 export const shiftChecklists = pgTable("shift_checklists", {

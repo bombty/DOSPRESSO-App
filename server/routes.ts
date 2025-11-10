@@ -2955,6 +2955,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-powered shift plan suggestions (supervisor + destek only)
+  app.post('/api/shifts/ai-suggest', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      // Authorization: supervisors + destek only
+      if (role !== 'supervisor' && role !== 'supervisor_buddy' && role !== 'destek') {
+        return res.status(403).json({ message: "AI vardiya planı oluşturma yetkiniz yok" });
+      }
+
+      // Validate request payload
+      const z = await import('zod');
+      const aiSuggestSchema = z.z.object({
+        branchId: z.z.number().int().positive(),
+        weekStart: z.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Geçersiz tarih formatı (YYYY-MM-DD)"),
+        weekEnd: z.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Geçersiz tarih formatı (YYYY-MM-DD)"),
+      }).refine(data => data.weekStart <= data.weekEnd, {
+        message: "Başlangıç tarihi bitiş tarihinden önce olmalı"
+      });
+
+      const validatedData = aiSuggestSchema.parse(req.body);
+      const { branchId, weekStart, weekEnd } = validatedData;
+
+      // Branch access check for supervisors
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        if (!user.branchId || user.branchId !== branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubeniz için AI öneri alabilirsiniz" });
+        }
+      }
+
+      // Fetch historical shifts (last 6 weeks for analysis)
+      const sixWeeksAgo = new Date();
+      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
+      const historicalShifts = await storage.getShifts(
+        branchId,
+        undefined,
+        sixWeeksAgo.toISOString().split('T')[0],
+        weekEnd
+      );
+
+      // Fetch branch employees
+      const branchUsers = await storage.getUsersByBranch(branchId);
+      const employees = branchUsers.map(u => ({
+        id: u.id,
+        name: `${u.firstName} ${u.lastName}`,
+        role: u.role || 'barista',
+      }));
+
+      // Optional: Fetch workload metrics (if available)
+      // For now, we'll skip this and focus on historical shifts
+
+      const { generateShiftPlan } = await import('./ai');
+      const plan = await generateShiftPlan(
+        branchId,
+        weekStart,
+        weekEnd,
+        historicalShifts.map(s => ({
+          shiftDate: s.shiftDate,
+          shiftType: s.shiftType,
+          assignedToId: s.assignedToId,
+          status: s.status,
+        })),
+        employees,
+        undefined, // workloadMetrics (optional)
+        user.id
+      );
+
+      res.json(plan);
+    } catch (error: any) {
+      console.error("Error generating shift plan:", error);
+      if (error.message?.includes('limit')) {
+        return res.status(429).json({ message: error.message });
+      }
+      res.status(500).json({ message: "AI vardiya planı oluşturulamadı" });
+    }
+  });
+
   // Bulk create shifts (supervisor: own branch only)
   app.post('/api/shifts/bulk-create', isAuthenticated, async (req: any, res) => {
     try {
