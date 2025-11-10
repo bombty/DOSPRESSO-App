@@ -92,6 +92,7 @@ import {
   announcements,
   dailyCashReports,
   shifts,
+  shiftChecklists,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -116,6 +117,7 @@ export interface IStorage {
   getBranch(id: number): Promise<Branch | undefined>;
   createBranch(branch: Omit<Branch, "id" | "createdAt" | "isActive">): Promise<Branch>;
   updateBranch(id: number, updates: Partial<Omit<Branch, "id" | "createdAt" | "isActive">>): Promise<Branch | undefined>;
+  updateBranchSettings(id: number, settings: { openingHours: string; closingHours: string }): Promise<Branch | undefined>;
   deleteBranch(id: number): Promise<void>;
   
   // Task operations
@@ -129,6 +131,12 @@ export interface IStorage {
   getChecklists(): Promise<Checklist[]>;
   getChecklist(id: number): Promise<Checklist | undefined>;
   createChecklist(checklist: InsertChecklist): Promise<Checklist>;
+  updateChecklistSettings(id: number, updates: Partial<{
+    isEditable: boolean;
+    timeWindowStart: string;
+    timeWindowEnd: string;
+    isPhotoRequired: boolean;
+  }>): Promise<Checklist | undefined>;
   
   // Checklist Task operations
   getChecklistTasks(checklistId?: number): Promise<ChecklistTask[]>;
@@ -242,6 +250,8 @@ export interface IStorage {
   getAnnouncements(userId: string, branchId: number | null, role: string): Promise<Announcement[]>;
   getAnnouncementById(id: number): Promise<Announcement | undefined>;
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
+  addAnnouncementAttachments(id: number, attachments: string[]): Promise<Announcement | undefined>;
+  removeAnnouncementAttachment(id: number, attachmentUrl: string): Promise<Announcement | undefined>;
   deleteAnnouncement(id: number): Promise<void>;
   
   // Daily Cash Report operations
@@ -257,6 +267,21 @@ export interface IStorage {
   createShift(shift: InsertShift): Promise<Shift>;
   updateShift(id: number, updates: Partial<InsertShift>): Promise<Shift | undefined>;
   deleteShift(id: number): Promise<void>;
+  
+  // Shift-Checklist junction operations
+  setShiftChecklists(shiftId: number, checklistIds: number[]): Promise<void>;
+  getShiftChecklists(shiftId: number): Promise<Checklist[]>;
+  
+  // Performance Metrics scoring
+  recordPerformanceScore(data: {
+    branchId?: number;
+    userId?: string;
+    date: Date;
+    taskScore: number;
+    photoScore: number;
+    timeScore: number;
+    supervisorScore: number;
+  }): Promise<PerformanceMetric>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -366,6 +391,10 @@ export class DatabaseStorage implements IStorage {
     await db.delete(branches).where(eq(branches.id, id));
   }
 
+  async updateBranchSettings(id: number, settings: { openingHours: string; closingHours: string }): Promise<Branch | undefined> {
+    return this.updateBranch(id, settings);
+  }
+
   // Task operations
   async getTasks(branchId?: number, assignedToId?: string, status?: string): Promise<Task[]> {
     const conditions = [];
@@ -433,6 +462,20 @@ export class DatabaseStorage implements IStorage {
   async createChecklist(checklist: InsertChecklist): Promise<Checklist> {
     const [newChecklist] = await db.insert(checklists).values(checklist).returning();
     return newChecklist;
+  }
+
+  async updateChecklistSettings(id: number, updates: Partial<{
+    isEditable: boolean;
+    timeWindowStart: string;
+    timeWindowEnd: string;
+    isPhotoRequired: boolean;
+  }>): Promise<Checklist | undefined> {
+    const [updated] = await db
+      .update(checklists)
+      .set(updates)
+      .where(eq(checklists.id, id))
+      .returning();
+    return updated;
   }
 
   // Checklist Task operations
@@ -1079,6 +1122,36 @@ export class DatabaseStorage implements IStorage {
     return newAnnouncement;
   }
 
+  async addAnnouncementAttachments(id: number, attachments: string[]): Promise<Announcement | undefined> {
+    const announcement = await this.getAnnouncementById(id);
+    if (!announcement) return undefined;
+    
+    const existingAttachments = announcement.attachments || [];
+    const updatedAttachments = Array.from(new Set([...existingAttachments, ...attachments]));
+    
+    const [updated] = await db
+      .update(announcements)
+      .set({ attachments: updatedAttachments })
+      .where(eq(announcements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async removeAnnouncementAttachment(id: number, attachmentUrl: string): Promise<Announcement | undefined> {
+    const announcement = await this.getAnnouncementById(id);
+    if (!announcement) return undefined;
+    
+    const existingAttachments = announcement.attachments || [];
+    const updatedAttachments = existingAttachments.filter((url: string) => url !== attachmentUrl);
+    
+    const [updated] = await db
+      .update(announcements)
+      .set({ attachments: updatedAttachments })
+      .where(eq(announcements.id, id))
+      .returning();
+    return updated;
+  }
+
   async deleteAnnouncement(id: number): Promise<void> {
     await db.delete(announcements).where(eq(announcements.id, id));
   }
@@ -1212,6 +1285,65 @@ export class DatabaseStorage implements IStorage {
 
   async deleteShift(id: number): Promise<void> {
     await db.delete(shifts).where(eq(shifts.id, id));
+  }
+
+  async setShiftChecklists(shiftId: number, checklistIds: number[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(shiftChecklists).where(eq(shiftChecklists.shiftId, shiftId));
+      
+      if (checklistIds.length > 0) {
+        await tx.insert(shiftChecklists).values(
+          checklistIds.map((checklistId: number) => ({
+            shiftId,
+            checklistId,
+          }))
+        );
+      }
+    });
+  }
+
+  async getShiftChecklists(shiftId: number): Promise<Checklist[]> {
+    const checklistIds = await db
+      .select({ checklistId: shiftChecklists.checklistId })
+      .from(shiftChecklists)
+      .where(eq(shiftChecklists.shiftId, shiftId));
+    
+    if (checklistIds.length === 0) return [];
+    
+    return db
+      .select()
+      .from(checklists)
+      .where(sql`${checklists.id} IN ${sql.raw(`(${checklistIds.map((c: { checklistId: number }) => c.checklistId).join(',')})`)}`);
+  }
+
+  async recordPerformanceScore(data: {
+    branchId?: number;
+    userId?: string;
+    date: Date;
+    taskScore: number;
+    photoScore: number;
+    timeScore: number;
+    supervisorScore: number;
+  }): Promise<PerformanceMetric> {
+    const totalScore = Math.round(
+      data.taskScore * 0.4 +
+      data.photoScore * 0.25 +
+      data.timeScore * 0.25 +
+      data.supervisorScore * 0.1
+    );
+
+    const [metric] = await db.insert(performanceMetrics).values({
+      branchId: data.branchId,
+      userId: data.userId,
+      date: data.date,
+      taskScore: data.taskScore,
+      photoScore: data.photoScore,
+      timeScore: data.timeScore,
+      supervisorScore: data.supervisorScore,
+      totalScore,
+    }).returning();
+    
+    return metric;
   }
 }
 
