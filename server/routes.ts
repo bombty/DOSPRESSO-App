@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./jwtAuth";
-import { sanitizeUser, sanitizeUsers } from "./security";
+import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "./security";
 import { 
   insertTaskSchema, 
   insertChecklistSchema, 
@@ -797,8 +797,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const employees = await storage.getAllEmployees(branchFilter);
       
-      // Sanitize: Remove sensitive fields using security helper
-      res.json(sanitizeUsers(employees));
+      // Sanitize: Remove sensitive fields - HQ users get more details
+      res.json(sanitizeUsersForRole(employees, role as UserRoleType));
     } catch (error) {
       console.error("Error fetching employees:", error);
       res.status(500).json({ message: "Çalışanlar yüklenirken hata oluştu" });
@@ -827,8 +827,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Çalışan bulunamadı" });
       }
 
-      // Sanitize: Remove sensitive fields using security helper
-      res.json(sanitizeUser(employee));
+      // Sanitize: Remove sensitive fields - HQ users get more details
+      res.json(sanitizeUserForRole(employee, role as UserRoleType));
     } catch (error) {
       console.error("Error fetching employee:", error);
       res.status(500).json({ message: "Çalışan bilgileri yüklenirken hata oluştu" });
@@ -896,8 +896,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Çalışan güncellenemedi" });
       }
       
-      // Sanitize: Remove sensitive fields using security helper
-      res.json(sanitizeUser(updated));
+      // Sanitize: Remove sensitive fields - HQ users get more details
+      res.json(sanitizeUserForRole(updated, role as UserRoleType));
     } catch (error) {
       console.error("Error updating employee:", error);
       res.status(500).json({ message: "Çalışan güncellenirken hata oluştu" });
@@ -1050,9 +1050,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? Math.round((completedModules / totalModules) * 100)
         : 0;
 
-      // Sanitize employee data using security helper
+      // Sanitize employee data - HQ users get more details
       res.json({
-        employee: sanitizeUser(employee),
+        employee: sanitizeUserForRole(employee, role as UserRoleType),
         kpis: {
           tasksTotal: allTasks.length,
           tasksCompleted: completedTasks.length,
@@ -1106,8 +1106,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create employee (storage layer handles password hashing if provided)
       const newEmployee = await storage.createUser(employeeData);
       
-      // Sanitize: Remove sensitive fields using security helper
-      res.status(201).json(sanitizeUser(newEmployee));
+      // Sanitize: Remove sensitive fields - HQ users get more details
+      res.status(201).json(sanitizeUserForRole(newEmployee, role as UserRoleType));
     } catch (error) {
       console.error("Error creating employee:", error);
       res.status(500).json({ message: "Çalışan eklenirken hata oluştu" });
