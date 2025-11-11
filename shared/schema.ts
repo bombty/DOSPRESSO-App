@@ -1207,6 +1207,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   tasksCreated: many(tasks),
   faultsReported: many(equipmentFaults),
+  pageContentCreated: many(pageContent, { relationName: "pageContentCreatedBy" }),
+  pageContentUpdated: many(pageContent, { relationName: "pageContentUpdatedBy" }),
 }));
 
 export const checklistsRelations = relations(checklists, ({ many }) => ({
@@ -1681,6 +1683,53 @@ export const menuVisibilityRulesRelations = relations(menuVisibilityRules, ({ on
   branch: one(branches, {
     fields: [menuVisibilityRules.branchId],
     references: [branches.id],
+  }),
+}));
+
+// Page Content (Markdown-based CMS)
+export const pageContent = pgTable("page_content", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: varchar("title", { length: 500 }).notNull(),
+  content: text("content").notNull(),
+  version: integer("version").notNull().default(1),
+  publishedAt: timestamp("published_at"),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  updatedById: varchar("updated_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("page_content_slug_idx").on(table.slug),
+]);
+
+export const insertPageContentSchema = createInsertSchema(pageContent).omit({
+  id: true,
+  version: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  slug: z.string()
+    .min(1, "Slug gerekli")
+    .max(255, "Slug çok uzun")
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug sadece küçük harf, sayı ve tire içermeli"),
+  title: z.string().min(1, "Başlık gerekli").max(500, "Başlık çok uzun"),
+  content: z.string().min(1, "İçerik gerekli"),
+  publishedAt: z.string().datetime().optional().nullable(),
+});
+
+export type InsertPageContent = z.infer<typeof insertPageContentSchema>;
+export type PageContent = typeof pageContent.$inferSelect;
+
+export const pageContentRelations = relations(pageContent, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [pageContent.createdById],
+    references: [users.id],
+    relationName: "pageContentCreatedBy",
+  }),
+  updatedBy: one(users, {
+    fields: [pageContent.updatedById],
+    references: [users.id],
+    relationName: "pageContentUpdatedBy",
   }),
 }));
 
