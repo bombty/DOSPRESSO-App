@@ -30,10 +30,10 @@ export function getSession() {
     proxy: true, // Trust the reverse proxy
     cookie: {
       httpOnly: true,
-      secure: false, // Always false in development to allow localhost
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: sessionTtl,
-      path: '/', // Explicitly set path
+      path: '/',
     },
   });
 }
@@ -51,6 +51,10 @@ export async function setupAuth(app: Express) {
         const user = await storage.getUserByUsername(username);
         
         if (!user) {
+          return done(null, false, { message: "Kullanıcı adı veya şifre hatalı" });
+        }
+
+        if (!user.hashedPassword) {
           return done(null, false, { message: "Kullanıcı adı veya şifre hatalı" });
         }
 
@@ -132,9 +136,9 @@ export async function setupAuth(app: Express) {
   });
 
   // Logout endpoint
-  app.get("/api/logout", (req, res) => {
+  app.post("/api/logout", (req, res) => {
     req.logout(() => {
-      res.json({ success: true });
+      res.json({ message: "Logged out" });
     });
   });
 }

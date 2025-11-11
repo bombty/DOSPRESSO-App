@@ -405,8 +405,8 @@ export type Branch = typeof branches.$inferSelect;
 // Users table (Username/Password Auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: varchar("username", { length: 100 }).notNull().unique(),
-  hashedPassword: varchar("hashed_password", { length: 255 }).notNull(),
+  username: varchar("username", { length: 100 }).unique(),
+  hashedPassword: varchar("hashed_password", { length: 255 }),
   email: varchar("email"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -442,8 +442,14 @@ export const updateUserSchema = createInsertSchema(users).omit({
   hashedPassword: true, // Password updates handled separately
 }).partial();
 
+export const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+export type LoginCredentials = z.infer<typeof loginSchema>;
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
