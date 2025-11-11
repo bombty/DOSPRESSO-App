@@ -25,12 +25,40 @@ import {
   insertMenuItemSchema,
   insertMenuVisibilityRuleSchema,
   insertPageContentSchema,
+  insertAuditTemplateSchema,
+  insertAuditTemplateItemSchema,
+  insertQualityAuditSchema,
+  insertAuditItemScoreSchema,
+  insertCustomerFeedbackSchema,
+  insertMaintenanceScheduleSchema,
+  insertMaintenanceLogSchema,
+  insertCampaignSchema,
+  insertCampaignBranchSchema,
+  insertCampaignMetricSchema,
+  insertFranchiseOnboardingSchema,
+  insertOnboardingDocumentSchema,
+  insertLicenseRenewalSchema,
+  auditTemplates,
+  auditTemplateItems,
+  qualityAudits,
+  auditItemScores,
+  customerFeedback,
+  maintenanceSchedules,
+  maintenanceLogs,
+  campaigns,
+  campaignBranches,
+  campaignMetrics,
+  franchiseOnboarding,
+  onboardingDocuments,
+  licenseRenewals,
   hasPermission,
   isHQRole,
   isBranchRole,
   type UpdateUser,
   type UserRoleType
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, sql } from "drizzle-orm";
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, generateAISummary } from "./ai";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
@@ -4710,6 +4738,545 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Geçersiz CSV verisi", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to import users" });
+    }
+  });
+
+  // ========================================
+  // QUALITY AUDITS API (Kalite Denetimi)
+  // ========================================
+
+  // GET /api/quality-audits - List quality audits
+  app.get('/api/quality-audits', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId } = req.query;
+
+      let query = db.select().from(qualityAudits);
+      
+      // Branch users can only see their own branch audits
+      if (isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        query = query.where(eq(qualityAudits.branchId, user.branchId));
+      } else if (branchId) {
+        // HQ users can filter by branch
+        query = query.where(eq(qualityAudits.branchId, parseInt(branchId as string)));
+      }
+
+      const audits = await query.orderBy(desc(qualityAudits.auditDate));
+      res.json(audits);
+    } catch (error) {
+      console.error("Error fetching quality audits:", error);
+      res.status(500).json({ message: "Denetimler yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/quality-audits - Create quality audit
+  app.post('/api/quality-audits', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ coach/admin can create audits
+      if (!isHQRole(user.role as UserRoleType) || (user.role !== 'coach' && user.role !== 'admin')) {
+        return res.status(403).json({ message: "Sadece coach veya admin denetim oluşturabilir" });
+      }
+
+      const validatedData = insertQualityAuditSchema.parse(req.body);
+      const [audit] = await db.insert(qualityAudits).values({
+        ...validatedData,
+        auditorId: user.id,
+      }).returning();
+
+      res.status(201).json(audit);
+    } catch (error: any) {
+      console.error("Error creating quality audit:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Denetim oluşturulurken hata oluştu" });
+    }
+  });
+
+  // GET /api/audit-templates - List audit templates
+  app.get('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const templates = await db.select().from(auditTemplates).where(eq(auditTemplates.isActive, true));
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching audit templates:", error);
+      res.status(500).json({ message: "Şablonlar yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/audit-templates - Create audit template
+  app.post('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      if (!isHQRole(user.role as UserRoleType) || (user.role !== 'coach' && user.role !== 'admin')) {
+        return res.status(403).json({ message: "Yetkisiz işlem" });
+      }
+
+      const validatedData = insertAuditTemplateSchema.parse(req.body);
+      const [template] = await db.insert(auditTemplates).values({
+        ...validatedData,
+        createdById: user.id,
+      }).returning();
+
+      res.status(201).json(template);
+    } catch (error: any) {
+      console.error("Error creating audit template:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Şablon oluşturulurken hata oluştu" });
+    }
+  });
+
+  // GET /api/audit-templates/:id/items - Get template items
+  app.get('/api/audit-templates/:id/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const items = await db.select().from(auditTemplateItems)
+        .where(eq(auditTemplateItems.templateId, parseInt(id)))
+        .orderBy(auditTemplateItems.sortOrder);
+      
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching template items:", error);
+      res.status(500).json({ message: "Şablon maddeleri yüklenirken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // CUSTOMER FEEDBACK API (Müşteri Geri Bildirim)
+  // ========================================
+
+  // GET /api/customer-feedback - List customer feedback
+  app.get('/api/customer-feedback', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId } = req.query;
+
+      let query = db.select().from(customerFeedback);
+      
+      // Branch users can only see their own branch feedback
+      if (isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        query = query.where(eq(customerFeedback.branchId, user.branchId));
+      } else if (branchId) {
+        query = query.where(eq(customerFeedback.branchId, parseInt(branchId as string)));
+      }
+
+      const feedback = await query.orderBy(desc(customerFeedback.feedbackDate));
+      res.json(feedback);
+    } catch (error) {
+      console.error("Error fetching customer feedback:", error);
+      res.status(500).json({ message: "Geri bildirimler yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/customer-feedback/public - Public endpoint for customer feedback (no auth)
+  app.post('/api/customer-feedback/public', async (req, res) => {
+    try {
+      const validatedData = insertCustomerFeedbackSchema.parse(req.body);
+      const [feedback] = await db.insert(customerFeedback).values(validatedData).returning();
+      res.status(201).json({ message: "Geri bildiriminiz için teşekkürler!", id: feedback.id });
+    } catch (error: any) {
+      console.error("Error creating customer feedback:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Geri bildirim kaydedilirken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/customer-feedback/:id/review - Mark feedback as reviewed
+  app.patch('/api/customer-feedback/:id/review', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      const { reviewNotes } = req.body;
+
+      const [updated] = await db.update(customerFeedback)
+        .set({
+          status: 'reviewed',
+          reviewedById: user.id,
+          reviewedAt: new Date(),
+          reviewNotes,
+        })
+        .where(eq(customerFeedback.id, parseInt(id)))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Geri bildirim bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error reviewing feedback:", error);
+      res.status(500).json({ message: "Geri bildirim güncellenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/customer-feedback/stats/:branchId - Get branch feedback statistics
+  app.get('/api/customer-feedback/stats/:branchId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { branchId } = req.params;
+      
+      const stats = await db.select({
+        avgRating: sql<number>`AVG(${customerFeedback.rating})`,
+        totalCount: sql<number>`COUNT(*)`,
+        rating5: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 5)`,
+        rating4: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 4)`,
+        rating3: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 3)`,
+        rating2: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 2)`,
+        rating1: sql<number>`COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 1)`,
+      })
+      .from(customerFeedback)
+      .where(eq(customerFeedback.branchId, parseInt(branchId)));
+
+      res.json(stats[0] || { avgRating: 0, totalCount: 0, rating5: 0, rating4: 0, rating3: 0, rating2: 0, rating1: 0 });
+    } catch (error) {
+      console.error("Error fetching feedback stats:", error);
+      res.status(500).json({ message: "İstatistikler yüklenirken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // MAINTENANCE SCHEDULES API (Proaktif Bakım)
+  // ========================================
+
+  // GET /api/maintenance-schedules - List maintenance schedules
+  app.get('/api/maintenance-schedules', isAuthenticated, async (req: any, res) => {
+    try {
+      const { equipmentId } = req.query;
+
+      let query = db.select().from(maintenanceSchedules).where(eq(maintenanceSchedules.isActive, true));
+      
+      if (equipmentId) {
+        query = query.where(eq(maintenanceSchedules.equipmentId, parseInt(equipmentId as string)));
+      }
+
+      const schedules = await query.orderBy(maintenanceSchedules.nextMaintenanceDate);
+      res.json(schedules);
+    } catch (error) {
+      console.error("Error fetching maintenance schedules:", error);
+      res.status(500).json({ message: "Bakım planları yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/maintenance-schedules - Create maintenance schedule
+  app.post('/api/maintenance-schedules', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ teknik/admin can create schedules
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const validatedData = insertMaintenanceScheduleSchema.parse(req.body);
+      const [schedule] = await db.insert(maintenanceSchedules).values(validatedData).returning();
+
+      res.status(201).json(schedule);
+    } catch (error: any) {
+      console.error("Error creating maintenance schedule:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Bakım planı oluşturulurken hata oluştu" });
+    }
+  });
+
+  // GET /api/maintenance-logs - List maintenance logs
+  app.get('/api/maintenance-logs', isAuthenticated, async (req: any, res) => {
+    try {
+      const { equipmentId } = req.query;
+
+      let query = db.select().from(maintenanceLogs);
+      
+      if (equipmentId) {
+        query = query.where(eq(maintenanceLogs.equipmentId, parseInt(equipmentId as string)));
+      }
+
+      const logs = await query.orderBy(desc(maintenanceLogs.performedDate));
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching maintenance logs:", error);
+      res.status(500).json({ message: "Bakım geçmişi yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/maintenance-logs - Create maintenance log
+  app.post('/api/maintenance-logs', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      const validatedData = insertMaintenanceLogSchema.parse(req.body);
+      const [log] = await db.insert(maintenanceLogs).values({
+        ...validatedData,
+        performedById: user.id,
+      }).returning();
+
+      res.status(201).json(log);
+    } catch (error: any) {
+      console.error("Error creating maintenance log:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Bakım kaydı oluşturulurken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // CAMPAIGNS API (Kampanya Yönetimi)
+  // ========================================
+
+  // GET /api/campaigns - List campaigns
+  app.get('/api/campaigns', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { status, branchId } = req.query;
+
+      let query = db.select().from(campaigns);
+      
+      if (status) {
+        query = query.where(eq(campaigns.status, status as string));
+      }
+
+      let allCampaigns = await query.orderBy(desc(campaigns.startDate));
+
+      // If branch user or branchId filter, get only campaigns for that branch
+      if (isBranchRole(user.role as UserRoleType) && user.branchId) {
+        const branchCampaigns = await db.select({ campaignId: campaignBranches.campaignId })
+          .from(campaignBranches)
+          .where(eq(campaignBranches.branchId, user.branchId));
+        
+        const campaignIds = branchCampaigns.map(bc => bc.campaignId);
+        allCampaigns = allCampaigns.filter(c => campaignIds.includes(c.id));
+      } else if (branchId) {
+        const branchCampaigns = await db.select({ campaignId: campaignBranches.campaignId })
+          .from(campaignBranches)
+          .where(eq(campaignBranches.branchId, parseInt(branchId as string)));
+        
+        const campaignIds = branchCampaigns.map(bc => bc.campaignId);
+        allCampaigns = allCampaigns.filter(c => campaignIds.includes(c.id));
+      }
+
+      res.json(allCampaigns);
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+      res.status(500).json({ message: "Kampanyalar yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/campaigns - Create campaign
+  app.post('/api/campaigns', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ users can create campaigns
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const validatedData = insertCampaignSchema.parse(req.body);
+      const [campaign] = await db.insert(campaigns).values({
+        ...validatedData,
+        createdById: user.id,
+      }).returning();
+
+      res.status(201).json(campaign);
+    } catch (error: any) {
+      console.error("Error creating campaign:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Kampanya oluşturulurken hata oluştu" });
+    }
+  });
+
+  // POST /api/campaigns/:id/branches - Add branches to campaign
+  app.post('/api/campaigns/:id/branches', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const { id } = req.params;
+      const { branchIds } = req.body;
+
+      if (!Array.isArray(branchIds) || branchIds.length === 0) {
+        return res.status(400).json({ message: "Şube listesi gerekli" });
+      }
+
+      const values = branchIds.map(branchId => ({
+        campaignId: parseInt(id),
+        branchId,
+      }));
+
+      await db.insert(campaignBranches).values(values).onConflictDoNothing();
+
+      res.json({ message: "Şubeler kampanyaya eklendi" });
+    } catch (error) {
+      console.error("Error adding branches to campaign:", error);
+      res.status(500).json({ message: "Şubeler eklenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/campaigns/:id/branches - Get campaign branches
+  app.get('/api/campaigns/:id/branches', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const branches = await db.select()
+        .from(campaignBranches)
+        .where(eq(campaignBranches.campaignId, parseInt(id)));
+
+      res.json(branches);
+    } catch (error) {
+      console.error("Error fetching campaign branches:", error);
+      res.status(500).json({ message: "Şubeler yüklenirken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // FRANCHISE ONBOARDING API (Franchise Açılış)
+  // ========================================
+
+  // GET /api/franchise-onboarding - List onboarding processes
+  app.get('/api/franchise-onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ can see all, branch users see their own
+      let query = db.select().from(franchiseOnboarding);
+      
+      if (isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        query = query.where(eq(franchiseOnboarding.branchId, user.branchId));
+      }
+
+      const processes = await query.orderBy(desc(franchiseOnboarding.expectedOpeningDate));
+      res.json(processes);
+    } catch (error) {
+      console.error("Error fetching onboarding processes:", error);
+      res.status(500).json({ message: "Açılış süreçleri yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/franchise-onboarding - Create onboarding process
+  app.post('/api/franchise-onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const validatedData = insertFranchiseOnboardingSchema.parse(req.body);
+      const [process] = await db.insert(franchiseOnboarding).values(validatedData).returning();
+
+      res.status(201).json(process);
+    } catch (error: any) {
+      console.error("Error creating onboarding process:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Açılış süreci oluşturulurken hata oluştu" });
+    }
+  });
+
+  // GET /api/franchise-onboarding/:id/documents - Get onboarding documents
+  app.get('/api/franchise-onboarding/:id/documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const documents = await db.select()
+        .from(onboardingDocuments)
+        .where(eq(onboardingDocuments.onboardingId, parseInt(id)));
+
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching onboarding documents:", error);
+      res.status(500).json({ message: "Belgeler yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/onboarding-documents - Upload onboarding document
+  app.post('/api/onboarding-documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      const validatedData = insertOnboardingDocumentSchema.parse(req.body);
+      const [document] = await db.insert(onboardingDocuments).values({
+        ...validatedData,
+        uploadedById: user.id,
+        uploadedAt: new Date(),
+      }).returning();
+
+      res.status(201).json(document);
+    } catch (error: any) {
+      console.error("Error uploading onboarding document:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Belge yüklenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/license-renewals - List license renewals
+  app.get('/api/license-renewals', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId } = req.query;
+
+      let query = db.select().from(licenseRenewals);
+      
+      if (isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        query = query.where(eq(licenseRenewals.branchId, user.branchId));
+      } else if (branchId) {
+        query = query.where(eq(licenseRenewals.branchId, parseInt(branchId as string)));
+      }
+
+      const renewals = await query.orderBy(licenseRenewals.expiryDate);
+      res.json(renewals);
+    } catch (error) {
+      console.error("Error fetching license renewals:", error);
+      res.status(500).json({ message: "Lisanslar yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/license-renewals - Create license renewal
+  app.post('/api/license-renewals', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const validatedData = insertLicenseRenewalSchema.parse(req.body);
+      const [renewal] = await db.insert(licenseRenewals).values(validatedData).returning();
+
+      res.status(201).json(renewal);
+    } catch (error: any) {
+      console.error("Error creating license renewal:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Lisans oluşturulurken hata oluştu" });
     }
   });
 
