@@ -1857,3 +1857,345 @@ export const insertBrandingSchema = createInsertSchema(branding).omit({
 
 export type InsertBranding = z.infer<typeof insertBrandingSchema>;
 export type Branding = typeof branding.$inferSelect;
+
+// ========================================
+// QUALITY AUDITS (Kalite Denetimi)
+// ========================================
+
+// Audit Templates - Reusable audit checklists
+export const auditTemplates = pgTable("audit_templates", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).notNull(), // cleanliness, service, equipment, product_quality
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("audit_templates_category_idx").on(table.category),
+]);
+
+export const insertAuditTemplateSchema = createInsertSchema(auditTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAuditTemplate = z.infer<typeof insertAuditTemplateSchema>;
+export type AuditTemplate = typeof auditTemplates.$inferSelect;
+
+// Audit Template Items - Checklist items within a template
+export const auditTemplateItems = pgTable("audit_template_items", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").notNull().references(() => auditTemplates.id, { onDelete: "cascade" }),
+  itemText: text("item_text").notNull(),
+  maxPoints: integer("max_points").notNull().default(10), // Maksimum puan
+  sortOrder: integer("sort_order").notNull().default(0),
+}, (table) => [
+  index("audit_template_items_template_idx").on(table.templateId),
+]);
+
+export const insertAuditTemplateItemSchema = createInsertSchema(auditTemplateItems).omit({
+  id: true,
+});
+
+export type InsertAuditTemplateItem = z.infer<typeof insertAuditTemplateItemSchema>;
+export type AuditTemplateItem = typeof auditTemplateItems.$inferSelect;
+
+// Quality Audits - Actual audit records
+export const qualityAudits = pgTable("quality_audits", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  templateId: integer("template_id").notNull().references(() => auditTemplates.id),
+  auditorId: varchar("auditor_id").notNull().references(() => users.id), // Denetçi (HQ coach/admin)
+  auditDate: timestamp("audit_date").notNull(),
+  totalScore: integer("total_score").notNull().default(0), // Hesaplanan toplam skor
+  maxPossibleScore: integer("max_possible_score").notNull().default(0),
+  percentageScore: integer("percentage_score").notNull().default(0), // 0-100
+  status: varchar("status", { length: 20 }).notNull().default("completed"), // completed, in_progress
+  notes: text("notes"),
+  photoUrls: text("photo_urls").array(), // Kanıt fotoğrafları
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("quality_audits_branch_idx").on(table.branchId),
+  index("quality_audits_auditor_idx").on(table.auditorId),
+  index("quality_audits_date_idx").on(table.auditDate),
+]);
+
+export const insertQualityAuditSchema = createInsertSchema(qualityAudits).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertQualityAudit = z.infer<typeof insertQualityAuditSchema>;
+export type QualityAudit = typeof qualityAudits.$inferSelect;
+
+// Audit Item Scores - Individual item scores within an audit
+export const auditItemScores = pgTable("audit_item_scores", {
+  id: serial("id").primaryKey(),
+  auditId: integer("audit_id").notNull().references(() => qualityAudits.id, { onDelete: "cascade" }),
+  templateItemId: integer("template_item_id").notNull().references(() => auditTemplateItems.id),
+  scoreGiven: integer("score_given").notNull(), // Verilen puan
+  notes: text("notes"),
+}, (table) => [
+  index("audit_item_scores_audit_idx").on(table.auditId),
+]);
+
+export const insertAuditItemScoreSchema = createInsertSchema(auditItemScores).omit({
+  id: true,
+});
+
+export type InsertAuditItemScore = z.infer<typeof insertAuditItemScoreSchema>;
+export type AuditItemScore = typeof auditItemScores.$inferSelect;
+
+// ========================================
+// CUSTOMER FEEDBACK (Müşteri Geri Bildirim)
+// ========================================
+
+export const customerFeedback = pgTable("customer_feedback", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(), // 1-5 yıldız
+  comment: text("comment"),
+  feedbackDate: timestamp("feedback_date").defaultNow(),
+  customerName: varchar("customer_name", { length: 100 }), // Opsiyonel
+  customerEmail: varchar("customer_email", { length: 200 }), // Opsiyonel
+  isAnonymous: boolean("is_anonymous").notNull().default(true),
+  status: varchar("status", { length: 20 }).notNull().default("new"), // new, reviewed, resolved
+  reviewedById: varchar("reviewed_by_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+}, (table) => [
+  index("customer_feedback_branch_idx").on(table.branchId),
+  index("customer_feedback_date_idx").on(table.feedbackDate),
+  index("customer_feedback_rating_idx").on(table.rating),
+]);
+
+export const insertCustomerFeedbackSchema = createInsertSchema(customerFeedback).omit({
+  id: true,
+  feedbackDate: true,
+});
+
+export type InsertCustomerFeedback = z.infer<typeof insertCustomerFeedbackSchema>;
+export type CustomerFeedback = typeof customerFeedback.$inferSelect;
+
+// ========================================
+// MAINTENANCE SCHEDULES (Proaktif Bakım)
+// ========================================
+
+export const maintenanceSchedules = pgTable("maintenance_schedules", {
+  id: serial("id").primaryKey(),
+  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+  maintenanceType: varchar("maintenance_type", { length: 50 }).notNull(), // routine, deep_clean, calibration, part_replacement
+  frequencyDays: integer("frequency_days").notNull(), // Kaç günde bir (örn: 180 = 6 ayda bir)
+  lastMaintenanceDate: date("last_maintenance_date"),
+  nextMaintenanceDate: date("next_maintenance_date").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("maintenance_schedules_equipment_idx").on(table.equipmentId),
+  index("maintenance_schedules_next_date_idx").on(table.nextMaintenanceDate),
+]);
+
+export const insertMaintenanceScheduleSchema = createInsertSchema(maintenanceSchedules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMaintenanceSchedule = z.infer<typeof insertMaintenanceScheduleSchema>;
+export type MaintenanceSchedule = typeof maintenanceSchedules.$inferSelect;
+
+// Maintenance Logs - Bakım geçmişi
+export const maintenanceLogs = pgTable("maintenance_logs", {
+  id: serial("id").primaryKey(),
+  scheduleId: integer("schedule_id").references(() => maintenanceSchedules.id, { onDelete: "set null" }),
+  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+  performedById: varchar("performed_by_id").notNull().references(() => users.id),
+  performedDate: timestamp("performed_date").notNull(),
+  maintenanceType: varchar("maintenance_type", { length: 50 }).notNull(),
+  workDescription: text("work_description").notNull(),
+  partsReplaced: text("parts_replaced").array(), // Değiştirilen parçalar
+  cost: numeric("cost", { precision: 10, scale: 2 }),
+  nextMaintenanceDue: date("next_maintenance_due"),
+  photoUrls: text("photo_urls").array(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("maintenance_logs_equipment_idx").on(table.equipmentId),
+  index("maintenance_logs_schedule_idx").on(table.scheduleId),
+  index("maintenance_logs_date_idx").on(table.performedDate),
+]);
+
+export const insertMaintenanceLogSchema = createInsertSchema(maintenanceLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMaintenanceLog = z.infer<typeof insertMaintenanceLogSchema>;
+export type MaintenanceLog = typeof maintenanceLogs.$inferSelect;
+
+// ========================================
+// CAMPAIGNS (Kampanya Yönetimi)
+// ========================================
+
+export const campaigns = pgTable("campaigns", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  campaignType: varchar("campaign_type", { length: 50 }).notNull(), // promotion, seasonal, new_product, discount
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  targetRoles: text("target_roles").array(), // Hedef roller (opsiyonel)
+  imageUrls: text("image_urls").array(), // Kampanya görselleri
+  pdfUrl: text("pdf_url"), // PDF döküman
+  priority: varchar("priority", { length: 20 }).notNull().default("normal"), // low, normal, high, urgent
+  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, active, paused, completed
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("campaigns_status_idx").on(table.status),
+  index("campaigns_start_date_idx").on(table.startDate),
+  index("campaigns_end_date_idx").on(table.endDate),
+]);
+
+export const insertCampaignSchema = createInsertSchema(campaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
+export type Campaign = typeof campaigns.$inferSelect;
+
+// Campaign Branches - Kampanyanın hedef şubeleri
+export const campaignBranches = pgTable("campaign_branches", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+}, (table) => [
+  index("campaign_branches_campaign_idx").on(table.campaignId),
+  index("campaign_branches_branch_idx").on(table.branchId),
+  unique("unique_campaign_branch").on(table.campaignId, table.branchId),
+]);
+
+export const insertCampaignBranchSchema = createInsertSchema(campaignBranches).omit({
+  id: true,
+});
+
+export type InsertCampaignBranch = z.infer<typeof insertCampaignBranchSchema>;
+export type CampaignBranch = typeof campaignBranches.$inferSelect;
+
+// Campaign Metrics - Kampanya başarı ölçümü (manuel girilen metrikler)
+export const campaignMetrics = pgTable("campaign_metrics", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  salesIncrease: numeric("sales_increase", { precision: 10, scale: 2 }), // Satış artışı %
+  customerCount: integer("customer_count"), // Müşteri sayısı
+  revenue: numeric("revenue", { precision: 12, scale: 2 }), // Gelir
+  notes: text("notes"),
+  reportedById: varchar("reported_by_id").notNull().references(() => users.id),
+  reportDate: timestamp("report_date").defaultNow(),
+}, (table) => [
+  index("campaign_metrics_campaign_idx").on(table.campaignId),
+  index("campaign_metrics_branch_idx").on(table.branchId),
+]);
+
+export const insertCampaignMetricSchema = createInsertSchema(campaignMetrics).omit({
+  id: true,
+  reportDate: true,
+});
+
+export type InsertCampaignMetric = z.infer<typeof insertCampaignMetricSchema>;
+export type CampaignMetric = typeof campaignMetrics.$inferSelect;
+
+// ========================================
+// FRANCHISE ONBOARDING (Franchise Açılış)
+// ========================================
+
+export const franchiseOnboarding = pgTable("franchise_onboarding", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull().default("planning"), // planning, in_progress, completed
+  expectedOpeningDate: date("expected_opening_date"),
+  actualOpeningDate: date("actual_opening_date"),
+  completionPercentage: integer("completion_percentage").notNull().default(0), // 0-100
+  assignedCoachId: varchar("assigned_coach_id").references(() => users.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("franchise_onboarding_branch_idx").on(table.branchId),
+  index("franchise_onboarding_status_idx").on(table.status),
+]);
+
+export const insertFranchiseOnboardingSchema = createInsertSchema(franchiseOnboarding).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFranchiseOnboarding = z.infer<typeof insertFranchiseOnboardingSchema>;
+export type FranchiseOnboarding = typeof franchiseOnboarding.$inferSelect;
+
+// Onboarding Documents - Gerekli belgeler
+export const onboardingDocuments = pgTable("onboarding_documents", {
+  id: serial("id").primaryKey(),
+  onboardingId: integer("onboarding_id").notNull().references(() => franchiseOnboarding.id, { onDelete: "cascade" }),
+  documentType: varchar("document_type", { length: 100 }).notNull(), // license, contract, insurance, permits
+  documentName: varchar("document_name", { length: 200 }).notNull(),
+  fileUrl: text("file_url"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, uploaded, approved, rejected
+  uploadedById: varchar("uploaded_by_id").references(() => users.id),
+  uploadedAt: timestamp("uploaded_at"),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  expiryDate: date("expiry_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("onboarding_documents_onboarding_idx").on(table.onboardingId),
+  index("onboarding_documents_status_idx").on(table.status),
+]);
+
+export const insertOnboardingDocumentSchema = createInsertSchema(onboardingDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOnboardingDocument = z.infer<typeof insertOnboardingDocumentSchema>;
+export type OnboardingDocument = typeof onboardingDocuments.$inferSelect;
+
+// License Renewals - Lisans yenileme hatırlatıcıları
+export const licenseRenewals = pgTable("license_renewals", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  licenseType: varchar("license_type", { length: 100 }).notNull(), // franchise, health, business
+  licenseNumber: varchar("license_number", { length: 100 }),
+  issueDate: date("issue_date").notNull(),
+  expiryDate: date("expiry_date").notNull(),
+  renewalStatus: varchar("renewal_status", { length: 20 }).notNull().default("active"), // active, expiring_soon, expired, renewed
+  reminderDaysBefore: integer("reminder_days_before").notNull().default(30), // Kaç gün önce hatırlat
+  notes: text("notes"),
+  documentUrl: text("document_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("license_renewals_branch_idx").on(table.branchId),
+  index("license_renewals_expiry_idx").on(table.expiryDate),
+  index("license_renewals_status_idx").on(table.renewalStatus),
+]);
+
+export const insertLicenseRenewalSchema = createInsertSchema(licenseRenewals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLicenseRenewal = z.infer<typeof insertLicenseRenewalSchema>;
+export type LicenseRenewal = typeof licenseRenewals.$inferSelect;
