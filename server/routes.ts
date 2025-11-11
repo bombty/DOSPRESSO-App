@@ -24,6 +24,7 @@ import {
   insertMenuSectionSchema,
   insertMenuItemSchema,
   insertMenuVisibilityRuleSchema,
+  insertPageContentSchema,
   hasPermission,
   isHQRole,
   isBranchRole,
@@ -34,6 +35,11 @@ import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArt
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+
+// Update schema for page content - allows partial updates, immutable createdById
+const updatePageContentSchema = insertPageContentSchema.partial().omit({
+  createdById: true,
+});
 
 // Helper function to assert branch scope for branch users
 function assertBranchScope(user: Express.User): number {
@@ -4226,6 +4232,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting visibility rule:", error);
       res.status(500).json({ message: "Failed to delete visibility rule" });
+    }
+  });
+
+  // ===== PAGE CONTENT MANAGEMENT ENDPOINTS (HQ Only) =====
+
+  // GET /api/admin/page-content - List all page content
+  app.get('/api/admin/page-content', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const contents = await storage.listPageContent();
+      res.json(contents);
+    } catch (error) {
+      console.error("Error fetching page content:", error);
+      res.status(500).json({ message: "Failed to fetch page content" });
+    }
+  });
+
+  // GET /api/admin/page-content/:slug - Get single page content by slug
+  app.get('/api/admin/page-content/:slug', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const content = await storage.getPageContent(req.params.slug);
+      if (!content) {
+        return res.status(404).json({ message: "İçerik bulunamadı" });
+      }
+      res.json(content);
+    } catch (error) {
+      console.error("Error fetching page content:", error);
+      res.status(500).json({ message: "Failed to fetch page content" });
+    }
+  });
+
+  // POST /api/admin/page-content - Create new page content
+  app.post('/api/admin/page-content', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const validatedData = insertPageContentSchema.parse({
+        ...req.body,
+        createdById: user.id,
+        updatedById: user.id,
+      });
+      
+      const newContent = await storage.createPageContent(validatedData);
+      res.status(201).json(newContent);
+    } catch (error: any) {
+      console.error("Error creating page content:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create page content" });
+    }
+  });
+
+  // PATCH /api/admin/page-content/:slug - Update page content
+  app.patch('/api/admin/page-content/:slug', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      // Validate request body with partial schema
+      const validatedData = updatePageContentSchema.parse(req.body);
+      
+      const updateData = {
+        ...validatedData,
+        updatedById: user.id,
+      };
+      
+      const updated = await storage.updatePageContent(req.params.slug, updateData);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating page content:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      if (error instanceof Error && error.message === "Content not found") {
+        return res.status(404).json({ message: "İçerik bulunamadı" });
+      }
+      res.status(500).json({ message: "Failed to update page content" });
+    }
+  });
+
+  // DELETE /api/admin/page-content/:slug - Delete page content
+  app.delete('/api/admin/page-content/:slug', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      await storage.deletePageContent(req.params.slug);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting page content:", error);
+      res.status(500).json({ message: "Failed to delete page content" });
     }
   });
 

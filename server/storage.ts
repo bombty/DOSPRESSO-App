@@ -74,6 +74,8 @@ import type {
   InsertMenuItem,
   MenuVisibilityRule,
   InsertMenuVisibilityRule,
+  PageContent,
+  InsertPageContent,
 } from "@shared/schema";
 import {
   users,
@@ -114,6 +116,7 @@ import {
   menuSections,
   menuItems,
   menuVisibilityRules,
+  pageContent,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -352,6 +355,13 @@ export interface IStorage {
   
   createVisibilityRule(data: InsertMenuVisibilityRule): Promise<MenuVisibilityRule>;
   deleteVisibilityRule(id: number): Promise<void>;
+
+  // Page Content operations
+  listPageContent(): Promise<PageContent[]>;
+  getPageContent(slug: string): Promise<PageContent | undefined>;
+  createPageContent(data: InsertPageContent): Promise<PageContent>;
+  updatePageContent(slug: string, data: Partial<InsertPageContent> & { updatedById: string }): Promise<PageContent>;
+  deletePageContent(slug: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1931,6 +1941,55 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVisibilityRule(id: number): Promise<void> {
     await db.delete(menuVisibilityRules).where(eq(menuVisibilityRules.id, id));
+  }
+
+  // Page Content operations
+  async listPageContent(): Promise<PageContent[]> {
+    return await db.select().from(pageContent).orderBy(desc(pageContent.updatedAt));
+  }
+
+  async getPageContent(slug: string): Promise<PageContent | undefined> {
+    const result = await db.select().from(pageContent).where(eq(pageContent.slug, slug)).limit(1);
+    return result[0];
+  }
+
+  async createPageContent(data: InsertPageContent): Promise<PageContent> {
+    const insertData: any = {
+      ...data,
+      publishedAt: data.publishedAt ? new Date(data.publishedAt) : null,
+    };
+    const [result] = await db.insert(pageContent).values(insertData).returning();
+    return result!;
+  }
+
+  async updatePageContent(slug: string, data: Partial<InsertPageContent> & { updatedById: string }): Promise<PageContent> {
+    // Increment version on update
+    const existing = await this.getPageContent(slug);
+    if (!existing) throw new Error("Content not found");
+    
+    const updateData: any = {
+      ...data,
+      publishedAt: data.publishedAt ? new Date(data.publishedAt) : data.publishedAt === null ? null : undefined,
+      version: existing.version + 1,
+      updatedAt: new Date(),
+    };
+    
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+    
+    const [result] = await db.update(pageContent)
+      .set(updateData)
+      .where(eq(pageContent.slug, slug))
+      .returning();
+    return result!;
+  }
+
+  async deletePageContent(slug: string): Promise<void> {
+    await db.delete(pageContent).where(eq(pageContent.slug, slug));
   }
 }
 
