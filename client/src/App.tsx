@@ -37,6 +37,7 @@ import AdminSeed from "@/pages/admin-seed";
 import AdminMenuManagement from "@/pages/yonetim/menu";
 import AdminContentManagement from "@/pages/yonetim/icerik";
 import Settings from "@/pages/yonetim/ayarlar";
+import UserCRM from "@/pages/yonetim/kullanicilar";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -77,6 +78,7 @@ function Router() {
           <Route path="/yonetim/menu" component={AdminMenuManagement} />
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
           <Route path="/yonetim/ayarlar" component={Settings} />
+          <Route path="/yonetim/kullanicilar" component={UserCRM} />
         </>
       )}
       <Route component={NotFound} />

@@ -134,6 +134,8 @@ export interface IStorage {
   updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
   getAllEmployees(branchId?: number): Promise<User[]>;
+  getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string }): Promise<User[]>;
+  bulkImportUsers(users: UpsertUser[]): Promise<User[]>;
   
   // Employee Warnings operations
   getEmployeeWarnings(userId: string): Promise<EmployeeWarning[]>;
@@ -452,6 +454,51 @@ export class DatabaseStorage implements IStorage {
       return db.select().from(users).where(eq(users.branchId, branchId));
     }
     return db.select().from(users);
+  }
+
+  async getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string }): Promise<User[]> {
+    const conditions: SQL<unknown>[] = [];
+    
+    if (filters.role) {
+      conditions.push(eq(users.role, filters.role));
+    }
+    if (filters.branchId !== undefined) {
+      conditions.push(eq(users.branchId, filters.branchId));
+    }
+    if (filters.search) {
+      const searchTerm = `%${filters.search.toLowerCase()}%`;
+      conditions.push(
+        sql`LOWER(${users.firstName}) LIKE ${searchTerm} OR LOWER(${users.lastName}) LIKE ${searchTerm} OR LOWER(${users.email}) LIKE ${searchTerm}`
+      );
+    }
+    
+    if (conditions.length > 0) {
+      return db.select().from(users).where(and(...conditions)).orderBy(users.firstName, users.lastName);
+    }
+    return db.select().from(users).orderBy(users.firstName, users.lastName);
+  }
+
+  async bulkImportUsers(insertUsers: UpsertUser[]): Promise<User[]> {
+    if (insertUsers.length === 0) return [];
+    
+    const imported = await db
+      .insert(users)
+      .values(insertUsers)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          firstName: sql`EXCLUDED.first_name`,
+          lastName: sql`EXCLUDED.last_name`,
+          email: sql`EXCLUDED.email`,
+          role: sql`EXCLUDED.role`,
+          branchId: sql`EXCLUDED.branch_id`,
+          profileImageUrl: sql`EXCLUDED.profile_image_url`,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    
+    return imported;
   }
 
   // Branch operations

@@ -4395,6 +4395,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== USER CRM ENDPOINTS (HQ Only) =====
+
+  // GET /api/admin/users - Get all users with filters
+  app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const { role, branchId, search } = req.query;
+      const filters = {
+        role: role as string | undefined,
+        branchId: branchId ? parseInt(branchId as string) : undefined,
+        search: search as string | undefined,
+      };
+
+      const allUsers = await storage.getAllUsersWithFilters(filters);
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // PATCH /api/admin/users/:id - Update user role/branch
+  app.patch('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const { id } = req.params;
+      const updateSchema = z.object({
+        role: z.string().optional(),
+        branchId: z.number().nullable().optional(),
+      });
+
+      const validatedData = updateSchema.parse(req.body);
+      const updated = await storage.updateUser(id, validatedData);
+
+      if (!updated) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // POST /api/admin/users/bulk-import - Bulk import users from CSV
+  app.post('/api/admin/users/bulk-import', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const { users: csvUsers } = req.body;
+      if (!Array.isArray(csvUsers) || csvUsers.length === 0) {
+        return res.status(400).json({ message: "Geçerli kullanıcı listesi gerekli" });
+      }
+
+      // Validate each user record
+      const userSchema = z.object({
+        id: z.string(),
+        firstName: z.string(),
+        lastName: z.string(),
+        email: z.string().email(),
+        role: z.string(),
+        branchId: z.number().nullable(),
+        profileImageUrl: z.string().nullable().optional(),
+      });
+
+      const validatedUsers = csvUsers.map(u => userSchema.parse(u));
+      const imported = await storage.bulkImportUsers(validatedUsers);
+
+      res.json({ imported: imported.length, users: imported });
+    } catch (error: any) {
+      console.error("Error bulk importing users:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz CSV verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to import users" });
+    }
+  });
+
   startReminderSystem();
 
   const httpServer = createServer(app);
