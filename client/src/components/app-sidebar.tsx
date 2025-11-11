@@ -20,6 +20,9 @@ import {
   ChevronRight,
   QrCode,
   Circle,
+  FileSearch,
+  Store,
+  Star,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -76,6 +79,9 @@ const lucideIconMap: Record<string, any> = {
   "Users2": LucideIcons.Users2,
   "ShoppingCart": LucideIcons.ShoppingCart,
   "LayoutDashboard": LucideIcons.LayoutDashboard,
+  "FileSearch": LucideIcons.FileSearch,
+  "Store": LucideIcons.Store,
+  "Star": LucideIcons.Star,
 };
 
 const getIconComponent = (iconName: string | null | undefined) => {
@@ -268,6 +274,41 @@ const menuGroups: MenuGroup[] = [
         url: "/bilgi-bankasi",
         icon: BookOpen,
         module: "knowledge_base",
+      },
+    ],
+  },
+  {
+    groupTr: "Kalite & Gelişim",
+    icon: FileSearch,
+    scope: "hq",
+    items: [
+      {
+        title: "Kalite Denetimi",
+        titleTr: "Kalite Denetimi",
+        url: "/kalite-denetimi",
+        icon: FileSearch,
+        module: "dashboard",
+      },
+      {
+        title: "Müşteri Geri Bildirimi",
+        titleTr: "Müşteri Geri Bildirimi",
+        url: "/musteri-geribildirimi",
+        icon: Star,
+        module: "dashboard",
+      },
+      {
+        title: "Kampanya Yönetimi",
+        titleTr: "Kampanya Yönetimi",
+        url: "/kampanya-yonetimi",
+        icon: Megaphone,
+        module: "dashboard",
+      },
+      {
+        title: "Franchise Açılış",
+        titleTr: "Franchise Açılış",
+        url: "/franchise-acilis",
+        icon: Store,
+        module: "dashboard",
       },
     ],
   },

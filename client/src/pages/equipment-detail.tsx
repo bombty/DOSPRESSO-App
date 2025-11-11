@@ -48,6 +48,30 @@ interface EquipmentDetailResponse {
   serviceRequests?: EquipmentServiceRequest[];
 }
 
+interface MaintenanceSchedule {
+  id: number;
+  equipmentId: number;
+  maintenanceType: string;
+  intervalDays: number;
+  lastMaintenanceDate: string | null;
+  nextMaintenanceDate: string;
+  isActive: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ProactiveMaintenanceLog {
+  id: number;
+  equipmentId: number;
+  scheduleId: number | null;
+  maintenanceType: string;
+  performedDate: string;
+  performedById: string;
+  notes: string | null;
+  createdAt: string;
+}
+
 const commentFormSchema = insertEquipmentCommentSchema.pick({ comment: true });
 type CommentFormData = z.infer<typeof commentFormSchema>;
 
@@ -127,6 +151,16 @@ export default function EquipmentDetail() {
 
   const { data: serviceRequests = [] } = useQuery<EquipmentServiceRequest[]>({
     queryKey: ['/api/equipment', equipmentId, 'service-requests'],
+    enabled: !!equipmentId,
+  });
+
+  const { data: maintenanceSchedules = [] } = useQuery<MaintenanceSchedule[]>({
+    queryKey: ['/api/maintenance-schedules'],
+    enabled: !!equipmentId,
+  });
+
+  const { data: proactiveMaintenanceLogs = [] } = useQuery<ProactiveMaintenanceLog[]>({
+    queryKey: ['/api/maintenance-logs'],
     enabled: !!equipmentId,
   });
 
@@ -580,6 +614,10 @@ export default function EquipmentDetail() {
           <TabsTrigger value="maintenance" data-testid="tab-maintenance">
             Bakım Geçmişi
           </TabsTrigger>
+          <TabsTrigger value="maintenance-schedule" data-testid="tab-maintenance-schedule">
+            <Calendar className="h-4 w-4 mr-2" />
+            Bakım Planı
+          </TabsTrigger>
           <TabsTrigger value="faults" data-testid="tab-faults">
             Arızalar
           </TabsTrigger>
@@ -1032,6 +1070,103 @@ export default function EquipmentDetail() {
                   <p className="text-muted-foreground text-center">
                     QR kod henüz oluşturulmadı
                   </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="maintenance-schedule" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Bakım Planı</CardTitle>
+              <CardDescription>Periyodik bakım programı ve hatırlatıcılar</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {maintenanceSchedules.filter(s => s.equipmentId === parseInt(equipmentId)).length > 0 ? (
+                <div className="space-y-3" data-testid="list-maintenance-schedules">
+                  {maintenanceSchedules.filter(s => s.equipmentId === parseInt(equipmentId)).map((schedule) => (
+                    <Card key={schedule.id} data-testid={`card-maintenance-schedule-${schedule.id}`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base">{schedule.maintenanceType}</CardTitle>
+                          <Badge variant={schedule.isActive ? "default" : "secondary"} data-testid={`badge-schedule-status-${schedule.id}`}>
+                            {schedule.isActive ? "Aktif" : "Pasif"}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Periyod:</span>
+                          <span data-testid={`text-interval-${schedule.id}`}>{schedule.intervalDays} gün</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Son Bakım:</span>
+                          <span data-testid={`text-last-maintenance-${schedule.id}`}>
+                            {schedule.lastMaintenanceDate ? format(new Date(schedule.lastMaintenanceDate), "d MMM yyyy", { locale: tr }) : "Henüz yapılmadı"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Sonraki Bakım:</span>
+                          <span className="font-medium" data-testid={`text-next-maintenance-${schedule.id}`}>
+                            {format(new Date(schedule.nextMaintenanceDate), "d MMM yyyy", { locale: tr })}
+                          </span>
+                        </div>
+                        {schedule.notes && (
+                          <div className="pt-2 border-t">
+                            <p className="text-muted-foreground text-xs" data-testid={`text-schedule-notes-${schedule.id}`}>{schedule.notes}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8" data-testid="empty-state-maintenance-schedules">
+                  <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Henüz bakım planı oluşturulmamış</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Bakım Geçmişi</CardTitle>
+              <CardDescription>Yapılan bakım kayıtları</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {proactiveMaintenanceLogs.filter(l => l.equipmentId === parseInt(equipmentId)).length > 0 ? (
+                <div className="space-y-3" data-testid="list-maintenance-logs">
+                  {proactiveMaintenanceLogs.filter(l => l.equipmentId === parseInt(equipmentId)).map((log) => (
+                    <Card key={log.id} data-testid={`card-maintenance-log-${log.id}`}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">{log.maintenanceType}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Yapılma Tarihi:</span>
+                          <span data-testid={`text-performed-date-${log.id}`}>
+                            {format(new Date(log.performedDate), "d MMM yyyy", { locale: tr })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Yapan:</span>
+                          <span data-testid={`text-performed-by-${log.id}`}>{log.performedById}</span>
+                        </div>
+                        {log.notes && (
+                          <div className="pt-2 border-t">
+                            <p className="text-muted-foreground text-xs" data-testid={`text-log-notes-${log.id}`}>{log.notes}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8" data-testid="empty-state-maintenance-logs">
+                  <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Henüz bakım kaydı bulunmuyor</p>
                 </div>
               )}
             </CardContent>

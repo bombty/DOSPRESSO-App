@@ -38,6 +38,10 @@ import AdminContentManagement from "@/pages/yonetim/icerik";
 import Settings from "@/pages/yonetim/ayarlar";
 import UserCRM from "@/pages/yonetim/kullanicilar";
 import AICostDashboard from "@/pages/yonetim/ai-maliyetler";
+import KaliteDenetimi from "@/pages/kalite-denetimi";
+import MusteriGeribildirimi from "@/pages/musteri-geribildirimi";
+import KampanyaYonetimi from "@/pages/kampanya-yonetimi";
+import FranchiseAcilis from "@/pages/franchise-acilis";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -74,6 +78,10 @@ function Router() {
           <Route path="/hq-destek" component={HQSupport} />
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/performans" component={Performance} />
+          <Route path="/kalite-denetimi" component={KaliteDenetimi} />
+          <Route path="/musteri-geribildirimi" component={MusteriGeribildirimi} />
+          <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
+          <Route path="/franchise-acilis" component={FranchiseAcilis} />
           <Route path="/admin/seed" component={AdminSeed} />
           <Route path="/yonetim/menu" component={AdminMenuManagement} />
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
