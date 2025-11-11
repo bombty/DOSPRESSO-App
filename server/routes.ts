@@ -4343,6 +4343,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== BRANDING ENDPOINTS (HQ Only) =====
+
+  // GET /api/admin/branding - Get current branding (logo)
+  app.get('/api/admin/branding', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const branding = await storage.getBranding();
+      // Sanitize response: only expose logoUrl and updatedAt
+      res.json({
+        logoUrl: branding?.logoUrl || null,
+        updatedAt: branding?.updatedAt || null,
+      });
+    } catch (error) {
+      console.error("Error fetching branding:", error);
+      res.status(500).json({ message: "Failed to fetch branding" });
+    }
+  });
+
+  // POST /api/admin/branding/logo - Update logo URL
+  app.post('/api/admin/branding/logo', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      // Validate logoUrl with Zod (URL format check)
+      const brandingSchema = z.object({
+        logoUrl: z.string().url("Geçerli bir URL gerekli"),
+      });
+      
+      const validatedData = brandingSchema.parse(req.body);
+      const updated = await storage.updateBrandingLogo(validatedData.logoUrl, user.id);
+      
+      // Sanitize response
+      res.json({
+        logoUrl: updated.logoUrl,
+        updatedAt: updated.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Error updating logo:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update logo" });
+    }
+  });
+
   startReminderSystem();
 
   const httpServer = createServer(app);

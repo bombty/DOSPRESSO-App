@@ -1755,3 +1755,23 @@ export const aiSummaryResponseSchema = z.object({
 });
 
 export type AISummaryResponse = z.infer<typeof aiSummaryResponseSchema>;
+
+// ========================================
+// BRANDING CONFIGURATION
+// ========================================
+
+// Branding table - Company logo and branding assets (singleton pattern)
+export const branding = pgTable("branding", {
+  id: serial("id").primaryKey(),
+  logoUrl: text("logo_url"), // Public S3 URL for company logo
+  updatedById: varchar("updated_by_id").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBrandingSchema = createInsertSchema(branding).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertBranding = z.infer<typeof insertBrandingSchema>;
+export type Branding = typeof branding.$inferSelect;

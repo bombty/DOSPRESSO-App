@@ -76,6 +76,8 @@ import type {
   InsertMenuVisibilityRule,
   PageContent,
   InsertPageContent,
+  Branding,
+  InsertBranding,
 } from "@shared/schema";
 import {
   users,
@@ -117,6 +119,7 @@ import {
   menuItems,
   menuVisibilityRules,
   pageContent,
+  branding,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -362,6 +365,10 @@ export interface IStorage {
   createPageContent(data: InsertPageContent): Promise<PageContent>;
   updatePageContent(slug: string, data: Partial<InsertPageContent> & { updatedById: string }): Promise<PageContent>;
   deletePageContent(slug: string): Promise<void>;
+
+  // Branding operations
+  getBranding(): Promise<Branding | undefined>;
+  updateBrandingLogo(logoUrl: string, updatedById: string): Promise<Branding>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1990,6 +1997,33 @@ export class DatabaseStorage implements IStorage {
 
   async deletePageContent(slug: string): Promise<void> {
     await db.delete(pageContent).where(eq(pageContent.slug, slug));
+  }
+
+  // Branding operations
+  async getBranding(): Promise<Branding | undefined> {
+    const [brand] = await db.select().from(branding).limit(1);
+    return brand;
+  }
+
+  async updateBrandingLogo(logoUrl: string, updatedById: string): Promise<Branding> {
+    const existing = await this.getBranding();
+    
+    if (existing) {
+      // Update existing branding row
+      const [updated] = await db
+        .update(branding)
+        .set({ logoUrl, updatedById, updatedAt: new Date() })
+        .where(eq(branding.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      // Create first branding row (singleton pattern)
+      const [created] = await db
+        .insert(branding)
+        .values({ logoUrl, updatedById })
+        .returning();
+      return created;
+    }
   }
 }
 
