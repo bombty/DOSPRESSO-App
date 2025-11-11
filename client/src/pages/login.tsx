@@ -46,9 +46,6 @@ export default function Login() {
       return response.json();
     },
     onSuccess: async (data: any) => {
-      // Invalidate auth cache to refetch user data
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
       toast({
         title: "Giriş başarılı",
         description: "Hoş geldiniz!",
