@@ -14,13 +14,12 @@ export default function AdminSeedPage() {
     setResult(null);
 
     try {
-      const token = localStorage.getItem('dospresso_token');
       const response = await fetch('/api/admin/seed-equipment-training', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
+        credentials: 'include',
       });
 
       const data = await response.json();

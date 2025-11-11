@@ -486,17 +486,17 @@ export function AppSidebar() {
     return "U";
   };
 
-  const handleLogout = () => {
-    // Remove token from localStorage
-    localStorage.removeItem('dospresso_token');
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
     
-    // Dispatch custom event to notify useAuth hook
-    window.dispatchEvent(new Event('tokenChanged'));
-    
-    // Clear all cached queries
     queryClient.clear();
-    
-    // Navigate to login page
     navigate('/login');
   };
 

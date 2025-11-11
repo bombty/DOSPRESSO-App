@@ -63,15 +63,8 @@ export default function UserCRM() {
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ['/api/admin/users', roleFilter, branchFilter, searchQuery],
     queryFn: async () => {
-      const token = localStorage.getItem('dospresso_token');
-      const headers: HeadersInit = {};
-      
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
       const res = await fetch(buildUsersQueryUrl(), {
-        headers,
+        credentials: 'include',
       });
 
       if (!res.ok) {

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import logoUrl from "@assets/IMG_5044_1762851115459.png";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Kullanıcı adı zorunludur"),
@@ -45,13 +46,6 @@ export default function Login() {
       return response.json();
     },
     onSuccess: async (data: any) => {
-      // Save JWT token to localStorage
-      if (data.token) {
-        localStorage.setItem('dospresso_token', data.token);
-        // Dispatch custom event to notify useAuth hook
-        window.dispatchEvent(new Event('tokenChanged'));
-      }
-      
       // Invalidate auth cache to refetch user data
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
@@ -79,7 +73,15 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <img 
+              src={logoUrl} 
+              alt="DOSPRESSO Logo" 
+              className="w-48"
+              data-testid="img-logo"
+            />
+          </div>
           <CardTitle className="text-2xl font-bold text-center">DOSPRESSO</CardTitle>
           <CardDescription className="text-center">
             Franchise Yönetim Sistemi
@@ -132,7 +134,7 @@ export default function Login() {
                 type="submit"
                 className="w-full"
                 disabled={loginMutation.isPending}
-                data-testid="button-submit-login"
+                data-testid="button-login"
               >
                 {loginMutation.isPending ? (
                   <>
@@ -145,25 +147,6 @@ export default function Login() {
               </Button>
             </form>
           </Form>
-          
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">veya</span>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => window.location.href = '/api/login'}
-            data-testid="button-replit-login"
-          >
-            Replit ile Giriş Yap
-          </Button>
         </CardContent>
       </Card>
     </div>

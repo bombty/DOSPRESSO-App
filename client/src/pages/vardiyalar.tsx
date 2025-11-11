@@ -150,13 +150,7 @@ export default function Vardiyalar() {
     queryKey: ['/api/shifts', dateFrom, dateTo, selectedUserFilter],
     queryFn: async () => {
       const queryParams = buildQueryParams();
-      const token = localStorage.getItem('dospresso_token');
-      const headers: HeadersInit = {};
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
       const response = await fetch(`/api/shifts${queryParams}`, {
-        headers,
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch shifts');

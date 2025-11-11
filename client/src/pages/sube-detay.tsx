@@ -47,9 +47,8 @@ export default function SubeDetayPage() {
   const { data: branch, isLoading: branchLoading } = useQuery<Branch>({
     queryKey: ["/api/branches", branchId],
     queryFn: async () => {
-      const token = localStorage.getItem('dospresso_token');
       const res = await fetch(`/api/branches/${branchId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
       });
       if (!res.ok) throw new Error(res.statusText);
       return res.json();
@@ -61,9 +60,8 @@ export default function SubeDetayPage() {
   const { data: employees = [], isLoading: employeesLoading } = useQuery<User[]>({
     queryKey: ["/api/employees", branchId.toString()],
     queryFn: async () => {
-      const token = localStorage.getItem('dospresso_token');
       const res = await fetch(`/api/employees?branchId=${branchId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
       });
       if (!res.ok) throw new Error(res.statusText);
       return res.json();
@@ -75,9 +73,8 @@ export default function SubeDetayPage() {
   const { data: tasks = [] } = useQuery<any[]>({
     queryKey: ["/api/tasks", branchId],
     queryFn: async () => {
-      const token = localStorage.getItem('dospresso_token');
       const res = await fetch(`/api/tasks?branchId=${branchId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
       });
       if (!res.ok) throw new Error(res.statusText);
       return res.json();
@@ -89,9 +86,8 @@ export default function SubeDetayPage() {
   const { data: equipment = [] } = useQuery<any[]>({
     queryKey: ["/api/equipment", branchId],
     queryFn: async () => {
-      const token = localStorage.getItem('dospresso_token');
       const res = await fetch(`/api/equipment?branchId=${branchId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
       });
       if (!res.ok) throw new Error(res.statusText);
       return res.json();

@@ -116,12 +116,6 @@ export default function IKPage() {
   const { data: employees = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/employees", branchFilter, user?.branchId],
     queryFn: async () => {
-      const token = localStorage.getItem('dospresso_token');
-      const headers: HeadersInit = {};
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-      
       // Branch users can only see their own branch employees
       // HQ users can see all or filter by branch
       let url = '/api/employees';
@@ -138,7 +132,7 @@ export default function IKPage() {
         }
       }
       
-      const res = await fetch(url, { headers });
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error(res.statusText);
       return res.json();
     },
