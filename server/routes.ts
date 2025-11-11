@@ -21,6 +21,9 @@ import {
   insertEmployeeWarningSchema,
   insertLeaveRequestSchema,
   insertShiftAttendanceSchema,
+  insertMenuSectionSchema,
+  insertMenuItemSchema,
+  insertMenuVisibilityRuleSchema,
   hasPermission,
   isHQRole,
   isBranchRole,
@@ -4023,6 +4026,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting attendance record:", error);
       res.status(500).json({ message: "Yoklama kaydı silinemedi" });
+    }
+  });
+
+  // ===== MENU MANAGEMENT ENDPOINTS (HQ Admin Only) =====
+  
+  // GET /api/admin/menu - List all menu data
+  app.get('/api/admin/menu', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const menu = await storage.listMenu();
+      res.json(menu);
+    } catch (error) {
+      console.error("Error fetching menu:", error);
+      res.status(500).json({ message: "Failed to fetch menu" });
+    }
+  });
+
+  // POST /api/admin/menu/sections - Create section
+  app.post('/api/admin/menu/sections', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const data = insertMenuSectionSchema.parse(req.body);
+      const section = await storage.createMenuSection(data);
+      res.status(201).json(section);
+    } catch (error: any) {
+      console.error("Error creating menu section:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid menu section data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create menu section" });
+    }
+  });
+
+  // PATCH /api/admin/menu/sections/:id - Update section
+  app.patch('/api/admin/menu/sections/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const id = parseInt(req.params.id);
+      const data = insertMenuSectionSchema.partial().parse(req.body);
+      const section = await storage.updateMenuSection(id, data);
+      res.json(section);
+    } catch (error: any) {
+      console.error("Error updating menu section:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid menu section data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update menu section" });
+    }
+  });
+
+  // DELETE /api/admin/menu/sections/:id - Delete section
+  app.delete('/api/admin/menu/sections/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const id = parseInt(req.params.id);
+      await storage.deleteMenuSection(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting menu section:", error);
+      res.status(500).json({ message: "Failed to delete menu section" });
+    }
+  });
+
+  // PATCH /api/admin/menu/sections/order - Reorder sections
+  app.patch('/api/admin/menu/sections/order', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const { sectionIds } = req.body;
+      if (!Array.isArray(sectionIds) || !sectionIds.every(id => typeof id === 'number')) {
+        return res.status(400).json({ message: "Invalid sectionIds array" });
+      }
+      await storage.reorderMenuSections(sectionIds);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error reordering menu sections:", error);
+      res.status(500).json({ message: "Failed to reorder menu sections" });
+    }
+  });
+
+  // POST /api/admin/menu/items - Create item
+  app.post('/api/admin/menu/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const data = insertMenuItemSchema.parse(req.body);
+      const item = await storage.createMenuItem(data);
+      res.status(201).json(item);
+    } catch (error: any) {
+      console.error("Error creating menu item:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid menu item data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create menu item" });
+    }
+  });
+
+  // PATCH /api/admin/menu/items/:id - Update item
+  app.patch('/api/admin/menu/items/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const id = parseInt(req.params.id);
+      const data = insertMenuItemSchema.partial().parse(req.body);
+      const item = await storage.updateMenuItem(id, data);
+      res.json(item);
+    } catch (error: any) {
+      console.error("Error updating menu item:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid menu item data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update menu item" });
+    }
+  });
+
+  // DELETE /api/admin/menu/items/:id - Delete item
+  app.delete('/api/admin/menu/items/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const id = parseInt(req.params.id);
+      await storage.deleteMenuItem(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting menu item:", error);
+      res.status(500).json({ message: "Failed to delete menu item" });
+    }
+  });
+
+  // PATCH /api/admin/menu/items/order - Reorder items within section
+  app.patch('/api/admin/menu/items/order', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const { sectionId, itemIds } = req.body;
+      if (typeof sectionId !== 'number' || !Array.isArray(itemIds) || !itemIds.every(id => typeof id === 'number')) {
+        return res.status(400).json({ message: "Invalid sectionId or itemIds array" });
+      }
+      await storage.reorderMenuItems(sectionId, itemIds);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error reordering menu items:", error);
+      res.status(500).json({ message: "Failed to reorder menu items" });
+    }
+  });
+
+  // POST /api/admin/menu/visibility-rules - Create visibility rule
+  app.post('/api/admin/menu/visibility-rules', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const data = insertMenuVisibilityRuleSchema.parse(req.body);
+      const rule = await storage.createVisibilityRule(data);
+      res.status(201).json(rule);
+    } catch (error: any) {
+      console.error("Error creating visibility rule:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid visibility rule data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create visibility rule" });
+    }
+  });
+
+  // DELETE /api/admin/menu/visibility-rules/:id - Delete visibility rule
+  app.delete('/api/admin/menu/visibility-rules/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const id = parseInt(req.params.id);
+      await storage.deleteVisibilityRule(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting visibility rule:", error);
+      res.status(500).json({ message: "Failed to delete visibility rule" });
     }
   });
 

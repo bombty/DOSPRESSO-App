@@ -1,3 +1,4 @@
+import * as LucideIcons from "lucide-react";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -18,6 +19,7 @@ import {
   Calendar,
   ChevronRight,
   QrCode,
+  Circle,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -39,10 +41,47 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
-import { canAccessModule, isHQRole, isBranchRole, type PermissionModule } from "@shared/schema";
+import { canAccessModule, isHQRole, isBranchRole, type PermissionModule, type MenuSection, type MenuItem as DBMenuItem, type MenuVisibilityRule } from "@shared/schema";
 import dospressoLogo from "@assets/IMG_5044_1762707935781.png";
 import { useQuery } from "@tanstack/react-query";
 import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
+import { useEffect } from "react";
+
+// PHASE 1: Icon mapping dictionary
+const lucideIconMap: Record<string, any> = {
+  "Home": LucideIcons.Home,
+  "Users": LucideIcons.Users,
+  "Calendar": LucideIcons.Calendar,
+  "Clipboard": LucideIcons.Clipboard,
+  "ClipboardList": LucideIcons.ClipboardList,
+  "CheckSquare": LucideIcons.CheckSquare,
+  "Settings": LucideIcons.Settings,
+  "Wrench": LucideIcons.Wrench,
+  "BookOpen": LucideIcons.BookOpen,
+  "GraduationCap": LucideIcons.GraduationCap,
+  "Bot": LucideIcons.Bot,
+  "BarChart": LucideIcons.BarChart3,
+  "BarChart3": LucideIcons.BarChart3,
+  "Building2": LucideIcons.Building2,
+  "MessageSquare": LucideIcons.MessageSquare,
+  "Bell": LucideIcons.Bell,
+  "Megaphone": LucideIcons.Megaphone,
+  "Wallet": LucideIcons.Wallet,
+  "Clock": LucideIcons.Clock,
+  "QrCode": LucideIcons.QrCode,
+  "Package": LucideIcons.Package,
+  "DollarSign": LucideIcons.DollarSign,
+  "TrendingUp": LucideIcons.TrendingUp,
+  "FileText": LucideIcons.FileText,
+  "Users2": LucideIcons.Users2,
+  "ShoppingCart": LucideIcons.ShoppingCart,
+  "LayoutDashboard": LucideIcons.LayoutDashboard,
+};
+
+const getIconComponent = (iconName: string | null | undefined) => {
+  if (!iconName) return LucideIcons.Circle;
+  return lucideIconMap[iconName] || LucideIcons.Circle;
+};
 
 type MenuItem = {
   title: string;
@@ -256,6 +295,93 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
+// PHASE 4: Visibility Rules Logic
+const checkVisibilityRules = (
+  menuItemId: number,
+  rules: MenuVisibilityRule[],
+  user: any
+): boolean => {
+  const itemRules = rules.filter(r => r.menuItemId === menuItemId);
+  if (itemRules.length === 0) return true; // Default: allow if no rules
+
+  // Priority 1: User-specific rules (with branch scoping)
+  const userRules = itemRules.filter(r => r.ruleType === 'user' && r.userId === user.id);
+  if (userRules.length > 0) {
+    // Check for matching branch scope
+    const matchingUserRule = userRules.find(r => r.branchId === null || r.branchId === user.branchId);
+    if (matchingUserRule) {
+      return matchingUserRule.allow;
+    }
+    // No matching user rule - continue to next priority
+  }
+
+  // Priority 2: Role-based rules (with branch scoping)
+  const roleRules = itemRules.filter(r => r.ruleType === 'role' && r.role === user.role);
+  if (roleRules.length > 0) {
+    // Check branch-scoped role rules first
+    const branchScopedRule = roleRules.find(r => r.branchId === user.branchId);
+    if (branchScopedRule) return branchScopedRule.allow;
+    
+    // Then check global role rules (branchId = null)
+    const globalRoleRule = roleRules.find(r => r.branchId === null);
+    if (globalRoleRule) return globalRoleRule.allow;
+  }
+
+  // Priority 3: Branch-level rules (NEW)
+  const branchRules = itemRules.filter(r => r.ruleType === 'branch' && r.branchId === user.branchId);
+  if (branchRules.length > 0) {
+    // If multiple branch rules exist, use first one (or could use most restrictive)
+    return branchRules[0].allow;
+  }
+
+  // Default: allow
+  return true;
+};
+
+// PHASE 3: Data Transformation
+const transformDynamicMenu = (
+  sections: MenuSection[],
+  items: DBMenuItem[],
+  rules: MenuVisibilityRule[],
+  user: any
+): { groups: MenuGroup[], standalone: MenuItem[] } => {
+  const sectionItemsMap = new Map<number, DBMenuItem[]>();
+  items.forEach(item => {
+    if (!item.isActive) return;
+    if (item.moduleKey && !canAccessModule(user.role as any, item.moduleKey as PermissionModule)) return;
+    
+    if (!checkVisibilityRules(item.id, rules, user)) return;
+    
+    const sectionItems = sectionItemsMap.get(item.sectionId) || [];
+    sectionItems.push(item);
+    sectionItemsMap.set(item.sectionId, sectionItems);
+  });
+
+  const groups: MenuGroup[] = sections
+    .filter(section => {
+      const sectionItems = sectionItemsMap.get(section.id) || [];
+      return sectionItems.length > 0;
+    })
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(section => ({
+      groupTr: section.titleTr,
+      icon: getIconComponent(section.icon),
+      scope: section.scope as 'hq' | 'branch' | 'both' | undefined,
+      items: (sectionItemsMap.get(section.id) || [])
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(item => ({
+          title: item.titleTr,
+          titleTr: item.titleTr,
+          url: item.path,
+          icon: getIconComponent(item.icon),
+          module: (item.moduleKey || 'dashboard') as PermissionModule,
+          scope: item.scope as 'hq' | 'branch' | 'both' | undefined,
+        })),
+    }));
+
+  return { groups, standalone: [] };
+};
+
 const roleLabels: Record<string, string> = {
   // System
   admin: "Admin",
@@ -289,6 +415,35 @@ export function AppSidebar() {
   });
   const unreadCount = unreadData?.count || 0;
 
+  // PHASE 2: API Query - Fetch dynamic menu data
+  const { data: dynamicMenuData, isError } = useQuery<{
+    sections: MenuSection[];
+    items: DBMenuItem[];
+    rules: MenuVisibilityRule[];
+  }>({
+    queryKey: ["/api/admin/menu"],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: 2,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    enabled: !!user,
+  });
+
+  // PHASE 5: Fallback Mechanism
+  const { groups: dynamicGroups, standalone: dynamicStandalone } = dynamicMenuData && !isError && user
+    ? transformDynamicMenu(dynamicMenuData.sections, dynamicMenuData.items, dynamicMenuData.rules, user)
+    : { groups: [], standalone: [] };
+
+  const activeMenuGroups = dynamicGroups.length > 0 ? dynamicGroups : menuGroups;
+  const activeStandaloneItems = dynamicStandalone.length > 0 ? dynamicStandalone : standaloneItems;
+
+  useEffect(() => {
+    if (dynamicGroups.length === 0 && !isError && user) {
+      console.log("[Sidebar] Using hardcoded menu (dynamic menu empty)");
+    }
+  }, [dynamicGroups.length, isError, user]);
+
   // Helper to check if user can see item based on scope
   const canSeeScope = (scope?: 'branch' | 'hq' | 'both') => {
     if (!scope || scope === 'both' || user?.role === 'admin') return true;
@@ -298,14 +453,14 @@ export function AppSidebar() {
   };
 
   // Filter standalone items based on scope and permissions
-  const visibleStandaloneItems = standaloneItems.filter((item) => {
+  const visibleStandaloneItems = activeStandaloneItems.filter((item) => {
     if (!user?.role) return false;
     return canSeeScope(item.scope) && canAccessModule(user.role as any, item.module);
   });
 
   // Filter menu groups based on scope and permissions (exact match only)
   const filterMenuGroups = (targetScope: 'branch' | 'hq' | 'both') => {
-    return menuGroups
+    return activeMenuGroups
       .filter((group) => canSeeScope(group.scope) && group.scope === targetScope)
       .map((group) => ({
         ...group,
@@ -505,3 +660,8 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
+// PHASE 6: Cache Invalidation Export
+export const invalidateMenuCache = () => {
+  queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
+};

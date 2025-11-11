@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, sql, inArray, type SQL } from "drizzle-orm";
+import { eq, desc, asc, and, sql, inArray, type SQL } from "drizzle-orm";
 import type {
   User,
   UpsertUser,
@@ -68,6 +68,12 @@ import type {
   InsertLeaveRequest,
   ShiftAttendance,
   InsertShiftAttendance,
+  MenuSection,
+  InsertMenuSection,
+  MenuItem,
+  InsertMenuItem,
+  MenuVisibilityRule,
+  InsertMenuVisibilityRule,
 } from "@shared/schema";
 import {
   users,
@@ -105,6 +111,9 @@ import {
   shiftChecklists,
   leaveRequests,
   shiftAttendance,
+  menuSections,
+  menuItems,
+  menuVisibilityRules,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -324,6 +333,25 @@ export interface IStorage {
     timeScore: number;
     supervisorScore: number;
   }): Promise<PerformanceMetric>;
+
+  // Menu Management operations
+  listMenu(): Promise<{
+    sections: MenuSection[];
+    items: MenuItem[];
+    rules: MenuVisibilityRule[];
+  }>;
+  createMenuSection(data: InsertMenuSection): Promise<MenuSection>;
+  updateMenuSection(id: number, data: Partial<InsertMenuSection>): Promise<MenuSection>;
+  deleteMenuSection(id: number): Promise<void>;
+  reorderMenuSections(sectionIds: number[]): Promise<void>;
+  
+  createMenuItem(data: InsertMenuItem): Promise<MenuItem>;
+  updateMenuItem(id: number, data: Partial<InsertMenuItem>): Promise<MenuItem>;
+  deleteMenuItem(id: number): Promise<void>;
+  reorderMenuItems(sectionId: number, itemIds: number[]): Promise<void>;
+  
+  createVisibilityRule(data: InsertMenuVisibilityRule): Promise<MenuVisibilityRule>;
+  deleteVisibilityRule(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1817,6 +1845,92 @@ export class DatabaseStorage implements IStorage {
     }).returning();
     
     return metric;
+  }
+
+  // Menu Management operations
+  async listMenu(): Promise<{
+    sections: MenuSection[];
+    items: MenuItem[];
+    rules: MenuVisibilityRule[];
+  }> {
+    const sections = await db.select().from(menuSections).orderBy(asc(menuSections.sortOrder));
+    const items = await db.select().from(menuItems).orderBy(asc(menuItems.sectionId), asc(menuItems.sortOrder));
+    const rules = await db.select().from(menuVisibilityRules);
+    return { sections, items, rules };
+  }
+
+  async createMenuSection(data: InsertMenuSection): Promise<MenuSection> {
+    // Auto-generate sortOrder (max + 1)
+    const [maxSection] = await db
+      .select({ maxOrder: sql<number>`COALESCE(MAX(${menuSections.sortOrder}), 0)` })
+      .from(menuSections);
+    const sortOrder = (maxSection?.maxOrder ?? 0) + 1;
+    
+    const [section] = await db.insert(menuSections).values({ ...data, sortOrder }).returning();
+    return section;
+  }
+
+  async updateMenuSection(id: number, data: Partial<InsertMenuSection>): Promise<MenuSection> {
+    const [updated] = await db.update(menuSections).set(data).where(eq(menuSections.id, id)).returning();
+    if (!updated) {
+      throw new Error(`Menu section ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteMenuSection(id: number): Promise<void> {
+    await db.delete(menuSections).where(eq(menuSections.id, id));
+  }
+
+  async reorderMenuSections(sectionIds: number[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < sectionIds.length; i++) {
+        await tx.update(menuSections).set({ sortOrder: i + 1 }).where(eq(menuSections.id, sectionIds[i]));
+      }
+    });
+  }
+
+  async createMenuItem(data: InsertMenuItem): Promise<MenuItem> {
+    // Auto-generate sortOrder within section (max + 1)
+    const [maxItem] = await db
+      .select({ maxOrder: sql<number>`COALESCE(MAX(${menuItems.sortOrder}), 0)` })
+      .from(menuItems)
+      .where(eq(menuItems.sectionId, data.sectionId));
+    const sortOrder = (maxItem?.maxOrder ?? 0) + 1;
+    
+    const [item] = await db.insert(menuItems).values({ ...data, sortOrder }).returning();
+    return item;
+  }
+
+  async updateMenuItem(id: number, data: Partial<InsertMenuItem>): Promise<MenuItem> {
+    const [updated] = await db.update(menuItems).set(data).where(eq(menuItems.id, id)).returning();
+    if (!updated) {
+      throw new Error(`Menu item ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteMenuItem(id: number): Promise<void> {
+    await db.delete(menuItems).where(eq(menuItems.id, id));
+  }
+
+  async reorderMenuItems(sectionId: number, itemIds: number[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < itemIds.length; i++) {
+        await tx.update(menuItems)
+          .set({ sortOrder: i + 1 })
+          .where(and(eq(menuItems.id, itemIds[i]), eq(menuItems.sectionId, sectionId)));
+      }
+    });
+  }
+
+  async createVisibilityRule(data: InsertMenuVisibilityRule): Promise<MenuVisibilityRule> {
+    const [rule] = await db.insert(menuVisibilityRules).values(data).returning();
+    return rule;
+  }
+
+  async deleteVisibilityRule(id: number): Promise<void> {
+    await db.delete(menuVisibilityRules).where(eq(menuVisibilityRules.id, id));
   }
 }
 

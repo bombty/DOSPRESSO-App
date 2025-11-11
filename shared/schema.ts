@@ -1597,6 +1597,93 @@ export const insertShiftAttendanceSchema = createInsertSchema(shiftAttendance).o
 export type InsertShiftAttendance = z.infer<typeof insertShiftAttendanceSchema>;
 export type ShiftAttendance = typeof shiftAttendance.$inferSelect;
 
+// ========================================
+// DYNAMIC MENU CONFIGURATION TABLES
+// ========================================
+
+// Menu Sections table
+export const menuSections = pgTable("menu_sections", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  titleTr: varchar("title_tr", { length: 200 }).notNull(),
+  scope: varchar("scope", { length: 20 }).notNull(),
+  icon: varchar("icon", { length: 50 }),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const insertMenuSectionSchema = createInsertSchema(menuSections).omit({
+  id: true,
+});
+
+export type InsertMenuSection = z.infer<typeof insertMenuSectionSchema>;
+export type MenuSection = typeof menuSections.$inferSelect;
+
+// Menu Items table
+export const menuItems = pgTable("menu_items", {
+  id: serial("id").primaryKey(),
+  sectionId: integer("section_id").notNull().references(() => menuSections.id, { onDelete: "cascade" }),
+  titleTr: varchar("title_tr", { length: 200 }).notNull(),
+  path: varchar("path", { length: 200 }).notNull(),
+  icon: varchar("icon", { length: 50 }),
+  moduleKey: varchar("module_key", { length: 100 }),
+  scope: varchar("scope", { length: 20 }).notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
+  id: true,
+});
+
+export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
+export type MenuItem = typeof menuItems.$inferSelect;
+
+// Menu Visibility Rules table
+export const menuVisibilityRules = pgTable("menu_visibility_rules", {
+  id: serial("id").primaryKey(),
+  menuItemId: integer("menu_item_id").notNull().references(() => menuItems.id, { onDelete: "cascade" }),
+  ruleType: varchar("rule_type", { length: 20 }).notNull(),
+  role: varchar("role", { length: 50 }),
+  userId: varchar("user_id").references(() => users.id),
+  branchId: integer("branch_id").references(() => branches.id),
+  allow: boolean("allow").notNull().default(true),
+});
+
+export const insertMenuVisibilityRuleSchema = createInsertSchema(menuVisibilityRules).omit({
+  id: true,
+});
+
+export type InsertMenuVisibilityRule = z.infer<typeof insertMenuVisibilityRuleSchema>;
+export type MenuVisibilityRule = typeof menuVisibilityRules.$inferSelect;
+
+// Menu Relations
+export const menuSectionsRelations = relations(menuSections, ({ many }) => ({
+  items: many(menuItems),
+}));
+
+export const menuItemsRelations = relations(menuItems, ({ one, many }) => ({
+  section: one(menuSections, {
+    fields: [menuItems.sectionId],
+    references: [menuSections.id],
+  }),
+  visibilityRules: many(menuVisibilityRules),
+}));
+
+export const menuVisibilityRulesRelations = relations(menuVisibilityRules, ({ one }) => ({
+  menuItem: one(menuItems, {
+    fields: [menuVisibilityRules.menuItemId],
+    references: [menuItems.id],
+  }),
+  user: one(users, {
+    fields: [menuVisibilityRules.userId],
+    references: [users.id],
+  }),
+  branch: one(branches, {
+    fields: [menuVisibilityRules.branchId],
+    references: [branches.id],
+  }),
+}));
+
 // AI Summary types for HQ Dashboard
 export const SummaryCategory = z.enum(["personel", "cihazlar", "gorevler"]);
 export type SummaryCategoryType = z.infer<typeof SummaryCategory>;
