@@ -46,11 +46,20 @@ export default function Login() {
       return response.json();
     },
     onSuccess: async (data: any) => {
+      // Manually set user in cache to avoid race condition
+      if (data.user) {
+        queryClient.setQueryData(["/api/auth/user"], data.user);
+      }
+      
       toast({
         title: "Giriş başarılı",
         description: "Hoş geldiniz!",
       });
-      navigate("/");
+      
+      // Small delay to ensure cookie is set
+      setTimeout(() => {
+        navigate("/");
+      }, 100);
     },
     onError: (error: any) => {
       setError(error.message || "Giriş başarısız");
