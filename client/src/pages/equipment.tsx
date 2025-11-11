@@ -16,12 +16,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Plus, QrCode, Wrench, Calendar, MapPin } from "lucide-react";
+import { Settings, Plus, QrCode, Wrench, Calendar, MapPin, Pencil } from "lucide-react";
+import { DialogFooter } from "@/components/ui/dialog";
 
 export default function Equipment() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingEquipment, setEditingEquipment] = useState<EquipmentType | null>(null);
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>(undefined);
   const [maintenanceFilter, setMaintenanceFilter] = useState<string | undefined>(undefined);
@@ -45,6 +48,20 @@ export default function Equipment() {
       purchaseDate: undefined,
       branchId: undefined,
       notes: "",
+    },
+  });
+
+  const editForm = useForm<InsertEquipment>({
+    resolver: zodResolver(insertEquipmentSchema),
+    defaultValues: {
+      equipmentType: "espresso",
+      serialNumber: "",
+      purchaseDate: undefined,
+      warrantyEndDate: undefined,
+      lastMaintenanceDate: undefined,
+      branchId: undefined,
+      notes: "",
+      isActive: true,
     },
   });
 
@@ -78,6 +95,37 @@ export default function Equipment() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: InsertEquipment }) => {
+      await apiRequest(`/api/equipment/${id}`, "PUT", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      toast({ title: "Başarılı", description: "Ekipman güncellendi" });
+      setIsEditDialogOpen(false);
+      setEditingEquipment(null);
+      editForm.reset();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Hata",
+        description: "Ekipman güncellenemedi",
+        variant: "destructive",
+      });
+    },
+  });
+
   const logMaintenanceMutation = useMutation({
     mutationFn: async (equipmentId: number) => {
       await apiRequest(`/api/equipment/${equipmentId}/maintenance`, "POST", {});
@@ -105,6 +153,21 @@ export default function Equipment() {
       });
     },
   });
+
+  const openEditDialog = (equipment: EquipmentType) => {
+    setEditingEquipment(equipment);
+    editForm.reset({
+      equipmentType: equipment.equipmentType,
+      serialNumber: equipment.serialNumber || "",
+      purchaseDate: equipment.purchaseDate || undefined,
+      warrantyEndDate: equipment.warrantyEndDate || undefined,
+      lastMaintenanceDate: equipment.lastMaintenanceDate || undefined,
+      branchId: equipment.branchId,
+      notes: equipment.notes || "",
+      isActive: equipment.isActive,
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const filteredEquipment = equipment?.filter((item) => {
     // Branch-level filtering: non-HQ users can only see their branch equipment
@@ -283,6 +346,198 @@ export default function Equipment() {
         )}
       </div>
 
+      {/* Edit Equipment Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent data-testid="dialog-edit-equipment">
+          <DialogHeader>
+            <DialogTitle>Ekipman Düzenle</DialogTitle>
+            <DialogDescription>
+              Ekipman bilgilerini güncelleyin
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit((data) => {
+              if (editingEquipment) {
+                updateMutation.mutate({ id: editingEquipment.id, data });
+              }
+            })} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="equipmentType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ekipman Tipi</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-equipment-type">
+                          <SelectValue placeholder="Ekipman tipi seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.values(EQUIPMENT_TYPES).map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {EQUIPMENT_METADATA[type].nameTr}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="serialNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Seri Numarası</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} placeholder="Ekipman seri numarası" data-testid="input-edit-serial-number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="purchaseDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Satın Alma Tarihi</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        value={field.value || ''}
+                        data-testid="input-edit-purchase-date" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="warrantyEndDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Garanti Bitiş Tarihi</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        value={field.value || ''}
+                        data-testid="input-edit-warranty-date" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="lastMaintenanceDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Son Bakım Tarihi</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        value={field.value || ''}
+                        data-testid="input-edit-maintenance-date" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="branchId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Şube</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(Number(value))}
+                      value={field.value?.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-branch">
+                          <SelectValue placeholder="Şube seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {branches?.map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id.toString()}>
+                            {branch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Durum</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(value === "true")}
+                      value={field.value ? "true" : "false"}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-status">
+                          <SelectValue placeholder="Durum seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="true">Aktif</SelectItem>
+                        <SelectItem value="false">Pasif</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notlar (Opsiyonel)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} placeholder="Ek bilgiler" data-testid="input-edit-notes" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingEquipment(null);
+                    editForm.reset();
+                  }}
+                  data-testid="button-edit-cancel"
+                >
+                  İptal
+                </Button>
+                <Button type="submit" disabled={updateMutation.isPending} data-testid="button-edit-submit">
+                  {updateMutation.isPending ? "Güncelleniyor..." : "Güncelle"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-wrap gap-3">
         <Select value={selectedType} onValueChange={setSelectedType}>
           <SelectTrigger className="w-[200px]" data-testid="filter-type">
@@ -378,9 +633,21 @@ export default function Equipment() {
                         S/N: {item.serialNumber}
                       </CardDescription>
                     </div>
-                    <Badge variant="outline" data-testid={`badge-type-${item.id}`}>
-                      {item.equipmentType}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(item)}
+                          data-testid={`button-edit-equipment-${item.id}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Badge variant="outline" data-testid={`badge-type-${item.id}`}>
+                        {item.equipmentType}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
