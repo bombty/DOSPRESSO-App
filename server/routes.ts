@@ -4035,6 +4035,191 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== SHIFT TRADE REQUEST ENDPOINTS =====
+  
+  // POST /api/shift-trades - Create a shift trade request
+  app.post('/api/shift-trades', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { insertShiftTradeRequestSchema } = await import('@shared/schema');
+      
+      const validatedData = insertShiftTradeRequestSchema.parse(req.body);
+      
+      const requesterShift = await storage.getShift(validatedData.requesterShiftId);
+      if (!requesterShift) {
+        return res.status(404).json({ message: "Talep eden vardiya bulunamadı" });
+      }
+      
+      if (requesterShift.assignedToId !== validatedData.requesterId) {
+        return res.status(403).json({ message: "Bu vardiya size atanmamış" });
+      }
+      
+      if (validatedData.requesterId !== user.id) {
+        return res.status(403).json({ message: "Yalnızca kendi vardiyalarınız için takas talebi oluşturabilirsiniz" });
+      }
+      
+      const responderShift = await storage.getShift(validatedData.responderShiftId);
+      if (!responderShift) {
+        return res.status(404).json({ message: "Hedef vardiya bulunamadı" });
+      }
+      
+      if (responderShift.assignedToId !== validatedData.responderId) {
+        return res.status(400).json({ message: "Hedef çalışan bu vardiyaya atanmamış" });
+      }
+      
+      if (validatedData.requesterShiftId === validatedData.responderShiftId) {
+        return res.status(400).json({ message: "Aynı vardiya ile takas yapılamaz" });
+      }
+      
+      const existingTrades = await storage.getShiftTradeRequests({
+        userId: user.id,
+        status: 'taslak'
+      });
+      
+      const duplicate = existingTrades.find(
+        trade => 
+          (trade.requesterShiftId === validatedData.requesterShiftId && 
+           trade.responderShiftId === validatedData.responderShiftId) ||
+          (trade.requesterShiftId === validatedData.responderShiftId && 
+           trade.responderShiftId === validatedData.requesterShiftId)
+      );
+      
+      if (duplicate) {
+        return res.status(400).json({ message: "Bu vardiyalar için zaten açık bir takas talebi var" });
+      }
+      
+      const created = await storage.createShiftTradeRequest(validatedData);
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error creating shift trade request:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz takas talebi verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Takas talebi oluşturulamadı" });
+    }
+  });
+  
+  // GET /api/shift-trades - List shift trade requests with filters
+  app.get('/api/shift-trades', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const { branchId: queryBranchId, userId: queryUserId, status } = req.query;
+      
+      const filters: { branchId?: number; userId?: string; status?: string } = {};
+      
+      if (status) {
+        filters.status = status as string;
+      }
+      
+      if (isHQRole(role)) {
+        if (queryBranchId) {
+          filters.branchId = parseInt(queryBranchId as string);
+        }
+        if (queryUserId) {
+          filters.userId = queryUserId as string;
+        }
+      } else if (role === 'supervisor' || role === 'supervisor_buddy' || role === 'coach' || role === 'admin') {
+        filters.branchId = user.branchId!;
+      } else {
+        filters.userId = user.id;
+      }
+      
+      const trades = await storage.getShiftTradeRequests(filters);
+      res.json(trades);
+    } catch (error) {
+      console.error("Error fetching shift trade requests:", error);
+      res.status(500).json({ message: "Takas talepleri alınamadı" });
+    }
+  });
+  
+  // PATCH /api/shift-trades/:id/respond - Responder confirms the trade
+  app.patch('/api/shift-trades/:id/respond', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      const trades = await storage.getShiftTradeRequests({ userId: user.id });
+      const trade = trades.find(t => t.id === id);
+      
+      if (!trade) {
+        return res.status(404).json({ message: "Takas talebi bulunamadı" });
+      }
+      
+      if (trade.responderId !== user.id) {
+        return res.status(403).json({ message: "Bu takas talebini yalnızca hedef çalışan onaylayabilir" });
+      }
+      
+      if (trade.status !== 'taslak') {
+        return res.status(400).json({ message: "Bu takas talebi zaten işleme alınmış" });
+      }
+      
+      await storage.respondToShiftTradeRequest(id, user.id);
+      
+      const updated = await storage.getShiftTradeRequests({ userId: user.id });
+      const updatedTrade = updated.find(t => t.id === id);
+      
+      res.json(updatedTrade);
+    } catch (error) {
+      console.error("Error responding to shift trade request:", error);
+      res.status(500).json({ message: "Takas talebi yanıtlanamadı" });
+    }
+  });
+  
+  // PATCH /api/shift-trades/:id/approve - Supervisor approves or rejects the trade
+  app.patch('/api/shift-trades/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      if (!['supervisor', 'supervisor_buddy', 'coach', 'admin'].includes(role) && !isHQRole(role)) {
+        return res.status(403).json({ message: "Takas taleplerini onaylama yetkiniz yok" });
+      }
+      
+      const { z } = await import('zod');
+      const approveSchema = z.object({
+        approved: z.boolean(),
+        notes: z.string().optional(),
+      });
+      
+      const { approved, notes } = approveSchema.parse(req.body);
+      
+      const allTrades = await storage.getShiftTradeRequests({});
+      const trade = allTrades.find(t => t.id === id);
+      
+      if (!trade) {
+        return res.status(404).json({ message: "Takas talebi bulunamadı" });
+      }
+      
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        const requesterShift = await storage.getShift(trade.requesterShiftId);
+        const responderShift = await storage.getShift(trade.responderShiftId);
+        
+        if (requesterShift?.branchId !== user.branchId && responderShift?.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu şubenin takas taleplerini onaylayabilirsiniz" });
+        }
+      }
+      
+      if (trade.status !== 'calisan_onayi') {
+        return res.status(400).json({ message: "Bu takas talebi henüz çalışan tarafından onaylanmamış" });
+      }
+      
+      await storage.approveShiftTradeRequest(id, user.id, approved, notes);
+      
+      const updated = await storage.getShiftTradeRequests({});
+      const updatedTrade = updated.find(t => t.id === id);
+      
+      res.json(updatedTrade);
+    } catch (error: any) {
+      console.error("Error approving shift trade request:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz onay verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Takas talebi onaylanamadı" });
+    }
+  });
+
   // ===== MENU MANAGEMENT ENDPOINTS (HQ Admin Only) =====
   
   // GET /api/admin/menu - List all menu data

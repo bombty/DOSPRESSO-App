@@ -1599,6 +1599,38 @@ export const insertShiftAttendanceSchema = createInsertSchema(shiftAttendance).o
 export type InsertShiftAttendance = z.infer<typeof insertShiftAttendanceSchema>;
 export type ShiftAttendance = typeof shiftAttendance.$inferSelect;
 
+// Shift Trade Requests table - Employee shift swapping with approval workflow
+export const shiftTradeRequests = pgTable("shift_trade_requests", {
+  id: serial("id").primaryKey(),
+  requesterId: varchar("requester_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  responderId: varchar("responder_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requesterShiftId: integer("requester_shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+  responderShiftId: integer("responder_shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull().default("taslak"), // taslak, calisan_onayi, yonetici_onayi, reddedildi, iptal
+  notes: text("notes"),
+  responderConfirmedAt: timestamp("responder_confirmed_at"),
+  supervisorApprovedAt: timestamp("supervisor_approved_at"),
+  supervisorId: varchar("supervisor_id").references(() => users.id, { onDelete: "set null" }),
+  supervisorNotes: text("supervisor_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  requesterIdx: index("shift_trade_requests_requester_idx").on(table.requesterId),
+  responderIdx: index("shift_trade_requests_responder_idx").on(table.responderId),
+  statusIdx: index("shift_trade_requests_status_idx").on(table.status),
+  uniqueOpenTrade: unique("unique_open_shift_trade").on(table.requesterShiftId, table.responderShiftId, table.status),
+}));
+
+export const insertShiftTradeRequestSchema = createInsertSchema(shiftTradeRequests).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  status: z.enum(["taslak", "calisan_onayi", "yonetici_onayi", "reddedildi", "iptal"]).default("taslak"),
+});
+
+export type InsertShiftTradeRequest = z.infer<typeof insertShiftTradeRequestSchema>;
+export type ShiftTradeRequest = typeof shiftTradeRequests.$inferSelect;
+export type ShiftTradeStatus = "taslak" | "calisan_onayi" | "yonetici_onayi" | "reddedildi" | "iptal";
+
 // ========================================
 // DYNAMIC MENU CONFIGURATION TABLES
 // ========================================

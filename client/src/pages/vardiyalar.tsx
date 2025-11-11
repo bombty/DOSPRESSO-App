@@ -24,10 +24,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Calendar as CalendarIcon, Edit, Trash2, Clock, User as UserIcon, Sparkles, List, LayoutGrid } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Edit, Trash2, Clock, User as UserIcon, Sparkles, List, LayoutGrid, ArrowLeftRight, Check, X } from "lucide-react";
 import { format, parseISO, startOfWeek, endOfWeek, addWeeks } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import type { ShiftTradeRequest } from "@shared/schema";
 import { Calendar as BigCalendar, dateFnsLocalizer, Event } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import { getDay, parse, startOfWeek as startOfWeekFns, getISOWeek } from 'date-fns';
@@ -118,6 +119,8 @@ export default function Vardiyalar() {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [aiSuggestions, setAiSuggestions] = useState<AIShiftPlanResponse | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'month'>('list');
+  const [isTradeDialogOpen, setIsTradeDialogOpen] = useState(false);
+  const [selectedShiftForTrade, setSelectedShiftForTrade] = useState<ShiftWithRelations | null>(null);
 
   const isSupervisor = user?.role && (user.role === 'supervisor' || user.role === 'supervisor_buddy');
   const isHQIK = user?.role === 'destek';
@@ -262,6 +265,75 @@ export default function Vardiyalar() {
       toast({
         title: "Hata",
         description: error.message || "AI öneri oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { data: shiftTrades } = useQuery<ShiftTradeRequest[]>({
+    queryKey: ['/api/shift-trades'],
+    enabled: !!user,
+  });
+
+  const createTradeMutation = useMutation({
+    mutationFn: async (data: { requesterId: string; responderId: string; requesterShiftId: number; responderShiftId: number; notes?: string }) => {
+      await apiRequest('POST', '/api/shift-trades', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-trades'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      toast({
+        title: "Başarılı",
+        description: "Vardiya takas talebi oluşturuldu",
+      });
+      setIsTradeDialogOpen(false);
+      setSelectedShiftForTrade(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Takas talebi oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const respondTradeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest('PATCH', `/api/shift-trades/${id}/respond`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-trades'] });
+      toast({
+        title: "Başarılı",
+        description: "Takas talebi onaylandı",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Takas talebi yanıtlanamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const approveTradeMutation = useMutation({
+    mutationFn: async ({ id, approved, notes }: { id: number; approved: boolean; notes?: string }) => {
+      await apiRequest('PATCH', `/api/shift-trades/${id}/approve`, { approved, notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-trades'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      toast({
+        title: "Başarılı",
+        description: "Takas talebi işlendi",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Takas talebi işlenemedi",
         variant: "destructive",
       });
     },
@@ -1155,6 +1227,24 @@ export default function Vardiyalar() {
                     </p>
                   </div>
                 )}
+
+                {shift.assignedToId === user?.id && (
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedShiftForTrade(shift);
+                        setIsTradeDialogOpen(true);
+                      }}
+                      data-testid={`button-trade-${shift.id}`}
+                      className="w-full"
+                    >
+                      <ArrowLeftRight className="w-4 h-4 mr-2" />
+                      Vardiya Takası
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))
@@ -1167,6 +1257,191 @@ export default function Vardiyalar() {
           </Card>
         )}
         </div>
+      )}
+
+      {/* Shift Trade Dialog */}
+      <Dialog open={isTradeDialogOpen} onOpenChange={setIsTradeDialogOpen}>
+        <DialogContent data-testid="dialog-shift-trade">
+          <DialogHeader>
+            <DialogTitle>Vardiya Takası Talebi</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedShiftForTrade && (
+              <div className="p-4 bg-muted rounded-md">
+                <p className="text-sm text-muted-foreground mb-1">Takas Edilecek Vardiya</p>
+                <p className="font-medium">
+                  {format(parseISO(selectedShiftForTrade.shiftDate), "PPP", { locale: tr })}
+                </p>
+                <p className="text-sm">
+                  {selectedShiftForTrade.startTime.slice(0, 5)} - {selectedShiftForTrade.endTime.slice(0, 5)} ({shiftTypeLabels[selectedShiftForTrade.shiftType]})
+                </p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Takas Yapılacak Vardiya</label>
+              <Select
+                onValueChange={(value) => {
+                  const targetShift = filteredShifts?.find(s => s.id === parseInt(value));
+                  if (targetShift && selectedShiftForTrade && user) {
+                    createTradeMutation.mutate({
+                      requesterId: user.id,
+                      responderId: targetShift.assignedToId!,
+                      requesterShiftId: selectedShiftForTrade.id,
+                      responderShiftId: targetShift.id,
+                      notes: '',
+                    });
+                  }
+                }}
+                disabled={createTradeMutation.isPending}
+              >
+                <SelectTrigger data-testid="select-target-shift">
+                  <SelectValue placeholder="Bir vardiya seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredShifts
+                    ?.filter(s => 
+                      s.id !== selectedShiftForTrade?.id && 
+                      s.assignedToId && 
+                      s.assignedToId !== user?.id &&
+                      s.branchId === selectedShiftForTrade?.branchId
+                    )
+                    .map(shift => (
+                      <SelectItem key={shift.id} value={shift.id.toString()} data-testid={`option-shift-${shift.id}`}>
+                        {format(parseISO(shift.shiftDate), "PPP", { locale: tr })} - {shift.assignedTo?.fullName} ({shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pending Trades Panel */}
+      {shiftTrades && shiftTrades.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-lg">Bekleyen Takas Talepleri</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {shiftTrades.map((trade) => {
+              const requesterShift = shifts?.find(s => s.id === trade.requesterShiftId);
+              const responderShift = shifts?.find(s => s.id === trade.responderShiftId);
+              
+              const statusLabels: Record<string, string> = {
+                taslak: "Taslak",
+                calisan_onayi: "Çalışan Onayı",
+                yonetici_onayi: "Yönetici Onayı",
+                reddedildi: "Reddedildi",
+                iptal: "İptal",
+              };
+
+              const statusColors: Record<string, string> = {
+                taslak: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+                calisan_onayi: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                yonetici_onayi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                reddedildi: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+                iptal: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+              };
+
+              const isResponder = trade.responderId === user?.id;
+              const isRequester = trade.requesterId === user?.id;
+              const canApprove = isSupervisor || user?.role === 'coach' || user?.role === 'admin';
+
+              return (
+                <Card key={trade.id} data-testid={`card-trade-${trade.id}`}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge className={cn("rounded-md", statusColors[trade.status])} data-testid={`badge-trade-status-${trade.id}`}>
+                        {statusLabels[trade.status]}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {format(new Date(trade.createdAt!), "PPP", { locale: tr })}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-muted rounded-md">
+                        <p className="text-sm text-muted-foreground mb-1">Takas Eden</p>
+                        {requesterShift && (
+                          <>
+                            <p className="font-medium">{requesterShift.assignedTo?.fullName}</p>
+                            <p className="text-sm">{format(parseISO(requesterShift.shiftDate), "PP", { locale: tr })}</p>
+                            <p className="text-sm">{requesterShift.startTime.slice(0, 5)} - {requesterShift.endTime.slice(0, 5)}</p>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="p-3 bg-muted rounded-md">
+                        <p className="text-sm text-muted-foreground mb-1">Takas Alacak</p>
+                        {responderShift && (
+                          <>
+                            <p className="font-medium">{responderShift.assignedTo?.fullName}</p>
+                            <p className="text-sm">{format(parseISO(responderShift.shiftDate), "PP", { locale: tr })}</p>
+                            <p className="text-sm">{responderShift.startTime.slice(0, 5)} - {responderShift.endTime.slice(0, 5)}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {trade.notes && (
+                      <div className="p-3 bg-muted rounded-md">
+                        <p className="text-sm text-muted-foreground mb-1">Not</p>
+                        <p className="text-sm">{trade.notes}</p>
+                      </div>
+                    )}
+
+                    {trade.supervisorNotes && (
+                      <div className="p-3 bg-muted rounded-md">
+                        <p className="text-sm text-muted-foreground mb-1">Yönetici Notu</p>
+                        <p className="text-sm">{trade.supervisorNotes}</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      {isResponder && trade.status === 'taslak' && (
+                        <Button
+                          onClick={() => respondTradeMutation.mutate(trade.id)}
+                          disabled={respondTradeMutation.isPending}
+                          data-testid={`button-respond-${trade.id}`}
+                          className="flex-1"
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Onayla
+                        </Button>
+                      )}
+
+                      {canApprove && trade.status === 'calisan_onayi' && (
+                        <>
+                          <Button
+                            onClick={() => approveTradeMutation.mutate({ id: trade.id, approved: true })}
+                            disabled={approveTradeMutation.isPending}
+                            data-testid={`button-approve-${trade.id}`}
+                            className="flex-1"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Onayla
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => approveTradeMutation.mutate({ id: trade.id, approved: false })}
+                            disabled={approveTradeMutation.isPending}
+                            data-testid={`button-reject-${trade.id}`}
+                            className="flex-1"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Reddet
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

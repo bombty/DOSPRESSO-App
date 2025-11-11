@@ -80,6 +80,8 @@ import type {
   InsertBranding,
   AiUsageLog,
   InsertAiUsageLog,
+  ShiftTradeRequest,
+  InsertShiftTradeRequest,
 } from "@shared/schema";
 import {
   users,
@@ -117,6 +119,7 @@ import {
   shiftChecklists,
   leaveRequests,
   shiftAttendance,
+  shiftTradeRequests,
   menuSections,
   menuItems,
   menuVisibilityRules,
@@ -333,6 +336,12 @@ export interface IStorage {
   createShiftAttendance(attendance: InsertShiftAttendance): Promise<ShiftAttendance>;
   updateShiftAttendance(id: number, updates: Partial<InsertShiftAttendance>): Promise<ShiftAttendance | undefined>;
   deleteShiftAttendance(id: number): Promise<void>;
+  
+  // Shift Trade Request operations
+  createShiftTradeRequest(data: InsertShiftTradeRequest): Promise<ShiftTradeRequest>;
+  getShiftTradeRequests(filters: { branchId?: number; userId?: string; status?: string }): Promise<ShiftTradeRequest[]>;
+  respondToShiftTradeRequest(id: number, userId: string): Promise<void>;
+  approveShiftTradeRequest(id: number, supervisorId: string, approved: boolean, notes?: string): Promise<void>;
   
   // Performance Metrics scoring
   recordPerformanceScore(data: {
@@ -1895,6 +1904,108 @@ export class DatabaseStorage implements IStorage {
 
   async deleteShiftAttendance(id: number): Promise<void> {
     await db.delete(shiftAttendance).where(eq(shiftAttendance.id, id));
+  }
+
+  // Shift Trade Request operations
+  async createShiftTradeRequest(data: InsertShiftTradeRequest): Promise<ShiftTradeRequest> {
+    const [created] = await db.insert(shiftTradeRequests).values(data).returning();
+    return created;
+  }
+
+  async getShiftTradeRequests(filters: { branchId?: number; userId?: string; status?: string }): Promise<ShiftTradeRequest[]> {
+    const conditions: SQL<unknown>[] = [];
+    
+    if (filters.status) {
+      conditions.push(eq(shiftTradeRequests.status, filters.status));
+    }
+    
+    if (filters.userId) {
+      conditions.push(
+        sql`${shiftTradeRequests.requesterId} = ${filters.userId} OR ${shiftTradeRequests.responderId} = ${filters.userId}`
+      );
+    }
+    
+    if (filters.branchId) {
+      const shiftsInBranch = db
+        .select({ id: shifts.id })
+        .from(shifts)
+        .where(eq(shifts.branchId, filters.branchId));
+      
+      conditions.push(
+        sql`${shiftTradeRequests.requesterShiftId} IN ${shiftsInBranch} OR ${shiftTradeRequests.responderShiftId} IN ${shiftsInBranch}`
+      );
+    }
+    
+    if (conditions.length > 0) {
+      return db.select().from(shiftTradeRequests).where(and(...conditions)).orderBy(desc(shiftTradeRequests.createdAt));
+    }
+    
+    return db.select().from(shiftTradeRequests).orderBy(desc(shiftTradeRequests.createdAt));
+  }
+
+  async respondToShiftTradeRequest(id: number, userId: string): Promise<void> {
+    await db
+      .update(shiftTradeRequests)
+      .set({
+        status: 'calisan_onayi',
+        responderConfirmedAt: new Date(),
+      })
+      .where(and(eq(shiftTradeRequests.id, id), eq(shiftTradeRequests.responderId, userId)));
+  }
+
+  async approveShiftTradeRequest(id: number, supervisorId: string, approved: boolean, notes?: string): Promise<void> {
+    const [tradeRequest] = await db
+      .select()
+      .from(shiftTradeRequests)
+      .where(eq(shiftTradeRequests.id, id));
+    
+    if (!tradeRequest) {
+      throw new Error('Shift trade request not found');
+    }
+    
+    if (approved) {
+      const [requesterShift] = await db
+        .select()
+        .from(shifts)
+        .where(eq(shifts.id, tradeRequest.requesterShiftId));
+      
+      const [responderShift] = await db
+        .select()
+        .from(shifts)
+        .where(eq(shifts.id, tradeRequest.responderShiftId));
+      
+      if (!requesterShift || !responderShift) {
+        throw new Error('One or both shifts not found');
+      }
+      
+      await db.update(shifts)
+        .set({ assignedToId: responderShift.assignedToId, updatedAt: new Date() })
+        .where(eq(shifts.id, tradeRequest.requesterShiftId));
+      
+      await db.update(shifts)
+        .set({ assignedToId: requesterShift.assignedToId, updatedAt: new Date() })
+        .where(eq(shifts.id, tradeRequest.responderShiftId));
+      
+      await db
+        .update(shiftTradeRequests)
+        .set({
+          status: 'yonetici_onayi',
+          supervisorApprovedAt: new Date(),
+          supervisorId,
+          supervisorNotes: notes || null,
+        })
+        .where(eq(shiftTradeRequests.id, id));
+    } else {
+      await db
+        .update(shiftTradeRequests)
+        .set({
+          status: 'reddedildi',
+          supervisorApprovedAt: new Date(),
+          supervisorId,
+          supervisorNotes: notes || null,
+        })
+        .where(eq(shiftTradeRequests.id, id));
+    }
   }
 
   async recordPerformanceScore(data: {
