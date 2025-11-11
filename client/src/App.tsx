@@ -35,6 +35,7 @@ import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
 import AdminSeed from "@/pages/admin-seed";
 import AdminMenuManagement from "@/pages/yonetim/menu";
+import AdminContentManagement from "@/pages/yonetim/icerik";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -73,6 +74,7 @@ function Router() {
           <Route path="/performans" component={Performance} />
           <Route path="/admin/seed" component={AdminSeed} />
           <Route path="/yonetim/menu" component={AdminMenuManagement} />
+          <Route path="/yonetim/icerik" component={AdminContentManagement} />
         </>
       )}
       <Route component={NotFound} />
