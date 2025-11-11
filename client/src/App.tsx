@@ -7,7 +7,6 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { useAuth } from "@/hooks/useAuth";
-import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Branches from "@/pages/branches";
@@ -48,7 +47,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <Route path="/" component={Login} />
       ) : (
         <>
           <Route path="/" component={Dashboard} />
