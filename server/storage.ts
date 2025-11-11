@@ -78,6 +78,8 @@ import type {
   InsertPageContent,
   Branding,
   InsertBranding,
+  AiUsageLog,
+  InsertAiUsageLog,
 } from "@shared/schema";
 import {
   users,
@@ -120,6 +122,7 @@ import {
   menuVisibilityRules,
   pageContent,
   branding,
+  aiUsageLogs,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -371,6 +374,19 @@ export interface IStorage {
   // Branding operations
   getBranding(): Promise<Branding | undefined>;
   updateBrandingLogo(logoUrl: string, updatedById: string): Promise<Branding>;
+
+  // AI Usage Logging operations
+  logAiUsage(entry: InsertAiUsageLog): Promise<void>;
+  getAiUsageAggregates(filters: {start?: Date; end?: Date}): Promise<{
+    totalCost: number;
+    monthToDateCost: number;
+    dailyAverage: number;
+    remainingBudget: number;
+    costByFeature: Array<{feature: string; cost: number}>;
+    costByModel: Array<{model: string; cost: number}>;
+    last14Days: Array<{date: string; cost: number}>;
+    cachedSavings: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2071,6 +2087,126 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  // AI Usage Logging operations
+  async logAiUsage(entry: InsertAiUsageLog): Promise<void> {
+    await db.insert(aiUsageLogs).values(entry);
+  }
+
+  async getAiUsageAggregates(filters: {start?: Date; end?: Date}): Promise<{
+    totalCost: number;
+    monthToDateCost: number;
+    dailyAverage: number;
+    remainingBudget: number;
+    costByFeature: Array<{feature: string; cost: number}>;
+    costByModel: Array<{model: string; cost: number}>;
+    last14Days: Array<{date: string; cost: number}>;
+    cachedSavings: number;
+  }> {
+    const MONTHLY_BUDGET = 10.0; // $10 monthly budget
+    
+    // Calculate date ranges
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const last14DaysStart = new Date(now);
+    last14DaysStart.setDate(last14DaysStart.getDate() - 13); // Include today
+    
+    // Build WHERE conditions based on filters
+    const conditions: SQL[] = [];
+    if (filters.start) {
+      conditions.push(sql`${aiUsageLogs.createdAt} >= ${filters.start}`);
+    }
+    if (filters.end) {
+      conditions.push(sql`${aiUsageLogs.createdAt} <= ${filters.end}`);
+    }
+    
+    // Total cost (with optional filters)
+    const totalCostQuery = conditions.length > 0
+      ? db.select({ total: sql<number>`COALESCE(SUM(CAST(${aiUsageLogs.costUsd} AS DECIMAL)), 0)` })
+          .from(aiUsageLogs)
+          .where(and(...conditions))
+      : db.select({ total: sql<number>`COALESCE(SUM(CAST(${aiUsageLogs.costUsd} AS DECIMAL)), 0)` })
+          .from(aiUsageLogs);
+    
+    // Month-to-date cost
+    const monthToDateCostQuery = db.select({ total: sql<number>`COALESCE(SUM(CAST(${aiUsageLogs.costUsd} AS DECIMAL)), 0)` })
+      .from(aiUsageLogs)
+      .where(sql`${aiUsageLogs.createdAt} >= ${monthStart}`);
+    
+    // Cost by feature
+    const costByFeatureQuery = db.select({
+      feature: aiUsageLogs.feature,
+      cost: sql<number>`COALESCE(SUM(CAST(${aiUsageLogs.costUsd} AS DECIMAL)), 0)`,
+    })
+      .from(aiUsageLogs)
+      .groupBy(aiUsageLogs.feature)
+      .orderBy(desc(sql<number>`SUM(CAST(${aiUsageLogs.costUsd} AS DECIMAL))`));
+    
+    // Cost by model
+    const costByModelQuery = db.select({
+      model: aiUsageLogs.model,
+      cost: sql<number>`COALESCE(SUM(CAST(${aiUsageLogs.costUsd} AS DECIMAL)), 0)`,
+    })
+      .from(aiUsageLogs)
+      .groupBy(aiUsageLogs.model)
+      .orderBy(desc(sql<number>`SUM(CAST(${aiUsageLogs.costUsd} AS DECIMAL))`));
+    
+    // Last 14 days trend
+    const last14DaysQuery = db.select({
+      date: sql<string>`DATE(${aiUsageLogs.createdAt})`,
+      cost: sql<number>`COALESCE(SUM(CAST(${aiUsageLogs.costUsd} AS DECIMAL)), 0)`,
+    })
+      .from(aiUsageLogs)
+      .where(sql`${aiUsageLogs.createdAt} >= ${last14DaysStart}`)
+      .groupBy(sql`DATE(${aiUsageLogs.createdAt})`)
+      .orderBy(asc(sql`DATE(${aiUsageLogs.createdAt})`));
+    
+    // Cached savings (cost that would have been incurred if cache wasn't hit)
+    const cachedSavingsQuery = db.select({ 
+      savings: sql<number>`COALESCE(SUM(CAST(${aiUsageLogs.costUsd} AS DECIMAL)), 0)` 
+    })
+      .from(aiUsageLogs)
+      .where(eq(aiUsageLogs.cachedHit, true));
+    
+    // Execute all queries
+    const totalCostResults = await totalCostQuery;
+    const monthToDateResults = await monthToDateCostQuery;
+    const costByFeature = await costByFeatureQuery;
+    const costByModel = await costByModelQuery;
+    const last14Days = await last14DaysQuery;
+    const cachedSavingsResults = await cachedSavingsQuery;
+    
+    const totalCost = Number(totalCostResults[0]?.total || 0);
+    const monthToDateCost = Number(monthToDateResults[0]?.total || 0);
+    const cachedSavings = Number(cachedSavingsResults[0]?.savings || 0);
+    
+    // Calculate daily average (based on days elapsed in current month)
+    const dayOfMonth = now.getDate();
+    const dailyAverage = dayOfMonth > 0 ? monthToDateCost / dayOfMonth : 0;
+    
+    // Calculate remaining budget
+    const remainingBudget = Math.max(0, MONTHLY_BUDGET - monthToDateCost);
+    
+    return {
+      totalCost,
+      monthToDateCost,
+      dailyAverage,
+      remainingBudget,
+      costByFeature: costByFeature.map(row => ({
+        feature: row.feature,
+        cost: Number(row.cost),
+      })),
+      costByModel: costByModel.map(row => ({
+        model: row.model,
+        cost: Number(row.cost),
+      })),
+      last14Days: last14Days.map(row => ({
+        date: row.date,
+        cost: Number(row.cost),
+      })),
+      cachedSavings,
+    };
   }
 }
 

@@ -4395,6 +4395,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== AI COST MONITORING ENDPOINTS (HQ Only) =====
+
+  // GET /api/admin/ai-costs - Get AI usage cost aggregates
+  app.get('/api/admin/ai-costs', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      // Validate query params with Zod
+      const querySchema = z.object({
+        start: z.string().datetime().optional(),
+        end: z.string().datetime().optional(),
+      });
+
+      const { start, end } = querySchema.parse(req.query);
+
+      // Convert string dates to Date objects
+      const filters = {
+        start: start ? new Date(start) : undefined,
+        end: end ? new Date(end) : undefined,
+      };
+
+      const aggregates = await storage.getAiUsageAggregates(filters);
+      res.json(aggregates);
+    } catch (error: any) {
+      console.error("Error fetching AI cost aggregates:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz tarih formatı", errors: error.errors });
+      }
+      res.status(500).json({ message: "AI maliyet verileri alınamadı" });
+    }
+  });
+
   // ===== USER CRM ENDPOINTS (HQ Only) =====
 
   // GET /api/admin/users - Get all users with filters

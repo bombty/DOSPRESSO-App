@@ -38,6 +38,7 @@ import AdminMenuManagement from "@/pages/yonetim/menu";
 import AdminContentManagement from "@/pages/yonetim/icerik";
 import Settings from "@/pages/yonetim/ayarlar";
 import UserCRM from "@/pages/yonetim/kullanicilar";
+import AICostDashboard from "@/pages/yonetim/ai-maliyetler";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -79,6 +80,7 @@ function Router() {
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
           <Route path="/yonetim/ayarlar" component={Settings} />
           <Route path="/yonetim/kullanicilar" component={UserCRM} />
+          <Route path="/yonetim/ai-maliyetler" component={AICostDashboard} />
         </>
       )}
       <Route component={NotFound} />

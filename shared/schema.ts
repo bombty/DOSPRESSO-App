@@ -1757,6 +1757,50 @@ export const aiSummaryResponseSchema = z.object({
 export type AISummaryResponse = z.infer<typeof aiSummaryResponseSchema>;
 
 // ========================================
+// AI USAGE LOGS - Cost Monitoring
+// ========================================
+
+export const AIFeature = z.enum([
+  "task_photo", 
+  "fault_photo", 
+  "cleanliness", 
+  "dress_code", 
+  "rag_chat", 
+  "summary"
+]);
+export type AIFeatureType = z.infer<typeof AIFeature>;
+
+export const aiUsageLogs = pgTable("ai_usage_logs", {
+  id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  feature: varchar("feature", { length: 50 }).notNull(), // task_photo, fault_photo, cleanliness, dress_code, rag_chat, summary
+  model: varchar("model", { length: 100 }).notNull(), // gpt-4o, gpt-4o-mini, text-embedding-3-small
+  operation: varchar("operation", { length: 100 }).notNull(), // e.g., "analyzeTaskPhoto", "generateEmbedding"
+  promptTokens: integer("prompt_tokens").notNull().default(0),
+  completionTokens: integer("completion_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  costUsd: numeric("cost_usd", { precision: 10, scale: 4 }).notNull().default('0'),
+  requestLatencyMs: integer("request_latency_ms").notNull().default(0),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  cachedHit: boolean("cached_hit").default(false).notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("ai_usage_logs_created_at_idx").on(table.createdAt),
+  index("ai_usage_logs_feature_idx").on(table.feature),
+  index("ai_usage_logs_user_id_idx").on(table.userId),
+  index("ai_usage_logs_branch_id_idx").on(table.branchId),
+]);
+
+export const insertAiUsageLogSchema = createInsertSchema(aiUsageLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiUsageLog = z.infer<typeof insertAiUsageLogSchema>;
+export type AiUsageLog = typeof aiUsageLogs.$inferSelect;
+
+// ========================================
 // BRANDING CONFIGURATION
 // ========================================
 

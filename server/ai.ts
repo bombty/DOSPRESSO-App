@@ -15,6 +15,100 @@ const CHAT_MODEL = "gpt-4o"; // For RAG Q&A
 const SUMMARY_MODEL = "gpt-4o-mini"; // For dashboard summaries (most cost-efficient)
 const EMBEDDING_MODEL = "text-embedding-3-small"; // Already optimal
 
+// Pricing map (per 1K tokens) - Updated as of 2024
+const PRICING = {
+  "gpt-4o": {
+    input: 0.0025,  // $2.50 per 1M tokens
+    output: 0.010,  // $10.00 per 1M tokens
+  },
+  "gpt-4o-mini": {
+    input: 0.00015, // $0.15 per 1M tokens
+    output: 0.0006, // $0.60 per 1M tokens
+  },
+  "text-embedding-3-small": {
+    input: 0.00002, // $0.02 per 1M tokens
+    output: 0,      // No output tokens for embeddings
+  },
+} as const;
+
+// Helper to calculate cost based on token usage
+function calculateCost(model: string, promptTokens: number, completionTokens: number): number {
+  const pricing = PRICING[model as keyof typeof PRICING];
+  if (!pricing) {
+    console.warn(`Unknown model pricing: ${model}, using $0`);
+    return 0;
+  }
+  
+  const inputCost = (promptTokens / 1000) * pricing.input;
+  const outputCost = (completionTokens / 1000) * pricing.output;
+  return inputCost + outputCost;
+}
+
+// AI usage logging wrapper
+async function captureAiUsage<T>(
+  operation: string,
+  feature: string,
+  fn: () => Promise<{ result: T; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; model: string }>,
+  userId?: string,
+  branchId?: number,
+  cachedHit: boolean = false,
+  metadata?: any
+): Promise<T> {
+  const startTime = Date.now();
+  
+  try {
+    const { result, usage, model } = await fn();
+    const latency = Date.now() - startTime;
+    
+    const promptTokens = usage?.prompt_tokens || 0;
+    const completionTokens = usage?.completion_tokens || 0;
+    const totalTokens = usage?.total_tokens || 0;
+    const costUsd = cachedHit ? 0 : calculateCost(model, promptTokens, completionTokens);
+    
+    // Log to database (fire and forget to not block response)
+    storage.logAiUsage({
+      feature,
+      model,
+      operation,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      costUsd: costUsd.toString(),
+      requestLatencyMs: latency,
+      userId: userId || null,
+      branchId: branchId || null,
+      cachedHit,
+      metadata: metadata || null,
+    }).catch(err => {
+      console.error('Failed to log AI usage:', err);
+    });
+    
+    return result;
+  } catch (error) {
+    const latency = Date.now() - startTime;
+    
+    // Log failed attempt
+    storage.logAiUsage({
+      feature,
+      model: 'unknown',
+      operation,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      costUsd: '0',
+      requestLatencyMs: latency,
+      userId: userId || null,
+      branchId: branchId || null,
+      cachedHit: false,
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error', ...metadata },
+    }).catch(err => {
+      console.error('Failed to log AI usage:', err);
+    });
+    
+    throw error;
+  }
+}
+
 export interface TaskPhotoAnalysis {
   analysis: string;
   score: number; // 0-100
@@ -79,7 +173,8 @@ export async function analyzeTaskPhoto(
   photoUrl: string,
   taskDescription: string,
   userId?: string,
-  skipCache: boolean = false
+  skipCache: boolean = false,
+  branchId?: number
 ): Promise<TaskPhotoAnalysis> {
   // Check cache first (24h TTL)
   const cacheKey = generateCacheKey('task-photo', photoUrl, taskDescription);
@@ -87,6 +182,21 @@ export async function analyzeTaskPhoto(
     const cached = cache.get<TaskPhotoAnalysis>(cacheKey);
     if (cached) {
       console.log('✅ Cache HIT - Task photo analysis (cost saved!)');
+      // Log cache hit
+      storage.logAiUsage({
+        feature: 'task_photo',
+        model: VISION_MODEL,
+        operation: 'analyzeTaskPhoto',
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        costUsd: '0',
+        requestLatencyMs: 0,
+        userId: userId || null,
+        branchId: branchId || null,
+        cachedHit: true,
+        metadata: null,
+      }).catch(err => console.error('Failed to log AI usage:', err));
       return cached;
     }
   }
@@ -103,6 +213,7 @@ export async function analyzeTaskPhoto(
   }
 
   try {
+    const startTime = Date.now();
     const response = await openai.chat.completions.create({
       model: VISION_MODEL, // gpt-4o: 60% cheaper than gpt-4-turbo
       messages: [
@@ -140,6 +251,7 @@ JSON formatında yanıt verin:
       response_format: { type: "json_object" },
       max_completion_tokens: 8192,
     });
+    const latency = Date.now() - startTime;
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
@@ -155,6 +267,24 @@ JSON formatında yanıt verin:
 
     // Cache for 24 hours
     cache.set(cacheKey, analysis, 24 * 60 * 60 * 1000);
+    
+    // Log AI usage
+    const usage = response.usage;
+    const costUsd = calculateCost(VISION_MODEL, usage?.prompt_tokens || 0, usage?.completion_tokens || 0);
+    storage.logAiUsage({
+      feature: 'task_photo',
+      model: VISION_MODEL,
+      operation: 'analyzeTaskPhoto',
+      promptTokens: usage?.prompt_tokens || 0,
+      completionTokens: usage?.completion_tokens || 0,
+      totalTokens: usage?.total_tokens || 0,
+      costUsd: costUsd.toString(),
+      requestLatencyMs: latency,
+      userId: userId || null,
+      branchId: branchId || null,
+      cachedHit: false,
+      metadata: null,
+    }).catch(err => console.error('Failed to log AI usage:', err));
     
     // Increment rate limit counter (only on successful AI call)
     if (userId) {
