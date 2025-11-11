@@ -137,8 +137,28 @@ export async function setupAuth(app: Express) {
 
   // Logout endpoint
   app.post("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.json({ message: "Logged out" });
+    req.logout((err) => {
+      if (err) {
+        console.error("[Auth] Logout error:", err);
+        return res.status(500).json({ error: "Logout failed" });
+      }
+      
+      // Destroy session and clear cookie
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          console.error("[Auth] Session destroy error:", destroyErr);
+          return res.status(500).json({ error: "Session destroy failed" });
+        }
+        
+        // Clear session cookie with matching options (custom name: dospresso.sid)
+        res.clearCookie('dospresso.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+        });
+        res.json({ message: "Logged out" });
+      });
     });
   });
 }

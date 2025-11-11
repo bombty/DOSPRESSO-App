@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { EQUIPMENT_METADATA, insertEquipmentCommentSchema, insertEquipmentServiceRequestSchema, insertEquipmentFaultSchema, type EquipmentMaintenanceLog, type EquipmentFault, type EquipmentComment, type EquipmentServiceRequest, FAULT_STAGES, type FaultStageType, SERVICE_REQUEST_STATUS, SERVICE_DECISION } from "@shared/schema";
+import { EQUIPMENT_METADATA, insertEquipmentCommentSchema, insertEquipmentServiceRequestSchema, insertEquipmentFaultSchema, insertEquipmentSchema, type InsertEquipment, type EquipmentMaintenanceLog, type EquipmentFault, type EquipmentComment, type EquipmentServiceRequest, type Branch, EQUIPMENT_TYPES, FAULT_STAGES, type FaultStageType, SERVICE_REQUEST_STATUS, SERVICE_DECISION } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -130,6 +130,10 @@ export default function EquipmentDetail() {
     enabled: !!equipmentId,
   });
 
+  const { data: branches } = useQuery<Branch[]>({
+    queryKey: ["/api/branches"],
+  });
+
   // Dialog state
   const [serviceRequestDialogOpen, setServiceRequestDialogOpen] = useState(false);
   const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
@@ -137,6 +141,7 @@ export default function EquipmentDetail() {
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
   const [selectedTimeline, setSelectedTimeline] = useState<EquipmentServiceRequest | null>(null);
   const [isFaultDialogOpen, setIsFaultDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const form = useForm<CommentFormData>({
     resolver: zodResolver(commentFormSchema),
@@ -196,6 +201,20 @@ export default function EquipmentDetail() {
       });
     }
   }, [equipment, user, id, faultForm]);
+
+  const editForm = useForm<InsertEquipment>({
+    resolver: zodResolver(insertEquipmentSchema),
+    defaultValues: {
+      equipmentType: equipment?.equipmentType || "espresso",
+      serialNumber: equipment?.serialNumber || "",
+      purchaseDate: equipment?.purchaseDate || undefined,
+      warrantyEndDate: equipment?.warrantyEndDate || undefined,
+      lastMaintenanceDate: equipment?.lastMaintenanceDate || undefined,
+      branchId: equipment?.branchId || undefined,
+      notes: equipment?.notes || "",
+      isActive: equipment?.isActive ?? true,
+    },
+  });
 
   const createServiceRequestMutation = useMutation({
     mutationFn: async (data: ServiceRequestFormData) => {
@@ -330,6 +349,52 @@ export default function EquipmentDetail() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: InsertEquipment) => {
+      await apiRequest("PUT", `/api/equipment/${equipmentId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment", equipmentId] });
+      toast({ title: "Başarılı", description: "Ekipman güncellendi" });
+      setIsEditDialogOpen(false);
+      editForm.reset();
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Hata",
+        description: "Ekipman güncellenemedi",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const openEditDialog = () => {
+    if (!equipment) return;
+    editForm.reset({
+      equipmentType: equipment.equipmentType,
+      serialNumber: equipment.serialNumber || "",
+      purchaseDate: equipment.purchaseDate || undefined,
+      warrantyEndDate: equipment.warrantyEndDate || undefined,
+      lastMaintenanceDate: equipment.lastMaintenanceDate || undefined,
+      branchId: equipment.branchId,
+      notes: equipment.notes || "",
+      isActive: equipment.isActive,
+    });
+    setIsEditDialogOpen(true);
+  };
+
   const stageLabels: Record<FaultStageType, string> = {
     [FAULT_STAGES.BEKLIYOR]: "Bekliyor",
     [FAULT_STAGES.ISLEME_ALINDI]: "İşleme Alındı",
@@ -412,6 +477,14 @@ export default function EquipmentDetail() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                onClick={() => openEditDialog()}
+                variant="outline"
+                data-testid={`button-edit-equipment-${equipment.id}`}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Düzenle
+              </Button>
               <Button
                 onClick={() => setIsFaultDialogOpen(true)}
                 variant="destructive"
@@ -1212,6 +1285,193 @@ export default function EquipmentDetail() {
               </p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Equipment Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent data-testid="dialog-edit-equipment">
+          <DialogHeader>
+            <DialogTitle>Ekipman Düzenle</DialogTitle>
+            <DialogDescription>
+              Ekipman bilgilerini güncelleyin
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="equipmentType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ekipman Tipi</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-equipment-type">
+                          <SelectValue placeholder="Ekipman tipi seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.values(EQUIPMENT_TYPES).map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {EQUIPMENT_METADATA[type].nameTr}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="serialNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Seri Numarası</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} placeholder="Ekipman seri numarası" data-testid="input-edit-serial-number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="purchaseDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Satın Alma Tarihi</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        value={field.value || ''}
+                        data-testid="input-edit-purchase-date" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="warrantyEndDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Garanti Bitiş Tarihi</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        value={field.value || ''}
+                        data-testid="input-edit-warranty-date" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="lastMaintenanceDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Son Bakım Tarihi</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        value={field.value || ''}
+                        data-testid="input-edit-maintenance-date" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="branchId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Şube</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(Number(value))}
+                      value={field.value?.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-branch">
+                          <SelectValue placeholder="Şube seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {branches?.map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id.toString()}>
+                            {branch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Durum</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(value === "true")}
+                      value={field.value ? "true" : "false"}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-status">
+                          <SelectValue placeholder="Durum seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="true">Aktif</SelectItem>
+                        <SelectItem value="false">Pasif</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notlar (Opsiyonel)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} placeholder="Ek bilgiler" data-testid="input-edit-notes" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    editForm.reset();
+                  }}
+                  data-testid="button-edit-cancel"
+                >
+                  İptal
+                </Button>
+                <Button type="submit" disabled={updateMutation.isPending} data-testid="button-edit-submit">
+                  {updateMutation.isPending ? "Güncelleniyor..." : "Güncelle"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
