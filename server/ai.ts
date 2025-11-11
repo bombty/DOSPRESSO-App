@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import QRCode from "qrcode";
 import { cache, generateCacheKey, aiRateLimiter } from "./cache";
 import { storage } from "./storage";
 import type { SummaryCategoryType, AISummaryResponse } from "@shared/schema";
@@ -42,6 +43,22 @@ function calculateCost(model: string, promptTokens: number, completionTokens: nu
   const inputCost = (promptTokens / 1000) * pricing.input;
   const outputCost = (completionTokens / 1000) * pricing.output;
   return inputCost + outputCost;
+}
+
+// QR Code Generation for Equipment
+export async function generateEquipmentQR(equipmentId: number): Promise<string> {
+  // QR data: equipment ID with DOSPRESSO prefix
+  const qrData = `DOSPRESSO-EQ-${equipmentId}`;
+  
+  // Generate base64 data URL
+  const qrCodeDataURL = await QRCode.toDataURL(qrData, {
+    errorCorrectionLevel: 'M',
+    type: 'image/png',
+    width: 300,
+    margin: 1,
+  });
+  
+  return qrCodeDataURL; // base64 string
 }
 
 // AI usage logging wrapper

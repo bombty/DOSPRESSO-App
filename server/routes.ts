@@ -772,13 +772,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const equipment = await storage.createEquipment({
         ...validatedData,
         branchId: equipmentBranchId,
-        qrCodeUrl: '', // Temporary empty string
+        qrCodeUrl: null, // Will be generated after creation
       });
       
-      // Generate absolute QR code URL from request origin
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-      const host = req.headers['x-forwarded-host'] || req.headers.host || `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-      const qrCodeUrl = `${protocol}://${host}/ekipman/${equipment.id}`;
+      // Generate QR code as base64 data URL
+      const { generateEquipmentQR } = await import('./ai');
+      const qrCodeUrl = await generateEquipmentQR(equipment.id);
       await storage.updateEquipment(equipment.id, { qrCodeUrl });
       
       res.json({ ...equipment, qrCodeUrl });
@@ -809,6 +808,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (validatedData.branchId && validatedData.branchId !== user.branchId) {
           return res.status(403).json({ message: "Ekipmanın şubesini değiştiremezsiniz" });
         }
+      }
+      
+      // Auto-generate QR code if missing
+      if (!existingEquipment.qrCodeUrl) {
+        const { generateEquipmentQR } = await import('./ai');
+        validatedData.qrCodeUrl = await generateEquipmentQR(id);
       }
       
       const equipment = await storage.updateEquipment(id, validatedData);

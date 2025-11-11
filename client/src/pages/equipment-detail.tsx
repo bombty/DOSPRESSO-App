@@ -924,42 +924,29 @@ export default function EquipmentDetail() {
               {equipment.qrCodeUrl ? (
                 <>
                   <div className="bg-white p-6 rounded-lg border" data-testid="qr-code-container">
-                    <QRCodeSVG
-                      value={equipment.qrCodeUrl}
-                      size={256}
-                      level="H"
-                      includeMargin={true}
+                    <img 
+                      src={equipment.qrCodeUrl} 
+                      alt="Ekipman QR Kodu" 
+                      className="w-64 h-64"
+                      data-testid="img-qr-code"
                     />
                   </div>
                   <div className="text-center space-y-2">
                     <p className="text-sm text-muted-foreground">
-                      QR kodu mobil cihazınızla tarayarak bu ekipman sayfasına hızlıca ulaşabilirsiniz
+                      QR kodu mobil cihazınızla tarayarak bu ekipmanı hızlıca tanımlayabilirsiniz
                     </p>
-                    <p className="text-xs text-muted-foreground font-mono break-all max-w-md">
-                      {equipment.qrCodeUrl}
+                    <p className="text-xs text-muted-foreground font-mono">
+                      DOSPRESSO-EQ-{equipment.id}
                     </p>
                   </div>
                   <Button
                     variant="outline"
                     onClick={() => {
-                      const svg = document.querySelector('[data-testid="qr-code-container"] svg');
-                      if (svg) {
-                        const svgData = new XMLSerializer().serializeToString(svg);
-                        const canvas = document.createElement("canvas");
-                        const ctx = canvas.getContext("2d");
-                        const img = new Image();
-                        img.onload = () => {
-                          canvas.width = img.width;
-                          canvas.height = img.height;
-                          ctx?.drawImage(img, 0, 0);
-                          const pngFile = canvas.toDataURL("image/png");
-                          const downloadLink = document.createElement("a");
-                          downloadLink.download = `equipment-${equipment.id}-qr.png`;
-                          downloadLink.href = pngFile;
-                          downloadLink.click();
-                        };
-                        img.src = "data:image/svg+xml;base64," + btoa(svgData);
-                      }
+                      if (!equipment.qrCodeUrl) return;
+                      const link = document.createElement('a');
+                      link.href = equipment.qrCodeUrl;
+                      link.download = `ekipman-${equipment.id}-qr.png`;
+                      link.click();
                     }}
                     data-testid="button-download-qr"
                   >
@@ -1018,7 +1005,7 @@ export default function EquipmentDetail() {
                   <FormItem>
                     <FormLabel>Servis Sağlayıcı</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Servis sağlayıcı adı" data-testid="input-service-provider" />
+                      <Input {...field} value={field.value || ""} placeholder="Servis sağlayıcı adı" data-testid="input-service-provider" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1031,7 +1018,7 @@ export default function EquipmentDetail() {
                   <FormItem>
                     <FormLabel>İletişim Bilgisi</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Telefon veya e-posta" data-testid="input-contact-info" />
+                      <Input {...field} value={field.value || ""} placeholder="Telefon veya e-posta" data-testid="input-contact-info" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1057,7 +1044,7 @@ export default function EquipmentDetail() {
                   <FormItem>
                     <FormLabel>Notlar</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Ek notlar..." rows={3} data-testid="input-service-notes" />
+                      <Textarea {...field} value={field.value || ""} placeholder="Ek notlar..." rows={3} data-testid="input-service-notes" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
