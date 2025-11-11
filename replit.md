@@ -85,6 +85,10 @@ Preferred communication style: Simple, everyday language.
 - **HQSupportTickets**: Support tickets from branches to HQ departments (muhasebe, satinalma, coach, teknik, destek, fabrika, genel) with status tracking
 - **HQSupportMessages**: Threaded messages within support tickets for chat-style communication
 - **TrainingModules**: Training content with videos, quizzes, and flashcards
+- **EquipmentServiceRequests**: Service workflow tracking with state machine (created→service_called→in_progress→fixed/not_fixed/warranty_claimed/device_shipped→closed), timeline JSONB, cost tracking
+- **MenuSections**: Dynamic menu configuration (slug, titleTr, scope, icon, sortOrder) for admin-controlled sidebar structure
+- **MenuItems**: Individual menu items (titleTr, path, icon, moduleKey, scope, sortOrder, isActive) linked to sections
+- **MenuVisibilityRules**: Layered visibility control (ruleType: user/role/branch, allow/deny) with branch scoping and priority resolution
 - **Sessions**: PostgreSQL-backed session storage for authentication
 
 **Vector Search**: pgvector extension enabled for semantic similarity search using cosine distance operator (<=>)
@@ -160,3 +164,57 @@ Preferred communication style: Simple, everyday language.
 - vite: Frontend build tool and dev server
 - esbuild: Backend bundling for production
 - tsx: TypeScript execution for development
+
+## Recent Changes
+
+### Task 10: Dynamic Menu System (November 11, 2025)
+
+Implemented complete admin-controlled dynamic menu system with 4 subtasks:
+
+**10.1 - Schema Design:**
+- Added `menu_sections` table (id, slug, titleTr, scope, icon, sortOrder)
+- Added `menu_items` table (id, sectionId, titleTr, path, icon, moduleKey, scope, sortOrder, isActive)
+- Added `menu_visibility_rules` table (id, menuItemId, ruleType, role, userId, branchId, allow)
+- All tables include Zod schemas, TypeScript types, and Drizzle relations
+
+**10.2 - API Layer:**
+- Storage interface: 11 methods (listMenu, CRUD for sections/items/rules, reordering)
+- REST API: 11 endpoints under `/api/admin/menu/*` with HQ-only authorization
+- Full CRUD support for sections, items, and visibility rules
+- Batch reordering for sections and items (PATCH endpoints)
+
+**10.3 - Admin UI:**
+- Admin page: `/yonetim/menu` with @dnd-kit drag-drop for sections and nested items
+- Section CRUD dialogs with icon picker (20+ Lucide icons)
+- Item CRUD dialogs with path, icon, module, scope configuration
+- Visibility rules dialog with role multi-select, user autocomplete, branch selector
+- TanStack Query caching (staleTime: 5min)
+- Turkish labels, data-testid attributes for testing
+
+**10.4 - Dynamic Sidebar Integration:**
+- app-sidebar.tsx: Fetch menu from GET `/api/admin/menu` with TanStack Query
+- Data transformation: API payload → MenuGroup/MenuItem format
+- Lucide icon mapping with Circle fallback for unknown icons
+- Layered visibility filtering:
+  1. User-specific rules (with branch scoping)
+  2. Role-based rules (branch-scoped > global)
+  3. Branch-level rules
+  4. Default: allow
+- Fallback to hardcoded menuGroups if dynamic menu empty/error
+- Cache invalidation: All admin mutations trigger sidebar cache refresh
+- Caching: staleTime 5min, gcTime 30min, retry on error/focus/reconnect
+
+**Technical Highlights:**
+- Branch scoping: Rules apply only when branchId matches user's branch or is null
+- Priority resolution: User-specific > role+branch > branch-level > default allow
+- Icon validation: Admin UI validates icon names against lucideIconMap
+- Migration path: Dynamic menu coexists with hardcoded fallback during transition
+
+**Files Modified:**
+- shared/schema.ts: Added 3 tables (menu_sections, menu_items, menu_visibility_rules)
+- server/storage.ts: Added 11 storage methods for menu management
+- server/routes.ts: Added 11 API endpoints with HQ authorization
+- client/src/pages/yonetim/menu.tsx: Admin menu management UI (new file)
+- client/src/components/app-sidebar.tsx: Dynamic menu integration with visibility filtering
+
+**Operating Cost:** Maintained at $7.80/month (below $10 target)
