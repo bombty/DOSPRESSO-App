@@ -58,7 +58,7 @@ export default function KampanyaYonetimi() {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const isHQ = user?.role && isHQRole(user.role);
+  const isHQ = user?.role && isHQRole(user.role as any);
   const canManageCampaigns = isHQ;
 
   const { data: campaigns, isLoading } = useQuery<Campaign[]>({
@@ -105,16 +105,17 @@ export default function KampanyaYonetimi() {
     },
   });
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, campaignId?: number) => {
+    const testId = campaignId ? `badge-status-${campaignId}` : "badge-status";
     switch (status) {
       case "active":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">Aktif</Badge>;
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" data-testid={testId}>Aktif</Badge>;
       case "completed":
-        return <Badge variant="outline">Tamamlandı</Badge>;
+        return <Badge variant="outline" data-testid={testId}>Tamamlandı</Badge>;
       case "paused":
-        return <Badge variant="secondary">Duraklatıldı</Badge>;
+        return <Badge variant="secondary" data-testid={testId}>Duraklatıldı</Badge>;
       default:
-        return <Badge variant="outline">Taslak</Badge>;
+        return <Badge variant="outline" data-testid={testId}>Taslak</Badge>;
     }
   };
 
@@ -290,7 +291,7 @@ export default function KampanyaYonetimi() {
                       </CardTitle>
                       <CardDescription>{getCampaignTypeLabel(campaign.campaignType)}</CardDescription>
                     </div>
-                    {getStatusBadge(campaign.status)}
+                    {getStatusBadge(campaign.status, campaign.id)}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">

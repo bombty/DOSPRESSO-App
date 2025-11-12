@@ -46,7 +46,7 @@ export default function MusteriGeribildirimi() {
   });
 
   const { data: stats } = useQuery<FeedbackStats>({
-    queryKey: user?.branchId ? [`/api/customer-feedback/stats/${user.branchId}`] : undefined,
+    queryKey: ['/api/customer-feedback/stats', user?.branchId],
     enabled: !!user?.branchId,
   });
 
@@ -87,14 +87,15 @@ export default function MusteriGeribildirimi() {
     );
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, feedbackId?: number) => {
+    const testId = feedbackId ? `badge-status-${feedbackId}` : "badge-status";
     switch (status) {
       case "reviewed":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"><CheckCircle2 className="w-3 h-3 mr-1" />İncelendi</Badge>;
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />İncelendi</Badge>;
       case "responded":
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"><MessageSquare className="w-3 h-3 mr-1" />Yanıtlandı</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" data-testid={testId}><MessageSquare className="w-3 h-3 mr-1" />Yanıtlandı</Badge>;
       default:
-        return <Badge variant="outline"><Clock className="w-3 h-3 mr-1" />Bekliyor</Badge>;
+        return <Badge variant="outline" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Bekliyor</Badge>;
     }
   };
 
@@ -197,7 +198,7 @@ export default function MusteriGeribildirimi() {
                       <p className="text-sm mt-2" data-testid={`text-feedback-comment-${feedback.id}`}>{feedback.comment}</p>
                     )}
                   </div>
-                  {getStatusBadge(feedback.status)}
+                  {getStatusBadge(feedback.status, feedback.id)}
                 </div>
               </CardHeader>
               <CardContent>

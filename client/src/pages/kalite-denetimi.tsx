@@ -61,7 +61,7 @@ export default function KaliteDenetimi() {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const isHQ = user?.role && isHQRole(user.role);
+  const isHQ = user?.role && isHQRole(user.role as any);
   const canCreateAudit = user?.role === 'coach' || user?.role === 'admin';
 
   const { data: audits, isLoading: auditsLoading } = useQuery<QualityAudit[]>({

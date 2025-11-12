@@ -59,7 +59,7 @@ export default function FranchiseAcilis() {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const isHQ = user?.role && isHQRole(user.role);
+  const isHQ = user?.role && isHQRole(user.role as any);
   const canManageOnboarding = isHQ;
 
   const { data: onboardingProcesses, isLoading } = useQuery<FranchiseOnboarding[]>({
@@ -103,18 +103,19 @@ export default function FranchiseAcilis() {
     },
   });
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, onboardingId?: number) => {
+    const testId = onboardingId ? `badge-status-${onboardingId}` : "badge-status";
     switch (status) {
       case "opened":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"><CheckCircle2 className="w-3 h-3 mr-1" />Açıldı</Badge>;
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Açıldı</Badge>;
       case "ready":
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"><CheckCircle2 className="w-3 h-3 mr-1" />Hazır</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Hazır</Badge>;
       case "training":
-        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100"><Clock className="w-3 h-3 mr-1" />Eğitim</Badge>;
+        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Eğitim</Badge>;
       case "construction":
-        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"><AlertCircle className="w-3 h-3 mr-1" />İnşaat</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" data-testid={testId}><AlertCircle className="w-3 h-3 mr-1" />İnşaat</Badge>;
       default:
-        return <Badge variant="outline"><Clock className="w-3 h-3 mr-1" />Planlama</Badge>;
+        return <Badge variant="outline" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Planlama</Badge>;
     }
   };
 
@@ -318,7 +319,7 @@ export default function FranchiseAcilis() {
                         {process.contactPerson} • {process.contactPhone}
                       </CardDescription>
                     </div>
-                    {getStatusBadge(process.status)}
+                    {getStatusBadge(process.status, process.id)}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
