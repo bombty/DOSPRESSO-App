@@ -86,7 +86,7 @@ export default function FranchiseAcilis() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateOnboardingFormValues) => {
-      await apiRequest("/api/franchise-onboarding", "POST", data);
+      await apiRequest("POST", "/api/franchise-onboarding", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/franchise-onboarding"] });

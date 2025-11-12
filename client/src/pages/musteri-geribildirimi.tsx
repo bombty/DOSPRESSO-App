@@ -52,7 +52,7 @@ export default function MusteriGeribildirimi() {
 
   const reviewMutation = useMutation({
     mutationFn: async ({ id, reviewNotes }: { id: number; reviewNotes: string }) => {
-      await apiRequest(`/api/customer-feedback/${id}/review`, "PATCH", { reviewNotes });
+      await apiRequest("PATCH", `/api/customer-feedback/${id}/review`, { reviewNotes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customer-feedback"] });

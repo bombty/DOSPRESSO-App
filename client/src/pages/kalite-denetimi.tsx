@@ -89,7 +89,7 @@ export default function KaliteDenetimi() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateAuditFormValues) => {
-      await apiRequest("/api/quality-audits", "POST", data);
+      await apiRequest("POST", "/api/quality-audits", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quality-audits"] });

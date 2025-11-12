@@ -85,7 +85,7 @@ export default function KampanyaYonetimi() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateCampaignFormValues) => {
-      await apiRequest("/api/campaigns", "POST", {
+      await apiRequest("POST", "/api/campaigns", {
         ...data,
         targetValue: data.targetValue ? parseFloat(data.targetValue) : null,
       });
