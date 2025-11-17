@@ -264,6 +264,41 @@ export default function Vardiyalar() {
     },
   });
 
+  const applyAISuggestionsMutation = useMutation({
+    mutationFn: async (suggestions: AIShiftSuggestion[]) => {
+      const shiftsToCreate = suggestions.map(s => ({
+        branchId: user!.branchId!,
+        shiftDate: s.shiftDate,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        shiftType: s.shiftType as "morning" | "evening" | "night",
+        status: "draft" as const,
+        assignedToId: s.suggestedAssignee?.id || null,
+        notes: `AI Önerisi: ${s.reasoning}`,
+        createdById: user!.id,
+      }));
+      
+      // Backend expects { shifts: [...], checklistIds?: [...] } format (line 3647 in routes.ts)
+      return apiRequest('POST', '/api/shifts/bulk-create', { shifts: shiftsToCreate });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      toast({
+        title: "✅ Başarılı",
+        description: `${aiSuggestions?.suggestions.length || 0} vardiya oluşturuldu`,
+      });
+      setAiSuggestions(null);
+      setIsAIDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Vardiyalar oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: shiftTrades } = useQuery<ShiftTradeRequest[]>({
     queryKey: ['/api/shift-trades'],
     enabled: !!user,
@@ -676,7 +711,18 @@ export default function Vardiyalar() {
                       </div>
 
                       <div className="space-y-2">
-                        <h3 className="font-semibold">Önerilen Vardiyalar:</h3>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold">Önerilen Vardiyalar:</h3>
+                          <Button
+                            onClick={() => applyAISuggestionsMutation.mutate(aiSuggestions.suggestions)}
+                            disabled={applyAISuggestionsMutation.isPending}
+                            size="sm"
+                            data-testid="button-apply-ai-suggestions"
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            {applyAISuggestionsMutation.isPending ? "Uygulanıyor..." : "Hepsini Uygula"}
+                          </Button>
+                        </div>
                         {aiSuggestions.suggestions.map((suggestion, idx) => (
                           <div key={idx} className="p-3 border rounded-lg space-y-1">
                             <div className="flex items-center justify-between">
