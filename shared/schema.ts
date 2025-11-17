@@ -1608,6 +1608,10 @@ export const shiftAttendance = pgTable("shift_attendance", {
   checkInPhotoUrl: text("check_in_photo_url"),
   checkInLatitude: numeric("check_in_latitude", { precision: 10, scale: 7 }),
   checkInLongitude: numeric("check_in_longitude", { precision: 10, scale: 7 }),
+  // Check-out Photo & Location Verification fields
+  checkOutPhotoUrl: text("check_out_photo_url"),
+  checkOutLatitude: numeric("check_out_latitude", { precision: 10, scale: 7 }),
+  checkOutLongitude: numeric("check_out_longitude", { precision: 10, scale: 7 }),
   // AI Dress Code Analysis fields (check-in)
   aiDressCodeScore: integer("ai_dress_code_score"), // 0-100
   aiDressCodeAnalysis: jsonb("ai_dress_code_analysis"), // Detailed analysis object

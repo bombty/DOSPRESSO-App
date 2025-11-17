@@ -5076,16 +5076,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // POST /api/shift-attendance/check-out - Check out with QR code
+  // POST /api/shift-attendance/check-out - Check out with QR code + photo + location
   app.post('/api/shift-attendance/check-out', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
       const { z } = await import('zod');
       const checkOutSchema = z.object({
         qrData: z.string(),
+        photoUrl: z.string(),
+        latitude: z.number(),
+        longitude: z.number(),
       });
       
-      const { qrData } = checkOutSchema.parse(req.body);
+      const { qrData, photoUrl, latitude, longitude } = checkOutSchema.parse(req.body);
       
       const verification = await storage.verifyShiftQR(qrData);
       if (!verification.valid) {
@@ -5116,6 +5119,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateShiftAttendance(userAttendance.id, {
         checkOutTime: now,
+        checkOutPhotoUrl: photoUrl,
+        checkOutLatitude: latitude.toString(),
+        checkOutLongitude: longitude.toString(),
         status: 'checked_out',
       });
       

@@ -11,11 +11,25 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, BookOpen, Play, CheckCircle2, Clock, Video, Brain, Award } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, BookOpen, Play, CheckCircle2, Clock, Video, Brain, Award, Plus, Trash2 } from "lucide-react";
 import type { TrainingModule, ModuleVideo, ModuleQuiz, Flashcard, UserTrainingProgress } from "@shared/schema";
+
+interface ModuleLesson {
+  id: number;
+  moduleId: number;
+  title: string;
+  content: string;
+  orderIndex: number;
+  estimatedDuration: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface TrainingModuleWithContent extends TrainingModule {
   videos: ModuleVideo[];
+  lessons: ModuleLesson[];
   quizzes: ModuleQuiz[];
   flashcards: Flashcard[];
 }
@@ -26,8 +40,13 @@ export default function TrainingDetail() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
+  const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<ModuleLesson | null>(null);
+  const [lessonFormData, setLessonFormData] = useState({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
+  const [isGeneratingMaterials, setIsGeneratingMaterials] = useState(false);
 
   const moduleId = params?.id ? parseInt(params.id) : 0;
+  const isAdminOrCoach = user?.role === 'admin' || user?.role === 'coach';
 
   const { data: module, isLoading } = useQuery<TrainingModuleWithContent>({
     queryKey: ["/api/training/modules", moduleId],
@@ -82,6 +101,90 @@ export default function TrainingDetail() {
       }
       return newSet;
     });
+  };
+
+  const createLessonMutation = useMutation({
+    mutationFn: async (data: typeof lessonFormData) => {
+      await apiRequest(`/api/training/modules/${moduleId}/lessons`, "POST", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/training/modules", moduleId] });
+      toast({ title: "Başarılı", description: "Ders oluşturuldu" });
+      setLessonDialogOpen(false);
+      setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Ders oluşturulamadı", variant: "destructive" });
+    },
+  });
+
+  const updateLessonMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<typeof lessonFormData> }) => {
+      await apiRequest(`/api/training/lessons/${id}`, "PUT", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/training/modules", moduleId] });
+      toast({ title: "Başarılı", description: "Ders güncellendi" });
+      setLessonDialogOpen(false);
+      setEditingLesson(null);
+      setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Ders güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  const deleteLessonMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/training/lessons/${id}`, "DELETE");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/training/modules", moduleId] });
+      toast({ title: "Başarılı", description: "Ders silindi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Ders silinemedi", variant: "destructive" });
+    },
+  });
+
+  const generateMaterialsMutation = useMutation({
+    mutationFn: async (lessonId: number) => {
+      setIsGeneratingMaterials(true);
+      return await apiRequest(`/api/training/lessons/${lessonId}/generate-materials`, "POST", {
+        quizCount: 5,
+        flashcardCount: 10,
+      });
+    },
+    onSuccess: (data: any) => {
+      setIsGeneratingMaterials(false);
+      toast({ 
+        title: "🎓 AI Materyal Oluşturuldu!", 
+        description: data.message || "Quiz soruları ve flashcard'lar hazır",
+      });
+    },
+    onError: () => {
+      setIsGeneratingMaterials(false);
+      toast({ title: "Hata", description: "AI materyal oluşturulamadı", variant: "destructive" });
+    },
+  });
+
+  const handleEditLesson = (lesson: ModuleLesson) => {
+    setEditingLesson(lesson);
+    setLessonFormData({
+      title: lesson.title,
+      content: lesson.content,
+      estimatedDuration: lesson.estimatedDuration,
+      orderIndex: lesson.orderIndex,
+    });
+    setLessonDialogOpen(true);
+  };
+
+  const handleSaveLesson = () => {
+    if (editingLesson) {
+      updateLessonMutation.mutate({ id: editingLesson.id, data: lessonFormData });
+    } else {
+      createLessonMutation.mutate(lessonFormData);
+    }
   };
 
   const categoryLabels: Record<string, string> = {
@@ -204,17 +307,21 @@ export default function TrainingDetail() {
       </Card>
 
       <Tabs defaultValue="videos" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3" data-testid="tabs-list">
+        <TabsList className="grid w-full grid-cols-4" data-testid="tabs-list">
           <TabsTrigger value="videos" data-testid="tab-videos">
             <Video className="mr-2 h-4 w-4" />
             Videolar
+          </TabsTrigger>
+          <TabsTrigger value="lessons" data-testid="tab-lessons">
+            <BookOpen className="mr-2 h-4 w-4" />
+            Dersler
           </TabsTrigger>
           <TabsTrigger value="quiz" data-testid="tab-quiz">
             <Brain className="mr-2 h-4 w-4" />
             Quiz
           </TabsTrigger>
           <TabsTrigger value="flashcards" data-testid="tab-flashcards">
-            <BookOpen className="mr-2 h-4 w-4" />
+            <Award className="mr-2 h-4 w-4" />
             Flashcardlar
           </TabsTrigger>
         </TabsList>
@@ -269,6 +376,173 @@ export default function TrainingDetail() {
                 <p>Bu modül için henüz video eklenmemiş</p>
               </CardContent>
             </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="lessons" className="space-y-4" data-testid="tab-content-lessons">
+          {isAdminOrCoach && (
+            <div className="flex justify-end mb-4">
+              <Button 
+                onClick={() => {
+                  setEditingLesson(null);
+                  setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
+                  setLessonDialogOpen(true);
+                }}
+                data-testid="button-add-lesson"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Ders Ekle
+              </Button>
+            </div>
+          )}
+
+          {module.lessons && module.lessons.length > 0 ? (
+            <div className="space-y-4">
+              {module.lessons.map((lesson) => (
+                <Card key={lesson.id} data-testid={`lesson-card-${lesson.id}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle>{lesson.title}</CardTitle>
+                        <CardDescription>
+                          <Clock className="inline-block mr-1 h-3 w-3" />
+                          {lesson.estimatedDuration} dk
+                        </CardDescription>
+                      </div>
+                      {isAdminOrCoach && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditLesson(lesson)}
+                            data-testid={`button-edit-lesson-${lesson.id}`}
+                          >
+                            Düzenle
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => deleteLessonMutation.mutate(lesson.id)}
+                            data-testid={`button-delete-lesson-${lesson.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="prose dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
+                      {lesson.content}
+                    </div>
+                    {isAdminOrCoach && (
+                      <Button
+                        onClick={() => generateMaterialsMutation.mutate(lesson.id)}
+                        disabled={isGeneratingMaterials}
+                        variant="secondary"
+                        className="w-full"
+                        data-testid={`button-generate-materials-${lesson.id}`}
+                      >
+                        <Brain className="mr-2 h-4 w-4" />
+                        {isGeneratingMaterials ? "AI Materyal Oluşturuluyor..." : "🎓 AI Materyal Oluştur (Quiz + Flashcard)"}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Bu modül için henüz ders eklenmemiş</p>
+                {isAdminOrCoach && (
+                  <Button 
+                    className="mt-4"
+                    onClick={() => {
+                      setEditingLesson(null);
+                      setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
+                      setLessonDialogOpen(true);
+                    }}
+                    data-testid="button-add-first-lesson"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    İlk Dersi Ekle
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {lessonDialogOpen && isAdminOrCoach && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setLessonDialogOpen(false)}>
+              <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <CardHeader>
+                  <CardTitle>{editingLesson ? "Dersi Düzenle" : "Yeni Ders Ekle"}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium">Başlık</label>
+                    <Input
+                      value={lessonFormData.title}
+                      onChange={(e) => setLessonFormData({ ...lessonFormData, title: e.target.value })}
+                      placeholder="Ders başlığı"
+                      data-testid="input-lesson-title"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">İçerik</label>
+                    <Textarea
+                      value={lessonFormData.content}
+                      onChange={(e) => setLessonFormData({ ...lessonFormData, content: e.target.value })}
+                      placeholder="Ders içeriğini buraya yazın..."
+                      rows={12}
+                      data-testid="input-lesson-content"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Tahmini Süre (dk)</label>
+                      <Input
+                        type="number"
+                        value={lessonFormData.estimatedDuration}
+                        onChange={(e) => setLessonFormData({ ...lessonFormData, estimatedDuration: parseInt(e.target.value) || 0 })}
+                        data-testid="input-lesson-duration"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Sıra</label>
+                      <Input
+                        type="number"
+                        value={lessonFormData.orderIndex}
+                        onChange={(e) => setLessonFormData({ ...lessonFormData, orderIndex: parseInt(e.target.value) || 1 })}
+                        data-testid="input-lesson-order"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setLessonDialogOpen(false);
+                        setEditingLesson(null);
+                        setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
+                      }}
+                      data-testid="button-cancel-lesson"
+                    >
+                      İptal
+                    </Button>
+                    <Button
+                      onClick={handleSaveLesson}
+                      disabled={!lessonFormData.title || !lessonFormData.content}
+                      data-testid="button-save-lesson"
+                    >
+                      Kaydet
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </TabsContent>
 

@@ -265,7 +265,21 @@ export default function VardiyaCheckin() {
   const checkOutMutation = useMutation({
     mutationFn: async ({ qrCode }: { qrCode: string }) => {
       if (!activeAttendance) throw new Error("Aktif vardiya bulunamadı");
-      return apiRequest("POST", "/api/shift-attendance/check-out", { qrCode });
+      
+      // Photo and location are REQUIRED for check-out too
+      try {
+        const photoUrl = await capturePhoto();
+        const loc = await getLocation();
+        
+        return apiRequest("POST", "/api/shift-attendance/check-out", {
+          qrCode,
+          photoUrl,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        });
+      } catch (error: any) {
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
