@@ -135,6 +135,9 @@ import {
   pageContent,
   branding,
   aiUsageLogs,
+  customerFeedback,
+  InsertCustomerFeedback,
+  CustomerFeedback,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -429,6 +432,11 @@ export interface IStorage {
     last14Days: Array<{date: string; cost: number}>;
     cachedSavings: number;
   }>;
+
+  // Customer Feedback operations
+  getCustomerFeedback(branchId?: number, status?: string): Promise<CustomerFeedback[]>;
+  createCustomerFeedback(data: InsertCustomerFeedback): Promise<CustomerFeedback>;
+  updateCustomerFeedbackStatus(id: number, status: string, reviewedById: string, reviewNotes?: string): Promise<CustomerFeedback | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2706,6 +2714,36 @@ export class DatabaseStorage implements IStorage {
       message,
       metadata: { shiftId, changeType },
     });
+  }
+
+  // Customer Feedback operations
+  async getCustomerFeedback(branchId?: number, status?: string): Promise<CustomerFeedback[]> {
+    const conditions: SQL[] = [];
+    if (branchId !== undefined) conditions.push(eq(customerFeedback.branchId, branchId));
+    if (status) conditions.push(eq(customerFeedback.status, status));
+    
+    return await db.select()
+      .from(customerFeedback)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(customerFeedback.feedbackDate));
+  }
+
+  async createCustomerFeedback(data: InsertCustomerFeedback): Promise<CustomerFeedback> {
+    const [feedback] = await db.insert(customerFeedback).values(data).returning();
+    return feedback;
+  }
+
+  async updateCustomerFeedbackStatus(id: number, status: string, reviewedById: string, reviewNotes?: string): Promise<CustomerFeedback | undefined> {
+    const [updated] = await db.update(customerFeedback)
+      .set({
+        status,
+        reviewedById,
+        reviewedAt: new Date(),
+        reviewNotes,
+      })
+      .where(eq(customerFeedback.id, id))
+      .returning();
+    return updated;
   }
 }
 
