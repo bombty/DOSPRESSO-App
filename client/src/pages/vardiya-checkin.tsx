@@ -29,6 +29,10 @@ export default function VardiyaCheckin() {
   const startScanning = async () => {
     try {
       setIsScanning(true);
+      
+      // Wait for DOM to render the scanner div
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const html5QrCode = new Html5Qrcode("qr-reader-checkin");
       scannerRef.current = html5QrCode;
 
