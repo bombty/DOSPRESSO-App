@@ -3343,6 +3343,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updated = await storage.updateShift(id, allowedUpdates);
+      
+      // Send notification if assignment changed or shift was updated
+      if (updated) {
+        const assignmentChanged = allowedUpdates.assignedToId && allowedUpdates.assignedToId !== existingShift.assignedToId;
+        if (assignmentChanged) {
+          await storage.notifyShiftChange(id, 'assigned');
+        } else if (Object.keys(allowedUpdates).length > 0) {
+          await storage.notifyShiftChange(id, 'updated');
+        }
+      }
+      
       res.json(updated);
     } catch (error: any) {
       console.error("Error updating shift:", error);
@@ -3381,6 +3392,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Bu vardiyayı silme yetkiniz yok" });
       }
 
+      // Send cancellation notification BEFORE deleting (so shift data is still available)
+      if (existingShift.assignedToId) {
+        await storage.notifyShiftChange(id, 'cancelled', 'Vardiya yönetici tarafından silindi');
+      }
+      
       await storage.deleteShift(id);
       res.json({ success: true });
     } catch (error) {
@@ -4250,6 +4266,488 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Geçersiz onay verisi", errors: error.errors });
       }
       res.status(500).json({ message: "Takas talebi onaylanamadı" });
+    }
+  });
+
+  // ===== SHIFT TEMPLATE ENDPOINTS =====
+  
+  // GET /api/shift-templates - List shift templates
+  app.get('/api/shift-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const { branchId: queryBranchId } = req.query;
+      
+      if (isHQRole(role)) {
+        const branchId = queryBranchId ? parseInt(queryBranchId as string) : undefined;
+        const templates = await storage.getShiftTemplates(branchId);
+        return res.json(templates);
+      }
+      
+      if (!user.branchId) {
+        return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+      }
+      
+      const templates = await storage.getShiftTemplates(user.branchId);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching shift templates:", error);
+      res.status(500).json({ message: "Şablonlar getirilemedi" });
+    }
+  });
+  
+  // GET /api/shift-templates/:id - Get single shift template
+  app.get('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      const template = await storage.getShiftTemplate(id);
+      if (!template) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+      
+      if (!isHQRole(role) && template.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu şablonu görüntüleme yetkiniz yok" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching shift template:", error);
+      res.status(500).json({ message: "Şablon getirilemedi" });
+    }
+  });
+  
+  // POST /api/shift-templates - Create shift template
+  app.post('/api/shift-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      
+      if (!['supervisor', 'supervisor_buddy', 'coach', 'admin'].includes(role) && !isHQRole(role)) {
+        return res.status(403).json({ message: "Şablon oluşturma yetkiniz yok" });
+      }
+      
+      const { insertShiftTemplateSchema } = await import('@shared/schema');
+      const validatedData = insertShiftTemplateSchema.parse(req.body);
+      
+      if (!isHQRole(role) && validatedData.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Başka şubeler için şablon oluşturamazsınız" });
+      }
+      
+      const created = await storage.createShiftTemplate({
+        ...validatedData,
+        createdById: user.id,
+      });
+      
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error creating shift template:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz şablon verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Şablon oluşturulamadı" });
+    }
+  });
+  
+  // PATCH /api/shift-templates/:id - Update shift template
+  app.patch('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      if (!['supervisor', 'supervisor_buddy', 'coach', 'admin'].includes(role) && !isHQRole(role)) {
+        return res.status(403).json({ message: "Şablon güncelleme yetkiniz yok" });
+      }
+      
+      const existing = await storage.getShiftTemplate(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+      
+      if (!isHQRole(role) && existing.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu şablonu güncelleme yetkiniz yok" });
+      }
+      
+      const { insertShiftTemplateSchema } = await import('@shared/schema');
+      const validatedData = insertShiftTemplateSchema.partial().parse(req.body);
+      
+      const updated = await storage.updateShiftTemplate(id, validatedData);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating shift template:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz şablon verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Şablon güncellenemedi" });
+    }
+  });
+  
+  // DELETE /api/shift-templates/:id - Delete shift template
+  app.delete('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      if (!['supervisor', 'supervisor_buddy', 'coach', 'admin'].includes(role) && !isHQRole(role)) {
+        return res.status(403).json({ message: "Şablon silme yetkiniz yok" });
+      }
+      
+      const existing = await storage.getShiftTemplate(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+      
+      if (!isHQRole(role) && existing.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu şablonu silme yetkiniz yok" });
+      }
+      
+      await storage.deleteShiftTemplate(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting shift template:", error);
+      res.status(500).json({ message: "Şablon silinemedi" });
+    }
+  });
+  
+  // POST /api/shift-templates/:id/create-shifts - Create shifts from template
+  app.post('/api/shift-templates/:id/create-shifts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      if (!['supervisor', 'supervisor_buddy', 'coach', 'admin'].includes(role) && !isHQRole(role)) {
+        return res.status(403).json({ message: "Şablondan vardiya oluşturma yetkiniz yok" });
+      }
+      
+      const template = await storage.getShiftTemplate(id);
+      if (!template) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+      
+      if (!isHQRole(role) && template.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu şablonu kullanma yetkiniz yok" });
+      }
+      
+      const { z } = await import('zod');
+      const createShiftsSchema = z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+      });
+      
+      const { startDate, endDate } = createShiftsSchema.parse(req.body);
+      
+      const created = await storage.createShiftsFromTemplate(id, startDate, endDate, user.id);
+      res.status(201).json({ 
+        message: `${created.length} vardiya oluşturuldu`,
+        shifts: created 
+      });
+    } catch (error: any) {
+      console.error("Error creating shifts from template:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz tarih aralığı", errors: error.errors });
+      }
+      res.status(500).json({ message: "Vardiyalar oluşturulamadı" });
+    }
+  });
+
+  // ===== EMPLOYEE AVAILABILITY ENDPOINTS =====
+  
+  // GET /api/employee-availability - List employee availability
+  app.get('/api/employee-availability', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const { userId: queryUserId, startDate, endDate } = req.query;
+      
+      if (isHQRole(role) || ['supervisor', 'supervisor_buddy', 'coach', 'admin'].includes(role)) {
+        const userId = queryUserId as string | undefined;
+        const availability = await storage.getEmployeeAvailability(
+          userId,
+          startDate as string | undefined,
+          endDate as string | undefined
+        );
+        return res.json(availability);
+      }
+      
+      const availability = await storage.getEmployeeAvailability(
+        user.id,
+        startDate as string | undefined,
+        endDate as string | undefined
+      );
+      res.json(availability);
+    } catch (error) {
+      console.error("Error fetching employee availability:", error);
+      res.status(500).json({ message: "Müsaitlik bilgileri getirilemedi" });
+    }
+  });
+  
+  // GET /api/employee-availability/:id - Get single availability record
+  app.get('/api/employee-availability/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      const availability = await storage.getAvailability(id);
+      if (!availability) {
+        return res.status(404).json({ message: "Müsaitlik kaydı bulunamadı" });
+      }
+      
+      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'coach', 'admin'].includes(role)) {
+        if (availability.userId !== user.id) {
+          return res.status(403).json({ message: "Bu kaydı görüntüleme yetkiniz yok" });
+        }
+      }
+      
+      res.json(availability);
+    } catch (error) {
+      console.error("Error fetching availability:", error);
+      res.status(500).json({ message: "Müsaitlik kaydı getirilemedi" });
+    }
+  });
+  
+  // POST /api/employee-availability - Create availability record
+  app.post('/api/employee-availability', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { insertEmployeeAvailabilitySchema } = await import('@shared/schema');
+      const validatedData = insertEmployeeAvailabilitySchema.parse(req.body);
+      
+      if (validatedData.userId !== user.id) {
+        return res.status(403).json({ message: "Yalnızca kendi müsaitlik bilgilerinizi ekleyebilirsiniz" });
+      }
+      
+      const created = await storage.createAvailability(validatedData);
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error creating availability:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz müsaitlik verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Müsaitlik kaydı oluşturulamadı" });
+    }
+  });
+  
+  // PATCH /api/employee-availability/:id - Update availability record
+  app.patch('/api/employee-availability/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      const existing = await storage.getAvailability(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Müsaitlik kaydı bulunamadı" });
+      }
+      
+      if (existing.userId !== user.id) {
+        return res.status(403).json({ message: "Bu kaydı güncelleme yetkiniz yok" });
+      }
+      
+      const { insertEmployeeAvailabilitySchema } = await import('@shared/schema');
+      const validatedData = insertEmployeeAvailabilitySchema.partial().parse(req.body);
+      
+      const updated = await storage.updateAvailability(id, validatedData);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating availability:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz müsaitlik verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Müsaitlik kaydı güncellenemedi" });
+    }
+  });
+  
+  // DELETE /api/employee-availability/:id - Delete availability record
+  app.delete('/api/employee-availability/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      const existing = await storage.getAvailability(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Müsaitlik kaydı bulunamadı" });
+      }
+      
+      if (existing.userId !== user.id) {
+        return res.status(403).json({ message: "Bu kaydı silme yetkiniz yok" });
+      }
+      
+      await storage.deleteAvailability(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting availability:", error);
+      res.status(500).json({ message: "Müsaitlik kaydı silinemedi" });
+    }
+  });
+  
+  // POST /api/employee-availability/check - Check availability for a shift
+  app.post('/api/employee-availability/check', isAuthenticated, async (req: any, res) => {
+    try {
+      const { z } = await import('zod');
+      const checkSchema = z.object({
+        userId: z.string(),
+        shiftDate: z.string(),
+        startTime: z.string(),
+        endTime: z.string(),
+      });
+      
+      const { userId, shiftDate, startTime, endTime } = checkSchema.parse(req.body);
+      
+      const result = await storage.checkEmployeeAvailability(userId, shiftDate, startTime, endTime);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error checking availability:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz kontrol verisi", errors: error.errors });
+      }
+      res.status(500).json({ message: "Müsaitlik kontrolü yapılamadı" });
+    }
+  });
+
+  // ===== CHECK-IN/CHECK-OUT ENDPOINTS =====
+  
+  // POST /api/shift-attendance/check-in - Check in with QR code
+  app.post('/api/shift-attendance/check-in', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { z } = await import('zod');
+      const checkInSchema = z.object({
+        qrData: z.string(),
+      });
+      
+      const { qrData } = checkInSchema.parse(req.body);
+      
+      const verification = await storage.verifyShiftQR(qrData);
+      if (!verification.valid) {
+        return res.status(400).json({ message: verification.message });
+      }
+      
+      const shift = await storage.getShift(verification.shiftId!);
+      if (!shift) {
+        return res.status(404).json({ message: "Vardiya bulunamadı" });
+      }
+      
+      if (shift.assignedToId !== user.id) {
+        return res.status(403).json({ message: "Bu vardiya size atanmamış" });
+      }
+      
+      const existingAttendances = await storage.getShiftAttendances(shift.id);
+      const userAttendance = existingAttendances.find(a => a.userId === user.id);
+      
+      if (userAttendance) {
+        if (userAttendance.checkInTime) {
+          return res.status(400).json({ message: "Bu vardiyaya zaten giriş yaptınız" });
+        }
+      }
+      
+      const now = new Date();
+      
+      if (userAttendance) {
+        const updated = await storage.updateShiftAttendance(userAttendance.id, {
+          checkInTime: now,
+          status: 'checked_in',
+        });
+        return res.json(updated);
+      }
+      
+      const created = await storage.createShiftAttendance({
+        shiftId: shift.id,
+        userId: user.id,
+        checkInTime: now,
+        status: 'checked_in',
+      });
+      
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error checking in:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz QR kod", errors: error.errors });
+      }
+      res.status(500).json({ message: "Giriş yapılamadı" });
+    }
+  });
+  
+  // POST /api/shift-attendance/check-out - Check out with QR code
+  app.post('/api/shift-attendance/check-out', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { z } = await import('zod');
+      const checkOutSchema = z.object({
+        qrData: z.string(),
+      });
+      
+      const { qrData } = checkOutSchema.parse(req.body);
+      
+      const verification = await storage.verifyShiftQR(qrData);
+      if (!verification.valid) {
+        return res.status(400).json({ message: verification.message });
+      }
+      
+      const shift = await storage.getShift(verification.shiftId!);
+      if (!shift) {
+        return res.status(404).json({ message: "Vardiya bulunamadı" });
+      }
+      
+      if (shift.assignedToId !== user.id) {
+        return res.status(403).json({ message: "Bu vardiya size atanmamış" });
+      }
+      
+      const existingAttendances = await storage.getShiftAttendances(shift.id);
+      const userAttendance = existingAttendances.find(a => a.userId === user.id);
+      
+      if (!userAttendance || !userAttendance.checkInTime) {
+        return res.status(400).json({ message: "Önce giriş yapmalısınız" });
+      }
+      
+      if (userAttendance.checkOutTime) {
+        return res.status(400).json({ message: "Bu vardiyadan zaten çıkış yaptınız" });
+      }
+      
+      const now = new Date();
+      
+      const updated = await storage.updateShiftAttendance(userAttendance.id, {
+        checkOutTime: now,
+        status: 'checked_out',
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error checking out:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz QR kod", errors: error.errors });
+      }
+      res.status(500).json({ message: "Çıkış yapılamadı" });
+    }
+  });
+
+  // ===== SHIFT REPORTING ENDPOINTS =====
+  
+  // GET /api/reports/attendance-stats - Get attendance statistics
+  app.get('/api/reports/attendance-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const { userId: queryUserId, month, year } = req.query;
+      
+      let targetUserId = user.id;
+      
+      if (isHQRole(role) || ['supervisor', 'supervisor_buddy', 'coach', 'admin'].includes(role)) {
+        targetUserId = queryUserId as string || user.id;
+      }
+      
+      const monthNum = month ? parseInt(month as string) : undefined;
+      const yearNum = year ? parseInt(year as string) : undefined;
+      
+      const stats = await storage.calculateAttendanceStats(targetUserId, monthNum, yearNum);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching attendance stats:", error);
+      res.status(500).json({ message: "İstatistikler getirilemedi" });
     }
   });
 

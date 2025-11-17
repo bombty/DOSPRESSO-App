@@ -369,6 +369,10 @@ export interface IStorage {
   verifyShiftQR(qrData: string): Promise<{ valid: boolean; shiftId?: number; message?: string }>;
   calculateAttendanceStats(userId: string, month?: number, year?: number): Promise<{ totalShifts: number; attended: number; late: number; absent: number }>;
   
+  // Shift notification helpers
+  sendShiftReminders(): Promise<void>;
+  notifyShiftChange(shiftId: number, changeType: 'updated' | 'assigned' | 'cancelled', notes?: string): Promise<void>;
+  
   // Performance Metrics scoring
   recordPerformanceScore(data: {
     branchId?: number;
@@ -2583,6 +2587,94 @@ export class DatabaseStorage implements IStorage {
     absent += (totalShifts - attendances.length);
 
     return { totalShifts, attended, late, absent };
+  }
+
+  // ==================== SHIFT NOTIFICATION HELPERS ====================
+  
+  async sendShiftReminders(): Promise<void> {
+    // Find shifts starting in the next 1-2 hours that haven't been reminded yet
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+    const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    
+    const today = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+    const oneHourTime = oneHourLater.toTimeString().split(' ')[0].substring(0, 5);
+    const twoHoursTime = twoHoursLater.toTimeString().split(' ')[0].substring(0, 5);
+    
+    // Get upcoming shifts for today
+    const upcomingShifts = await db.select()
+      .from(shifts)
+      .where(
+        and(
+          eq(shifts.shiftDate, today),
+          sql`${shifts.startTime} >= ${oneHourTime}`,
+          sql`${shifts.startTime} <= ${twoHoursTime}`,
+          eq(shifts.status, 'confirmed'),
+          sql`${shifts.assignedToId} IS NOT NULL`
+        )
+      );
+    
+    for (const shift of upcomingShifts) {
+      if (!shift.assignedToId) continue;
+      
+      // Check if we already sent a reminder for this shift
+      const existingReminder = await db.select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, shift.assignedToId),
+            eq(notifications.type, 'shift_reminder'),
+            sql`${notifications.metadata}->>'shiftId' = ${shift.id.toString()}`
+          )
+        );
+      
+      if (existingReminder.length > 0) continue;
+      
+      // Send reminder notification
+      await this.createNotification({
+        userId: shift.assignedToId,
+        type: 'shift_reminder',
+        title: 'Vardiya Hatırlatması',
+        message: `Vardiyanz ${shift.startTime} - ${shift.endTime} saatleri arasında başlayacak.`,
+        metadata: { shiftId: shift.id },
+      });
+    }
+  }
+
+  async notifyShiftChange(shiftId: number, changeType: 'updated' | 'assigned' | 'cancelled', notes?: string): Promise<void> {
+    const shift = await this.getShift(shiftId);
+    if (!shift || !shift.assignedToId) return;
+    
+    let title = '';
+    let message = '';
+    
+    switch (changeType) {
+      case 'assigned':
+        title = 'Yeni Vardiya Ataması';
+        message = `Size ${shift.shiftDate} tarihinde ${shift.startTime} - ${shift.endTime} saatleri arasında bir vardiya atandı.`;
+        break;
+      case 'updated':
+        title = 'Vardiya Güncellendi';
+        message = `${shift.shiftDate} tarihli vardiyanz güncellendi. Detayları kontrol edin.`;
+        break;
+      case 'cancelled':
+        title = 'Vardiya İptal Edildi';
+        message = `${shift.shiftDate} tarihli vardiyanz iptal edildi.`;
+        break;
+    }
+    
+    if (notes) {
+      message += ` Not: ${notes}`;
+    }
+    
+    await this.createNotification({
+      userId: shift.assignedToId,
+      type: 'shift_change',
+      title,
+      message,
+      metadata: { shiftId, changeType },
+    });
   }
 }
 

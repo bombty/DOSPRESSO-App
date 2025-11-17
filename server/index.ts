@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
 
 const app = express();
 
@@ -81,5 +82,28 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start shift reminder job (runs every 10 minutes)
+    startShiftReminderJob();
   });
 })();
+
+// Background job for shift reminders
+function startShiftReminderJob() {
+  // Run immediately on startup
+  storage.sendShiftReminders().catch((error: any) => {
+    console.error("Error sending shift reminders:", error);
+  });
+  
+  // Then run every 10 minutes
+  setInterval(async () => {
+    try {
+      await storage.sendShiftReminders();
+      log("Shift reminders sent successfully");
+    } catch (error) {
+      console.error("Error in shift reminder job:", error);
+    }
+  }, 10 * 60 * 1000); // 10 minutes
+  
+  log("Shift reminder job started (runs every 10 minutes)");
+}
