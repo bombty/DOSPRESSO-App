@@ -113,7 +113,18 @@ export default function TrainingDetail() {
       setLessonDialogOpen(false);
       setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({ title: "Hata", description: "Ders oluşturulamadı", variant: "destructive" });
     },
   });
@@ -129,7 +140,18 @@ export default function TrainingDetail() {
       setEditingLesson(null);
       setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({ title: "Hata", description: "Ders güncellenemedi", variant: "destructive" });
     },
   });
@@ -142,7 +164,18 @@ export default function TrainingDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/training/modules", moduleId] });
       toast({ title: "Başarılı", description: "Ders silindi" });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({ title: "Hata", description: "Ders silinemedi", variant: "destructive" });
     },
   });
@@ -157,8 +190,9 @@ export default function TrainingDetail() {
     },
     onSuccess: (data: any) => {
       setIsGeneratingMaterials(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/training/modules", moduleId] });
       toast({ 
-        title: "🎓 AI Materyal Oluşturuldu!", 
+        title: "AI Materyal Oluşturuldu", 
         description: data.message || "Quiz soruları ve flashcard'lar hazır",
       });
     },
@@ -385,7 +419,8 @@ export default function TrainingDetail() {
               <Button 
                 onClick={() => {
                   setEditingLesson(null);
-                  setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
+                  const nextOrder = (module.lessons?.length || 0) + 1;
+                  setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: nextOrder });
                   setLessonDialogOpen(true);
                 }}
                 data-testid="button-add-lesson"
@@ -422,7 +457,11 @@ export default function TrainingDetail() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => deleteLessonMutation.mutate(lesson.id)}
+                            onClick={() => {
+                              if (confirm("Bu dersi silmek istediğinizden emin misiniz?")) {
+                                deleteLessonMutation.mutate(lesson.id);
+                              }
+                            }}
                             data-testid={`button-delete-lesson-${lesson.id}`}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -444,7 +483,7 @@ export default function TrainingDetail() {
                         data-testid={`button-generate-materials-${lesson.id}`}
                       >
                         <Brain className="mr-2 h-4 w-4" />
-                        {isGeneratingMaterials ? "AI Materyal Oluşturuluyor..." : "🎓 AI Materyal Oluştur (Quiz + Flashcard)"}
+                        {isGeneratingMaterials ? "AI Materyal Oluşturuluyor..." : "AI Materyal Oluştur (Quiz + Flashcard)"}
                       </Button>
                     )}
                   </CardContent>
@@ -461,7 +500,8 @@ export default function TrainingDetail() {
                     className="mt-4"
                     onClick={() => {
                       setEditingLesson(null);
-                      setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: 1 });
+                      const nextOrder = (module.lessons?.length || 0) + 1;
+                      setLessonFormData({ title: "", content: "", estimatedDuration: 15, orderIndex: nextOrder });
                       setLessonDialogOpen(true);
                     }}
                     data-testid="button-add-first-lesson"
@@ -475,8 +515,8 @@ export default function TrainingDetail() {
           )}
 
           {lessonDialogOpen && isAdminOrCoach && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setLessonDialogOpen(false)}>
-              <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setLessonDialogOpen(false)} data-testid="lesson-dialog-backdrop">
+              <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} data-testid="lesson-dialog-card">
                 <CardHeader>
                   <CardTitle>{editingLesson ? "Dersi Düzenle" : "Yeni Ders Ekle"}</CardTitle>
                 </CardHeader>
@@ -534,7 +574,7 @@ export default function TrainingDetail() {
                     </Button>
                     <Button
                       onClick={handleSaveLesson}
-                      disabled={!lessonFormData.title || !lessonFormData.content}
+                      disabled={!lessonFormData.title.trim() || !lessonFormData.content.trim()}
                       data-testid="button-save-lesson"
                     >
                       Kaydet
