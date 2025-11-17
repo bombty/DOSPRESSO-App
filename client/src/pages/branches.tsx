@@ -153,20 +153,20 @@ export default function Branches() {
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Şubeler</h1>
           <p className="text-muted-foreground mt-1">Şube bilgilerini yönetin</p>
         </div>
-        <Dialog open={isAddDialogOpen || !!editingBranch} onOpenChange={(open) => {
-          if (!open) {
-            setIsAddDialogOpen(false);
-            setEditingBranch(null);
-            form.reset();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-branch">
-              <Plus className="mr-2 h-4 w-4" />
-              Yeni Şube Ekle
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
+        <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-branch">
+          <Plus className="mr-2 h-4 w-4" />
+          Yeni Şube Ekle
+        </Button>
+      </div>
+
+      <Dialog open={isAddDialogOpen || !!editingBranch} onOpenChange={(open) => {
+        if (!open) {
+          setIsAddDialogOpen(false);
+          setEditingBranch(null);
+          form.reset();
+        }
+      }}>
+        <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingBranch ? "Şube Düzenle" : "Yeni Şube Ekle"}</DialogTitle>
             </DialogHeader>
@@ -243,8 +243,7 @@ export default function Branches() {
               </form>
             </Form>
           </DialogContent>
-        </Dialog>
-      </div>
+      </Dialog>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -264,15 +263,15 @@ export default function Branches() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {branches?.map((branch) => (
             <Card key={branch.id} data-testid={`card-branch-${branch.id}`}>
-              <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-primary" />
-                  {branch.name}
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
+                <CardTitle className="text-lg flex items-center gap-2 flex-1 min-w-0">
+                  <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
+                  <span className="truncate">{branch.name}</span>
                 </CardTitle>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-shrink-0">
                   <Button 
                     size="icon" 
-                    variant="ghost" 
+                    variant="outline" 
                     onClick={() => handleEdit(branch)}
                     data-testid={`button-edit-branch-${branch.id}`}
                   >
@@ -280,7 +279,7 @@ export default function Branches() {
                   </Button>
                   <Button 
                     size="icon" 
-                    variant="ghost" 
+                    variant="outline" 
                     onClick={() => handleDelete(branch.id)}
                     data-testid={`button-delete-branch-${branch.id}`}
                   >
