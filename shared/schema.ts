@@ -1581,7 +1581,17 @@ export const shiftAttendance = pgTable("shift_attendance", {
   totalWorkedMinutes: integer("total_worked_minutes").default(0),
   status: varchar("status", { length: 20 }).notNull().default("scheduled"), // scheduled, checked_in, on_break, checked_out, absent, late
   notes: text("notes"),
-  // Dress Code AI Analysis fields
+  // Check-in Photo & Location Verification fields
+  checkInPhotoUrl: text("check_in_photo_url"),
+  checkInLatitude: numeric("check_in_latitude", { precision: 10, scale: 7 }),
+  checkInLongitude: numeric("check_in_longitude", { precision: 10, scale: 7 }),
+  // AI Dress Code Analysis fields (check-in)
+  aiDressCodeScore: integer("ai_dress_code_score"), // 0-100
+  aiDressCodeAnalysis: jsonb("ai_dress_code_analysis"), // Detailed analysis object
+  aiDressCodeStatus: varchar("ai_dress_code_status", { length: 20 }).default("pending"), // pending, approved, rejected, error
+  aiDressCodeWarnings: text("ai_dress_code_warnings").array(), // Turkish warnings
+  aiDressCodeTimestamp: timestamp("ai_dress_code_timestamp"),
+  // Legacy fields (keeping for backward compatibility)
   photoUrl: text("photo_url"),
   analysisStatus: varchar("analysis_status", { length: 20 }).default("pending"), // pending, completed, error
   analysisDetails: jsonb("analysis_details"), // Structured AI response

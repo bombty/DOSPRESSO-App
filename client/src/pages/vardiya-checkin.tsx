@@ -6,13 +6,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { QrCode, Camera, CheckCircle, XCircle, Clock } from "lucide-react";
+import { QrCode, Camera, CheckCircle, XCircle, Clock, MapPin, User } from "lucide-react";
 import type { ShiftAttendance } from "@shared/schema";
+import Uppy from "@uppy/core";
+import AwsS3 from "@uppy/aws-s3";
 
 export default function VardiyaCheckin() {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedQR, setScannedQR] = useState<string | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null); // S3 URL
+  const [location, setLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const { data: activeAttendance, isLoading } = useQuery<ShiftAttendance | null>({
     queryKey: ["/api/shift-attendance"],
@@ -23,8 +32,122 @@ export default function VardiyaCheckin() {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
       }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
     };
   }, []);
+
+  // Get user location
+  const getLocation = (): Promise<{latitude: number; longitude: number}> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Konum servisi desteklenmiyor"));
+        return;
+      }
+      
+      setIsGettingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const loc = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          setLocation(loc);
+          setIsGettingLocation(false);
+          resolve(loc);
+        },
+        (error) => {
+          setIsGettingLocation(false);
+          
+          // Normalize geolocation errors
+          if (error.code === 1) { // PERMISSION_DENIED
+            reject(new Error("Konum izni reddedildi. Lütfen tarayıcı ayarlarından konum iznini verin."));
+          } else if (error.code === 2) { // POSITION_UNAVAILABLE
+            reject(new Error("Konum bilgisi alınamıyor. GPS sinyali zayıf olabilir."));
+          } else if (error.code === 3) { // TIMEOUT
+            reject(new Error("Konum alınması zaman aşımına uğradı. Tekrar deneyin."));
+          } else {
+            reject(new Error("Konum alınamadı. Lütfen konum servislerini aktif edin."));
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  };
+
+  // Capture photo from camera
+  const capturePhoto = async (): Promise<string> => {
+    try {
+      setIsCapturingPhoto(true);
+      
+      // Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: 1280, height: 720 }
+      });
+      
+      streamRef.current = stream;
+      
+      if (!videoRef.current || !canvasRef.current) {
+        throw new Error("Video/Canvas element not found");
+      }
+      
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+      
+      // Wait for video to stabilize (3 seconds for better quality)
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+      }
+      
+      // Stop camera
+      stream.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+      
+      // Convert to data URL (base64)
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      
+      // Upload to Object Storage via backend
+      const response = await fetch("/api/upload/photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataUrl,
+          filename: `checkin-${Date.now()}.jpg`,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Fotoğraf yüklenemedi");
+      }
+      
+      const { url } = await response.json();
+      
+      setCapturedPhoto(url);
+      setIsCapturingPhoto(false);
+      return url;
+    } catch (error: any) {
+      setIsCapturingPhoto(false);
+      
+      // Normalize browser errors
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        throw new Error("Kamera izni reddedildi. Lütfen tarayıcı ayarlarından kamera iznini verin.");
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        throw new Error("Kamera bulunamadı. Cihazınızın kamera erişimi olduğundan emin olun.");
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        throw new Error("Kamera kullanılamıyor. Başka bir uygulama kamerayı kullanıyor olabilir.");
+      } else {
+        throw new Error(error.message || "Fotoğraf çekilemedi");
+      }
+    }
+  };
 
   const startScanning = async () => {
     try {
@@ -101,15 +224,31 @@ export default function VardiyaCheckin() {
 
   const checkInMutation = useMutation({
     mutationFn: async ({ qrCode }: { qrCode: string }) => {
-      return apiRequest("POST", "/api/shift-attendance/check-in", { qrCode });
+      // Photo and location are REQUIRED - fail fast if either fails
+      try {
+        const photoUrl = await capturePhoto();
+        const loc = await getLocation();
+        
+        return apiRequest("POST", "/api/shift-attendance/check-in", {
+          qrData: qrCode,
+          photoUrl,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        });
+      } catch (error: any) {
+        // Re-throw with clear user message (errors already normalized in capturePhoto/getLocation)
+        throw error;
+      }
     },
     onSuccess: (data: any) => {
       toast({
         title: "✅ Giriş Başarılı",
-        description: `Vardiyaya giriş yapıldı: ${data.shift?.title || 'Vardiya'}`,
+        description: "Vardiyaya giriş yapıldı. Dress code analizi yapılıyor...",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
       setScannedQR(null);
+      setCapturedPhoto(null);
+      setLocation(null);
     },
     onError: (error: any) => {
       toast({
@@ -118,6 +257,8 @@ export default function VardiyaCheckin() {
         variant: "destructive",
       });
       setScannedQR(null);
+      setCapturedPhoto(null);
+      setLocation(null);
     },
   });
 
@@ -155,10 +296,56 @@ export default function VardiyaCheckin() {
 
   return (
     <div className="container max-w-2xl mx-auto p-4 space-y-6">
+      {/* Hidden video and canvas elements for photo capture */}
+      <video ref={videoRef} className="hidden" autoPlay playsInline />
+      <canvas ref={canvasRef} className="hidden" />
+      
       <div className="flex items-center gap-2">
         <QrCode className="h-6 w-6" />
         <h1 className="text-2xl font-bold">Vardiya Giriş/Çıkış (QR)</h1>
       </div>
+      
+      {/* Status indicators */}
+      {(isCapturingPhoto || isGettingLocation) && (
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              {isCapturingPhoto && (
+                <div className="flex items-center gap-2">
+                  <Camera className="h-5 w-5 text-blue-600 animate-pulse" />
+                  <span className="text-sm font-medium">Fotoğraf çekiliyor...</span>
+                </div>
+              )}
+              {isGettingLocation && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-blue-600 animate-pulse" />
+                  <span className="text-sm font-medium">Konum alınıyor...</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Captured data display */}
+      {(capturedPhoto || location) && (
+        <Card>
+          <CardContent className="pt-6 space-y-2">
+            {capturedPhoto && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                <span>Fotoğraf çekildi ✓</span>
+              </div>
+            )}
+            {location && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <MapPin className="h-4 w-4" />
+                <span>Konum alındı ✓</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {activeAttendance && (
         <Card>

@@ -106,6 +106,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/upload/photo - Upload base64 photo to Object Storage
+  app.post('/api/upload/photo', isAuthenticated, async (req: any, res) => {
+    try {
+      const { Client } = await import('@replit/object-storage');
+      const { z } = await import('zod');
+      const crypto = await import('crypto');
+      
+      const uploadSchema = z.object({
+        dataUrl: z.string(),
+        filename: z.string(),
+      });
+      
+      const { dataUrl, filename } = uploadSchema.parse(req.body);
+      
+      // Parse base64 data URL
+      const matches = dataUrl.match(/^data:(.+);base64,(.+)$/);
+      if (!matches) {
+        return res.status(400).json({ message: "Invalid data URL format" });
+      }
+      
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // Generate a secure access token for this file
+      const accessToken = crypto.randomBytes(32).toString('hex');
+      
+      // Upload to Object Storage
+      const client = new Client();
+      const path = `.private/shift-photos/${req.user.id}/${filename}`;
+      const { ok, error } = await client.uploadFromBytes(path, buffer);
+      
+      if (!ok) {
+        console.error("Object Storage upload failed:", error);
+        return res.status(500).json({ message: "Upload failed", error });
+      }
+      
+      // Store access token mapping (in-memory for now, use Redis/DB for production)
+      if (!global.fileAccessTokens) {
+        global.fileAccessTokens = new Map();
+      }
+      global.fileAccessTokens.set(accessToken, {
+        path,
+        userId: req.user.id,
+        expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+      });
+      
+      // Generate a fully qualified download URL with token
+      const protocol = req.protocol || 'https';
+      const host = req.get('host') || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
+      const url = `${protocol}://${host}/api/files/public/${accessToken}`;
+      
+      res.json({ url, path, size: buffer.length });
+    } catch (error: any) {
+      console.error("Error uploading photo:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid upload data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Upload failed" });
+    }
+  });
+
+  // GET /api/files/public/:token - Serve files via token (for AI services)
+  app.get('/api/files/public/:token', async (req, res) => {
+    try {
+      const { Client } = await import('@replit/object-storage');
+      const client = new Client();
+      const token = req.params.token;
+      
+      // Check token validity
+      if (!global.fileAccessTokens || !global.fileAccessTokens.has(token)) {
+        return res.status(404).json({ message: "Invalid or expired token" });
+      }
+      
+      const tokenData = global.fileAccessTokens.get(token);
+      
+      // Check expiration
+      if (Date.now() > tokenData.expiresAt) {
+        global.fileAccessTokens.delete(token);
+        return res.status(404).json({ message: "Token expired" });
+      }
+      
+      const { ok, value, error } = await client.downloadAsBytes(tokenData.path);
+      
+      if (!ok) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Detect mime type from path
+      let mimeType = 'application/octet-stream';
+      if (tokenData.path.endsWith('.jpg') || tokenData.path.endsWith('.jpeg')) {
+        mimeType = 'image/jpeg';
+      } else if (tokenData.path.endsWith('.png')) {
+        mimeType = 'image/png';
+      }
+      
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours cache
+      res.send(Buffer.from(value));
+    } catch (error) {
+      console.error("Error serving public file:", error);
+      res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
+
+  // GET /api/files/:path - Serve files from Object Storage (authenticated)
+  app.get('/api/files/*', isAuthenticated, async (req: any, res) => {
+    try {
+      const { Client } = await import('@replit/object-storage');
+      const client = new Client();
+      const path = req.params[0];
+      const user = req.user!;
+      
+      // Security: Only allow users to access their own files or public files
+      if (path.startsWith('.private/shift-photos/')) {
+        const pathParts = path.split('/');
+        const fileUserId = pathParts[2]; // .private/shift-photos/{userId}/...
+        
+        // Only allow access to own files or HQ admin access
+        if (fileUserId !== user.id && !isHQRole((user.role || 'employee') as UserRoleType)) {
+          return res.status(403).json({ message: "Bu dosyaya erişim yetkiniz yok" });
+        }
+      }
+      
+      const { ok, value, error } = await client.downloadAsBytes(path);
+      
+      if (!ok) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Detect mime type from path
+      let mimeType = 'application/octet-stream';
+      if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
+        mimeType = 'image/jpeg';
+      } else if (path.endsWith('.png')) {
+        mimeType = 'image/png';
+      }
+      
+      res.setHeader('Content-Type', mimeType);
+      res.send(Buffer.from(value));
+    } catch (error) {
+      console.error("Error serving file:", error);
+      res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
+
   app.get('/api/branches', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
@@ -4611,16 +4757,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== CHECK-IN/CHECK-OUT ENDPOINTS =====
   
-  // POST /api/shift-attendance/check-in - Check in with QR code
+  // POST /api/shift-attendance/check-in - Check in with QR code, photo & location
   app.post('/api/shift-attendance/check-in', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
       const { z } = await import('zod');
       const checkInSchema = z.object({
         qrData: z.string(),
+        photoUrl: z.string().min(1, "Fotoğraf gereklidir"), // Required S3 URL of check-in photo
+        latitude: z.number().min(-90).max(90, "Geçersiz enlem"),
+        longitude: z.number().min(-180).max(180, "Geçersiz boylam"),
       });
       
-      const { qrData } = checkInSchema.parse(req.body);
+      const { qrData, photoUrl, latitude, longitude } = checkInSchema.parse(req.body);
       
       const verification = await storage.verifyShiftQR(qrData);
       if (!verification.valid) {
@@ -4647,22 +4796,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const now = new Date();
       
-      if (userAttendance) {
-        const updated = await storage.updateShiftAttendance(userAttendance.id, {
-          checkInTime: now,
-          status: 'checked_in',
-        });
-        return res.json(updated);
-      }
-      
-      const created = await storage.createShiftAttendance({
-        shiftId: shift.id,
-        userId: user.id,
+      // Prepare attendance data (photo and location are required)
+      const attendanceData: any = {
         checkInTime: now,
         status: 'checked_in',
-      });
+        checkInPhotoUrl: photoUrl,
+        checkInLatitude: latitude.toString(),
+        checkInLongitude: longitude.toString(),
+      };
       
-      res.status(201).json(created);
+      let attendance;
+      if (userAttendance) {
+        attendance = await storage.updateShiftAttendance(userAttendance.id, attendanceData);
+      } else {
+        attendance = await storage.createShiftAttendance({
+          shiftId: shift.id,
+          userId: user.id,
+          ...attendanceData,
+        });
+      }
+      
+      // Trigger AI dress code analysis asynchronously (photo is required)
+      if (attendance) {
+        (async () => {
+          try {
+            const analysis = await analyzeDressCodePhoto(
+              photoUrl,
+              user.fullName || user.email || "Çalışan",
+              user.id,
+              false // use cache
+            );
+            
+            await storage.updateShiftAttendance(attendance.id, {
+              aiDressCodeScore: analysis.score,
+              aiDressCodeAnalysis: analysis as any,
+              aiDressCodeStatus: analysis.isCompliant ? 'approved' : 'rejected',
+              aiDressCodeWarnings: analysis.violations,
+              aiDressCodeTimestamp: new Date(),
+            });
+            
+            console.log(`✅ Dress code analyzed for attendance ${attendance.id}: ${analysis.score}/100`);
+          } catch (error) {
+            console.error("Error analyzing dress code:", error);
+            await storage.updateShiftAttendance(attendance.id, {
+              aiDressCodeStatus: 'error',
+              aiDressCodeWarnings: ["AI analizi yapılamadı"],
+            });
+          }
+        })();
+      }
+      
+      res.status(201).json(attendance);
     } catch (error: any) {
       console.error("Error checking in:", error);
       if (error.name === 'ZodError') {

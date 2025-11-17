@@ -79,6 +79,7 @@ function Router() {
           <Route path="/kasa-raporlari" component={CashReports} />
           <Route path="/vardiyalar" component={Vardiyalar} />
           <Route path="/vardiya-checkin" component={VardiyaCheckin} />
+          <Route path="/vardiya-checkin-checkout" component={VardiyaCheckin} />
           <Route path="/vardiya-sablonlari" component={VardiyaSablonlari} />
           <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
           <Route path="/hq-destek" component={HQSupport} />
