@@ -1,7 +1,7 @@
 # DOSPRESSO Franchise Management WebApp
 
 ## Overview
-DOSPRESSO is a comprehensive web-based platform designed for managing coffee shop operations across multiple franchise branches. It centralizes control for Headquarter (HQ) staff to monitor branches, assign tasks with AI-powered verification, track equipment, manage training, and provide support. The platform is localized for the Turkish market, with a Turkish user interface and role-based access for HQ and branch personnel. Key capabilities include AI-powered task verification, equipment fault reporting and tracking, a knowledge base, performance dashboards, automated reminders, checklist management, a training academy, and an HQ support ticket system. The business vision is to streamline franchise operations, improve efficiency, and ensure brand consistency across all DOSPRESSO branches.
+DOSPRESSO is a comprehensive web-based platform designed for managing coffee shop operations across multiple franchise branches. It centralizes control for Headquarter (HQ) staff to monitor branches, assign tasks with AI-powered verification, track equipment, manage training, and provide support. The platform is localized for the Turkish market, with a Turkish user interface and role-based access for HQ and branch personnel. Key capabilities include AI-powered task verification, equipment fault reporting and tracking, a knowledge base, performance dashboards, automated reminders, checklist management, a training academy, an HQ support ticket system, and advanced shift management (QR check-in/out, shift templates, employee availability calendar, automated notifications). The business vision is to streamline franchise operations, improve efficiency, and ensure brand consistency across all DOSPRESSO branches.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -16,6 +16,7 @@ Preferred communication style: Simple, everyday language.
 - **Routing**: Wouter for lightweight client-side routing.
 - **Form Handling**: React Hook Form with Zod for schema validation.
 - **File Uploads**: Uppy integrated with AWS S3 for photo uploads.
+- **QR Code Scanning**: html5-qrcode for shift check-in/out with camera access.
 
 ### Backend
 - **Runtime**: Node.js with Express.js.
@@ -28,13 +29,15 @@ Preferred communication style: Simple, everyday language.
     - Knowledge base semantic search and RAG (Retrieval-Augmented Generation).
     - AI-powered Q&A with source attribution.
 - **RAG System**: PostgreSQL with `pgvector` for embedding generation, semantic search (OpenAI `text-embedding-3-small`), and context-aware Q&A.
-- **Background Jobs**: Custom reminder system for incomplete tasks every 10 minutes.
+- **Background Jobs**: 
+    - Custom reminder system for incomplete tasks every 5 minutes.
+    - Shift notification system every 10 minutes (reminders, changes, assignments, cancellations).
 - **Data Access**: Drizzle ORM for type-safe database queries.
 
 ### Database
 - **Database**: PostgreSQL (Neon serverless).
 - **ORM**: Drizzle ORM, schema defined in `shared/schema.ts`.
-- **Schema Design**: Includes tables for Users (role-based access), Branches, Tasks (with AI scoring), Checklists, Equipment (with maintenance/fault tracking), KnowledgeBaseArticles (with embeddings), Reminders, PerformanceMetrics, HQSupportTickets, TrainingModules, EquipmentServiceRequests (state machine), and a dynamic Menu system (sections, items, visibility rules).
+- **Schema Design**: Includes tables for Users (role-based access), Branches, Tasks (with AI scoring), Checklists, Equipment (with maintenance/fault tracking), KnowledgeBaseArticles (with embeddings), Reminders, PerformanceMetrics, HQSupportTickets, TrainingModules, EquipmentServiceRequests (state machine), ShiftTemplates (reusable shift patterns with multi-day support), ShiftAttendances (QR-based check-in/out tracking), EmployeeAvailability (unavailability periods with reasons), and a dynamic Menu system (sections, items, visibility rules).
 - **Vector Search**: `pgvector` extension for semantic similarity search.
 - **Migrations**: Managed via Drizzle Kit.
 
@@ -59,3 +62,4 @@ Preferred communication style: Simple, everyday language.
 - **Authentication**: `passport`, `openid-client`, `express-session`, `connect-pg-simple`.
 - **Build Tools**: `vite`, `esbuild`, `tsx`.
 - **Content Management**: `react-markdown`, `rehype-sanitize`.
+- **QR Code**: `html5-qrcode` for camera-based QR scanning, `qrcode.react` for QR generation.
