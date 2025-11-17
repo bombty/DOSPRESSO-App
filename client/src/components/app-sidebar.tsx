@@ -17,6 +17,7 @@ import {
   Wallet,
   Clock,
   Calendar,
+  CalendarDays,
   ChevronRight,
   QrCode,
   Circle,
@@ -216,6 +217,13 @@ const menuGroups: MenuGroup[] = [
         titleTr: "Vardiya Şablonları",
         url: "/vardiya-sablonlari",
         icon: Calendar,
+        module: "dashboard",
+      },
+      {
+        title: "Müsaitlik Takvimi",
+        titleTr: "Müsaitlik Takvimi",
+        url: "/personel-musaitlik",
+        icon: CalendarDays,
         module: "dashboard",
       },
       {

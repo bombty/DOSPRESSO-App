@@ -54,14 +54,12 @@ export default function VardiyaCheckin() {
             await html5QrCode.stop();
             setIsScanning(false);
 
+            // Check if user wants to check in or check out
             if (!activeAttendance) {
               checkInMutation.mutate({ qrCode: decodedText });
             } else {
-              toast({
-                title: "Uyarı",
-                description: "Zaten aktif vardiya var. Çıkış yapmak için butonu kullanın.",
-                variant: "destructive",
-              });
+              // User has active attendance, so check out
+              checkOutMutation.mutate({ qrCode: decodedText });
             }
           } catch (error: any) {
             toast({
@@ -142,17 +140,6 @@ export default function VardiyaCheckin() {
     },
   });
 
-  const handleCheckOut = async () => {
-    if (!scannedQR) {
-      toast({
-        title: "Hata",
-        description: "Lütfen önce QR kodu okutun",
-        variant: "destructive",
-      });
-      return;
-    }
-    checkOutMutation.mutate({ qrCode: scannedQR });
-  };
 
   if (isLoading) {
     return (
@@ -203,7 +190,7 @@ export default function VardiyaCheckin() {
 
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Çıkış yapmak için QR kodu okutun:</p>
-              {!isScanning && !scannedQR && (
+              {!isScanning && (
                 <Button
                   onClick={startScanning}
                   className="w-full"
@@ -214,17 +201,30 @@ export default function VardiyaCheckin() {
                   QR Kodu Oku (Çıkış)
                 </Button>
               )}
-              
-              {scannedQR && (
-                <Button
-                  onClick={handleCheckOut}
-                  disabled={checkOutMutation.isPending}
-                  className="w-full"
-                  variant="destructive"
-                  data-testid="button-confirm-checkout"
-                >
-                  {checkOutMutation.isPending ? "Çıkış yapılıyor..." : "Çıkışı Onayla"}
-                </Button>
+
+              {isScanning && (
+                <div className="space-y-4">
+                  <div 
+                    id="qr-reader-checkin" 
+                    className="rounded-lg overflow-hidden border"
+                    data-testid="qr-scanner-view-checkout"
+                  />
+                  <Button
+                    onClick={stopScanning}
+                    variant="outline"
+                    className="w-full"
+                    data-testid="button-stop-scan-checkout"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Taramayı Durdur
+                  </Button>
+                </div>
+              )}
+
+              {checkOutMutation.isPending && (
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Çıkış yapılıyor...</p>
+                </div>
               )}
             </div>
           </CardContent>
