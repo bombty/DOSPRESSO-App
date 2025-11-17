@@ -44,6 +44,7 @@ import {
   qualityAudits,
   auditItemScores,
   customerFeedback,
+  branches,
   maintenanceSchedules,
   maintenanceLogs,
   campaigns,
@@ -5791,6 +5792,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/customer-feedback/public', async (req, res) => {
     try {
       const validatedData = insertCustomerFeedbackSchema.parse(req.body);
+      
+      // Validate branch exists
+      const branch = await db.select().from(branches).where(eq(branches.id, validatedData.branchId)).limit(1);
+      if (!branch || branch.length === 0) {
+        return res.status(400).json({ message: "Geçersiz şube ID. Lütfen geçerli bir şube numarası girin." });
+      }
+      
       const [feedback] = await db.insert(customerFeedback).values(validatedData).returning();
       res.status(201).json({ message: "Geri bildiriminiz için teşekkürler!", id: feedback.id });
     } catch (error: any) {
