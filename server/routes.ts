@@ -1455,6 +1455,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Dashboard Insights (Role-specific personalized insights)
+  app.post('/api/ai-dashboard-insights', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      // All authenticated users can access (role-based content filtering happens in AI function)
+      const { generateDashboardInsights } = await import('./ai');
+      
+      const insights = await generateDashboardInsights(
+        user.id,
+        role,
+        user.branchId
+      );
+
+      res.json(insights);
+    } catch (error: any) {
+      console.error("Error generating dashboard insights:", error);
+      
+      // Handle rate limit errors
+      if (error.message?.includes('limit')) {
+        return res.status(429).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: "AI içgörüleri oluşturulamadı" });
+    }
+  });
+
   app.get('/api/performance', isAuthenticated, async (req, res) => {
     try {
       const branchId = req.query.branchId && req.query.branchId !== 'all' 

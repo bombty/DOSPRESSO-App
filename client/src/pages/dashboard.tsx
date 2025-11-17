@@ -74,6 +74,49 @@ export default function Dashboard() {
     },
   });
 
+  // AI Dashboard Insights mutation (role-specific)
+  const [dashboardInsights, setDashboardInsights] = useState<{
+    insights: string[];
+    cached: boolean;
+    generatedAt: string;
+    role: string;
+  } | null>(null);
+
+  const generateInsightsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/ai-dashboard-insights', {});
+      return response.json() as Promise<{
+        insights: string[];
+        cached: boolean;
+        generatedAt: string;
+        role: string;
+        scope?: { branchId: number; branchName?: string };
+      }>;
+    },
+    onSuccess: (data) => {
+      setDashboardInsights(data);
+      if (data.cached) {
+        toast({
+          title: "Önbellekten Yüklendi",
+          description: "Bu içgörüler daha önce oluşturulmuştu ve önbellekten getirildi.",
+        });
+      } else {
+        toast({
+          title: "AI İçgörüler Oluşturuldu",
+          description: `${data.insights.length} içgörü başarıyla oluşturuldu ve 24 saat boyunca önbellekte saklanacak.`,
+        });
+      }
+    },
+    onError: (error: any) => {
+      console.error('AI insights error:', error);
+      toast({
+        title: "Hata",
+        description: error.message || "AI içgörüleri oluşturulamadı. Lütfen tekrar deneyin.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleGenerateSummary = (category: SummaryCategoryType) => {
     setSelectedCategory(category);
     generateSummaryMutation.mutate(category);
@@ -280,6 +323,76 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            AI İçgörüler
+          </CardTitle>
+          {!dashboardInsights && (
+            <Button
+              onClick={() => generateInsightsMutation.mutate()}
+              disabled={generateInsightsMutation.isPending}
+              size="sm"
+              data-testid="button-generate-insights"
+            >
+              {generateInsightsMutation.isPending ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Oluşturuluyor...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  İçgörü Oluştur
+                </>
+              )}
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {dashboardInsights ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {user?.role === 'admin' || user?.role === 'yatirimci_hq'
+                  ? 'Tüm şubeler için AI destekli performans analizi'
+                  : user?.role === 'supervisor' || user?.role === 'supervisor_buddy'
+                  ? 'Şubeniz için AI destekli performans analizi'
+                  : 'Kişisel performansınız için AI önerileri'}
+                {dashboardInsights.cached && ' (önbellekten)'}
+              </p>
+              <ul className="space-y-2">
+                {dashboardInsights.insights.map((insight, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-start gap-2 text-sm"
+                    data-testid={`insight-item-${idx}`}
+                  >
+                    <TrendingUp className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                    <span>{insight}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                onClick={() => generateInsightsMutation.mutate()}
+                disabled={generateInsightsMutation.isPending}
+                variant="outline"
+                size="sm"
+                className="w-full"
+                data-testid="button-refresh-insights"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Yenile
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Rolünüze özel AI içgörüleri oluşturmak için butona tıklayın. (Günlük limit: 3)
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

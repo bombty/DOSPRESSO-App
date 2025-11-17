@@ -1088,3 +1088,160 @@ export async function generateAISummary(
     throw error;
   }
 }
+
+// Dashboard Insights: Role-specific AI insights
+const INSIGHTS_LIMIT = 3; // 3 insights per day per user
+
+interface DashboardInsightsResponse {
+  insights: string[];
+  cached: boolean;
+  generatedAt: string;
+  role: string;
+  scope?: {
+    branchId: number;
+    branchName?: string;
+  };
+}
+
+async function buildDashboardPrompt(role: string, branchId?: number | null): Promise<string> {
+  const isHQ = !branchId;
+  const scope = isHQ ? 'tüm şubeler' : 'şube';
+
+  // Fetch data based on role
+  let prompt = `DOSPRESSO ${scope} için ${role} rolüne özel dashboard içgörüleri oluştur.\n\n`;
+
+  if (role === 'admin' || role === 'yatirimci_hq') {
+    // HQ roles: Cross-branch analysis
+    const branches = await storage.getAllBranches();
+    const tasks = await storage.getAllTasks();
+    const faults = await storage.getAllFaults();
+
+    prompt += `**Şubeler:** ${branches.length} adet\n`;
+    prompt += `**Görevler (son 7 gün):** ${tasks.filter(t => {
+      const created = new Date(t.createdAt!);
+      return Date.now() - created.getTime() < 7 * 24 * 60 * 60 * 1000;
+    }).length}\n`;
+    prompt += `**Arızalar (açık):** ${faults.filter(f => f.status === 'acik').length}\n\n`;
+    
+    prompt += `**Görev:** 3-5 madde halinde, şu konularda kısa ve aksiyona yönelik içgörüler sun:\n`;
+    prompt += `1. Şubeler arası performans karşılaştırması\n`;
+    prompt += `2. Anomali tespiti (dikkat gereken şubeler)\n`;
+    prompt += `3. Maliyet optimizasyon önerileri\n`;
+  } else if (role === 'supervisor' || role === 'supervisor_buddy') {
+    // Supervisor: Branch-specific insights
+    if (!branchId) throw new Error('Supervisor role requires branchId');
+
+    const tasks = await storage.getTasksByBranch(branchId);
+    const shifts = await storage.getShiftsByBranch(branchId);
+    const employees = await storage.getUsersByBranch(branchId);
+    const faults = await storage.getFaultsByBranch(branchId);
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentShifts = shifts.filter(s => new Date(s.shiftDate) >= sevenDaysAgo);
+    const uncoveredShifts = recentShifts.filter(s => !s.assignedToId).length;
+    const completedTasks = tasks.filter(t => t.status === 'tamamlandi').length;
+    const totalTasks = tasks.length;
+
+    prompt += `**Personel:** ${employees.length} kişi\n`;
+    prompt += `**Vardiyalar (son 7 gün):** ${recentShifts.length} (${uncoveredShifts} atanmamış)\n`;
+    prompt += `**Görevler:** ${completedTasks}/${totalTasks} tamamlandı\n`;
+    prompt += `**Arızalar (açık):** ${faults.filter(f => f.status === 'acik').length}\n\n`;
+    
+    prompt += `**Görev:** 3-5 madde halinde, şu konularda kısa ve aksiyona yönelik içgörüler sun:\n`;
+    prompt += `1. Vardiya kapsama boşlukları\n`;
+    prompt += `2. Çalışan performans trendleri\n`;
+    prompt += `3. Görev tamamlanma oranı analizi\n`;
+  } else {
+    // Barista/employee: Personal insights
+    // For now, generic placeholder
+    prompt += `**Görev:** 3-5 madde halinde, şu konularda kısa ve aksiyona yönelik içgörüler sun:\n`;
+    prompt += `1. Kişisel performans metrikleri\n`;
+    prompt += `2. Gelişim önerileri\n`;
+    prompt += `3. Eğitim tavsiyeleri\n`;
+  }
+
+  prompt += `\n**Format:** Her içgörü tek satır, madde işareti ile başlasın. Maksimum 150 kelime. Profesyonel ton, Türkçe.`;
+  prompt += `\n**Çıktı formatı:** JSON array olarak döndür: ["içgörü 1", "içgörü 2", ...]`;
+
+  return prompt;
+}
+
+export async function generateDashboardInsights(
+  userId: number,
+  role: string,
+  branchId?: number | null,
+  skipCache: boolean = false
+): Promise<DashboardInsightsResponse> {
+  // Generate cache key
+  const cacheKey = generateCacheKey('dashboard-insights', role, branchId || 'hq');
+  
+  // Check cache first (24h TTL)
+  if (!skipCache) {
+    const cached = cache.get<DashboardInsightsResponse>(cacheKey);
+    if (cached) {
+      console.log(`✅ Cache HIT - Dashboard Insights [${role}] (cost saved!)`);
+      return { ...cached, cached: true };
+    }
+  }
+
+  // Rate limit check (3 insights per day)
+  if (!aiRateLimiter.canMakeRequest(userId, 'insights', INSIGHTS_LIMIT)) {
+    const remaining = aiRateLimiter.getRemainingCalls(userId, 'insights', INSIGHTS_LIMIT);
+    throw new Error(`Günlük AI içgörü limitiniz doldu (${INSIGHTS_LIMIT}/gün). Kalan: ${remaining}. Yarın tekrar deneyin.`);
+  }
+
+  try {
+    // Build role-specific prompt
+    const prompt = await buildDashboardPrompt(role, branchId);
+
+    // Call OpenAI with GPT-4o-mini (cost-efficient)
+    const response = await openai.chat.completions.create({
+      model: SUMMARY_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: "Sen DOSPRESSO franchise yönetim sisteminin AI asistanısın. Kısa, öz ve aksiyona yönelik içgörüler sunarsın. JSON formatında yanıt verirsin.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_completion_tokens: 400,
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    });
+
+    const content = response.choices[0]?.message?.content?.trim() || '{"insights": []}';
+    const parsed = JSON.parse(content);
+    const insights = Array.isArray(parsed.insights) ? parsed.insights : [];
+
+    // Get branch info if applicable
+    let branchName: string | undefined;
+    if (branchId) {
+      const branch = await storage.getBranch(branchId);
+      branchName = branch?.name;
+    }
+
+    const result: DashboardInsightsResponse = {
+      insights,
+      cached: false,
+      generatedAt: new Date().toISOString(),
+      role,
+      scope: branchId ? { branchId, branchName } : undefined,
+    };
+
+    // Cache for 24 hours
+    cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
+
+    // Increment rate limit counter
+    aiRateLimiter.incrementRequest(userId, 'insights');
+    const remaining = aiRateLimiter.getRemainingCalls(userId, 'insights', INSIGHTS_LIMIT);
+    console.log(`💰 AI call made - Dashboard Insights [${role}] (${remaining}/${INSIGHTS_LIMIT} remaining for user ${userId})`);
+
+    return result;
+  } catch (error) {
+    console.error(`AI dashboard insights hatası [${role}]:`, error);
+    throw error;
+  }
+}
