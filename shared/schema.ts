@@ -2199,3 +2199,75 @@ export const insertLicenseRenewalSchema = createInsertSchema(licenseRenewals).om
 
 export type InsertLicenseRenewal = z.infer<typeof insertLicenseRenewalSchema>;
 export type LicenseRenewal = typeof licenseRenewals.$inferSelect;
+
+// ========================================
+// SHIFT TEMPLATES - Vardiya Şablonları
+// ========================================
+
+// Shift Templates table - Reusable shift patterns for easy scheduling
+export const shiftTemplates = pgTable("shift_templates", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(), // e.g., "Hafta İçi Sabah", "Hafta Sonu Akşam"
+  description: text("description"),
+  shiftType: varchar("shift_type", { length: 20 }).notNull(), // morning, evening, night
+  startTime: time("start_time", { precision: 0 }).notNull(),
+  endTime: time("end_time", { precision: 0 }).notNull(),
+  daysOfWeek: integer("days_of_week").array(), // 0=Sunday, 1=Monday, ..., 6=Saturday
+  isActive: boolean("is_active").notNull().default(true),
+  createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("shift_templates_branch_idx").on(table.branchId),
+  index("shift_templates_active_idx").on(table.isActive),
+]);
+
+export const insertShiftTemplateSchema = createInsertSchema(shiftTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  shiftType: z.enum(["morning", "evening", "night"]),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
+});
+
+export type InsertShiftTemplate = z.infer<typeof insertShiftTemplateSchema>;
+export type ShiftTemplate = typeof shiftTemplates.$inferSelect;
+
+// ========================================
+// EMPLOYEE AVAILABILITY - Çalışan Müsaitlik
+// ========================================
+
+// Employee Availability table - Track when employees are unavailable
+export const employeeAvailability = pgTable("employee_availability", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  reason: varchar("reason", { length: 50 }).notNull(), // unavailable, vacation, sick, personal, other
+  notes: text("notes"),
+  isAllDay: boolean("is_all_day").notNull().default(true),
+  startTime: time("start_time", { precision: 0 }), // If not all day
+  endTime: time("end_time", { precision: 0 }), // If not all day
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, cancelled
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_availability_user_idx").on(table.userId),
+  index("employee_availability_date_idx").on(table.startDate, table.endDate),
+  index("employee_availability_status_idx").on(table.status),
+]);
+
+export const insertEmployeeAvailabilitySchema = createInsertSchema(employeeAvailability).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  reason: z.enum(["unavailable", "vacation", "sick", "personal", "other"]),
+  status: z.enum(["active", "cancelled"]).default("active"),
+});
+
+export type InsertEmployeeAvailability = z.infer<typeof insertEmployeeAvailabilitySchema>;
+export type EmployeeAvailability = typeof employeeAvailability.$inferSelect;
+export type AvailabilityReason = "unavailable" | "vacation" | "sick" | "personal" | "other";

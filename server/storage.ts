@@ -82,6 +82,10 @@ import type {
   InsertAiUsageLog,
   ShiftTradeRequest,
   InsertShiftTradeRequest,
+  ShiftTemplate,
+  InsertShiftTemplate,
+  EmployeeAvailability,
+  InsertEmployeeAvailability,
 } from "@shared/schema";
 import {
   users,
@@ -120,6 +124,8 @@ import {
   leaveRequests,
   shiftAttendance,
   shiftTradeRequests,
+  shiftTemplates,
+  employeeAvailability,
   menuSections,
   menuItems,
   menuVisibilityRules,
@@ -342,6 +348,26 @@ export interface IStorage {
   getShiftTradeRequests(filters: { branchId?: number; userId?: string; status?: string }): Promise<ShiftTradeRequest[]>;
   respondToShiftTradeRequest(id: number, userId: string): Promise<void>;
   approveShiftTradeRequest(id: number, supervisorId: string, approved: boolean, notes?: string): Promise<void>;
+  
+  // Shift Template operations
+  getShiftTemplates(branchId?: number): Promise<ShiftTemplate[]>;
+  getShiftTemplate(id: number): Promise<ShiftTemplate | undefined>;
+  createShiftTemplate(template: InsertShiftTemplate): Promise<ShiftTemplate>;
+  updateShiftTemplate(id: number, updates: Partial<InsertShiftTemplate>): Promise<ShiftTemplate | undefined>;
+  deleteShiftTemplate(id: number): Promise<void>;
+  createShiftsFromTemplate(templateId: number, startDate: string, endDate: string, createdById: string): Promise<Shift[]>;
+  
+  // Employee Availability operations
+  getEmployeeAvailability(userId?: string, startDate?: string, endDate?: string): Promise<EmployeeAvailability[]>;
+  getAvailability(id: number): Promise<EmployeeAvailability | undefined>;
+  createAvailability(availability: InsertEmployeeAvailability): Promise<EmployeeAvailability>;
+  updateAvailability(id: number, updates: Partial<InsertEmployeeAvailability>): Promise<EmployeeAvailability | undefined>;
+  deleteAvailability(id: number): Promise<void>;
+  checkEmployeeAvailability(userId: string, shiftDate: string, startTime: string, endTime: string): Promise<{ available: boolean; conflicts: EmployeeAvailability[] }>;
+  
+  // Check-in/Check-out helpers
+  verifyShiftQR(qrData: string): Promise<{ valid: boolean; shiftId?: number; message?: string }>;
+  calculateAttendanceStats(userId: string, month?: number, year?: number): Promise<{ totalShifts: number; attended: number; late: number; absent: number }>;
   
   // Performance Metrics scoring
   recordPerformanceScore(data: {
@@ -2318,6 +2344,245 @@ export class DatabaseStorage implements IStorage {
       })),
       cachedSavings,
     };
+  }
+
+  // ==================== SHIFT TEMPLATES ====================
+  
+  async getShiftTemplates(branchId?: number): Promise<ShiftTemplate[]> {
+    if (branchId) {
+      return db.select().from(shiftTemplates).where(eq(shiftTemplates.branchId, branchId)).orderBy(desc(shiftTemplates.createdAt));
+    }
+    return db.select().from(shiftTemplates).orderBy(desc(shiftTemplates.createdAt));
+  }
+
+  async getShiftTemplate(id: number): Promise<ShiftTemplate | undefined> {
+    const [template] = await db.select().from(shiftTemplates).where(eq(shiftTemplates.id, id));
+    return template;
+  }
+
+  async createShiftTemplate(template: InsertShiftTemplate): Promise<ShiftTemplate> {
+    const [created] = await db.insert(shiftTemplates).values(template).returning();
+    return created;
+  }
+
+  async updateShiftTemplate(id: number, updates: Partial<InsertShiftTemplate>): Promise<ShiftTemplate | undefined> {
+    const [updated] = await db.update(shiftTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(shiftTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteShiftTemplate(id: number): Promise<void> {
+    await db.delete(shiftTemplates).where(eq(shiftTemplates.id, id));
+  }
+
+  async createShiftsFromTemplate(templateId: number, startDate: string, endDate: string, createdById: string): Promise<Shift[]> {
+    const template = await this.getShiftTemplate(templateId);
+    if (!template) {
+      throw new Error("Template not found");
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const shiftsToCreate: InsertShift[] = [];
+
+    // Iterate through date range
+    for (let currentDate = new Date(start); currentDate <= end; currentDate.setDate(currentDate.getDate() + 1)) {
+      const dayOfWeek = currentDate.getDay(); // 0=Sunday, 6=Saturday
+      
+      // Check if this day is included in the template
+      if (template.daysOfWeek && template.daysOfWeek.includes(dayOfWeek)) {
+        shiftsToCreate.push({
+          branchId: template.branchId,
+          createdById,
+          shiftDate: currentDate.toISOString().split('T')[0],
+          startTime: template.startTime,
+          endTime: template.endTime,
+          shiftType: template.shiftType as "morning" | "evening" | "night",
+          status: "draft",
+          assignedToId: null,
+          checklistId: null,
+          notes: `Şablondan oluşturuldu: ${template.name}`,
+        });
+      }
+    }
+
+    if (shiftsToCreate.length === 0) {
+      return [];
+    }
+
+    // Bulk insert shifts
+    const created = await db.insert(shifts).values(shiftsToCreate).returning();
+    return created;
+  }
+
+  // ==================== EMPLOYEE AVAILABILITY ====================
+  
+  async getEmployeeAvailability(userId?: string, startDate?: string, endDate?: string): Promise<EmployeeAvailability[]> {
+    const conditions: SQL[] = [];
+    
+    if (userId) conditions.push(eq(employeeAvailability.userId, userId));
+    if (startDate) conditions.push(sql`${employeeAvailability.endDate} >= ${startDate}`);
+    if (endDate) conditions.push(sql`${employeeAvailability.startDate} <= ${endDate}`);
+    
+    return db.select()
+      .from(employeeAvailability)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(employeeAvailability.startDate));
+  }
+
+  async getAvailability(id: number): Promise<EmployeeAvailability | undefined> {
+    const [availability] = await db.select().from(employeeAvailability).where(eq(employeeAvailability.id, id));
+    return availability;
+  }
+
+  async createAvailability(availability: InsertEmployeeAvailability): Promise<EmployeeAvailability> {
+    const [created] = await db.insert(employeeAvailability).values(availability).returning();
+    return created;
+  }
+
+  async updateAvailability(id: number, updates: Partial<InsertEmployeeAvailability>): Promise<EmployeeAvailability | undefined> {
+    const [updated] = await db.update(employeeAvailability)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(employeeAvailability.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAvailability(id: number): Promise<void> {
+    await db.delete(employeeAvailability).where(eq(employeeAvailability.id, id));
+  }
+
+  async checkEmployeeAvailability(userId: string, shiftDate: string, startTime: string, endTime: string): Promise<{ available: boolean; conflicts: EmployeeAvailability[] }> {
+    // Find any availability records that conflict with the proposed shift
+    const conflicts = await db.select()
+      .from(employeeAvailability)
+      .where(
+        and(
+          eq(employeeAvailability.userId, userId),
+          eq(employeeAvailability.status, "active"),
+          sql`${employeeAvailability.startDate} <= ${shiftDate}`,
+          sql`${employeeAvailability.endDate} >= ${shiftDate}`
+        )
+      );
+
+    // If no date conflicts, employee is available
+    if (conflicts.length === 0) {
+      return { available: true, conflicts: [] };
+    }
+
+    // Check time conflicts for partial-day unavailability
+    const timeConflicts = conflicts.filter(conflict => {
+      if (conflict.isAllDay) return true;
+      if (!conflict.startTime || !conflict.endTime) return true;
+
+      // Check if shift time overlaps with unavailable time
+      const shiftStart = startTime;
+      const shiftEnd = endTime;
+      const unavailStart = conflict.startTime;
+      const unavailEnd = conflict.endTime;
+
+      return (
+        (shiftStart >= unavailStart && shiftStart < unavailEnd) ||
+        (shiftEnd > unavailStart && shiftEnd <= unavailEnd) ||
+        (shiftStart <= unavailStart && shiftEnd >= unavailEnd)
+      );
+    });
+
+    return {
+      available: timeConflicts.length === 0,
+      conflicts: timeConflicts,
+    };
+  }
+
+  // ==================== CHECK-IN/CHECK-OUT HELPERS ====================
+  
+  async verifyShiftQR(qrData: string): Promise<{ valid: boolean; shiftId?: number; message?: string }> {
+    try {
+      // QR data format: "SHIFT:{shiftId}:{timestamp}"
+      const parts = qrData.split(':');
+      if (parts[0] !== 'SHIFT' || parts.length !== 3) {
+        return { valid: false, message: "Geçersiz QR kod formatı" };
+      }
+
+      const shiftId = parseInt(parts[1]);
+      const timestamp = parseInt(parts[2]);
+      
+      // Check if QR code is too old (>24 hours)
+      const now = Date.now();
+      const qrAge = now - timestamp;
+      if (qrAge > 24 * 60 * 60 * 1000) {
+        return { valid: false, message: "QR kod süresi dolmuş" };
+      }
+
+      // Verify shift exists
+      const shift = await this.getShift(shiftId);
+      if (!shift) {
+        return { valid: false, message: "Vardiya bulunamadı" };
+      }
+
+      return { valid: true, shiftId };
+    } catch (error) {
+      return { valid: false, message: "QR kod okunamadı" };
+    }
+  }
+
+  async calculateAttendanceStats(userId: string, month?: number, year?: number): Promise<{ totalShifts: number; attended: number; late: number; absent: number }> {
+    const now = new Date();
+    const targetMonth = month ?? now.getMonth() + 1;
+    const targetYear = year ?? now.getFullYear();
+
+    const startDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+    const endDate = new Date(targetYear, targetMonth, 0).toISOString().split('T')[0]; // Last day of month
+
+    // Get all shifts for user in date range
+    const userShifts = await db.select()
+      .from(shifts)
+      .where(
+        and(
+          eq(shifts.assignedToId, userId),
+          sql`${shifts.shiftDate} >= ${startDate}`,
+          sql`${shifts.shiftDate} <= ${endDate}`
+        )
+      );
+
+    const totalShifts = userShifts.length;
+
+    // Get attendance records for these shifts
+    const shiftIds = userShifts.map(s => s.id);
+    if (shiftIds.length === 0) {
+      return { totalShifts: 0, attended: 0, late: 0, absent: 0 };
+    }
+
+    const attendances = await db.select()
+      .from(shiftAttendance)
+      .where(
+        and(
+          inArray(shiftAttendance.shiftId, shiftIds),
+          eq(shiftAttendance.userId, userId)
+        )
+      );
+
+    let attended = 0;
+    let late = 0;
+    let absent = 0;
+
+    for (const attendance of attendances) {
+      if (attendance.status === 'absent') {
+        absent++;
+      } else if (attendance.status === 'checked_in' || attendance.status === 'checked_out') {
+        attended++;
+        if (attendance.status === 'late') {
+          late++;
+        }
+      }
+    }
+
+    // Count shifts without attendance records as absent
+    absent += (totalShifts - attendances.length);
+
+    return { totalShifts, attended, late, absent };
   }
 }
 
