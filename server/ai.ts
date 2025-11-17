@@ -1110,7 +1110,10 @@ async function buildDashboardPrompt(role: string, branchId?: number | null): Pro
   // Fetch data based on role
   let prompt = `DOSPRESSO ${scope} için ${role} rolüne özel dashboard içgörüleri oluştur.\n\n`;
 
-  if (role === 'admin' || role === 'yatirimci_hq') {
+  const HQ_ROLES = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+  const isHQRole = HQ_ROLES.includes(role);
+
+  if (isHQRole) {
     // HQ roles: Cross-branch analysis
     const branches = await storage.getAllBranches();
     const tasks = await storage.getAllTasks();
@@ -1152,12 +1155,8 @@ async function buildDashboardPrompt(role: string, branchId?: number | null): Pro
     prompt += `2. Çalışan performans trendleri\n`;
     prompt += `3. Görev tamamlanma oranı analizi\n`;
   } else {
-    // Barista/employee: Personal insights
-    // For now, generic placeholder
-    prompt += `**Görev:** 3-5 madde halinde, şu konularda kısa ve aksiyona yönelik içgörüler sun:\n`;
-    prompt += `1. Kişisel performans metrikleri\n`;
-    prompt += `2. Gelişim önerileri\n`;
-    prompt += `3. Eğitim tavsiyeleri\n`;
+    // Should never reach here due to backend permission check
+    throw new Error(`Unauthorized role: ${role}`);
   }
 
   prompt += `\n**Format:** Her içgörü tek satır, madde işareti ile başlasın. Maksimum 150 kelime. Profesyonel ton, Türkçe.`;
@@ -1175,16 +1174,16 @@ export async function generateDashboardInsights(
   // Generate cache key
   const cacheKey = generateCacheKey('dashboard-insights', role, branchId || 'hq');
   
-  // Check cache first (24h TTL)
+  // Check cache FIRST (before rate limiter) - cost optimization!
   if (!skipCache) {
     const cached = cache.get<DashboardInsightsResponse>(cacheKey);
     if (cached) {
-      console.log(`✅ Cache HIT - Dashboard Insights [${role}] (cost saved!)`);
+      console.log(`✅ Cache HIT - Dashboard Insights [${role}] (cost saved, no quota used!)`);
       return { ...cached, cached: true };
     }
   }
 
-  // Rate limit check (3 insights per day)
+  // Rate limit check AFTER cache (only charge quota for actual AI calls)
   if (!aiRateLimiter.canMakeRequest(userId, 'insights', INSIGHTS_LIMIT)) {
     const remaining = aiRateLimiter.getRemainingCalls(userId, 'insights', INSIGHTS_LIMIT);
     throw new Error(`Günlük AI içgörü limitiniz doldu (${INSIGHTS_LIMIT}/gün). Kalan: ${remaining}. Yarın tekrar deneyin.`);

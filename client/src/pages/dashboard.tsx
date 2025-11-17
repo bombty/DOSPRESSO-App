@@ -41,7 +41,7 @@ export default function Dashboard() {
 
   // Check if user has access to AI summaries (HQ users or supervisors)
   const HQ_ROLES = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
-  const canAccessAISummaries = user && (HQ_ROLES.includes(user.role) || user.role === 'supervisor');
+  const canAccessAISummaries = user && (HQ_ROLES.includes(user.role) || user.role === 'supervisor' || user.role === 'supervisor_buddy');
 
   // AI Summary mutation
   const generateSummaryMutation = useMutation({
@@ -253,146 +253,152 @@ export default function Dashboard() {
       </div>
 
       {canAccessAISummaries && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              AI Özetler
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Son 7 günlük verilere dayalı AI destekli analizler (Günlük limit: 3 özet)
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={() => handleGenerateSummary('personel')}
-                disabled={generateSummaryMutation.isPending}
-                variant="outline"
-                data-testid="button-ai-summary-personel"
-              >
-                {generateSummaryMutation.isPending && selectedCategory === 'personel' ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Oluşturuluyor...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Personel Özeti
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => handleGenerateSummary('cihazlar')}
-                disabled={generateSummaryMutation.isPending}
-                variant="outline"
-                data-testid="button-ai-summary-cihazlar"
-              >
-                {generateSummaryMutation.isPending && selectedCategory === 'cihazlar' ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Oluşturuluyor...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Cihaz Özeti
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => handleGenerateSummary('gorevler')}
-                disabled={generateSummaryMutation.isPending}
-                variant="outline"
-                data-testid="button-ai-summary-gorevler"
-              >
-                {generateSummaryMutation.isPending && selectedCategory === 'gorevler' ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Oluşturuluyor...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Görev Özeti
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            AI İçgörüler
-          </CardTitle>
-          {!dashboardInsights && (
-            <Button
-              onClick={() => generateInsightsMutation.mutate()}
-              disabled={generateInsightsMutation.isPending}
-              size="sm"
-              data-testid="button-generate-insights"
-            >
-              {generateInsightsMutation.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Oluşturuluyor...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  İçgörü Oluştur
-                </>
-              )}
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {dashboardInsights ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {user?.role === 'admin' || user?.role === 'yatirimci_hq'
-                  ? 'Tüm şubeler için AI destekli performans analizi'
-                  : user?.role === 'supervisor' || user?.role === 'supervisor_buddy'
-                  ? 'Şubeniz için AI destekli performans analizi'
-                  : 'Kişisel performansınız için AI önerileri'}
-                {dashboardInsights.cached && ' (önbellekten)'}
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                AI Özetler
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Son 7 günlük verilere dayalı AI destekli analizler (Günlük limit: 3 özet)
               </p>
-              <ul className="space-y-2">
-                {dashboardInsights.insights.map((insight, idx) => (
-                  <li
-                    key={idx}
-                    className="flex items-start gap-2 text-sm"
-                    data-testid={`insight-item-${idx}`}
-                  >
-                    <TrendingUp className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
-                    <span>{insight}</span>
-                  </li>
-                ))}
-              </ul>
-              <Button
-                onClick={() => generateInsightsMutation.mutate()}
-                disabled={generateInsightsMutation.isPending}
-                variant="outline"
-                size="sm"
-                className="w-full"
-                data-testid="button-refresh-insights"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Yenile
-              </Button>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Rolünüze özel AI içgörüleri oluşturmak için butona tıklayın. (Günlük limit: 3)
-            </p>
-          )}
-        </CardContent>
-      </Card>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={() => handleGenerateSummary('personel')}
+                  disabled={generateSummaryMutation.isPending}
+                  variant="outline"
+                  data-testid="button-ai-summary-personel"
+                >
+                  {generateSummaryMutation.isPending && selectedCategory === 'personel' ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Oluşturuluyor...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Personel Özeti
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => handleGenerateSummary('cihazlar')}
+                  disabled={generateSummaryMutation.isPending}
+                  variant="outline"
+                  data-testid="button-ai-summary-cihazlar"
+                >
+                  {generateSummaryMutation.isPending && selectedCategory === 'cihazlar' ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Oluşturuluyor...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Cihaz Özeti
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => handleGenerateSummary('gorevler')}
+                  disabled={generateSummaryMutation.isPending}
+                  variant="outline"
+                  data-testid="button-ai-summary-gorevler"
+                >
+                  {generateSummaryMutation.isPending && selectedCategory === 'gorevler' ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Oluşturuluyor...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Görev Özeti
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                AI İçgörüler
+              </CardTitle>
+              {!dashboardInsights && (
+                <Button
+                  onClick={() => generateInsightsMutation.mutate()}
+                  disabled={generateInsightsMutation.isPending}
+                  size="sm"
+                  data-testid="button-generate-insights"
+                >
+                  {generateInsightsMutation.isPending ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Oluşturuluyor...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      İçgörü Oluştur
+                    </>
+                  )}
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {dashboardInsights ? (
+                dashboardInsights.insights && dashboardInsights.insights.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {HQ_ROLES.includes(user?.role || '')
+                        ? 'Tüm şubeler için AI destekli performans analizi'
+                        : 'Şubeniz için AI destekli performans analizi'}
+                      {dashboardInsights.cached && ' (önbellekten)'}
+                    </p>
+                    <ul className="space-y-2">
+                      {dashboardInsights.insights.map((insight, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-start gap-2 text-sm"
+                          data-testid={`insight-item-${idx}`}
+                        >
+                          <TrendingUp className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                          <span>{insight}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      onClick={() => generateInsightsMutation.mutate()}
+                      disabled={generateInsightsMutation.isPending}
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      data-testid="button-refresh-insights"
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Yenile
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    AI içgörüleri oluşturulamadı. Lütfen tekrar deneyin.
+                  </p>
+                )
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Operasyonel AI içgörüleri oluşturmak için butona tıklayın. (Günlük limit: 3)
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

@@ -1455,13 +1455,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Dashboard Insights (Role-specific personalized insights)
+  // AI Dashboard Insights (HQ + Supervisor only - operational oversight)
   app.post('/api/ai-dashboard-insights', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
 
-      // All authenticated users can access (role-based content filtering happens in AI function)
+      // Authorization: Only HQ users and branch supervisors
+      const isHQ = isHQRole(role);
+      const isSupervisor = role === 'supervisor' || role === 'supervisor_buddy';
+
+      if (!isHQ && !isSupervisor) {
+        return res.status(403).json({ message: "Bu özellik sadece HQ kullanıcıları ve şube supervisorları için kullanılabilir." });
+      }
+
+      // Import AI function
       const { generateDashboardInsights } = await import('./ai');
       
       const insights = await generateDashboardInsights(
@@ -1474,7 +1482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error generating dashboard insights:", error);
       
-      // Handle rate limit errors
+      // Handle rate limit errors with localized message
       if (error.message?.includes('limit')) {
         return res.status(429).json({ message: error.message });
       }
