@@ -154,6 +154,38 @@ export default function Equipment() {
     },
   });
 
+  const bulkQRMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/equipment/generate-qr-bulk", "POST", {});
+      return response;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      toast({ 
+        title: "Başarılı", 
+        description: data.message || `${data.generated} ekipman için QR kodu oluşturuldu`
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Hata",
+        description: "Toplu QR kod oluşturma başarısız",
+        variant: "destructive",
+      });
+    },
+  });
+
   const openEditDialog = (equipment: EquipmentType) => {
     setEditingEquipment(equipment);
     editForm.reset({
@@ -207,6 +239,9 @@ export default function Equipment() {
     return branches?.find((b) => b.id === branchId)?.name || "Bilinmeyen Şube";
   };
 
+  const isHQ = user?.role && isHQRole(user.role as any);
+  const missingQRCount = equipment?.filter(e => !e.qrCodeUrl).length || 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -214,14 +249,29 @@ export default function Equipment() {
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Ekipman Yönetimi</h1>
           <p className="text-muted-foreground mt-1">Şube ekipmanlarını ve bakım takibini yönetin</p>
         </div>
-        {canCreate && (
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-equipment">
-                <Plus className="mr-2 h-4 w-4" />
-                Ekipman Ekle
-              </Button>
-            </DialogTrigger>
+        <div className="flex items-center gap-2">
+          {isHQ && missingQRCount > 0 && (
+            <Button 
+              variant="outline" 
+              onClick={() => bulkQRMutation.mutate()}
+              disabled={bulkQRMutation.isPending}
+              data-testid="button-generate-qr-bulk"
+            >
+              <QrCode className="mr-2 h-4 w-4" />
+              {bulkQRMutation.isPending 
+                ? "QR Oluşturuluyor..." 
+                : `${missingQRCount} Ekipman için QR Oluştur`
+              }
+            </Button>
+          )}
+          {canCreate && (
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-equipment">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Ekipman Ekle
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Yeni Ekipman Kaydı</DialogTitle>
@@ -344,6 +394,7 @@ export default function Equipment() {
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
       {/* Edit Equipment Dialog */}

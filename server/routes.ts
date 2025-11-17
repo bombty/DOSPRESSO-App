@@ -998,6 +998,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk QR Code Generation (HQ only)
+  app.post('/api/equipment/generate-qr-bulk', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      
+      // HQ only
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Sadece HQ yetkilileri toplu QR oluşturabilir" });
+      }
+      
+      // Get all equipment (no branchId = all)
+      const allEquipment = await storage.getEquipment();
+      const missingQR = allEquipment.filter(e => !e.qrCodeUrl);
+      
+      if (missingQR.length === 0) {
+        return res.json({ 
+          message: "Tüm ekipmanların QR kodları mevcut", 
+          generated: 0,
+          total: allEquipment.length 
+        });
+      }
+      
+      // Generate QR codes
+      const { generateEquipmentQR } = await import('./ai');
+      let successCount = 0;
+      
+      for (const equipment of missingQR) {
+        try {
+          const qrCodeUrl = await generateEquipmentQR(equipment.id);
+          await storage.updateEquipment(equipment.id, { qrCodeUrl });
+          successCount++;
+        } catch (error) {
+          console.error(`QR generation failed for equipment ${equipment.id}:`, error);
+        }
+      }
+      
+      res.json({ 
+        message: `${successCount} ekipman için QR kodu oluşturuldu`,
+        generated: successCount,
+        total: allEquipment.length,
+        missing: missingQR.length
+      });
+    } catch (error) {
+      console.error("Bulk QR generation error:", error);
+      res.status(500).json({ message: "QR kod oluşturma başarısız" });
+    }
+  });
+
   app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;

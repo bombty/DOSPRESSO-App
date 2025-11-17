@@ -28,6 +28,8 @@ Preferred communication style: Simple, everyday language.
     - Equipment fault diagnosis and recommendations (Vision API).
     - Knowledge base semantic search and RAG (Retrieval-Augmented Generation).
     - AI-powered Q&A with source attribution.
+    - Personalized dashboard insights with role-specific analysis (24h cache, 3/day rate limit).
+- **Equipment QR System**: Automatic QR code generation for equipment tracking (generated on creation, bulk regeneration for existing equipment).
 - **RAG System**: PostgreSQL with `pgvector` for embedding generation, semantic search (OpenAI `text-embedding-3-small`), and context-aware Q&A.
 - **Background Jobs**: 
     - Custom reminder system for incomplete tasks every 5 minutes.
