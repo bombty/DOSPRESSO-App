@@ -30,8 +30,8 @@ export function getSession() {
     proxy: true, // Trust the reverse proxy
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: true, // Replit uses HTTPS even in development
+      sameSite: "none" as const, // Required for Safari cross-site cookies
       maxAge: sessionTtl,
       path: '/',
     },
@@ -154,11 +154,22 @@ export async function setupAuth(app: Express) {
         res.clearCookie('dospresso.sid', {
           path: '/',
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
+          secure: true,
+          sameSite: "none",
         });
         res.json({ message: "Logged out" });
       });
+    });
+  });
+
+  // Debug endpoint to check session status
+  app.get("/api/debug/session", (req, res) => {
+    res.json({
+      isAuthenticated: req.isAuthenticated(),
+      sessionID: req.sessionID,
+      session: req.session,
+      user: req.user || null,
+      cookies: req.headers.cookie || null,
     });
   });
 }
