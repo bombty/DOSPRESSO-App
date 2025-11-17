@@ -929,6 +929,21 @@ export const moduleVideos = pgTable("module_videos", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Module Lessons (Step-by-step content)
+export const moduleLessons = pgTable("module_lessons", {
+  id: serial("id").primaryKey(),
+  moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(), // Rich text content (Markdown or HTML)
+  orderIndex: integer("order_index").default(0),
+  estimatedDuration: integer("estimated_duration").default(5), // minutes
+  lessonType: varchar("lesson_type", { length: 50 }).default("reading"), // reading, video, interactive, practice
+  videoUrl: text("video_url"), // Optional embedded video
+  imageUrl: text("image_url"), // Optional image
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Module Quizzes
 export const moduleQuizzes = pgTable("module_quizzes", {
   id: serial("id").primaryKey(),
@@ -1014,6 +1029,12 @@ export const insertModuleVideoSchema = createInsertSchema(moduleVideos).omit({
   createdAt: true,
 });
 
+export const insertModuleLessonSchema = createInsertSchema(moduleLessons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertModuleQuizSchema = createInsertSchema(moduleQuizzes).omit({
   id: true,
   createdAt: true,
@@ -1044,6 +1065,8 @@ export type InsertTrainingModule = z.infer<typeof insertTrainingModuleSchema>;
 export type TrainingModule = typeof trainingModules.$inferSelect;
 export type InsertModuleVideo = z.infer<typeof insertModuleVideoSchema>;
 export type ModuleVideo = typeof moduleVideos.$inferSelect;
+export type InsertModuleLesson = z.infer<typeof insertModuleLessonSchema>;
+export type ModuleLesson = typeof moduleLessons.$inferSelect;
 export type InsertModuleQuiz = z.infer<typeof insertModuleQuizSchema>;
 export type ModuleQuiz = typeof moduleQuizzes.$inferSelect;
 export type InsertQuizQuestion = z.infer<typeof insertQuizQuestionSchema>;

@@ -12,6 +12,7 @@ import {
   insertBranchSchema,
   insertTrainingModuleSchema,
   insertModuleVideoSchema,
+  insertModuleLessonSchema,
   insertModuleQuizSchema,
   insertQuizQuestionSchema,
   insertUserQuizAttemptSchema,
@@ -59,7 +60,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, generateAISummary } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson } from "./ai";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -2100,13 +2101,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to unpublished module" });
       }
 
-      const [videos, quizzes, flashcards] = await Promise.all([
+      const [videos, lessons, quizzes, flashcards] = await Promise.all([
         storage.getModuleVideos(moduleId),
+        storage.getModuleLessons(moduleId),
         storage.getModuleQuizzes(moduleId),
         storage.getFlashcards(moduleId),
       ]);
 
-      res.json({ ...module, videos, quizzes, flashcards });
+      res.json({ ...module, videos, lessons, quizzes, flashcards });
     } catch (error) {
       console.error("Error fetching training module:", error);
       res.status(500).json({ message: "Failed to fetch training module" });
@@ -2203,6 +2205,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error creating module video:", error);
       res.status(500).json({ message: "Failed to create module video" });
+    }
+  });
+
+  // Get lessons for module
+  app.get('/api/training/modules/:id/lessons', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const moduleId = parseInt(req.params.id);
+      
+      // Check module exists and authorization (same as module detail endpoint)
+      const module = await storage.getTrainingModule(moduleId);
+      if (!module) {
+        return res.status(404).json({ message: "Module not found" });
+      }
+
+      // Authorization: Only admin/coach can see lessons from unpublished modules
+      const isAdminOrCoach = user.role === 'admin' || user.role === 'coach';
+      if (!module.isPublished && !isAdminOrCoach) {
+        return res.status(403).json({ message: "Access denied to unpublished module lessons" });
+      }
+
+      const lessons = await storage.getModuleLessons(moduleId);
+      res.json(lessons);
+    } catch (error) {
+      console.error("Error fetching module lessons:", error);
+      res.status(500).json({ message: "Ders listesi getirilemedi" });
+    }
+  });
+
+  // Add lesson to module (admin/coach only)
+  app.post('/api/training/modules/:id/lessons', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler ders ekleyebilir" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      // Validate without moduleId (injected from path param)
+      const validated = insertModuleLessonSchema.omit({ moduleId: true }).parse(req.body);
+      const lesson = await storage.createModuleLesson({
+        ...validated,
+        moduleId,
+      });
+      
+      res.status(201).json(lesson);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating module lesson:", error);
+      res.status(500).json({ message: "Ders oluşturulamadı" });
+    }
+  });
+
+  // Update lesson (admin/coach only)
+  app.put('/api/training/lessons/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler ders düzenleyebilir" });
+      }
+
+      const lessonId = parseInt(req.params.id);
+      const validated = insertModuleLessonSchema.partial().parse(req.body);
+      const updated = await storage.updateModuleLesson(lessonId, validated);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Ders bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error updating module lesson:", error);
+      res.status(500).json({ message: "Ders güncellenemedi" });
+    }
+  });
+
+  // Delete lesson (admin/coach only)
+  app.delete('/api/training/lessons/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler ders silebilir" });
+      }
+
+      const lessonId = parseInt(req.params.id);
+      await storage.deleteModuleLesson(lessonId);
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting module lesson:", error);
+      res.status(500).json({ message: "Ders silinemedi" });
+    }
+  });
+
+  // Generate AI materials (quiz questions + flashcards) from lesson content (admin/coach only)
+  app.post('/api/training/lessons/:id/generate-materials', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler AI materyal oluşturabilir" });
+      }
+
+      const lessonId = parseInt(req.params.id);
+      const { quizCount = 5, flashcardCount = 10 } = req.body;
+
+      // Get lesson content
+      const lesson = await storage.getModuleLesson(lessonId);
+      if (!lesson) {
+        return res.status(404).json({ message: "Ders bulunamadı" });
+      }
+
+      if (!lesson.content) {
+        return res.status(400).json({ message: "Ders içeriği boş, AI materyal oluşturulamıyor" });
+      }
+
+      // Generate AI materials in parallel
+      const [quizQuestions, flashcards] = await Promise.all([
+        generateQuizQuestionsFromLesson(lesson.content, quizCount, lessonId),
+        generateFlashcardsFromLesson(lesson.content, flashcardCount, lessonId),
+      ]);
+
+      res.json({
+        quizQuestions,
+        flashcards,
+        message: `${quizQuestions.length} quiz sorusu ve ${flashcards.length} flashcard oluşturuldu`,
+      });
+    } catch (error) {
+      console.error("Error generating AI materials:", error);
+      res.status(500).json({ message: "AI materyal oluşturulamadı" });
     }
   });
 

@@ -1244,3 +1244,171 @@ export async function generateDashboardInsights(
     throw error;
   }
 }
+
+// ==================== TRAINING AI FUNCTIONS ====================
+
+interface GeneratedQuizQuestion {
+  question: string;
+  questionType: "multiple_choice" | "true_false";
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+  points: number;
+}
+
+/**
+ * Generate quiz questions from lesson content using AI
+ * Cost-optimized with GPT-4o-mini + caching (24h)
+ */
+export async function generateQuizQuestionsFromLesson(
+  lessonContent: string,
+  count: number = 5,
+  lessonId?: number
+): Promise<GeneratedQuizQuestion[]> {
+  // Cache key based on lesson content hash
+  const cacheKey = generateCacheKey('quiz-gen', lessonContent, count.toString());
+  
+  // Check cache first (24h TTL)
+  const cached = cache.get<GeneratedQuizQuestion[]>(cacheKey);
+  if (cached) {
+    console.log('✅ Cache HIT - Quiz generation (cost saved!)');
+    return cached;
+  }
+
+  try {
+    const prompt = `DOSPRESSO kahve dükkanı eğitim içeriğinden ${count} adet quiz sorusu oluştur.
+
+**Eğitim İçeriği:**
+${lessonContent}
+
+**Görev:** İçeriği değerlendiren ${count} adet quiz sorusu oluştur.
+
+**Gereksinimler:**
+1. Çoğunluk çoktan seçmeli (4 seçenek), birkaç doğru/yanlış
+2. Sorular eğitim içeriğine dayalı olmalı
+3. Her soru için açıklama ekle
+4. Zorluk derecesi: orta seviye
+5. Türkçe dilinde
+
+**JSON Formatı:**
+{
+  "questions": [
+    {
+      "question": "Soru metni?",
+      "questionType": "multiple_choice",
+      "options": ["A", "B", "C", "D"],
+      "correctAnswer": "A",
+      "explanation": "Açıklama",
+      "points": 1
+    }
+  ]
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: SUMMARY_MODEL, // gpt-4o-mini for cost optimization
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_completion_tokens: 1500,
+      temperature: 0.8,
+      response_format: { type: "json_object" },
+    });
+
+    const content = response.choices[0]?.message?.content?.trim() || '{"questions": []}';
+    const parsed = JSON.parse(content);
+    const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
+
+    // Cache for 24 hours
+    cache.set(cacheKey, questions, 24 * 60 * 60 * 1000);
+
+    console.log(`🎓 Generated ${questions.length} quiz questions from lesson content`);
+    return questions;
+  } catch (error) {
+    console.error("Quiz generation error:", error);
+    throw error;
+  }
+}
+
+interface GeneratedFlashcard {
+  front: string;
+  back: string;
+  category: string;
+  difficulty: "easy" | "medium" | "hard";
+}
+
+/**
+ * Generate flashcards from lesson content using AI
+ * Cost-optimized with GPT-4o-mini + caching (24h)
+ */
+export async function generateFlashcardsFromLesson(
+  lessonContent: string,
+  count: number = 10,
+  lessonId?: number
+): Promise<GeneratedFlashcard[]> {
+  // Cache key based on lesson content hash
+  const cacheKey = generateCacheKey('flashcard-gen', lessonContent, count.toString());
+  
+  // Check cache first (24h TTL)
+  const cached = cache.get<GeneratedFlashcard[]>(cacheKey);
+  if (cached) {
+    console.log('✅ Cache HIT - Flashcard generation (cost saved!)');
+    return cached;
+  }
+
+  try {
+    const prompt = `DOSPRESSO kahve dükkanı eğitim içeriğinden ${count} adet flashcard oluştur.
+
+**Eğitim İçeriği:**
+${lessonContent}
+
+**Görev:** İçeriğin önemli kavramlarını kapsayan ${count} adet flashcard oluştur.
+
+**Gereksinimler:**
+1. Ön yüz: Kısa soru veya terim
+2. Arka yüz: Net ve özlü cevap (1-2 cümle)
+3. Kategori: İçerik konusuyla alakalı
+4. Zorluk: Dengeli dağılım (kolay/orta/zor)
+5. Türkçe dilinde
+
+**JSON Formatı:**
+{
+  "flashcards": [
+    {
+      "front": "Soru veya terim?",
+      "back": "Kısa cevap",
+      "category": "Barista Temelleri",
+      "difficulty": "medium"
+    }
+  ]
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: SUMMARY_MODEL, // gpt-4o-mini for cost optimization
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_completion_tokens: 1200,
+      temperature: 0.8,
+      response_format: { type: "json_object" },
+    });
+
+    const content = response.choices[0]?.message?.content?.trim() || '{"flashcards": []}';
+    const parsed = JSON.parse(content);
+    const flashcards = Array.isArray(parsed.flashcards) ? parsed.flashcards : [];
+
+    // Cache for 24 hours
+    cache.set(cacheKey, flashcards, 24 * 60 * 60 * 1000);
+
+    console.log(`🎓 Generated ${flashcards.length} flashcards from lesson content`);
+    return flashcards;
+  } catch (error) {
+    console.error("Flashcard generation error:", error);
+    throw error;
+  }
+}

@@ -30,6 +30,8 @@ import type {
   InsertTrainingModule,
   ModuleVideo,
   InsertModuleVideo,
+  ModuleLesson,
+  InsertModuleLesson,
   ModuleQuiz,
   InsertModuleQuiz,
   QuizQuestion,
@@ -102,6 +104,7 @@ import {
   performanceMetrics,
   trainingModules,
   moduleVideos,
+  moduleLessons,
   moduleQuizzes,
   quizQuestions,
   flashcards,
@@ -1046,6 +1049,34 @@ export class DatabaseStorage implements IStorage {
   async createModuleVideo(video: InsertModuleVideo): Promise<ModuleVideo> {
     const [newVideo] = await db.insert(moduleVideos).values(video).returning();
     return newVideo;
+  }
+
+  // Module Lesson operations
+  async getModuleLessons(moduleId: number): Promise<ModuleLesson[]> {
+    return db.select().from(moduleLessons).where(eq(moduleLessons.moduleId, moduleId)).orderBy(moduleLessons.orderIndex);
+  }
+
+  async getModuleLesson(id: number): Promise<ModuleLesson | undefined> {
+    const [lesson] = await db.select().from(moduleLessons).where(eq(moduleLessons.id, id));
+    return lesson;
+  }
+
+  async createModuleLesson(lesson: InsertModuleLesson): Promise<ModuleLesson> {
+    const [newLesson] = await db.insert(moduleLessons).values(lesson).returning();
+    return newLesson;
+  }
+
+  async updateModuleLesson(id: number, updates: Partial<InsertModuleLesson>): Promise<ModuleLesson | undefined> {
+    const [updated] = await db
+      .update(moduleLessons)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(moduleLessons.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteModuleLesson(id: number): Promise<void> {
+    await db.delete(moduleLessons).where(eq(moduleLessons.id, id));
   }
 
   // Module Quiz operations
