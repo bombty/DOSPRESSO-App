@@ -43,6 +43,7 @@ import UserCRM from "@/pages/yonetim/kullanicilar";
 import AICostDashboard from "@/pages/yonetim/ai-maliyetler";
 import KaliteDenetimi from "@/pages/kalite-denetimi";
 import MusteriGeribildirimi from "@/pages/musteri-geribildirimi";
+import MusteriFeedbackPublic from "@/pages/musteri-feedback-public";
 import KampanyaYonetimi from "@/pages/kampanya-yonetimi";
 import FranchiseAcilis from "@/pages/franchise-acilis";
 import NotFound from "@/pages/not-found";
@@ -53,6 +54,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/feedback" component={MusteriFeedbackPublic} />
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Login} />
       ) : (
