@@ -21,22 +21,21 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
-  // Development mode: relaxed cookie settings for Replit preview
-  const isDev = process.env.NODE_ENV !== "production";
-  
+  // Replit App compatibility: minimal restrictions
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    name: 'dospresso.sid',
+    name: 'connect.sid', // Standard Express session cookie name
     proxy: true,
     cookie: {
-      httpOnly: true,
-      secure: !isDev, // false in dev for preview compatibility
-      sameSite: isDev ? "lax" as const : "none" as const, // lax in dev
+      httpOnly: false, // Allow JavaScript access for debugging
+      secure: false, // No HTTPS requirement
+      sameSite: "lax" as const, // Most compatible
       maxAge: sessionTtl,
       path: '/',
+      domain: undefined, // No domain restriction
     },
   });
 }
@@ -153,13 +152,12 @@ export async function setupAuth(app: Express) {
           return res.status(500).json({ error: "Session destroy failed" });
         }
         
-        // Clear session cookie with matching options
-        const isDev = process.env.NODE_ENV !== "production";
-        res.clearCookie('dospresso.sid', {
+        // Clear session cookie
+        res.clearCookie('connect.sid', {
           path: '/',
-          httpOnly: true,
-          secure: !isDev,
-          sameSite: isDev ? "lax" : "none",
+          httpOnly: false,
+          secure: false,
+          sameSite: "lax",
         });
         res.json({ message: "Logged out" });
       });
