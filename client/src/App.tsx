@@ -30,6 +30,8 @@ import Notifications from "@/pages/notifications";
 import Announcements from "@/pages/announcements";
 import CashReports from "@/pages/cash-reports";
 import Vardiyalar from "@/pages/vardiyalar";
+import VardiyaCheckin from "@/pages/vardiya-checkin";
+import VardiyaSablonlari from "@/pages/vardiya-sablonlari";
 import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
 import AdminSeed from "@/pages/admin-seed";
@@ -75,6 +77,8 @@ function Router() {
           <Route path="/duyurular" component={Announcements} />
           <Route path="/kasa-raporlari" component={CashReports} />
           <Route path="/vardiyalar" component={Vardiyalar} />
+          <Route path="/vardiya-checkin" component={VardiyaCheckin} />
+          <Route path="/vardiya-sablonlari" component={VardiyaSablonlari} />
           <Route path="/hq-destek" component={HQSupport} />
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/performans" component={Performance} />

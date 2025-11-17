@@ -205,6 +205,20 @@ const menuGroups: MenuGroup[] = [
         module: "dashboard",
       },
       {
+        title: "Giriş/Çıkış (QR)",
+        titleTr: "Giriş/Çıkış (QR)",
+        url: "/vardiya-checkin",
+        icon: QrCode,
+        module: "dashboard",
+      },
+      {
+        title: "Vardiya Şablonları",
+        titleTr: "Vardiya Şablonları",
+        url: "/vardiya-sablonlari",
+        icon: Calendar,
+        module: "dashboard",
+      },
+      {
         title: "Devam Takibi",
         titleTr: "Devam Takibi",
         url: "/devam-takibi",
