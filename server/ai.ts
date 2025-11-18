@@ -980,7 +980,7 @@ Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
       return created >= sevenDaysAgo;
     });
 
-    const completed = sevenDayTasks.filter(t => t.status === 'tamamlandi').length;
+    const completed = sevenDayTasks.filter(t => t.status === 'onaylandi').length;
     const pending = sevenDayTasks.filter(t => t.status === 'beklemede').length;
     const overdue = sevenDayTasks.filter(t => t.status === 'gecikmiş').length;
     const completionRate = sevenDayTasks.length > 0 
@@ -1142,7 +1142,7 @@ async function buildDashboardPrompt(role: string, branchId?: number | null): Pro
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentShifts = shifts.filter(s => new Date(s.shiftDate) >= sevenDaysAgo);
     const uncoveredShifts = recentShifts.filter(s => !s.assignedToId).length;
-    const completedTasks = tasks.filter(t => t.status === 'tamamlandi').length;
+    const completedTasks = tasks.filter(t => t.status === 'onaylandi').length;
     const totalTasks = tasks.length;
 
     prompt += `**Personel:** ${employees.length} kişi\n`;

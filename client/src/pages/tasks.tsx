@@ -10,16 +10,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole } from "@shared/schema";
-import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search } from "lucide-react";
+import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon } from "lucide-react";
 
 export default function Tasks() {
   const { user } = useAuth();
@@ -53,7 +55,7 @@ export default function Tasks() {
   const overdueTasks = useMemo(() => {
     if (!tasks) return [];
     const now = new Date();
-    return tasks.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'tamamlandi');
+    return tasks.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'onaylandi');
   }, [tasks]);
 
   const { data: employees, isLoading: isEmployeesLoading } = useQuery<User[]>({
@@ -120,6 +122,74 @@ export default function Tasks() {
     },
   });
 
+  const startTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      await apiRequest(`/api/tasks/${taskId}/start`, "POST", {});
+    },
+    onSuccess: async (_data, taskId) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      const updatedTasks = queryClient.getQueryData<Task[]>(["/api/tasks"]);
+      const updatedTask = updatedTasks?.find(t => t.id === taskId);
+      if (updatedTask) {
+        setSelectedTask(updatedTask);
+      }
+      toast({ title: "Başarılı", description: "Görev başlatıldı" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Görev başlatılamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const verifyTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      await apiRequest(`/api/tasks/${taskId}/verify`, "POST", {});
+    },
+    onSuccess: async (_data, taskId) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      const updatedTasks = queryClient.getQueryData<Task[]>(["/api/tasks"]);
+      const updatedTask = updatedTasks?.find(t => t.id === taskId);
+      if (updatedTask) {
+        setSelectedTask(updatedTask);
+      }
+      toast({ title: "Başarılı", description: "Görev onaylandı" });
+      setTimeout(() => setSelectedTask(null), 500);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Görev onaylanamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rejectTaskMutation = useMutation({
+    mutationFn: async ({ taskId, reason }: { taskId: number; reason?: string }) => {
+      await apiRequest(`/api/tasks/${taskId}/reject`, "POST", { reason });
+    },
+    onSuccess: async (_data, { taskId }) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      const updatedTasks = queryClient.getQueryData<Task[]>(["/api/tasks"]);
+      const updatedTask = updatedTasks?.find(t => t.id === taskId);
+      if (updatedTask) {
+        setSelectedTask(updatedTask);
+      }
+      toast({ title: "Başarılı", description: "Görev reddedildi" });
+      setTimeout(() => setSelectedTask(null), 500);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Görev reddedilemedi",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleGetUploadParams = async () => {
     const response = await fetch("/api/objects/upload", {
       method: "POST",
@@ -141,9 +211,9 @@ export default function Tasks() {
     
     return {
       beklemede: tasks.filter(t => t.status === 'beklemede').length,
-      devamEden: tasks.filter(t => t.status === 'devam ediyor').length,
+      devamEden: tasks.filter(t => t.status === 'devam_ediyor').length,
       tamamlanmayan: tasks.filter(t => t.status === 'gecikmiş').length,
-      tamamlanan: tasks.filter(t => t.status === 'tamamlandi').length,
+      tamamlanan: tasks.filter(t => t.status === 'onaylandi').length,
     };
   }, [tasks]);
 
@@ -433,7 +503,12 @@ export default function Tasks() {
             ) : (
               <div className="grid gap-4">
                 {filteredTasks?.map((task) => (
-                  <Card key={task.id} data-testid={`card-task-${task.id}`}>
+                  <Card 
+                    key={task.id} 
+                    data-testid={`card-task-${task.id}`}
+                    className="hover-elevate cursor-pointer"
+                    onClick={() => setSelectedTask(task)}
+                  >
                     <CardHeader>
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
@@ -450,19 +525,22 @@ export default function Tasks() {
                         </div>
                         <Badge
                           variant={
-                            task.status === "tamamlandi"
+                            task.status === "onaylandi"
                               ? "default"
-                              : task.status === "gecikmiş"
+                              : task.status === "reddedildi" || task.status === "gecikmiş"
                               ? "destructive"
                               : "secondary"
                           }
                           data-testid={`badge-task-status-${task.id}`}
                         >
-                          {task.status === "tamamlandi"
-                            ? "Tamamlandı"
-                            : task.status === "gecikmiş"
-                            ? "Gecikmiş"
-                            : "Beklemede"}
+                          {task.status === "beklemede" && "Beklemede"}
+                          {task.status === "devam_ediyor" && "Devam Ediyor"}
+                          {task.status === "foto_bekleniyor" && "Fotoğraf Bekleniyor"}
+                          {task.status === "incelemede" && "İncelemede"}
+                          {task.status === "onaylandi" && "Onaylandı"}
+                          {task.status === "reddedildi" && "Reddedildi"}
+                          {task.status === "gecikmiş" && "Gecikmiş"}
+                          {task.status === "tamamlandi" && "Tamamlandı"}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -528,6 +606,173 @@ export default function Tasks() {
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Task Detail Drawer */}
+      <Drawer open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
+        <DrawerContent data-testid="drawer-task-detail">
+          <div className="mx-auto w-full max-w-2xl">
+            <DrawerHeader>
+              <DrawerTitle className="text-left" data-testid="text-task-detail-title">
+                Görev Detayları
+              </DrawerTitle>
+            </DrawerHeader>
+            
+            {selectedTask && (
+              <div className="px-4 pb-4 space-y-4">
+                {/* Task Description */}
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">{selectedTask.description}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge
+                      variant={
+                        selectedTask.status === "onaylandi"
+                          ? "default"
+                          : selectedTask.status === "reddedildi"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                      data-testid="badge-task-detail-status"
+                    >
+                      {selectedTask.status === "beklemede" && "Beklemede"}
+                      {selectedTask.status === "devam_ediyor" && "Devam Ediyor"}
+                      {selectedTask.status === "foto_bekleniyor" && "Fotoğraf Bekleniyor"}
+                      {selectedTask.status === "incelemede" && "İncelemede"}
+                      {selectedTask.status === "onaylandi" && "Onaylandı"}
+                      {selectedTask.status === "reddedildi" && "Reddedildi"}
+                      {selectedTask.status === "gecikmiş" && "Gecikmiş"}
+                    </Badge>
+                    {selectedTask.priority && (
+                      <Badge variant="outline" data-testid="badge-task-detail-priority">
+                        Öncelik: {selectedTask.priority === "düşük" ? "Düşük" : selectedTask.priority === "orta" ? "Orta" : "Yüksek"}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Task Info */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {selectedTask.dueDate && (
+                    <div className="flex items-start gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="font-medium">Teslim Tarihi</p>
+                        <p className="text-muted-foreground">
+                          {new Date(selectedTask.dueDate).toLocaleDateString("tr-TR")}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedTask.assignedToId && (
+                    <div className="flex items-start gap-2">
+                      <UserIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="font-medium">Atanan Kişi</p>
+                        <p className="text-muted-foreground">ID: {selectedTask.assignedToId}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Photo Preview */}
+                {selectedTask.photoUrl && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="font-medium mb-2">Yüklenen Fotoğraf</p>
+                      <img
+                        src={selectedTask.photoUrl}
+                        alt="Görev fotoğrafı"
+                        className="rounded-md w-full max-h-96 object-contain border"
+                        data-testid="img-task-detail-photo"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* AI Analysis */}
+                {selectedTask.aiAnalysis && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="font-medium mb-2">AI Analizi</p>
+                      <div className="bg-muted p-4 rounded-md space-y-2">
+                        {selectedTask.aiScore !== null && selectedTask.aiScore !== undefined && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">Skor:</span>
+                            <Badge variant={selectedTask.aiScore >= 70 ? "default" : "destructive"} data-testid="badge-ai-score">
+                              {selectedTask.aiScore}/100
+                            </Badge>
+                          </div>
+                        )}
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap" data-testid="text-ai-analysis">
+                          {selectedTask.aiAnalysis}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Action Buttons */}
+                <Separator />
+                <div className="flex flex-col gap-2">
+                  {/* Start Task - Branch users can start tasks */}
+                  {(selectedTask.status === "beklemede" || selectedTask.status === "reddedildi") && (
+                    <Button
+                      onClick={() => startTaskMutation.mutate(selectedTask.id)}
+                      disabled={startTaskMutation.isPending}
+                      className="w-full"
+                      data-testid="button-start-task"
+                    >
+                      <PlayCircle className="mr-2 h-4 w-4" />
+                      {startTaskMutation.isPending ? "Başlatılıyor..." : "Görevi Başlat"}
+                    </Button>
+                  )}
+
+                  {/* HQ Actions - Verify and Reject */}
+                  {isHQ && (selectedTask.status === "incelemede" || selectedTask.status === "foto_bekleniyor") && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => verifyTaskMutation.mutate(selectedTask.id)}
+                        disabled={verifyTaskMutation.isPending}
+                        className="flex-1"
+                        variant="default"
+                        data-testid="button-verify-task"
+                      >
+                        <ThumbsUp className="mr-2 h-4 w-4" />
+                        {verifyTaskMutation.isPending ? "Onaylanıyor..." : "Onayla"}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          const reason = prompt("Red nedeni (opsiyonel):");
+                          rejectTaskMutation.mutate({ taskId: selectedTask.id, reason: reason || undefined });
+                        }}
+                        disabled={rejectTaskMutation.isPending}
+                        className="flex-1"
+                        variant="destructive"
+                        data-testid="button-reject-task"
+                      >
+                        <ThumbsDown className="mr-2 h-4 w-4" />
+                        {rejectTaskMutation.isPending ? "Reddediliyor..." : "Reddet"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <DrawerFooter>
+              <DrawerClose asChild>
+                <Button variant="outline" data-testid="button-close-drawer">
+                  <X className="mr-2 h-4 w-4" />
+                  Kapat
+                </Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

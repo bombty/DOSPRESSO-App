@@ -882,10 +882,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Status transition validation: can only verify completed/reviewed tasks
-      const validStatuses = ["incelemede", "foto_bekleniyor", "tamamlandi"];
+      const validStatuses = ["incelemede", "foto_bekleniyor"];
       if (!validStatuses.includes(existingTask.status)) {
         return res.status(400).json({ 
-          message: `Görev sadece 'incelemede', 'foto_bekleniyor' veya 'tamamlandi' durumlarından onaylanabilir. Mevcut durum: ${existingTask.status}` 
+          message: `Görev sadece 'incelemede' veya 'foto_bekleniyor' durumlarından onaylanabilir. Mevcut durum: ${existingTask.status}` 
         });
       }
       
@@ -922,10 +922,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Status transition validation: can only reject completed/reviewed tasks
-      const validStatuses = ["incelemede", "foto_bekleniyor", "tamamlandi"];
+      const validStatuses = ["incelemede", "foto_bekleniyor"];
       if (!validStatuses.includes(existingTask.status)) {
         return res.status(400).json({ 
-          message: `Görev sadece 'incelemede', 'foto_bekleniyor' veya 'tamamlandi' durumlarından reddedilebilir. Mevcut durum: ${existingTask.status}` 
+          message: `Görev sadece 'incelemede' veya 'foto_bekleniyor' durumlarından reddedilebilir. Mevcut durum: ${existingTask.status}` 
         });
       }
       
@@ -2234,7 +2234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate KPIs from task data
       const now = new Date();
-      const completedTasks = allTasks.filter(t => t.status === 'tamamlandi');
+      const completedTasks = allTasks.filter(t => t.status === 'onaylandi');
       const overdueTasks = allTasks.filter(t => 
         t.status === 'beklemede' && t.dueDate && new Date(t.dueDate) < now
       );

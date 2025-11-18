@@ -681,7 +681,7 @@ export class DatabaseStorage implements IStorage {
 
   async completeTask(id: number, photoUrl?: string): Promise<Task | undefined> {
     const updates: Partial<InsertTask> & { completedAt?: Date } = {
-      status: "tamamlandi",
+      status: "foto_bekleniyor",
       completedAt: new Date(),
     };
     if (photoUrl) {
