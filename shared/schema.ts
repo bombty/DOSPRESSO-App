@@ -425,6 +425,10 @@ export const users = pgTable("users", {
   // AI Photo Analysis Quota (10/day for dress code, task verification, etc.)
   dailyPhotoCount: integer("daily_photo_count").default(0).notNull(),
   lastPhotoDate: date("last_photo_date"),
+  // Account approval workflow
+  accountStatus: varchar("account_status", { length: 20 }).notNull().default("approved"), // pending, approved, rejected
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -2311,3 +2315,153 @@ export const insertEmployeeAvailabilitySchema = createInsertSchema(employeeAvail
 export type InsertEmployeeAvailability = z.infer<typeof insertEmployeeAvailabilitySchema>;
 export type EmployeeAvailability = typeof employeeAvailability.$inferSelect;
 export type AvailabilityReason = "unavailable" | "vacation" | "sick" | "personal" | "other";
+
+// ========================================
+// RBAC SYSTEM - Role-Based Access Control
+// ========================================
+
+// Roles - Dynamic role management (separate from hard-coded UserRole enum)
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  description: text("description"),
+  isSystemRole: boolean("is_system_role").notNull().default(false), // Built-in roles cannot be deleted
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("roles_name_idx").on(table.name),
+]);
+
+export const insertRoleSchema = createInsertSchema(roles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRole = z.infer<typeof insertRoleSchema>;
+export type Role = typeof roles.$inferSelect;
+
+// Permissions - Define what actions can be performed
+export const permissions = pgTable("permissions", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(), // e.g., "tasks.create", "equipment.delete"
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  description: text("description"),
+  module: varchar("module", { length: 50 }).notNull(), // tasks, equipment, users, etc.
+  action: varchar("action", { length: 20 }).notNull(), // view, create, edit, delete, approve
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("permissions_module_idx").on(table.module),
+  index("permissions_name_idx").on(table.name),
+]);
+
+export const insertPermissionSchema = createInsertSchema(permissions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPermission = z.infer<typeof insertPermissionSchema>;
+export type Permission = typeof permissions.$inferSelect;
+
+// Role Permissions - Many-to-many relationship
+export const rolePermissions = pgTable("role_permissions", {
+  id: serial("id").primaryKey(),
+  roleId: integer("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  permissionId: integer("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("role_permissions_role_idx").on(table.roleId),
+  index("role_permissions_permission_idx").on(table.permissionId),
+  unique("role_permission_unique").on(table.roleId, table.permissionId),
+]);
+
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+export type RolePermission = typeof rolePermissions.$inferSelect;
+
+// ========================================
+// SITE SETTINGS - Global configuration
+// ========================================
+
+export const siteSettings = pgTable("site_settings", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value"),
+  type: varchar("type", { length: 20 }).notNull().default("string"), // string, number, boolean, json, file
+  category: varchar("category", { length: 50 }).notNull().default("general"), // general, branding, theme, email
+  description: text("description"),
+  isPublic: boolean("is_public").notNull().default(false), // Can be accessed by non-admin users
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("site_settings_key_idx").on(table.key),
+  index("site_settings_category_idx").on(table.category),
+]);
+
+export const insertSiteSettingSchema = createInsertSchema(siteSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSiteSetting = z.infer<typeof insertSiteSettingSchema>;
+export type SiteSetting = typeof siteSettings.$inferSelect;
+
+// ========================================
+// PASSWORD RESET TOKENS
+// ========================================
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("password_reset_tokens_token_idx").on(table.token),
+  index("password_reset_tokens_user_idx").on(table.userId),
+]);
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// ========================================
+// AUDIT LOGS - Activity tracking
+// ========================================
+
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  action: varchar("action", { length: 100 }).notNull(), // user.created, role.updated, setting.changed
+  resource: varchar("resource", { length: 100 }).notNull(), // users, roles, settings, etc.
+  resourceId: varchar("resource_id", { length: 100 }), // ID of the affected resource
+  details: jsonb("details"), // Additional context (old value, new value, etc.)
+  ipAddress: varchar("ip_address", { length: 50 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("audit_logs_user_idx").on(table.userId),
+  index("audit_logs_action_idx").on(table.action),
+  index("audit_logs_resource_idx").on(table.resource),
+  index("audit_logs_created_idx").on(table.createdAt),
+]);
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
