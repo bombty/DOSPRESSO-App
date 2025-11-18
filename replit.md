@@ -48,6 +48,27 @@ Preferred communication style: Simple, everyday language.
 - `roles`, `permissions`, `rolePermissions`: RBAC system tables
 - `users.accountStatus`: Enum (approved, pending, rejected) for registration approval workflow
 
+### Task Management System (Tasks 12-15, November 18, 2025)
+- **7-State Task Lifecycle** (Tasks 12-13):
+  - Status enum: beklemede, devam_ediyor, foto_bekleniyor, incelemede, onaylandi, reddedildi, gecikmiş
+  - Server-side status transition validation with role-based guards
+  - Safe update schema blocking protected fields (aiAnalysis, aiScore, photoUrl)
+  - HQ-only verification endpoints (verify/reject)
+- **Frontend Task Detail Drawer** (Task 14):
+  - Card status badges for all 7 states
+  - Photo preview, AI analysis display (score, summary)
+  - Role-based action buttons (Start, Verify, Reject) with loading states
+  - Real-time cache updates after mutations with fresh data strategy
+  - Fixed all 'tamamlandi' references → 'onaylandi' across frontend/backend/AI
+- **Advanced Task Filtering & Sorting** (Task 15 - IN PROGRESS):
+  - Collapsible FilterPanel with 7 filter controls (search, branch, assignee, status, priority, date range)
+  - Active filter count badge and "Filtreleri Temizle" button
+  - Client-side filtering with useMemo (instant UX, <1k tasks)
+  - Type-safe ID comparisons (branchId as number, assignedToId as varchar/string)
+  - Sorting logic (createdAt desc default, priority weighting)
+  - Responsive 3-column grid layout
+  - HQ-only features (branch filter, all users dropdown)
+
 ### Test Users
 - **testadmin** (admin, no branch) - password: "test123"
 - **testsupervisor** (supervisor, branchId=4) - password: "test123"

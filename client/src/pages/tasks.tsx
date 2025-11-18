@@ -17,11 +17,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole } from "@shared/schema";
-import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon } from "lucide-react";
+import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
+import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle } from "lucide-react";
+import { format } from "date-fns";
 
 export default function Tasks() {
   const { user } = useAuth();
@@ -30,6 +34,18 @@ export default function Tasks() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  
+  const [filterBranchId, setFilterBranchId] = useState<number | null>(null);
+  const [filterAssigneeId, setFilterAssigneeId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<TaskStatus | null>(null);
+  const [filterPriority, setFilterPriority] = useState<TaskPriority | null>(null);
+  const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>();
+  const [filterDateTo, setFilterDateTo] = useState<Date | undefined>();
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'createdAt',
+    direction: 'desc',
+  });
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -62,6 +78,32 @@ export default function Tasks() {
     queryKey: ["/api/employees", isHQ ? { branchId: selectedBranchId } : {}],
     enabled: isHQ ? !!selectedBranchId : true,
   });
+
+  const { data: allUsers, isLoading: isAllUsersLoading } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+    enabled: isHQ === true,
+  });
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setFilterBranchId(null);
+    setFilterAssigneeId(null);
+    setFilterStatus(null);
+    setFilterPriority(null);
+    setFilterDateFrom(undefined);
+    setFilterDateTo(undefined);
+  };
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (searchQuery) count++;
+    if (filterBranchId !== null) count++;
+    if (filterAssigneeId !== null) count++;
+    if (filterStatus !== null) count++;
+    if (filterPriority !== null) count++;
+    if (filterDateFrom || filterDateTo) count++;
+    return count;
+  }, [searchQuery, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo]);
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertTask) => {
@@ -220,7 +262,7 @@ export default function Tasks() {
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
     
-    let filtered = tasks;
+    let filtered = [...tasks];
     
     // Branch-level filtering: non-HQ users only see their branch tasks
     if (user?.role && !isHQRole(user.role as any)) {
@@ -229,12 +271,15 @@ export default function Tasks() {
       }
     }
     
+    // Search filter
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(task => 
-        task.description.toLowerCase().includes(searchQuery.toLowerCase())
+        task.description?.toLowerCase().includes(query)
       );
     }
     
+    // Tab category filter
     if (activeTab !== 'all') {
       const categoryMap: Record<string, string> = {
         'acilis': 'açılış',
@@ -244,13 +289,70 @@ export default function Tasks() {
       const category = categoryMap[activeTab];
       if (category) {
         filtered = filtered.filter(task => 
-          task.description.toLowerCase().includes(category)
+          task.description?.toLowerCase().includes(category)
         );
       }
     }
     
+    // Branch filter (HQ only)
+    if (filterBranchId !== null) {
+      filtered = filtered.filter(t => Number(t.branchId) === Number(filterBranchId));
+    }
+    
+    // Assignee filter
+    if (filterAssigneeId !== null) {
+      filtered = filtered.filter(t => t.assignedToId?.toString() === filterAssigneeId?.toString());
+    }
+    
+    // Status filter
+    if (filterStatus !== null) {
+      filtered = filtered.filter(t => t.status === filterStatus);
+    }
+    
+    // Priority filter
+    if (filterPriority !== null) {
+      filtered = filtered.filter(t => t.priority === filterPriority);
+    }
+    
+    // Date range filter (due date)
+    if (filterDateFrom) {
+      filtered = filtered.filter(t => {
+        if (!t.dueDate) return false;
+        return new Date(t.dueDate) >= filterDateFrom;
+      });
+    }
+    
+    if (filterDateTo) {
+      filtered = filtered.filter(t => {
+        if (!t.dueDate) return false;
+        return new Date(t.dueDate) <= filterDateTo;
+      });
+    }
+    
+    // Sorting
+    filtered.sort((a, b) => {
+      const { key, direction } = sortConfig;
+      let aVal: any, bVal: any;
+      
+      if (key === 'createdAt' || key === 'dueDate') {
+        aVal = a[key] ? new Date(a[key] as Date).getTime() : 0;
+        bVal = b[key] ? new Date(b[key] as Date).getTime() : 0;
+      } else if (key === 'priority') {
+        const priorityOrder = { low: 1, medium: 2, high: 3, critical: 4 };
+        aVal = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
+        bVal = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
+      } else {
+        aVal = a[key as keyof Task] || '';
+        bVal = b[key as keyof Task] || '';
+      }
+      
+      if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+    
     return filtered;
-  }, [tasks, searchQuery, activeTab, user]);
+  }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig]);
 
   return (
     <div className="space-y-6">
@@ -340,6 +442,192 @@ export default function Tasks() {
         </Card>
       </div>
 
+      <Collapsible open={filterOpen} onOpenChange={setFilterOpen}>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                <CardTitle>Filtreler</CardTitle>
+                {activeFilterCount > 0 && (
+                  <Badge variant="default" data-testid="badge-active-filters">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {activeFilterCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    data-testid="button-clear-filters"
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Filtreleri Temizle
+                  </Button>
+                )}
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" data-testid="button-toggle-filters">
+                    <ChevronDown className={`h-4 w-4 transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Arama</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Görev ara..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                      data-testid="input-filter-search"
+                    />
+                  </div>
+                </div>
+
+                {isHQ && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Şube</label>
+                    <Select
+                      value={filterBranchId?.toString() || "all"}
+                      onValueChange={(value) => setFilterBranchId(value === "all" ? null : Number(value))}
+                    >
+                      <SelectTrigger data-testid="select-filter-branch">
+                        <SelectValue placeholder="Tüm şubeler" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tüm şubeler</SelectItem>
+                        {branches?.map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id.toString()}>
+                            {branch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Atanan Kişi</label>
+                  <Select
+                    value={filterAssigneeId || "all"}
+                    onValueChange={(value) => setFilterAssigneeId(value === "all" ? null : value)}
+                  >
+                    <SelectTrigger data-testid="select-filter-assignee">
+                      <SelectValue placeholder="Tüm kişiler" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tüm kişiler</SelectItem>
+                      {(isHQ ? allUsers : employees)?.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.firstName} {user.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Durum</label>
+                  <Select
+                    value={filterStatus || "all"}
+                    onValueChange={(value) => setFilterStatus(value === "all" ? null : (value as TaskStatus))}
+                  >
+                    <SelectTrigger data-testid="select-filter-status">
+                      <SelectValue placeholder="Tüm durumlar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tüm durumlar</SelectItem>
+                      <SelectItem value="beklemede">Beklemede</SelectItem>
+                      <SelectItem value="devam_ediyor">Devam Ediyor</SelectItem>
+                      <SelectItem value="foto_bekleniyor">Fotoğraf Bekleniyor</SelectItem>
+                      <SelectItem value="incelemede">İncelemede</SelectItem>
+                      <SelectItem value="onaylandi">Onaylandı</SelectItem>
+                      <SelectItem value="reddedildi">Reddedildi</SelectItem>
+                      <SelectItem value="gecikmiş">Gecikmiş</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Öncelik</label>
+                  <Select
+                    value={filterPriority || "all"}
+                    onValueChange={(value) => setFilterPriority(value === "all" ? null : (value as TaskPriority))}
+                  >
+                    <SelectTrigger data-testid="select-filter-priority">
+                      <SelectValue placeholder="Tüm öncelikler" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tüm öncelikler</SelectItem>
+                      <SelectItem value="low">Düşük</SelectItem>
+                      <SelectItem value="medium">Orta</SelectItem>
+                      <SelectItem value="high">Yüksek</SelectItem>
+                      <SelectItem value="critical">Kritik</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Başlangıç Tarihi</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                        data-testid="button-filter-date-from"
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {filterDateFrom ? format(filterDateFrom, "dd/MM/yyyy") : "Seç"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={filterDateFrom}
+                        onSelect={setFilterDateFrom}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Bitiş Tarihi</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                        data-testid="button-filter-date-to"
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {filterDateTo ? format(filterDateTo, "dd/MM/yyyy") : "Seç"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={filterDateTo}
+                        onSelect={setFilterDateTo}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <TabsList data-testid="tabs-task-filter">
@@ -349,21 +637,10 @@ export default function Tasks() {
             <TabsTrigger value="gunluk" data-testid="tab-gunluk">Günlük Kontrol</TabsTrigger>
           </TabsList>
           
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:flex-initial sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Çizelge veya personel ara..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-                data-testid="input-search-tasks"
-              />
-            </div>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-add-task">Yeni Çizelge Ekle</Button>
-              </DialogTrigger>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-task">Yeni Çizelge Ekle</Button>
+            </DialogTrigger>
               <DialogContent>
             <DialogHeader>
               <DialogTitle>Yeni Görev Ekle</DialogTitle>
@@ -489,7 +766,6 @@ export default function Tasks() {
             </Form>
           </DialogContent>
         </Dialog>
-          </div>
         </div>
 
         {["all", "acilis", "kapanis", "gunluk"].map((tabValue) => (
