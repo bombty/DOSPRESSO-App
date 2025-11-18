@@ -150,10 +150,18 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   createUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined>;
+  updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   deleteUser(id: string): Promise<void>;
   getAllEmployees(branchId?: number): Promise<User[]>;
   getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string }): Promise<User[]>;
   bulkImportUsers(users: UpsertUser[]): Promise<User[]>;
+  getUsersByRole(role: string): Promise<User[]>;
+  getUsersByBranchAndRole(branchId: number, role: string): Promise<User[]>;
+  
+  // Password Reset Tokens
+  createPasswordResetToken(token: { userId: string; token: string; expiresAt: Date; usedAt: Date | null }): Promise<void>;
+  getPasswordResetToken(token: string): Promise<{ id: number; userId: string; token: string; expiresAt: Date; usedAt: Date | null } | undefined>;
+  markPasswordResetTokenUsed(tokenId: number): Promise<void>;
   
   // Employee Warnings operations
   getEmployeeWarnings(userId: string): Promise<EmployeeWarning[]>;
@@ -459,6 +467,34 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  async getUsersByRole(role: string): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, role));
+  }
+
+  async getUsersByBranchAndRole(branchId: number, role: string): Promise<User[]> {
+    return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.role, role)));
+  }
+
+  async updateUserPassword(id: string, hashedPassword: string): Promise<void> {
+    await db.update(users).set({ hashedPassword, updatedAt: new Date() }).where(eq(users.id, id));
+  }
+
+  async createPasswordResetToken(token: { userId: string; token: string; expiresAt: Date; usedAt: Date | null }): Promise<void> {
+    const { passwordResetTokens } = await import("@shared/schema");
+    await db.insert(passwordResetTokens).values(token);
+  }
+
+  async getPasswordResetToken(token: string): Promise<{ id: number; userId: string; token: string; expiresAt: Date; usedAt: Date | null } | undefined> {
+    const { passwordResetTokens } = await import("@shared/schema");
+    const [result] = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token));
+    return result as any;
+  }
+
+  async markPasswordResetTokenUsed(tokenId: number): Promise<void> {
+    const { passwordResetTokens } = await import("@shared/schema");
+    await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, tokenId));
   }
 
   async getEmployeeForBranch(employeeId: string, allowedBranchId: number | null): Promise<User | undefined> {

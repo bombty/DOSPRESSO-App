@@ -66,6 +66,20 @@ export async function setupAuth(app: Express) {
           return done(null, false, { message: "Kullanıcı adı veya şifre hatalı" });
         }
 
+        // Check account status
+        if (user.accountStatus === 'pending') {
+          return done(null, false, { message: "Hesabınız onay bekliyor" });
+        }
+        
+        if (user.accountStatus === 'rejected') {
+          return done(null, false, { message: "Hesabınız onaylanmadı" });
+        }
+
+        // Check if account is active
+        if (!user.isActive) {
+          return done(null, false, { message: "Hesabınız aktif değil" });
+        }
+
         return done(null, user);
       } catch (error) {
         return done(error);

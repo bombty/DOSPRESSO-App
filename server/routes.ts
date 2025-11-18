@@ -97,6 +97,182 @@ function ensurePermission(user: any, module: string, action: string, errorMessag
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
+  // POST /api/auth/register - Public registration endpoint
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const { sendApprovalRequestEmail, sendWelcomeEmail } = await import('./email');
+      const crypto = await import('crypto');
+      
+      const registerSchema = z.object({
+        email: z.string().email("Geçerli bir email adresi girin"),
+        firstName: z.string().min(1, "Ad gerekli"),
+        lastName: z.string().min(1, "Soyad gerekli"),
+        password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
+        isHQ: z.boolean(),
+        branchId: z.number().optional(),
+      });
+
+      const data = registerSchema.parse(req.body);
+
+      // Check if email already exists
+      const existing = await storage.getUserByEmail(data.email);
+      if (existing) {
+        return res.status(400).json({ message: "Bu email adresi zaten kayıtlı" });
+      }
+
+      // Validate branch selection
+      if (!data.isHQ && !data.branchId) {
+        return res.status(400).json({ message: "Şube seçimi gerekli" });
+      }
+      if (data.isHQ && data.branchId) {
+        return res.status(400).json({ message: "Merkez kullanıcılar şube seçemez" });
+      }
+
+      // Generate username from email
+      const username = data.email.split('@')[0] + '_' + crypto.randomBytes(3).toString('hex');
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+
+      // Create user with pending status
+      const newUser = await storage.createUser({
+        email: data.email,
+        username,
+        hashedPassword,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        role: data.isHQ ? 'admin' : 'barista', // Default roles
+        branchId: data.branchId || null,
+        accountStatus: 'pending',
+        isActive: false, // Inactive until approved
+      });
+
+      // Send approval email to appropriate admin
+      if (data.isHQ) {
+        // Send to system admin
+        const admins = await storage.getUsersByRole('admin');
+        for (const admin of admins) {
+          if (admin.email && admin.accountStatus === 'approved') {
+            await sendApprovalRequestEmail(
+              admin.email,
+              `${data.firstName} ${data.lastName}`,
+              data.email
+            );
+          }
+        }
+      } else {
+        // Send to branch supervisor
+        const supervisors = await storage.getUsersByBranchAndRole(data.branchId!, 'supervisor');
+        const branch = await storage.getBranch(data.branchId!);
+        for (const supervisor of supervisors) {
+          if (supervisor.email && supervisor.accountStatus === 'approved') {
+            await sendApprovalRequestEmail(
+              supervisor.email,
+              `${data.firstName} ${data.lastName}`,
+              data.email,
+              branch?.name
+            );
+          }
+        }
+      }
+
+      res.json({ 
+        message: "Kayıt talebiniz alındı. Onay sonrası email ile bilgilendirileceksiniz.",
+        userId: newUser.id 
+      });
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Kayıt sırasında hata oluştu" });
+    }
+  });
+
+  // POST /api/auth/forgot-password - Request password reset
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const { sendPasswordResetEmail } = await import('./email');
+      const crypto = await import('crypto');
+      
+      const schema = z.object({
+        email: z.string().email("Geçerli bir email adresi girin"),
+      });
+
+      const { email } = schema.parse(req.body);
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if email exists (security best practice)
+        return res.json({ message: "Eğer bu email kayıtlıysa, şifre sıfırlama linki gönderildi" });
+      }
+
+      // Generate reset token
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Store token
+      await storage.createPasswordResetToken({
+        userId: user.id,
+        token,
+        expiresAt,
+        usedAt: null,
+      });
+
+      // Send email
+      await sendPasswordResetEmail(email, token);
+
+      res.json({ message: "Eğer bu email kayıtlıysa, şifre sıfırlama linki gönderildi" });
+    } catch (error: any) {
+      console.error("Forgot password error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "İşlem sırasında hata oluştu" });
+    }
+  });
+
+  // POST /api/auth/reset-password/:token - Reset password with token
+  app.post('/api/auth/reset-password/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      const schema = z.object({
+        password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
+      });
+
+      const { password } = schema.parse(req.body);
+
+      // Find valid token
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken || resetToken.usedAt) {
+        return res.status(400).json({ message: "Geçersiz veya kullanılmış token" });
+      }
+
+      // Check expiration
+      if (new Date() > resetToken.expiresAt) {
+        return res.status(400).json({ message: "Token süresi dolmuş" });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Update user password
+      await storage.updateUserPassword(resetToken.userId, hashedPassword);
+
+      // Mark token as used
+      await storage.markPasswordResetTokenUsed(resetToken.id);
+
+      res.json({ message: "Şifre başarıyla değiştirildi" });
+    } catch (error: any) {
+      console.error("Reset password error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "İşlem sırasında hata oluştu" });
+    }
+  });
+
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
