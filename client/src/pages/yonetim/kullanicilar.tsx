@@ -263,36 +263,37 @@ export default function UserCRM() {
                   CSV İçe Aktar
                 </Button>
               </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>CSV İçe Aktarma</DialogTitle>
-                <DialogDescription>
-                  Format: id,firstName,lastName,email,role,branchId
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="csv-text">CSV Verisi</Label>
-                  <textarea
-                    id="csv-text"
-                    data-testid="input-csv-text"
-                    className="w-full h-64 p-2 border rounded-md font-mono text-sm"
-                    placeholder="id,firstName,lastName,email,role,branchId&#10;user1,John,Doe,john@example.com,barista,1"
-                    value={csvText}
-                    onChange={(e) => setCsvText(e.target.value)}
-                  />
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>CSV İçe Aktarma</DialogTitle>
+                  <DialogDescription>
+                    Format: id,firstName,lastName,email,role,branchId
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="csv-text">CSV Verisi</Label>
+                    <textarea
+                      id="csv-text"
+                      data-testid="input-csv-text"
+                      className="w-full h-64 p-2 border rounded-md font-mono text-sm"
+                      placeholder="id,firstName,lastName,email,role,branchId&#10;user1,John,Doe,john@example.com,barista,1"
+                      value={csvText}
+                      onChange={(e) => setCsvText(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    data-testid="button-submit-csv-import"
+                    onClick={handleCsvImport}
+                    disabled={bulkImportMutation.isPending || !csvText.trim()}
+                    className="w-full"
+                  >
+                    {bulkImportMutation.isPending ? "İçe Aktarılıyor..." : "İçe Aktar"}
+                  </Button>
                 </div>
-                <Button
-                  data-testid="button-submit-csv-import"
-                  onClick={handleCsvImport}
-                  disabled={bulkImportMutation.isPending || !csvText.trim()}
-                  className="w-full"
-                >
-                  {bulkImportMutation.isPending ? "İçe Aktarılıyor..." : "İçe Aktar"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <Card>

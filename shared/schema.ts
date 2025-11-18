@@ -556,6 +556,18 @@ export const updateChecklistSchema = z.object({
 
 export type UpdateChecklist = z.infer<typeof updateChecklistSchema>;
 
+// ========================================
+// TASK MANAGEMENT TABLES
+// ========================================
+
+// Task status enum
+export const taskStatusEnum = ["beklemede", "devam_ediyor", "foto_bekleniyor", "incelemede", "onaylandi", "reddedildi", "gecikmiş"] as const;
+export type TaskStatus = typeof taskStatusEnum[number];
+
+// Task priority enum
+export const taskPriorityEnum = ["düşük", "orta", "yüksek"] as const;
+export type TaskPriority = typeof taskPriorityEnum[number];
+
 // Tasks table (actual task instances)
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
@@ -565,7 +577,7 @@ export const tasks = pgTable("tasks", {
   assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
   assignedById: varchar("assigned_by_id").references(() => users.id, { onDelete: "set null" }), // Who assigned the task
   description: text("description").notNull(),
-  status: varchar("status", { length: 50 }).notNull().default("beklemede"), // beklemede, tamamlandi, gecikmiş
+  status: varchar("status", { length: 50 }).notNull().default("beklemede"), // beklemede, devam_ediyor, foto_bekleniyor, incelemede, onaylandi, reddedildi, gecikmiş
   priority: varchar("priority", { length: 20 }).default("orta"), // düşük, orta, yüksek
   requiresPhoto: boolean("requires_photo").default(false), // Photo mandatory
   photoUrl: text("photo_url"),
@@ -590,9 +602,22 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  status: z.enum(taskStatusEnum).optional(),
+  priority: z.enum(taskPriorityEnum).optional(),
 });
 
+export const updateTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  status: z.enum(taskStatusEnum).optional(),
+  priority: z.enum(taskPriorityEnum).optional(),
+}).partial();
+
 export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 
 // ========================================

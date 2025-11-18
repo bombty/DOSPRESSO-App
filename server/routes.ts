@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "./security";
 import { 
-  insertTaskSchema, 
+  insertTaskSchema,
+  updateTaskSchema,
   insertChecklistSchema,
   updateChecklistSchema,
   insertEquipmentFaultSchema, 
@@ -69,6 +70,14 @@ import { z } from "zod";
 // Update schema for page content - allows partial updates, immutable createdById
 const updatePageContentSchema = insertPageContentSchema.partial().omit({
   createdById: true,
+});
+
+// Safe task update schema - only allows user-editable fields
+const safeTaskUpdateSchema = updateTaskSchema.pick({
+  description: true,
+  priority: true,
+  dueDate: true,
+  assignedToId: true,
 });
 
 // Helper function to assert branch scope for branch users
@@ -773,6 +782,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Failed to complete task" });
+    }
+  });
+
+  // PUT /api/tasks/:id - Update task (safe fields only)
+  app.put('/api/tasks/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      const validatedData = safeTaskUpdateSchema.parse(req.body);
+      
+      // Permission check
+      ensurePermission(user, 'tasks', 'edit');
+      
+      // Authorization: Get existing task to verify ownership
+      const existingTask = await storage.getTask(id);
+      if (!existingTask) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Branch users can only edit their own branch tasks
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId || existingTask.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu görevi düzenleme yetkiniz yok" });
+        }
+      }
+      
+      const task = await storage.updateTask(id, validatedData);
+      res.json(task);
+    } catch (error: any) {
+      console.error("Error updating task:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz görev verisi", errors: error.errors });
+      }
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Görev güncellenemedi" });
+    }
+  });
+
+  // POST /api/tasks/:id/start - Start working on task
+  app.post('/api/tasks/:id/start', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      // Permission check
+      ensurePermission(user, 'tasks', 'edit');
+      
+      // Authorization: Get existing task to verify ownership
+      const existingTask = await storage.getTask(id);
+      if (!existingTask) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Branch users can only start their own branch tasks
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId || existingTask.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu görevi başlatma yetkiniz yok" });
+        }
+      }
+      
+      // Status transition validation: can only start from beklemede or reddedildi
+      if (existingTask.status !== "beklemede" && existingTask.status !== "reddedildi") {
+        return res.status(400).json({ 
+          message: "Görev sadece 'beklemede' veya 'reddedildi' durumlarından başlatılabilir" 
+        });
+      }
+      
+      const task = await storage.updateTask(id, { status: "devam_ediyor" });
+      res.json(task);
+    } catch (error) {
+      console.error("Error starting task:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Görev başlatılamadı" });
+    }
+  });
+
+  // POST /api/tasks/:id/verify - Verify and approve task (HQ only)
+  app.post('/api/tasks/:id/verify', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      // Permission check: Only HQ roles can verify tasks
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Sadece merkez yetkilileri görev onaylayabilir" });
+      }
+      
+      ensurePermission(user, 'tasks', 'edit');
+      
+      // Get existing task
+      const existingTask = await storage.getTask(id);
+      if (!existingTask) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Status transition validation: can only verify completed/reviewed tasks
+      const validStatuses = ["incelemede", "foto_bekleniyor", "tamamlandi"];
+      if (!validStatuses.includes(existingTask.status)) {
+        return res.status(400).json({ 
+          message: `Görev sadece 'incelemede', 'foto_bekleniyor' veya 'tamamlandi' durumlarından onaylanabilir. Mevcut durum: ${existingTask.status}` 
+        });
+      }
+      
+      // Update status to verified
+      const task = await storage.updateTask(id, { status: "onaylandi" });
+      res.json(task);
+    } catch (error) {
+      console.error("Error verifying task:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Görev onaylanamadı" });
+    }
+  });
+
+  // POST /api/tasks/:id/reject - Reject task (HQ only)
+  app.post('/api/tasks/:id/reject', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      const { reason } = req.body;
+      
+      // Permission check: Only HQ roles can reject tasks
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Sadece merkez yetkilileri görev reddedebilir" });
+      }
+      
+      ensurePermission(user, 'tasks', 'edit');
+      
+      // Get existing task
+      const existingTask = await storage.getTask(id);
+      if (!existingTask) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Status transition validation: can only reject completed/reviewed tasks
+      const validStatuses = ["incelemede", "foto_bekleniyor", "tamamlandi"];
+      if (!validStatuses.includes(existingTask.status)) {
+        return res.status(400).json({ 
+          message: `Görev sadece 'incelemede', 'foto_bekleniyor' veya 'tamamlandi' durumlarından reddedilebilir. Mevcut durum: ${existingTask.status}` 
+        });
+      }
+      
+      // Update status to rejected and add reason to AI analysis field
+      const updates: any = { status: "reddedildi" };
+      if (reason) {
+        updates.aiAnalysis = `RED NEDENİ: ${reason}${existingTask.aiAnalysis ? '\n\nÖNCEKİ ANALİZ: ' + existingTask.aiAnalysis : ''}`;
+      }
+      
+      const task = await storage.updateTask(id, updates);
+      res.json(task);
+    } catch (error) {
+      console.error("Error rejecting task:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Görev reddedilemedi" });
     }
   });
 
