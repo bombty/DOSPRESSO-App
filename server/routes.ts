@@ -244,8 +244,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      // Hash token before storing (security best practice)
-      const hashedToken = await bcrypt.hash(token, 10);
+      // Hash token using SHA-256 (deterministic, allows O(1) lookup)
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
       // Store hashed token
       await storage.createPasswordResetToken({
@@ -271,6 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/auth/reset-password/:token - Reset password with token
   app.post('/api/auth/reset-password/:token', async (req, res) => {
     try {
+      const crypto = await import('crypto');
       const { token } = req.params;
       const schema = z.object({
         password: z.string().min(8, "Şifre en az 8 karakter olmalı")
@@ -280,37 +281,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { password } = schema.parse(req.body);
 
-      // Get all unexpired, unused tokens and compare hashes
-      // (Since tokens are now hashed, we must check each one)
-      const allTokens = await storage.getAllPasswordResetTokens();
-      let matchedToken: any = null;
+      // Hash incoming token using SHA-256 (deterministic, O(1) lookup)
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-      for (const dbToken of allTokens) {
-        // Skip used or expired tokens
-        if (dbToken.usedAt || new Date() > dbToken.expiresAt) {
-          continue;
-        }
+      // Direct lookup by hashed token (O(1) instead of O(n))
+      const resetToken = await storage.getPasswordResetToken(hashedToken);
 
-        // Compare incoming token with hashed token in DB
-        const isMatch = await bcrypt.compare(token, dbToken.token);
-        if (isMatch) {
-          matchedToken = dbToken;
-          break;
-        }
+      if (!resetToken || resetToken.usedAt) {
+        return res.status(400).json({ message: "Geçersiz veya kullanılmış token" });
       }
 
-      if (!matchedToken) {
-        return res.status(400).json({ message: "Geçersiz, kullanılmış veya süresi dolmuş token" });
+      // Check expiration
+      if (new Date() > resetToken.expiresAt) {
+        return res.status(400).json({ message: "Token süresi dolmuş" });
       }
 
       // Hash new password
       const hashedPassword = await bcrypt.hash(password, 10);
 
       // CRITICAL: Mark token as used BEFORE updating password (prevents race condition)
-      await storage.markPasswordResetTokenUsed(matchedToken.id);
+      await storage.markPasswordResetTokenUsed(resetToken.id);
 
       // Update user password
-      await storage.updateUserPassword(matchedToken.userId, hashedPassword);
+      await storage.updateUserPassword(resetToken.userId, hashedPassword);
 
       res.json({ message: "Şifre başarıyla değiştirildi" });
     } catch (error: any) {
