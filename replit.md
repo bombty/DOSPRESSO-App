@@ -6,6 +6,53 @@ DOSPRESSO is a comprehensive web-based platform designed for managing coffee sho
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (November 18, 2025)
+
+### Authentication & Security System (Tasks 1-4, 8-10)
+- **Role-Based Access Control (RBAC)**: 13-role authentication system with granular permissions (Users, Branches, Roles, Permissions, RolePermissions tables).
+- **Security Features**: 
+  - SHA-256 hashed password reset tokens with O(1) lookup and deterministic validation
+  - Admin endpoint authorization with `ensurePermission` middleware
+  - branchId validation (ensures branch exists in database)
+  - HQ roles enforcement (branchId=null for HQ_ADMIN, HQ_STAFF, ACCOUNTANT, HR_SPECIALIST)
+  - Password complexity requirements (8+ chars, uppercase, lowercase, number)
+  - Audit logging for all admin actions
+- **Email System**: IONOS SMTP integration (zero cost) with Turkish HTML templates for password reset, welcome emails, and account approval notifications.
+- **Frontend Pages**:
+  - `/register`: New user registration with HQ/Branch selection, dynamic branch dropdown, email validation
+  - `/forgot-password`: Password reset request with email verification
+  - `/reset-password/:token`: Secure password reset with SHA-256 token validation
+  - `/login`: Updated with "Yeni Kayıt" and "Şifremi Unuttum" links
+
+### Advanced Admin User Management UI (Task 11)
+- **Path**: `/yonetim/kullanicilar` (Admin only)
+- **Filtering System** (4 filters):
+  - Rol: HQ Admin, HQ Staff, Muhasebe, İK Uzmanı, Süpervizör, Barista
+  - Şube: Dynamic dropdown from API (branches table)
+  - Hesap Durumu: Onaylandı, Beklemede, Reddedildi
+  - Ara: Real-time search by name/email
+- **Sorting**: Client-side sorting on Ad Soyad, Email, Rol (click column header to toggle asc/desc)
+- **Pagination**: 
+  - Items per page: 10, 25, 50, 100 (configurable)
+  - Smart page navigation (max 5 page buttons)
+  - Shows "X-Y / Total kayıt" summary
+  - Auto-reset to page 1 on filter/itemsPerPage changes (prevents empty grid bug)
+- **CSV Export**: Downloads all filtered users with Turkish date formatting (kullanicilar_YYYY-MM-DD.csv)
+- **CSV Import**: Bulk user import via dialog with validation
+- **Edit User**: Change user role and branch via dialog
+- **Technical**: TanStack Query with server-side filtering, client-side sorting/pagination, responsive grid layout
+
+### Database Schema Updates
+- `passwordResetTokens`: SHA-256 hashed tokens with expiry and used flag
+- `auditLogs`: Admin action tracking (user, action, targetType, targetId, details, ipAddress)
+- `roles`, `permissions`, `rolePermissions`: RBAC system tables
+- `users.accountStatus`: Enum (approved, pending, rejected) for registration approval workflow
+
+### Test Users
+- **testadmin** (admin, no branch) - password: "test123"
+- **testsupervisor** (supervisor, branchId=4) - password: "test123"
+- **testbarista** (barista, branchId=4) - password: "test123"
+
 ## System Architecture
 
 ### Frontend
