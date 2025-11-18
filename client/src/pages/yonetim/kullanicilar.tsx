@@ -30,14 +30,19 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Upload, UserCog } from "lucide-react";
+import { Search, Upload, UserCog, Download, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { User, Branch } from "@shared/schema";
 
 export default function UserCRM() {
   const { toast } = useToast();
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [branchFilter, setBranchFilter] = useState<string>("");
+  const [accountStatusFilter, setAccountStatusFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortField, setSortField] = useState<"name" | "email" | "role" | "createdAt">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -54,14 +59,15 @@ export default function UserCRM() {
     const params = new URLSearchParams();
     if (roleFilter) params.append("role", roleFilter);
     if (branchFilter) params.append("branchId", branchFilter);
+    if (accountStatusFilter) params.append("accountStatus", accountStatusFilter);
     if (searchQuery) params.append("search", searchQuery);
     const queryString = params.toString();
     return queryString ? `/api/admin/users?${queryString}` : "/api/admin/users";
   };
 
   // Fetch users with filters - tuple queryKey for proper cache invalidation
-  const { data: users = [], isLoading } = useQuery<User[]>({
-    queryKey: ['/api/admin/users', roleFilter, branchFilter, searchQuery],
+  const { data: allUsers = [], isLoading } = useQuery<User[]>({
+    queryKey: ['/api/admin/users', roleFilter, branchFilter, accountStatusFilter, searchQuery],
     queryFn: async () => {
       const res = await fetch(buildUsersQueryUrl(), {
         credentials: 'include',
@@ -76,6 +82,83 @@ export default function UserCRM() {
     },
     staleTime: 2 * 60 * 1000,
   });
+
+  // Client-side sorting and pagination
+  const sortedUsers = [...allUsers].sort((a, b) => {
+    let aValue: string | number | Date;
+    let bValue: string | number | Date;
+
+    if (sortField === "name") {
+      aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+      bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+    } else if (sortField === "email") {
+      aValue = (a.email || "").toLowerCase();
+      bValue = (b.email || "").toLowerCase();
+    } else if (sortField === "role") {
+      aValue = a.role.toLowerCase();
+      bValue = b.role.toLowerCase();
+    } else {
+      aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    }
+
+    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = sortedUsers.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters or items per page change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [roleFilter, branchFilter, accountStatusFilter, searchQuery, itemsPerPage]);
+
+  // Toggle sort
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  // Export CSV
+  const handleExportCSV = () => {
+    const headers = ["ID", "Ad", "Soyad", "Email", "Rol", "Şube", "Durum", "Kayıt Tarihi"];
+    const rows = sortedUsers.map(user => [
+      user.id,
+      user.firstName,
+      user.lastName,
+      user.email,
+      user.role,
+      user.branchId ? branches.find(b => b.id === user.branchId)?.name || "" : "",
+      user.accountStatus,
+      user.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR') : "",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `kullanicilar_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({ title: "Başarılı", description: `${sortedUsers.length} kullanıcı CSV'ye aktarıldı` });
+  };
 
   // Update user mutation
   const updateUserMutation = useMutation({
@@ -160,16 +243,26 @@ export default function UserCRM() {
           <div>
             <h1 className="text-3xl font-bold" data-testid="text-page-title">Kullanıcı Yönetimi</h1>
             <p className="text-muted-foreground">
-              Tüm kullanıcıları görüntüle, filtrele ve toplu içe aktar
+              Tüm kullanıcıları görüntüle, filtrele ve toplu içe/dışa aktar
             </p>
           </div>
-          <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-open-csv-import">
-                <Upload className="mr-2 h-4 w-4" />
-                CSV İçe Aktar
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              data-testid="button-export-csv"
+              onClick={handleExportCSV}
+              disabled={sortedUsers.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              CSV Dışa Aktar
+            </Button>
+            <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-open-csv-import">
+                  <Upload className="mr-2 h-4 w-4" />
+                  CSV İçe Aktar
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>CSV İçe Aktarma</DialogTitle>
@@ -208,7 +301,7 @@ export default function UserCRM() {
             <CardDescription>Kullanıcıları rol, şube veya ada göre filtrele</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <Label htmlFor="role-filter">Rol</Label>
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -243,6 +336,20 @@ export default function UserCRM() {
                 </Select>
               </div>
               <div>
+                <Label htmlFor="status-filter">Hesap Durumu</Label>
+                <Select value={accountStatusFilter} onValueChange={setAccountStatusFilter}>
+                  <SelectTrigger id="status-filter" data-testid="select-status-filter">
+                    <SelectValue placeholder="Tümü" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Tümü</SelectItem>
+                    <SelectItem value="approved">Onaylandı</SelectItem>
+                    <SelectItem value="pending">Beklemede</SelectItem>
+                    <SelectItem value="rejected">Reddedildi</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor="search-query">Ara</Label>
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -261,25 +368,78 @@ export default function UserCRM() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Kullanıcı Listesi ({users.length})</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <div>
+              <CardTitle>Kullanıcı Listesi ({sortedUsers.length})</CardTitle>
+              <CardDescription className="mt-1">
+                Sayfa {currentPage} / {totalPages} · {itemsPerPage} kayıt/sayfa
+              </CardDescription>
+            </div>
+            <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
+              <SelectTrigger className="w-32" data-testid="select-items-per-page">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 / sayfa</SelectItem>
+                <SelectItem value="25">25 / sayfa</SelectItem>
+                <SelectItem value="50">50 / sayfa</SelectItem>
+                <SelectItem value="100">100 / sayfa</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <p className="text-center text-muted-foreground">Yükleniyor...</p>
+            ) : sortedUsers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Kullanıcı bulunamadı</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ad Soyad</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Rol</TableHead>
-                    <TableHead>Şube</TableHead>
-                    <TableHead className="text-right">İşlemler</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="hover-elevate -ml-3 h-8"
+                          onClick={() => handleSort("name")}
+                          data-testid="button-sort-name"
+                        >
+                          Ad Soyad
+                          <ArrowUpDown className="ml-2 h-3 w-3" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="hover-elevate -ml-3 h-8"
+                          onClick={() => handleSort("email")}
+                          data-testid="button-sort-email"
+                        >
+                          Email
+                          <ArrowUpDown className="ml-2 h-3 w-3" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="hover-elevate -ml-3 h-8"
+                          onClick={() => handleSort("role")}
+                          data-testid="button-sort-role"
+                        >
+                          Rol
+                          <ArrowUpDown className="ml-2 h-3 w-3" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>Şube</TableHead>
+                      <TableHead>Durum</TableHead>
+                      <TableHead className="text-right">İşlemler</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedUsers.map((user) => (
                     <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
                       <TableCell className="font-medium">
                         {user.firstName} {user.lastName}
@@ -294,6 +454,19 @@ export default function UserCRM() {
                       </TableCell>
                       <TableCell data-testid={`text-branch-${user.id}`}>
                         {user.branchId ? branches.find(b => b.id === user.branchId)?.name : "—"}
+                      </TableCell>
+                      <TableCell data-testid={`text-status-${user.id}`}>
+                        <Badge 
+                          variant={
+                            user.accountStatus === "approved" ? "default" :
+                            user.accountStatus === "pending" ? "secondary" :
+                            "destructive"
+                          }
+                        >
+                          {user.accountStatus === "approved" ? "Onaylandı" :
+                           user.accountStatus === "pending" ? "Beklemede" :
+                           "Reddedildi"}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <Dialog open={editingUser?.id === user.id} onOpenChange={(open) => {
@@ -370,9 +543,71 @@ export default function UserCRM() {
                         </Dialog>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    {sortedUsers.length > 0 ? (
+                      <>
+                        {startIndex + 1}-{Math.min(endIndex, sortedUsers.length)} / {sortedUsers.length} kayıt
+                      </>
+                    ) : (
+                      "0 kayıt"
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      data-testid="button-prev-page"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Önceki
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            data-testid={`button-page-${pageNum}`}
+                            className="w-8 h-8"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages || totalPages === 0}
+                      data-testid="button-next-page"
+                    >
+                      Sonraki
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
