@@ -206,7 +206,7 @@ export default function MusteriGeribildirimi() {
                   <div className="text-sm text-muted-foreground">
                     Şube ID: <span data-testid={`text-feedback-branch-${feedback.id}`}>{feedback.branchId}</span>
                   </div>
-                  {feedback.status === "pending" && (
+                  {feedback.status !== "reviewed" && feedback.status !== "responded" && (
                     <Button
                       variant="outline"
                       size="sm"

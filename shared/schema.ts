@@ -2012,6 +2012,9 @@ export const customerFeedback = pgTable("customer_feedback", {
 export const insertCustomerFeedbackSchema = createInsertSchema(customerFeedback).omit({
   id: true,
   feedbackDate: true,
+}).extend({
+  rating: z.number().int().min(1, "Rating must be at least 1").max(5, "Rating must be at most 5"),
+  comment: z.string().max(1000, "Comment too long").optional().transform(val => val?.trim() || null),
 });
 
 export type InsertCustomerFeedback = z.infer<typeof insertCustomerFeedbackSchema>;
