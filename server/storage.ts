@@ -153,7 +153,7 @@ export interface IStorage {
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   deleteUser(id: string): Promise<void>;
   getAllEmployees(branchId?: number): Promise<User[]>;
-  getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string }): Promise<User[]>;
+  getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string; accountStatus?: string }): Promise<User[]>;
   bulkImportUsers(users: UpsertUser[]): Promise<User[]>;
   getUsersByRole(role: string): Promise<User[]>;
   getUsersByBranchAndRole(branchId: number, role: string): Promise<User[]>;
@@ -558,7 +558,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(users);
   }
 
-  async getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string }): Promise<User[]> {
+  async getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string; accountStatus?: string }): Promise<User[]> {
     const conditions: SQL<unknown>[] = [];
     
     if (filters.role) {
@@ -566,6 +566,9 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters.branchId !== undefined) {
       conditions.push(eq(users.branchId, filters.branchId));
+    }
+    if (filters.accountStatus) {
+      conditions.push(eq(users.accountStatus, filters.accountStatus));
     }
     if (filters.search) {
       const searchTerm = `%${filters.search.toLowerCase()}%`;

@@ -103,13 +103,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { sendApprovalRequestEmail, sendWelcomeEmail } = await import('./email');
       const crypto = await import('crypto');
       
+      // Valid roles from UserRole enum
+      const validRoles = [
+        'admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq',
+        'stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'yatirimci'
+      ] as const;
+      
       const registerSchema = z.object({
         email: z.string().email("Geçerli bir email adresi girin"),
         firstName: z.string().min(1, "Ad gerekli"),
         lastName: z.string().min(1, "Soyad gerekli"),
+        username: z.string().min(3, "Kullanıcı adı en az 3 karakter olmalı"),
         password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
-        isHQ: z.boolean(),
-        branchId: z.number().optional(),
+        role: z.enum(validRoles, { errorMap: () => ({ message: "Geçersiz rol seçimi" }) }),
+        branchId: z.number().nullable().optional(),
       });
 
       const data = registerSchema.parse(req.body);
@@ -120,16 +127,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Bu email adresi zaten kayıtlı" });
       }
 
-      // Validate branch selection
-      if (!data.isHQ && !data.branchId) {
-        return res.status(400).json({ message: "Şube seçimi gerekli" });
-      }
-      if (data.isHQ && data.branchId) {
-        return res.status(400).json({ message: "Merkez kullanıcılar şube seçemez" });
+      // Check if username already exists
+      const existingUsername = await storage.getUserByUsername(data.username);
+      if (existingUsername) {
+        return res.status(400).json({ message: "Bu kullanıcı adı zaten kullanılıyor" });
       }
 
-      // Generate username from email
-      const username = data.email.split('@')[0] + '_' + crypto.randomBytes(3).toString('hex');
+      // Determine if HQ role
+      const hqRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+      const isHQ = hqRoles.includes(data.role);
+
+      // Validate branch selection
+      if (!isHQ && !data.branchId) {
+        return res.status(400).json({ message: "Şube seçimi gerekli" });
+      }
+      if (isHQ && data.branchId) {
+        return res.status(400).json({ message: "Merkez kullanıcılar şube seçemez" });
+      }
 
       // Hash password
       const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -137,18 +151,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user with pending status
       const newUser = await storage.createUser({
         email: data.email,
-        username,
+        username: data.username,
         hashedPassword,
         firstName: data.firstName,
         lastName: data.lastName,
-        role: data.isHQ ? 'admin' : 'barista', // Default roles
+        role: data.role,
         branchId: data.branchId || null,
         accountStatus: 'pending',
         isActive: false, // Inactive until approved
       });
 
       // Send approval email to appropriate admin
-      if (data.isHQ) {
+      if (isHQ) {
         // Send to system admin
         const admins = await storage.getUsersByRole('admin');
         for (const admin of admins) {
@@ -427,6 +441,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error serving file:", error);
       res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
+
+  // Public endpoint for registration page (no auth required)
+  app.get('/api/public/branches', async (req, res) => {
+    try {
+      const branches = await storage.getBranches();
+      // Return only essential info for registration
+      const publicBranches = branches.map(b => ({
+        id: b.id,
+        name: b.name,
+        city: b.city,
+      }));
+      res.json(publicBranches);
+    } catch (error) {
+      console.error("Error fetching public branches:", error);
+      res.status(500).json({ message: "Failed to fetch branches" });
     }
   });
 
@@ -5743,11 +5774,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "HQ yetkisi gerekli" });
       }
 
-      const { role, branchId, search } = req.query;
+      const { role, branchId, search, accountStatus } = req.query;
       const filters = {
         role: role as string | undefined,
         branchId: branchId ? parseInt(branchId as string) : undefined,
         search: search as string | undefined,
+        accountStatus: accountStatus as string | undefined,
       };
 
       const allUsers = await storage.getAllUsersWithFilters(filters);
@@ -5823,6 +5855,271 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Geçersiz CSV verisi", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to import users" });
+    }
+  });
+
+  // POST /api/admin/users/approve/:id - Approve pending user
+  app.post('/api/admin/users/approve/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user!;
+      const { sendWelcomeEmail } = await import('./email');
+      const crypto = await import('crypto');
+
+      // Check if admin or supervisor
+      if (!currentUser.role || !['admin', 'supervisor'].includes(currentUser.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { id } = req.params;
+      const targetUser = await storage.getUser(id);
+      
+      if (!targetUser) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      // Supervisor can only approve users in their branch
+      if (currentUser.role === 'supervisor') {
+        if (!currentUser.branchId || currentUser.branchId !== targetUser.branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubenizin kullanıcılarını onaylayabilirsiniz" });
+        }
+      }
+
+      if (targetUser.accountStatus !== 'pending') {
+        return res.status(400).json({ message: "Kullanıcı zaten onaylanmış veya reddedilmiş" });
+      }
+
+      // Generate temporary password
+      const tempPassword = crypto.randomBytes(4).toString('hex');
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+      // Update user: approved, active, set password
+      const updated = await storage.updateUser(id, {
+        accountStatus: 'approved',
+        isActive: true,
+        hashedPassword,
+        approvedBy: currentUser.id,
+        approvedAt: new Date(),
+      });
+
+      if (!updated) {
+        return res.status(500).json({ message: "Onay işlemi başarısız" });
+      }
+
+      // Send welcome email with temporary password
+      if (targetUser.email) {
+        await sendWelcomeEmail(targetUser.email, targetUser.username!, tempPassword);
+      }
+
+      res.json({ message: "Kullanıcı onaylandı", user: updated });
+    } catch (error) {
+      console.error("Error approving user:", error);
+      res.status(500).json({ message: "Onay işlemi sırasında hata oluştu" });
+    }
+  });
+
+  // POST /api/admin/users/reject/:id - Reject pending user
+  app.post('/api/admin/users/reject/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user!;
+      const { sendRejectionEmail } = await import('./email');
+
+      // Check if admin or supervisor
+      if (!currentUser.role || !['admin', 'supervisor'].includes(currentUser.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      const targetUser = await storage.getUser(id);
+      
+      if (!targetUser) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      // Supervisor can only reject users in their branch
+      if (currentUser.role === 'supervisor') {
+        if (!currentUser.branchId || currentUser.branchId !== targetUser.branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubenizin kullanıcılarını reddedebilirsiniz" });
+        }
+      }
+
+      if (targetUser.accountStatus !== 'pending') {
+        return res.status(400).json({ message: "Kullanıcı zaten onaylanmış veya reddedilmiş" });
+      }
+
+      // Update user: rejected
+      const updated = await storage.updateUser(id, {
+        accountStatus: 'rejected',
+        approvedBy: currentUser.id,
+        approvedAt: new Date(),
+      });
+
+      if (!updated) {
+        return res.status(500).json({ message: "Red işlemi başarısız" });
+      }
+
+      // Send rejection email
+      if (targetUser.email) {
+        await sendRejectionEmail(targetUser.email, reason);
+      }
+
+      res.json({ message: "Kullanıcı reddedildi" });
+    } catch (error) {
+      console.error("Error rejecting user:", error);
+      res.status(500).json({ message: "Red işlemi sırasında hata oluştu" });
+    }
+  });
+
+  // GET /api/admin/users/pending - Get pending approval users
+  app.get('/api/admin/users/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user!;
+
+      // Check if admin or supervisor
+      if (!currentUser.role || !['admin', 'supervisor'].includes(currentUser.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      let filters: any = { accountStatus: 'pending' };
+
+      // Supervisor can only see their branch
+      if (currentUser.role === 'supervisor') {
+        if (!currentUser.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        filters.branchId = currentUser.branchId;
+      }
+
+      const pendingUsers = await storage.getAllUsersWithFilters(filters);
+      res.json(pendingUsers);
+    } catch (error) {
+      console.error("Error fetching pending users:", error);
+      res.status(500).json({ message: "Bekleyen kullanıcılar yüklenemedi" });
+    }
+  });
+
+  // GET /api/admin/users/export - Export users to CSV
+  app.get('/api/admin/users/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const { role, branchId, search, accountStatus } = req.query;
+      const filters = {
+        role: role as string | undefined,
+        branchId: branchId ? parseInt(branchId as string) : undefined,
+        search: search as string | undefined,
+        accountStatus: accountStatus as string | undefined,
+      };
+
+      const allUsers = await storage.getAllUsersWithFilters(filters);
+
+      // Convert to CSV
+      const headers = ['ID', 'İsim', 'Soyisim', 'Email', 'Kullanıcı Adı', 'Rol', 'Şube ID', 'Durum', 'Aktif', 'Kayıt Tarihi'];
+      const rows = allUsers.map(u => [
+        u.id,
+        u.firstName || '',
+        u.lastName || '',
+        u.email || '',
+        u.username || '',
+        u.role,
+        u.branchId || '',
+        u.accountStatus || 'approved',
+        u.isActive ? 'Evet' : 'Hayır',
+        u.createdAt ? new Date(u.createdAt).toLocaleDateString('tr-TR') : '',
+      ]);
+
+      const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=users_${Date.now()}.csv`);
+      res.send('\uFEFF' + csv); // Add BOM for Excel UTF-8 support
+    } catch (error) {
+      console.error("Error exporting users:", error);
+      res.status(500).json({ message: "Export başarısız" });
+    }
+  });
+
+  // DELETE /api/admin/users/:id - Delete user
+  app.delete('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const { id } = req.params;
+
+      // Prevent self-deletion
+      if (id === user.id) {
+        return res.status(400).json({ message: "Kendi hesabınızı silemezsiniz" });
+      }
+
+      await storage.deleteUser(id);
+      res.json({ message: "Kullanıcı silindi" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Kullanıcı silinemedi" });
+    }
+  });
+
+  // POST /api/admin/users - Create new user
+  app.post('/api/admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "HQ yetkisi gerekli" });
+      }
+
+      const createSchema = z.object({
+        email: z.string().email(),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        username: z.string().min(3),
+        password: z.string().min(6),
+        role: z.string(),
+        branchId: z.number().nullable().optional(),
+      });
+
+      const data = createSchema.parse(req.body);
+
+      // Check if email or username exists
+      const existingEmail = await storage.getUserByEmail(data.email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Bu email zaten kayıtlı" });
+      }
+
+      const existingUsername = await storage.getUserByUsername(data.username);
+      if (existingUsername) {
+        return res.status(400).json({ message: "Bu kullanıcı adı zaten kullanılıyor" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+
+      // Create user
+      const newUser = await storage.createUser({
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        username: data.username,
+        hashedPassword,
+        role: data.role,
+        branchId: data.branchId || null,
+        accountStatus: 'approved', // Admin-created users are auto-approved
+        isActive: true,
+      });
+
+      res.json(newUser);
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Kullanıcı oluşturulamadı" });
     }
   });
 

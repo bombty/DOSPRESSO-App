@@ -151,6 +151,25 @@ export default function Login() {
                   "Giriş Yap"
                 )}
               </Button>
+
+              <div className="flex justify-between text-sm">
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => navigate("/register")}
+                  data-testid="link-register"
+                >
+                  Yeni Kayıt
+                </button>
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => navigate("/forgot-password")}
+                  data-testid="link-forgot-password"
+                >
+                  Şifremi Unuttum
+                </button>
+              </div>
             </form>
           </Form>
         </CardContent>
