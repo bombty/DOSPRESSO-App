@@ -161,6 +161,7 @@ export interface IStorage {
   // Password Reset Tokens
   createPasswordResetToken(token: { userId: string; token: string; expiresAt: Date; usedAt: Date | null }): Promise<void>;
   getPasswordResetToken(token: string): Promise<{ id: number; userId: string; token: string; expiresAt: Date; usedAt: Date | null } | undefined>;
+  getAllPasswordResetTokens(): Promise<Array<{ id: number; userId: string; token: string; expiresAt: Date; usedAt: Date | null }>>;
   markPasswordResetTokenUsed(tokenId: number): Promise<void>;
   
   // Employee Warnings operations
@@ -490,6 +491,12 @@ export class DatabaseStorage implements IStorage {
     const { passwordResetTokens } = await import("@shared/schema");
     const [result] = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token));
     return result as any;
+  }
+
+  async getAllPasswordResetTokens(): Promise<Array<{ id: number; userId: string; token: string; expiresAt: Date; usedAt: Date | null }>> {
+    const { passwordResetTokens } = await import("@shared/schema");
+    const results = await db.select().from(passwordResetTokens);
+    return results as any[];
   }
 
   async markPasswordResetTokenUsed(tokenId: number): Promise<void> {

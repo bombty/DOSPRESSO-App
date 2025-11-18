@@ -137,6 +137,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hqRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
       const isHQ = hqRoles.includes(data.role);
 
+      // Enforce: HQ roles MUST have null branchId
+      if (isHQ && data.branchId !== null && data.branchId !== undefined) {
+        return res.status(400).json({ message: "Merkez personeli şube ataması alamaz" });
+      }
+
+      // Enforce: Branch roles MUST have valid branchId
+      if (!isHQ && (!data.branchId || typeof data.branchId !== 'number')) {
+        return res.status(400).json({ message: "Şube personeli için şube seçimi zorunlu" });
+      }
+
+      // Validate branchId exists in database
+      if (data.branchId) {
+        const branchExists = await storage.getBranch(data.branchId);
+        if (!branchExists) {
+          return res.status(400).json({ message: "Geçersiz şube seçimi" });
+        }
+      }
+
       // Validate branch selection
       if (!isHQ && !data.branchId) {
         return res.status(400).json({ message: "Şube seçimi gerekli" });
@@ -222,19 +240,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ message: "Eğer bu email kayıtlıysa, şifre sıfırlama linki gönderildi" });
       }
 
-      // Generate reset token
+      // Generate reset token (plaintext for email)
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      // Store token
+      // Hash token before storing (security best practice)
+      const hashedToken = await bcrypt.hash(token, 10);
+
+      // Store hashed token
       await storage.createPasswordResetToken({
         userId: user.id,
-        token,
+        token: hashedToken,
         expiresAt,
         usedAt: null,
       });
 
-      // Send email
+      // Send email with plaintext token (user needs this for reset link)
       await sendPasswordResetEmail(email, token);
 
       res.json({ message: "Eğer bu email kayıtlıysa, şifre sıfırlama linki gönderildi" });
@@ -252,30 +273,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { token } = req.params;
       const schema = z.object({
-        password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
+        password: z.string().min(8, "Şifre en az 8 karakter olmalı")
+          .regex(/[A-Z]/, "Şifre en az 1 büyük harf içermeli")
+          .regex(/[0-9]/, "Şifre en az 1 rakam içermeli"),
       });
 
       const { password } = schema.parse(req.body);
 
-      // Find valid token
-      const resetToken = await storage.getPasswordResetToken(token);
-      if (!resetToken || resetToken.usedAt) {
-        return res.status(400).json({ message: "Geçersiz veya kullanılmış token" });
+      // Get all unexpired, unused tokens and compare hashes
+      // (Since tokens are now hashed, we must check each one)
+      const allTokens = await storage.getAllPasswordResetTokens();
+      let matchedToken: any = null;
+
+      for (const dbToken of allTokens) {
+        // Skip used or expired tokens
+        if (dbToken.usedAt || new Date() > dbToken.expiresAt) {
+          continue;
+        }
+
+        // Compare incoming token with hashed token in DB
+        const isMatch = await bcrypt.compare(token, dbToken.token);
+        if (isMatch) {
+          matchedToken = dbToken;
+          break;
+        }
       }
 
-      // Check expiration
-      if (new Date() > resetToken.expiresAt) {
-        return res.status(400).json({ message: "Token süresi dolmuş" });
+      if (!matchedToken) {
+        return res.status(400).json({ message: "Geçersiz, kullanılmış veya süresi dolmuş token" });
       }
 
       // Hash new password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Update user password
-      await storage.updateUserPassword(resetToken.userId, hashedPassword);
+      // CRITICAL: Mark token as used BEFORE updating password (prevents race condition)
+      await storage.markPasswordResetTokenUsed(matchedToken.id);
 
-      // Mark token as used
-      await storage.markPasswordResetTokenUsed(resetToken.id);
+      // Update user password
+      await storage.updateUserPassword(matchedToken.userId, hashedPassword);
 
       res.json({ message: "Şifre başarıyla değiştirildi" });
     } catch (error: any) {
@@ -5865,10 +5900,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { sendWelcomeEmail } = await import('./email');
       const crypto = await import('crypto');
 
-      // Check if admin or supervisor
-      if (!currentUser.role || !['admin', 'supervisor'].includes(currentUser.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
-      }
+      // Permission check using ensurePermission
+      ensurePermission(currentUser, 'users', 'approve');
 
       const { id } = req.params;
       const targetUser = await storage.getUser(id);
@@ -5888,8 +5921,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Kullanıcı zaten onaylanmış veya reddedilmiş" });
       }
 
-      // Generate temporary password
-      const tempPassword = crypto.randomBytes(4).toString('hex');
+      // Generate strong temporary password (12 characters)
+      const tempPassword = crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 12);
       const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
       // Update user: approved, active, set password
@@ -5923,10 +5956,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentUser = req.user!;
       const { sendRejectionEmail } = await import('./email');
 
-      // Check if admin or supervisor
-      if (!currentUser.role || !['admin', 'supervisor'].includes(currentUser.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
-      }
+      // Permission check using ensurePermission
+      ensurePermission(currentUser, 'users', 'approve');
 
       const { id } = req.params;
       const { reason } = req.body;
@@ -5976,10 +6007,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const currentUser = req.user!;
 
-      // Check if admin or supervisor
-      if (!currentUser.role || !['admin', 'supervisor'].includes(currentUser.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
-      }
+      // Permission check using ensurePermission
+      ensurePermission(currentUser, 'users', 'view');
 
       let filters: any = { accountStatus: 'pending' };
 
