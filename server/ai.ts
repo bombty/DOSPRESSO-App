@@ -263,6 +263,13 @@ export async function analyzeTaskPhoto(
           throw new Error('Downloaded file is empty');
         }
         
+        // OpenAI Vision API requires minimum image size (reject tiny test images)
+        const MIN_IMAGE_SIZE = 1024; // 1KB minimum
+        if (fileBuffer.length < MIN_IMAGE_SIZE) {
+          console.warn(`[AI] Image too small for AI analysis (${fileBuffer.length} bytes < ${MIN_IMAGE_SIZE} bytes minimum)`);
+          throw new Error(`Image too small for AI analysis (${fileBuffer.length} bytes). Please upload a real photo.`);
+        }
+        
         // Detect mime type from path
         const ext = objectPath.toLowerCase().split('.').pop();
         const mimeType = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/jpeg';
@@ -273,7 +280,15 @@ export async function analyzeTaskPhoto(
         console.log(`✅ Photo converted to base64 for AI analysis (${Math.round(fileBuffer.length / 1024)}KB, mime: ${mimeType})`);
       } catch (downloadError) {
         console.error('[AI] Failed to download photo from GCS for AI analysis:', downloadError);
-        // Fallback to original URL (will likely fail but at least we tried)
+        // If image is too small, return clear message instead of attempting OpenAI call
+        if (downloadError instanceof Error && downloadError.message.includes('too small')) {
+          return {
+            analysis: "Fotoğraf çok küçük (test image). Lütfen gerçek bir fotoğraf yükleyin (minimum 1KB).",
+            score: 0,
+            passed: false,
+          };
+        }
+        // For other errors, fallback to original URL (will likely fail but at least we tried)
       }
     }
     
