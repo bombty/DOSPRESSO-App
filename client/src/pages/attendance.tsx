@@ -40,10 +40,14 @@ export default function AttendancePage() {
   const { data: activeShift, isLoading: activeLoading } = useQuery<any>({
     queryKey: ["/api/shift-attendance/active"],
     queryFn: async () => {
-      const res = await fetch("/api/shift-attendance");
-      if (!res.ok) throw new Error(res.statusText);
-      const allShifts = await res.json();
-      return allShifts.find((s: any) => !s.checkOutTime);
+      try {
+        const res = await fetch("/api/shift-attendance");
+        if (!res.ok) return null;
+        const allShifts = await res.json();
+        return allShifts.find((s: any) => !s.checkOutTime) || null;
+      } catch (error) {
+        return null;
+      }
     },
     enabled: !!user,
     refetchInterval: 30000,

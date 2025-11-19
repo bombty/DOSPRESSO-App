@@ -407,19 +407,19 @@ export default function Checklists() {
                                 className="border rounded-md hover-elevate"
                                 data-testid={`checklist-task-${task.id}`}
                               >
-                                <CollapsibleTrigger className="w-full">
-                                  <div className="flex items-center gap-3 p-3">
-                                    <Checkbox
-                                      checked={isChecked}
-                                      onCheckedChange={() => toggleTaskChecked(task.id)}
-                                      className="data-[state=checked]:bg-info data-[state=checked]:border-info"
-                                      data-testid={`checkbox-task-${task.id}`}
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                    <p className="flex-1 text-left text-sm">{task.taskDescription}</p>
+                                <div className="flex items-center gap-3 p-3">
+                                  <Checkbox
+                                    checked={isChecked}
+                                    onCheckedChange={() => toggleTaskChecked(task.id)}
+                                    className="data-[state=checked]:bg-info data-[state=checked]:border-info"
+                                    data-testid={`checkbox-task-${task.id}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <CollapsibleTrigger className="flex-1 flex items-center gap-2 text-left">
+                                    <p className="flex-1 text-sm">{task.taskDescription}</p>
                                     <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                                  </div>
-                                </CollapsibleTrigger>
+                                  </CollapsibleTrigger>
+                                </div>
                                 
                                 <CollapsibleContent>
                                   <div className="px-3 pb-3 pt-1 space-y-3 border-t">
