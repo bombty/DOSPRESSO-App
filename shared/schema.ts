@@ -2073,7 +2073,7 @@ export type InsertAuditItemScore = z.infer<typeof insertAuditItemScoreSchema>;
 export type AuditItemScore = typeof auditItemScores.$inferSelect;
 
 // ========================================
-// CUSTOMER FEEDBACK (Müşteri Geri Bildirim)
+// GUEST FEEDBACK (Misafir Geri Bildirimi)
 // ========================================
 
 export const customerFeedback = pgTable("customer_feedback", {

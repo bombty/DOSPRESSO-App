@@ -6898,7 +6898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========================================
-  // CUSTOMER FEEDBACK API (Müşteri Geri Bildirim)
+  // GUEST FEEDBACK API (Misafir Geri Bildirimi)
   // ========================================
 
   // GET /api/customer-feedback - List customer feedback

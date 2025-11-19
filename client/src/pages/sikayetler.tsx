@@ -190,7 +190,7 @@ export default function Sikayetler() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold" data-testid="heading-sikayetler">Müşteri Şikayetleri</h1>
+        <h1 className="text-3xl font-bold" data-testid="heading-sikayetler">Misafir Şikayetleri</h1>
         <p className="text-muted-foreground mt-1">SLA takipli şikayet yönetim sistemi</p>
       </div>
 
@@ -279,7 +279,7 @@ export default function Sikayetler() {
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-lg">
-                      {complaint.customerName || "Anonim Müşteri"}
+                      {complaint.customerName || "Anonim Misafir"}
                     </CardTitle>
                     <CardDescription>
                       {format(new Date(complaint.complaintDate), "d MMMM yyyy HH:mm", { locale: tr })}
@@ -296,7 +296,7 @@ export default function Sikayetler() {
               <CardContent className="space-y-4">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm font-medium">Müşteri Memnuniyeti:</span>
+                    <span className="text-sm font-medium">Misafir Memnuniyeti:</span>
                     {renderStars(complaint.rating)}
                   </div>
                   {complaint.comment && (
@@ -364,7 +364,7 @@ export default function Sikayetler() {
                         </div>
                         <div>
                           <label className="text-sm font-medium mb-2 block">
-                            Müşteri Memnuniyeti (Opsiyonel)
+                            Misafir Memnuniyeti (Opsiyonel)
                           </label>
                           <Select 
                             value={customerSatisfaction?.toString()} 
