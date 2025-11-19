@@ -335,6 +335,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/users - Get all users (sanitized, for dropdowns/selection)
+  app.get('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId: filterBranchId } = req.query;
+
+      // Permission check
+      if (!hasPermission(user.role as UserRoleType, 'employees', 'view')) {
+        return res.status(403).json({ message: "Kullanıcı listesine erişim yetkiniz yok" });
+      }
+
+      // Branch filtering based on role
+      let branchFilter: number | undefined;
+      if (isBranchRole(user.role as UserRoleType)) {
+        // Branch users only see their own branch users
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        branchFilter = user.branchId;
+      } else if (isHQRole(user.role as UserRoleType)) {
+        // HQ users can optionally filter by branch
+        branchFilter = filterBranchId ? parseInt(filterBranchId as string) : undefined;
+      }
+
+      const users = await storage.getAllEmployees(branchFilter);
+      res.json(sanitizeUsersForRole(users, user.role as UserRoleType));
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // POST /api/upload/photo - Upload base64 photo to Object Storage
   app.post('/api/upload/photo', isAuthenticated, async (req: any, res) => {
     try {
