@@ -2976,27 +2976,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get presigned upload URL for object storage
   app.post('/api/objects/upload', isAuthenticated, async (req, res) => {
     try {
-      const response = await fetch(
-        `${process.env.PUBLIC_OBJECT_SEARCH_PATHS}/upload`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error("Failed to get upload URL");
-      }
-      
-      const data = await response.json();
-      res.json(data);
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ method: "PUT", url: uploadURL });
     } catch (error) {
       console.error("Error getting upload URL:", error);
       res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  // Serve private objects with ACL check (for uploaded files)
+  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
+    try {
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const userId = req.user?.claims?.sub || req.user?.id;
+      
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId,
+      });
+      
+      if (!canAccess) {
+        return res.sendStatus(403);
+      }
+      
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error: any) {
+      console.error("Error accessing object:", error);
+      if (error.name === 'ObjectNotFoundError') {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
     }
   });
 

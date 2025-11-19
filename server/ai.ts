@@ -230,6 +230,53 @@ export async function analyzeTaskPhoto(
   }
 
   try {
+    // Convert GCS photoUrl to base64 for OpenAI (private URLs are not accessible)
+    let imageDataUrl = photoUrl;
+    if (photoUrl.startsWith('https://storage.googleapis.com/')) {
+      try {
+        console.log(`[AI] Attempting to download photo from GCS: ${photoUrl}`);
+        const { objectStorageClient } = await import('./objectStorage');
+        
+        // Parse GCS URL: https://storage.googleapis.com/bucket/path
+        const url = new URL(photoUrl);
+        const pathParts = url.pathname.split('/').filter(p => p.length > 0);
+        const bucketName = pathParts[0];
+        const objectPath = pathParts.slice(1).join('/');
+        
+        console.log(`[AI] Parsed GCS URL - bucket: ${bucketName}, path: ${objectPath}`);
+        
+        // Download file from GCS
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectPath);
+        
+        // Check if file exists
+        const [exists] = await file.exists();
+        if (!exists) {
+          console.error(`[AI] File does not exist in GCS: ${bucketName}/${objectPath}`);
+          throw new Error(`File not found: ${objectPath}`);
+        }
+        
+        const [fileBuffer] = await file.download();
+        
+        if (!fileBuffer || fileBuffer.length === 0) {
+          console.error(`[AI] Downloaded file is empty (0 bytes)`);
+          throw new Error('Downloaded file is empty');
+        }
+        
+        // Detect mime type from path
+        const ext = objectPath.toLowerCase().split('.').pop();
+        const mimeType = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/jpeg';
+        
+        // Convert to base64 data URL
+        const base64 = fileBuffer.toString('base64');
+        imageDataUrl = `data:${mimeType};base64,${base64}`;
+        console.log(`✅ Photo converted to base64 for AI analysis (${Math.round(fileBuffer.length / 1024)}KB, mime: ${mimeType})`);
+      } catch (downloadError) {
+        console.error('[AI] Failed to download photo from GCS for AI analysis:', downloadError);
+        // Fallback to original URL (will likely fail but at least we tried)
+      }
+    }
+    
     const startTime = Date.now();
     const response = await openai.chat.completions.create({
       model: VISION_MODEL, // gpt-4o: 60% cheaper than gpt-4-turbo
@@ -259,7 +306,7 @@ JSON formatında yanıt verin:
             {
               type: "image_url",
               image_url: {
-                url: photoUrl,
+                url: imageDataUrl,
               },
             },
           ],

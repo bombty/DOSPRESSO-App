@@ -47,7 +47,7 @@ export default function ResetPassword() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (data: ResetPasswordFormData) => {
-      const response = await apiRequest("POST", `/api/auth/reset-password/${token}`, {
+      const response = await apiRequest(`/api/auth/reset-password/${token}`, "POST", {
         password: data.password,
       });
       return response.json();

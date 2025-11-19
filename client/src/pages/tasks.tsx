@@ -238,7 +238,7 @@ export default function Tasks() {
       headers: { "Content-Type": "application/json" },
     });
     const data = await response.json();
-    return { method: "PUT" as const, url: data.uploadURL };
+    return { method: "PUT" as const, url: data.url };
   };
 
   const handleUploadComplete = (taskId: number) => (result: { successful: Array<{ uploadURL: string }> }) => {
@@ -945,29 +945,6 @@ export default function Tasks() {
                           )}
                         </div>
                       )}
-                      {task.status !== "tamamlandi" && (
-                        <div className="flex gap-2">
-                          <ObjectUploader
-                            maxNumberOfFiles={1}
-                            maxFileSize={10485760}
-                            onGetUploadParameters={handleGetUploadParams}
-                            onComplete={handleUploadComplete(task.id)}
-                            buttonClassName="flex-1"
-                          >
-                            <Camera className="mr-2 h-4 w-4" />
-                            Fotoğraf Yükle ve Tamamla
-                          </ObjectUploader>
-                          <Button
-                            variant="outline"
-                            onClick={() => completeMutation.mutate({ taskId: task.id })}
-                            disabled={completeMutation.isPending}
-                            data-testid={`button-complete-task-${task.id}`}
-                          >
-                            <Check className="mr-2 h-4 w-4" />
-                            Fotoğrafsız Tamamla
-                          </Button>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -1108,6 +1085,32 @@ export default function Tasks() {
                       <PlayCircle className="mr-2 h-4 w-4" />
                       {startTaskMutation.isPending ? "Başlatılıyor..." : "Görevi Başlat"}
                     </Button>
+                  )}
+
+                  {/* Photo Upload & Complete - For tasks in progress or waiting for photo */}
+                  {(selectedTask.status === "devam_ediyor" || selectedTask.status === "foto_bekleniyor") && (
+                    <div className="space-y-2">
+                      <ObjectUploader
+                        maxNumberOfFiles={1}
+                        maxFileSize={10485760}
+                        onGetUploadParameters={handleGetUploadParams}
+                        onComplete={handleUploadComplete(selectedTask.id)}
+                        buttonClassName="w-full"
+                      >
+                        <Camera className="mr-2 h-4 w-4" />
+                        Fotoğraf Yükle ve Tamamla
+                      </ObjectUploader>
+                      <Button
+                        variant="outline"
+                        onClick={() => completeMutation.mutate({ taskId: selectedTask.id })}
+                        disabled={completeMutation.isPending}
+                        className="w-full"
+                        data-testid="button-complete-task"
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        {completeMutation.isPending ? "Tamamlanıyor..." : "Fotoğrafsız Tamamla"}
+                      </Button>
+                    </div>
                   )}
 
                   {/* HQ Actions - Verify and Reject */}

@@ -565,7 +565,7 @@ function AddEmployeeDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof createEmployeeSchema>) => {
-      return apiRequest("POST", "/api/employees", data);
+      return apiRequest("/api/employees", "POST", data);
     },
     onSuccess: () => {
       toast({
@@ -885,7 +885,7 @@ function EditEmployeeDialog({
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("PUT", `/api/employees/${employee.id}`, data);
+      return apiRequest(`/api/employees/${employee.id}`, "PUT", data);
     },
     onSuccess: () => {
       toast({
@@ -1226,7 +1226,7 @@ function AddWarningDialog({
 
   const createWarningMutation = useMutation({
     mutationFn: async (data: z.infer<typeof warningSchema>) => {
-      return apiRequest("POST", `/api/employees/${employee.id}/warnings`, data);
+      return apiRequest(`/api/employees/${employee.id}/warnings`, "POST", data);
     },
     onSuccess: () => {
       toast({
@@ -1350,7 +1350,7 @@ function ResetPasswordDialog({
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (data: { newPassword: string }) => {
-      return apiRequest("POST", `/api/employees/${employee.id}/reset-password`, data);
+      return apiRequest(`/api/employees/${employee.id}/reset-password`, "POST", data);
     },
     onSuccess: () => {
       toast({

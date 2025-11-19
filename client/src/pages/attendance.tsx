@@ -96,7 +96,7 @@ export default function AttendancePage() {
       if (!uploadedPhotoUrl) {
         throw new Error("Fotoğraf yüklemesi zorunludur");
       }
-      return apiRequest("POST", "/api/shift-attendance", {
+      return apiRequest("/api/shift-attendance", "POST", {
         photoUrl: uploadedPhotoUrl,
       });
     },
@@ -130,7 +130,7 @@ export default function AttendancePage() {
   const checkOutMutation = useMutation({
     mutationFn: async () => {
       if (!activeShift) throw new Error("Aktif vardiya bulunamadı");
-      return apiRequest("PATCH", `/api/shift-attendance/${activeShift.id}`, {
+      return apiRequest(`/api/shift-attendance/${activeShift.id}`, "PATCH", {
         checkOutTime: new Date().toISOString(),
       });
     },
@@ -153,7 +153,7 @@ export default function AttendancePage() {
   const startBreakMutation = useMutation({
     mutationFn: async () => {
       if (!activeShift) throw new Error("Aktif vardiya bulunamadı");
-      return apiRequest("PATCH", `/api/shift-attendance/${activeShift.id}`, {
+      return apiRequest(`/api/shift-attendance/${activeShift.id}`, "PATCH", {
         breakStartTime: new Date().toISOString(),
       });
     },
@@ -176,7 +176,7 @@ export default function AttendancePage() {
   const endBreakMutation = useMutation({
     mutationFn: async () => {
       if (!activeShift) throw new Error("Aktif vardiya bulunamadı");
-      return apiRequest("PATCH", `/api/shift-attendance/${activeShift.id}`, {
+      return apiRequest(`/api/shift-attendance/${activeShift.id}`, "PATCH", {
         breakEndTime: new Date().toISOString(),
       });
     },

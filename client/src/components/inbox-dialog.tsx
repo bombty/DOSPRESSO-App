@@ -52,7 +52,7 @@ export function InboxDialog() {
   // Mark as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: async (messageId: number) => {
-      return apiRequest('PATCH', `/api/messages/${messageId}/read`);
+      return apiRequest(`/api/messages/${messageId}/read`, 'PATCH');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/messages'] });

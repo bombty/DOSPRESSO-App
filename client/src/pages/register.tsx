@@ -108,7 +108,7 @@ export default function Register() {
         role: data.role,
         branchId: data.branchId,
       };
-      const response = await apiRequest("POST", "/api/auth/register", payload);
+      const response = await apiRequest("/api/auth/register", "POST", payload);
       return response.json();
     },
     onSuccess: () => {
