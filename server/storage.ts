@@ -187,6 +187,7 @@ export interface IStorage {
   getChecklists(): Promise<Checklist[]>;
   getChecklist(id: number): Promise<Checklist | undefined>;
   createChecklist(checklist: InsertChecklist): Promise<Checklist>;
+  createChecklistWithTasks(checklistData: InsertChecklist, tasks: InsertChecklistTask[]): Promise<Checklist>;
   updateChecklistSettings(id: number, updates: Partial<{
     isEditable: boolean;
     timeWindowStart: string;
@@ -711,6 +712,21 @@ export class DatabaseStorage implements IStorage {
   async createChecklist(checklist: InsertChecklist): Promise<Checklist> {
     const [newChecklist] = await db.insert(checklists).values(checklist).returning();
     return newChecklist;
+  }
+
+  async createChecklistWithTasks(checklistData: InsertChecklist, tasks: InsertChecklistTask[]): Promise<Checklist> {
+    return db.transaction(async (tx) => {
+      const [checklist] = await tx.insert(checklists).values(checklistData).returning();
+      
+      for (const task of tasks) {
+        await tx.insert(checklistTasks).values({
+          ...task,
+          checklistId: checklist.id,
+        });
+      }
+      
+      return checklist;
+    });
   }
 
   async updateChecklistSettings(id: number, updates: Partial<{

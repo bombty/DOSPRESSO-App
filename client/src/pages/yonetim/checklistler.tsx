@@ -4,7 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -13,10 +13,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/hooks/useAuth";
+import { isHQRole } from "@shared/schema";
 import type { Checklist, ChecklistTask } from "@shared/schema";
 
 export default function AdminChecklistManagement() {
+  const { user } = useAuth();
   const { toast } = useToast();
+  
+  if (!user || !isHQRole(user.role)) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-3">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+            <h3 className="font-semibold text-lg">Yetkisiz Erişim</h3>
+            <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   const [filterFrequency, setFilterFrequency] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -292,11 +309,15 @@ function ChecklistFormDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error);
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/checklists'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/checklist-tasks'] });
       toast({ title: "Başarılı", description: "Checklist oluşturuldu" });
       onClose();
     },

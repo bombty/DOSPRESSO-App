@@ -965,9 +965,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'create');
-      const validatedData = insertChecklistSchema.parse(req.body);
-      const checklist = await storage.createChecklist(validatedData);
-      res.json(checklist);
+      
+      const { tasks: tasksArray, ...checklistData } = req.body;
+      const validatedChecklistData = insertChecklistSchema.parse(checklistData);
+      
+      if (tasksArray && Array.isArray(tasksArray) && tasksArray.length > 0) {
+        const { insertChecklistTaskSchema } = await import('@shared/schema');
+        
+        const orders = tasksArray.map((t: any) => t.order);
+        const duplicateOrders = orders.filter((order: number, index: number) => orders.indexOf(order) !== index);
+        if (duplicateOrders.length > 0) {
+          return res.status(400).json({ message: `Duplicate order values: ${duplicateOrders.join(', ')}` });
+        }
+        
+        const validatedTasks = tasksArray.map((task: any) => 
+          insertChecklistTaskSchema.parse({
+            taskDescription: task.taskDescription,
+            requiresPhoto: task.requiresPhoto,
+            order: task.order,
+            checklistId: 0,
+          })
+        );
+        
+        const checklist = await storage.createChecklistWithTasks(validatedChecklistData, validatedTasks);
+        res.json(checklist);
+      } else {
+        const checklist = await storage.createChecklist(validatedChecklistData);
+        res.json(checklist);
+      }
     } catch (error: any) {
       console.error("Error creating checklist:", error);
       if (error.name === 'ZodError') {
@@ -1077,6 +1102,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const checklistId = parseInt(req.params.id);
       const { insertChecklistTaskSchema } = await import('@shared/schema');
       const validatedData = insertChecklistTaskSchema.parse({ ...req.body, checklistId });
+      
+      const existingTasks = await storage.getChecklistTasks(checklistId);
+      const duplicateOrder = existingTasks.find(t => t.order === validatedData.order);
+      if (duplicateOrder) {
+        return res.status(400).json({ message: `Order ${validatedData.order} already exists for this checklist` });
+      }
+      
       const task = await storage.createChecklistTask(validatedData);
       res.json(task);
     } catch (error: any) {

@@ -521,7 +521,12 @@ export const checklistTasks = pgTable("checklist_tasks", {
 export const insertChecklistTaskSchema = createInsertSchema(checklistTasks).omit({
   id: true,
   createdAt: true,
-});
+}).refine(
+  (data) => {
+    return data.order > 0;
+  },
+  { message: "Order must be a positive integer" }
+);
 
 export type InsertChecklistTask = z.infer<typeof insertChecklistTaskSchema>;
 export type ChecklistTask = typeof checklistTasks.$inferSelect;
