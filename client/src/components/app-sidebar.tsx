@@ -109,7 +109,7 @@ type MenuGroup = {
 const standaloneItems: MenuItem[] = [
   {
     title: "Dashboard",
-    titleTr: "Gösterge Paneli",
+    titleTr: "Kontrol Paneli",
     url: "/",
     icon: LayoutDashboard,
     module: "dashboard",

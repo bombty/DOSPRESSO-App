@@ -1,6 +1,6 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -117,7 +117,11 @@ function Router() {
 }
 
 function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const { data: branches } = useQuery<any[]>({
+    queryKey: ["/api/branches"],
+    enabled: isAuthenticated && !!user,
+  });
 
   const style = {
     "--sidebar-width": "16rem",
@@ -128,13 +132,63 @@ function AppContent() {
     return <Router />;
   }
 
+  const getRoleLabel = (role: string | undefined) => {
+    const roleMap: Record<string, string> = {
+      "admin": "Admin",
+      "supervisor": "Süpervizör",
+      "barista": "Barista",
+      "supervisor_buddy": "Süpervizör Buddy",
+      "muhasebe": "Muhasebe",
+      "coach": "Coach",
+      "teknik": "Teknik",
+      "destek": "Destek",
+      "satinalma": "Satın Alma",
+      "fabrika": "Fabrika",
+      "yatirimci_hq": "Yatırımcı HQ",
+      "yatirimci_sube": "Yatırımcı Şube",
+      "hq_staff": "HQ Staff",
+    };
+    return role ? roleMap[role] || role : "";
+  };
+
+  const getBranchName = (branchId: number | null | undefined) => {
+    if (!branchId) return null;
+    const branch = branches?.find((b: any) => b.id === branchId);
+    return branch?.name || `Şube ${branchId}`;
+  };
+
+  const userDisplayInfo = user ? (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="header-user-info">
+      <span className="font-medium">
+        {user.branchId ? getBranchName(user.branchId) : "Merkez"}
+      </span>
+      {user.role && (
+        <>
+          <span>-</span>
+          <span>{getRoleLabel(user.role)}</span>
+        </>
+      )}
+      {(user.firstName || user.lastName) && (
+        <>
+          <span>|</span>
+          <span className="text-foreground font-medium">
+            {user.firstName} {user.lastName?.charAt(0)}.
+          </span>
+        </>
+      )}
+    </div>
+  ) : null;
+
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
           <header className="flex items-center justify-between p-4 border-b bg-background">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex items-center gap-4">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              {userDisplayInfo}
+            </div>
             <InboxDialog />
           </header>
           <main className="flex-1 overflow-auto p-6 bg-background">

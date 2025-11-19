@@ -234,7 +234,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold" data-testid="text-page-title">Gösterge Paneli</h1>
+        <h1 className="text-3xl font-semibold" data-testid="text-page-title">Kontrol Paneli</h1>
         <p className="text-muted-foreground mt-1">DOSPRESSO operasyon özeti</p>
       </div>
 
