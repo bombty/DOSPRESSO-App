@@ -3250,39 +3250,6 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getOvertimeRequests(userId?: string, status?: string): Promise<OvertimeRequest[]> {
-    const conditions: SQL[] = [];
-    if (userId) conditions.push(eq(overtimeRequests.userId, userId));
-    if (status) conditions.push(eq(overtimeRequests.status, status));
-    
-    return await db.select()
-      .from(overtimeRequests)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(overtimeRequests.createdAt));
-  }
-
-  async createOvertimeRequest(data: InsertOvertimeRequest): Promise<OvertimeRequest> {
-    const [request] = await db.insert(overtimeRequests)
-      .values(data)
-      .returning();
-    return request;
-  }
-
-  async updateOvertimeRequest(
-    id: number, 
-    updates: { status: string; approverId?: string; approvedMinutes?: number; rejectionReason?: string }
-  ): Promise<OvertimeRequest | undefined> {
-    const [updated] = await db.update(overtimeRequests)
-      .set({
-        ...updates,
-        approvedAt: updates.status === "approved" ? new Date() : undefined,
-        updatedAt: new Date(),
-      })
-      .where(eq(overtimeRequests.id, id))
-      .returning();
-    return updated;
-  }
-
   async getMonthlyAttendanceSummary(userId: string, periodMonth: string): Promise<MonthlyAttendanceSummary | undefined> {
     const [summary] = await db.select()
       .from(monthlyAttendanceSummaries)

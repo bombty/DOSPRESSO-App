@@ -241,6 +241,13 @@ const menuGroups: MenuGroup[] = [
         icon: Clock,
         module: "employees",
       },
+      {
+        title: "Mesai Talepleri",
+        titleTr: "Mesai Talepleri",
+        url: "/mesai-talepleri",
+        icon: Clock,
+        module: "employees",
+      },
     ],
   },
   {
