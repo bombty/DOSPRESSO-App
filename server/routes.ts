@@ -41,6 +41,11 @@ import {
   insertOnboardingDocumentSchema,
   insertLicenseRenewalSchema,
   insertSiteSettingSchema,
+  insertOvertimeRequestSchema,
+  insertAttendancePenaltySchema,
+  insertGuestComplaintSchema,
+  insertEquipmentTroubleshootingStepSchema,
+  insertMonthlyAttendanceSummarySchema,
   auditTemplates,
   auditTemplateItems,
   qualityAudits,
@@ -7446,6 +7451,503 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting site setting:", error);
       res.status(500).json({ message: "Ayar silinirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { status } = req.query;
+      
+      ensurePermission(user, 'overtime', 'view', 'Mesai taleplerini görüntülemek için yetkiniz yok');
+      
+      const isBranchStaff = isBranchRole(user.role as UserRoleType);
+      const userId = isBranchStaff ? user.id : undefined;
+      const requests = await storage.getOvertimeRequests(userId, status);
+      
+      res.json(requests);
+    } catch (error: any) {
+      console.error("Error fetching overtime requests:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Mesai talepleri yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      ensurePermission(user, 'overtime', 'create', 'Mesai talebi oluşturmak için yetkiniz yok');
+      
+      const validatedData = insertOvertimeRequestSchema.parse({
+        ...req.body,
+        userId: user.id,
+        status: "pending",
+      });
+      
+      const request = await storage.createOvertimeRequest(validatedData);
+      res.status(201).json(request);
+    } catch (error: any) {
+      console.error("Error creating overtime request:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Mesai talebi oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/overtime-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      ensurePermission(user, 'overtime', 'approve', 'Mesai talebi onaylamak için supervisor+ yetkisi gerekli');
+      
+      const updateSchema = z.object({
+        status: z.enum(['approved', 'rejected']),
+        approvedMinutes: z.number().min(0).optional(),
+        rejectionReason: z.string().optional(),
+      });
+      
+      const { status, approvedMinutes, rejectionReason } = updateSchema.parse(req.body);
+      
+      if (status === 'approved' && !approvedMinutes) {
+        return res.status(400).json({ message: "Onaylanan mesai süresi gerekli" });
+      }
+      
+      if (status === 'rejected' && !rejectionReason) {
+        return res.status(400).json({ message: "Red nedeni gerekli" });
+      }
+      
+      const updates = {
+        status,
+        approverId: user.id,
+        approvedMinutes,
+        rejectionReason,
+      };
+      
+      const updated = await storage.updateOvertimeRequest(parseInt(id), updates);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Mesai talebi bulunamadı" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating overtime request:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Mesai talebi güncellenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/guest-complaints', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { status, priority } = req.query;
+      
+      ensurePermission(user, 'complaints', 'view', 'Şikayetleri görüntülemek için yetkiniz yok');
+      
+      const isBranchStaff = isBranchRole(user.role as UserRoleType);
+      const branchId = isBranchStaff ? user.branchId : undefined;
+      const complaints = await storage.getGuestComplaints(branchId, status, priority);
+      
+      res.json(complaints);
+    } catch (error: any) {
+      console.error("Error fetching guest complaints:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Şikayetler yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/guest-complaints', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      const complaintData = {
+        ...req.body,
+        branchId: req.body.branchId || user.branchId,
+      };
+      
+      if (!complaintData.branchId) {
+        return res.status(400).json({ message: "Şube bilgisi gerekli" });
+      }
+      
+      const validatedData = insertGuestComplaintSchema.parse(complaintData);
+      
+      const complaint = await storage.createGuestComplaint(validatedData);
+      res.status(201).json(complaint);
+    } catch (error: any) {
+      console.error("Error creating guest complaint:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Şikayet oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/guest-complaints/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      ensurePermission(user, 'complaints', 'edit', 'Şikayet güncellemek için yetkiniz yok');
+      
+      const updateSchema = insertGuestComplaintSchema.partial().omit({
+        branchId: true,
+        complaintDate: true,
+      });
+      
+      const validatedData = updateSchema.parse(req.body);
+      
+      const updated = await storage.updateGuestComplaint(parseInt(id), validatedData);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Şikayet bulunamadı" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating guest complaint:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Şikayet güncellenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/guest-complaints/:id/resolve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      ensurePermission(user, 'complaints', 'edit', 'Şikayet çözümlemek için yetkiniz yok');
+      
+      const resolveSchema = z.object({
+        resolutionNotes: z.string().min(1, "Çözüm notu gerekli"),
+        customerSatisfaction: z.number().min(1).max(5).optional(),
+      });
+      
+      const { resolutionNotes, customerSatisfaction } = resolveSchema.parse(req.body);
+      
+      const resolved = await storage.resolveGuestComplaint(
+        parseInt(id),
+        user.id,
+        resolutionNotes,
+        customerSatisfaction
+      );
+      
+      if (!resolved) {
+        return res.status(404).json({ message: "Şikayet bulunamadı" });
+      }
+      
+      res.json(resolved);
+    } catch (error: any) {
+      console.error("Error resolving guest complaint:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Şikayet çözümlenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/guest-complaints/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { startDate, endDate, branchId } = req.query;
+      
+      ensurePermission(user, 'complaints', 'view', 'Şikayet istatistiklerini görüntülemek için yetkiniz yok');
+      
+      const isBranchStaff = isBranchRole(user.role as UserRoleType);
+      const filterBranchId = isBranchStaff 
+        ? user.branchId 
+        : (branchId ? parseInt(branchId as string) : undefined);
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const stats = await storage.getGuestComplaintStats(filterBranchId, start, end);
+      res.json(stats);
+    } catch (error: any) {
+      console.error("Error fetching complaint stats:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "İstatistikler yüklenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/guest-complaints/heatmap', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { startDate, endDate, branchId } = req.query;
+      
+      ensurePermission(user, 'complaints', 'view', 'Şikayet heatmap görüntülemek için yetkiniz yok');
+      
+      const isBranchStaff = isBranchRole(user.role as UserRoleType);
+      const filterBranchId = isBranchStaff 
+        ? user.branchId 
+        : (branchId ? parseInt(branchId as string) : undefined);
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const heatmap = await storage.getGuestComplaintHeatmap(filterBranchId, start, end);
+      res.json(heatmap);
+    } catch (error: any) {
+      console.error("Error fetching complaint heatmap:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Heatmap yüklenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/equipment-troubleshooting-steps', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { equipmentType } = req.query;
+      
+      ensurePermission(user, 'equipment', 'view', 'Sorun giderme adımlarını görüntülemek için yetkiniz yok');
+      
+      // DESIGN: Troubleshooting steps are INTENTIONALLY global (no branch filtering)
+      // Rationale: These are standardized equipment repair playbooks shared across all branches
+      // for consistency in repair procedures. Similar to Knowledge Base articles, they're
+      // knowledge content, not sensitive operational data. Branch-scoping would fragment
+      // knowledge sharing and prevent consistent equipment maintenance across franchises.
+      
+      if (!equipmentType) {
+        return res.status(400).json({ message: "Cihaz tipi gerekli" });
+      }
+      
+      const steps = await storage.getEquipmentTroubleshootingSteps(equipmentType as string);
+      res.json(steps);
+    } catch (error: any) {
+      console.error("Error fetching troubleshooting steps:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Sorun giderme adımları yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/equipment-troubleshooting-steps', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      ensurePermission(user, 'equipment', 'create', 'Sorun giderme adımı oluşturmak için HQ Tech yetkisi gerekli');
+      
+      const validatedData = insertEquipmentTroubleshootingStepSchema.parse(req.body);
+      
+      const step = await storage.createEquipmentTroubleshootingStep(validatedData);
+      res.status(201).json(step);
+    } catch (error: any) {
+      console.error("Error creating troubleshooting step:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Sorun giderme adımı oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      ensurePermission(user, 'equipment', 'edit', 'Sorun giderme adımı güncellemek için HQ Tech yetkisi gerekli');
+      
+      const updateSchema = insertEquipmentTroubleshootingStepSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      
+      const updated = await storage.updateEquipmentTroubleshootingStep(parseInt(id), validatedData);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Adım bulunamadı" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating troubleshooting step:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Sorun giderme adımı güncellenirken hata oluştu" });
+    }
+  });
+
+  app.delete('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      ensurePermission(user, 'equipment', 'delete', 'Sorun giderme adımı silmek için HQ Tech yetkisi gerekli');
+      
+      await storage.deleteEquipmentTroubleshootingStep(parseInt(id));
+      res.json({ message: "Adım silindi" });
+    } catch (error: any) {
+      console.error("Error deleting troubleshooting step:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Sorun giderme adımı silinirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/attendance-penalties/:shiftAttendanceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { shiftAttendanceId } = req.params;
+      
+      ensurePermission(user, 'attendance', 'view', 'Penaltıları görüntülemek için yetkiniz yok');
+      
+      const isBranchStaff = isBranchRole(user.role as UserRoleType);
+      if (isBranchStaff) {
+        const attendance = await storage.getShiftAttendanceById(parseInt(shiftAttendanceId));
+        if (!attendance) {
+          return res.status(404).json({ message: "Vardiya kaydı bulunamadı" });
+        }
+        const attendanceUser = await storage.getUserById(attendance.userId);
+        if (attendanceUser?.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubenizin verilerini görüntüleyebilirsiniz" });
+        }
+      }
+      
+      const penalties = await storage.getAttendancePenalties(parseInt(shiftAttendanceId));
+      res.json(penalties);
+    } catch (error: any) {
+      console.error("Error fetching attendance penalties:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Penaltılar yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/attendance-penalties', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      ensurePermission(user, 'attendance', 'edit', 'Manuel penaltı oluşturmak için supervisor+ yetkisi gerekli');
+      
+      const validatedData = insertAttendancePenaltySchema.parse({
+        ...req.body,
+        createdById: user.id,
+        autoGenerated: false,
+      });
+      
+      const isBranchStaff = isBranchRole(user.role as UserRoleType);
+      if (isBranchStaff) {
+        const attendance = await storage.getShiftAttendanceById(validatedData.shiftAttendanceId);
+        if (!attendance) {
+          return res.status(404).json({ message: "Vardiya kaydı bulunamadı" });
+        }
+        const attendanceUser = await storage.getUserById(attendance.userId);
+        if (attendanceUser?.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubenizin çalışanlarına penaltı ekleyebilirsiniz" });
+        }
+      }
+      
+      const penalty = await storage.createManualPenalty(validatedData);
+      res.status(201).json(penalty);
+    } catch (error: any) {
+      console.error("Error creating manual penalty:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Manuel penaltı oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.get('/api/monthly-attendance-summary/:userId/:periodMonth', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { userId, periodMonth } = req.params;
+      
+      ensurePermission(user, 'attendance', 'view', 'Aylık özeti görüntülemek için yetkiniz yok');
+      
+      const isBranchStaff = isBranchRole(user.role as UserRoleType);
+      if (isBranchStaff && userId !== user.id) {
+        return res.status(403).json({ message: "Sadece kendi özetinizi görüntüleyebilirsiniz" });
+      }
+      
+      const summary = await storage.getMonthlyAttendanceSummary(userId, periodMonth);
+      res.json(summary || null);
+    } catch (error: any) {
+      console.error("Error fetching monthly summary:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Aylık özet yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/monthly-attendance-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      ensurePermission(user, 'attendance', 'view', 'Aylık özet oluşturmak için yetkiniz yok');
+      
+      const generateSchema = z.object({
+        userId: z.string().min(1, "Kullanıcı ID gerekli"),
+        periodMonth: z.string().regex(/^\d{4}-\d{2}$/, "Geçerli ay formatı: YYYY-MM"),
+      });
+      
+      const { userId, periodMonth } = generateSchema.parse(req.body);
+      
+      const summary = await storage.generateMonthlyAttendanceSummary(userId, periodMonth);
+      res.status(201).json(summary);
+    } catch (error: any) {
+      console.error("Error generating monthly summary:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Aylık özet oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.post('/api/sla/check-breaches', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      if (!['admin', 'hq_admin', 'hq_staff'].includes(user.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      await storage.checkSLABreaches();
+      res.json({ message: "SLA kontrolleri tamamlandı" });
+    } catch (error) {
+      console.error("Error checking SLA breaches:", error);
+      res.status(500).json({ message: "SLA kontrolleri yapılırken hata oluştu" });
     }
   });
 
