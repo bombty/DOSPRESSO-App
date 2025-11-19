@@ -35,7 +35,8 @@ Preferred communication style: Simple, everyday language.
     - **Task Management**: 7-state lifecycle, server-side status validation, HQ-only verification, frontend task detail drawer with AI analysis display, advanced filtering and sorting.
     - **Checklist Management**: Atomic transaction for creation, order uniqueness validation, full CRUD API, HQ management UI, branch view.
     - **Attendance Penalty System**: Timestamp-based penalty calculation for lateness, early leave, break overage, wrapped in atomic transactions for data consistency.
-    - **Guest Complaint SLA Automation**: 80% escalation warnings and 100% breach alerts with notifications, scheduled checks, and spam prevention for notifications.
+    - **Guest Complaint SLA Automation**: 80% escalation warnings and 100% breach alerts with notifications, scheduled checks, and spam prevention for notifications. Frontend route `/sikayetler` provides complaint management UI with SLA tracking, stats dashboard, and resolution workflow. Supervisor role has `complaints: ['view', 'create', 'edit']` permissions with branch-level scoping.
+    - **Critical SLA Bugfix (2025-11-19)**: Fixed incorrect SLA deadline calculation in `createGuestComplaint()` function. **Before:** critical=30min, high=2h, medium=4h, low=24h. **After:** critical=24h, high=48h, medium=72h, low=96h. **Impact:** SLA automation was fundamentally broken, causing premature breach alerts. **Resolution:** Code fix applied in `server/storage.ts`, data backfill executed via SQL to recalculate existing active complaint deadlines, unit tests added in `server/storage.test.ts` to prevent regression. All existing active complaints (1 record) backfilled successfully. Test coverage: 10/10 unit tests passed + E2E workflow validation.
 
 ### Database
 - **Database**: PostgreSQL (Neon serverless).
