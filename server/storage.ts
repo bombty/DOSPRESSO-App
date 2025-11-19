@@ -88,6 +88,8 @@ import type {
   InsertShiftTemplate,
   EmployeeAvailability,
   InsertEmployeeAvailability,
+  SiteSetting,
+  InsertSiteSetting,
 } from "@shared/schema";
 import {
   users,
@@ -138,6 +140,7 @@ import {
   customerFeedback,
   InsertCustomerFeedback,
   CustomerFeedback,
+  siteSettings,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -450,6 +453,13 @@ export interface IStorage {
   getCustomerFeedback(branchId?: number, status?: string): Promise<CustomerFeedback[]>;
   createCustomerFeedback(data: InsertCustomerFeedback): Promise<CustomerFeedback>;
   updateCustomerFeedbackStatus(id: number, status: string, reviewedById: string, reviewNotes?: string): Promise<CustomerFeedback | undefined>;
+
+  // Site Settings operations
+  getSiteSettings(category?: string): Promise<SiteSetting[]>;
+  getSiteSetting(key: string): Promise<SiteSetting | undefined>;
+  updateSiteSetting(key: string, value: string, updatedBy: string): Promise<SiteSetting>;
+  createSiteSetting(setting: InsertSiteSetting): Promise<SiteSetting>;
+  deleteSiteSetting(key: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2825,6 +2835,50 @@ export class DatabaseStorage implements IStorage {
       .where(eq(customerFeedback.id, id))
       .returning();
     return updated;
+  }
+
+  // Site Settings operations
+  async getSiteSettings(category?: string): Promise<SiteSetting[]> {
+    if (category) {
+      return await db.select()
+        .from(siteSettings)
+        .where(eq(siteSettings.category, category))
+        .orderBy(asc(siteSettings.key));
+    }
+    return await db.select()
+      .from(siteSettings)
+      .orderBy(asc(siteSettings.category), asc(siteSettings.key));
+  }
+
+  async getSiteSetting(key: string): Promise<SiteSetting | undefined> {
+    const [setting] = await db.select()
+      .from(siteSettings)
+      .where(eq(siteSettings.key, key));
+    return setting;
+  }
+
+  async updateSiteSetting(key: string, value: string, updatedBy: string): Promise<SiteSetting> {
+    const [updated] = await db.update(siteSettings)
+      .set({
+        value,
+        updatedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(siteSettings.key, key))
+      .returning();
+    return updated;
+  }
+
+  async createSiteSetting(setting: InsertSiteSetting): Promise<SiteSetting> {
+    const [created] = await db.insert(siteSettings)
+      .values(setting)
+      .returning();
+    return created;
+  }
+
+  async deleteSiteSetting(key: string): Promise<void> {
+    await db.delete(siteSettings)
+      .where(eq(siteSettings.key, key));
   }
 }
 

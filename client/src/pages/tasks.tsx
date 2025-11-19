@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -83,6 +83,19 @@ export default function Tasks() {
     queryKey: ["/api/users"],
     enabled: isHQ === true,
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const statusParam = params.get('status');
+    
+    if (statusParam) {
+      const validStatuses: TaskStatus[] = ['beklemede', 'devam_ediyor', 'foto_bekleniyor', 'incelemede', 'onaylandi', 'reddedildi', 'gecikmiş'];
+      if (validStatuses.includes(statusParam as TaskStatus)) {
+        setFilterStatus(statusParam as TaskStatus);
+        setFilterOpen(true);
+      }
+    }
+  }, []);
 
   const clearAllFilters = () => {
     setSearchQuery("");

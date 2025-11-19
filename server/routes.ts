@@ -40,6 +40,7 @@ import {
   insertFranchiseOnboardingSchema,
   insertOnboardingDocumentSchema,
   insertLicenseRenewalSchema,
+  insertSiteSettingSchema,
   auditTemplates,
   auditTemplateItems,
   qualityAudits,
@@ -7118,6 +7119,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       }
       res.status(500).json({ message: "Lisans oluşturulurken hata oluştu" });
+    }
+  });
+
+  // ===== SITE SETTINGS ROUTES =====
+  
+  // GET /api/admin/settings - Get all settings (category filter optional)
+  app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Admin-only access
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+
+      const { category } = req.query;
+      const settings = await storage.getSiteSettings(category as string | undefined);
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching site settings:", error);
+      res.status(500).json({ message: "Ayarlar yüklenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/admin/settings/:key - Get single setting
+  app.get('/api/admin/settings/:key', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Admin-only access
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+
+      const { key } = req.params;
+      const setting = await storage.getSiteSetting(key);
+      
+      if (!setting) {
+        return res.status(404).json({ message: "Ayar bulunamadı" });
+      }
+      
+      res.json(setting);
+    } catch (error) {
+      console.error("Error fetching site setting:", error);
+      res.status(500).json({ message: "Ayar yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/admin/settings - Create new setting
+  app.post('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Admin-only access
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+
+      const validatedData = insertSiteSettingSchema.parse({
+        ...req.body,
+        updatedBy: user.id,
+      });
+      
+      const setting = await storage.createSiteSetting(validatedData);
+      
+      res.status(201).json(setting);
+    } catch (error: any) {
+      console.error("Error creating site setting:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Ayar oluşturulurken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/admin/settings/:key - Update setting
+  app.patch('/api/admin/settings/:key', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Admin-only access
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+
+      const { key } = req.params;
+      const { value } = req.body;
+      
+      if (value === undefined) {
+        return res.status(400).json({ message: "Değer gerekli" });
+      }
+      
+      const setting = await storage.updateSiteSetting(key, value, user.id);
+      
+      res.json(setting);
+    } catch (error) {
+      console.error("Error updating site setting:", error);
+      res.status(500).json({ message: "Ayar güncellenirken hata oluştu" });
+    }
+  });
+
+  // DELETE /api/admin/settings/:key - Delete setting
+  app.delete('/api/admin/settings/:key', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Admin-only access
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+
+      const { key } = req.params;
+      await storage.deleteSiteSetting(key);
+      
+      res.json({ message: "Ayar silindi" });
+    } catch (error) {
+      console.error("Error deleting site setting:", error);
+      res.status(500).json({ message: "Ayar silinirken hata oluştu" });
     }
   });
 

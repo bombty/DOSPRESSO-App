@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +41,7 @@ export default function EquipmentFaults() {
   const [uploadingFaultId, setUploadingFaultId] = useState<number | null>(null);
   const [stageChangeFaultId, setStageChangeFaultId] = useState<number | null>(null);
   const [viewHistoryFaultId, setViewHistoryFaultId] = useState<number | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
   const { data: faults, isLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
@@ -54,6 +55,18 @@ export default function EquipmentFaults() {
     queryKey: ["/api/equipment"],
   });
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const statusParam = params.get('status');
+    
+    if (statusParam) {
+      const validStatuses = ['acik', 'devam_ediyor', 'cozuldu'];
+      if (validStatuses.includes(statusParam)) {
+        setFilterStatus(statusParam);
+      }
+    }
+  }, []);
+
   // Filter equipment by user's branch if branch role
   const availableEquipment = equipment?.filter((eq) => {
     if (user?.role && isBranchRole(user.role as any)) {
@@ -61,6 +74,18 @@ export default function EquipmentFaults() {
     }
     return true;
   });
+
+  const filteredFaults = useMemo(() => {
+    if (!faults) return [];
+    
+    let filtered = [...faults];
+    
+    if (filterStatus) {
+      filtered = filtered.filter(f => f.status === filterStatus);
+    }
+    
+    return filtered;
+  }, [faults, filterStatus]);
 
   const form = useForm<FaultFormData>({
     resolver: zodResolver(faultFormSchema),
@@ -508,7 +533,7 @@ export default function EquipmentFaults() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {faults?.map((fault) => (
+          {filteredFaults?.map((fault) => (
             <Card key={fault.id} data-testid={`card-fault-${fault.id}`}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
@@ -626,11 +651,14 @@ export default function EquipmentFaults() {
               </CardContent>
             </Card>
           ))}
-          {(!faults || faults.length === 0) && (
+          {(!filteredFaults || filteredFaults.length === 0) && (
             <Card>
               <CardContent className="py-8">
                 <p className="text-center text-muted-foreground">
-                  Henüz arıza raporu yok. Yeni arıza rapor etmek için yukarıdaki butonu kullanın.
+                  {filterStatus 
+                    ? `${statusLabels[filterStatus]} durumunda arıza raporu bulunamadı.`
+                    : 'Henüz arıza raporu yok. Yeni arıza rapor etmek için yukarıdaki butonu kullanın.'
+                  }
                 </p>
               </CardContent>
             </Card>

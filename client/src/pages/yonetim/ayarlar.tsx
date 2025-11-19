@@ -1,98 +1,653 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Save, Mail } from "lucide-react";
+
+type SiteSetting = {
+  id: number;
+  key: string;
+  value: string | null;
+  type: string;
+  category: string;
+  description: string | null;
+  isPublic: boolean;
+  updatedBy: string | null;
+  updatedAt: string | null;
+  createdAt: string | null;
+};
 
 export default function Settings() {
   const { toast } = useToast();
-  const [logoUrl, setLogoUrl] = useState("");
 
-  // Fetch current branding
-  const { data: branding, isLoading } = useQuery<{ logoUrl: string | null; updatedAt: string | null }>({
-    queryKey: ["/api/admin/branding"],
-    staleTime: 5 * 60 * 1000,
+  // Fetch all settings
+  const { data: settings, isLoading } = useQuery<SiteSetting[]>({
+    queryKey: ["/api/admin/settings"],
   });
 
-  // Update logo mutation
-  const updateLogoMutation = useMutation({
-    mutationFn: async (url: string) =>
-      apiRequest("/api/admin/branding/logo", "POST", { logoUrl: url }),
+  // Group settings by category
+  const settingsByCategory = (settings || []).reduce((acc, setting) => {
+    if (!acc[setting.category]) {
+      acc[setting.category] = {};
+    }
+    acc[setting.category][setting.key] = setting.value || "";
+    return acc;
+  }, {} as Record<string, Record<string, string>>);
+
+  // General settings state
+  const [generalSettings, setGeneralSettings] = useState({
+    site_title: "",
+    contact_email: "",
+    contact_phone: "",
+    address: "",
+    instagram_url: "",
+    facebook_url: "",
+    twitter_url: "",
+    working_hours: "",
+  });
+
+  // SMTP settings state
+  const [smtpSettings, setSmtpSettings] = useState({
+    smtp_host: "",
+    smtp_port: "",
+    smtp_user: "",
+    smtp_password: "",
+    smtp_from_email: "",
+    smtp_from_name: "",
+  });
+
+  // Theme settings state
+  const [themeSettings, setThemeSettings] = useState({
+    primary_color: "",
+    secondary_color: "",
+    accent_color: "",
+    font_family: "",
+    border_radius: "",
+  });
+
+  // Branding settings state
+  const [brandingSettings, setBrandingSettings] = useState({
+    logo_url: "",
+    favicon_url: "",
+    banner_url: "",
+  });
+
+  // Content settings state
+  const [contentSettings, setContentSettings] = useState({
+    about_us_content: "",
+    privacy_policy_content: "",
+    terms_of_service_content: "",
+  });
+
+  // Populate form states when settings load
+  useEffect(() => {
+    if (settings && settings.length > 0) {
+      const general = settingsByCategory["general"] || {};
+      setGeneralSettings({
+        site_title: general["site_title"] || "",
+        contact_email: general["contact_email"] || "",
+        contact_phone: general["contact_phone"] || "",
+        address: general["address"] || "",
+        instagram_url: general["instagram_url"] || "",
+        facebook_url: general["facebook_url"] || "",
+        twitter_url: general["twitter_url"] || "",
+        working_hours: general["working_hours"] || "",
+      });
+
+      const smtp = settingsByCategory["smtp"] || {};
+      setSmtpSettings({
+        smtp_host: smtp["smtp_host"] || "",
+        smtp_port: smtp["smtp_port"] || "",
+        smtp_user: smtp["smtp_user"] || "",
+        smtp_password: smtp["smtp_password"] || "",
+        smtp_from_email: smtp["smtp_from_email"] || "",
+        smtp_from_name: smtp["smtp_from_name"] || "",
+      });
+
+      const theme = settingsByCategory["theme"] || {};
+      setThemeSettings({
+        primary_color: theme["primary_color"] || "",
+        secondary_color: theme["secondary_color"] || "",
+        accent_color: theme["accent_color"] || "",
+        font_family: theme["font_family"] || "",
+        border_radius: theme["border_radius"] || "",
+      });
+
+      const branding = settingsByCategory["branding"] || {};
+      setBrandingSettings({
+        logo_url: branding["logo_url"] || "",
+        favicon_url: branding["favicon_url"] || "",
+        banner_url: branding["banner_url"] || "",
+      });
+
+      const content = settingsByCategory["content"] || {};
+      setContentSettings({
+        about_us_content: content["about_us_content"] || "",
+        privacy_policy_content: content["privacy_policy_content"] || "",
+        terms_of_service_content: content["terms_of_service_content"] || "",
+      });
+    }
+  }, [settings]);
+
+  // Generic mutation for updating settings
+  const updateSettingMutation = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      return apiRequest(`/api/admin/settings/${key}`, "PATCH", { value });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/branding"] });
-      toast({ title: "Başarılı", description: "Logo güncellendi" });
-      setLogoUrl("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
+      toast({ title: "Başarılı", description: "Ayarlar kaydedildi" });
     },
     onError: () => {
-      toast({ title: "Hata", description: "Logo güncellenemedi", variant: "destructive" });
+      toast({ title: "Hata", description: "Ayarlar kaydedilemedi", variant: "destructive" });
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Save general settings
+  const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!logoUrl.trim()) {
-      toast({ title: "Hata", description: "Logo URL gerekli", variant: "destructive" });
-      return;
+    for (const [key, value] of Object.entries(generalSettings)) {
+      await updateSettingMutation.mutateAsync({ key, value });
     }
-    updateLogoMutation.mutate(logoUrl.trim());
+  };
+
+  // Save SMTP settings
+  const handleSaveSMTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    for (const [key, value] of Object.entries(smtpSettings)) {
+      await updateSettingMutation.mutateAsync({ key, value });
+    }
+  };
+
+  // Save theme settings
+  const handleSaveTheme = async (e: React.FormEvent) => {
+    e.preventDefault();
+    for (const [key, value] of Object.entries(themeSettings)) {
+      await updateSettingMutation.mutateAsync({ key, value });
+    }
+  };
+
+  // Save branding settings
+  const handleSaveBranding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    for (const [key, value] of Object.entries(brandingSettings)) {
+      await updateSettingMutation.mutateAsync({ key, value });
+    }
+  };
+
+  // Save content settings
+  const handleSaveContent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    for (const [key, value] of Object.entries(contentSettings)) {
+      await updateSettingMutation.mutateAsync({ key, value });
+    }
   };
 
   if (isLoading) {
-    return <div className="container py-6" data-testid="text-loading">Yükleniyor...</div>;
+    return (
+      <div className="container py-6 flex items-center justify-center" data-testid="text-loading">
+        <Loader2 className="w-6 h-6 animate-spin" />
+        <span className="ml-2">Yükleniyor...</span>
+      </div>
+    );
   }
 
   return (
     <div className="container py-6">
-      <h1 className="text-3xl font-bold mb-6" data-testid="text-page-title">Ayarlar</h1>
+      <h1 className="text-3xl font-bold mb-6" data-testid="text-page-title">
+        Ayarlar
+      </h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Şirket Logosu</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {branding?.logoUrl && (
-            <div className="flex flex-col gap-2">
-              <Label>Mevcut Logo</Label>
-              <img 
-                src={branding.logoUrl} 
-                alt="Şirket Logosu" 
-                className="max-w-xs h-auto border rounded-md"
-                data-testid="img-current-logo"
-              />
-            </div>
-          )}
+      <Tabs defaultValue="genel" className="w-full">
+        <TabsList className="grid w-full grid-cols-5" data-testid="tabs-settings">
+          <TabsTrigger value="genel" data-testid="tab-trigger-genel">Genel</TabsTrigger>
+          <TabsTrigger value="mail" data-testid="tab-trigger-mail">Mail Ayarları</TabsTrigger>
+          <TabsTrigger value="tema" data-testid="tab-trigger-tema">Tema</TabsTrigger>
+          <TabsTrigger value="gorsel" data-testid="tab-trigger-gorsel">Görsel</TabsTrigger>
+          <TabsTrigger value="icerik" data-testid="tab-trigger-icerik">İçerik</TabsTrigger>
+        </TabsList>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="logoUrl">Logo URL (Public S3 URL)</Label>
-              <Input
-                id="logoUrl"
-                type="url"
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://bucket.s3.region.amazonaws.com/logo.png"
-                data-testid="input-logo-url"
-              />
-              <p className="text-sm text-muted-foreground">
-                Logo'yu S3'e yükleyip public URL'yi buraya yapıştırın
-              </p>
-            </div>
+        {/* Tab 1 - Genel */}
+        <TabsContent value="genel">
+          <Card>
+            <CardHeader>
+              <CardTitle>Genel Ayarlar</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveGeneral} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="site_title">Site Başlığı</Label>
+                  <Input
+                    id="site_title"
+                    value={generalSettings.site_title}
+                    onChange={(e) => setGeneralSettings({ ...generalSettings, site_title: e.target.value })}
+                    placeholder="DOSPRESSO"
+                    data-testid="input-site-title"
+                  />
+                </div>
 
-            <Button 
-              type="submit" 
-              disabled={updateLogoMutation.isPending}
-              data-testid="button-update-logo"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {updateLogoMutation.isPending ? "Kaydediliyor..." : "Logo Güncelle"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="contact_email">İletişim Email</Label>
+                  <Input
+                    id="contact_email"
+                    type="email"
+                    value={generalSettings.contact_email}
+                    onChange={(e) => setGeneralSettings({ ...generalSettings, contact_email: e.target.value })}
+                    placeholder="info@dospresso.com"
+                    data-testid="input-contact-email"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact_phone">İletişim Telefon</Label>
+                  <Input
+                    id="contact_phone"
+                    type="tel"
+                    value={generalSettings.contact_phone}
+                    onChange={(e) => setGeneralSettings({ ...generalSettings, contact_phone: e.target.value })}
+                    placeholder="+90 555 123 4567"
+                    data-testid="input-contact-phone"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Adres</Label>
+                  <Textarea
+                    id="address"
+                    value={generalSettings.address}
+                    onChange={(e) => setGeneralSettings({ ...generalSettings, address: e.target.value })}
+                    placeholder="Şirket adresi"
+                    rows={3}
+                    data-testid="textarea-address"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="instagram_url">Instagram URL</Label>
+                  <Input
+                    id="instagram_url"
+                    type="url"
+                    value={generalSettings.instagram_url}
+                    onChange={(e) => setGeneralSettings({ ...generalSettings, instagram_url: e.target.value })}
+                    placeholder="https://instagram.com/dospresso"
+                    data-testid="input-instagram-url"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="facebook_url">Facebook URL</Label>
+                  <Input
+                    id="facebook_url"
+                    type="url"
+                    value={generalSettings.facebook_url}
+                    onChange={(e) => setGeneralSettings({ ...generalSettings, facebook_url: e.target.value })}
+                    placeholder="https://facebook.com/dospresso"
+                    data-testid="input-facebook-url"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="twitter_url">Twitter URL</Label>
+                  <Input
+                    id="twitter_url"
+                    type="url"
+                    value={generalSettings.twitter_url}
+                    onChange={(e) => setGeneralSettings({ ...generalSettings, twitter_url: e.target.value })}
+                    placeholder="https://twitter.com/dospresso"
+                    data-testid="input-twitter-url"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="working_hours">Çalışma Saatleri</Label>
+                  <Input
+                    id="working_hours"
+                    value={generalSettings.working_hours}
+                    onChange={(e) => setGeneralSettings({ ...generalSettings, working_hours: e.target.value })}
+                    placeholder="Pzt-Cum: 09:00 - 18:00"
+                    data-testid="input-working-hours"
+                  />
+                </div>
+
+                <Button type="submit" disabled={updateSettingMutation.isPending} data-testid="button-save-general">
+                  <Save className="w-4 h-4 mr-2" />
+                  {updateSettingMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 2 - Mail Ayarları */}
+        <TabsContent value="mail">
+          <Card>
+            <CardHeader>
+              <CardTitle>Mail Ayarları (SMTP)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveSMTP} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="smtp_host">SMTP Host</Label>
+                  <Input
+                    id="smtp_host"
+                    value={smtpSettings.smtp_host}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_host: e.target.value })}
+                    placeholder="smtp.gmail.com"
+                    data-testid="input-smtp-host"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="smtp_port">SMTP Port</Label>
+                  <Input
+                    id="smtp_port"
+                    type="number"
+                    value={smtpSettings.smtp_port}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_port: e.target.value })}
+                    placeholder="587"
+                    data-testid="input-smtp-port"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="smtp_user">SMTP Kullanıcı</Label>
+                  <Input
+                    id="smtp_user"
+                    value={smtpSettings.smtp_user}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_user: e.target.value })}
+                    placeholder="user@gmail.com"
+                    data-testid="input-smtp-user"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="smtp_password">SMTP Şifre</Label>
+                  <Input
+                    id="smtp_password"
+                    type="password"
+                    value={smtpSettings.smtp_password}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_password: e.target.value })}
+                    placeholder="••••••••"
+                    data-testid="input-smtp-password"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="smtp_from_email">Gönderen Email</Label>
+                  <Input
+                    id="smtp_from_email"
+                    type="email"
+                    value={smtpSettings.smtp_from_email}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_from_email: e.target.value })}
+                    placeholder="noreply@dospresso.com"
+                    data-testid="input-smtp-from-email"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="smtp_from_name">Gönderen İsim</Label>
+                  <Input
+                    id="smtp_from_name"
+                    value={smtpSettings.smtp_from_name}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_from_name: e.target.value })}
+                    placeholder="DOSPRESSO"
+                    data-testid="input-smtp-from-name"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={updateSettingMutation.isPending} data-testid="button-save-smtp">
+                    <Save className="w-4 h-4 mr-2" />
+                    {updateSettingMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                  </Button>
+                  <Button type="button" variant="outline" data-testid="button-test-email">
+                    <Mail className="w-4 h-4 mr-2" />
+                    Test Email Gönder
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 3 - Tema */}
+        <TabsContent value="tema">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tema Ayarları</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveTheme} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="primary_color">Ana Renk (Primary Color)</Label>
+                  <Input
+                    id="primary_color"
+                    type="text"
+                    value={themeSettings.primary_color}
+                    onChange={(e) => setThemeSettings({ ...themeSettings, primary_color: e.target.value })}
+                    placeholder="#1a202c"
+                    data-testid="input-primary-color"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="secondary_color">İkincil Renk (Secondary Color)</Label>
+                  <Input
+                    id="secondary_color"
+                    type="text"
+                    value={themeSettings.secondary_color}
+                    onChange={(e) => setThemeSettings({ ...themeSettings, secondary_color: e.target.value })}
+                    placeholder="#f5f5dc"
+                    data-testid="input-secondary-color"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accent_color">Vurgu Renk (Accent Color)</Label>
+                  <Input
+                    id="accent_color"
+                    type="text"
+                    value={themeSettings.accent_color}
+                    onChange={(e) => setThemeSettings({ ...themeSettings, accent_color: e.target.value })}
+                    placeholder="#ef4444"
+                    data-testid="input-accent-color"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="font_family">Font Ailesi</Label>
+                  <Select
+                    value={themeSettings.font_family}
+                    onValueChange={(value) => setThemeSettings({ ...themeSettings, font_family: value })}
+                  >
+                    <SelectTrigger id="font_family" data-testid="select-font-family">
+                      <SelectValue placeholder="Font seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Inter">Inter</SelectItem>
+                      <SelectItem value="Roboto">Roboto</SelectItem>
+                      <SelectItem value="Open Sans">Open Sans</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Kenar Yuvarlama (Border Radius)</Label>
+                  <RadioGroup
+                    value={themeSettings.border_radius}
+                    onValueChange={(value) => setThemeSettings({ ...themeSettings, border_radius: value })}
+                    data-testid="radio-border-radius"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="sm" id="radius-sm" data-testid="radio-radius-sm" />
+                      <Label htmlFor="radius-sm">Küçük (sm)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="md" id="radius-md" data-testid="radio-radius-md" />
+                      <Label htmlFor="radius-md">Orta (md)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="lg" id="radius-lg" data-testid="radio-radius-lg" />
+                      <Label htmlFor="radius-lg">Büyük (lg)</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  Not: Değişiklikler sayfa yenilendikten sonra uygulanacaktır
+                </p>
+
+                <Button type="submit" disabled={updateSettingMutation.isPending} data-testid="button-save-theme">
+                  <Save className="w-4 h-4 mr-2" />
+                  {updateSettingMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 4 - Görsel */}
+        <TabsContent value="gorsel">
+          <Card>
+            <CardHeader>
+              <CardTitle>Görsel / Marka Ayarları</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveBranding} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="logo_url">Logo URL</Label>
+                  <Input
+                    id="logo_url"
+                    type="url"
+                    value={brandingSettings.logo_url}
+                    onChange={(e) => setBrandingSettings({ ...brandingSettings, logo_url: e.target.value })}
+                    placeholder="https://example.com/logo.png"
+                    data-testid="input-logo-url"
+                  />
+                  {brandingSettings.logo_url && (
+                    <img
+                      src={brandingSettings.logo_url}
+                      alt="Logo Preview"
+                      className="max-w-xs h-auto border rounded-md mt-2"
+                      data-testid="img-logo-preview"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="favicon_url">Favicon URL</Label>
+                  <Input
+                    id="favicon_url"
+                    type="url"
+                    value={brandingSettings.favicon_url}
+                    onChange={(e) => setBrandingSettings({ ...brandingSettings, favicon_url: e.target.value })}
+                    placeholder="https://example.com/favicon.ico"
+                    data-testid="input-favicon-url"
+                  />
+                  {brandingSettings.favicon_url && (
+                    <img
+                      src={brandingSettings.favicon_url}
+                      alt="Favicon Preview"
+                      className="w-8 h-8 border rounded mt-2"
+                      data-testid="img-favicon-preview"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="banner_url">Ana Sayfa Banner URL</Label>
+                  <Input
+                    id="banner_url"
+                    type="url"
+                    value={brandingSettings.banner_url}
+                    onChange={(e) => setBrandingSettings({ ...brandingSettings, banner_url: e.target.value })}
+                    placeholder="https://example.com/banner.jpg"
+                    data-testid="input-banner-url"
+                  />
+                  {brandingSettings.banner_url && (
+                    <img
+                      src={brandingSettings.banner_url}
+                      alt="Banner Preview"
+                      className="max-w-full h-auto border rounded-md mt-2"
+                      data-testid="img-banner-preview"
+                    />
+                  )}
+                </div>
+
+                <Button type="submit" disabled={updateSettingMutation.isPending} data-testid="button-save-branding">
+                  <Save className="w-4 h-4 mr-2" />
+                  {updateSettingMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 5 - İçerik */}
+        <TabsContent value="icerik">
+          <Card>
+            <CardHeader>
+              <CardTitle>İçerik Sayfaları</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveContent} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="about_us_content">Hakkımızda</Label>
+                  <Textarea
+                    id="about_us_content"
+                    value={contentSettings.about_us_content}
+                    onChange={(e) => setContentSettings({ ...contentSettings, about_us_content: e.target.value })}
+                    placeholder="Şirket hakkında bilgi..."
+                    rows={5}
+                    data-testid="textarea-about-us"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="privacy_policy_content">Gizlilik Politikası</Label>
+                  <Textarea
+                    id="privacy_policy_content"
+                    value={contentSettings.privacy_policy_content}
+                    onChange={(e) => setContentSettings({ ...contentSettings, privacy_policy_content: e.target.value })}
+                    placeholder="Gizlilik politikası metni..."
+                    rows={5}
+                    data-testid="textarea-privacy-policy"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="terms_of_service_content">Kullanım Koşulları</Label>
+                  <Textarea
+                    id="terms_of_service_content"
+                    value={contentSettings.terms_of_service_content}
+                    onChange={(e) => setContentSettings({ ...contentSettings, terms_of_service_content: e.target.value })}
+                    placeholder="Kullanım koşulları metni..."
+                    rows={5}
+                    data-testid="textarea-terms-of-service"
+                  />
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  Not: Bu sayfalar halka açık web sitesinde gösterilir
+                </p>
+
+                <Button type="submit" disabled={updateSettingMutation.isPending} data-testid="button-save-content">
+                  <Save className="w-4 h-4 mr-2" />
+                  {updateSettingMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

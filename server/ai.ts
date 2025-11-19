@@ -988,6 +988,45 @@ async function buildSummaryPrompt(
       todayDateStr
     );
     
+    // Get all employees for the branch to map userId -> name
+    const employees = await storage.getAllEmployees(branchId);
+    const employeeMap = new Map(employees.map(e => [e.id, `${e.firstName} ${e.lastName.charAt(0)}.`]));
+    
+    // Group attendances by employee
+    const employeeStats = new Map<string, { 
+      name: string; 
+      totalDays: number; 
+      present: number; 
+      absent: number; 
+      late: number;
+      violations: number;
+    }>();
+    
+    attendances.forEach(att => {
+      const name = employeeMap.get(att.userId) || `Kullanıcı ${att.userId}`;
+      if (!employeeStats.has(att.userId)) {
+        employeeStats.set(att.userId, { 
+          name, 
+          totalDays: 0, 
+          present: 0, 
+          absent: 0, 
+          late: 0,
+          violations: 0
+        });
+      }
+      const stats = employeeStats.get(att.userId)!;
+      stats.totalDays++;
+      if (att.checkInTime) stats.present++;
+      if (att.status === 'absent') stats.absent++;
+      if (att.status === 'late') stats.late++;
+      if (att.aiWarnings && att.aiWarnings.length > 0) stats.violations++;
+    });
+    
+    // Sort by attendance count and get top 10
+    const topEmployees = Array.from(employeeStats.values())
+      .sort((a, b) => b.present - a.present)
+      .slice(0, 10);
+    
     const totalAttendances = attendances.length;
     const checkedIn = attendances.filter(a => a.checkInTime).length;
     const absent = attendances.filter(a => a.status === 'absent').length;
@@ -995,6 +1034,14 @@ async function buildSummaryPrompt(
     const dressCodeViolations = attendances.filter(a => 
       a.aiWarnings && a.aiWarnings.length > 0
     ).length;
+
+    // Build detailed employee list for AI
+    const employeeDetails = topEmployees.map(emp => 
+      `- ${emp.name}: ${emp.present}/${emp.totalDays} gün geldi` + 
+      (emp.absent > 0 ? `, ${emp.absent} gün devamsız` : '') +
+      (emp.late > 0 ? `, ${emp.late} gün geç kaldı` : '') +
+      (emp.violations > 0 ? `, ${emp.violations} kıyafet ihlali` : '')
+    ).join('\n');
 
     return `DOSPRESSO ${scope} için son 7 günlük personel özeti oluştur:
 
@@ -1005,11 +1052,16 @@ async function buildSummaryPrompt(
 - Geç kalan: ${late}
 - Kıyafet ihlali: ${dressCodeViolations}
 
+**Personel Detayları (En Aktif ${topEmployees.length} Çalışan):**
+${employeeDetails}
+
 **Görev:** Yukarıdaki verileri analiz et ve şu konularda kısa, öz ve Türkçe bir özet sun:
-1. Genel devam durumu (katılım oranı, trend)
-2. Problemli alanlar (devamsızlık, gecikmeler)
-3. Kıyafet uyumu (varsa ihlaller)
+1. Genel devam durumu (katılım oranı, trend) - SPESİFİK İSİMLER KULLAN
+2. Problemli alanlar (devamsızlık, gecikmeler) - SPESİFİK İSİMLER KULLAN
+3. Kıyafet uyumu (varsa ihlaller) - SPESİFİK İSİMLER KULLAN
 4. Öneriler (HQ/supervisor için aksiyonlar)
+
+ÖNEMLİ: Özette yukarıdaki çalışan isimlerini kullan (örnek: "Ahmet Y. 7/7 gün vardiyaya geldi, Zeynep K. 5/7 gün geldi ve 2 gün devamsız"). Generic ifadeler kullanma.
 
 Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
   } else if (category === "cihazlar") {
@@ -1020,9 +1072,37 @@ Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
       return created >= sevenDaysAgo;
     });
 
+    // Get all equipment to map equipmentId -> equipmentType
+    const allEquipment = await storage.getEquipment(branchId);
+    const equipmentMap = new Map(allEquipment.map(e => [e.id, e.equipmentType]));
+
     const openFaults = sevenDayFaults.filter(f => f.status === 'acik').length;
     const resolvedFaults = sevenDayFaults.filter(f => f.status === 'cozuldu').length;
     const criticalFaults = sevenDayFaults.filter(f => f.priority === 'high' || f.priority === 'critical').length;
+
+    // Build detailed fault list (top 10 most critical/recent)
+    const topFaults = sevenDayFaults
+      .sort((a, b) => {
+        // Sort by priority (critical > high > medium > low), then by date
+        const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+        const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4;
+        const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      })
+      .slice(0, 10);
+
+    const faultDetails = topFaults.map(fault => {
+      const equipmentType = fault.equipmentId ? equipmentMap.get(fault.equipmentId) : null;
+      const equipmentName = equipmentType || fault.equipmentName || `Cihaz #${fault.equipmentId || 'unknown'}`;
+      const priorityLabel = fault.priority === 'critical' ? 'KRİTİK' : 
+                           fault.priority === 'high' ? 'YÜKSEK' : 
+                           fault.priority === 'medium' ? 'ORTA' : 'DÜŞÜK';
+      const statusLabel = fault.status === 'acik' ? 'AÇIK' : 
+                         fault.status === 'cozuldu' ? 'Çözülmüş' : 
+                         fault.status;
+      return `- ${equipmentName}: ${fault.description} [${priorityLabel} - ${statusLabel}]`;
+    }).join('\n');
 
     return `DOSPRESSO ${scope} için son 7 günlük cihaz arıza özeti oluştur:
 
@@ -1032,11 +1112,16 @@ Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
 - Çözülmüş: ${resolvedFaults}
 - Kritik arıza: ${criticalFaults}
 
+**Arıza Detayları (En Kritik ${topFaults.length} Arıza):**
+${faultDetails}
+
 **Görev:** Yukarıdaki verileri analiz et ve şu konularda kısa, öz ve Türkçe bir özet sun:
-1. Genel durum (arıza oranı, trend)
-2. Kritik problemler (acil müdahale gereken)
+1. Genel durum (arıza oranı, trend) - SPESİFİK CİHAZ İSİMLERİ KULLAN
+2. Kritik problemler (acil müdahale gereken) - SPESİFİK CİHAZ İSİMLERİ KULLAN
 3. Bakım önerileri (önleyici tedbirler)
 4. Aksiyonlar (HQ/supervisor için)
+
+ÖNEMLİ: Özette yukarıdaki cihaz isimlerini kullan (örnek: "Espresso Makinası kritik arızada, Buzdolabı #5'te hafif sorun"). Generic ifadeler kullanma.
 
 Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
   } else if (category === "gorevler") {
@@ -1047,12 +1132,59 @@ Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
       return created >= sevenDaysAgo;
     });
 
+    // Get all employees for the branch to map assignedToId -> name
+    const employees = await storage.getAllEmployees(branchId);
+    const employeeMap = new Map(employees.map(e => [e.id, `${e.firstName} ${e.lastName.charAt(0)}.`]));
+
+    // Group tasks by assignee
+    const assigneeStats = new Map<string, {
+      name: string;
+      completed: number;
+      pending: number;
+      overdue: number;
+      total: number;
+    }>();
+
+    sevenDayTasks.forEach(task => {
+      const assigneeId = task.assignedToId;
+      if (!assigneeId) return; // Skip unassigned tasks
+      
+      const name = employeeMap.get(assigneeId) || `Kullanıcı ${assigneeId}`;
+      if (!assigneeStats.has(assigneeId)) {
+        assigneeStats.set(assigneeId, {
+          name,
+          completed: 0,
+          pending: 0,
+          overdue: 0,
+          total: 0,
+        });
+      }
+      
+      const stats = assigneeStats.get(assigneeId)!;
+      stats.total++;
+      if (task.status === 'onaylandi') stats.completed++;
+      else if (task.status === 'beklemede') stats.pending++;
+      else if (task.status === 'gecikmiş') stats.overdue++;
+    });
+
+    // Sort by total tasks and get top 10
+    const topAssignees = Array.from(assigneeStats.values())
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+
     const completed = sevenDayTasks.filter(t => t.status === 'onaylandi').length;
     const pending = sevenDayTasks.filter(t => t.status === 'beklemede').length;
     const overdue = sevenDayTasks.filter(t => t.status === 'gecikmiş').length;
     const completionRate = sevenDayTasks.length > 0 
       ? Math.round((completed / sevenDayTasks.length) * 100) 
       : 0;
+
+    // Build detailed assignee list for AI
+    const assigneeDetails = topAssignees.map(assignee =>
+      `- ${assignee.name}: ${assignee.completed} tamamlandı, ${assignee.pending} beklemede` +
+      (assignee.overdue > 0 ? `, ${assignee.overdue} gecikmiş` : '') +
+      ` (Toplam: ${assignee.total})`
+    ).join('\n');
 
     return `DOSPRESSO ${scope} için son 7 günlük görev özeti oluştur:
 
@@ -1063,11 +1195,16 @@ Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
 - Gecikmiş: ${overdue}
 - Tamamlanma oranı: %${completionRate}
 
+**Görev Detayları (En Aktif ${topAssignees.length} Çalışan):**
+${assigneeDetails}
+
 **Görev:** Yukarıdaki verileri analiz et ve şu konularda kısa, öz ve Türkçe bir özet sun:
-1. Genel performans (tamamlanma oranı, trend)
-2. Problemli alanlar (geciken görevler)
-3. Takım verimliliği
+1. Genel performans (tamamlanma oranı, trend) - SPESİFİK İSİMLER KULLAN
+2. Problemli alanlar (geciken görevler) - SPESİFİK İSİMLER KULLAN
+3. Takım verimliliği - SPESİFİK İSİMLER KULLAN
 4. Öneriler (HQ/supervisor için)
+
+ÖNEMLİ: Özette yukarıdaki çalışan isimlerini kullan (örnek: "Ali B. tarafından 3 görev tamamlandı, Fatma S. tarafından 2 görev beklemede"). Generic ifadeler kullanma.
 
 Maksimum 200 kelime, madde işaretleri kullan, profesyonel ton.`;
   }
