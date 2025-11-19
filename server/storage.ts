@@ -3379,13 +3379,13 @@ export class DatabaseStorage implements IStorage {
     let responseDeadline: Date | null = null;
     
     if (data.priority === "critical") {
-      responseDeadline = new Date(Date.now() + 30 * 60 * 1000);
+      responseDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     } else if (data.priority === "high") {
-      responseDeadline = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      responseDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
     } else if (data.priority === "medium") {
-      responseDeadline = new Date(Date.now() + 4 * 60 * 60 * 1000);
+      responseDeadline = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours
     } else {
-      responseDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      responseDeadline = new Date(Date.now() + 96 * 60 * 60 * 1000); // 96 hours (low)
     }
     
     const [complaint] = await db.insert(guestComplaints)
