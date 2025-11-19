@@ -48,7 +48,7 @@ import AICostDashboard from "@/pages/yonetim/ai-maliyetler";
 import AdminChecklistManagement from "@/pages/yonetim/checklistler";
 import ServiceRequestsManagement from "@/pages/yonetim/servis-talepleri";
 import KaliteDenetimi from "@/pages/kalite-denetimi";
-import MusteriGeribildirimi from "@/pages/musteri-geribildirimi";
+import MisafirGeriBildirim from "@/pages/musteri-geribildirimi";
 import Sikayetler from "@/pages/sikayetler";
 import MusteriFeedbackPublic from "@/pages/musteri-feedback-public";
 import KampanyaYonetimi from "@/pages/kampanya-yonetimi";
@@ -99,7 +99,7 @@ function Router() {
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/performans" component={Performance} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
-          <Route path="/musteri-geribildirimi" component={MusteriGeribildirimi} />
+          <Route path="/misafir-geri-bildirim" component={MisafirGeriBildirim} />
           <Route path="/sikayetler" component={Sikayetler} />
           <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
           <Route path="/franchise-acilis" component={FranchiseAcilis} />

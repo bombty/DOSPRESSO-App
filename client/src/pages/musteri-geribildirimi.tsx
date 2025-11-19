@@ -35,7 +35,7 @@ interface FeedbackStats {
   rating1: number;
 }
 
-export default function MusteriGeribildirimi() {
+export default function MisafirGeriBildirim() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [reviewingFeedback, setReviewingFeedback] = useState<CustomerFeedback | null>(null);
@@ -111,8 +111,8 @@ export default function MusteriGeribildirimi() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold" data-testid="heading-musteri-geribildirimi">Müşteri Geri Bildirimleri</h1>
-        <p className="text-muted-foreground mt-1">Müşterilerimizin görüşlerini takip edin ve değerlendirin</p>
+        <h1 className="text-3xl font-bold" data-testid="heading-misafir-geribildirimi">Misafir Geri Bildirimleri</h1>
+        <p className="text-muted-foreground mt-1">Misafirlerimizin görüşlerini takip edin ve değerlendirin</p>
       </div>
 
       {stats && (

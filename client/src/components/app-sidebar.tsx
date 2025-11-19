@@ -320,9 +320,9 @@ const menuGroups: MenuGroup[] = [
         module: "dashboard",
       },
       {
-        title: "Müşteri Geri Bildirimi",
-        titleTr: "Müşteri Geri Bildirimi",
-        url: "/musteri-geribildirimi",
+        title: "Misafir Geri Bildirimi",
+        titleTr: "Misafir Geri Bildirimi",
+        url: "/misafir-geri-bildirim",
         icon: Star,
         module: "dashboard",
       },

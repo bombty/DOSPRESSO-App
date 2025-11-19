@@ -97,7 +97,7 @@ export default function MusteriFeedbackPublic() {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-2xl" data-testid="heading-feedback-form">
-            DOSPRESSO - Müşteri Geri Bildirimi
+            DOSPRESSO - Misafir Geri Bildirimi
           </CardTitle>
           <CardDescription>
             Deneyiminizi bizimle paylaşın

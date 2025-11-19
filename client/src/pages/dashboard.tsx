@@ -12,12 +12,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { AnnouncementBanner } from "@/components/announcement-banner";
-import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench } from "lucide-react";
+import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Task, EquipmentFault, PerformanceMetric, AISummaryResponse, SummaryCategoryType, User as UserType, Branch } from "@shared/schema";
 
 export default function Dashboard() {
@@ -62,6 +63,113 @@ export default function Dashboard() {
 
   const latestMetric = metrics?.[0];
   const completionRate = latestMetric?.completionRate || 0;
+
+  // Task Completion Trend Data (Last 7 days) - Turkey timezone aware
+  const taskTrendData = useMemo(() => {
+    if (!tasks) return [];
+    
+    const turkeyTZ = 'Europe/Istanbul';
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return new Intl.DateTimeFormat('tr-TR', { 
+        timeZone: turkeyTZ, 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      }).format(date).split('.').reverse().join('-');
+    });
+    
+    return last7Days.map(date => {
+      const dayTasks = tasks.filter(t => {
+        if (!t.createdAt) return false;
+        const taskDate = new Intl.DateTimeFormat('tr-TR', { 
+          timeZone: turkeyTZ, 
+          year: 'numeric', 
+          month: '2-digit', 
+          day: '2-digit' 
+        }).format(new Date(t.createdAt)).split('.').reverse().join('-');
+        return taskDate === date;
+      });
+      
+      const completed = dayTasks.filter(t => t.status === "tamamlandi" || t.status === "onaylandi").length;
+      const total = dayTasks.length;
+      
+      return {
+        date: new Intl.DateTimeFormat('tr-TR', { 
+          timeZone: turkeyTZ, 
+          day: '2-digit', 
+          month: 'short' 
+        }).format(new Date(date)),
+        completed,
+        total,
+        rate: total > 0 ? Math.round((completed / total) * 100) : 0
+      };
+    });
+  }, [tasks]);
+
+  // Equipment MTTR Data (Mean Time To Repair in hours)
+  const mttrData = useMemo(() => {
+    if (!faults) return [];
+    
+    const resolvedFaults = faults.filter(f => f.status === "cozuldu" && f.resolvedAt && f.createdAt);
+    
+    const equipmentMTTR: Record<string, { total: number; count: number; name: string }> = {};
+    
+    resolvedFaults.forEach(fault => {
+      const key = `${fault.equipmentId}`;
+      const reportedTime = new Date(fault.createdAt!).getTime();
+      const resolvedTime = new Date(fault.resolvedAt!).getTime();
+      const hoursToResolve = (resolvedTime - reportedTime) / (1000 * 60 * 60);
+      
+      if (!equipmentMTTR[key]) {
+        equipmentMTTR[key] = { 
+          total: 0, 
+          count: 0, 
+          name: fault.equipmentName || `Ekipman #${fault.equipmentId}` 
+        };
+      }
+      
+      equipmentMTTR[key].total += hoursToResolve;
+      equipmentMTTR[key].count += 1;
+    });
+    
+    return Object.entries(equipmentMTTR)
+      .map(([id, data]) => ({
+        equipment: data.name,
+        mttr: Math.round(data.total / data.count)
+      }))
+      .sort((a, b) => b.mttr - a.mttr)
+      .slice(0, 5);
+  }, [faults]);
+
+  // Branch Leaderboard Data
+  const branchLeaderboardData = useMemo(() => {
+    if (!branches || !tasks || !faults) return [];
+    
+    return branches.map(branch => {
+      const branchTasks = tasks.filter(t => t.branchId === branch.id);
+      const branchFaults = faults.filter(f => f.branchId === branch.id);
+      
+      const completedCount = branchTasks.filter(t => t.status === "tamamlandi" || t.status === "onaylandi").length;
+      const totalTasks = branchTasks.length;
+      const completionRate = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+      
+      const resolvedFaults = branchFaults.filter(f => f.status === "cozuldu").length;
+      const totalFaults = branchFaults.length;
+      
+      return {
+        name: branch.name,
+        completionRate,
+        totalTasks,
+        completedTasks: completedCount,
+        resolvedFaults,
+        totalFaults
+      };
+    })
+    .sort((a, b) => b.completionRate - a.completionRate)
+    .slice(0, 5);
+  }, [branches, tasks, faults]);
 
   // Check if user has access to AI summaries (HQ users or supervisors)
   const HQ_ROLES = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
@@ -345,6 +453,127 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Analytics Charts */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Task Completion Trend Chart */}
+        <Card data-testid="card-task-trend-chart">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LineChartIcon className="h-5 w-5" />
+              Görev Tamamlanma Trendi
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Son 7 günlük görev performansı</p>
+          </CardHeader>
+          <CardContent>
+            {tasksLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : taskTrendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={taskTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="completed" stroke="hsl(var(--primary))" strokeWidth={2} name="Tamamlanan" />
+                  <Line type="monotone" dataKey="total" stroke="hsl(var(--muted-foreground))" strokeWidth={2} name="Toplam" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Henüz veri yok
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Equipment MTTR Chart */}
+        <Card data-testid="card-mttr-chart">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Ekipman Arıza Çözüm Süresi (MTTR)
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Ortalama çözüm süresi (saat)</p>
+          </CardHeader>
+          <CardContent>
+            {faultsLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : mttrData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={mttrData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="equipment" className="text-xs" angle={-45} textAnchor="end" height={100} />
+                  <YAxis className="text-xs" />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Bar dataKey="mttr" fill="hsl(var(--primary))" name="MTTR (saat)" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Henüz çözülen arıza yok
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Branch Leaderboard */}
+      <Card data-testid="card-branch-leaderboard">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5" />
+            Şube Performans Sıralaması
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Görev tamamlanma oranına göre en iyi 5 şube</p>
+        </CardHeader>
+        <CardContent>
+          {tasksLoading || faultsLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : branchLeaderboardData.length > 0 ? (
+            <div className="space-y-3">
+              {branchLeaderboardData.map((branch, index) => (
+                <div
+                  key={branch.name}
+                  className="flex items-center justify-between border rounded-md p-4 hover-elevate"
+                  data-testid={`branch-rank-${index + 1}`}
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                      <span className="text-sm font-bold text-primary">#{index + 1}</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{branch.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {branch.completedTasks}/{branch.totalTasks} görev • {branch.resolvedFaults}/{branch.totalFaults} arıza çözüldü
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-primary">{branch.completionRate}%</div>
+                    <p className="text-xs text-muted-foreground">Tamamlanma</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              Henüz şube verisi yok
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {canAccessAISummaries && (
         <>
