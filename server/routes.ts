@@ -1901,6 +1901,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Global service requests list endpoint (HQ management page)
+  app.get('/api/service-requests', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { ServiceRequestStatusType } = await import('@shared/schema');
+      const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const requestedStatus = req.query.status as typeof ServiceRequestStatusType | undefined;
+      
+      // HQ users can see all service requests or filter by branch
+      // Branch users can only see their own branch's service requests
+      let branchId = requestedBranchId;
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        branchId = assertBranchScope(user);
+        if (requestedBranchId && requestedBranchId !== branchId) {
+          return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+        }
+      }
+      
+      // Get all equipment for the branch (or all if HQ)
+      const allEquipment = await storage.getEquipment(branchId);
+      
+      // Get service requests for each equipment
+      const allRequests = [];
+      for (const equipment of allEquipment) {
+        const requests = await storage.listServiceRequests(equipment.id, requestedStatus);
+        allRequests.push(...requests.map(r => ({
+          ...r,
+          equipmentName: equipment.name,
+          equipmentType: equipment.type,
+          branchId: equipment.branchId,
+        })));
+      }
+      
+      // Sort by created date (newest first)
+      allRequests.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+      
+      res.json(allRequests);
+    } catch (error: any) {
+      console.error("Error fetching service requests:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to fetch service requests" });
+    }
+  });
+
   app.get('/api/knowledge-base', isAuthenticated, async (req, res) => {
     try {
       const category = req.query.category as string | undefined;

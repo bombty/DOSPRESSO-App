@@ -45,6 +45,7 @@ import Settings from "@/pages/yonetim/ayarlar";
 import UserCRM from "@/pages/yonetim/kullanicilar";
 import AICostDashboard from "@/pages/yonetim/ai-maliyetler";
 import AdminChecklistManagement from "@/pages/yonetim/checklistler";
+import ServiceRequestsManagement from "@/pages/yonetim/servis-talepleri";
 import KaliteDenetimi from "@/pages/kalite-denetimi";
 import MusteriGeribildirimi from "@/pages/musteri-geribildirimi";
 import MusteriFeedbackPublic from "@/pages/musteri-feedback-public";
@@ -105,6 +106,7 @@ function Router() {
           <Route path="/yonetim/kullanicilar" component={UserCRM} />
           <Route path="/yonetim/ai-maliyetler" component={AICostDashboard} />
           <Route path="/yonetim/checklistler" component={AdminChecklistManagement} />
+          <Route path="/yonetim/servis-talepleri" component={ServiceRequestsManagement} />
         </>
       )}
       <Route component={NotFound} />
