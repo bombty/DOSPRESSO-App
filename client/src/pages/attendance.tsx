@@ -96,7 +96,7 @@ export default function AttendancePage() {
       if (!uploadedPhotoUrl) {
         throw new Error("Fotoğraf yüklemesi zorunludur");
       }
-      return apiRequest("/api/shift-attendance", "POST", {
+      return apiRequest("POST", "/api/shift-attendance", {
         photoUrl: uploadedPhotoUrl,
       });
     },

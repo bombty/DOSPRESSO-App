@@ -110,7 +110,7 @@ export default function EquipmentFaults() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FaultFormData) => {
-      await apiRequest("/api/faults", "POST", data);
+      await apiRequest("POST", "/api/faults", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/faults"] });

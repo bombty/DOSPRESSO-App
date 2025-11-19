@@ -30,7 +30,7 @@ export default function AIAssistant() {
 
   const askMutation = useMutation({
     mutationFn: async (q: string) => {
-      return await apiRequest("/api/knowledge-base/ask", "POST", { question: q }) as QAResponse;
+      return await apiRequest("POST", "/api/knowledge-base/ask", { question: q }) as QAResponse;
     },
     onSuccess: (data: QAResponse) => {
       setConversation(prev => [...prev, {

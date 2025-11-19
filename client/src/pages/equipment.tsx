@@ -67,7 +67,7 @@ export default function Equipment() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertEquipment) => {
-      await apiRequest("/api/equipment", "POST", data);
+      await apiRequest("POST", "/api/equipment", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
@@ -156,7 +156,7 @@ export default function Equipment() {
 
   const bulkQRMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("/api/equipment/generate-qr-bulk", "POST", {});
+      const response = await apiRequest("POST", "/api/equipment/generate-qr-bulk", {});
       return response;
     },
     onSuccess: (data: any) => {

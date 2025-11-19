@@ -51,7 +51,7 @@ export default function ContentManagement() {
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: InsertPageContent) =>
-      apiRequest("/api/admin/page-content", "POST", data),
+      apiRequest("POST", "/api/admin/page-content", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/page-content"] });
       toast({ title: "Başarılı", description: "İçerik oluşturuldu" });

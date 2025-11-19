@@ -565,7 +565,7 @@ function AddEmployeeDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof createEmployeeSchema>) => {
-      return apiRequest("/api/employees", "POST", data);
+      return apiRequest("POST", "/api/employees", data);
     },
     onSuccess: () => {
       toast({

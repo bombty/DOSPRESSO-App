@@ -43,7 +43,7 @@ export default function KnowledgeBase() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertKnowledgeBaseArticle) => {
-      await apiRequest("/api/knowledge-base", "POST", data);
+      await apiRequest("POST", "/api/knowledge-base", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base"] });

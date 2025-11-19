@@ -118,7 +118,7 @@ export default function Checklists() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertChecklist) => {
-      await apiRequest("/api/checklists", "POST", data);
+      await apiRequest("POST", "/api/checklists", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/checklists"] });

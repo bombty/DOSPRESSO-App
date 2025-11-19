@@ -36,7 +36,7 @@ export default function Branches() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertBranch) => {
-      await apiRequest("/api/branches", "POST", data);
+      await apiRequest("POST", "/api/branches", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/branches"] });

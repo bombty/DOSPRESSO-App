@@ -369,7 +369,7 @@ export default function AdminMenuManagement() {
 
   // Section Mutations
   const createSectionMutation = useMutation({
-    mutationFn: (data: InsertMenuSection) => apiRequest("/api/admin/menu/sections", "POST", data),
+    mutationFn: (data: InsertMenuSection) => apiRequest("POST", "/api/admin/menu/sections", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();
@@ -411,7 +411,7 @@ export default function AdminMenuManagement() {
 
   const reorderSectionsMutation = useMutation({
     mutationFn: (sectionIds: number[]) => 
-      apiRequest("/api/admin/menu/sections/order", "PATCH", { sectionIds }),
+      apiRequest("PATCH", "/api/admin/menu/sections/order", { sectionIds }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();
@@ -423,7 +423,7 @@ export default function AdminMenuManagement() {
 
   // Item Mutations
   const createItemMutation = useMutation({
-    mutationFn: (data: InsertMenuItem) => apiRequest("/api/admin/menu/items", "POST", data),
+    mutationFn: (data: InsertMenuItem) => apiRequest("POST", "/api/admin/menu/items", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();
@@ -465,7 +465,7 @@ export default function AdminMenuManagement() {
 
   const reorderItemsMutation = useMutation({
     mutationFn: (itemIds: number[]) => 
-      apiRequest("/api/admin/menu/items/order", "PATCH", { itemIds }),
+      apiRequest("PATCH", "/api/admin/menu/items/order", { itemIds }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();
@@ -478,7 +478,7 @@ export default function AdminMenuManagement() {
   // Visibility Rule Mutations
   const createRuleMutation = useMutation({
     mutationFn: (data: InsertMenuVisibilityRule) => 
-      apiRequest("/api/admin/menu/visibility-rules", "POST", data),
+      apiRequest("POST", "/api/admin/menu/visibility-rules", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
       invalidateMenuCache();

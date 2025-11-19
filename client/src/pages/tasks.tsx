@@ -120,7 +120,7 @@ export default function Tasks() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertTask) => {
-      await apiRequest("/api/tasks", "POST", data);
+      await apiRequest("POST", "/api/tasks", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });

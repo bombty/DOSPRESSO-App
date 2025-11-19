@@ -54,7 +54,7 @@ export default function Training() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertTrainingModule) => {
-      await apiRequest("/api/training/modules", "POST", data);
+      await apiRequest("POST", "/api/training/modules", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
