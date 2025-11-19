@@ -73,6 +73,38 @@ Preferred communication style: Simple, everyday language.
   - **HQ Features**: Branch filter dropdown, all users assignee dropdown
   - **Responsive**: 3-column filter grid (mobile 1, tablet 2, desktop 3)
 
+### Checklist Management System (Tasks 16-20, November 19, 2025 - ✅ COMPLETED)
+- **Atomic Transaction Implementation**:
+  - Drizzle `db.transaction()` wraps checklist + tasks creation
+  - All-or-nothing guarantee (partial data impossible)
+  - Automatic rollback on any error (browser/network crashes protected)
+  - Storage layer: `createChecklistWithTasks(checklistData, tasks)` method
+- **Order Uniqueness Validation**:
+  - Pre-transaction duplicate check (O(n) filter/indexOf)
+  - Individual task POST endpoint validates against existing tasks
+  - Returns 400 error if duplicate order found
+- **Backend Routes** (`/api/checklists`):
+  - GET: List all checklists (HQ sees all, branches filtered by branchId)
+  - POST: Atomic creation with tasks array, Zod validation, duplicate order check
+  - PATCH: Update checklist settings (role-based: coach always, supervisors if isEditable)
+  - DELETE: Remove checklist + cascade tasks (ensurePermission guard)
+  - POST `/api/checklists/:id/tasks`: Add individual task with order validation
+  - PATCH `/api/checklists/:id/tasks/:taskId`: Update task
+  - DELETE `/api/checklists/:id/tasks/:taskId`: Remove task
+- **Frontend HQ Management** (`/yonetim/checklistler`):
+  - Create/edit checklists with nested tasks via dialog
+  - Dynamic task list (add/remove rows, reorder)
+  - Frequency/category dropdowns, time window pickers
+  - Single POST mutation with tasks array
+  - Both queryKeys invalidated (`/api/checklists`, `/api/checklist-tasks`)
+  - HQ-only client guard (useAuth + isHQRole check)
+- **Frontend Branch View** (`/checklistler`):
+  - View assigned checklists by frequency/category
+  - Filter/search functionality
+  - Display checklist details + task list
+- **Authorization**: All endpoints protected with `ensurePermission('checklists', 'create|edit|delete')`
+- **Architect Approval**: ✅ PASS - "Atomic transaction meets all reliability requirements"
+
 ### Test Users
 - **testadmin** (admin, no branch) - password: "test123"
 - **testsupervisor** (supervisor, branchId=4) - password: "test123"
