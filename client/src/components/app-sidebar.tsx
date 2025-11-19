@@ -571,12 +571,17 @@ export function AppSidebar() {
         method: 'POST',
         credentials: 'include',
       });
+      
+      // Clear all client-side caches
+      queryClient.clear();
+      
+      // Hard redirect to login (clears all React state and session)
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
+      // Even on error, redirect to login
+      window.location.href = '/login';
     }
-    
-    queryClient.clear();
-    navigate('/login');
   };
 
   return (

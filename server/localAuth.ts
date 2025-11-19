@@ -151,16 +151,16 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  // Logout endpoint
-  app.post("/api/logout", (req, res) => {
-    req.logout((err) => {
+  // Logout handler (shared logic)
+  const logoutHandler = (req: any, res: any) => {
+    req.logout((err: any) => {
       if (err) {
         console.error("[Auth] Logout error:", err);
         return res.status(500).json({ error: "Logout failed" });
       }
       
       // Destroy session and clear cookie
-      req.session.destroy((destroyErr) => {
+      req.session.destroy((destroyErr: any) => {
         if (destroyErr) {
           console.error("[Auth] Session destroy error:", destroyErr);
           return res.status(500).json({ error: "Session destroy failed" });
@@ -176,7 +176,11 @@ export async function setupAuth(app: Express) {
         res.json({ message: "Logged out" });
       });
     });
-  });
+  };
+
+  // Logout endpoints (both paths for compatibility)
+  app.post("/api/logout", logoutHandler);
+  app.post("/api/auth/logout", logoutHandler);
 
   // Debug endpoint to check session status
   app.get("/api/debug/session", (req, res) => {
