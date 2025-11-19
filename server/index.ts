@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import { startSLACheckSystem } from "./reminders";
 
 const app = express();
 
@@ -88,6 +89,9 @@ app.use((req, res, next) => {
     
     // Start shift reminder job (runs every 10 minutes)
     startShiftReminderJob();
+    
+    // Start SLA check system (runs every 15 minutes)
+    startSLACheckSystem();
   });
 })();
 

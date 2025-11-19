@@ -3,8 +3,10 @@ import type { Task, Equipment, User } from "@shared/schema";
 
 const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 const MAINTENANCE_WARNING_DAYS = 7; // Notify 7 days before maintenance due
+const SLA_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
 
 let reminderInterval: NodeJS.Timeout | null = null;
+let slaInterval: NodeJS.Timeout | null = null;
 
 // Track sent maintenance notifications to avoid duplicates
 // Map<equipmentId, nextMaintenanceDate> to handle maintenance date updates
@@ -141,5 +143,26 @@ export function stopReminderSystem() {
     clearInterval(reminderInterval);
     reminderInterval = null;
     console.log("Hatırlatma sistemi durduruldu");
+  }
+}
+
+export function startSLACheckSystem() {
+  if (slaInterval) {
+    console.log("SLA kontrol sistemi zaten çalışıyor");
+    return;
+  }
+
+  console.log("SLA kontrol sistemi başlatıldı - Her 15 dakikada bir kontrol edilecek");
+  
+  storage.checkSLABreaches();
+  
+  slaInterval = setInterval(() => storage.checkSLABreaches(), SLA_CHECK_INTERVAL);
+}
+
+export function stopSLACheckSystem() {
+  if (slaInterval) {
+    clearInterval(slaInterval);
+    slaInterval = null;
+    console.log("SLA kontrol sistemi durduruldu");
   }
 }
