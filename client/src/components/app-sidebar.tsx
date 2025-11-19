@@ -334,11 +334,11 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
-  // BOTH - Herkes
+  // HQ - Destek & AI
   {
     groupTr: "Destek",
     icon: MessageSquare,
-    scope: "both",
+    scope: "hq",
     items: [
       {
         title: "HQ Destek",
