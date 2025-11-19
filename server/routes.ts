@@ -2916,9 +2916,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         generateFlashcardsFromLesson(lesson.content, flashcardCount, lessonId),
       ]);
 
+      // Create quiz in database with questions
+      const quiz = await storage.createModuleQuiz({
+        moduleId: lesson.moduleId,
+        title: `${lesson.title} - Quiz`,
+        description: `AI-generated quiz for ${lesson.title}`,
+        passingScore: 70,
+        timeLimit: 15,
+      });
+
+      // Save each quiz question
+      for (const q of quizQuestions) {
+        await storage.createQuizQuestion({
+          quizId: quiz.id,
+          question: q.question || q.questionText || '',
+          questionType: q.questionType || 'multiple_choice',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer || '',
+          explanation: q.explanation,
+          points: q.points || 10,
+        });
+      }
+
+      // Save each flashcard
+      for (const card of flashcards) {
+        await storage.createFlashcard({
+          moduleId: lesson.moduleId,
+          front: card.front,
+          back: card.back,
+          difficulty: card.difficulty || 'medium',
+        });
+      }
+
       res.json({
-        quizQuestions,
-        flashcards,
+        quizId: quiz.id,
+        questionCount: quizQuestions.length,
+        flashcardCount: flashcards.length,
         message: `${quizQuestions.length} quiz sorusu ve ${flashcards.length} flashcard oluşturuldu`,
       });
     } catch (error) {
