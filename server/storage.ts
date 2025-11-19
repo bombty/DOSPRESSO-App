@@ -193,10 +193,13 @@ export interface IStorage {
     timeWindowEnd: string;
   }>): Promise<Checklist | undefined>;
   updateChecklistWithTasks(id: number, updates: UpdateChecklist): Promise<Checklist | undefined>;
+  deleteChecklist(id: number): Promise<void>;
   
   // Checklist Task operations
   getChecklistTasks(checklistId?: number): Promise<ChecklistTask[]>;
   createChecklistTask(task: InsertChecklistTask): Promise<ChecklistTask>;
+  updateChecklistTask(id: number, updates: Partial<InsertChecklistTask>): Promise<ChecklistTask | undefined>;
+  deleteChecklistTask(id: number): Promise<void>;
   
   // Equipment operations
   getEquipment(branchId?: number): Promise<Equipment[]>;
@@ -824,6 +827,22 @@ export class DatabaseStorage implements IStorage {
   async createChecklistTask(task: InsertChecklistTask): Promise<ChecklistTask> {
     const [newTask] = await db.insert(checklistTasks).values(task).returning();
     return newTask;
+  }
+
+  async updateChecklistTask(id: number, updates: Partial<InsertChecklistTask>): Promise<ChecklistTask | undefined> {
+    const [updated] = await db.update(checklistTasks)
+      .set(updates)
+      .where(eq(checklistTasks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteChecklistTask(id: number): Promise<void> {
+    await db.delete(checklistTasks).where(eq(checklistTasks.id, id));
+  }
+
+  async deleteChecklist(id: number): Promise<void> {
+    await db.delete(checklists).where(eq(checklists.id, id));
   }
 
   // Equipment operations

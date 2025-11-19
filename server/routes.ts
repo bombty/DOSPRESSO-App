@@ -1023,6 +1023,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/checklists/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'view');
+      const id = parseInt(req.params.id);
+      const checklist = await storage.getChecklist(id);
+      if (!checklist) {
+        return res.status(404).json({ message: "Checklist bulunamadı" });
+      }
+      const tasks = await storage.getChecklistTasks(id);
+      res.json({ ...checklist, tasks });
+    } catch (error) {
+      console.error("Error fetching checklist:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Checklist getirilemedi" });
+    }
+  });
+
+  app.delete('/api/checklists/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'delete');
+      const id = parseInt(req.params.id);
+      await storage.deleteChecklist(id);
+      res.json({ message: "Checklist silindi" });
+    } catch (error) {
+      console.error("Error deleting checklist:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Checklist silinemedi" });
+    }
+  });
+
   app.get('/api/checklist-tasks', isAuthenticated, async (req, res) => {
     try {
       const checklistId = req.query.checklistId ? parseInt(req.query.checklistId as string) : undefined;
@@ -1031,6 +1067,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching checklist tasks:", error);
       res.status(500).json({ message: "Failed to fetch checklist tasks" });
+    }
+  });
+
+  app.post('/api/checklists/:id/tasks', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'create');
+      const checklistId = parseInt(req.params.id);
+      const { insertChecklistTaskSchema } = await import('@shared/schema');
+      const validatedData = insertChecklistTaskSchema.parse({ ...req.body, checklistId });
+      const task = await storage.createChecklistTask(validatedData);
+      res.json(task);
+    } catch (error: any) {
+      console.error("Error creating checklist task:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Task oluşturulamadı" });
+    }
+  });
+
+  app.patch('/api/checklists/:id/tasks/:taskId', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'update');
+      const taskId = parseInt(req.params.taskId);
+      const { insertChecklistTaskSchema } = await import('@shared/schema');
+      const validatedData = insertChecklistTaskSchema.partial().parse(req.body);
+      const task = await storage.updateChecklistTask(taskId, validatedData);
+      if (!task) {
+        return res.status(404).json({ message: "Task bulunamadı" });
+      }
+      res.json(task);
+    } catch (error: any) {
+      console.error("Error updating checklist task:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Task güncellenemedi" });
+    }
+  });
+
+  app.delete('/api/checklists/:id/tasks/:taskId', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'delete');
+      const taskId = parseInt(req.params.taskId);
+      await storage.deleteChecklistTask(taskId);
+      res.json({ message: "Task silindi" });
+    } catch (error) {
+      console.error("Error deleting checklist task:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Task silinemedi" });
     }
   });
 
