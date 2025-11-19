@@ -7935,6 +7935,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // OVERTIME REQUESTS - Mesai Talepleri
+  // ========================================
+
+  app.get('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { status } = req.query;
+      
+      ensurePermission(user, 'attendance', 'view', 'Mesai taleplerini görüntülemek için yetkiniz yok');
+      
+      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role as any);
+      
+      let requests = await storage.getOvertimeRequests(user.id, canApprove);
+      
+      if (status && status !== 'all') {
+        requests = requests.filter((r: any) => r.status === status);
+      }
+      
+      res.json(requests);
+    } catch (error: any) {
+      console.error("Error fetching overtime requests:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Mesai talepleri yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      ensurePermission(user, 'attendance', 'create', 'Mesai talebi oluşturmak için yetkiniz yok');
+      
+      const validated = insertOvertimeRequestSchema.parse({
+        ...req.body,
+        userId: user.id,
+      });
+      
+      const request = await storage.createOvertimeRequest(validated);
+      res.status(201).json(request);
+    } catch (error: any) {
+      console.error("Error creating overtime request:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Mesai talebi oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/overtime-requests/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+      const { approvedMinutes } = req.body;
+      
+      ensurePermission(user, 'attendance', 'edit', 'Mesai taleplerini onaylamak için yetkiniz yok');
+      
+      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role as any);
+      if (!canApprove) {
+        return res.status(403).json({ message: "Sadece yöneticiler mesai taleplerini onaylayabilir" });
+      }
+      
+      const updated = await storage.approveOvertimeRequest(requestId, user.id, approvedMinutes);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error approving overtime request:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Mesai talebi onaylanırken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/overtime-requests/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+      const { rejectionReason } = req.body;
+      
+      ensurePermission(user, 'attendance', 'edit', 'Mesai taleplerini reddetmek için yetkiniz yok');
+      
+      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role as any);
+      if (!canApprove) {
+        return res.status(403).json({ message: "Sadece yöneticiler mesai taleplerini reddedebilir" });
+      }
+      
+      const updated = await storage.rejectOvertimeRequest(requestId, rejectionReason);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error rejecting overtime request:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Mesai talebi reddedilirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/shift-attendances/my-recent', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      const attendances = await storage.getRecentShiftAttendances(user.id, 30);
+      res.json(attendances);
+    } catch (error) {
+      console.error("Error fetching recent shift attendances:", error);
+      res.status(500).json({ message: "Vardiyalar yüklenirken hata oluştu" });
+    }
+  });
+
   app.post('/api/sla/check-breaches', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;

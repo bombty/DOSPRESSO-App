@@ -490,6 +490,13 @@ export interface IStorage {
   updateSiteSetting(key: string, value: string, updatedBy: string): Promise<SiteSetting>;
   createSiteSetting(setting: InsertSiteSetting): Promise<SiteSetting>;
   deleteSiteSetting(key: string): Promise<void>;
+
+  // Overtime Request operations
+  getOvertimeRequests(userId: string, canApprove: boolean): Promise<OvertimeRequest[]>;
+  createOvertimeRequest(data: InsertOvertimeRequest): Promise<OvertimeRequest>;
+  approveOvertimeRequest(id: number, approverId: string, approvedMinutes: number): Promise<OvertimeRequest | undefined>;
+  rejectOvertimeRequest(id: number, rejectionReason: string): Promise<OvertimeRequest | undefined>;
+  getRecentShiftAttendances(userId: string, days: number): Promise<ShiftAttendance[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3596,6 +3603,72 @@ export class DatabaseStorage implements IStorage {
   async deleteEquipmentTroubleshootingStep(id: number): Promise<void> {
     await db.delete(equipmentTroubleshootingSteps)
       .where(eq(equipmentTroubleshootingSteps.id, id));
+  }
+
+  // ========================================
+  // OVERTIME REQUESTS - Mesai Talepleri
+  // ========================================
+
+  async getOvertimeRequests(userId: string, canApprove: boolean): Promise<OvertimeRequest[]> {
+    if (canApprove) {
+      // Supervisors/HQ see all requests for their scope
+      return await db.select().from(overtimeRequests).orderBy(desc(overtimeRequests.createdAt));
+    } else {
+      // Employees see only their own requests
+      return await db.select()
+        .from(overtimeRequests)
+        .where(eq(overtimeRequests.userId, userId))
+        .orderBy(desc(overtimeRequests.createdAt));
+    }
+  }
+
+  async createOvertimeRequest(data: InsertOvertimeRequest): Promise<OvertimeRequest> {
+    const [request] = await db.insert(overtimeRequests)
+      .values(data)
+      .returning();
+    return request;
+  }
+
+  async approveOvertimeRequest(id: number, approverId: string, approvedMinutes: number): Promise<OvertimeRequest | undefined> {
+    const [updated] = await db.update(overtimeRequests)
+      .set({
+        status: "approved",
+        approverId,
+        approvedMinutes,
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(overtimeRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async rejectOvertimeRequest(id: number, rejectionReason: string): Promise<OvertimeRequest | undefined> {
+    const [updated] = await db.update(overtimeRequests)
+      .set({
+        status: "rejected",
+        rejectionReason,
+        updatedAt: new Date(),
+      })
+      .where(eq(overtimeRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getRecentShiftAttendances(userId: string, days: number): Promise<ShiftAttendance[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    return await db.select()
+      .from(shiftAttendance)
+      .where(
+        and(
+          eq(shiftAttendance.userId, userId),
+          sql`${shiftAttendance.checkInTime} >= ${cutoffDate.toISOString()}`
+        )
+      )
+      .orderBy(desc(shiftAttendance.checkInTime))
+      .limit(50);
   }
 }
 

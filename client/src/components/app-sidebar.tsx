@@ -285,6 +285,13 @@ const menuGroups: MenuGroup[] = [
         module: "employees",
       },
       {
+        title: "Mesai Talepleri",
+        titleTr: "Mesai Talepleri",
+        url: "/mesai-talepleri",
+        icon: Clock,
+        module: "employees",
+      },
+      {
         title: "İK Raporları",
         titleTr: "İK Raporları",
         url: "/ik-raporlari",

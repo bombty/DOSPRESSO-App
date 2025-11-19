@@ -406,6 +406,9 @@ export const branches = pgTable("branches", {
   closingHours: time("closing_hours", { precision: 0 }).default(sql`'22:00'::time`),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
+  shiftCornerPhotoUrl: text("shift_corner_photo_url"),
+  shiftCornerLatitude: numeric("shift_corner_latitude", { precision: 10, scale: 7 }),
+  shiftCornerLongitude: numeric("shift_corner_longitude", { precision: 10, scale: 7 }),
 });
 
 export const insertBranchSchema = createInsertSchema(branches).omit({
@@ -1698,6 +1701,24 @@ export const shiftAttendance = pgTable("shift_attendance", {
   checkOutPhotoUrl: text("check_out_photo_url"),
   checkOutLatitude: numeric("check_out_latitude", { precision: 10, scale: 7 }),
   checkOutLongitude: numeric("check_out_longitude", { precision: 10, scale: 7 }),
+  // Break Photo & Location fields
+  breakStartPhotoUrl: text("break_start_photo_url"),
+  breakStartLatitude: numeric("break_start_latitude", { precision: 10, scale: 7 }),
+  breakStartLongitude: numeric("break_start_longitude", { precision: 10, scale: 7 }),
+  breakEndPhotoUrl: text("break_end_photo_url"),
+  breakEndLatitude: numeric("break_end_latitude", { precision: 10, scale: 7 }),
+  breakEndLongitude: numeric("break_end_longitude", { precision: 10, scale: 7 }),
+  // AI Background Verification (Shift Corner matching)
+  aiBackgroundCheckInStatus: varchar("ai_background_check_in_status", { length: 20 }).default("pending"), // pending, verified, rejected, error
+  aiBackgroundCheckInScore: integer("ai_background_check_in_score"), // 0-100 similarity score
+  aiBackgroundCheckInDetails: jsonb("ai_background_check_in_details"),
+  aiBackgroundCheckOutStatus: varchar("ai_background_check_out_status", { length: 20 }).default("pending"),
+  aiBackgroundCheckOutScore: integer("ai_background_check_out_score"),
+  aiBackgroundCheckOutDetails: jsonb("ai_background_check_out_details"),
+  aiBackgroundBreakStartStatus: varchar("ai_background_break_start_status", { length: 20 }).default("pending"),
+  aiBackgroundBreakStartScore: integer("ai_background_break_start_score"),
+  aiBackgroundBreakEndStatus: varchar("ai_background_break_end_status", { length: 20 }).default("pending"),
+  aiBackgroundBreakEndScore: integer("ai_background_break_end_score"),
   // AI Dress Code Analysis fields (check-in)
   aiDressCodeScore: integer("ai_dress_code_score"), // 0-100
   aiDressCodeAnalysis: jsonb("ai_dress_code_analysis"), // Detailed analysis object
@@ -2718,3 +2739,49 @@ export const insertEquipmentTroubleshootingStepSchema = createInsertSchema(equip
 
 export type InsertEquipmentTroubleshootingStep = z.infer<typeof insertEquipmentTroubleshootingStepSchema>;
 export type EquipmentTroubleshootingStep = typeof equipmentTroubleshootingSteps.$inferSelect;
+
+// ========================================
+// EMPLOYEE PERFORMANCE SCORES - Personel Performans Skorları  
+// ========================================
+
+export const employeePerformanceScores = pgTable("employee_performance_scores", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  week: varchar("week", { length: 10 }).notNull(), // 2025-W47
+  // Attendance & Punctuality scores
+  attendanceScore: integer("attendance_score").notNull().default(100), // 0-100
+  latenessScore: integer("lateness_score").notNull().default(100), // 0-100, decreased by lateness
+  earlyLeaveScore: integer("early_leave_score").notNull().default(100), // 0-100
+  breakComplianceScore: integer("break_compliance_score").notNull().default(100), // 0-100
+  // Shift compliance
+  shiftComplianceScore: integer("shift_compliance_score").notNull().default(100), // 0-100
+  overtimeComplianceScore: integer("overtime_compliance_score").notNull().default(100), // 0-100
+  // Totals
+  dailyTotalScore: integer("daily_total_score").notNull().default(100), // Weighted average
+  weeklyTotalScore: integer("weekly_total_score").notNull().default(100), // Week average
+  // Penalties applied
+  totalPenaltyMinutes: integer("total_penalty_minutes").notNull().default(0),
+  // Metadata
+  latenessMinutes: integer("lateness_minutes").notNull().default(0),
+  earlyLeaveMinutes: integer("early_leave_minutes").notNull().default(0),
+  breakOverageMinutes: integer("break_overage_minutes").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("performance_scores_user_idx").on(table.userId),
+  index("performance_scores_branch_idx").on(table.branchId),
+  index("performance_scores_date_idx").on(table.date),
+  index("performance_scores_week_idx").on(table.week),
+  unique("unique_user_date_performance").on(table.userId, table.date),
+]);
+
+export const insertEmployeePerformanceScoreSchema = createInsertSchema(employeePerformanceScores).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeePerformanceScore = z.infer<typeof insertEmployeePerformanceScoreSchema>;
+export type EmployeePerformanceScore = typeof employeePerformanceScores.$inferSelect;

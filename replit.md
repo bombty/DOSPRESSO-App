@@ -41,7 +41,14 @@ Preferred communication style: Simple, everyday language.
 ### Database
 - **Database**: PostgreSQL (Neon serverless).
 - **ORM**: Drizzle ORM, schema defined in `shared/schema.ts`.
-- **Schema Design**: Tables for Users, Branches, Tasks, Checklists, Equipment, KnowledgeBaseArticles, Reminders, PerformanceMetrics, HQSupportTickets, TrainingModules, EquipmentServiceRequests, ShiftTemplates, ShiftAttendances, EmployeeAvailability, Menu system. Includes `passwordResetTokens`, `auditLogs`, `roles`, `permissions`, `rolePermissions` for RBAC.
+- **Schema Design**: Tables for Users, Branches, Tasks, Checklists, Equipment, KnowledgeBaseArticles, Reminders, PerformanceMetrics, HQSupportTickets, TrainingModules, EquipmentServiceRequests, ShiftTemplates, ShiftAttendances, EmployeeAvailability, Menu system, EmployeePerformanceScores, OvertimeRequests, EquipmentTroubleshootingSteps, GuestComplaints. Includes `passwordResetTokens`, `auditLogs`, `roles`, `permissions`, `rolePermissions` for RBAC.
+- **Recent Schema Updates (2025-11-19)**:
+    - Added `shiftCornerPhotoUrl`, `shiftCornerLatitude`, `shiftCornerLongitude` to branches table for AI-powered shift verification reference points.
+    - Added break photo tracking to shiftAttendance: `breakStartPhotoUrl`, `breakStartLatitude`, `breakStartLongitude`, `breakEndPhotoUrl`, `breakEndLatitude`, `breakEndLongitude`.
+    - Added AI background verification fields to shiftAttendance: `aiBackgroundCheckInStatus`, `aiBackgroundCheckInScore`, `aiBackgroundCheckInDetails`, `aiBackgroundCheckOutStatus`, `aiBackgroundCheckOutScore`, `aiBackgroundCheckOutDetails`, `aiBackgroundBreakStartStatus`, `aiBackgroundBreakStartScore`, `aiBackgroundBreakEndStatus`, `aiBackgroundBreakEndScore`.
+    - Created `employeePerformanceScores` table for tracking daily/weekly performance metrics (attendance, lateness, break compliance, shift compliance).
+    - `overtimeRequests` table for employee overtime request workflow with supervisor approval.
+    - `equipmentTroubleshootingSteps` table for guided self-service before fault reporting.
 - **Vector Search**: `pgvector` extension for semantic similarity search.
 - **Migrations**: Managed via Drizzle Kit.
 
