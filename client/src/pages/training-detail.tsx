@@ -188,9 +188,10 @@ export default function TrainingDetail() {
         flashcardCount: 10,
       });
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       setIsGeneratingMaterials(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/training/modules", moduleId] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/training/modules", moduleId] });
+      await queryClient.refetchQueries({ queryKey: ["/api/training/modules", moduleId] });
       toast({ 
         title: "AI Materyal Oluşturuldu", 
         description: data.message || "Quiz soruları ve flashcard'lar hazır",
