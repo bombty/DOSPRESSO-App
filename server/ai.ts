@@ -9,6 +9,11 @@ const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
 });
 
+// Separate client for embeddings (Replit proxy doesn't support embeddings endpoint)
+const embeddingsClient = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+});
+
 // Cost-optimized model selection
 // gpt-4o is 60% cheaper than gpt-4-turbo for vision tasks
 const VISION_MODEL = "gpt-4o"; // For photo analysis (task, fault, cleanliness, dress code)
@@ -701,7 +706,7 @@ function chunkText(text: string, maxChunkSize: number = 1000): string[] {
 // Generate embedding for a text chunk
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const response = await openai.embeddings.create({
+    const response = await embeddingsClient.embeddings.create({
       model: "text-embedding-3-small",
       input: text,
       encoding_format: "float",
