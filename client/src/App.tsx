@@ -49,6 +49,7 @@ import AdminChecklistManagement from "@/pages/yonetim/checklistler";
 import ServiceRequestsManagement from "@/pages/yonetim/servis-talepleri";
 import KaliteDenetimi from "@/pages/kalite-denetimi";
 import MusteriGeribildirimi from "@/pages/musteri-geribildirimi";
+import Sikayetler from "@/pages/sikayetler";
 import MusteriFeedbackPublic from "@/pages/musteri-feedback-public";
 import KampanyaYonetimi from "@/pages/kampanya-yonetimi";
 import FranchiseAcilis from "@/pages/franchise-acilis";
@@ -99,6 +100,7 @@ function Router() {
           <Route path="/performans" component={Performance} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
           <Route path="/musteri-geribildirimi" component={MusteriGeribildirimi} />
+          <Route path="/sikayetler" component={Sikayetler} />
           <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
           <Route path="/franchise-acilis" component={FranchiseAcilis} />
           <Route path="/admin/seed" component={AdminSeed} />

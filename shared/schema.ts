@@ -116,7 +116,8 @@ export type PermissionModule =
   | 'training'
   | 'schedules'
   | 'messages'
-  | 'announcements';
+  | 'announcements'
+  | 'complaints';
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -137,6 +138,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view', 'create', 'edit', 'delete'],
     messages: ['view', 'create', 'delete'],
     announcements: ['view', 'create', 'edit', 'delete'],
+    complaints: ['view', 'create', 'edit', 'delete', 'approve'],
   },
   // HQ ROLES
   muhasebe: {
@@ -155,6 +157,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view'],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: ['view'],
   },
   satinalma: {
     dashboard: ['view'],
@@ -172,6 +175,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view'],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: [],
   },
   coach: {
     dashboard: ['view'],
@@ -189,6 +193,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view'],
     messages: ['view', 'create'],
     announcements: ['view', 'create', 'edit', 'delete'],
+    complaints: ['view', 'edit'],
   },
   teknik: {
     dashboard: ['view'],
@@ -206,6 +211,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view'],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: [],
   },
   destek: {
     dashboard: ['view'],
@@ -223,6 +229,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view'],
     messages: ['view', 'create'],
     announcements: ['view', 'create', 'edit'],
+    complaints: [],
   },
   fabrika: {
     dashboard: ['view'],
@@ -240,6 +247,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view'],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: [],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -257,6 +265,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: [],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: [],
   },
   // BRANCH ROLES
   supervisor: {
@@ -275,6 +284,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view', 'create', 'edit'],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: ['view', 'create', 'edit'],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -292,6 +302,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view', 'edit'],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: [],
   },
   barista: {
     dashboard: ['view'],
@@ -309,6 +320,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view'],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: [],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -326,6 +338,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view'],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: [],
   },
   stajyer: {
     dashboard: ['view'],
@@ -343,6 +356,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: ['view'],
     messages: ['view', 'create'],
     announcements: ['view'],
+    complaints: [],
   },
   yatirimci: {
     dashboard: ['view'],
@@ -360,6 +374,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     schedules: [],
     messages: ['view'],
     announcements: ['view'],
+    complaints: [],
   },
 };
 
