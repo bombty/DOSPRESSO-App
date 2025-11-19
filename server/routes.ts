@@ -7550,6 +7550,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // PERFORMANCE SCORES - Performans Skorları
+  // ========================================
+
+  // POST /api/performance/calculate - Calculate daily performance score
+  app.post('/api/performance/calculate', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { userId, branchId, date } = req.body;
+
+      // Validate input
+      if (!userId || !branchId || !date) {
+        return res.status(400).json({ message: "userId, branchId ve date alanları gerekli" });
+      }
+
+      // Permission check: users can calculate their own scores, supervisors/HQ can calculate for others
+      if (userId !== user.id) {
+        ensurePermission(user, 'attendance', 'edit', 'Başkasının performans skorunu hesaplamak için yetkiniz yok');
+      }
+
+      const score = await storage.calculateAndSaveDailyPerformanceScore(userId, branchId, date);
+      res.json(score);
+    } catch (error: any) {
+      console.error("Error calculating performance score:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Performans skoru hesaplanırken hata oluştu" });
+    }
+  });
+
+  // GET /api/performance/:userId - Get performance scores for a user
+  app.get('/api/performance/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { userId } = req.params;
+      const { startDate, endDate } = req.query;
+
+      // Permission check: users can view their own scores, supervisors/HQ can view others'
+      if (userId !== user.id) {
+        ensurePermission(user, 'attendance', 'view', 'Başkasının performans skorunu görüntülemek için yetkiniz yok');
+      }
+
+      const scores = await storage.getPerformanceScores(userId, startDate as string, endDate as string);
+      res.json(scores);
+    } catch (error: any) {
+      console.error("Error fetching performance scores:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Performans skorları yüklenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/performance/:userId/week/:week - Get weekly performance summary
+  app.get('/api/performance/:userId/week/:week', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { userId, week } = req.params;
+
+      // Permission check
+      if (userId !== user.id) {
+        ensurePermission(user, 'attendance', 'view', 'Başkasının haftalık performansını görüntülemek için yetkiniz yok');
+      }
+
+      const summary = await storage.getWeeklyPerformanceSummary(userId, week);
+      res.json(summary);
+    } catch (error: any) {
+      console.error("Error fetching weekly performance summary:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Haftalık performans özeti yüklenirken hata oluştu" });
+    }
+  });
+
   app.get('/api/guest-complaints', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;

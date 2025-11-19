@@ -193,6 +193,13 @@ const menuGroups: MenuGroup[] = [
         module: "equipment_faults",
       },
       {
+        title: "Ekipman Troubleshooting",
+        titleTr: "Ekipman Troubleshooting",
+        url: "/ekipman-troubleshooting",
+        icon: Wrench,
+        module: "equipment",
+      },
+      {
         title: "QR Tara",
         titleTr: "QR Tara",
         url: "/qr-tara",

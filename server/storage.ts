@@ -82,6 +82,8 @@ import type {
   InsertGuestComplaint,
   EquipmentTroubleshootingStep,
   InsertEquipmentTroubleshootingStep,
+  EmployeePerformanceScore,
+  InsertEmployeePerformanceScore,
   MenuSection,
   InsertMenuSection,
   MenuItem,
@@ -159,6 +161,7 @@ import {
   monthlyAttendanceSummaries,
   guestComplaints,
   equipmentTroubleshootingSteps,
+  employeePerformanceScores,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -3636,6 +3639,179 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(shiftAttendance.checkInTime))
       .limit(50);
+  }
+
+  // ========================================
+  // EMPLOYEE PERFORMANCE SCORES
+  // ========================================
+
+  async calculateAndSaveDailyPerformanceScore(userId: string, branchId: number, date: string): Promise<EmployeePerformanceScore> {
+    // Get all shift attendances for this user on this date
+    const attendances = await db.select()
+      .from(shiftAttendance)
+      .innerJoin(shifts, eq(shiftAttendance.shiftId, shifts.id))
+      .where(and(
+        eq(shiftAttendance.userId, userId),
+        eq(shifts.shiftDate, date)
+      ));
+
+    if (attendances.length === 0) {
+      // No attendance = absent, all scores 0
+      const weekNumber = this.getWeekNumber(new Date(date));
+      const [score] = await db.insert(employeePerformanceScores)
+        .values({
+          userId,
+          branchId,
+          date,
+          week: weekNumber,
+          attendanceScore: 0,
+          latenessScore: 0,
+          earlyLeaveScore: 0,
+          breakComplianceScore: 0,
+          shiftComplianceScore: 0,
+          overtimeComplianceScore: 100,
+          dailyTotalScore: 0,
+          weeklyTotalScore: 0,
+          totalPenaltyMinutes: 0,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          breakOverageMinutes: 0,
+        })
+        .onConflictDoUpdate({
+          target: [employeePerformanceScores.userId, employeePerformanceScores.date],
+          set: {
+            attendanceScore: 0,
+            dailyTotalScore: 0,
+            updatedAt: new Date(),
+          }
+        })
+        .returning();
+      return score;
+    }
+
+    // Calculate scores from attendance data
+    let totalLatenessMinutes = 0;
+    let totalEarlyLeaveMinutes = 0;
+    let totalBreakOverageMinutes = 0;
+    let totalPenaltyMinutes = 0;
+    let avgComplianceScore = 0;
+
+    for (const row of attendances) {
+      const attendance = row.shift_attendance;
+      totalLatenessMinutes += attendance.latenessMinutes || 0;
+      totalEarlyLeaveMinutes += attendance.earlyLeaveMinutes || 0;
+      totalBreakOverageMinutes += attendance.breakOverageMinutes || 0;
+      totalPenaltyMinutes += attendance.penaltyMinutes || 0;
+      avgComplianceScore += attendance.complianceScore || 100;
+    }
+
+    avgComplianceScore = Math.round(avgComplianceScore / attendances.length);
+
+    // Score calculations
+    const attendanceScore = 100; // Present
+    const latenessScore = Math.max(0, 100 - (totalLatenessMinutes * 2)); // -2 points per minute
+    const earlyLeaveScore = Math.max(0, 100 - (totalEarlyLeaveMinutes * 2));
+    const breakComplianceScore = Math.max(0, 100 - (totalBreakOverageMinutes * 1)); // -1 point per minute
+    const shiftComplianceScore = avgComplianceScore;
+    const overtimeComplianceScore = 100; // TODO: Calculate based on overtime approval compliance
+
+    // Weighted average (attendance 20%, lateness 25%, earlyLeave 15%, break 15%, shift 25%)
+    const dailyTotalScore = Math.round(
+      attendanceScore * 0.20 +
+      latenessScore * 0.25 +
+      earlyLeaveScore * 0.15 +
+      breakComplianceScore * 0.15 +
+      shiftComplianceScore * 0.25
+    );
+
+    const weekNumber = this.getWeekNumber(new Date(date));
+    
+    const [score] = await db.insert(employeePerformanceScores)
+      .values({
+        userId,
+        branchId,
+        date,
+        week: weekNumber,
+        attendanceScore,
+        latenessScore,
+        earlyLeaveScore,
+        breakComplianceScore,
+        shiftComplianceScore,
+        overtimeComplianceScore,
+        dailyTotalScore,
+        weeklyTotalScore: dailyTotalScore, // Will be recalculated for week
+        totalPenaltyMinutes,
+        latenessMinutes: totalLatenessMinutes,
+        earlyLeaveMinutes: totalEarlyLeaveMinutes,
+        breakOverageMinutes: totalBreakOverageMinutes,
+      })
+      .onConflictDoUpdate({
+        target: [employeePerformanceScores.userId, employeePerformanceScores.date],
+        set: {
+          attendanceScore,
+          latenessScore,
+          earlyLeaveScore,
+          breakComplianceScore,
+          shiftComplianceScore,
+          overtimeComplianceScore,
+          dailyTotalScore,
+          totalPenaltyMinutes,
+          latenessMinutes: totalLatenessMinutes,
+          earlyLeaveMinutes: totalEarlyLeaveMinutes,
+          breakOverageMinutes: totalBreakOverageMinutes,
+          updatedAt: new Date(),
+        }
+      })
+      .returning();
+
+    return score;
+  }
+
+  async getPerformanceScores(userId: string, startDate?: string, endDate?: string): Promise<EmployeePerformanceScore[]> {
+    const conditions: SQL[] = [eq(employeePerformanceScores.userId, userId)];
+    
+    if (startDate) {
+      conditions.push(sql`${employeePerformanceScores.date} >= ${startDate}`);
+    }
+    if (endDate) {
+      conditions.push(sql`${employeePerformanceScores.date} <= ${endDate}`);
+    }
+
+    return await db.select()
+      .from(employeePerformanceScores)
+      .where(and(...conditions))
+      .orderBy(desc(employeePerformanceScores.date));
+  }
+
+  async getWeeklyPerformanceSummary(userId: string, week: string): Promise<{
+    weeklyTotalScore: number;
+    days: EmployeePerformanceScore[];
+  }> {
+    const scores = await db.select()
+      .from(employeePerformanceScores)
+      .where(and(
+        eq(employeePerformanceScores.userId, userId),
+        eq(employeePerformanceScores.week, week)
+      ))
+      .orderBy(employeePerformanceScores.date);
+
+    if (scores.length === 0) {
+      return { weeklyTotalScore: 0, days: [] };
+    }
+
+    const weeklyTotalScore = Math.round(
+      scores.reduce((sum, s) => sum + s.dailyTotalScore, 0) / scores.length
+    );
+
+    return { weeklyTotalScore, days: scores };
+  }
+
+  private getWeekNumber(date: Date): string {
+    const year = date.getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const days = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+    const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+    return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
   }
 }
 

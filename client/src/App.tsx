@@ -27,6 +27,7 @@ import TrainingDetail from "@/pages/training-detail";
 import IK from "@/pages/ik";
 import LeaveRequests from "@/pages/leave-requests";
 import OvertimeRequests from "@/pages/overtime-requests";
+import EquipmentTroubleshooting from "@/pages/equipment-troubleshooting";
 import Attendance from "@/pages/attendance";
 import HRReports from "@/pages/hr-reports";
 import HQSupport from "@/pages/hq-support";
@@ -79,6 +80,7 @@ function Router() {
           <Route path="/equipment/:id" component={EquipmentDetail} />
           <Route path="/ekipman" component={Equipment} />
           <Route path="/ekipman-arizalari" component={EquipmentFaults} />
+          <Route path="/ekipman-troubleshooting" component={EquipmentTroubleshooting} />
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
           <Route path="/egitim/:id" component={TrainingDetail} />

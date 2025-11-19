@@ -1690,6 +1690,7 @@ export const shiftAttendance = pgTable("shift_attendance", {
   // Compliance & punctuality
   latenessMinutes: integer("lateness_minutes").default(0),
   earlyLeaveMinutes: integer("early_leave_minutes").default(0),
+  breakOverageMinutes: integer("break_overage_minutes").default(0), // Break time exceeded planned break
   complianceScore: integer("compliance_score").default(100), // 0-100
   status: varchar("status", { length: 20 }).notNull().default("scheduled"), // scheduled, checked_in, on_break, checked_out, absent, late
   notes: text("notes"),
