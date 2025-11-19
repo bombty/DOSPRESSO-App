@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { isHQRole } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,7 +37,7 @@ interface TroubleshootingStep {
 
 const stepSchema = z.object({
   equipmentId: z.number(),
-  stepNumber: z.number().min(1),
+  stepNumber: z.coerce.number().min(1, "Adım numarası en az 1 olmalı"),
   title: z.string().min(1, "Başlık gerekli"),
   description: z.string().min(1, "Açıklama gerekli"),
   isActive: z.boolean().default(true),
@@ -45,9 +47,13 @@ type StepFormData = z.infer<typeof stepSchema>;
 
 export default function EquipmentTroubleshooting() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Only HQ/admin can create troubleshooting steps
+  const canCreateSteps = user ? isHQRole(user.role as any) : false;
 
   const { data: equipment = [] } = useQuery<Equipment[]>({
     queryKey: ['/api/equipment'],
@@ -62,7 +68,7 @@ export default function EquipmentTroubleshooting() {
     resolver: zodResolver(stepSchema),
     defaultValues: {
       equipmentId: selectedEquipmentId || 0,
-      stepNumber: 1,
+      stepNumber: "" as any, // Start empty to allow validation
       title: "",
       description: "",
       isActive: true,
@@ -110,6 +116,13 @@ export default function EquipmentTroubleshooting() {
     });
   };
 
+  // Sync equipmentId in form when selection changes
+  useEffect(() => {
+    if (selectedEquipmentId) {
+      form.setValue('equipmentId', selectedEquipmentId);
+    }
+  }, [selectedEquipmentId, form]);
+
   const selectedEquipment = equipment.find(e => e.id === selectedEquipmentId);
   const sortedSteps = [...troubleshootingSteps].sort((a, b) => a.stepNumber - b.stepNumber);
   const activeSteps = sortedSteps.filter(s => s.isActive);
@@ -128,16 +141,17 @@ export default function EquipmentTroubleshooting() {
           </p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              data-testid="button-create-step"
-              disabled={!selectedEquipmentId}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Yeni Adım Ekle
-            </Button>
-          </DialogTrigger>
+        {canCreateSteps && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                data-testid="button-create-step"
+                disabled={!selectedEquipmentId}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Yeni Adım Ekle
+              </Button>
+            </DialogTrigger>
           <DialogContent data-testid="dialog-create-step">
             <DialogHeader>
               <DialogTitle>Troubleshooting Adımı Ekle</DialogTitle>
@@ -156,8 +170,16 @@ export default function EquipmentTroubleshooting() {
                       <FormControl>
                         <Input
                           type="number"
-                          {...field}
-                          onChange={e => field.onChange(parseInt(e.target.value))}
+                          min={1}
+                          placeholder="1"
+                          value={field.value}
+                          onChange={e => {
+                            const trimmed = e.target.value.trim();
+                            field.onChange(trimmed === '' ? '' : trimmed);
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                           data-testid="input-step-number"
                         />
                       </FormControl>
@@ -206,6 +228,7 @@ export default function EquipmentTroubleshooting() {
             </Form>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       <Card className="mb-6">

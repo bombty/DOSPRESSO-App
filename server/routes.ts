@@ -7828,6 +7828,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       
+      // CRITICAL: Only HQ/admin roles can create troubleshooting steps
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Sadece HQ/admin kullanıcıları sorun giderme adımı oluşturabilir' });
+      }
+      
       ensurePermission(user, 'equipment', 'create', 'Sorun giderme adımı oluşturmak için HQ Tech yetkisi gerekli');
       
       const validatedData = insertEquipmentTroubleshootingStepSchema.parse(req.body);
