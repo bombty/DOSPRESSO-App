@@ -12,7 +12,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { AnnouncementBanner } from "@/components/announcement-banner";
-import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy } from "lucide-react";
+import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy, Award, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -20,6 +20,7 @@ import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Task, EquipmentFault, PerformanceMetric, AISummaryResponse, SummaryCategoryType, User as UserType, Branch } from "@shared/schema";
+import { isBranchRole, isHQRole } from "@shared/schema";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -55,6 +56,62 @@ export default function Dashboard() {
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
   });
+
+  // Fetch performance scores for current user
+  const { data: userPerformanceScores, isLoading: performanceLoading } = useQuery<any[]>({
+    queryKey: ["/api/performance", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const response = await fetch(`/api/performance/${user?.id}`);
+      if (!response.ok) throw new Error('Failed to fetch performance scores');
+      const data = await response.json();
+      // Map snake_case to camelCase
+      return data.map((score: any) => ({
+        ...score,
+        dailyScore: score.daily_total_score || 0,
+        weeklyScore: score.weekly_total_score || 0,
+      }));
+    },
+  });
+
+  // Fetch team performance aggregates (supervisor/branch manager only)
+  const { data: teamPerformance, isLoading: teamPerformanceLoading } = useQuery<Array<{
+    userId: string;
+    firstName: string | null;
+    lastName: string | null;
+    username: string;
+    averageScore: number;
+    totalDays: number;
+  }>>({
+    queryKey: ["/api/performance/team"],
+    enabled: !!user && isBranchRole(user.role),
+  });
+
+  // Fetch all branches performance aggregates (HQ only)
+  const { data: branchesPerformance, isLoading: branchesPerformanceLoading } = useQuery<Array<{
+    branchId: number;
+    branchName: string;
+    averageScore: number;
+    totalEmployees: number;
+  }>>({
+    queryKey: ["/api/performance/branches"],
+    enabled: !!user && isHQRole(user.role),
+  });
+
+  // Calculate weekly performance score from daily scores (not double-averaging)
+  const weeklyPerformanceScore = useMemo(() => {
+    if (!userPerformanceScores || userPerformanceScores.length === 0) return null;
+    
+    // Explicitly sort by date descending to ensure latest 7 days
+    const sortedScores = [...userPerformanceScores].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    // Get last 7 days of DAILY scores and average them
+    const last7Days = sortedScores.slice(0, 7);
+    const totalScore = last7Days.reduce((sum, score) => sum + (score.dailyScore || 0), 0);
+    return Math.round(totalScore / last7Days.length);
+  }, [userPerformanceScores]);
 
   const completedTasks = tasks?.filter(t => t.status === "tamamlandi").length || 0;
   const pendingTasks = tasks?.filter(t => t.status === "beklemede").length || 0;
@@ -348,7 +405,7 @@ export default function Dashboard() {
 
       <AnnouncementBanner />
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card 
           className="cursor-pointer hover-elevate transition-all" 
           onClick={() => setLocation("/gorevler?status=onaylandi")}
@@ -447,6 +504,29 @@ export default function Dashboard() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Bugünkü performans
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-performance-score">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Performans Skoru
+            </CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {performanceLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-3xl font-bold" data-testid="text-performance-score">
+                  {weeklyPerformanceScore !== null ? weeklyPerformanceScore : "-"}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Son 7 günlük ortalama
                 </p>
               </>
             )}
@@ -721,6 +801,171 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {/* Performance Details Section */}
+      {weeklyPerformanceScore !== null && (
+        <Card data-testid="card-performance-details">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5" />
+              Performans Detayları
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Haftalık Ortalama</p>
+                  <p className="text-2xl font-bold">{weeklyPerformanceScore}/100</p>
+                </div>
+                <Badge variant={weeklyPerformanceScore >= 80 ? "default" : weeklyPerformanceScore >= 60 ? "secondary" : "destructive"}>
+                  {weeklyPerformanceScore >= 80 ? "Mükemmel" : weeklyPerformanceScore >= 60 ? "İyi" : "Gelişmeli"}
+                </Badge>
+              </div>
+              
+              {userPerformanceScores && userPerformanceScores.length > 0 && (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={userPerformanceScores.slice(0, 7).reverse()}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date" 
+                        tickFormatter={(value) => new Date(value).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
+                      />
+                      <YAxis domain={[0, 100]} />
+                      <Tooltip 
+                        labelFormatter={(value) => new Date(value).toLocaleDateString('tr-TR')}
+                        formatter={(value: number) => [value, "Skor"]}
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="dailyScore" stroke="#8884d8" name="Günlük Skor" />
+                      <Line type="monotone" dataKey="weeklyScore" stroke="#82ca9d" name="Haftalık Skor" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Team Performance Section - Supervisor/Branch Manager Only */}
+      {user && isBranchRole(user.role) && (
+        <Card data-testid="card-team-performance">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Takım Performansı (Son 7 Gün)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {teamPerformanceLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" data-testid="skeleton-team-loading" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : !teamPerformance ? (
+              <p className="text-sm text-destructive text-center py-4" data-testid="error-team-performance">
+                Takım performansı yüklenirken hata oluştu
+              </p>
+            ) : teamPerformance.length > 0 ? (
+              <div className="space-y-2">
+                {teamPerformance.map((member) => (
+                  <div
+                    key={member.userId}
+                    className="flex items-center justify-between border-b pb-2 last:border-0"
+                    data-testid={`team-member-${member.userId}`}
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">
+                        {member.firstName && member.lastName 
+                          ? `${member.firstName} ${member.lastName}` 
+                          : member.username}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {member.totalDays} gün veri
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold" data-testid={`score-${member.userId}`}>
+                        {member.averageScore}/100
+                      </p>
+                      <Badge 
+                        variant={member.averageScore >= 80 ? "default" : member.averageScore >= 60 ? "secondary" : "destructive"}
+                        className="mt-1"
+                      >
+                        {member.averageScore >= 80 ? "Mükemmel" : member.averageScore >= 60 ? "İyi" : "Gelişmeli"}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4" data-testid="empty-team-performance">
+                Henüz takım performans verisi yok
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* All Branches Performance Section - HQ Only */}
+      {user && isHQRole(user.role) && (
+        <Card data-testid="card-branches-performance">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5" />
+              Tüm Şubeler Performansı (Son 7 Gün)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {branchesPerformanceLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" data-testid="skeleton-branches-loading" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : !branchesPerformance ? (
+              <p className="text-sm text-destructive text-center py-4" data-testid="error-branches-performance">
+                Şube performansları yüklenirken hata oluştu
+              </p>
+            ) : branchesPerformance.length > 0 ? (
+              <div className="space-y-2">
+                {branchesPerformance.map((branch) => (
+                  <div
+                    key={branch.branchId}
+                    className="flex items-center justify-between border-b pb-2 last:border-0"
+                    data-testid={`branch-${branch.branchId}`}
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{branch.branchName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {branch.totalEmployees} çalışan
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold" data-testid={`branch-score-${branch.branchId}`}>
+                        {branch.averageScore}/100
+                      </p>
+                      <Badge 
+                        variant={branch.averageScore >= 80 ? "default" : branch.averageScore >= 60 ? "secondary" : "destructive"}
+                        className="mt-1"
+                      >
+                        {branch.averageScore >= 80 ? "Mükemmel" : branch.averageScore >= 60 ? "İyi" : "Gelişmeli"}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4" data-testid="empty-branches-performance">
+                Henüz şube performans verisi yok
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-6 md:grid-cols-2">

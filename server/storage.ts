@@ -3813,6 +3813,105 @@ export class DatabaseStorage implements IStorage {
     const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
     return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
   }
+
+  async getTeamPerformanceAggregates(branchId: number): Promise<Array<{
+    userId: string;
+    firstName: string | null;
+    lastName: string | null;
+    username: string;
+    averageScore: number;
+    totalDays: number;
+  }>> {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const startDate = sevenDaysAgo.toISOString().split('T')[0];
+
+    const scores = await db.select({
+      userId: employeePerformanceScores.userId,
+      dailyTotalScore: employeePerformanceScores.dailyTotalScore,
+      date: employeePerformanceScores.date,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      username: users.username,
+    })
+      .from(employeePerformanceScores)
+      .innerJoin(users, eq(employeePerformanceScores.userId, users.id))
+      .where(and(
+        eq(users.branchId, branchId),
+        sql`${employeePerformanceScores.date} >= ${startDate}`
+      ))
+      .orderBy(employeePerformanceScores.userId, desc(employeePerformanceScores.date));
+
+    // Group by user and calculate averages
+    const userScores = new Map<string, { totalScore: number; count: number; user: any }>();
+    for (const score of scores) {
+      if (!userScores.has(score.userId)) {
+        userScores.set(score.userId, {
+          totalScore: 0,
+          count: 0,
+          user: { firstName: score.firstName, lastName: score.lastName, username: score.username }
+        });
+      }
+      const userScore = userScores.get(score.userId)!;
+      userScore.totalScore += score.dailyTotalScore;
+      userScore.count += 1;
+    }
+
+    return Array.from(userScores.entries()).map(([userId, data]) => ({
+      userId,
+      firstName: data.user.firstName,
+      lastName: data.user.lastName,
+      username: data.user.username,
+      averageScore: Math.round(data.totalScore / data.count),
+      totalDays: data.count,
+    })).sort((a, b) => b.averageScore - a.averageScore);
+  }
+
+  async getAllBranchesPerformanceAggregates(): Promise<Array<{
+    branchId: number;
+    branchName: string;
+    averageScore: number;
+    totalEmployees: number;
+  }>> {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const startDate = sevenDaysAgo.toISOString().split('T')[0];
+
+    const scores = await db.select({
+      branchId: employeePerformanceScores.branchId,
+      branchName: branches.name,
+      userId: employeePerformanceScores.userId,
+      dailyTotalScore: employeePerformanceScores.dailyTotalScore,
+    })
+      .from(employeePerformanceScores)
+      .innerJoin(branches, eq(employeePerformanceScores.branchId, branches.id))
+      .where(sql`${employeePerformanceScores.date} >= ${startDate}`)
+      .orderBy(employeePerformanceScores.branchId);
+
+    // Group by branch and calculate averages
+    const branchScores = new Map<number, { totalScore: number; count: number; name: string; uniqueUsers: Set<string> }>();
+    for (const score of scores) {
+      if (!branchScores.has(score.branchId)) {
+        branchScores.set(score.branchId, {
+          totalScore: 0,
+          count: 0,
+          name: score.branchName,
+          uniqueUsers: new Set()
+        });
+      }
+      const branchScore = branchScores.get(score.branchId)!;
+      branchScore.totalScore += score.dailyTotalScore;
+      branchScore.count += 1;
+      branchScore.uniqueUsers.add(score.userId);
+    }
+
+    return Array.from(branchScores.entries()).map(([branchId, data]) => ({
+      branchId,
+      branchName: data.name,
+      averageScore: Math.round(data.totalScore / data.count),
+      totalEmployees: data.uniqueUsers.size,
+    })).sort((a, b) => b.averageScore - a.averageScore);
+  }
 }
 
 export const storage = new DatabaseStorage();
