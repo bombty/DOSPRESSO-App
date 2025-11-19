@@ -24,7 +24,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
-import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle } from "lucide-react";
+import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Tasks() {
@@ -777,8 +777,111 @@ export default function Tasks() {
                 ))}
               </div>
             ) : (
-              <div className="grid gap-4">
-                {filteredTasks?.map((task) => (
+              <div className="space-y-2">
+                {/* Sortable Column Headers - Desktop only */}
+                <Card className="hidden lg:block">
+                  <CardContent className="py-2 px-4">
+                    <div className="grid grid-cols-5 gap-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (sortConfig.key === 'description') {
+                            setSortConfig({ key: 'description', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' });
+                          } else {
+                            setSortConfig({ key: 'description', direction: 'asc' });
+                          }
+                        }}
+                        className="justify-start h-8 px-2 font-medium"
+                        data-testid="button-sort-description"
+                      >
+                        Görev
+                        {sortConfig.key === 'description' && (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (sortConfig.key === 'createdAt') {
+                            setSortConfig({ key: 'createdAt', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' });
+                          } else {
+                            setSortConfig({ key: 'createdAt', direction: 'desc' });
+                          }
+                        }}
+                        className="justify-start h-8 px-2 font-medium"
+                        data-testid="button-sort-createdat"
+                      >
+                        Oluşturulma
+                        {sortConfig.key === 'createdAt' && (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (sortConfig.key === 'status') {
+                            setSortConfig({ key: 'status', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' });
+                          } else {
+                            setSortConfig({ key: 'status', direction: 'asc' });
+                          }
+                        }}
+                        className="justify-start h-8 px-2 font-medium"
+                        data-testid="button-sort-status"
+                      >
+                        Durum
+                        {sortConfig.key === 'status' && (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (sortConfig.key === 'priority') {
+                            setSortConfig({ key: 'priority', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' });
+                          } else {
+                            setSortConfig({ key: 'priority', direction: 'desc' });
+                          }
+                        }}
+                        className="justify-start h-8 px-2 font-medium"
+                        data-testid="button-sort-priority"
+                      >
+                        Öncelik
+                        {sortConfig.key === 'priority' && (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (sortConfig.key === 'dueDate') {
+                            setSortConfig({ key: 'dueDate', direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' });
+                          } else {
+                            setSortConfig({ key: 'dueDate', direction: 'desc' });
+                          }
+                        }}
+                        className="justify-start h-8 px-2 font-medium"
+                        data-testid="button-sort-duedate"
+                      >
+                        Son Tarih
+                        {sortConfig.key === 'dueDate' && (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="grid gap-4">
+                  {filteredTasks?.map((task) => (
                   <Card 
                     key={task.id} 
                     data-testid={`card-task-${task.id}`}
@@ -877,6 +980,7 @@ export default function Tasks() {
                     </CardContent>
                   </Card>
                 )}
+                </div>
               </div>
             )}
           </TabsContent>

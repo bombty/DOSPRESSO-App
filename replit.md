@@ -60,14 +60,18 @@ Preferred communication style: Simple, everyday language.
   - Role-based action buttons (Start, Verify, Reject) with loading states
   - Real-time cache updates after mutations with fresh data strategy
   - Fixed all 'tamamlandi' references → 'onaylandi' across frontend/backend/AI
-- **Advanced Task Filtering & Sorting** (Task 15 - IN PROGRESS):
-  - Collapsible FilterPanel with 7 filter controls (search, branch, assignee, status, priority, date range)
-  - Active filter count badge and "Filtreleri Temizle" button
-  - Client-side filtering with useMemo (instant UX, <1k tasks)
-  - Type-safe ID comparisons (branchId as number, assignedToId as varchar/string)
-  - Sorting logic (createdAt desc default, priority weighting)
-  - Responsive 3-column grid layout
-  - HQ-only features (branch filter, all users dropdown)
+- **Advanced Task Filtering & Sorting** (Task 15.1-15.5 - ✅ COMPLETED & ARCHITECT-APPROVED):
+  - **FilterPanel** (Collapsible Card): 7 filter controls (search, branch, assignee, status, priority, date range)
+  - **Active Filters UI**: Badge counter, "Filtreleri Temizle" button (appears when filters active)
+  - **Client-Side Filtering**: useMemo with instant UX, type-safe ID comparisons (branchId: number, assignedToId: string)
+  - **Sorting System**: 
+    - Logic: createdAt desc default, priority weighted (critical=4, high=3, medium=2, low=1)
+    - UI: **5 Sortable Column Headers** (Görev, Oluşturulma, Durum, Öncelik, Son Tarih) with ArrowUp/ArrowDown icons
+    - Desktop-only Card (`hidden lg:block`, `grid-cols-5 gap-3`)
+    - Click toggles asc/desc per column
+    - All buttons have data-testid attributes for testing
+  - **HQ Features**: Branch filter dropdown, all users assignee dropdown
+  - **Responsive**: 3-column filter grid (mobile 1, tablet 2, desktop 3)
 
 ### Test Users
 - **testadmin** (admin, no branch) - password: "test123"
