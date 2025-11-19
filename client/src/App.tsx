@@ -31,6 +31,7 @@ import HRReports from "@/pages/hr-reports";
 import HQSupport from "@/pages/hq-support";
 import Notifications from "@/pages/notifications";
 import Announcements from "@/pages/announcements";
+import Mesajlar from "@/pages/mesajlar";
 import CashReports from "@/pages/cash-reports";
 import Vardiyalar from "@/pages/vardiyalar";
 import VardiyaCheckin from "@/pages/vardiya-checkin";
@@ -86,6 +87,7 @@ function Router() {
           <Route path="/ik-raporlari" component={HRReports} />
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular" component={Announcements} />
+          <Route path="/mesajlar" component={Mesajlar} />
           <Route path="/kasa-raporlari" component={CashReports} />
           <Route path="/vardiyalar" component={Vardiyalar} />
           <Route path="/vardiya-checkin" component={VardiyaCheckin} />

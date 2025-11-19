@@ -46,6 +46,8 @@ import type {
   InsertEmployeeWarning,
   Message,
   InsertMessage,
+  ThreadParticipant,
+  InsertThreadParticipant,
   EquipmentMaintenanceLog,
   InsertEquipmentMaintenanceLog,
   EquipmentComment,
@@ -115,6 +117,7 @@ import {
   employeeWarnings,
   messages,
   messageReads,
+  threadParticipants,
   UserRole,
   equipmentMaintenanceLogs,
   equipmentComments,
@@ -280,12 +283,24 @@ export interface IStorage {
   createQuizAttempt(attempt: InsertUserQuizAttempt): Promise<UserQuizAttempt>;
   approveQuizAttempt(id: number, approverId: string, status: string, feedback?: string): Promise<UserQuizAttempt | undefined>;
 
-  // Message operations
+  // Message operations (thread-based)
+  listInboxThreads(userId: string, folder: 'inbox'|'sent'|'unread'): Promise<Array<{
+    threadId: string;
+    subject: string;
+    lastMessageBody: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+    participants: Array<{userId: string; firstName: string; lastName: string}>;
+  }>>;
+  getThread(threadId: string, userId: string): Promise<{messages: Message[], participants: ThreadParticipant[]}>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  markThreadRead(userId: string, threadId: string): Promise<void>;
+  getUnreadCount(userId: string): Promise<number>;
+  
+  // Legacy message operations (keep for backwards compatibility)
   getMessages(userId: string, role: string, branchId: number | null): Promise<Message[]>;
   getMessage(id: number): Promise<Message | undefined>;
-  createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: number, userId: string): Promise<void>;
-  getUnreadCount(userId: string, role: string): Promise<number>;
 
   // Equipment detail operations
   getEquipmentDetail(id: number): Promise<Equipment | undefined>;
@@ -1371,25 +1386,186 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoNothing();
   }
 
-  async getUnreadCount(userId: string, role: string): Promise<number> {
-    // Count messages where user is recipient AND hasn't read yet (no messageReads entry)
+  async getUnreadCount(userId: string, role?: string): Promise<number> {
+    // Count unique threads where user is participant AND has unread messages
     const result = await db
-      .select({ count: sql<number>`count(*)` })
+      .selectDistinct({ threadId: messages.threadId })
       .from(messages)
-      .leftJoin(
-        messageReads,
-        and(
-          eq(messageReads.messageId, messages.id),
-          eq(messageReads.userId, userId)
-        )
+      .innerJoin(
+        threadParticipants,
+        eq(threadParticipants.threadId, messages.threadId)
       )
       .where(
         and(
-          sql`${messages.recipientId} = ${userId} OR ${messages.recipientRole} = ${role}`,
-          sql`${messageReads.id} IS NULL` // Not read yet
+          eq(threadParticipants.userId, userId),
+          sql`${messages.createdAt} > COALESCE(${threadParticipants.lastReadAt}, '1970-01-01'::timestamp)`
         )
       );
-    return Number(result[0]?.count || 0);
+    return result.length;
+  }
+
+  // Thread-based message operations
+  async listInboxThreads(userId: string, folder: 'inbox'|'sent'|'unread'): Promise<Array<{
+    threadId: string;
+    subject: string;
+    lastMessageBody: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+    participants: Array<{userId: string; firstName: string; lastName: string}>;
+  }>> {
+    // Get all thread IDs for this user
+    const userThreads = await db
+      .select({ threadId: threadParticipants.threadId })
+      .from(threadParticipants)
+      .where(eq(threadParticipants.userId, userId));
+    
+    if (userThreads.length === 0) {
+      return [];
+    }
+    
+    const threadIds = userThreads.map(t => t.threadId);
+    
+    // Get latest message per thread with sender info
+    const latestMessages = await db
+      .select({
+        threadId: messages.threadId,
+        subject: messages.subject,
+        body: messages.body,
+        createdAt: messages.createdAt,
+        senderId: messages.senderId,
+        senderFirstName: users.firstName,
+        senderLastName: users.lastName,
+      })
+      .from(messages)
+      .innerJoin(users, eq(messages.senderId, users.id))
+      .where(
+        and(
+          inArray(messages.threadId, threadIds),
+          sql`${messages.id} IN (
+            SELECT MAX(id) FROM ${messages} WHERE ${messages.threadId} IN (${sql.join(threadIds.map(id => sql`${id}`), sql`, `)})
+            GROUP BY ${messages.threadId}
+          )`
+        )
+      )
+      .orderBy(desc(messages.createdAt));
+    
+    // Get unread count per thread
+    const unreadCounts = await db
+      .select({
+        threadId: messages.threadId,
+        count: sql<number>`count(*)`,
+      })
+      .from(messages)
+      .innerJoin(
+        threadParticipants,
+        eq(threadParticipants.threadId, messages.threadId)
+      )
+      .where(
+        and(
+          eq(threadParticipants.userId, userId),
+          inArray(messages.threadId, threadIds),
+          sql`${messages.createdAt} > COALESCE(${threadParticipants.lastReadAt}, '1970-01-01'::timestamp)`
+        )
+      )
+      .groupBy(messages.threadId);
+    
+    const unreadMap = Object.fromEntries(
+      unreadCounts.map(u => [u.threadId, Number(u.count)])
+    );
+    
+    // Get all participants for these threads
+    const allParticipants = await db
+      .select({
+        threadId: threadParticipants.threadId,
+        userId: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(threadParticipants)
+      .innerJoin(users, eq(threadParticipants.userId, users.id))
+      .where(inArray(threadParticipants.threadId, threadIds));
+    
+    const participantMap: Record<string, Array<{userId: string; firstName: string; lastName: string}>> = {};
+    for (const p of allParticipants) {
+      if (!participantMap[p.threadId]) {
+        participantMap[p.threadId] = [];
+      }
+      participantMap[p.threadId].push({
+        userId: p.userId!,
+        firstName: p.firstName || '',
+        lastName: p.lastName || '',
+      });
+    }
+    
+    // Filter based on folder type
+    let threads = latestMessages.map(m => ({
+      threadId: m.threadId,
+      subject: m.subject,
+      lastMessageBody: m.body,
+      lastMessageAt: m.createdAt,
+      unreadCount: unreadMap[m.threadId] || 0,
+      participants: participantMap[m.threadId] || [],
+      senderId: m.senderId,
+    }));
+    
+    if (folder === 'sent') {
+      threads = threads.filter(t => t.senderId === userId);
+    } else if (folder === 'unread') {
+      threads = threads.filter(t => t.unreadCount > 0);
+    } else if (folder === 'inbox') {
+      threads = threads.filter(t => t.senderId !== userId || t.participants.length > 1);
+    }
+    
+    return threads.map(({ senderId, ...t }) => t);
+  }
+
+  async getThread(threadId: string, userId: string): Promise<{messages: Message[], participants: ThreadParticipant[]}> {
+    // SECURITY: First verify user is a participant in this thread
+    const userParticipation = await db
+      .select()
+      .from(threadParticipants)
+      .where(
+        and(
+          eq(threadParticipants.threadId, threadId),
+          eq(threadParticipants.userId, userId)
+        )
+      )
+      .limit(1);
+    
+    if (userParticipation.length === 0) {
+      throw new Error("User is not a participant in this thread");
+    }
+    
+    // Get all messages in thread
+    const threadMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.threadId, threadId))
+      .orderBy(asc(messages.createdAt));
+    
+    // Get all participants
+    const participants = await db
+      .select()
+      .from(threadParticipants)
+      .where(eq(threadParticipants.threadId, threadId));
+    
+    return {
+      messages: threadMessages,
+      participants,
+    };
+  }
+
+  async markThreadRead(userId: string, threadId: string): Promise<void> {
+    // Update lastReadAt for this user in thread participants
+    await db
+      .update(threadParticipants)
+      .set({ lastReadAt: new Date() })
+      .where(
+        and(
+          eq(threadParticipants.threadId, threadId),
+          eq(threadParticipants.userId, userId)
+        )
+      );
   }
 
   // Equipment detail operations

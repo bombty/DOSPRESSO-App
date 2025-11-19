@@ -140,6 +140,14 @@ const standaloneItems: MenuItem[] = [
     scope: "both",
   },
   {
+    title: "Mesajlar",
+    titleTr: "Mesajlar",
+    url: "/mesajlar",
+    icon: MessageSquare,
+    module: "dashboard",
+    scope: "both",
+  },
+  {
     title: "Performans",
     titleTr: "Performans",
     url: "/performans",
@@ -478,6 +486,14 @@ export function AppSidebar() {
   });
   const unreadCount = unreadData?.count || 0;
 
+  // Fetch unread message count
+  const { data: unreadMessagesData } = useQuery<{ count: number }>({
+    queryKey: ['/api/messages/unread-count'],
+    enabled: !!user,
+    refetchInterval: pollingInterval,
+  });
+  const unreadMessagesCount = unreadMessagesData?.count || 0;
+
   // PHASE 2: API Query - Fetch dynamic menu data
   const { data: dynamicMenuData, isError } = useQuery<{
     sections: MenuSection[];
@@ -586,6 +602,11 @@ export function AppSidebar() {
                       {item.url === '/bildirimler' && unreadCount > 0 && (
                         <Badge variant="destructive" className="ml-auto" data-testid="badge-unread-count">
                           {unreadCount}
+                        </Badge>
+                      )}
+                      {item.url === '/mesajlar' && unreadMessagesCount > 0 && (
+                        <Badge variant="destructive" className="ml-auto" data-testid="badge-unread-messages">
+                          {unreadMessagesCount}
                         </Badge>
                       )}
                     </Link>

@@ -10,7 +10,7 @@ async function runSeed() {
     // Hash password for all seed users
     const hashedPassword = await bcrypt.hash("0000", 10);
     
-    // 0. Ensure admin user exists
+    // 0. Ensure admin user exists with correct password
     console.log("\n👤 Checking admin user...");
     let adminUser = await storage.getUserByUsername('admin');
     if (!adminUser) {
@@ -22,11 +22,19 @@ async function runSeed() {
         firstName: 'Admin',
         lastName: 'User',
         role: 'admin',
+        accountStatus: 'approved',
         isActive: true,
       });
-      console.log(`✅ Admin user created: ${adminUser.id}`);
+      console.log(`✅ Admin user created with accountStatus=approved, isActive=true: ${adminUser.id}`);
     } else {
-      console.log(`✅ Admin user found: ${adminUser.id}`);
+      console.log(`✅ Admin user found: ${adminUser.id}, updating credentials...`);
+      // Update password, accountStatus, and isActive to ensure admin can always log in
+      await storage.updateUser(adminUser.id, { 
+        hashedPassword,
+        accountStatus: 'approved',
+        isActive: true
+      });
+      console.log(`✅ Admin credentials updated (password, accountStatus=approved, isActive=true)`);
     }
     
     // 1. Seed equipment

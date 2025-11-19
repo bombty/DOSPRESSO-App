@@ -1112,15 +1112,18 @@ export type UserTrainingProgress = typeof userTrainingProgress.$inferSelect;
 export type InsertUserQuizAttempt = z.infer<typeof insertUserQuizAttemptSchema>;
 export type UserQuizAttempt = typeof userQuizAttempts.$inferSelect;
 
-// Messages table - Inter-user and system messaging
+// Messages table - Inter-user and system messaging with thread support
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
+  threadId: varchar("thread_id").notNull(), // Group messages into conversations
+  parentMessageId: integer("parent_message_id").references((): any => messages.id), // For reply chains
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   recipientId: varchar("recipient_id").references(() => users.id, { onDelete: "cascade" }), // null for role-based broadcast
   recipientRole: varchar("recipient_role", { length: 50 }), // null for specific user messages
   subject: text("subject").notNull(),
   body: text("body").notNull(),
   type: varchar("type", { length: 50 }).notNull(), // task_assignment, hq_message, branch_message, notification
+  attachments: jsonb("attachments").$type<{id: string, url: string, type: string, name: string, size: number}[]>().default([]),
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
@@ -1128,6 +1131,7 @@ export const messages = pgTable("messages", {
   recipientIdx: index("messages_recipient_idx").on(table.recipientId),
   recipientRoleIdx: index("messages_recipient_role_idx").on(table.recipientRole),
   senderIdx: index("messages_sender_idx").on(table.senderId),
+  threadIdx: index("messages_thread_idx").on(table.threadId),
 }));
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
@@ -1137,6 +1141,25 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+// Thread Participants - Track users in each conversation thread
+export const threadParticipants = pgTable("thread_participants", {
+  id: serial("id").primaryKey(),
+  threadId: varchar("thread_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  lastReadAt: timestamp("last_read_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  threadUserIdx: uniqueIndex("thread_participants_thread_user_idx").on(table.threadId, table.userId),
+}));
+
+export const insertThreadParticipantSchema = createInsertSchema(threadParticipants).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertThreadParticipant = z.infer<typeof insertThreadParticipantSchema>;
+export type ThreadParticipant = typeof threadParticipants.$inferSelect;
 
 // Message Reads - Junction table for tracking read status per user (supports broadcasts)
 export const messageReads = pgTable("message_reads", {

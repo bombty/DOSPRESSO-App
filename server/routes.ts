@@ -55,6 +55,7 @@ import {
   franchiseOnboarding,
   onboardingDocuments,
   licenseRenewals,
+  threadParticipants,
   hasPermission,
   isHQRole,
   isBranchRole,
@@ -703,6 +704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const requestedAssignedToId = req.query.assignedToId as string | undefined;
       
       // Permission check
       ensurePermission(user, 'tasks', 'view');
@@ -715,13 +717,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (requestedBranchId && requestedBranchId !== user.branchId) {
           return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
         }
-        // Force branch users to see only their branch
-        const tasks = await storage.getTasks(user.branchId);
+        // SECURITY: Branch users can ONLY see tasks assigned to themselves
+        // Ignore any assignedToId query parameter to prevent unauthorized data access
+        const tasks = await storage.getTasks(user.branchId, user.id); // Always user.id for branch users
         return res.json(tasks);
       }
       
-      // Admin/Coach can access all or filter by branch
-      const tasks = await storage.getTasks(requestedBranchId);
+      // HQ users can access all or filter by branch/assignedTo
+      const tasks = await storage.getTasks(requestedBranchId, requestedAssignedToId);
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -3779,6 +3782,211 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
       res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // =========================================
+  // MESSAGES API (Thread-based messaging system)
+  // =========================================
+
+  // Get thread list with filters (inbox/sent/unread)
+  app.get('/api/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const folder = (req.query.folder as 'inbox'|'sent'|'unread') || 'inbox';
+      
+      if (!['inbox', 'sent', 'unread'].includes(folder)) {
+        return res.status(400).json({ message: "Invalid folder type" });
+      }
+      
+      const threads = await storage.listInboxThreads(userId, folder);
+      res.json(threads);
+    } catch (error) {
+      console.error("Error fetching message threads:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // Get unread message count
+  app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const count = await storage.getUnreadCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error getting unread count:", error);
+      res.status(500).json({ message: "Failed to get unread count" });
+    }
+  });
+
+  // Get single thread with all messages
+  app.get('/api/messages/:threadId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const threadId = req.params.threadId;
+      
+      const thread = await storage.getThread(threadId, userId);
+      
+      // getThread already verifies participant access in storage layer
+      // If we reach here, user is authorized to view thread
+      res.json(thread);
+    } catch (error: any) {
+      // Storage layer throws error if user is not participant
+      if (error?.message?.includes("not a participant")) {
+        return res.status(403).json({ message: "Bu konuşmaya erişim yetkiniz yok" });
+      }
+      console.error("Error fetching thread:", error);
+      res.status(500).json({ message: "Failed to fetch thread" });
+    }
+  });
+
+  // Create new thread/message
+  app.post('/api/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'messages', 'create');
+      
+      const validatedData = insertMessageSchema.parse(req.body);
+      
+      // Generate threadId if not provided
+      const threadId = validatedData.threadId || `thread_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Create message
+      const message = await storage.createMessage({
+        ...validatedData,
+        threadId,
+        senderId: user.id,
+      });
+      
+      // Get or create thread participants
+      const { threadParticipants } = await import('@shared/schema');
+      const participants = [user.id];
+      if (validatedData.recipientId) {
+        participants.push(validatedData.recipientId);
+      }
+      
+      // Insert participants (ignore conflicts if already exist)
+      for (const userId of participants) {
+        await db.insert(threadParticipants).values({
+          threadId,
+          userId,
+          lastReadAt: userId === user.id ? new Date() : null,
+        }).onConflictDoNothing();
+      }
+      
+      res.status(201).json(message);
+    } catch (error: any) {
+      console.error("Error creating message:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid message data", errors: error.errors });
+      }
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to create message" });
+    }
+  });
+
+  // Reply to thread
+  app.post('/api/messages/:threadId/replies', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const threadId = req.params.threadId;
+      
+      ensurePermission(user, 'messages', 'create');
+      
+      // Verify user is participant in thread
+      const thread = await storage.getThread(threadId, user.id);
+      const isParticipant = thread.participants.some(p => p.userId === user.id);
+      if (!isParticipant) {
+        return res.status(403).json({ message: "Bu konuşmaya erişim yetkiniz yok" });
+      }
+      
+      // Get first message to use same subject
+      const firstMessage = thread.messages[0];
+      
+      const { body, attachments, parentMessageId } = req.body;
+      
+      if (!body || typeof body !== 'string') {
+        return res.status(400).json({ message: "Mesaj metni gerekli" });
+      }
+      
+      const message = await storage.createMessage({
+        threadId,
+        senderId: user.id,
+        subject: firstMessage.subject,
+        body,
+        type: firstMessage.type,
+        attachments: attachments || [],
+        parentMessageId: parentMessageId || null,
+        recipientId: null,
+        recipientRole: null,
+        isRead: false,
+      });
+      
+      // Update sender's lastReadAt
+      await storage.markThreadRead(user.id, threadId);
+      
+      res.status(201).json(message);
+    } catch (error: any) {
+      console.error("Error replying to thread:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to send reply" });
+    }
+  });
+
+  // Mark thread as read
+  app.post('/api/messages/:threadId/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const threadId = req.params.threadId;
+      
+      // Verify user is participant
+      const thread = await storage.getThread(threadId, userId);
+      const isParticipant = thread.participants.some(p => p.userId === userId);
+      if (!isParticipant) {
+        return res.status(403).json({ message: "Bu konuşmaya erişim yetkiniz yok" });
+      }
+      
+      await storage.markThreadRead(userId, threadId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking thread as read:", error);
+      res.status(500).json({ message: "Failed to mark thread as read" });
+    }
+  });
+
+  // Upload message attachment (requires Object Storage)
+  app.post('/api/messages/attachments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'messages', 'create');
+      
+      // This endpoint expects the file to already be uploaded via ObjectUploader
+      // and just returns the metadata for inclusion in message attachments array
+      const { url, name, type, size } = req.body;
+      
+      if (!url || !name) {
+        return res.status(400).json({ message: "URL and name are required" });
+      }
+      
+      const attachment = {
+        id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        url,
+        name,
+        type: type || 'application/octet-stream',
+        size: size || 0,
+      };
+      
+      res.json(attachment);
+    } catch (error: any) {
+      console.error("Error processing attachment:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to process attachment" });
     }
   });
 

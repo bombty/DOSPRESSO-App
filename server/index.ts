@@ -80,13 +80,36 @@ app.use((req, res, next) => {
     port,
     host: "0.0.0.0",
     reusePort: true,
-  }, () => {
+  }, async () => {
     log(`serving on port ${port}`);
+    
+    // Ensure admin user is always approved and active (self-healing)
+    await ensureAdminUserApproved();
     
     // Start shift reminder job (runs every 10 minutes)
     startShiftReminderJob();
   });
 })();
+
+// Self-healing function to ensure admin user is always approved and active
+async function ensureAdminUserApproved() {
+  try {
+    const adminUser = await storage.getUserByUsername('admin');
+    if (adminUser && (adminUser.accountStatus !== 'approved' || !adminUser.isActive)) {
+      log(`⚠️  Admin user found with accountStatus=${adminUser.accountStatus}, isActive=${adminUser.isActive}`);
+      log(`🔧 Auto-fixing admin user credentials...`);
+      await storage.updateUser(adminUser.id, {
+        accountStatus: 'approved',
+        isActive: true,
+      });
+      log(`✅ Admin user auto-fixed: accountStatus=approved, isActive=true`);
+    } else if (adminUser) {
+      log(`✅ Admin user verified: accountStatus=approved, isActive=true`);
+    }
+  } catch (error) {
+    console.error("Error ensuring admin user approved:", error);
+  }
+}
 
 // Background job for shift reminders
 function startShiftReminderJob() {
