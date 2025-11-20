@@ -434,12 +434,12 @@ export default function EquipmentDetail() {
     mutationFn: async (question: string) => {
       // Add equipment context to the question
       const contextualQuestion = `Cihaz: ${equipment?.equipmentType || 'Bilinmeyen'}. Soru: ${question}`;
-      const response = await apiRequest<{ answer: string; sources: any[]; noKnowledgeFound?: boolean }>(
+      const response = await apiRequest(
         "POST",
         "/api/knowledge-base/ask",
         { question: contextualQuestion }
       );
-      return response;
+      return await response.json() as { answer: string; sources: any[]; noKnowledgeFound?: boolean };
     },
     onSuccess: (data) => {
       if (data.noKnowledgeFound) {
@@ -448,6 +448,7 @@ export default function EquipmentDetail() {
           description: "Bu konuda bilgi bankasında bilgi bulunamadı. Lütfen daha fazla içerik ekleyin veya sorunuzu farklı şekilde sorun.",
           variant: "destructive",
         });
+        return;
       }
       setAiAnswer(data);
       setAiQuestion("");
