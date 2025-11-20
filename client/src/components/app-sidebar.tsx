@@ -385,6 +385,21 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
+  // Admin - Yönetim
+  {
+    groupTr: "Yönetim",
+    icon: Settings,
+    scope: "hq",
+    items: [
+      {
+        title: "Ayarlar",
+        titleTr: "Ayarlar",
+        url: "/yonetim/ayarlar",
+        icon: Settings,
+        module: "dashboard",
+      },
+    ],
+  },
 ];
 
 // PHASE 4: Visibility Rules Logic
