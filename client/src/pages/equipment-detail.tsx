@@ -1708,7 +1708,7 @@ export default function EquipmentDetail() {
 
       {/* Fault Creation Dialog */}
       <Dialog open={isFaultDialogOpen} onOpenChange={setIsFaultDialogOpen}>
-        <DialogContent data-testid="dialog-fault-create">
+        <DialogContent data-testid="dialog-fault-create" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Yeni Arıza Kaydı</DialogTitle>
             <DialogDescription>
