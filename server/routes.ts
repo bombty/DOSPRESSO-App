@@ -67,7 +67,8 @@ import {
   isHQRole,
   isBranchRole,
   type UpdateUser,
-  type UserRoleType
+  type UserRoleType,
+  type InsertAuditTemplateItem
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
@@ -8119,7 +8120,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Validate items - storage layer expects items without templateId
-      const itemSchema = insertAuditTemplateItemSchema.omit({ templateId: true });
+      const itemSchema = insertAuditTemplateItemSchema.omit({ templateId: true }).superRefine((data, ctx) => {
+        // Conditional validation for multiple_choice type
+        if (data.itemType === 'multiple_choice') {
+          if (!data.options || data.options.length < 2) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Çoktan seçmeli sorular için en az 2 şık gerekli",
+              path: ['options'],
+            });
+          }
+          if (!data.correctAnswer || data.correctAnswer.trim() === '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Doğru cevap gerekli",
+              path: ['correctAnswer'],
+            });
+          }
+          if (data.options && data.correctAnswer && !data.options.includes(data.correctAnswer)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Doğru cevap şıklardan biri olmalı",
+              path: ['correctAnswer'],
+            });
+          }
+        }
+      });
       const validatedItems = items.map((item: any) =>
         itemSchema.parse(item)
       ) as Omit<InsertAuditTemplateItem, 'templateId'>[];
@@ -8153,7 +8179,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let validatedItems:Omit<InsertAuditTemplateItem, 'templateId'>[] | undefined = undefined;
       if (items) {
         // Validate items - storage layer expects items without templateId
-        const itemSchema = insertAuditTemplateItemSchema.omit({ templateId: true });
+        const itemSchema = insertAuditTemplateItemSchema.omit({ templateId: true }).superRefine((data, ctx) => {
+          // Conditional validation for multiple_choice type
+          if (data.itemType === 'multiple_choice') {
+            if (!data.options || data.options.length < 2) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Çoktan seçmeli sorular için en az 2 şık gerekli",
+                path: ['options'],
+              });
+            }
+            if (!data.correctAnswer || data.correctAnswer.trim() === '') {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Doğru cevap gerekli",
+                path: ['correctAnswer'],
+              });
+            }
+            if (data.options && data.correctAnswer && !data.options.includes(data.correctAnswer)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Doğru cevap şıklardan biri olmalı",
+                path: ['correctAnswer'],
+              });
+            }
+          }
+        });
         validatedItems = items.map((item: any) =>
           itemSchema.parse(item)
         ) as Omit<InsertAuditTemplateItem, 'templateId'>[];

@@ -62,6 +62,33 @@ const templateItemFormSchema = insertAuditTemplateItemSchema.omit({
   itemType: z.string().nullable().default('checkbox'),
   weight: z.coerce.number().min(0).nullable().default(1),
   sortOrder: z.number(),
+  options: z.array(z.string()).nullable().optional(), // For multiple choice questions
+  correctAnswer: z.string().nullable().optional(), // For test questions
+}).superRefine((data, ctx) => {
+  // Conditional validation for multiple_choice type
+  if (data.itemType === 'multiple_choice') {
+    if (!data.options || data.options.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Çoktan seçmeli sorular için en az 2 şık gerekli",
+        path: ['options'],
+      });
+    }
+    if (!data.correctAnswer || data.correctAnswer.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Doğru cevap gerekli",
+        path: ['correctAnswer'],
+      });
+    }
+    if (data.options && data.correctAnswer && !data.options.includes(data.correctAnswer)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Doğru cevap şıklardan biri olmalı",
+        path: ['correctAnswer'],
+      });
+    }
+  }
 });
 
 type TemplateFormData = z.infer<typeof templateFormSchema>;
@@ -214,6 +241,8 @@ export default function DenetimSablonlariPage() {
       requiresPhoto: item.requiresPhoto || false,
       aiCheckEnabled: item.aiCheckEnabled || false,
       aiPrompt: item.aiPrompt || null,
+      options: item.options || null,
+      correctAnswer: item.correctAnswer || null,
     })));
     
     setIsCreateDialogOpen(true);
@@ -237,6 +266,8 @@ export default function DenetimSablonlariPage() {
         requiresPhoto: false,
         aiCheckEnabled: false,
         aiPrompt: null,
+        options: null,
+        correctAnswer: null,
       },
     ]);
   };

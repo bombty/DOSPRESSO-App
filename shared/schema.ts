@@ -2057,11 +2057,14 @@ export const auditTemplateItems = pgTable("audit_template_items", {
   maxPoints: integer("max_points").notNull().default(10), // Legacy field kept for backward compat
   sortOrder: integer("sort_order").notNull().default(0),
   // NEW fields for enhanced audit system
-  itemType: varchar("item_type", { length: 20 }), // checkbox, rating, text, photo - nullable for backwards compat
+  itemType: varchar("item_type", { length: 20 }), // checkbox, rating, text, photo, multiple_choice - nullable for backwards compat
   weight: integer("weight"), // Scoring weight - nullable
   requiresPhoto: boolean("requires_photo"), // nullable
   aiCheckEnabled: boolean("ai_check_enabled"), // nullable
   aiPrompt: text("ai_prompt"), // Custom AI analysis prompt for this item
+  // For multiple choice questions (personnel audits)
+  options: text("options").array(), // Multiple choice options - nullable
+  correctAnswer: text("correct_answer"), // Correct answer for test questions - nullable
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("audit_template_items_template_idx").on(table.templateId),
