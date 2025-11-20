@@ -393,6 +393,12 @@ export interface IStorage {
   updateShift(id: number, updates: Partial<InsertShift>): Promise<Shift | undefined>;
   deleteShift(id: number): Promise<void>;
   
+  // AI helper methods
+  getTasksByBranch(branchId: number): Promise<Task[]>;
+  getShiftsByBranch(branchId: number): Promise<Shift[]>;
+  getUsersByBranch(branchId: number): Promise<User[]>;
+  getFaultsByBranch(branchId: number): Promise<EquipmentFault[]>;
+  
   // Shift-Checklist junction operations
   setShiftChecklists(shiftId: number, checklistIds: number[]): Promise<void>;
   getShiftChecklists(shiftId: number): Promise<Checklist[]>;
@@ -2190,6 +2196,23 @@ export class DatabaseStorage implements IStorage {
 
   async deleteShift(id: number): Promise<void> {
     await db.delete(shifts).where(eq(shifts.id, id));
+  }
+
+  // AI helper methods implementation
+  async getTasksByBranch(branchId: number): Promise<Task[]> {
+    return this.getTasks(branchId);
+  }
+
+  async getShiftsByBranch(branchId: number): Promise<Shift[]> {
+    return this.getShifts(branchId);
+  }
+
+  async getUsersByBranch(branchId: number): Promise<User[]> {
+    return db.select().from(users).where(eq(users.branchId, branchId));
+  }
+
+  async getFaultsByBranch(branchId: number): Promise<EquipmentFault[]> {
+    return this.getFaults(branchId);
   }
 
   async setShiftChecklists(shiftId: number, checklistIds: number[]): Promise<void> {

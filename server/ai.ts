@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import QRCode from "qrcode";
 import { cache, generateCacheKey, aiRateLimiter } from "./cache";
 import { storage } from "./storage";
-import type { SummaryCategoryType, AISummaryResponse } from "@shared/schema";
+import type { SummaryCategoryType, AISummaryResponse, Task, EquipmentFault } from "@shared/schema";
 
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -1328,16 +1328,16 @@ async function buildDashboardPrompt(role: string, branchId?: number | null): Pro
 
   if (isHQRole) {
     // HQ roles: Cross-branch analysis
-    const branches = await storage.getAllBranches();
-    const tasks = await storage.getAllTasks();
-    const faults = await storage.getAllFaults();
+    const branches = await storage.getBranches();
+    const tasks = await storage.getTasks();
+    const faults = await storage.getFaults();
 
     prompt += `**Şubeler:** ${branches.length} adet\n`;
-    prompt += `**Görevler (son 7 gün):** ${tasks.filter(t => {
+    prompt += `**Görevler (son 7 gün):** ${tasks.filter((t: Task) => {
       const created = new Date(t.createdAt!);
       return Date.now() - created.getTime() < 7 * 24 * 60 * 60 * 1000;
     }).length}\n`;
-    prompt += `**Arızalar (açık):** ${faults.filter(f => f.status === 'acik').length}\n\n`;
+    prompt += `**Arızalar (açık):** ${faults.filter((f: EquipmentFault) => f.status === 'acik').length}\n\n`;
     
     prompt += `**Görev:** 3-5 madde halinde, şu konularda kısa ve aksiyona yönelik içgörüler sun:\n`;
     prompt += `1. Şubeler arası performans karşılaştırması\n`;
@@ -1397,8 +1397,8 @@ export async function generateDashboardInsights(
   }
 
   // Rate limit check AFTER cache (only charge quota for actual AI calls)
-  if (!aiRateLimiter.canMakeRequest(userId, 'insights', INSIGHTS_LIMIT)) {
-    const remaining = aiRateLimiter.getRemainingCalls(userId, 'insights', INSIGHTS_LIMIT);
+  if (!aiRateLimiter.canMakeRequest(userId.toString(), 'insights', INSIGHTS_LIMIT)) {
+    const remaining = aiRateLimiter.getRemainingCalls(userId.toString(), 'insights', INSIGHTS_LIMIT);
     throw new Error(`Günlük AI içgörü limitiniz doldu (${INSIGHTS_LIMIT}/gün). Kalan: ${remaining}. Yarın tekrar deneyin.`);
   }
 
@@ -1447,8 +1447,8 @@ export async function generateDashboardInsights(
     cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
 
     // Increment rate limit counter
-    aiRateLimiter.incrementRequest(userId, 'insights');
-    const remaining = aiRateLimiter.getRemainingCalls(userId, 'insights', INSIGHTS_LIMIT);
+    aiRateLimiter.incrementRequest(userId.toString(), 'insights');
+    const remaining = aiRateLimiter.getRemainingCalls(userId.toString(), 'insights', INSIGHTS_LIMIT);
     console.log(`💰 AI call made - Dashboard Insights [${role}] (${remaining}/${INSIGHTS_LIMIT} remaining for user ${userId})`);
 
     return result;
@@ -1731,7 +1731,7 @@ export async function evaluateBranchPerformance(
 
     // Track usage (fire and forget)
     if (userId) {
-      aiRateLimiter.trackRequest(userId, 'evaluation');
+      aiRateLimiter.incrementRequest(userId, 'evaluation');
     }
 
     console.log(`🎯 Generated AI evaluation for branch: ${branchName}`);
