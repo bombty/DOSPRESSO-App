@@ -30,13 +30,17 @@ export default function AIAssistant() {
 
   const askMutation = useMutation({
     mutationFn: async (q: string) => {
-      return await apiRequest("POST", "/api/knowledge-base/ask", { question: q }) as QAResponse;
+      const response = await apiRequest("POST", "/api/knowledge-base/ask", { question: q });
+      const data = await response.json() as QAResponse;
+      console.log("[AI Assistant] Response received:", data);
+      return data;
     },
     onSuccess: (data: QAResponse) => {
+      console.log("[AI Assistant] onSuccess called with data:", data);
       setConversation(prev => [...prev, {
         question,
         answer: data.answer,
-        sources: data.sources,
+        sources: data.sources || [],
         noKnowledgeFound: data.noKnowledgeFound || false,
       }]);
       setQuestion("");
@@ -108,7 +112,7 @@ export default function AIAssistant() {
                       <p className="text-foreground whitespace-pre-wrap">{item.answer}</p>
                     </div>
                     
-                    {item.sources.length > 0 && (
+                    {item.sources?.length > 0 && (
                       <div className="mt-4 pt-4 border-t">
                         <p className="text-sm font-medium text-muted-foreground mb-2">Kaynaklar:</p>
                         <div className="space-y-2">
