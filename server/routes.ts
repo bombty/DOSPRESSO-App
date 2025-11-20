@@ -6920,57 +6920,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/audit-templates - List audit templates
-  app.get('/api/audit-templates', isAuthenticated, async (req: any, res) => {
-    try {
-      const templates = await db.select().from(auditTemplates).where(eq(auditTemplates.isActive, true));
-      res.json(templates);
-    } catch (error) {
-      console.error("Error fetching audit templates:", error);
-      res.status(500).json({ message: "Şablonlar yüklenirken hata oluştu" });
-    }
-  });
-
-  // POST /api/audit-templates - Create audit template
-  app.post('/api/audit-templates', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      
-      if (!isHQRole(user.role as UserRoleType) || (user.role !== 'coach' && user.role !== 'admin')) {
-        return res.status(403).json({ message: "Yetkisiz işlem" });
-      }
-
-      const validatedData = insertAuditTemplateSchema.parse(req.body);
-      const [template] = await db.insert(auditTemplates).values({
-        ...validatedData,
-        createdById: user.id,
-      }).returning();
-
-      res.status(201).json(template);
-    } catch (error: any) {
-      console.error("Error creating audit template:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
-      }
-      res.status(500).json({ message: "Şablon oluşturulurken hata oluştu" });
-    }
-  });
-
-  // GET /api/audit-templates/:id/items - Get template items
-  app.get('/api/audit-templates/:id/items', isAuthenticated, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const items = await db.select().from(auditTemplateItems)
-        .where(eq(auditTemplateItems.templateId, parseInt(id)))
-        .orderBy(auditTemplateItems.sortOrder);
-      
-      res.json(items);
-    } catch (error) {
-      console.error("Error fetching template items:", error);
-      res.status(500).json({ message: "Şablon maddeleri yüklenirken hata oluştu" });
-    }
-  });
-
   // ========================================
   // GUEST FEEDBACK API (Misafir Geri Bildirimi)
   // ========================================

@@ -56,6 +56,7 @@ import Sikayetler from "@/pages/sikayetler";
 import MusteriFeedbackPublic from "@/pages/musteri-feedback-public";
 import KampanyaYonetimi from "@/pages/kampanya-yonetimi";
 import FranchiseAcilis from "@/pages/franchise-acilis";
+import DenetimSablonlari from "@/pages/denetim-sablonlari";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -109,6 +110,7 @@ function Router() {
           <Route path="/sikayetler" component={Sikayetler} />
           <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
           <Route path="/franchise-acilis" component={FranchiseAcilis} />
+          <Route path="/denetim-sablonlari" component={DenetimSablonlari} />
           <Route path="/admin/seed" component={AdminSeed} />
           <Route path="/yonetim/menu" component={AdminMenuManagement} />
           <Route path="/yonetim/icerik" component={AdminContentManagement} />

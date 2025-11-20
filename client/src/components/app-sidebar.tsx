@@ -334,6 +334,13 @@ const menuGroups: MenuGroup[] = [
     scope: "hq",
     items: [
       {
+        title: "Denetim Şablonları",
+        titleTr: "Denetim Şablonları",
+        url: "/denetim-sablonlari",
+        icon: ClipboardList,
+        module: "dashboard",
+      },
+      {
         title: "Kalite Denetimi",
         titleTr: "Kalite Denetimi",
         url: "/kalite-denetimi",
