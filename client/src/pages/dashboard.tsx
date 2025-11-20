@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [selectedBranch, setSelectedBranch] = useState<any | null>(null);
   const [aiEvaluation, setAiEvaluation] = useState<any | null>(null);
   const [evaluationLoading, setEvaluationLoading] = useState(false);
+  const [branchScoresTimeRange, setBranchScoresTimeRange] = useState<'7d' | '30d' | '180d' | '365d'>('30d');
 
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -102,8 +104,13 @@ export default function Dashboard() {
     compositeScore: number;
     lastUpdated: Date;
   }>>({
-    queryKey: ["/api/performance/branches/composite"],
+    queryKey: ["/api/performance/branches/composite", branchScoresTimeRange],
     enabled: !!user && isHQRole(user.role),
+    queryFn: async () => {
+      const response = await fetch(`/api/performance/branches/composite?timeRange=${branchScoresTimeRange}`);
+      if (!response.ok) throw new Error('Failed to fetch composite branch scores');
+      return response.json();
+    },
   });
 
   // Calculate weekly performance score from daily scores (not double-averaging)
@@ -878,13 +885,28 @@ export default function Dashboard() {
       {user && isHQRole(user.role) && (
         <Card data-testid="card-branches-performance">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5" />
-              Şube Performans Tablosu (Son 30 Gün)
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Tüm şubelerin kompozit performans skorları
-            </p>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5" />
+                  Şube Performans Tablosu
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Tüm şubelerin kompozit performans skorları
+                </p>
+              </div>
+              <Select value={branchScoresTimeRange} onValueChange={(value: any) => setBranchScoresTimeRange(value)}>
+                <SelectTrigger className="w-[160px]" data-testid="select-timerange">
+                  <SelectValue placeholder="Zaman Aralığı" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d" data-testid="option-7d">Son 7 Gün</SelectItem>
+                  <SelectItem value="30d" data-testid="option-30d">Son 30 Gün</SelectItem>
+                  <SelectItem value="180d" data-testid="option-180d">Son 6 Ay</SelectItem>
+                  <SelectItem value="365d" data-testid="option-365d">Son 1 Yıl</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {/* Legend */}
