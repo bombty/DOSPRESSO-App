@@ -91,23 +91,18 @@ export default function Dashboard() {
     enabled: !!user && isBranchRole(user.role),
   });
 
-  // Fetch all branches performance aggregates (HQ only)
-  const { data: branchesPerformance, isLoading: branchesPerformanceLoading } = useQuery<Array<{
+  // Fetch composite branch scores (HQ only)
+  const { data: compositeBranchScores, isLoading: compositeScoresLoading } = useQuery<Array<{
     branchId: number;
     branchName: string;
-    avgAttendanceScore: number;
-    avgLatenessScore: number;
-    avgEarlyLeaveScore: number;
-    avgBreakComplianceScore: number;
-    avgShiftComplianceScore: number;
-    avgOvertimeComplianceScore: number;
-    avgDailyTotalScore: number;
-    totalPenaltyMinutes: number;
-    totalEmployees: number;
-    startDate: string;
-    endDate: string;
+    employeePerformanceScore: number;
+    equipmentScore: number;
+    qualityAuditScore: number;
+    customerSatisfactionScore: number;
+    compositeScore: number;
+    lastUpdated: Date;
   }>>({
-    queryKey: ["/api/performance/branches"],
+    queryKey: ["/api/performance/branches/composite"],
     enabled: !!user && isHQRole(user.role),
   });
 
@@ -213,33 +208,6 @@ export default function Dashboard() {
       .slice(0, 5);
   }, [faults]);
 
-  // Branch Leaderboard Data
-  const branchLeaderboardData = useMemo(() => {
-    if (!branches || !tasks || !faults) return [];
-    
-    return branches.map(branch => {
-      const branchTasks = tasks.filter(t => t.branchId === branch.id);
-      const branchFaults = faults.filter(f => f.branchId === branch.id);
-      
-      const completedCount = branchTasks.filter(t => t.status === "tamamlandi" || t.status === "onaylandi").length;
-      const totalTasks = branchTasks.length;
-      const completionRate = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
-      
-      const resolvedFaults = branchFaults.filter(f => f.status === "cozuldu").length;
-      const totalFaults = branchFaults.length;
-      
-      return {
-        name: branch.name,
-        completionRate,
-        totalTasks,
-        completedTasks: completedCount,
-        resolvedFaults,
-        totalFaults
-      };
-    })
-    .sort((a, b) => b.completionRate - a.completionRate)
-    .slice(0, 5);
-  }, [branches, tasks, faults]);
 
   // Check if user has access to AI summaries (HQ users or supervisors)
   const HQ_ROLES = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
@@ -640,55 +608,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Branch Leaderboard */}
-      <Card data-testid="card-branch-leaderboard">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5" />
-            Şube Performans Sıralaması
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Görev tamamlanma oranına göre en iyi 5 şube</p>
-        </CardHeader>
-        <CardContent>
-          {tasksLoading || faultsLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
-          ) : branchLeaderboardData.length > 0 ? (
-            <div className="space-y-3">
-              {branchLeaderboardData.map((branch, index) => (
-                <div
-                  key={branch.name}
-                  className="flex items-center justify-between border rounded-md p-4 hover-elevate"
-                  data-testid={`branch-rank-${index + 1}`}
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                      <span className="text-sm font-bold text-primary">#{index + 1}</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{branch.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {branch.completedTasks}/{branch.totalTasks} görev • {branch.resolvedFaults}/{branch.totalFaults} arıza çözüldü
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-primary">{branch.completionRate}%</div>
-                    <p className="text-xs text-muted-foreground">Tamamlanma</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-8 text-center text-muted-foreground">
-              Henüz şube verisi yok
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {canAccessAISummaries && (
         <>
@@ -955,51 +874,100 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* All Branches Performance Section - HQ Only */}
+      {/* Branch Performance Table - HQ Only */}
       {user && isHQRole(user.role) && (
         <Card data-testid="card-branches-performance">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5" />
-              Tüm Şubeler Performansı (Son 7 Gün)
+              Şube Performans Tablosu (Son 30 Gün)
             </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Tüm şubelerin kompozit performans skorları
+            </p>
           </CardHeader>
           <CardContent>
-            {branchesPerformanceLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-12 w-full" data-testid="skeleton-branches-loading" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+            {/* Legend */}
+            <div className="mb-4 p-3 bg-muted/50 rounded-md">
+              <p className="text-xs font-medium mb-2">Skor Bileşenleri:</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <span>Personel: Çalışan performansı</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span>Ekipman: Cihaz durumu</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                  <span>Kalite: Denetim skorları</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                  <span>Misafir: Müşteri memnuniyeti</span>
+                </div>
               </div>
-            ) : !branchesPerformance ? (
+            </div>
+
+            {compositeScoresLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-20 w-full" data-testid="skeleton-branches-loading" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : !compositeBranchScores ? (
               <p className="text-sm text-destructive text-center py-4" data-testid="error-branches-performance">
                 Şube performansları yüklenirken hata oluştu
               </p>
-            ) : branchesPerformance.length > 0 ? (
-              <div className="space-y-2">
-                {branchesPerformance.map((branch) => (
+            ) : compositeBranchScores.length > 0 ? (
+              <div className="space-y-3">
+                {compositeBranchScores.map((branch) => (
                   <div
                     key={branch.branchId}
-                    className="flex items-center justify-between border-b pb-2 last:border-0 cursor-pointer hover-elevate rounded-md p-2 -m-2"
+                    className="border rounded-md p-4 cursor-pointer hover-elevate transition-all"
                     onClick={() => handleBranchClick(branch)}
                     data-testid={`branch-clickable-${branch.branchId}`}
                   >
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{branch.branchName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {branch.totalEmployees} çalışan · {branch.totalPenaltyMinutes} dk ceza
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold" data-testid={`branch-score-${branch.branchId}`}>
-                        {branch.avgDailyTotalScore}/100
-                      </p>
-                      <Badge 
-                        variant={branch.avgDailyTotalScore >= 80 ? "default" : branch.avgDailyTotalScore >= 60 ? "secondary" : "destructive"}
-                        className="mt-1"
-                      >
-                        {branch.avgDailyTotalScore >= 80 ? "Mükemmel" : branch.avgDailyTotalScore >= 60 ? "İyi" : "Gelişmeli"}
-                      </Badge>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium mb-2">{branch.branchName}</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            <span className="text-muted-foreground">Personel:</span>
+                            <span className="font-medium">{Math.round(branch.employeePerformanceScore)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                            <span className="text-muted-foreground">Ekipman:</span>
+                            <span className="font-medium">{Math.round(branch.equipmentScore)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                            <span className="text-muted-foreground">Kalite:</span>
+                            <span className="font-medium">{Math.round(branch.qualityAuditScore)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                            <span className="text-muted-foreground">Misafir:</span>
+                            <span className="font-medium">{Math.round(branch.customerSatisfactionScore)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right flex flex-col items-end gap-2">
+                        <div>
+                          <p className="text-2xl font-bold" data-testid={`branch-score-${branch.branchId}`}>
+                            {Math.round(branch.compositeScore)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Toplam Skor</p>
+                        </div>
+                        <Badge 
+                          variant={branch.compositeScore >= 80 ? "default" : branch.compositeScore >= 60 ? "secondary" : "destructive"}
+                        >
+                          {branch.compositeScore >= 80 ? "Mükemmel" : branch.compositeScore >= 60 ? "İyi" : "Gelişmeli"}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 ))}

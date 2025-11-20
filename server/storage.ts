@@ -4034,7 +4034,7 @@ export class DatabaseStorage implements IStorage {
         .from(equipmentFaults)
         .where(and(
           eq(equipmentFaults.branchId, branch.id),
-          gte(equipmentFaults.reportedAt, thirtyDaysAgo)
+          sql`${equipmentFaults.reportedAt} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString()}'`)} AS timestamp)`
         ));
       
       const faultCount = faults[0]?.count ?? 0;
@@ -4065,7 +4065,7 @@ export class DatabaseStorage implements IStorage {
         .from(customerFeedback)
         .where(and(
           eq(customerFeedback.branchId, branch.id),
-          gte(customerFeedback.feedbackDate, thirtyDaysAgo)
+          sql`${customerFeedback.feedbackDate} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString().split('T')[0]}'`)} AS date)`
         ));
       
       const complaints = await db.select({
@@ -4074,7 +4074,7 @@ export class DatabaseStorage implements IStorage {
         .from(guestComplaints)
         .where(and(
           eq(guestComplaints.branchId, branch.id),
-          gte(guestComplaints.complaintDate, thirtyDaysAgo)
+          sql`${guestComplaints.complaintDate} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString()}'`)} AS timestamp)`
         ));
       
       const feedbackPoints = 
