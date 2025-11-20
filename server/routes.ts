@@ -582,6 +582,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/branches/:branchId/detail', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const branchId = parseInt(req.params.branchId);
+
+      if (isNaN(branchId)) {
+        return res.status(400).json({ message: "Geçersiz şube ID" });
+      }
+
+      // Authorization: Branch users can only access their own branch details
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (user.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+        }
+      }
+
+      const branchDetails = await storage.getBranchDetails(branchId);
+      if (!branchDetails) {
+        return res.status(404).json({ message: "Şube bulunamadı" });
+      }
+
+      // Sanitize user data in staff list based on requester's role
+      const sanitizedStaff = sanitizeUsersForRole(branchDetails.staff, user.role as UserRoleType);
+
+      res.json({
+        ...branchDetails,
+        staff: sanitizedStaff,
+      });
+    } catch (error) {
+      console.error("Error fetching branch details:", error);
+      res.status(500).json({ message: "Şube detayları alınırken hata oluştu" });
+    }
+  });
+
   app.post('/api/branches', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;

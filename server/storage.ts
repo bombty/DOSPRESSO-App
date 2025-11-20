@@ -500,6 +500,24 @@ export interface IStorage {
   approveOvertimeRequest(id: number, approverId: string, approvedMinutes: number): Promise<OvertimeRequest | undefined>;
   rejectOvertimeRequest(id: number, rejectionReason: string): Promise<OvertimeRequest | undefined>;
   getRecentShiftAttendances(userId: string, days: number): Promise<ShiftAttendance[]>;
+
+  // Branch Details operations
+  getBranchDetails(branchId: number): Promise<{
+    branch: Branch;
+    scores: {
+      employeePerformanceScore: number;
+      equipmentScore: number;
+      qualityAuditScore: number;
+      customerSatisfactionScore: number;
+      compositeScore: number;
+    };
+    staff: User[];
+    equipment: Equipment[];
+    recentTasks: Task[];
+    recentFaults: EquipmentFault[];
+    recentFeedback: CustomerFeedback[];
+    recentComplaints: GuestComplaint[];
+  } | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4091,6 +4109,104 @@ export class DatabaseStorage implements IStorage {
     }
 
     return results.sort((a, b) => b.compositeScore - a.compositeScore);
+  }
+
+  async getBranchDetails(branchId: number): Promise<{
+    branch: Branch;
+    scores: {
+      employeePerformanceScore: number;
+      equipmentScore: number;
+      qualityAuditScore: number;
+      customerSatisfactionScore: number;
+      compositeScore: number;
+    };
+    staff: User[];
+    equipment: Equipment[];
+    recentTasks: Task[];
+    recentFaults: EquipmentFault[];
+    recentFeedback: CustomerFeedback[];
+    recentComplaints: GuestComplaint[];
+  } | undefined> {
+    // Get branch info
+    const branch = await this.getBranch(branchId);
+    if (!branch) {
+      return undefined;
+    }
+
+    // Get composite scores for this specific branch
+    const allScores = await this.getCompositeBranchScores();
+    const branchScores = allScores.find(s => s.branchId === branchId);
+    
+    const scores = branchScores ? {
+      employeePerformanceScore: branchScores.employeePerformanceScore,
+      equipmentScore: branchScores.equipmentScore,
+      qualityAuditScore: branchScores.qualityAuditScore,
+      customerSatisfactionScore: branchScores.customerSatisfactionScore,
+      compositeScore: branchScores.compositeScore,
+    } : {
+      employeePerformanceScore: 0,
+      equipmentScore: 0,
+      qualityAuditScore: 0,
+      customerSatisfactionScore: 0,
+      compositeScore: 0,
+    };
+
+    // Get staff list for this branch
+    const staff = await db
+      .select()
+      .from(users)
+      .where(eq(users.branchId, branchId))
+      .orderBy(users.firstName);
+
+    // Get equipment for this branch
+    const equipmentList = await db
+      .select()
+      .from(equipment)
+      .where(eq(equipment.branchId, branchId))
+      .orderBy(equipment.name);
+
+    // Get recent tasks (last 10)
+    const recentTasks = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.branchId, branchId))
+      .orderBy(desc(tasks.createdAt))
+      .limit(10);
+
+    // Get recent faults (last 10)
+    const recentFaults = await db
+      .select()
+      .from(equipmentFaults)
+      .where(eq(equipmentFaults.branchId, branchId))
+      .orderBy(desc(equipmentFaults.reportedAt))
+      .limit(10);
+
+    // Get recent customer feedback (last 10)
+    const recentFeedback = await db
+      .select()
+      .from(customerFeedback)
+      .where(eq(customerFeedback.branchId, branchId))
+      .orderBy(desc(customerFeedback.feedbackDate))
+      .limit(10);
+
+    // Get recent complaints (last 10)
+    const recentComplaints = await db
+      .select()
+      .from(guestComplaints)
+      .where(eq(guestComplaints.branchId, branchId))
+      .orderBy(desc(guestComplaints.complaintDate))
+      .limit(10);
+
+    return {
+      branch,
+      scores,
+      staff,
+      equipment: equipmentList,
+      recentTasks,
+      recentFaults,
+      recentFeedback,
+      recentComplaints,
+    };
   }
 }
 
