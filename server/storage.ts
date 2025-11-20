@@ -106,6 +106,14 @@ import type {
   InsertEmployeeAvailability,
   SiteSetting,
   InsertSiteSetting,
+  EmployeeDocument,
+  InsertEmployeeDocument,
+  DisciplinaryReport,
+  InsertDisciplinaryReport,
+  EmployeeOnboarding,
+  InsertEmployeeOnboarding,
+  EmployeeOnboardingTask,
+  InsertEmployeeOnboardingTask,
 } from "@shared/schema";
 import {
   users,
@@ -178,6 +186,10 @@ import {
   InsertAuditInstance,
   AuditInstanceItem,
   InsertAuditInstanceItem,
+  employeeDocuments,
+  disciplinaryReports,
+  employeeOnboarding,
+  employeeOnboardingTasks,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -207,6 +219,37 @@ export interface IStorage {
   // Employee Warnings operations
   getEmployeeWarnings(userId: string): Promise<EmployeeWarning[]>;
   createEmployeeWarning(warning: InsertEmployeeWarning): Promise<EmployeeWarning>;
+  
+  // Employee Documents operations (Özlük Dosyası)
+  getEmployeeDocuments(userId: string): Promise<EmployeeDocument[]>;
+  getEmployeeDocument(id: number): Promise<EmployeeDocument | undefined>;
+  createEmployeeDocument(document: InsertEmployeeDocument): Promise<EmployeeDocument>;
+  updateEmployeeDocument(id: number, updates: Partial<InsertEmployeeDocument>): Promise<EmployeeDocument | undefined>;
+  deleteEmployeeDocument(id: number): Promise<void>;
+  verifyEmployeeDocument(id: number, verifiedById: string): Promise<EmployeeDocument | undefined>;
+  
+  // Disciplinary Reports operations (Tutanak, Disiplin, Savunma)
+  getDisciplinaryReports(userId?: string, branchId?: number, status?: string): Promise<DisciplinaryReport[]>;
+  getDisciplinaryReport(id: number): Promise<DisciplinaryReport | undefined>;
+  createDisciplinaryReport(report: InsertDisciplinaryReport): Promise<DisciplinaryReport>;
+  updateDisciplinaryReport(id: number, updates: Partial<InsertDisciplinaryReport>): Promise<DisciplinaryReport | undefined>;
+  addEmployeeResponse(id: number, response: string, attachments?: string[]): Promise<DisciplinaryReport | undefined>;
+  resolveDisciplinaryReport(id: number, resolution: string, actionTaken: string, resolvedById: string): Promise<DisciplinaryReport | undefined>;
+  
+  // Employee Onboarding operations
+  getEmployeeOnboarding(userId: string): Promise<EmployeeOnboarding | undefined>;
+  getOnboardingsByBranch(branchId: number, status?: string): Promise<EmployeeOnboarding[]>;
+  createEmployeeOnboarding(onboarding: InsertEmployeeOnboarding): Promise<EmployeeOnboarding>;
+  updateEmployeeOnboarding(id: number, updates: Partial<InsertEmployeeOnboarding>): Promise<EmployeeOnboarding | undefined>;
+  updateOnboardingProgress(id: number): Promise<EmployeeOnboarding | undefined>;
+  
+  // Employee Onboarding Tasks operations
+  getOnboardingTasks(onboardingId: number): Promise<EmployeeOnboardingTask[]>;
+  getOnboardingTask(id: number): Promise<EmployeeOnboardingTask | undefined>;
+  createOnboardingTask(task: InsertEmployeeOnboardingTask): Promise<EmployeeOnboardingTask>;
+  updateOnboardingTask(id: number, updates: Partial<InsertEmployeeOnboardingTask>): Promise<EmployeeOnboardingTask | undefined>;
+  completeOnboardingTask(id: number, completedById: string, attachments?: string[]): Promise<EmployeeOnboardingTask | undefined>;
+  verifyOnboardingTask(id: number, verifiedById: string): Promise<EmployeeOnboardingTask | undefined>;
   
   // Branch operations
   getBranches(): Promise<Branch[]>;
@@ -1429,6 +1472,221 @@ export class DatabaseStorage implements IStorage {
   async createEmployeeWarning(warning: InsertEmployeeWarning): Promise<EmployeeWarning> {
     const [newWarning] = await db.insert(employeeWarnings).values(warning).returning();
     return newWarning;
+  }
+
+  // Employee Documents operations (Özlük Dosyası)
+  async getEmployeeDocuments(userId: string): Promise<EmployeeDocument[]> {
+    return db.select().from(employeeDocuments)
+      .where(eq(employeeDocuments.userId, userId))
+      .orderBy(desc(employeeDocuments.uploadedAt));
+  }
+
+  async getEmployeeDocument(id: number): Promise<EmployeeDocument | undefined> {
+    const [document] = await db.select().from(employeeDocuments)
+      .where(eq(employeeDocuments.id, id));
+    return document;
+  }
+
+  async createEmployeeDocument(document: InsertEmployeeDocument): Promise<EmployeeDocument> {
+    const [newDocument] = await db.insert(employeeDocuments).values(document).returning();
+    return newDocument;
+  }
+
+  async updateEmployeeDocument(id: number, updates: Partial<InsertEmployeeDocument>): Promise<EmployeeDocument | undefined> {
+    const [updated] = await db.update(employeeDocuments)
+      .set(updates)
+      .where(eq(employeeDocuments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteEmployeeDocument(id: number): Promise<void> {
+    await db.delete(employeeDocuments).where(eq(employeeDocuments.id, id));
+  }
+
+  async verifyEmployeeDocument(id: number, verifiedById: string): Promise<EmployeeDocument | undefined> {
+    const [updated] = await db.update(employeeDocuments)
+      .set({
+        isVerified: true,
+        verifiedById,
+        verifiedAt: new Date(),
+      })
+      .where(eq(employeeDocuments.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Disciplinary Reports operations (Tutanak, Disiplin, Savunma)
+  async getDisciplinaryReports(userId?: string, branchId?: number, status?: string): Promise<DisciplinaryReport[]> {
+    const conditions: SQL[] = [];
+    if (userId) conditions.push(eq(disciplinaryReports.userId, userId));
+    if (branchId) conditions.push(eq(disciplinaryReports.branchId, branchId));
+    if (status) conditions.push(eq(disciplinaryReports.status, status));
+
+    return db.select().from(disciplinaryReports)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(disciplinaryReports.incidentDate));
+  }
+
+  async getDisciplinaryReport(id: number): Promise<DisciplinaryReport | undefined> {
+    const [report] = await db.select().from(disciplinaryReports)
+      .where(eq(disciplinaryReports.id, id));
+    return report;
+  }
+
+  async createDisciplinaryReport(report: InsertDisciplinaryReport): Promise<DisciplinaryReport> {
+    const [newReport] = await db.insert(disciplinaryReports).values(report).returning();
+    return newReport;
+  }
+
+  async updateDisciplinaryReport(id: number, updates: Partial<InsertDisciplinaryReport>): Promise<DisciplinaryReport | undefined> {
+    const [updated] = await db.update(disciplinaryReports)
+      .set(updates)
+      .where(eq(disciplinaryReports.id, id))
+      .returning();
+    return updated;
+  }
+
+  async addEmployeeResponse(id: number, response: string, attachments?: string[]): Promise<DisciplinaryReport | undefined> {
+    const [updated] = await db.update(disciplinaryReports)
+      .set({
+        employeeResponse: response,
+        employeeResponseDate: new Date(),
+        employeeResponseAttachments: attachments || [],
+        status: 'under_review',
+      })
+      .where(eq(disciplinaryReports.id, id))
+      .returning();
+    return updated;
+  }
+
+  async resolveDisciplinaryReport(id: number, resolution: string, actionTaken: string, resolvedById: string): Promise<DisciplinaryReport | undefined> {
+    const [updated] = await db.update(disciplinaryReports)
+      .set({
+        resolution,
+        actionTaken,
+        resolvedById,
+        resolvedAt: new Date(),
+        status: 'resolved',
+      })
+      .where(eq(disciplinaryReports.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Employee Onboarding operations
+  async getEmployeeOnboarding(userId: string): Promise<EmployeeOnboarding | undefined> {
+    const [onboarding] = await db.select().from(employeeOnboarding)
+      .where(eq(employeeOnboarding.userId, userId));
+    return onboarding;
+  }
+
+  async getOnboardingsByBranch(branchId: number, status?: string): Promise<EmployeeOnboarding[]> {
+    const conditions: SQL[] = [eq(employeeOnboarding.branchId, branchId)];
+    if (status) conditions.push(eq(employeeOnboarding.status, status));
+
+    return db.select().from(employeeOnboarding)
+      .where(and(...conditions))
+      .orderBy(desc(employeeOnboarding.startDate));
+  }
+
+  async createEmployeeOnboarding(onboarding: InsertEmployeeOnboarding): Promise<EmployeeOnboarding> {
+    const [newOnboarding] = await db.insert(employeeOnboarding).values(onboarding).returning();
+    return newOnboarding;
+  }
+
+  async updateEmployeeOnboarding(id: number, updates: Partial<InsertEmployeeOnboarding>): Promise<EmployeeOnboarding | undefined> {
+    const [updated] = await db.update(employeeOnboarding)
+      .set(updates)
+      .where(eq(employeeOnboarding.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateOnboardingProgress(id: number): Promise<EmployeeOnboarding | undefined> {
+    // Get all tasks for this onboarding
+    const tasks = await db.select().from(employeeOnboardingTasks)
+      .where(eq(employeeOnboardingTasks.onboardingId, id));
+
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 'completed').length;
+    const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // Update status based on completion
+    let status = 'in_progress';
+    let actualCompletionDate = null;
+    if (completionPercentage === 100) {
+      status = 'completed';
+      actualCompletionDate = new Date();
+    } else if (completionPercentage > 0) {
+      status = 'in_progress';
+    }
+
+    const [updated] = await db.update(employeeOnboarding)
+      .set({
+        completionPercentage,
+        status,
+        ...(actualCompletionDate && { actualCompletionDate: actualCompletionDate.toISOString().split('T')[0] }),
+      })
+      .where(eq(employeeOnboarding.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Employee Onboarding Tasks operations
+  async getOnboardingTasks(onboardingId: number): Promise<EmployeeOnboardingTask[]> {
+    return db.select().from(employeeOnboardingTasks)
+      .where(eq(employeeOnboardingTasks.onboardingId, onboardingId))
+      .orderBy(asc(employeeOnboardingTasks.dueDate));
+  }
+
+  async getOnboardingTask(id: number): Promise<EmployeeOnboardingTask | undefined> {
+    const [task] = await db.select().from(employeeOnboardingTasks)
+      .where(eq(employeeOnboardingTasks.id, id));
+    return task;
+  }
+
+  async createOnboardingTask(task: InsertEmployeeOnboardingTask): Promise<EmployeeOnboardingTask> {
+    const [newTask] = await db.insert(employeeOnboardingTasks).values(task).returning();
+    return newTask;
+  }
+
+  async updateOnboardingTask(id: number, updates: Partial<InsertEmployeeOnboardingTask>): Promise<EmployeeOnboardingTask | undefined> {
+    const [updated] = await db.update(employeeOnboardingTasks)
+      .set(updates)
+      .where(eq(employeeOnboardingTasks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async completeOnboardingTask(id: number, completedById: string, attachments?: string[]): Promise<EmployeeOnboardingTask | undefined> {
+    const [updated] = await db.update(employeeOnboardingTasks)
+      .set({
+        status: 'completed',
+        completedById,
+        completedAt: new Date(),
+        attachmentUrls: attachments || [],
+      })
+      .where(eq(employeeOnboardingTasks.id, id))
+      .returning();
+
+    // Update onboarding progress
+    if (updated) {
+      await this.updateOnboardingProgress(updated.onboardingId);
+    }
+
+    return updated;
+  }
+
+  async verifyOnboardingTask(id: number, verifiedById: string): Promise<EmployeeOnboardingTask | undefined> {
+    const [updated] = await db.update(employeeOnboardingTasks)
+      .set({
+        verifiedById,
+        verifiedAt: new Date(),
+      })
+      .where(eq(employeeOnboardingTasks.id, id))
+      .returning();
+    return updated;
   }
 
   // Message operations
