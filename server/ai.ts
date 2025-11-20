@@ -358,8 +358,8 @@ JSON formatında yanıt verin:
       passed: result.passed || false,
     };
 
-    // Cache for 24 hours
-    cache.set(cacheKey, analysis, 24 * 60 * 60 * 1000);
+    // Cache for 72 hours (extended for $200/month - task analysis rarely changes)
+    cache.set(cacheKey, analysis, 72 * 60 * 60 * 1000);
     
     // Log AI usage
     const usage = response.usage;
@@ -479,8 +479,8 @@ JSON formatında yanıt verin:
       recommendations: result.recommendations || [],
     };
 
-    // Cache for 24 hours
-    cache.set(cacheKey, analysis, 24 * 60 * 60 * 1000);
+    // Cache for 72 hours (extended for $200/month - fault analysis rarely changes)
+    cache.set(cacheKey, analysis, 72 * 60 * 60 * 1000);
     
     // Increment rate limit counter (shares photo quota)
     if (userId) {
@@ -663,8 +663,8 @@ JSON formatında TÜRKÇE yanıt verin:
       },
     };
 
-    // Cache for 24 hours
-    cache.set(cacheKey, analysis, 24 * 60 * 60 * 1000);
+    // Cache for 72 hours (extended for $200/month - dress code rules rarely change)
+    cache.set(cacheKey, analysis, 72 * 60 * 60 * 1000);
     
     // Increment rate limit counter (only on successful AI call)
     if (userId) {
@@ -918,8 +918,8 @@ Samimi ve profesyonel ol.`;
       systemMessage: "Genel AI bilgisinden cevap verildi (bilgi bankasında ilgili içerik bulunamadı)"
     };
 
-    // Cache for 12 hours (shorter than RAG since no sources)
-    cache.set(cacheKey, result, 12 * 60 * 60 * 1000);
+    // Cache for 24 hours (extended for $200/month budget)
+    cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
     
     aiRateLimiter.incrementRequest(effectiveUserId, 'tech_assist');
     const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'tech_assist', TECH_ASSIST_LIMIT);
@@ -1039,8 +1039,8 @@ JSON formatında yanıt ver:
       cached: false,
     };
 
-    // Cache for 24 hours
-    cache.set(cacheKey, planResponse, 24 * 60 * 60 * 1000);
+    // Cache for 72 hours (extended for $200/month - weekly plans rarely change)
+    cache.set(cacheKey, planResponse, 72 * 60 * 60 * 1000);
     
     // Increment rate limit counter
     if (userId) {
@@ -1391,8 +1391,8 @@ export async function generateAISummary(
       scope: branchId ? { branchId, branchName } : undefined,
     };
 
-    // Cache for 24 hours
-    cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
+    // Cache for 8 hours (dashboard summaries need frequent updates)
+    cache.set(cacheKey, result, 8 * 60 * 60 * 1000);
 
     // Increment rate limit counter
     aiRateLimiter.incrementRequest(user.id, 'summary');
@@ -1547,8 +1547,8 @@ export async function generateDashboardInsights(
       scope: branchId ? { branchId, branchName } : undefined,
     };
 
-    // Cache for 24 hours
-    cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
+    // Cache for 12 hours (insights should refresh regularly)
+    cache.set(cacheKey, result, 12 * 60 * 60 * 1000);
 
     // Increment rate limit counter
     aiRateLimiter.incrementRequest(userId.toString(), 'insights');
@@ -1830,8 +1830,8 @@ export async function evaluateBranchPerformance(
       trend: result.trend || "stable",
     };
 
-    // Cache for 6 hours (branch performance changes slowly)
-    cache.set(cacheKey, evaluation, 6 * 60 * 60 * 1000);
+    // Cache for 12 hours (extended for $200/month - evaluations update regularly)
+    cache.set(cacheKey, evaluation, 12 * 60 * 60 * 1000);
 
     // Track usage (fire and forget)
     if (userId) {
