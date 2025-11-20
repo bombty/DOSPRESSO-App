@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, and, sql, inArray, gte, type SQL } from "drizzle-orm";
+import { eq, desc, asc, and, sql, inArray, gte, lte, type SQL } from "drizzle-orm";
 import type {
   User,
   UpsertUser,
@@ -3771,16 +3771,21 @@ export class DatabaseStorage implements IStorage {
     const conditions: SQL[] = [eq(employeePerformanceScores.userId, userId)];
     
     if (startDate) {
-      conditions.push(sql`${employeePerformanceScores.date} >= ${startDate}`);
+      conditions.push(gte(employeePerformanceScores.date, startDate));
     }
     if (endDate) {
-      conditions.push(sql`${employeePerformanceScores.date} <= ${endDate}`);
+      conditions.push(lte(employeePerformanceScores.date, endDate));
     }
 
-    return await db.select()
+    console.log('[DEBUG] getPerformanceScores userId:', userId, 'startDate:', startDate, 'endDate:', endDate);
+
+    const scores = await db.select()
       .from(employeePerformanceScores)
       .where(and(...conditions))
       .orderBy(desc(employeePerformanceScores.date));
+
+    console.log('[DEBUG] getPerformanceScores found scores:', scores.length);
+    return scores;
   }
 
   async getWeeklyPerformanceSummary(userId: string, week: string): Promise<{
@@ -3826,6 +3831,8 @@ export class DatabaseStorage implements IStorage {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const startDate = sevenDaysAgo.toISOString().split('T')[0];
 
+    console.log('[DEBUG] getTeamPerformanceAggregates branchId:', branchId, 'startDate:', startDate);
+
     const scores = await db.select({
       userId: employeePerformanceScores.userId,
       dailyTotalScore: employeePerformanceScores.dailyTotalScore,
@@ -3838,9 +3845,11 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(employeePerformanceScores.userId, users.id))
       .where(and(
         eq(users.branchId, branchId),
-        sql`${employeePerformanceScores.date} >= ${startDate}`
+        gte(employeePerformanceScores.date, startDate)
       ))
       .orderBy(employeePerformanceScores.userId, desc(employeePerformanceScores.date));
+
+    console.log('[DEBUG] getTeamPerformanceAggregates found scores:', scores.length);
 
     // Group by user and calculate averages
     const userScores = new Map<string, { totalScore: number; count: number; user: any }>();

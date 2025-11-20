@@ -7581,6 +7581,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/performance/team - Get team performance aggregates (supervisor only)
+  // NOTE: Must come BEFORE /api/performance/:userId to avoid route matching issues
+  app.get('/api/performance/team', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only branch roles (supervisor, branch_manager) can view team performance
+      if (!isBranchRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Takım performansını görüntülemek için branch yetkiniz yok' });
+      }
+      
+      if (!user.branchId) {
+        return res.status(400).json({ message: 'Branch ID bulunamadı' });
+      }
+      
+      ensurePermission(user, 'attendance', 'view', 'Takım performansını görüntülemek için yetkiniz yok');
+      
+      res.setHeader('Cache-Control', 'no-store');
+      const teamPerformance = await storage.getTeamPerformanceAggregates(user.branchId);
+      res.json(teamPerformance);
+    } catch (error: any) {
+      console.error("Error fetching team performance:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Takım performansı yüklenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/performance/branches - Get all branches performance aggregates (HQ only)
+  // NOTE: Must come BEFORE /api/performance/:userId to avoid route matching issues
+  app.get('/api/performance/branches', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ roles can view all branches performance
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Tüm branch performanslarını görüntülemek için HQ yetkiniz yok' });
+      }
+      
+      ensurePermission(user, 'attendance', 'view', 'Branch performanslarını görüntülemek için yetkiniz yok');
+      
+      res.setHeader('Cache-Control', 'no-store');
+      const branchesPerformance = await storage.getAllBranchesPerformanceAggregates();
+      res.json(branchesPerformance);
+    } catch (error: any) {
+      console.error("Error fetching branches performance:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Branch performansları yüklenirken hata oluştu" });
+    }
+  });
+
   // GET /api/performance/:userId - Get performance scores for a user
   app.get('/api/performance/:userId', isAuthenticated, async (req: any, res) => {
     try {
@@ -7593,6 +7647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ensurePermission(user, 'attendance', 'view', 'Başkasının performans skorunu görüntülemek için yetkiniz yok');
       }
 
+      res.setHeader('Cache-Control', 'no-store');
       const scores = await storage.getPerformanceScores(userId, startDate as string, endDate as string);
       res.json(scores);
     } catch (error: any) {
@@ -7623,57 +7678,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Haftalık performans özeti yüklenirken hata oluştu" });
-    }
-  });
-
-  // GET /api/performance/team - Get team performance aggregates (supervisor only)
-  app.get('/api/performance/team', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      
-      // Only branch roles (supervisor, branch_manager) can view team performance
-      if (!isBranchRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: 'Takım performansını görüntülemek için branch yetkiniz yok' });
-      }
-      
-      if (!user.branchId) {
-        return res.status(400).json({ message: 'Branch ID bulunamadı' });
-      }
-      
-      ensurePermission(user, 'attendance', 'view', 'Takım performansını görüntülemek için yetkiniz yok');
-      
-      const teamPerformance = await storage.getTeamPerformanceAggregates(user.branchId);
-      res.json(teamPerformance);
-    } catch (error: any) {
-      console.error("Error fetching team performance:", error);
-      if (error instanceof AuthorizationError) {
-        return res.status(403).json({ message: error.message });
-      }
-      res.status(500).json({ message: "Takım performansı yüklenirken hata oluştu" });
-    }
-  });
-
-  // GET /api/performance/branches - Get all branches performance aggregates (HQ only)
-  app.get('/api/performance/branches', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      
-      // Only HQ roles can view all branches performance
-      if (!isHQRole(user.role as UserRoleType)) {
-        return res.status(403).json({ message: 'Tüm branch performanslarını görüntülemek için HQ yetkiniz yok' });
-      }
-      
-      ensurePermission(user, 'attendance', 'view', 'Branch performanslarını görüntülemek için yetkiniz yok');
-      
-      res.setHeader('Cache-Control', 'no-store');
-      const branchesPerformance = await storage.getAllBranchesPerformanceAggregates();
-      res.json(branchesPerformance);
-    } catch (error: any) {
-      console.error("Error fetching branches performance:", error);
-      if (error instanceof AuthorizationError) {
-        return res.status(403).json({ message: error.message });
-      }
-      res.status(500).json({ message: "Branch performansları yüklenirken hata oluştu" });
     }
   });
 
