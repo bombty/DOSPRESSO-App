@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { EQUIPMENT_METADATA, insertEquipmentCommentSchema, insertEquipmentServiceRequestSchema, insertEquipmentFaultSchema, insertEquipmentSchema, type InsertEquipment, type EquipmentMaintenanceLog, type EquipmentFault, type EquipmentComment, type EquipmentServiceRequest, type Branch, EQUIPMENT_TYPES, FAULT_STAGES, type FaultStageType, SERVICE_REQUEST_STATUS, SERVICE_DECISION } from "@shared/schema";
+import { EQUIPMENT_METADATA, insertEquipmentCommentSchema, insertEquipmentServiceRequestSchema, insertEquipmentFaultSchema, insertEquipmentSchema, type InsertEquipment, type EquipmentMaintenanceLog, type EquipmentFault, type EquipmentComment, type EquipmentServiceRequest, type Branch, EQUIPMENT_TYPES, FAULT_STAGES, type FaultStageType, SERVICE_REQUEST_STATUS, SERVICE_DECISION, type EquipmentTroubleshootingStep } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from "date-fns";
@@ -168,6 +169,24 @@ export default function EquipmentDetail() {
     queryKey: ["/api/branches"],
   });
 
+  // Troubleshooting steps query
+  const { data: troubleshootingSteps, isLoading: isLoadingSteps } = useQuery<EquipmentTroubleshootingStep[]>({
+    queryKey: ["/api/equipment-troubleshooting-steps", equipment?.equipmentType],
+    queryFn: async () => {
+      if (!equipment?.equipmentType) return [];
+      const response = await fetch(`/api/equipment-troubleshooting-steps?equipmentType=${equipment.equipmentType}`);
+      if (!response.ok) throw new Error('Failed to fetch troubleshooting steps');
+      return response.json();
+    },
+    enabled: !!equipment?.equipmentType,
+  });
+
+  // Calculate if troubleshooting is complete
+  const requiredSteps = troubleshootingSteps?.filter(step => step.isRequired) || [];
+  const missingRequiredSteps = requiredSteps.filter(step => !completedStepIds.has(step.id));
+  const isTroubleshootingComplete = requiredSteps.length === 0 || missingRequiredSteps.length === 0;
+  const hasSteps = troubleshootingSteps && troubleshootingSteps.length > 0;
+
   // Dialog state
   const [serviceRequestDialogOpen, setServiceRequestDialogOpen] = useState(false);
   const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
@@ -176,6 +195,10 @@ export default function EquipmentDetail() {
   const [selectedTimeline, setSelectedTimeline] = useState<EquipmentServiceRequest | null>(null);
   const [isFaultDialogOpen, setIsFaultDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Troubleshooting state
+  const [completedStepIds, setCompletedStepIds] = useState<Set<number>>(new Set());
+  const [stepNotes, setStepNotes] = useState<Record<number, string>>({});
 
   const form = useForm<CommentFormData>({
     resolver: zodResolver(commentFormSchema),
