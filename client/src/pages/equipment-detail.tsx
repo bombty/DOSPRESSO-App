@@ -169,6 +169,19 @@ export default function EquipmentDetail() {
     queryKey: ["/api/branches"],
   });
 
+  // Dialog state
+  const [serviceRequestDialogOpen, setServiceRequestDialogOpen] = useState(false);
+  const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
+  const [selectedServiceRequest, setSelectedServiceRequest] = useState<EquipmentServiceRequest | null>(null);
+  const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
+  const [selectedTimeline, setSelectedTimeline] = useState<EquipmentServiceRequest | null>(null);
+  const [isFaultDialogOpen, setIsFaultDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Troubleshooting state
+  const [completedStepIds, setCompletedStepIds] = useState<Set<number>>(new Set());
+  const [stepNotes, setStepNotes] = useState<Record<number, string>>({});
+
   // Troubleshooting steps query
   const { data: troubleshootingSteps, isLoading: isLoadingSteps } = useQuery<EquipmentTroubleshootingStep[]>({
     queryKey: ["/api/equipment-troubleshooting-steps", equipment?.equipmentType],
@@ -186,19 +199,6 @@ export default function EquipmentDetail() {
   const missingRequiredSteps = requiredSteps.filter(step => !completedStepIds.has(step.id));
   const isTroubleshootingComplete = requiredSteps.length === 0 || missingRequiredSteps.length === 0;
   const hasSteps = troubleshootingSteps && troubleshootingSteps.length > 0;
-
-  // Dialog state
-  const [serviceRequestDialogOpen, setServiceRequestDialogOpen] = useState(false);
-  const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
-  const [selectedServiceRequest, setSelectedServiceRequest] = useState<EquipmentServiceRequest | null>(null);
-  const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
-  const [selectedTimeline, setSelectedTimeline] = useState<EquipmentServiceRequest | null>(null);
-  const [isFaultDialogOpen, setIsFaultDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  
-  // Troubleshooting state
-  const [completedStepIds, setCompletedStepIds] = useState<Set<number>>(new Set());
-  const [stepNotes, setStepNotes] = useState<Record<number, string>>({});
 
   const form = useForm<CommentFormData>({
     resolver: zodResolver(commentFormSchema),
