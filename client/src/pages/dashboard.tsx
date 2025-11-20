@@ -1523,70 +1523,70 @@ export default function Dashboard() {
           <SheetHeader>
             <SheetTitle>Şube Performans Detayları</SheetTitle>
             <SheetDescription>
-              {selectedBranch?.branchName} - Son 7 gün performans analizi
+              {selectedBranch?.branchName} - Kompozit performans analizi
             </SheetDescription>
           </SheetHeader>
 
           {selectedBranch && (
             <div className="space-y-6 mt-6">
-              {/* Overall Score */}
+              {/* Overall Composite Score */}
               <div className="flex items-center justify-between p-4 bg-muted rounded-md">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Genel Skor</p>
-                  <p className="text-3xl font-bold mt-1">{selectedBranch.avgDailyTotalScore}/100</p>
+                  <p className="text-sm font-medium text-muted-foreground">Kompozit Skor</p>
+                  <p className="text-3xl font-bold mt-1">{Math.round(selectedBranch.compositeScore)}/100</p>
                 </div>
                 <Badge 
-                  variant={selectedBranch.avgDailyTotalScore >= 80 ? "default" : selectedBranch.avgDailyTotalScore >= 60 ? "secondary" : "destructive"}
+                  variant={selectedBranch.compositeScore >= 80 ? "default" : selectedBranch.compositeScore >= 60 ? "secondary" : "destructive"}
                   className="text-lg px-4 py-2"
+                  data-testid="badge-composite-score"
                 >
-                  {selectedBranch.avgDailyTotalScore >= 80 ? "Mükemmel" : selectedBranch.avgDailyTotalScore >= 60 ? "İyi" : "Gelişmeli"}
+                  {selectedBranch.compositeScore >= 80 ? "Mükemmel" : selectedBranch.compositeScore >= 60 ? "İyi" : "Gelişmeli"}
                 </Badge>
               </div>
 
-              {/* Metrics Breakdown */}
+              {/* 4 Main Metrics */}
               <div>
-                <h3 className="text-sm font-medium mb-3">Performans Metrikleri</h3>
+                <h3 className="text-sm font-medium mb-3">Ana Performans Metrikleri</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Devamsızlık Uyumu</span>
-                    <span className="text-sm font-bold">{selectedBranch.avgAttendanceScore}/100</span>
+                  <div className="flex items-center justify-between p-3 border rounded-md">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <span className="text-sm font-medium">Personel Performansı</span>
+                    </div>
+                    <span className="text-sm font-bold" data-testid="score-employee">{Math.round(selectedBranch.employeePerformanceScore)}/100</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Geç Kalma Uyumu</span>
-                    <span className="text-sm font-bold">{selectedBranch.avgLatenessScore}/100</span>
+                  <div className="flex items-center justify-between p-3 border rounded-md">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      <span className="text-sm font-medium">Ekipman Durumu</span>
+                    </div>
+                    <span className="text-sm font-bold" data-testid="score-equipment">{Math.round(selectedBranch.equipmentScore)}/100</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Erken Ayrılma Uyumu</span>
-                    <span className="text-sm font-bold">{selectedBranch.avgEarlyLeaveScore}/100</span>
+                  <div className="flex items-center justify-between p-3 border rounded-md">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                      <span className="text-sm font-medium">Kalite Denetimleri</span>
+                    </div>
+                    <span className="text-sm font-bold" data-testid="score-quality">{Math.round(selectedBranch.qualityAuditScore)}/100</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Mola Uyumu</span>
-                    <span className="text-sm font-bold">{selectedBranch.avgBreakComplianceScore}/100</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Vardiya Uyumu</span>
-                    <span className="text-sm font-bold">{selectedBranch.avgShiftComplianceScore}/100</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Mesai Uyumu</span>
-                    <span className="text-sm font-bold">{selectedBranch.avgOvertimeComplianceScore}/100</span>
+                  <div className="flex items-center justify-between p-3 border rounded-md">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                      <span className="text-sm font-medium">Misafir Memnuniyeti</span>
+                    </div>
+                    <span className="text-sm font-bold" data-testid="score-customer">{Math.round(selectedBranch.customerSatisfactionScore)}/100</span>
                   </div>
                 </div>
               </div>
 
-              {/* Additional Info */}
-              <div className="p-4 bg-muted rounded-md space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Toplam Çalışan</span>
-                  <span className="font-medium">{selectedBranch.totalEmployees}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Toplam Ceza Dakikası</span>
-                  <span className="font-medium">{selectedBranch.totalPenaltyMinutes} dk</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tarih Aralığı</span>
-                  <span className="font-medium">{selectedBranch.startDate} - {selectedBranch.endDate}</span>
+              {/* Metric Weights Info */}
+              <div className="p-4 bg-muted/50 rounded-md">
+                <p className="text-xs font-medium mb-2">Skor Ağırlıklandırması:</p>
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <div>Personel: %40</div>
+                  <div>Ekipman: %25</div>
+                  <div>Kalite: %20</div>
+                  <div>Misafir: %15</div>
                 </div>
               </div>
 
