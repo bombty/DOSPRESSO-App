@@ -4669,6 +4669,22 @@ export class DatabaseStorage implements IStorage {
     templateItemId: number, 
     updates: Partial<InsertAuditInstanceItem>
   ): Promise<AuditInstanceItem | undefined> {
+    // Guard: Check if audit is still in progress (reject mutations on completed audits)
+    const [instance] = await db
+      .select({ status: auditInstances.status })
+      .from(auditInstances)
+      .where(eq(auditInstances.id, instanceId));
+    
+    if (!instance) {
+      console.warn(`updateAuditInstanceItem: Audit instance ${instanceId} not found`);
+      return undefined;
+    }
+    
+    if (instance.status !== 'in_progress') {
+      console.warn(`updateAuditInstanceItem: Audit instance ${instanceId} is ${instance.status}, rejecting update`);
+      return undefined;
+    }
+
     const [updatedItem] = await db
       .update(auditInstanceItems)
       .set({

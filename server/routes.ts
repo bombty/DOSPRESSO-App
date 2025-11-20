@@ -8391,6 +8391,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Sadece denetimi başlatan kişi veya HQ güncelleyebilir' });
       }
       
+      // Block updates on completed audits (409 Conflict)
+      if (instance.status !== 'in_progress') {
+        return res.status(409).json({ 
+          message: "Tamamlanmış denetimler güncellenemez",
+          status: instance.status 
+        });
+      }
+      
       const updateSchema = insertAuditInstanceItemSchema.partial().omit({ 
         instanceId: true,
         templateItemId: true 

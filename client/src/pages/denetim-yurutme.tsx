@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
   ArrowLeft, CheckCircle2, Camera, FileText, Star,
-  Save, Send, AlertCircle, Loader2 
+  Save, Send, AlertCircle, Loader2, XCircle 
 } from "lucide-react";
 
 type AuditTemplateItem = {
@@ -124,6 +124,9 @@ export default function DenetimYurutmePage() {
   });
 
   const handleResponseChange = (templateItemId: number, response: string, itemType: string, weight?: number | null, correctAnswer?: string | null) => {
+    // Guard: Block mutations on completed audits
+    if (isCompleted) return;
+
     // Calculate base score (0-100) based on response and item type
     let baseScore: number = 0;
     if (itemType === 'checkbox') {
@@ -151,6 +154,9 @@ export default function DenetimYurutmePage() {
   };
 
   const handleNotesChange = (templateItemId: number, notes: string) => {
+    // Guard: Block mutations on completed audits
+    if (isCompleted) return;
+    
     updateItemMutation.mutate({
       templateItemId,
       updates: { notes },
@@ -158,6 +164,9 @@ export default function DenetimYurutmePage() {
   };
 
   const handlePhotoUpload = (templateItemId: number, uploadURL: string) => {
+    // Guard: Block mutations on completed audits
+    if (isCompleted) return;
+    
     updateItemMutation.mutate({
       templateItemId,
       updates: { photoUrl: uploadURL },
@@ -178,6 +187,9 @@ export default function DenetimYurutmePage() {
       </div>
     );
   }
+
+  // Check if audit is completed (read-only mode)
+  const isCompleted = audit.status === 'completed';
 
   // Calculate progress
   const answeredItems = audit.items.filter(item => item.response !== null).length;
@@ -276,11 +288,11 @@ export default function DenetimYurutmePage() {
                     data-testid={`radio-group-${index}`}
                   >
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id={`yes-${item.id}`} data-testid={`radio-yes-${index}`} />
+                      <RadioGroupItem value="yes" id={`yes-${item.id}`} disabled={isCompleted} data-testid={`radio-yes-${index}`} />
                       <Label htmlFor={`yes-${item.id}`}>Evet / Uygun</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id={`no-${item.id}`} data-testid={`radio-no-${index}`} />
+                      <RadioGroupItem value="no" id={`no-${item.id}`} disabled={isCompleted} data-testid={`radio-no-${index}`} />
                       <Label htmlFor={`no-${item.id}`}>Hayır / Uygun Değil</Label>
                     </div>
                   </RadioGroup>
@@ -295,7 +307,7 @@ export default function DenetimYurutmePage() {
                   >
                     {[1, 2, 3, 4, 5].map((rating) => (
                       <div key={rating} className="flex items-center space-x-1">
-                        <RadioGroupItem value={String(rating)} id={`rating-${item.id}-${rating}`} data-testid={`rating-${index}-${rating}`} />
+                        <RadioGroupItem value={String(rating)} id={`rating-${item.id}-${rating}`} disabled={isCompleted} data-testid={`rating-${index}-${rating}`} />
                         <Label htmlFor={`rating-${item.id}-${rating}`}>{rating}</Label>
                       </div>
                     ))}
@@ -306,32 +318,66 @@ export default function DenetimYurutmePage() {
                   <Textarea
                     value={item.response || ''}
                     onChange={(e) => handleResponseChange(item.templateItemId, e.target.value, itemType, item.templateItem.weight)}
+                    disabled={isCompleted}
                     placeholder="Cevabınızı girin..."
                     data-testid={`textarea-response-${index}`}
                   />
                 )}
 
                 {itemType === 'multiple_choice' && (
-                  <RadioGroup
-                    value={item.response || ''}
-                    onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType, item.templateItem.weight, item.templateItem.correctAnswer)}
-                    data-testid={`radio-group-mc-${index}`}
-                  >
-                    {(item.templateItem.options || []).map((option: string, optionIndex: number) => (
-                      <div key={optionIndex} className="flex items-center space-x-2">
-                        <RadioGroupItem 
-                          value={option} 
-                          id={`option-${item.id}-${optionIndex}`} 
-                          data-testid={`radio-option-${index}-${optionIndex}`} 
-                        />
-                        <Label htmlFor={`option-${item.id}-${optionIndex}`}>{option}</Label>
+                  <>
+                    <RadioGroup
+                      value={item.response || ''}
+                      onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType, item.templateItem.weight, item.templateItem.correctAnswer)}
+                      data-testid={`radio-group-mc-${index}`}
+                    >
+                      {(item.templateItem.options || []).map((option: string, optionIndex: number) => (
+                        <div key={optionIndex} className="flex items-center space-x-2">
+                          <RadioGroupItem 
+                            value={option} 
+                            id={`option-${item.id}-${optionIndex}`} 
+                            disabled={isCompleted}
+                            data-testid={`radio-option-${index}-${optionIndex}`} 
+                          />
+                          <Label htmlFor={`option-${item.id}-${optionIndex}`}>{option}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                    
+                    {/* Feedback for completed audits */}
+                    {isCompleted && item.response && item.templateItem.correctAnswer && (
+                      <div className={`flex items-center gap-2 p-3 rounded-md ${
+                        item.response === item.templateItem.correctAnswer 
+                          ? 'bg-green-50 dark:bg-green-950/20' 
+                          : 'bg-red-50 dark:bg-red-950/20'
+                      }`} data-testid={`feedback-mc-${index}`}>
+                        {item.response === item.templateItem.correctAnswer ? (
+                          <>
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />
+                            <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                              Doğru cevap!
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-5 w-5 text-red-600 dark:text-red-500" />
+                            <div className="flex-1">
+                              <span className="text-sm font-medium text-red-700 dark:text-red-400 block">
+                                Yanlış cevap
+                              </span>
+                              <span className="text-sm text-red-600 dark:text-red-400">
+                                Doğru cevap: <strong>{item.templateItem.correctAnswer}</strong>
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    ))}
-                  </RadioGroup>
+                    )}
+                  </>
                 )}
 
                 {/* Photo Upload */}
-                {requiresPhoto && (
+                {requiresPhoto && !isCompleted && (
                   <div className="space-y-2">
                     <Label>Fotoğraf {requiresPhoto && '*'}</Label>
                     <ObjectUploader
@@ -360,12 +406,12 @@ export default function DenetimYurutmePage() {
                       <Camera className="mr-2 h-4 w-4" />
                       {item.photoUrl ? 'Fotoğrafı Değiştir' : 'Fotoğraf Yükle'}
                     </ObjectUploader>
-                    {item.photoUrl && (
-                      <div className="flex items-center gap-2 text-sm text-green-600">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Fotoğraf yüklendi
-                      </div>
-                    )}
+                  </div>
+                )}
+                {requiresPhoto && item.photoUrl && (
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Fotoğraf yüklendi
                   </div>
                 )}
 
@@ -375,6 +421,7 @@ export default function DenetimYurutmePage() {
                   <Textarea
                     value={item.notes || ''}
                     onChange={(e) => handleNotesChange(item.templateItemId, e.target.value)}
+                    disabled={isCompleted}
                     placeholder="Ekstra not veya açıklama..."
                     className="h-20"
                     data-testid={`textarea-notes-${index}`}
@@ -408,6 +455,7 @@ export default function DenetimYurutmePage() {
               id="overall-notes"
               value={overallNotes}
               onChange={(e) => setOverallNotes(e.target.value)}
+              disabled={isCompleted}
               placeholder="Denetim hakkında genel gözlemler..."
               className="h-24"
               data-testid="textarea-overall-notes"
@@ -419,6 +467,7 @@ export default function DenetimYurutmePage() {
               id="action-items"
               value={overallActionItems}
               onChange={(e) => setOverallActionItems(e.target.value)}
+              disabled={isCompleted}
               placeholder="Yapılması gerekenler (satır satır)..."
               className="h-24"
               data-testid="textarea-action-items"
@@ -428,30 +477,32 @@ export default function DenetimYurutmePage() {
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-3 justify-end sticky bottom-4 bg-background p-4 rounded-lg border">
-        <Link href="/denetimler">
-          <Button variant="outline" data-testid="button-cancel">
-            İptal
+      {!isCompleted && (
+        <div className="flex gap-3 justify-end sticky bottom-4 bg-background p-4 rounded-lg border">
+          <Link href="/denetimler">
+            <Button variant="outline" data-testid="button-cancel">
+              İptal
+            </Button>
+          </Link>
+          <Button
+            onClick={() => completeMutation.mutate()}
+            disabled={completeMutation.isPending || answeredItems < totalItems}
+            data-testid="button-complete"
+          >
+            {completeMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Denetimi Tamamla
+              </>
+            )}
           </Button>
-        </Link>
-        <Button
-          onClick={() => completeMutation.mutate()}
-          disabled={completeMutation.isPending || audit.status === 'completed' || answeredItems < totalItems}
-          data-testid="button-complete"
-        >
-          {completeMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Kaydediliyor...
-            </>
-          ) : (
-            <>
-              <Send className="mr-2 h-4 w-4" />
-              Denetimi Tamamla
-            </>
-          )}
-        </Button>
-      </div>
+        </div>
+      )}
 
       {/* Warning if incomplete */}
       {answeredItems < totalItems && audit.status !== 'completed' && (
