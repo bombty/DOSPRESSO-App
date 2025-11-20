@@ -610,9 +610,11 @@ export default function EquipmentDetail() {
               </Button>
               <Button
                 onClick={() => {
-                  // Reset troubleshooting state when opening dialog
+                  // Reset troubleshooting and AI state when opening dialog
                   setCompletedStepIds(new Set());
                   setStepNotes({});
+                  setAiQuestion("");
+                  setAiAnswer(null);
                   setIsFaultDialogOpen(true);
                 }}
                 variant="destructive"
