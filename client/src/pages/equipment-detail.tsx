@@ -1725,11 +1725,11 @@ export default function EquipmentDetail() {
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-2">
                                 <span className={`font-medium ${isMissing ? 'text-destructive' : ''}`}>
-                                  {step.order}. {step.stepTitle}
+                                  Adım {step.order}
                                   {step.isRequired && <span className="text-destructive">*</span>}
                                 </span>
                               </div>
-                              <p className="text-sm text-muted-foreground">{step.stepDescription}</p>
+                              <p className="text-sm text-muted-foreground">{step.description}</p>
                               {isMissing && (
                                 <p className="text-sm text-destructive font-medium">
                                   Bu adım zorunludur
