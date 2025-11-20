@@ -804,15 +804,20 @@ export default function Dashboard() {
       )}
 
       {/* Performance Details Section */}
-      {weeklyPerformanceScore !== null && (
-        <Card data-testid="card-performance-details">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5" />
-              Performans Detayları
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card data-testid="card-performance-details">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Award className="h-5 w-5" />
+            Performans Detayları
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {performanceLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-16 w-full" data-testid="skeleton-performance-details-loading" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : weeklyPerformanceScore !== null ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -846,9 +851,13 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8" data-testid="empty-performance-details">
+              Henüz performans verisi yok. Performans verileri günlük olarak hesaplanır.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Team Performance Section - Supervisor/Branch Manager Only */}
       {user && isBranchRole(user.role) && (
