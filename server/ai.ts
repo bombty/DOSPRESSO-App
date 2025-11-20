@@ -233,11 +233,11 @@ export async function analyzeTaskPhoto(
   }
 
   // CRITICAL: Rate limit check (only if making real AI call and userId provided)
-  const PHOTO_LIMIT = 10; // 10 photo analyses per day
+  const PHOTO_LIMIT = 100; // 100 photo analyses per day ($200/month budget)
   if (userId && !aiRateLimiter.canMakeRequest(userId, 'photo', PHOTO_LIMIT)) {
     console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily photo analysis quota`);
     return {
-      analysis: "Günlük fotoğraf analiz limitiniz doldu (10/gün). Yarın tekrar deneyin veya supervisor ile iletişime geçin.",
+      analysis: "Günlük fotoğraf analiz limitiniz doldu (100/gün). Yarın tekrar deneyin veya supervisor ile iletişime geçin.",
       score: 70, // Default pass score
       passed: true,
     };
@@ -417,11 +417,11 @@ export async function analyzeFaultPhoto(
   }
 
   // Rate limit check (shares photo quota)
-  const PHOTO_LIMIT = 10;
+  const PHOTO_LIMIT = 100; // $200/month budget
   if (userId && !aiRateLimiter.canMakeRequest(userId, 'photo', PHOTO_LIMIT)) {
     console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily photo analysis quota`);
     return {
-      analysis: "Günlük fotoğraf analiz limitiniz doldu (10/gün). Arıza kaydedildi ancak otomatik analiz yapılamadı.",
+      analysis: "Günlük fotoğraf analiz limitiniz doldu (100/gün). Arıza kaydedildi ancak otomatik analiz yapılamadı.",
       severity: "medium",
       recommendations: ["Bir teknisyen ile iletişime geçin", "Ekipmanın kullanımını durdurun"],
     };
@@ -586,13 +586,13 @@ export async function analyzeDressCodePhoto(
   }
 
   // CRITICAL: Rate limit check (shares photo quota with task/fault analysis)
-  const PHOTO_LIMIT = 10; // 10 photo analyses per day
+  const PHOTO_LIMIT = 100; // 100 photo analyses per day ($200/month budget)
   if (userId && !aiRateLimiter.canMakeRequest(userId, 'photo', PHOTO_LIMIT)) {
     console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily photo analysis quota`);
     return {
       isCompliant: false,
       score: 0,
-      summary: "Günlük fotoğraf analiz limitiniz doldu (10/gün). Yarın tekrar deneyin.",
+      summary: "Günlük fotoğraf analiz limitiniz doldu (100/gün). Yarın tekrar deneyin.",
       violations: ["Günlük limit aşıldı - manuel kontrol gerekli"],
       details: {
         uniform: false,
@@ -772,12 +772,8 @@ export async function answerQuestionWithRAG(
     }
   }
 
-  // Rate limit check (RAG calls are more expensive, separate quota)
-  const RAG_LIMIT = 5; // 5 RAG Q&A calls per day (independent of photo quota)
-  if (userId && !aiRateLimiter.canMakeRequest(userId, 'rag', RAG_LIMIT)) {
-    console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily RAG quota`);
-    throw new Error("Günlük soru-cevap limitiniz doldu (5/gün). Yarın tekrar deneyin.");
-  }
+  // RAG rate limit removed - embedding costs are minimal with $200/month budget
+  // Unlimited RAG queries allowed (only embedding + GPT-4o costs)
 
   try {
     const context = relevantChunks
@@ -809,17 +805,11 @@ export async function answerQuestionWithRAG(
 
     const result: RAGResponse = { answer, sources };
 
-    // Cache for 24 hours
-    cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
+    // Cache for 48 hours (extended for $200/month budget)
+    cache.set(cacheKey, result, 48 * 60 * 60 * 1000);
     
-    // Increment rate limit counter (RAG has separate quota from photos)
-    if (userId) {
-      aiRateLimiter.incrementRequest(userId, 'rag');
-      const remaining = aiRateLimiter.getRemainingCalls(userId, 'rag', RAG_LIMIT);
-      console.log(`💰 AI call made - RAG Q&A (${remaining}/${RAG_LIMIT} remaining for user ${userId})`);
-    } else {
-      console.log('💰 AI call made - RAG Q&A');
-    }
+    // No rate limiting for RAG - embedding costs are minimal
+    console.log('💰 AI call made - RAG Q&A (unlimited with $200/month budget)');
 
     return result;
   } catch (error) {
@@ -835,8 +825,8 @@ export async function answerTechnicalQuestion(
   userId?: string,
   skipCache: boolean = false
 ): Promise<RAGResponse & { usedKnowledgeBase: boolean; systemMessage?: string }> {
-  // Increased rate limit for $100/month budget
-  const TECH_ASSIST_LIMIT = 50; // 50 calls per day (up from 5)
+  // Increased rate limit for $200/month budget
+  const TECH_ASSIST_LIMIT = 200; // 200 calls per day (comprehensive AI assistance)
   
   // Use 'system' userId for unauthenticated requests to enforce global rate limit
   const effectiveUserId = userId || 'system';
@@ -964,10 +954,10 @@ export async function generateShiftPlan(
   }
 
   // Rate limit check (shift planning calls are expensive, separate quota)
-  const SHIFT_PLAN_LIMIT = 3; // 3 shift plan calls per day per supervisor
+  const SHIFT_PLAN_LIMIT = 10; // 10 shift plan calls per day ($200/month budget)
   if (userId && !aiRateLimiter.canMakeRequest(userId, 'shift_plan', SHIFT_PLAN_LIMIT)) {
     console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily shift plan quota`);
-    throw new Error("Günlük vardiya planlama limitiniz doldu (3/gün). Yarın tekrar deneyin.");
+    throw new Error("Günlük vardiya planlama limitiniz doldu (10/gün). Yarın tekrar deneyin.");
   }
 
   try {
@@ -1069,7 +1059,7 @@ JSON formatında yanıt ver:
 }
 
 // AI Dashboard Summary (HQ + Branch Supervisors only)
-const SUMMARY_LIMIT = 3; // 3 summaries per day
+const SUMMARY_LIMIT = 20; // 20 summaries per day ($200/month budget)
 
 interface SummaryUser {
   id: string;
@@ -1417,7 +1407,7 @@ export async function generateAISummary(
 }
 
 // Dashboard Insights: Role-specific AI insights
-const INSIGHTS_LIMIT = 3; // 3 insights per day per user
+const INSIGHTS_LIMIT = 20; // 20 insights per day ($200/month budget)
 
 interface DashboardInsightsResponse {
   insights: string[];
@@ -1769,10 +1759,10 @@ export async function evaluateBranchPerformance(
   }
 
   // Rate limit check (evaluation calls are text-based, separate quota)
-  const EVAL_LIMIT = 10; // 10 branch evaluations per day
+  const EVAL_LIMIT = 50; // 50 branch evaluations per day ($200/month budget)
   if (userId && !aiRateLimiter.canMakeRequest(userId, 'evaluation', EVAL_LIMIT)) {
     console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily evaluation quota`);
-    throw new Error("Günlük değerlendirme limitiniz doldu (10/gün). Yarın tekrar deneyin.");
+    throw new Error("Günlük değerlendirme limitiniz doldu (50/gün). Yarın tekrar deneyin.");
   }
 
   try {
