@@ -162,6 +162,7 @@ import {
   guestComplaints,
   equipmentTroubleshootingSteps,
   employeePerformanceScores,
+  branchQualityAudits,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -4021,7 +4022,7 @@ export class DatabaseStorage implements IStorage {
         .from(employeePerformanceScores)
         .where(and(
           eq(employeePerformanceScores.branchId, branch.id),
-          gte(employeePerformanceScores.date, thirtyDaysAgo.toISOString().split('T')[0])
+          sql`${employeePerformanceScores.date} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString().split('T')[0]}'`)} AS date)`
         ));
       
       const employeePerformanceScore = employeeScores[0]?.avgScore ?? 85; // Default 85 if no data
@@ -4034,7 +4035,7 @@ export class DatabaseStorage implements IStorage {
         .from(equipmentFaults)
         .where(and(
           eq(equipmentFaults.branchId, branch.id),
-          sql`${equipmentFaults.reportedAt} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString()}'`)} AS timestamp)`
+          sql`${equipmentFaults.createdAt} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString()}'`)} AS timestamp)`
         ));
       
       const faultCount = faults[0]?.count ?? 0;
@@ -4163,7 +4164,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(equipment)
       .where(eq(equipment.branchId, branchId))
-      .orderBy(equipment.name);
+      .orderBy(equipment.equipmentName);
 
     // Get recent tasks (last 10)
     const recentTasks = await db
@@ -4178,7 +4179,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(equipmentFaults)
       .where(eq(equipmentFaults.branchId, branchId))
-      .orderBy(desc(equipmentFaults.reportedAt))
+      .orderBy(desc(equipmentFaults.createdAt))
       .limit(10);
 
     // Get recent customer feedback (last 10)
