@@ -838,8 +838,11 @@ export async function answerTechnicalQuestion(
   // Increased rate limit for $100/month budget
   const TECH_ASSIST_LIMIT = 50; // 50 calls per day (up from 5)
   
-  if (userId && !aiRateLimiter.canMakeRequest(userId, 'tech_assist', TECH_ASSIST_LIMIT)) {
-    console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily tech assist quota`);
+  // Use 'system' userId for unauthenticated requests to enforce global rate limit
+  const effectiveUserId = userId || 'system';
+  
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'tech_assist', TECH_ASSIST_LIMIT)) {
+    console.warn(`⚠️ RATE LIMIT - User ${effectiveUserId} exceeded daily tech assist quota`);
     throw new Error("Günlük AI asistan limitiniz doldu (50/gün). Yarın tekrar deneyin.");
   }
 
@@ -873,11 +876,9 @@ export async function answerTechnicalQuestion(
       // Knowledge base found - use RAG
       const ragResponse = await answerQuestionWithRAG(enrichedQuestion, relevantChunks, userId, skipCache);
       
-      if (userId) {
-        aiRateLimiter.incrementRequest(userId, 'tech_assist');
-        const remaining = aiRateLimiter.getRemainingCalls(userId, 'tech_assist', TECH_ASSIST_LIMIT);
-        console.log(`💰 AI call - Tech Assist RAG (${remaining}/${TECH_ASSIST_LIMIT} remaining)`);
-      }
+      aiRateLimiter.incrementRequest(effectiveUserId, 'tech_assist');
+      const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'tech_assist', TECH_ASSIST_LIMIT);
+      console.log(`💰 AI call - Tech Assist RAG (${remaining}/${TECH_ASSIST_LIMIT} remaining for user ${effectiveUserId})`);
       
       return {
         ...ragResponse,
@@ -930,13 +931,9 @@ Samimi ve profesyonel ol.`;
     // Cache for 12 hours (shorter than RAG since no sources)
     cache.set(cacheKey, result, 12 * 60 * 60 * 1000);
     
-    if (userId) {
-      aiRateLimiter.incrementRequest(userId, 'tech_assist');
-      const remaining = aiRateLimiter.getRemainingCalls(userId, 'tech_assist', TECH_ASSIST_LIMIT);
-      console.log(`💰 AI call - Tech Assist Fallback LLM (${remaining}/${TECH_ASSIST_LIMIT} remaining)`);
-    } else {
-      console.log('💰 AI call - Tech Assist Fallback LLM');
-    }
+    aiRateLimiter.incrementRequest(effectiveUserId, 'tech_assist');
+    const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'tech_assist', TECH_ASSIST_LIMIT);
+    console.log(`💰 AI call - Tech Assist Fallback LLM (${remaining}/${TECH_ASSIST_LIMIT} remaining for user ${effectiveUserId})`);
 
     return result;
   } catch (error) {

@@ -2180,27 +2180,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Soru gereklidir" });
       }
 
-      // Fetch equipment context if equipmentId provided
+      // Fetch equipment context if equipmentId provided (optional)
       let equipmentContext;
       if (equipmentId) {
-        const equipment = await storage.getEquipment(equipmentId);
-        if (equipment) {
-          const branch = equipment.branchId ? await storage.getBranch(equipment.branchId) : null;
-          const recentFaults = await storage.getFaults();
-          const equipmentFaults = recentFaults
-            .filter(f => f.equipmentId === equipmentId)
-            .slice(0, 3)
-            .map(f => ({
-              description: f.description,
-              date: new Date(f.createdAt).toLocaleDateString('tr-TR')
-            }));
+        try {
+          const equipment = await storage.getEquipment(equipmentId);
+          if (equipment) {
+            const branch = equipment.branchId ? await storage.getBranch(equipment.branchId) : null;
+            const recentFaults = await storage.getFaults();
+            const equipmentFaults = recentFaults
+              .filter(f => f.equipmentId === equipmentId)
+              .slice(0, 3)
+              .map(f => ({
+                description: f.description,
+                date: new Date(f.createdAt).toLocaleDateString('tr-TR')
+              }));
 
-          equipmentContext = {
-            type: equipment.equipmentType,
-            serialNumber: equipment.serialNumber || undefined,
-            branch: branch?.name,
-            recentFaults: equipmentFaults.length > 0 ? equipmentFaults : undefined
-          };
+            equipmentContext = {
+              type: equipment.equipmentType,
+              serialNumber: equipment.serialNumber || undefined,
+              branch: branch?.name,
+              recentFaults: equipmentFaults.length > 0 ? equipmentFaults : undefined
+            };
+          }
+        } catch (error) {
+          console.warn("Failed to fetch equipment context:", error);
+          // Continue without equipment context
         }
       }
 
