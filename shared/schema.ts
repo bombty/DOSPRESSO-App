@@ -760,6 +760,12 @@ export const equipment = pgTable("equipment", {
   // QR code for quick access
   qrCodeUrl: text("qr_code_url"),
   notes: text("notes"),
+  // Service scope: who services this equipment
+  servicingScope: varchar("servicing_scope", { length: 20 }).notNull().default("branch"), // 'branch' | 'hq'
+  // Maximum acceptable service time in hours before alarm
+  maxServiceTimeHours: integer("max_service_time_hours").default(48), // Alert threshold
+  // Alarm threshold in hours - send notification when exceeded
+  alertThresholdHours: integer("alert_threshold_hours").default(36),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -823,12 +829,32 @@ export const equipmentFaults = pgTable("equipment_faults", {
   // Cost tracking
   estimatedCost: numeric("estimated_cost", { precision: 10, scale: 2 }),
   actualCost: numeric("actual_cost", { precision: 10, scale: 2 }),
+  // Troubleshooting requirement
+  troubleshootingCompleted: boolean("troubleshooting_completed").notNull().default(false),
+  completedTroubleshootingSteps: jsonb("completed_troubleshooting_steps").$type<Array<{
+    stepId: number;
+    completedAt: string;
+    photoUrl?: string;
+  }>>().default([]),
+  // Detailed fault report (checkbox selections)
+  faultReportDetails: jsonb("fault_report_details").$type<{
+    symptoms: string[]; // Selected symptom checkboxes
+    affectedAreas: string[];
+    immediateImpact: boolean; // Production affected
+    safetyHazard: boolean; // Safety concern
+    partsIdentified: string[];
+    notes: string;
+  }>(),
+  // Service time tracking
+  serviceRequestedAt: timestamp("service_requested_at"),
+  serviceAlarmSent: boolean("service_alarm_sent").default(false),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   branchStageIdx: index("equipment_faults_branch_stage_idx").on(table.branchId, table.currentStage),
   equipmentIdx: index("equipment_faults_equipment_idx").on(table.equipmentId),
+  troubleshootingIdx: index("equipment_faults_troubleshooting_idx").on(table.troubleshootingCompleted),
 }));
 
 export const insertEquipmentFaultSchema = createInsertSchema(equipmentFaults).omit({
@@ -839,6 +865,31 @@ export const insertEquipmentFaultSchema = createInsertSchema(equipmentFaults).om
 
 export type InsertEquipmentFault = z.infer<typeof insertEquipmentFaultSchema>;
 export type EquipmentFault = typeof equipmentFaults.$inferSelect;
+
+// Equipment Troubleshooting Completion table - Track completed steps per fault
+export const equipmentTroubleshootingCompletion = pgTable("equipment_troubleshooting_completion", {
+  id: serial("id").primaryKey(),
+  faultId: integer("fault_id").notNull().references(() => equipmentFaults.id, { onDelete: "cascade" }),
+  stepId: integer("step_id").notNull().references(() => equipmentTroubleshootingSteps.id, { onDelete: "cascade" }),
+  completedById: varchar("completed_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  photoUrl: text("photo_url"), // If step required photo
+  notes: text("notes"),
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("troubleshooting_completion_fault_idx").on(table.faultId),
+  index("troubleshooting_completion_step_idx").on(table.stepId),
+  unique("unique_fault_step").on(table.faultId, table.stepId),
+]);
+
+export const insertEquipmentTroubleshootingCompletionSchema = createInsertSchema(equipmentTroubleshootingCompletion).omit({
+  id: true,
+  completedAt: true,
+  createdAt: true,
+});
+
+export type InsertEquipmentTroubleshootingCompletion = z.infer<typeof insertEquipmentTroubleshootingCompletionSchema>;
+export type EquipmentTroubleshootingCompletion = typeof equipmentTroubleshootingCompletion.$inferSelect;
 
 // Fault Stage Transitions table (audit log for stage changes)
 export const faultStageTransitions = pgTable("fault_stage_transitions", {
