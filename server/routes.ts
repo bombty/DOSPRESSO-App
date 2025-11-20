@@ -31,6 +31,8 @@ import {
   insertAuditTemplateItemSchema,
   insertQualityAuditSchema,
   insertAuditItemScoreSchema,
+  insertAuditInstanceSchema,
+  insertAuditInstanceItemSchema,
   insertCustomerFeedbackSchema,
   insertMaintenanceScheduleSchema,
   insertMaintenanceLogSchema,
@@ -8098,6 +8100,349 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Sorun giderme adımı silinirken hata oluştu" });
+    }
+  });
+
+  // ===============================================
+  // AUDIT TEMPLATE ROUTES
+  // ===============================================
+
+  app.get('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { auditType, category, isActive } = req.query;
+      
+      // Only HQ and branch supervisors can view templates
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Denetim şablonlarını görüntülemek için supervisor veya HQ yetkisi gerekli' });
+      }
+      
+      const templates = await storage.getAuditTemplates(
+        auditType as string,
+        category as string,
+        isActive ? isActive === 'true' : undefined
+      );
+      
+      res.json(templates);
+    } catch (error: any) {
+      console.error("Error fetching audit templates:", error);
+      res.status(500).json({ message: "Denetim şablonları yüklenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      // Only HQ and branch supervisors can view template details
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Denetim şablonlarını görüntülemek için supervisor veya HQ yetkisi gerekli' });
+      }
+      
+      const template = await storage.getAuditTemplate(parseInt(id));
+      
+      if (!template) {
+        return res.status(404).json({ message: "Denetim şablonu bulunamadı" });
+      }
+      
+      res.json(template);
+    } catch (error: any) {
+      console.error("Error fetching audit template:", error);
+      res.status(500).json({ message: "Denetim şablonu yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ users can create templates
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Sadece HQ kullanıcıları denetim şablonu oluşturabilir' });
+      }
+      
+      const { template, items } = req.body;
+      
+      const validatedTemplate = insertAuditTemplateSchema.parse({
+        ...template,
+        createdById: user.id,
+      });
+      
+      // Validate items - storage layer expects items without templateId
+      const itemSchema = insertAuditTemplateItemSchema.omit({ templateId: true });
+      const validatedItems = items.map((item: any) =>
+        itemSchema.parse(item)
+      ) as Omit<InsertAuditTemplateItem, 'templateId'>[];
+      
+      const newTemplate = await storage.createAuditTemplate(validatedTemplate, validatedItems);
+      res.status(201).json(newTemplate);
+    } catch (error: any) {
+      console.error("Error creating audit template:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Denetim şablonu oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      // Only HQ users can update templates
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Sadece HQ kullanıcıları denetim şablonunu güncelleyebilir' });
+      }
+      
+      const { template, items } = req.body;
+      
+      const updateSchema = insertAuditTemplateSchema.partial().omit({ createdById: true });
+      const validatedTemplate = updateSchema.parse(template);
+      
+      let validatedItems:Omit<InsertAuditTemplateItem, 'templateId'>[] | undefined = undefined;
+      if (items) {
+        // Validate items - storage layer expects items without templateId
+        const itemSchema = insertAuditTemplateItemSchema.omit({ templateId: true });
+        validatedItems = items.map((item: any) =>
+          itemSchema.parse(item)
+        ) as Omit<InsertAuditTemplateItem, 'templateId'>[];
+      }
+      
+      const updated = await storage.updateAuditTemplate(parseInt(id), validatedTemplate, validatedItems);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Denetim şablonu bulunamadı" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating audit template:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Denetim şablonu güncellenirken hata oluştu" });
+    }
+  });
+
+  app.delete('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      // Only HQ users can delete templates
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Sadece HQ kullanıcıları denetim şablonunu silebilir' });
+      }
+      
+      await storage.deleteAuditTemplate(parseInt(id));
+      res.json({ message: "Denetim şablonu silindi" });
+    } catch (error: any) {
+      console.error("Error deleting audit template:", error);
+      res.status(500).json({ message: "Denetim şablonu silinirken hata oluştu" });
+    }
+  });
+
+  // ===============================================
+  // AUDIT INSTANCE ROUTES
+  // ===============================================
+
+  app.get('/api/audit-instances', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId, userId, auditorId, status, auditType } = req.query;
+      
+      const filters: any = {
+        status: status as string,
+        auditType: auditType as string,
+      };
+      
+      // Branch staff can only see their branch audits
+      if (isBranchRole(user.role as UserRoleType)) {
+        if (user.branchId) {
+          filters.branchId = user.branchId;
+        }
+      } else if (isHQRole(user.role as UserRoleType)) {
+        // HQ can filter by any branch
+        if (branchId) {
+          filters.branchId = parseInt(branchId as string);
+        }
+        if (userId) {
+          filters.userId = userId as string;
+        }
+        if (auditorId) {
+          filters.auditorId = auditorId as string;
+        }
+      } else {
+        return res.status(403).json({ message: 'Denetim kayıtlarını görüntülemek için yetkiniz yok' });
+      }
+      
+      const instances = await storage.getAuditInstances(filters);
+      res.json(instances);
+    } catch (error: any) {
+      console.error("Error fetching audit instances:", error);
+      res.status(500).json({ message: "Denetim kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/audit-instances/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      const instance = await storage.getAuditInstance(parseInt(id));
+      
+      if (!instance) {
+        return res.status(404).json({ message: "Denetim kaydı bulunamadı" });
+      }
+      
+      // Branch staff can only see their branch audits
+      if (isBranchRole(user.role as UserRoleType)) {
+        if (instance.branchId !== user.branchId) {
+          return res.status(403).json({ message: 'Bu denetim kaydına erişim yetkiniz yok' });
+        }
+      }
+      
+      res.json(instance);
+    } catch (error: any) {
+      console.error("Error fetching audit instance:", error);
+      res.status(500).json({ message: "Denetim kaydı yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/audit-instances', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // HQ can create any audit, branch supervisor can create branch audits
+      const validatedInstance = insertAuditInstanceSchema.parse({
+        ...req.body,
+        auditorId: user.id,
+      });
+      
+      // If branch user, ensure they can only audit their branch
+      if (isBranchRole(user.role as UserRoleType)) {
+        if (validatedInstance.branchId && validatedInstance.branchId !== user.branchId) {
+          return res.status(403).json({ message: 'Sadece kendi şubeniz için denetim başlatabilirsiniz' });
+        }
+      }
+      
+      const newInstance = await storage.createAuditInstance(validatedInstance);
+      res.status(201).json(newInstance);
+    } catch (error: any) {
+      console.error("Error creating audit instance:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Denetim başlatılırken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/audit-instances/:instanceId/items/:templateItemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { instanceId, templateItemId } = req.params;
+      
+      // Get instance to check permissions
+      const instance = await storage.getAuditInstance(parseInt(instanceId));
+      if (!instance) {
+        return res.status(404).json({ message: "Denetim kaydı bulunamadı" });
+      }
+      
+      // Only the auditor or HQ can update items
+      if (instance.auditorId !== user.id && !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Sadece denetimi başlatan kişi veya HQ güncelleyebilir' });
+      }
+      
+      const updateSchema = insertAuditInstanceItemSchema.partial().omit({ 
+        instanceId: true,
+        templateItemId: true 
+      });
+      const validatedData = updateSchema.parse(req.body);
+      
+      const updated = await storage.updateAuditInstanceItem(
+        parseInt(instanceId),
+        parseInt(templateItemId),
+        validatedData
+      );
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Denetim maddesi bulunamadı" });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating audit instance item:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Denetim maddesi güncellenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/audit-instances/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      const { notes, actionItems, followUpRequired, followUpDate } = req.body;
+      
+      // Get instance to check permissions
+      const instance = await storage.getAuditInstance(parseInt(id));
+      if (!instance) {
+        return res.status(404).json({ message: "Denetim kaydı bulunamadı" });
+      }
+      
+      // Only the auditor or HQ can complete
+      if (instance.auditorId !== user.id && !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Sadece denetimi başlatan kişi veya HQ tamamlayabilir' });
+      }
+      
+      const completed = await storage.completeAuditInstance(
+        parseInt(id),
+        notes,
+        actionItems,
+        followUpRequired,
+        followUpDate
+      );
+      
+      if (!completed) {
+        return res.status(404).json({ message: "Denetim kaydı bulunamadı" });
+      }
+      
+      res.json(completed);
+    } catch (error: any) {
+      console.error("Error completing audit instance:", error);
+      res.status(500).json({ message: "Denetim tamamlanırken hata oluştu" });
+    }
+  });
+
+  app.post('/api/audit-instances/:id/cancel', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      // Get instance to check permissions
+      const instance = await storage.getAuditInstance(parseInt(id));
+      if (!instance) {
+        return res.status(404).json({ message: "Denetim kaydı bulunamadı" });
+      }
+      
+      // Only the auditor or HQ can cancel
+      if (instance.auditorId !== user.id && !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Sadece denetimi başlatan kişi veya HQ iptal edebilir' });
+      }
+      
+      const cancelled = await storage.cancelAuditInstance(parseInt(id));
+      
+      if (!cancelled) {
+        return res.status(404).json({ message: "Denetim kaydı bulunamadı" });
+      }
+      
+      res.json(cancelled);
+    } catch (error: any) {
+      console.error("Error cancelling audit instance:", error);
+      res.status(500).json({ message: "Denetim iptal edilirken hata oluştu" });
     }
   });
 

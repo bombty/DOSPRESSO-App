@@ -163,6 +163,18 @@ import {
   equipmentTroubleshootingSteps,
   employeePerformanceScores,
   branchQualityAudits,
+  auditTemplates,
+  auditTemplateItems,
+  auditInstances,
+  auditInstanceItems,
+  AuditTemplate,
+  InsertAuditTemplate,
+  AuditTemplateItem,
+  InsertAuditTemplateItem,
+  AuditInstance,
+  InsertAuditInstance,
+  AuditInstanceItem,
+  InsertAuditInstanceItem,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -543,6 +555,21 @@ export interface IStorage {
     totalShifts: number | null;
     completedShifts: number | null;
   } | undefined>;
+
+  // Audit Template operations
+  getAuditTemplates(auditType?: string, category?: string, isActive?: boolean): Promise<Array<AuditTemplate & { itemCount: number }>>;
+  getAuditTemplate(id: number): Promise<(AuditTemplate & { items: AuditTemplateItem[] }) | undefined>;
+  createAuditTemplate(template: InsertAuditTemplate, items: Omit<InsertAuditTemplateItem, 'templateId'>[]): Promise<AuditTemplate>;
+  updateAuditTemplate(id: number, updates: Partial<InsertAuditTemplate>, items?: Omit<InsertAuditTemplateItem, 'templateId'>[]): Promise<AuditTemplate | undefined>;
+  deleteAuditTemplate(id: number): Promise<void>;
+  
+  // Audit Instance operations
+  getAuditInstances(filters: { branchId?: number; userId?: string; auditorId?: string; status?: string; auditType?: string }): Promise<Array<AuditInstance & { templateTitle: string; targetName: string }>>;
+  getAuditInstance(id: number): Promise<(AuditInstance & { template: AuditTemplate; items: Array<AuditInstanceItem & { templateItem: AuditTemplateItem }> }) | undefined>;
+  createAuditInstance(instance: InsertAuditInstance): Promise<AuditInstance>;
+  updateAuditInstanceItem(instanceId: number, templateItemId: number, updates: Partial<InsertAuditInstanceItem>): Promise<AuditInstanceItem | undefined>;
+  completeAuditInstance(id: number, notes?: string, actionItems?: string, followUpRequired?: boolean, followUpDate?: string): Promise<AuditInstance | undefined>;
+  cancelAuditInstance(id: number): Promise<AuditInstance | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4330,6 +4357,385 @@ export class DatabaseStorage implements IStorage {
       totalShifts,
       completedShifts,
     };
+  }
+
+  // ===============================================
+  // AUDIT TEMPLATE OPERATIONS
+  // ===============================================
+
+  async getAuditTemplates(auditType?: string, category?: string, isActive?: boolean): Promise<Array<AuditTemplate & { itemCount: number }>> {
+    const conditions: SQL[] = [];
+    
+    if (auditType) {
+      conditions.push(eq(auditTemplates.auditType, auditType));
+    }
+    if (category) {
+      conditions.push(eq(auditTemplates.category, category));
+    }
+    if (isActive !== undefined) {
+      conditions.push(eq(auditTemplates.isActive, isActive));
+    }
+
+    // Optimized single query with left join and count aggregation
+    const result = await db
+      .select({
+        id: auditTemplates.id,
+        title: auditTemplates.title,
+        description: auditTemplates.description,
+        auditType: auditTemplates.auditType,
+        category: auditTemplates.category,
+        isActive: auditTemplates.isActive,
+        requiresPhoto: auditTemplates.requiresPhoto,
+        aiAnalysisEnabled: auditTemplates.aiAnalysisEnabled,
+        createdById: auditTemplates.createdById,
+        createdAt: auditTemplates.createdAt,
+        updatedAt: auditTemplates.updatedAt,
+        itemCount: sql<number>`CAST(COUNT(${auditTemplateItems.id}) AS INTEGER)`,
+      })
+      .from(auditTemplates)
+      .leftJoin(auditTemplateItems, eq(auditTemplateItems.templateId, auditTemplates.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(auditTemplates.id)
+      .orderBy(desc(auditTemplates.createdAt));
+
+    return result;
+  }
+
+  async getAuditTemplate(id: number): Promise<(AuditTemplate & { items: AuditTemplateItem[] }) | undefined> {
+    const [template] = await db
+      .select()
+      .from(auditTemplates)
+      .where(eq(auditTemplates.id, id));
+
+    if (!template) {
+      return undefined;
+    }
+
+    const items = await db
+      .select()
+      .from(auditTemplateItems)
+      .where(eq(auditTemplateItems.templateId, id))
+      .orderBy(asc(auditTemplateItems.sortOrder));
+
+    return {
+      ...template,
+      items,
+    };
+  }
+
+  async createAuditTemplate(template: InsertAuditTemplate, items: InsertAuditTemplateItem[]): Promise<AuditTemplate> {
+    // Use transaction to ensure atomic create
+    return await db.transaction(async (tx) => {
+      // Create template
+      const [newTemplate] = await tx
+        .insert(auditTemplates)
+        .values(template)
+        .returning();
+
+      // Create items if provided
+      if (items.length > 0) {
+        const itemsWithTemplateId = items.map((item, index) => ({
+          ...item,
+          templateId: newTemplate.id,
+          sortOrder: item.sortOrder ?? index,
+        }));
+
+        await tx
+          .insert(auditTemplateItems)
+          .values(itemsWithTemplateId);
+      }
+
+      return newTemplate;
+    });
+  }
+
+  async updateAuditTemplate(id: number, updates: Partial<InsertAuditTemplate>, items?: InsertAuditTemplateItem[]): Promise<AuditTemplate | undefined> {
+    // Use transaction to ensure atomic update
+    return await db.transaction(async (tx) => {
+      // Update template
+      const [updatedTemplate] = await tx
+        .update(auditTemplates)
+        .set({
+          ...updates,
+          updatedAt: new Date(),
+        })
+        .where(eq(auditTemplates.id, id))
+        .returning();
+
+      if (!updatedTemplate) {
+        return undefined;
+      }
+
+      // If items are provided, replace all items
+      if (items) {
+        // Delete old items
+        await tx
+          .delete(auditTemplateItems)
+          .where(eq(auditTemplateItems.templateId, id));
+
+        // Create new items
+        if (items.length > 0) {
+          const itemsWithTemplateId = items.map((item, index) => ({
+            ...item,
+            templateId: id,
+            sortOrder: item.sortOrder ?? index,
+          }));
+
+          await tx
+            .insert(auditTemplateItems)
+            .values(itemsWithTemplateId);
+        }
+      }
+
+      return updatedTemplate;
+    });
+  }
+
+  async deleteAuditTemplate(id: number): Promise<void> {
+    // Cascade delete will handle audit_template_items
+    await db
+      .delete(auditTemplates)
+      .where(eq(auditTemplates.id, id));
+  }
+
+  // ===============================================
+  // AUDIT INSTANCE OPERATIONS
+  // ===============================================
+
+  async getAuditInstances(filters: { 
+    branchId?: number; 
+    userId?: string; 
+    auditorId?: string; 
+    status?: string; 
+    auditType?: string 
+  }): Promise<Array<AuditInstance & { templateTitle: string; targetName: string }>> {
+    const conditions: SQL[] = [];
+    
+    if (filters.branchId) {
+      conditions.push(eq(auditInstances.branchId, filters.branchId));
+    }
+    if (filters.userId) {
+      conditions.push(eq(auditInstances.userId, filters.userId));
+    }
+    if (filters.auditorId) {
+      conditions.push(eq(auditInstances.auditorId, filters.auditorId));
+    }
+    if (filters.status) {
+      conditions.push(eq(auditInstances.status, filters.status));
+    }
+    if (filters.auditType) {
+      conditions.push(eq(auditInstances.auditType, filters.auditType));
+    }
+
+    const instances = await db
+      .select()
+      .from(auditInstances)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(auditInstances.auditDate));
+
+    // Enrich with template titles and target names
+    const enrichedInstances = await Promise.all(
+      instances.map(async (instance) => {
+        // Get template title
+        const [template] = await db
+          .select()
+          .from(auditTemplates)
+          .where(eq(auditTemplates.id, instance.templateId));
+        
+        const templateTitle = template?.title || 'Unknown Template';
+
+        // Get target name
+        let targetName = '';
+        if (instance.auditType === 'branch' && instance.branchId) {
+          const [branch] = await db
+            .select()
+            .from(branches)
+            .where(eq(branches.id, instance.branchId));
+          targetName = branch?.name || 'Unknown Branch';
+        } else if (instance.auditType === 'personnel' && instance.userId) {
+          const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, instance.userId));
+          targetName = user?.fullName || 'Unknown User';
+        }
+
+        return {
+          ...instance,
+          templateTitle,
+          targetName,
+        };
+      })
+    );
+
+    return enrichedInstances;
+  }
+
+  async getAuditInstance(id: number): Promise<(AuditInstance & { 
+    template: AuditTemplate; 
+    items: Array<AuditInstanceItem & { templateItem: AuditTemplateItem }> 
+  }) | undefined> {
+    const [instance] = await db
+      .select()
+      .from(auditInstances)
+      .where(eq(auditInstances.id, id));
+
+    if (!instance) {
+      return undefined;
+    }
+
+    // Get template
+    const [template] = await db
+      .select()
+      .from(auditTemplates)
+      .where(eq(auditTemplates.id, instance.templateId));
+
+    if (!template) {
+      return undefined;
+    }
+
+    // Get instance items with template items
+    const instanceItems = await db
+      .select()
+      .from(auditInstanceItems)
+      .where(eq(auditInstanceItems.instanceId, id));
+
+    const itemsWithTemplateInfo = await Promise.all(
+      instanceItems.map(async (item) => {
+        const [templateItem] = await db
+          .select()
+          .from(auditTemplateItems)
+          .where(eq(auditTemplateItems.id, item.templateItemId));
+
+        return {
+          ...item,
+          templateItem: templateItem!,
+        };
+      })
+    );
+
+    return {
+      ...instance,
+      template,
+      items: itemsWithTemplateInfo,
+    };
+  }
+
+  async createAuditInstance(instance: InsertAuditInstance): Promise<AuditInstance> {
+    // Use transaction to ensure atomic create
+    return await db.transaction(async (tx) => {
+      // Create audit instance
+      const [newInstance] = await tx
+        .insert(auditInstances)
+        .values({
+          ...instance,
+          status: 'in_progress',
+        })
+        .returning();
+
+      // Get template items
+      const templateItems = await tx
+        .select()
+        .from(auditTemplateItems)
+        .where(eq(auditTemplateItems.templateId, instance.templateId))
+        .orderBy(asc(auditTemplateItems.sortOrder));
+
+      // Create instance items for each template item
+      if (templateItems.length > 0) {
+        const instanceItems = templateItems.map((item) => ({
+          instanceId: newInstance.id,
+          templateItemId: item.id,
+          response: null,
+          score: null,
+          notes: null,
+          photoUrl: null,
+          aiAnalysisStatus: null,
+          aiScore: null,
+          aiInsights: null,
+          aiConfidence: null,
+        }));
+
+        await tx
+          .insert(auditInstanceItems)
+          .values(instanceItems);
+      }
+
+      return newInstance;
+    });
+  }
+
+  async updateAuditInstanceItem(
+    instanceId: number, 
+    templateItemId: number, 
+    updates: Partial<InsertAuditInstanceItem>
+  ): Promise<AuditInstanceItem | undefined> {
+    const [updatedItem] = await db
+      .update(auditInstanceItems)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(auditInstanceItems.instanceId, instanceId),
+        eq(auditInstanceItems.templateItemId, templateItemId)
+      ))
+      .returning();
+
+    return updatedItem;
+  }
+
+  async completeAuditInstance(
+    id: number, 
+    notes?: string, 
+    actionItems?: string, 
+    followUpRequired?: boolean, 
+    followUpDate?: string
+  ): Promise<AuditInstance | undefined> {
+    // Calculate total score from items
+    const instanceItems = await db
+      .select()
+      .from(auditInstanceItems)
+      .where(eq(auditInstanceItems.instanceId, id));
+
+    // Calculate average score
+    const scoresWithValues = instanceItems.filter(item => item.score !== null);
+    const totalScore = scoresWithValues.length > 0
+      ? Math.round(scoresWithValues.reduce((sum, item) => sum + (item.score || 0), 0) / scoresWithValues.length)
+      : null;
+
+    const maxScore = 100;
+
+    // Update instance
+    const [updatedInstance] = await db
+      .update(auditInstances)
+      .set({
+        status: 'completed',
+        totalScore,
+        maxScore,
+        notes,
+        actionItems,
+        followUpRequired: followUpRequired ?? false,
+        followUpDate: followUpDate ? new Date(followUpDate) : null,
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(auditInstances.id, id))
+      .returning();
+
+    return updatedInstance;
+  }
+
+  async cancelAuditInstance(id: number): Promise<AuditInstance | undefined> {
+    const [updatedInstance] = await db
+      .update(auditInstances)
+      .set({
+        status: 'cancelled',
+        updatedAt: new Date(),
+      })
+      .where(eq(auditInstances.id, id))
+      .returning();
+
+    return updatedInstance;
   }
 }
 
