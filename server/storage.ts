@@ -579,6 +579,11 @@ export interface IStorage {
   updateAuditInstanceItem(instanceId: number, templateItemId: number, updates: Partial<InsertAuditInstanceItem>): Promise<AuditInstanceItem | undefined>;
   completeAuditInstance(id: number, notes?: string, actionItems?: string, followUpRequired?: boolean, followUpDate?: string): Promise<AuditInstance | undefined>;
   cancelAuditInstance(id: number): Promise<AuditInstance | undefined>;
+  
+  // Equipment Troubleshooting Completion operations
+  getTroubleshootingCompletions(faultId: number): Promise<EquipmentTroubleshootingCompletion[]>;
+  createTroubleshootingCompletion(data: InsertEquipmentTroubleshootingCompletion): Promise<EquipmentTroubleshootingCompletion>;
+  isTroubleshootingCompleteForEquipment(equipmentType: string, completedSteps: Array<{ stepId: number }>): Promise<{ complete: boolean; requiredSteps: EquipmentTroubleshootingStep[]; missingSteps: EquipmentTroubleshootingStep[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3669,6 +3674,41 @@ export class DatabaseStorage implements IStorage {
   async deleteEquipmentTroubleshootingStep(id: number): Promise<void> {
     await db.delete(equipmentTroubleshootingSteps)
       .where(eq(equipmentTroubleshootingSteps.id, id));
+  }
+
+  async getTroubleshootingCompletions(faultId: number): Promise<EquipmentTroubleshootingCompletion[]> {
+    return await db.select()
+      .from(equipmentTroubleshootingCompletion)
+      .where(eq(equipmentTroubleshootingCompletion.faultId, faultId))
+      .orderBy(asc(equipmentTroubleshootingCompletion.completedAt));
+  }
+
+  async createTroubleshootingCompletion(data: InsertEquipmentTroubleshootingCompletion): Promise<EquipmentTroubleshootingCompletion> {
+    const [completion] = await db.insert(equipmentTroubleshootingCompletion)
+      .values(data)
+      .returning();
+    return completion;
+  }
+
+  async isTroubleshootingCompleteForEquipment(
+    equipmentType: string,
+    completedSteps: Array<{ stepId: number }>
+  ): Promise<{ complete: boolean; requiredSteps: EquipmentTroubleshootingStep[]; missingSteps: EquipmentTroubleshootingStep[] }> {
+    // Get all required steps for this equipment type
+    const allSteps = await db.select()
+      .from(equipmentTroubleshootingSteps)
+      .where(eq(equipmentTroubleshootingSteps.equipmentType, equipmentType))
+      .orderBy(asc(equipmentTroubleshootingSteps.order));
+    
+    const requiredSteps = allSteps.filter(step => step.isRequired);
+    const completedStepIds = new Set(completedSteps.map(s => s.stepId));
+    const missingSteps = requiredSteps.filter(step => !completedStepIds.has(step.id));
+    
+    return {
+      complete: missingSteps.length === 0,
+      requiredSteps,
+      missingSteps,
+    };
   }
 
   // ========================================
