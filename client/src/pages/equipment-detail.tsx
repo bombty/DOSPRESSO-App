@@ -562,7 +562,12 @@ export default function EquipmentDetail() {
                 Düzenle
               </Button>
               <Button
-                onClick={() => setIsFaultDialogOpen(true)}
+                onClick={() => {
+                  // Reset troubleshooting state when opening dialog
+                  setCompletedStepIds(new Set());
+                  setStepNotes({});
+                  setIsFaultDialogOpen(true);
+                }}
                 variant="destructive"
                 data-testid="button-fault-create"
               >
