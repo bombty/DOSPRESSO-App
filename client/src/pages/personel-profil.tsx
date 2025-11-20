@@ -60,7 +60,16 @@ export default function PersonelProfilPage() {
 
   // Fetch personnel profile
   const { data: profile, isLoading } = useQuery<PersonnelProfile>({
-    queryKey: ["/api/personnel", id],
+    queryKey: ['/api/personnel', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/personnel/${id}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      return res.json();
+    },
     enabled: !!id,
   });
 

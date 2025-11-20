@@ -519,6 +519,30 @@ export interface IStorage {
     recentFeedback: CustomerFeedback[];
     recentComplaints: GuestComplaint[];
   } | undefined>;
+
+  // Personnel Profile operations
+  getPersonnelProfile(userId: string): Promise<{
+    id: string;
+    username: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string | null;
+    role: string;
+    branchId: number | null;
+    branchName: string | null;
+    hireDate: string | null;
+    probationEndDate: string | null;
+    emergencyContact: string | null;
+    emergencyPhone: string | null;
+    isActive: boolean;
+    accountStatus: string;
+    performanceScore: number | null;
+    attendanceRate: number | null;
+    latenessCount: number | null;
+    absenceCount: number | null;
+    totalShifts: number | null;
+    completedShifts: number | null;
+  } | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4208,6 +4232,103 @@ export class DatabaseStorage implements IStorage {
       recentFaults,
       recentFeedback,
       recentComplaints,
+    };
+  }
+
+  async getPersonnelProfile(userId: string): Promise<{
+    id: string;
+    username: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string | null;
+    role: string;
+    branchId: number | null;
+    branchName: string | null;
+    hireDate: string | null;
+    probationEndDate: string | null;
+    emergencyContact: string | null;
+    emergencyPhone: string | null;
+    isActive: boolean;
+    accountStatus: string;
+    performanceScore: number | null;
+    attendanceRate: number | null;
+    latenessCount: number | null;
+    absenceCount: number | null;
+    totalShifts: number | null;
+    completedShifts: number | null;
+  } | undefined> {
+    // Get user basic info
+    const user = await this.getUserById(userId);
+    if (!user) {
+      return undefined;
+    }
+
+    // Get branch name if user has a branch
+    let branchName: string | null = null;
+    if (user.branchId) {
+      const branch = await this.getBranch(user.branchId);
+      branchName = branch?.name || null;
+    }
+
+    // Get performance metrics from the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Get latest performance score
+    const latestPerformance = await db
+      .select()
+      .from(employeePerformanceScores)
+      .where(eq(employeePerformanceScores.userId, userId))
+      .orderBy(desc(employeePerformanceScores.createdAt))
+      .limit(1);
+
+    const performanceScore = latestPerformance[0]?.dailyTotalScore || null;
+
+    // Get attendance metrics from shift_attendance
+    const attendanceRecords = await db
+      .select()
+      .from(shiftAttendance)
+      .where(and(
+        eq(shiftAttendance.userId, userId),
+        sql`${shiftAttendance.checkInTime} >= ${thirtyDaysAgo.toISOString()}`
+      ));
+
+    const totalShifts = attendanceRecords.length;
+    const completedShifts = attendanceRecords.filter(a => a.status === 'checked_out').length;
+    const latenessCount = attendanceRecords.filter(a => a.latenessMinutes && a.latenessMinutes > 0).length;
+    
+    // TODO: Implement absence counting by comparing scheduled shifts from `shifts` table
+    // with actual check-ins from `shiftAttendance` table
+    // Currently set to 0 as this requires complex join logic:
+    // 1. Get all shifts scheduled for user in last 30 days from `shifts` table
+    // 2. Left join with `shiftAttendance` where checkInTime is NULL
+    // 3. Count rows where user was scheduled but never checked in
+    const absenceCount = 0; // Placeholder - needs implementation
+
+    // Calculate attendance rate
+    const attendanceRate = totalShifts > 0 ? (completedShifts / totalShifts) * 100 : null;
+
+    return {
+      id: user.id,
+      username: user.username,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+      branchId: user.branchId,
+      branchName,
+      hireDate: user.hireDate,
+      probationEndDate: user.probationEndDate,
+      emergencyContact: user.emergencyContact,
+      emergencyPhone: user.emergencyPhone,
+      isActive: user.isActive,
+      accountStatus: user.accountStatus,
+      performanceScore,
+      attendanceRate,
+      latenessCount,
+      absenceCount,
+      totalShifts,
+      completedShifts,
     };
   }
 }

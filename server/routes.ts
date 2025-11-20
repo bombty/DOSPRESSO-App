@@ -646,6 +646,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Personnel Profile
+  app.get('/api/personnel/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.params.id;
+
+      // Authorization: Users can view their own profile, HQ can view all
+      const isOwnProfile = user.id === userId;
+      const isHQ = isHQRole(user.role as UserRoleType);
+
+      if (!isOwnProfile && !isHQ) {
+        // Branch supervisors can only view their branch members
+        if (user.role === 'supervisor' && user.branchId) {
+          const targetUser = await storage.getUserById(userId);
+          // Require target user to exist and be in same branch
+          if (!targetUser) {
+            return res.status(404).json({ message: "Personel bulunamadı" });
+          }
+          if (targetUser.branchId !== user.branchId) {
+            return res.status(403).json({ message: "Bu personel profiline erişim yetkiniz yok" });
+          }
+        } else {
+          return res.status(403).json({ message: "Bu personel profiline erişim yetkiniz yok" });
+        }
+      }
+
+      const profile = await storage.getPersonnelProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ message: "Personel bulunamadı" });
+      }
+
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching personnel profile:", error);
+      res.status(500).json({ message: "Personel profili alınırken hata oluştu" });
+    }
+  });
+
   app.patch('/api/branches/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
