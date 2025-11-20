@@ -3998,7 +3998,7 @@ export class DatabaseStorage implements IStorage {
     })).sort((a, b) => b.avgDailyTotalScore - a.avgDailyTotalScore);
   }
 
-  async getCompositeBranchScores(): Promise<Array<{
+  async getCompositeBranchScores(timeRange: '7d' | '30d' | '180d' | '365d' = '30d'): Promise<Array<{
     branchId: number;
     branchName: string;
     employeePerformanceScore: number; // 0-100
@@ -4008,8 +4008,9 @@ export class DatabaseStorage implements IStorage {
     compositeScore: number; // Weighted average
     lastUpdated: Date;
   }>> {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const days = { '7d': 7, '30d': 30, '180d': 180, '365d': 365 }[timeRange];
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
     
     const allBranches = await db.select().from(branches);
     const results = [];
@@ -4022,7 +4023,7 @@ export class DatabaseStorage implements IStorage {
         .from(employeePerformanceScores)
         .where(and(
           eq(employeePerformanceScores.branchId, branch.id),
-          sql`${employeePerformanceScores.date} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString().split('T')[0]}'`)} AS date)`
+          sql`${employeePerformanceScores.date} >= CAST(${sql.raw(`'${startDate.toISOString().split('T')[0]}'`)} AS date)`
         ));
       
       const employeePerformanceScore = employeeScores[0]?.avgScore ?? 85; // Default 85 if no data
@@ -4035,7 +4036,7 @@ export class DatabaseStorage implements IStorage {
         .from(equipmentFaults)
         .where(and(
           eq(equipmentFaults.branchId, branch.id),
-          sql`${equipmentFaults.createdAt} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString()}'`)} AS timestamp)`
+          sql`${equipmentFaults.createdAt} >= CAST(${sql.raw(`'${startDate.toISOString()}'`)} AS timestamp)`
         ));
       
       const faultCount = faults[0]?.count ?? 0;
@@ -4066,7 +4067,7 @@ export class DatabaseStorage implements IStorage {
         .from(customerFeedback)
         .where(and(
           eq(customerFeedback.branchId, branch.id),
-          sql`${customerFeedback.feedbackDate} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString().split('T')[0]}'`)} AS date)`
+          sql`${customerFeedback.feedbackDate} >= CAST(${sql.raw(`'${startDate.toISOString().split('T')[0]}'`)} AS date)`
         ));
       
       const complaints = await db.select({
@@ -4075,7 +4076,7 @@ export class DatabaseStorage implements IStorage {
         .from(guestComplaints)
         .where(and(
           eq(guestComplaints.branchId, branch.id),
-          sql`${guestComplaints.complaintDate} >= CAST(${sql.raw(`'${thirtyDaysAgo.toISOString()}'`)} AS timestamp)`
+          sql`${guestComplaints.complaintDate} >= CAST(${sql.raw(`'${startDate.toISOString()}'`)} AS timestamp)`
         ));
       
       const feedbackPoints = 

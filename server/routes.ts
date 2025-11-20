@@ -7657,8 +7657,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       ensurePermission(user, 'attendance', 'view', 'Branch skorlarını görüntülemek için yetkiniz yok');
       
+      const timeRange = (req.query.timeRange as '7d' | '30d' | '180d' | '365d') || '30d';
+      
       res.setHeader('Cache-Control', 'no-store');
-      const compositeScores = await storage.getCompositeBranchScores();
+      const compositeScores = await storage.getCompositeBranchScores(timeRange);
       res.json(compositeScores);
     } catch (error: any) {
       console.error("Error fetching composite branch scores:", error);
