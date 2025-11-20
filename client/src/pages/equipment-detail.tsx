@@ -377,7 +377,23 @@ export default function EquipmentDetail() {
 
   const createFaultMutation = useMutation({
     mutationFn: async (data: FaultFormData) => {
-      await apiRequest("POST", "/api/faults", data);
+      // Defensive guard: Re-check troubleshooting completion before submission
+      if (hasSteps && !isTroubleshootingComplete) {
+        throw new Error("Lütfen tüm zorunlu sorun giderme adımlarını tamamlayın");
+      }
+      
+      // Build completed troubleshooting steps array
+      const completedTroubleshootingSteps = Array.from(completedStepIds).map(stepId => ({
+        stepId,
+        notes: stepNotes[stepId] || null,
+      }));
+      
+      const payload = {
+        ...data,
+        completedTroubleshootingSteps: completedTroubleshootingSteps.length > 0 ? completedTroubleshootingSteps : undefined,
+      };
+      
+      await apiRequest("POST", "/api/faults", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
@@ -385,6 +401,9 @@ export default function EquipmentDetail() {
       toast({ title: "Başarılı", description: "Arıza raporu oluşturuldu" });
       setIsFaultDialogOpen(false);
       faultForm.reset();
+      // Reset troubleshooting state
+      setCompletedStepIds(new Set());
+      setStepNotes({});
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -1771,6 +1790,19 @@ export default function EquipmentDetail() {
                   </FormItem>
                 )}
               />
+              
+              {/* Warning about missing required steps */}
+              {hasSteps && !isTroubleshootingComplete && (
+                <div className="bg-destructive/10 border border-destructive rounded-lg p-3">
+                  <p className="text-sm text-destructive font-medium">
+                    {missingRequiredSteps.length} zorunlu adım eksik
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Lütfen yukarıdaki işaretli adımları tamamlayın
+                  </p>
+                </div>
+              )}
+              
               <DialogFooter>
                 <Button
                   type="button"
@@ -1780,7 +1812,11 @@ export default function EquipmentDetail() {
                 >
                   İptal
                 </Button>
-                <Button type="submit" disabled={createFaultMutation.isPending} data-testid="button-submit-fault">
+                <Button 
+                  type="submit" 
+                  disabled={createFaultMutation.isPending || (hasSteps && !isTroubleshootingComplete)} 
+                  data-testid="button-submit-fault"
+                >
                   {createFaultMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
                 </Button>
               </DialogFooter>
