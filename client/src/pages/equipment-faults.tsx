@@ -16,8 +16,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertEquipmentFaultSchema, type EquipmentFault, type InsertEquipmentFault, type Branch, type Equipment, FAULT_STAGES, type FaultStageType, type FaultStageTransition, EQUIPMENT_METADATA, isBranchRole } from "@shared/schema";
-import { AlertTriangle, Camera, CheckCircle, Clock, ChevronRight } from "lucide-react";
+import { insertEquipmentFaultSchema, type EquipmentFault, type InsertEquipmentFault, type Branch, type Equipment, FAULT_STAGES, type FaultStageType, type FaultStageTransition, EQUIPMENT_METADATA, isBranchRole, type EquipmentTroubleshootingStep } from "@shared/schema";
+import { AlertTriangle, Camera, CheckCircle, Clock, ChevronRight, Wrench } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { UploadResult } from "@uppy/core";
 import { z } from "zod";
 
@@ -42,6 +43,9 @@ export default function EquipmentFaults() {
   const [stageChangeFaultId, setStageChangeFaultId] = useState<number | null>(null);
   const [viewHistoryFaultId, setViewHistoryFaultId] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [selectedEquipmentType, setSelectedEquipmentType] = useState<string | null>(null);
+  const [completedStepIds, setCompletedStepIds] = useState<Set<number>>(new Set());
+  const [stepNotes, setStepNotes] = useState<Record<number, string>>({});
 
   const { data: faults, isLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
@@ -53,6 +57,17 @@ export default function EquipmentFaults() {
 
   const { data: equipment } = useQuery<Equipment[]>({
     queryKey: ["/api/equipment"],
+  });
+
+  const { data: troubleshootingSteps, isLoading: isLoadingSteps } = useQuery<EquipmentTroubleshootingStep[]>({
+    queryKey: ["/api/equipment-troubleshooting-steps", selectedEquipmentType],
+    queryFn: async () => {
+      if (!selectedEquipmentType) return [];
+      const response = await fetch(`/api/equipment-troubleshooting-steps?equipmentType=${selectedEquipmentType}`);
+      if (!response.ok) throw new Error('Failed to fetch troubleshooting steps');
+      return response.json();
+    },
+    enabled: !!selectedEquipmentType,
   });
 
   useEffect(() => {
@@ -110,15 +125,30 @@ export default function EquipmentFaults() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FaultFormData) => {
-      await apiRequest("POST", "/api/faults", data);
+      // Build completed troubleshooting steps array
+      const completedTroubleshootingSteps = Array.from(completedStepIds).map(stepId => ({
+        stepId,
+        notes: stepNotes[stepId] || null,
+      }));
+      
+      const payload = {
+        ...data,
+        completedTroubleshootingSteps: completedTroubleshootingSteps.length > 0 ? completedTroubleshootingSteps : undefined,
+      };
+      
+      await apiRequest("POST", "/api/faults", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
       toast({ title: "Başarılı", description: "Arıza raporu oluşturuldu" });
       setIsAddDialogOpen(false);
       form.reset();
+      // Reset troubleshooting state
+      setSelectedEquipmentType(null);
+      setCompletedStepIds(new Set());
+      setStepNotes({});
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Yetkisiz",
@@ -130,9 +160,20 @@ export default function EquipmentFaults() {
         }, 500);
         return;
       }
+      
+      // Handle troubleshooting requirement error
+      if (error.response?.data?.requiresTroubleshooting) {
+        toast({
+          title: "Sorun Giderme Gerekli",
+          description: error.response.data.message || "Lütfen sorun giderme adımlarını tamamlayın",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
         title: "Hata",
-        description: "Arıza raporu oluşturulamadı",
+        description: error.message || "Arıza raporu oluşturulamadı",
         variant: "destructive",
       });
     },
@@ -307,6 +348,11 @@ export default function EquipmentFaults() {
                             if (selectedEquipment.branchId) {
                               form.setValue('branchId', selectedEquipment.branchId);
                             }
+                            // Trigger troubleshooting steps fetch
+                            setSelectedEquipmentType(selectedEquipment.type);
+                            // Reset troubleshooting state
+                            setCompletedStepIds(new Set());
+                            setStepNotes({});
                           }
                         }}
                         value={field.value?.toString()}
@@ -328,6 +374,72 @@ export default function EquipmentFaults() {
                     </FormItem>
                   )}
                 />
+                
+                {/* Troubleshooting Steps Section */}
+                {troubleshootingSteps && troubleshootingSteps.length > 0 && (
+                  <div className="border rounded-lg p-4 space-y-3 bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold">Sorun Giderme Adımları</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Arıza raporu oluşturmadan önce aşağıdaki adımları tamamlayın:
+                    </p>
+                    {isLoadingSteps ? (
+                      <div className="space-y-2">
+                        {[1, 2, 3].map((i) => (
+                          <Skeleton key={i} className="h-12 w-full" />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {troubleshootingSteps.map((step) => (
+                          <div key={step.id} className="flex items-start gap-3 p-3 bg-background rounded border">
+                            <Checkbox
+                              checked={completedStepIds.has(step.id)}
+                              onCheckedChange={(checked) => {
+                                const newSet = new Set(completedStepIds);
+                                if (checked) {
+                                  newSet.add(step.id);
+                                } else {
+                                  newSet.delete(step.id);
+                                }
+                                setCompletedStepIds(newSet);
+                              }}
+                              data-testid={`checkbox-troubleshooting-step-${step.id}`}
+                            />
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {step.order}. {step.stepTitle}
+                                  {step.isRequired && <span className="text-destructive">*</span>}
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{step.stepDescription}</p>
+                              {completedStepIds.has(step.id) && (
+                                <Input
+                                  placeholder="Not (opsiyonel)"
+                                  value={stepNotes[step.id] || ""}
+                                  onChange={(e) => {
+                                    setStepNotes({ ...stepNotes, [step.id]: e.target.value });
+                                  }}
+                                  className="text-sm"
+                                  data-testid={`input-step-note-${step.id}`}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {troubleshootingSteps.some(s => s.isRequired) && (
+                      <p className="text-sm text-muted-foreground">
+                        <span className="text-destructive">*</span> Zorunlu adımları tamamlamadan arıza raporu oluşturamazsınız.
+                      </p>
+                    )}
+                  </div>
+                )}
+                
                 <FormField
                   control={form.control}
                   name="description"
