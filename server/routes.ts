@@ -7665,6 +7665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       ensurePermission(user, 'attendance', 'view', 'Branch performanslarını görüntülemek için yetkiniz yok');
       
+      res.setHeader('Cache-Control', 'no-store');
       const branchesPerformance = await storage.getAllBranchesPerformanceAggregates();
       res.json(branchesPerformance);
     } catch (error: any) {

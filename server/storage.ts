@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, and, sql, inArray, type SQL } from "drizzle-orm";
+import { eq, desc, asc, and, sql, inArray, gte, type SQL } from "drizzle-orm";
 import type {
   User,
   UpsertUser,
@@ -3877,6 +3877,8 @@ export class DatabaseStorage implements IStorage {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const startDate = sevenDaysAgo.toISOString().split('T')[0];
 
+    console.log('[DEBUG] getAllBranchesPerformanceAggregates startDate:', startDate);
+
     const scores = await db.select({
       branchId: employeePerformanceScores.branchId,
       branchName: branches.name,
@@ -3885,8 +3887,10 @@ export class DatabaseStorage implements IStorage {
     })
       .from(employeePerformanceScores)
       .innerJoin(branches, eq(employeePerformanceScores.branchId, branches.id))
-      .where(sql`${employeePerformanceScores.date} >= ${startDate}`)
+      .where(gte(employeePerformanceScores.date, startDate))
       .orderBy(employeePerformanceScores.branchId);
+
+    console.log('[DEBUG] getAllBranchesPerformanceAggregates scores.length:', scores.length);
 
     // Group by branch and calculate averages
     const branchScores = new Map<number, { totalScore: number; count: number; name: string; uniqueUsers: Set<string> }>();
