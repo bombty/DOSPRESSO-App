@@ -7610,6 +7610,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/performance/branches/composite - Get composite branch scores (HQ only)
+  // NOTE: Must come BEFORE /api/performance/branches to avoid route matching issues
+  app.get('/api/performance/branches/composite', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ roles can view all branches composite scores
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Tüm branch skorlarını görüntülemek için HQ yetkiniz yok' });
+      }
+      
+      ensurePermission(user, 'attendance', 'view', 'Branch skorlarını görüntülemek için yetkiniz yok');
+      
+      res.setHeader('Cache-Control', 'no-store');
+      const compositeScores = await storage.getCompositeBranchScores();
+      res.json(compositeScores);
+    } catch (error: any) {
+      console.error("Error fetching composite branch scores:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Branch skorları yüklenirken hata oluştu" });
+    }
+  });
+
   // GET /api/performance/branches - Get all branches performance aggregates (HQ only)
   // NOTE: Must come BEFORE /api/performance/:userId to avoid route matching issues
   app.get('/api/performance/branches', isAuthenticated, async (req: any, res) => {

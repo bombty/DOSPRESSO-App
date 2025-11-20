@@ -3978,6 +3978,120 @@ export class DatabaseStorage implements IStorage {
       endDate,
     })).sort((a, b) => b.avgDailyTotalScore - a.avgDailyTotalScore);
   }
+
+  async getCompositeBranchScores(): Promise<Array<{
+    branchId: number;
+    branchName: string;
+    employeePerformanceScore: number; // 0-100
+    equipmentScore: number; // 0-100 (lower fault count = higher score)
+    qualityAuditScore: number; // 0-100 (from latest audits)
+    customerSatisfactionScore: number; // 0-100 (positive feedback - complaints)
+    compositeScore: number; // Weighted average
+    lastUpdated: Date;
+  }>> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const allBranches = await db.select().from(branches);
+    const results = [];
+
+    for (const branch of allBranches) {
+      // 1. Employee Performance Score (40% weight)
+      const employeeScores = await db.select({
+        avgScore: sql<number>`CAST(AVG(${employeePerformanceScores.dailyTotalScore}) AS INTEGER)`,
+      })
+        .from(employeePerformanceScores)
+        .where(and(
+          eq(employeePerformanceScores.branchId, branch.id),
+          gte(employeePerformanceScores.date, thirtyDaysAgo.toISOString().split('T')[0])
+        ));
+      
+      const employeePerformanceScore = employeeScores[0]?.avgScore ?? 85; // Default 85 if no data
+
+      // 2. Equipment/Fault Score (25% weight)
+      // Lower fault count = higher score. Max 10 faults in 30 days = 0 score, 0 faults = 100 score
+      const faults = await db.select({
+        count: sql<number>`CAST(COUNT(*) AS INTEGER)`,
+      })
+        .from(equipmentFaults)
+        .where(and(
+          eq(equipmentFaults.branchId, branch.id),
+          gte(equipmentFaults.reportedAt, thirtyDaysAgo)
+        ));
+      
+      const faultCount = faults[0]?.count ?? 0;
+      const equipmentScore = Math.max(0, Math.min(100, 100 - (faultCount * 10)));
+
+      // 3. Quality Audit Score (20% weight)
+      // Average of latest 3 audits
+      const audits = await db.select({
+        overallScore: branchQualityAudits.overallScore,
+      })
+        .from(branchQualityAudits)
+        .where(eq(branchQualityAudits.branchId, branch.id))
+        .orderBy(desc(branchQualityAudits.auditDate))
+        .limit(3);
+      
+      const qualityAuditScore = audits.length > 0
+        ? Math.round(audits.reduce((sum, a) => sum + a.overallScore, 0) / audits.length)
+        : 90; // Default 90 if no audits yet
+
+      // 4. Customer Satisfaction Score (15% weight)
+      // Positive feedback (5-star = +5 points, 4-star = +3, 3-star = +1)
+      // Complaints (each = -10 points)
+      const positiveFeedback = await db.select({
+        count5: sql<number>`CAST(COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 5) AS INTEGER)`,
+        count4: sql<number>`CAST(COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 4) AS INTEGER)`,
+        count3: sql<number>`CAST(COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 3) AS INTEGER)`,
+      })
+        .from(customerFeedback)
+        .where(and(
+          eq(customerFeedback.branchId, branch.id),
+          gte(customerFeedback.feedbackDate, thirtyDaysAgo)
+        ));
+      
+      const complaints = await db.select({
+        count: sql<number>`CAST(COUNT(*) AS INTEGER)`,
+      })
+        .from(guestComplaints)
+        .where(and(
+          eq(guestComplaints.branchId, branch.id),
+          gte(guestComplaints.complaintDate, thirtyDaysAgo)
+        ));
+      
+      const feedbackPoints = 
+        (positiveFeedback[0]?.count5 ?? 0) * 5 +
+        (positiveFeedback[0]?.count4 ?? 0) * 3 +
+        (positiveFeedback[0]?.count3 ?? 0) * 1;
+      
+      const complaintPoints = (complaints[0]?.count ?? 0) * 10;
+      const netPoints = feedbackPoints - complaintPoints;
+      
+      // Convert to 0-100 scale (assuming max 50 points = 100 score)
+      const customerSatisfactionScore = Math.max(0, Math.min(100, 50 + netPoints));
+
+      // Calculate weighted composite score
+      const compositeScore = Math.round(
+        employeePerformanceScore * 0.40 +
+        equipmentScore * 0.25 +
+        qualityAuditScore * 0.20 +
+        customerSatisfactionScore * 0.15
+      );
+
+      results.push({
+        branchId: branch.id,
+        branchName: branch.name,
+        employeePerformanceScore,
+        equipmentScore,
+        qualityAuditScore,
+        customerSatisfactionScore,
+        compositeScore,
+        lastUpdated: new Date(),
+      });
+    }
+
+    return results.sort((a, b) => b.compositeScore - a.compositeScore);
+  }
 }
 
 export const storage = new DatabaseStorage();
