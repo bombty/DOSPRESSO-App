@@ -35,6 +35,10 @@ export default function Dashboard() {
   const [faultSheetOpen, setFaultSheetOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedFault, setSelectedFault] = useState<EquipmentFault | null>(null);
+  const [branchDetailOpen, setBranchDetailOpen] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<any | null>(null);
+  const [aiEvaluation, setAiEvaluation] = useState<any | null>(null);
+  const [evaluationLoading, setEvaluationLoading] = useState(false);
 
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -91,8 +95,17 @@ export default function Dashboard() {
   const { data: branchesPerformance, isLoading: branchesPerformanceLoading } = useQuery<Array<{
     branchId: number;
     branchName: string;
-    averageScore: number;
+    avgAttendanceScore: number;
+    avgLatenessScore: number;
+    avgEarlyLeaveScore: number;
+    avgBreakComplianceScore: number;
+    avgShiftComplianceScore: number;
+    avgOvertimeComplianceScore: number;
+    avgDailyTotalScore: number;
+    totalPenaltyMinutes: number;
     totalEmployees: number;
+    startDate: string;
+    endDate: string;
   }>>({
     queryKey: ["/api/performance/branches"],
     enabled: !!user && isHQRole(user.role),
@@ -359,6 +372,28 @@ export default function Dashboard() {
   const handleFaultClick = (fault: EquipmentFault) => {
     setSelectedFault(fault);
     setFaultSheetOpen(true);
+  };
+
+  const handleBranchClick = async (branch: any) => {
+    setSelectedBranch(branch);
+    setBranchDetailOpen(true);
+    setAiEvaluation(null);
+    
+    // Fetch AI evaluation
+    setEvaluationLoading(true);
+    try {
+      const response = await apiRequest("POST", `/api/performance/branches/${branch.branchId}/evaluation`, {});
+      setAiEvaluation(response);
+    } catch (error) {
+      console.error("AI evaluation error:", error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "AI değerlendirmesi oluşturulamadı",
+      });
+    } finally {
+      setEvaluationLoading(false);
+    }
   };
 
   const getTaskStatusLabel = (status: string) => {
@@ -945,24 +980,25 @@ export default function Dashboard() {
                 {branchesPerformance.map((branch) => (
                   <div
                     key={branch.branchId}
-                    className="flex items-center justify-between border-b pb-2 last:border-0"
-                    data-testid={`branch-${branch.branchId}`}
+                    className="flex items-center justify-between border-b pb-2 last:border-0 cursor-pointer hover-elevate rounded-md p-2 -m-2"
+                    onClick={() => handleBranchClick(branch)}
+                    data-testid={`branch-clickable-${branch.branchId}`}
                   >
                     <div className="flex-1">
                       <p className="text-sm font-medium">{branch.branchName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {branch.totalEmployees} çalışan
+                        {branch.totalEmployees} çalışan · {branch.totalPenaltyMinutes} dk ceza
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold" data-testid={`branch-score-${branch.branchId}`}>
-                        {branch.averageScore}/100
+                        {branch.avgDailyTotalScore}/100
                       </p>
                       <Badge 
-                        variant={branch.averageScore >= 80 ? "default" : branch.averageScore >= 60 ? "secondary" : "destructive"}
+                        variant={branch.avgDailyTotalScore >= 80 ? "default" : branch.avgDailyTotalScore >= 60 ? "secondary" : "destructive"}
                         className="mt-1"
                       >
-                        {branch.averageScore >= 80 ? "Mükemmel" : branch.averageScore >= 60 ? "İyi" : "Gelişmeli"}
+                        {branch.avgDailyTotalScore >= 80 ? "Mükemmel" : branch.avgDailyTotalScore >= 60 ? "İyi" : "Gelişmeli"}
                       </Badge>
                     </div>
                   </div>
@@ -1485,6 +1521,159 @@ export default function Dashboard() {
                 >
                   Detaylı Görüntüle
                 </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Branch Performance Detail Sheet */}
+      <Sheet open={branchDetailOpen} onOpenChange={setBranchDetailOpen}>
+        <SheetContent className="overflow-y-auto w-[500px]">
+          <SheetHeader>
+            <SheetTitle>Şube Performans Detayları</SheetTitle>
+            <SheetDescription>
+              {selectedBranch?.branchName} - Son 7 gün performans analizi
+            </SheetDescription>
+          </SheetHeader>
+
+          {selectedBranch && (
+            <div className="space-y-6 mt-6">
+              {/* Overall Score */}
+              <div className="flex items-center justify-between p-4 bg-muted rounded-md">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Genel Skor</p>
+                  <p className="text-3xl font-bold mt-1">{selectedBranch.avgDailyTotalScore}/100</p>
+                </div>
+                <Badge 
+                  variant={selectedBranch.avgDailyTotalScore >= 80 ? "default" : selectedBranch.avgDailyTotalScore >= 60 ? "secondary" : "destructive"}
+                  className="text-lg px-4 py-2"
+                >
+                  {selectedBranch.avgDailyTotalScore >= 80 ? "Mükemmel" : selectedBranch.avgDailyTotalScore >= 60 ? "İyi" : "Gelişmeli"}
+                </Badge>
+              </div>
+
+              {/* Metrics Breakdown */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Performans Metrikleri</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Devamsızlık Uyumu</span>
+                    <span className="text-sm font-bold">{selectedBranch.avgAttendanceScore}/100</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Geç Kalma Uyumu</span>
+                    <span className="text-sm font-bold">{selectedBranch.avgLatenessScore}/100</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Erken Ayrılma Uyumu</span>
+                    <span className="text-sm font-bold">{selectedBranch.avgEarlyLeaveScore}/100</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Mola Uyumu</span>
+                    <span className="text-sm font-bold">{selectedBranch.avgBreakComplianceScore}/100</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Vardiya Uyumu</span>
+                    <span className="text-sm font-bold">{selectedBranch.avgShiftComplianceScore}/100</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Mesai Uyumu</span>
+                    <span className="text-sm font-bold">{selectedBranch.avgOvertimeComplianceScore}/100</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Info */}
+              <div className="p-4 bg-muted rounded-md space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Toplam Çalışan</span>
+                  <span className="font-medium">{selectedBranch.totalEmployees}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Toplam Ceza Dakikası</span>
+                  <span className="font-medium">{selectedBranch.totalPenaltyMinutes} dk</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Tarih Aralığı</span>
+                  <span className="font-medium">{selectedBranch.startDate} - {selectedBranch.endDate}</span>
+                </div>
+              </div>
+
+              {/* AI Evaluation */}
+              <div>
+                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  AI Değerlendirme Raporu
+                </h3>
+                {evaluationLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-5/6" />
+                  </div>
+                ) : aiEvaluation ? (
+                  <div className="space-y-4">
+                    {/* Summary */}
+                    <div className="p-4 bg-muted rounded-md">
+                      <p className="text-sm">{aiEvaluation.summary}</p>
+                    </div>
+
+                    {/* Trend */}
+                    <div className="flex items-center gap-2">
+                      <Badge variant={aiEvaluation.trend === "improving" ? "default" : aiEvaluation.trend === "stable" ? "secondary" : "destructive"}>
+                        {aiEvaluation.trend === "improving" ? "İyileşiyor" : aiEvaluation.trend === "stable" ? "Stabil" : "Azalıyor"}
+                      </Badge>
+                    </div>
+
+                    {/* Strengths */}
+                    {aiEvaluation.strengths && aiEvaluation.strengths.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-green-600 mb-2">Güçlü Yönler</h4>
+                        <ul className="space-y-1">
+                          {aiEvaluation.strengths.map((strength: string, idx: number) => (
+                            <li key={idx} className="text-sm flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                              <span>{strength}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Weaknesses */}
+                    {aiEvaluation.weaknesses && aiEvaluation.weaknesses.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-amber-600 mb-2">Gelişme Alanları</h4>
+                        <ul className="space-y-1">
+                          {aiEvaluation.weaknesses.map((weakness: string, idx: number) => (
+                            <li key={idx} className="text-sm flex items-start gap-2">
+                              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
+                              <span>{weakness}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {aiEvaluation.recommendations && aiEvaluation.recommendations.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-primary mb-2">AI Önerileri</h4>
+                        <ul className="space-y-1">
+                          {aiEvaluation.recommendations.map((rec: string, idx: number) => (
+                            <li key={idx} className="text-sm flex items-start gap-2">
+                              <Sparkles className="h-4 w-4 text-primary mt-0.5" />
+                              <span>{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">AI değerlendirmesi yüklenemedi</p>
+                )}
               </div>
             </div>
           )}

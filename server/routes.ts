@@ -69,7 +69,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance } from "./ai";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -7632,6 +7632,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Branch performansları yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/performance/branches/:branchId/evaluation - Generate AI evaluation for branch performance (HQ only)
+  app.post('/api/performance/branches/:branchId/evaluation', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId } = req.params;
+      
+      // Only HQ roles can generate evaluations
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Branch değerlendirmesi oluşturmak için HQ yetkiniz yok' });
+      }
+      
+      ensurePermission(user, 'attendance', 'view', 'Branch performansını değerlendirmek için yetkiniz yok');
+      
+      // Get branch performance data
+      const branchPerformance = await storage.getAllBranchesPerformanceAggregates();
+      const targetBranch = branchPerformance.find(b => b.branchId === parseInt(branchId));
+      
+      if (!targetBranch) {
+        return res.status(404).json({ message: 'Branch performans verisi bulunamadı' });
+      }
+      
+      // Generate AI evaluation
+      const evaluation = await evaluateBranchPerformance(
+        targetBranch.branchName,
+        {
+          avgAttendanceScore: targetBranch.avgAttendanceScore,
+          avgLatenessScore: targetBranch.avgLatenessScore,
+          avgEarlyLeaveScore: targetBranch.avgEarlyLeaveScore,
+          avgBreakComplianceScore: targetBranch.avgBreakComplianceScore,
+          avgShiftComplianceScore: targetBranch.avgShiftComplianceScore,
+          avgOvertimeComplianceScore: targetBranch.avgOvertimeComplianceScore,
+          avgDailyTotalScore: targetBranch.avgDailyTotalScore,
+          totalPenaltyMinutes: targetBranch.totalPenaltyMinutes,
+          totalEmployees: targetBranch.totalEmployees,
+          dateRange: `${targetBranch.startDate} - ${targetBranch.endDate}`,
+        },
+        user.id
+      );
+      
+      res.json(evaluation);
+    } catch (error: any) {
+      console.error("Error generating branch evaluation:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: error.message || "AI değerlendirmesi oluşturulurken hata oluştu" });
     }
   });
 

@@ -3879,12 +3879,22 @@ export class DatabaseStorage implements IStorage {
   async getAllBranchesPerformanceAggregates(): Promise<Array<{
     branchId: number;
     branchName: string;
-    averageScore: number;
+    avgAttendanceScore: number;
+    avgLatenessScore: number;
+    avgEarlyLeaveScore: number;
+    avgBreakComplianceScore: number;
+    avgShiftComplianceScore: number;
+    avgOvertimeComplianceScore: number;
+    avgDailyTotalScore: number;
+    totalPenaltyMinutes: number;
     totalEmployees: number;
+    startDate: string;
+    endDate: string;
   }>> {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const startDate = sevenDaysAgo.toISOString().split('T')[0];
+    const endDate = new Date().toISOString().split('T')[0];
 
     console.log('[DEBUG] getAllBranchesPerformanceAggregates startDate:', startDate);
 
@@ -3892,7 +3902,14 @@ export class DatabaseStorage implements IStorage {
       branchId: employeePerformanceScores.branchId,
       branchName: branches.name,
       userId: employeePerformanceScores.userId,
+      attendanceScore: employeePerformanceScores.attendanceScore,
+      latenessScore: employeePerformanceScores.latenessScore,
+      earlyLeaveScore: employeePerformanceScores.earlyLeaveScore,
+      breakComplianceScore: employeePerformanceScores.breakComplianceScore,
+      shiftComplianceScore: employeePerformanceScores.shiftComplianceScore,
+      overtimeComplianceScore: employeePerformanceScores.overtimeComplianceScore,
       dailyTotalScore: employeePerformanceScores.dailyTotalScore,
+      totalPenaltyMinutes: employeePerformanceScores.totalPenaltyMinutes,
     })
       .from(employeePerformanceScores)
       .innerJoin(branches, eq(employeePerformanceScores.branchId, branches.id))
@@ -3901,19 +3918,46 @@ export class DatabaseStorage implements IStorage {
 
     console.log('[DEBUG] getAllBranchesPerformanceAggregates scores.length:', scores.length);
 
-    // Group by branch and calculate averages
-    const branchScores = new Map<number, { totalScore: number; count: number; name: string; uniqueUsers: Set<string> }>();
+    // Group by branch and calculate averages for all metrics
+    const branchScores = new Map<number, {
+      name: string;
+      attendanceSum: number;
+      latenessSum: number;
+      earlyLeaveSum: number;
+      breakComplianceSum: number;
+      shiftComplianceSum: number;
+      overtimeComplianceSum: number;
+      dailyTotalSum: number;
+      penaltySum: number;
+      count: number;
+      uniqueUsers: Set<string>;
+    }>();
+
     for (const score of scores) {
       if (!branchScores.has(score.branchId)) {
         branchScores.set(score.branchId, {
-          totalScore: 0,
-          count: 0,
           name: score.branchName,
+          attendanceSum: 0,
+          latenessSum: 0,
+          earlyLeaveSum: 0,
+          breakComplianceSum: 0,
+          shiftComplianceSum: 0,
+          overtimeComplianceSum: 0,
+          dailyTotalSum: 0,
+          penaltySum: 0,
+          count: 0,
           uniqueUsers: new Set()
         });
       }
       const branchScore = branchScores.get(score.branchId)!;
-      branchScore.totalScore += score.dailyTotalScore;
+      branchScore.attendanceSum += score.attendanceScore;
+      branchScore.latenessSum += score.latenessScore;
+      branchScore.earlyLeaveSum += score.earlyLeaveScore;
+      branchScore.breakComplianceSum += score.breakComplianceScore;
+      branchScore.shiftComplianceSum += score.shiftComplianceScore;
+      branchScore.overtimeComplianceSum += score.overtimeComplianceScore;
+      branchScore.dailyTotalSum += score.dailyTotalScore;
+      branchScore.penaltySum += score.totalPenaltyMinutes;
       branchScore.count += 1;
       branchScore.uniqueUsers.add(score.userId);
     }
@@ -3921,9 +3965,18 @@ export class DatabaseStorage implements IStorage {
     return Array.from(branchScores.entries()).map(([branchId, data]) => ({
       branchId,
       branchName: data.name,
-      averageScore: Math.round(data.totalScore / data.count),
+      avgAttendanceScore: Math.round(data.attendanceSum / data.count),
+      avgLatenessScore: Math.round(data.latenessSum / data.count),
+      avgEarlyLeaveScore: Math.round(data.earlyLeaveSum / data.count),
+      avgBreakComplianceScore: Math.round(data.breakComplianceSum / data.count),
+      avgShiftComplianceScore: Math.round(data.shiftComplianceSum / data.count),
+      avgOvertimeComplianceScore: Math.round(data.overtimeComplianceSum / data.count),
+      avgDailyTotalScore: Math.round(data.dailyTotalSum / data.count),
+      totalPenaltyMinutes: data.penaltySum,
       totalEmployees: data.uniqueUsers.size,
-    })).sort((a, b) => b.averageScore - a.averageScore);
+      startDate,
+      endDate,
+    })).sort((a, b) => b.avgDailyTotalScore - a.avgDailyTotalScore);
   }
 }
 

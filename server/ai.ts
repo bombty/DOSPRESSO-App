@@ -191,6 +191,15 @@ export interface ShiftPlanResponse {
   cached: boolean;
 }
 
+export interface BranchPerformanceEvaluation {
+  overallScore: number; // 0-100
+  summary: string; // Genel değerlendirme (2-3 cümle)
+  strengths: string[]; // Güçlü yönler
+  weaknesses: string[]; // Zayıf yönler
+  recommendations: string[]; // İyileştirme önerileri
+  trend: "improving" | "stable" | "declining"; // Trend analizi
+}
+
 export async function analyzeTaskPhoto(
   photoUrl: string,
   taskDescription: string,
@@ -1613,6 +1622,122 @@ ${lessonContent}
     return flashcards;
   } catch (error) {
     console.error("Flashcard generation error:", error);
+    throw error;
+  }
+}
+
+// Evaluate branch performance with AI-powered insights
+export async function evaluateBranchPerformance(
+  branchName: string,
+  performanceData: {
+    avgAttendanceScore: number;
+    avgLatenessScore: number;
+    avgEarlyLeaveScore: number;
+    avgBreakComplianceScore: number;
+    avgShiftComplianceScore: number;
+    avgOvertimeComplianceScore: number;
+    avgDailyTotalScore: number;
+    totalPenaltyMinutes: number;
+    totalEmployees: number;
+    dateRange: string;
+  },
+  userId?: string,
+  skipCache: boolean = false
+): Promise<BranchPerformanceEvaluation> {
+  // Check cache first (6h TTL - branch performance changes slowly)
+  const cacheKey = generateCacheKey('branch-eval', branchName, performanceData.dateRange, performanceData.avgDailyTotalScore);
+  if (!skipCache) {
+    const cached = cache.get<BranchPerformanceEvaluation>(cacheKey);
+    if (cached) {
+      console.log('✅ Cache HIT - Branch performance evaluation (cost saved!)');
+      return cached;
+    }
+  }
+
+  // Rate limit check (evaluation calls are text-based, separate quota)
+  const EVAL_LIMIT = 10; // 10 branch evaluations per day
+  if (userId && !aiRateLimiter.canMakeRequest(userId, 'evaluation', EVAL_LIMIT)) {
+    console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily evaluation quota`);
+    throw new Error("Günlük değerlendirme limitiniz doldu (10/gün). Yarın tekrar deneyin.");
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: SUMMARY_MODEL, // gpt-4o-mini for cost optimization
+      messages: [
+        {
+          role: "system",
+          content: `Sen DOSPRESSO kahve dükkanları için bir AI performans analisti ve danışmanısın. Şube performans verilerini analiz ederek yöneticilere içgörüler ve öneriler sunuyorsun. Türkçe yanıt ver.`,
+        },
+        {
+          role: "user",
+          content: `**${branchName}** şubesinin son 7 günlük performans verilerini analiz et:
+
+**Performans Skorları (0-100):**
+- Devamsızlık Skoru: ${performanceData.avgAttendanceScore.toFixed(1)}
+- Geç Kalma Skoru: ${performanceData.avgLatenessScore.toFixed(1)}
+- Erken Ayrılma Skoru: ${performanceData.avgEarlyLeaveScore.toFixed(1)}
+- Mola Uyumu Skoru: ${performanceData.avgBreakComplianceScore.toFixed(1)}
+- Vardiya Uyumu Skoru: ${performanceData.avgShiftComplianceScore.toFixed(1)}
+- Mesai Uyumu Skoru: ${performanceData.avgOvertimeComplianceScore.toFixed(1)}
+- **Genel Skor: ${performanceData.avgDailyTotalScore.toFixed(1)}**
+
+**Ek Bilgiler:**
+- Toplam Ceza Dakikası: ${performanceData.totalPenaltyMinutes} dk
+- Çalışan Sayısı: ${performanceData.totalEmployees}
+- Tarih Aralığı: ${performanceData.dateRange}
+
+**Görev:** Yukarıdaki verileri analiz et ve şu JSON formatında yanıt ver:
+{
+  "overallScore": 85,
+  "summary": "Şubenin genel performansı hakkında 2-3 cümle özet",
+  "strengths": ["Güçlü yön 1", "Güçlü yön 2"],
+  "weaknesses": ["Zayıf yön 1", "Zayıf yön 2"],
+  "recommendations": ["Öneri 1", "Öneri 2", "Öneri 3"],
+  "trend": "improving" | "stable" | "declining"
+}
+
+**Yönergeler:**
+1. overallScore: Genel performans skoru (tüm metrikleri dengeli değerlendir)
+2. summary: Şubenin performansı hakkında kısa özet (2-3 cümle)
+3. strengths: En iyi 2 performans alanı (skorlara göre)
+4. weaknesses: İyileştirilmesi gereken 2 alan (düşük skorlara göre)
+5. recommendations: 3 somut, uygulanabilir öneri
+6. trend: Genel performans eğilimi (sadece mevcut verilere göre tahmin et)`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 800,
+      temperature: 0.7,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("OpenAI yanıt içeriği boş");
+    }
+
+    const result = JSON.parse(content);
+    const evaluation: BranchPerformanceEvaluation = {
+      overallScore: Math.min(Math.max(result.overallScore || 0, 0), 100),
+      summary: result.summary || "Değerlendirme tamamlandı",
+      strengths: result.strengths || [],
+      weaknesses: result.weaknesses || [],
+      recommendations: result.recommendations || [],
+      trend: result.trend || "stable",
+    };
+
+    // Cache for 6 hours (branch performance changes slowly)
+    cache.set(cacheKey, evaluation, 6 * 60 * 60 * 1000);
+
+    // Track usage (fire and forget)
+    if (userId) {
+      aiRateLimiter.trackRequest(userId, 'evaluation');
+    }
+
+    console.log(`🎯 Generated AI evaluation for branch: ${branchName}`);
+    return evaluation;
+  } catch (error) {
+    console.error("Branch performance evaluation error:", error);
     throw error;
   }
 }
