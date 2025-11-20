@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText, Sparkles, Send } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -181,6 +181,10 @@ export default function EquipmentDetail() {
   // Troubleshooting state
   const [completedStepIds, setCompletedStepIds] = useState<Set<number>>(new Set());
   const [stepNotes, setStepNotes] = useState<Record<number, string>>({});
+  
+  // AI Technical Assistant state
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiAnswer, setAiAnswer] = useState<{ answer: string; sources: any[] } | null>(null);
 
   // Troubleshooting steps query
   const { data: troubleshootingSteps, isLoading: isLoadingSteps } = useQuery<EquipmentTroubleshootingStep[]>({
@@ -420,6 +424,49 @@ export default function EquipmentDetail() {
       toast({
         title: "Hata",
         description: "Arıza raporu oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // AI Technical Assistant mutation
+  const askAiMutation = useMutation({
+    mutationFn: async (question: string) => {
+      // Add equipment context to the question
+      const contextualQuestion = `Cihaz: ${equipment?.equipmentType || 'Bilinmeyen'}. Soru: ${question}`;
+      const response = await apiRequest<{ answer: string; sources: any[]; noKnowledgeFound?: boolean }>(
+        "POST",
+        "/api/knowledge-base/ask",
+        { question: contextualQuestion }
+      );
+      return response;
+    },
+    onSuccess: (data) => {
+      if (data.noKnowledgeFound) {
+        toast({
+          title: "Bilgi Bulunamadı",
+          description: "Bu konuda bilgi bankasında bilgi bulunamadı. Lütfen daha fazla içerik ekleyin veya sorunuzu farklı şekilde sorun.",
+          variant: "destructive",
+        });
+      }
+      setAiAnswer(data);
+      setAiQuestion("");
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Yetkisiz",
+          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Hata",
+        description: error.message || "AI asistan yanıt veremedi",
         variant: "destructive",
       });
     },
@@ -1759,6 +1806,73 @@ export default function EquipmentDetail() {
                   )}
                 </div>
               )}
+              
+              {/* AI Technical Assistant Section */}
+              <div className="border rounded-lg p-4 space-y-3 bg-gradient-to-br from-primary/5 to-primary/10">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold">AI Teknik Asistan</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Cihaz ayarları, kalibrasyonlar ve teknik detaylar hakkında soru sorun
+                </p>
+                
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Örn: Bu cihazın basınç ayarı nasıl yapılır?"
+                    value={aiQuestion}
+                    onChange={(e) => setAiQuestion(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && aiQuestion.trim() && !askAiMutation.isPending) {
+                        askAiMutation.mutate(aiQuestion.trim());
+                      }
+                    }}
+                    disabled={askAiMutation.isPending}
+                    data-testid="input-ai-question"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (aiQuestion.trim()) {
+                        askAiMutation.mutate(aiQuestion.trim());
+                      }
+                    }}
+                    disabled={!aiQuestion.trim() || askAiMutation.isPending}
+                    size="icon"
+                    data-testid="button-ask-ai"
+                  >
+                    {askAiMutation.isPending ? (
+                      <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                
+                {aiAnswer && (
+                  <div className="bg-background rounded-lg p-3 space-y-2 border">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 space-y-2">
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{aiAnswer.answer}</p>
+                        {aiAnswer.sources && aiAnswer.sources.length > 0 && (
+                          <div className="pt-2 border-t">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Kaynaklar:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {aiAnswer.sources.map((source: any, idx: number) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {source.title || `Kaynak ${idx + 1}`}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               
               <FormField
                 control={faultForm.control}
