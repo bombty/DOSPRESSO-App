@@ -2801,3 +2801,58 @@ export const insertEmployeePerformanceScoreSchema = createInsertSchema(employeeP
 
 export type InsertEmployeePerformanceScore = z.infer<typeof insertEmployeePerformanceScoreSchema>;
 export type EmployeePerformanceScore = typeof employeePerformanceScores.$inferSelect;
+
+// ========================================
+// BRANCH QUALITY AUDITS - Şube Kalite Denetim Puanlama
+// ========================================
+
+export const branchQualityAudits = pgTable("branch_quality_audits", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  auditDate: date("audit_date").notNull(),
+  auditorId: varchar("auditor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Audit Categories (0-100 each)
+  cleanlinessScore: integer("cleanliness_score").notNull(), // Temizlik skoru
+  serviceQualityScore: integer("service_quality_score").notNull(), // Hizmet kalitesi
+  productQualityScore: integer("product_quality_score").notNull(), // Ürün kalitesi
+  staffBehaviorScore: integer("staff_behavior_score").notNull(), // Personel davranışı
+  safetyComplianceScore: integer("safety_compliance_score").notNull(), // Güvenlik uyumu
+  equipmentMaintenanceScore: integer("equipment_maintenance_score").notNull(), // Ekipman bakım
+  
+  // Overall
+  overallScore: integer("overall_score").notNull(), // Weighted average
+  
+  // Notes and actions
+  notes: text("notes"),
+  actionItems: text("action_items"), // JSON array of required actions
+  followUpRequired: boolean("follow_up_required").notNull().default(false),
+  followUpDate: date("follow_up_date"),
+  
+  // Status
+  status: varchar("status", { length: 20 }).notNull().default("completed"), // draft, completed, follow_up_pending
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("branch_quality_audits_branch_idx").on(table.branchId),
+  index("branch_quality_audits_date_idx").on(table.auditDate),
+  index("branch_quality_audits_auditor_idx").on(table.auditorId),
+]);
+
+export const insertBranchQualityAuditSchema = createInsertSchema(branchQualityAudits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  cleanlinessScore: z.number().int().min(0).max(100),
+  serviceQualityScore: z.number().int().min(0).max(100),
+  productQualityScore: z.number().int().min(0).max(100),
+  staffBehaviorScore: z.number().int().min(0).max(100),
+  safetyComplianceScore: z.number().int().min(0).max(100),
+  equipmentMaintenanceScore: z.number().int().min(0).max(100),
+  overallScore: z.number().int().min(0).max(100),
+});
+
+export type InsertBranchQualityAudit = z.infer<typeof insertBranchQualityAuditSchema>;
+export type BranchQualityAudit = typeof branchQualityAudits.$inferSelect;
