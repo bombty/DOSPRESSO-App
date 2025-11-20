@@ -1325,11 +1325,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         faultBranchId = branchId;
       }
       
+      // Mandatory Troubleshooting Enforcement
+      // If troubleshooting steps exist for this equipment type and user hasn't completed them, reject the fault
+      if (validatedData.equipmentId) {
+        const equipment = await storage.getEquipmentById(validatedData.equipmentId);
+        if (equipment) {
+          const completedSteps = validatedData.completedTroubleshootingSteps || [];
+          const troubleshootingCheck = await storage.isTroubleshootingCompleteForEquipment(
+            equipment.type,
+            completedSteps
+          );
+          
+          if (!troubleshootingCheck.complete) {
+            return res.status(400).json({
+              message: "Arıza bildirimi için önce sorun giderme adımlarını tamamlamanız gerekiyor",
+              requiresTroubleshooting: true,
+              missingSteps: troubleshootingCheck.missingSteps,
+              allRequiredSteps: troubleshootingCheck.requiredSteps,
+            });
+          }
+        }
+      }
+      
       const fault = await storage.createFault({
         ...validatedData,
         branchId: faultBranchId,
         reportedById: userId,
       });
+      
+      // Save troubleshooting completion records
+      if (validatedData.completedTroubleshootingSteps && validatedData.completedTroubleshootingSteps.length > 0) {
+        for (const step of validatedData.completedTroubleshootingSteps) {
+          await storage.createTroubleshootingCompletion({
+            faultId: fault.id,
+            stepId: step.stepId,
+            completedAt: new Date(),
+            notes: step.notes || null,
+          });
+        }
+      }
+      
       res.json(fault);
     } catch (error: any) {
       console.error("Error creating fault:", error);
