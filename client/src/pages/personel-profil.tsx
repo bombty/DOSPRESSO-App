@@ -1,0 +1,315 @@
+import { useQuery } from "@tanstack/react-query";
+import { useParams, Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  ArrowLeft, User, Calendar, Award, ClipboardCheck, 
+  Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle
+} from "lucide-react";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
+
+type PersonnelProfile = {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  role: string;
+  branchId: number | null;
+  branchName: string | null;
+  hireDate: string | null;
+  probationEndDate: string | null;
+  emergencyContact: string | null;
+  emergencyPhone: string | null;
+  isActive: boolean;
+  accountStatus: string;
+  performanceScore: number | null;
+  attendanceRate: number | null;
+  latenessCount: number | null;
+  absenceCount: number | null;
+  totalShifts: number | null;
+  completedShifts: number | null;
+};
+
+const roleLabels: Record<string, string> = {
+  admin: "Admin",
+  muhasebe: "Muhasebe",
+  satinalma: "Satınalma",
+  coach: "Coach",
+  teknik: "Teknik",
+  destek: "Destek",
+  fabrika: "Fabrika",
+  yatirimci_hq: "Yatırımcı (HQ)",
+  supervisor: "Supervisor",
+  supervisor_buddy: "Supervisor Buddy",
+  barista: "Barista",
+  bar_buddy: "Bar Buddy",
+  stajyer: "Stajyer",
+  yatirimci: "Yatırımcı",
+};
+
+export default function PersonelProfilPage() {
+  const { id } = useParams();
+  const { user } = useAuth();
+
+  // Fetch personnel profile
+  const { data: profile, isLoading } = useQuery<PersonnelProfile>({
+    queryKey: ["/api/personnel", id],
+    enabled: !!id,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-12 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-4">
+        <p className="text-lg text-muted-foreground">Personel bulunamadı</p>
+        <Link href="/ik">
+          <Button variant="default" data-testid="button-back-ik">İK Yönetimine Dön</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const performanceScore = profile.performanceScore || 0;
+  const attendanceRate = profile.attendanceRate || 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link href="/ik">
+          <Button variant="ghost" size="icon" data-testid="button-back">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold" data-testid="personnel-name">{profile.fullName}</h1>
+          <div className="flex items-center gap-3 mt-1">
+            <Badge variant="default" data-testid="personnel-role">
+              {roleLabels[profile.role] || profile.role}
+            </Badge>
+            {profile.branchName && (
+              <span className="text-muted-foreground">{profile.branchName}</span>
+            )}
+            <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
+              {profile.isActive ? "Aktif" : "Pasif"}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      {/* Performance Overview Card */}
+      <Card className="border-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Award className="h-5 w-5 text-primary" />
+            Genel Performans
+          </CardTitle>
+          <CardDescription>Son 30 günlük performans özeti</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Performans Skoru</span>
+                <span className="text-2xl font-bold" data-testid="performance-score">
+                  {performanceScore.toFixed(1)}
+                </span>
+              </div>
+              <Progress value={performanceScore} className="h-2" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Devam Oranı</span>
+                <span className="text-2xl font-bold" data-testid="attendance-rate">
+                  {attendanceRate.toFixed(0)}%
+                </span>
+              </div>
+              <Progress value={attendanceRate} className="h-2" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Toplam Vardiya</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="total-shifts">
+              {profile.totalShifts || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">Bu ay</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tamamlanan</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="completed-shifts">
+              {profile.completedShifts || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">Vardiya</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Geç Kalma</CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="lateness-count">
+              {profile.latenessCount || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">Kez</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Devamsızlık</CardTitle>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="absence-count">
+              {profile.absenceCount || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">Gün</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="bilgiler" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="bilgiler" data-testid="tab-info">Kişisel Bilgiler</TabsTrigger>
+          <TabsTrigger value="performans" data-testid="tab-performance">Performans Detayları</TabsTrigger>
+          <TabsTrigger value="denetimler" data-testid="tab-audits">Denetimler</TabsTrigger>
+          <TabsTrigger value="vardiyalar" data-testid="tab-shifts">Vardiya Geçmişi</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="bilgiler" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personel Bilgileri</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Kullanıcı Adı</p>
+                  <p className="text-base" data-testid="info-username">{profile.username}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">E-posta</p>
+                  <p className="text-base" data-testid="info-email">{profile.email || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Telefon</p>
+                  <p className="text-base" data-testid="info-phone">{profile.phoneNumber || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">İşe Başlama</p>
+                  <p className="text-base" data-testid="info-hire-date">
+                    {profile.hireDate 
+                      ? format(new Date(profile.hireDate), "d MMMM yyyy", { locale: tr })
+                      : "-"
+                    }
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Deneme Süresi Bitiş</p>
+                  <p className="text-base" data-testid="info-probation-end">
+                    {profile.probationEndDate 
+                      ? format(new Date(profile.probationEndDate), "d MMMM yyyy", { locale: tr })
+                      : "-"
+                    }
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Acil Durum İletişim</p>
+                  <p className="text-base" data-testid="info-emergency-contact">
+                    {profile.emergencyContact || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Acil Durum Telefon</p>
+                  <p className="text-base" data-testid="info-emergency-phone">
+                    {profile.emergencyPhone || "-"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="performans" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Performans Metrikleri</CardTitle>
+              <CardDescription>Detaylı performans analizi yakında eklenecek</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Bu bölümde haftalık performans trendleri, görev tamamlama oranları ve gelişim grafikler i görüntülenecek.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="denetimler" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personel Denetimleri</CardTitle>
+              <CardDescription>Bilgi testleri ve davranış değerlendirmeleri</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Henüz denetim kaydı bulunmuyor. Personel denetimleri eklendiğinde burada görüntülenecek.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="vardiyalar" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Vardiya Geçmişi</CardTitle>
+              <CardDescription>Son 30 günlük vardiya kayıtları</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Vardiya detayları ve katılım bilgileri yakında eklenecek.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
