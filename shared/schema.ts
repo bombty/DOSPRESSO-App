@@ -2019,20 +2019,24 @@ export type InsertBranding = z.infer<typeof insertBrandingSchema>;
 export type Branding = typeof branding.$inferSelect;
 
 // ========================================
-// QUALITY AUDITS (Kalite Denetimi)
+// QUALITY AUDITS (Kalite Denetimi) - Enhanced unified system
 // ========================================
 
-// Audit Templates - Reusable audit checklists
+// Audit Templates - Reusable audit checklists for both branch and personnel
 export const auditTemplates = pgTable("audit_templates", {
   id: serial("id").primaryKey(),
-  title: varchar("title", { length: 200 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(), // Keeping old column name for compatibility
   description: text("description"),
-  category: varchar("category", { length: 50 }).notNull(), // cleanliness, service, equipment, product_quality
-  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  auditType: varchar("audit_type", { length: 20 }), // nullable for backward compat, 'branch' or 'personnel'
+  category: varchar("category", { length: 50 }).notNull(), // cleanliness, service, knowledge, dress_code, etc.
   isActive: boolean("is_active").notNull().default(true),
+  requiresPhoto: boolean("requires_photo").notNull().default(false),
+  aiAnalysisEnabled: boolean("ai_analysis_enabled").notNull().default(false),
+  createdById: varchar("created_by_id").notNull().references(() => users.id), // Keeping old column name
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
+  index("audit_templates_type_idx").on(table.auditType),
   index("audit_templates_category_idx").on(table.category),
 ]);
 
@@ -2045,37 +2049,45 @@ export const insertAuditTemplateSchema = createInsertSchema(auditTemplates).omit
 export type InsertAuditTemplate = z.infer<typeof insertAuditTemplateSchema>;
 export type AuditTemplate = typeof auditTemplates.$inferSelect;
 
-// Audit Template Items - Checklist items within a template
+// Audit Template Items - Individual checklist items
 export const auditTemplateItems = pgTable("audit_template_items", {
   id: serial("id").primaryKey(),
   templateId: integer("template_id").notNull().references(() => auditTemplates.id, { onDelete: "cascade" }),
   itemText: text("item_text").notNull(),
-  maxPoints: integer("max_points").notNull().default(10), // Maksimum puan
+  maxPoints: integer("max_points").notNull().default(10), // Legacy field kept for backward compat
   sortOrder: integer("sort_order").notNull().default(0),
+  // NEW fields for enhanced audit system
+  itemType: varchar("item_type", { length: 20 }), // checkbox, rating, text, photo - nullable for backwards compat
+  weight: integer("weight"), // Scoring weight - nullable
+  requiresPhoto: boolean("requires_photo"), // nullable
+  aiCheckEnabled: boolean("ai_check_enabled"), // nullable
+  aiPrompt: text("ai_prompt"), // Custom AI analysis prompt for this item
+  createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("audit_template_items_template_idx").on(table.templateId),
 ]);
 
 export const insertAuditTemplateItemSchema = createInsertSchema(auditTemplateItems).omit({
   id: true,
+  createdAt: true,
 });
 
 export type InsertAuditTemplateItem = z.infer<typeof insertAuditTemplateItemSchema>;
 export type AuditTemplateItem = typeof auditTemplateItems.$inferSelect;
 
-// Quality Audits - Actual audit records
+// Quality Audits - Legacy table kept for backward compatibility, links to new audit instances
 export const qualityAudits = pgTable("quality_audits", {
   id: serial("id").primaryKey(),
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   templateId: integer("template_id").notNull().references(() => auditTemplates.id),
-  auditorId: varchar("auditor_id").notNull().references(() => users.id), // Denetçi (HQ coach/admin)
+  auditorId: varchar("auditor_id").notNull().references(() => users.id),
   auditDate: timestamp("audit_date").notNull(),
-  totalScore: integer("total_score").notNull().default(0), // Hesaplanan toplam skor
+  totalScore: integer("total_score").notNull().default(0),
   maxPossibleScore: integer("max_possible_score").notNull().default(0),
   percentageScore: integer("percentage_score").notNull().default(0), // 0-100
-  status: varchar("status", { length: 20 }).notNull().default("completed"), // completed, in_progress
+  status: varchar("status", { length: 20 }).notNull().default("completed"),
   notes: text("notes"),
-  photoUrls: text("photo_urls").array(), // Kanıt fotoğrafları
+  photoUrls: text("photo_urls").array(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("quality_audits_branch_idx").on(table.branchId),
@@ -2091,12 +2103,12 @@ export const insertQualityAuditSchema = createInsertSchema(qualityAudits).omit({
 export type InsertQualityAudit = z.infer<typeof insertQualityAuditSchema>;
 export type QualityAudit = typeof qualityAudits.$inferSelect;
 
-// Audit Item Scores - Individual item scores within an audit
+// Audit Item Scores - Legacy table
 export const auditItemScores = pgTable("audit_item_scores", {
   id: serial("id").primaryKey(),
   auditId: integer("audit_id").notNull().references(() => qualityAudits.id, { onDelete: "cascade" }),
   templateItemId: integer("template_item_id").notNull().references(() => auditTemplateItems.id),
-  scoreGiven: integer("score_given").notNull(), // Verilen puan
+  scoreGiven: integer("score_given").notNull(),
   notes: text("notes"),
 }, (table) => [
   index("audit_item_scores_audit_idx").on(table.auditId),
@@ -2108,6 +2120,122 @@ export const insertAuditItemScoreSchema = createInsertSchema(auditItemScores).om
 
 export type InsertAuditItemScore = z.infer<typeof insertAuditItemScoreSchema>;
 export type AuditItemScore = typeof auditItemScores.$inferSelect;
+
+// NEW: Audit Instances - Unified audit execution for both branch and personnel
+export const auditInstances = pgTable("audit_instances", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").notNull().references(() => auditTemplates.id),
+  auditType: varchar("audit_type", { length: 20 }).notNull(), // 'branch' or 'personnel'
+  
+  // Target (either branch or personnel)
+  branchId: integer("branch_id").references(() => branches.id),
+  userId: varchar("user_id").references(() => users.id), // For personnel audits
+  
+  // Audit metadata
+  auditorId: varchar("auditor_id").notNull().references(() => users.id),
+  auditDate: timestamp("audit_date").notNull().defaultNow(),
+  status: varchar("status", { length: 20 }).notNull().default("in_progress"), // in_progress, completed, cancelled
+  
+  // Scoring
+  totalScore: integer("total_score"), // Calculated from items (0-100)
+  maxScore: integer("max_score"), // Maximum possible score
+  
+  // Overall notes
+  notes: text("notes"),
+  actionItems: text("action_items"), // JSON array
+  followUpRequired: boolean("follow_up_required").notNull().default(false),
+  followUpDate: date("follow_up_date"),
+  
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("audit_instances_template_idx").on(table.templateId),
+  index("audit_instances_branch_idx").on(table.branchId),
+  index("audit_instances_user_idx").on(table.userId),
+  index("audit_instances_auditor_idx").on(table.auditorId),
+  index("audit_instances_date_idx").on(table.auditDate),
+]);
+
+export const insertAuditInstanceSchema = createInsertSchema(auditInstances).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAuditInstance = z.infer<typeof insertAuditInstanceSchema>;
+export type AuditInstance = typeof auditInstances.$inferSelect;
+
+// NEW: Audit Instance Items - Individual responses in an audit
+export const auditInstanceItems = pgTable("audit_instance_items", {
+  id: serial("id").primaryKey(),
+  instanceId: integer("instance_id").notNull().references(() => auditInstances.id, { onDelete: "cascade" }),
+  templateItemId: integer("template_item_id").notNull().references(() => auditTemplateItems.id),
+  
+  // Response data
+  response: text("response"), // Checkbox: 'yes'/'no', Rating: '1-5', Text: actual text
+  score: integer("score"), // 0-100 for this item
+  
+  // Notes and photos
+  notes: text("notes"),
+  photoUrl: text("photo_url"),
+  
+  // AI analysis results
+  aiAnalysisStatus: varchar("ai_analysis_status", { length: 20 }), // pending, completed, failed
+  aiScore: integer("ai_score"), // 0-100 from AI
+  aiInsights: text("ai_insights"), // AI-generated feedback
+  aiConfidence: integer("ai_confidence"), // 0-100
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("audit_instance_items_instance_idx").on(table.instanceId),
+  index("audit_instance_items_template_item_idx").on(table.templateItemId),
+]);
+
+export const insertAuditInstanceItemSchema = createInsertSchema(auditInstanceItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAuditInstanceItem = z.infer<typeof insertAuditInstanceItemSchema>;
+export type AuditInstanceItem = typeof auditInstanceItems.$inferSelect;
+
+// NEW: Personnel Files - Comprehensive employee records
+export const personnelFiles = pgTable("personnel_files", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  
+  // Performance metrics (aggregated)
+  overallPerformanceScore: integer("overall_performance_score"), // 0-100
+  attendanceScore: integer("attendance_score"), // 0-100
+  knowledgeScore: integer("knowledge_score"), // 0-100 from audits
+  behaviorScore: integer("behavior_score"), // 0-100 from audits
+  
+  // Audit history summary
+  lastAuditDate: timestamp("last_audit_date"),
+  totalAuditsCompleted: integer("total_audits_completed").notNull().default(0),
+  averageAuditScore: integer("average_audit_score"), // 0-100
+  
+  // Notes
+  strengthsNotes: text("strengths_notes"),
+  improvementNotes: text("improvement_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("personnel_files_user_idx").on(table.userId),
+]);
+
+export const insertPersonnelFileSchema = createInsertSchema(personnelFiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPersonnelFile = z.infer<typeof insertPersonnelFileSchema>;
+export type PersonnelFile = typeof personnelFiles.$inferSelect;
 
 // ========================================
 // GUEST FEEDBACK (Misafir Geri Bildirimi)
