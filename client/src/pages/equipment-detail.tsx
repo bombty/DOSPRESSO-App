@@ -429,29 +429,35 @@ export default function EquipmentDetail() {
     },
   });
   
-  // AI Technical Assistant mutation
+  // AI Technical Assistant mutation (Enhanced with fallback LLM)
   const askAiMutation = useMutation({
     mutationFn: async (question: string) => {
-      // Add equipment context to the question
-      const contextualQuestion = `Cihaz: ${equipment?.equipmentType || 'Bilinmeyen'}. Soru: ${question}`;
       const response = await apiRequest(
         "POST",
         "/api/knowledge-base/ask",
-        { question: contextualQuestion }
+        { 
+          question,
+          equipmentId: equipment?.id 
+        }
       );
-      return await response.json() as { answer: string; sources: any[]; noKnowledgeFound?: boolean };
+      return await response.json() as { 
+        answer: string; 
+        sources: any[]; 
+        usedKnowledgeBase: boolean;
+        systemMessage?: string;
+      };
     },
     onSuccess: (data) => {
-      if (data.noKnowledgeFound) {
-        toast({
-          title: "Bilgi Bulunamadı",
-          description: "Bu konuda bilgi bankasında bilgi bulunamadı. Lütfen daha fazla içerik ekleyin veya sorunuzu farklı şekilde sorun.",
-          variant: "destructive",
-        });
-        return;
-      }
       setAiAnswer(data);
       setAiQuestion("");
+      
+      // Show system message if available
+      if (data.systemMessage) {
+        toast({
+          title: data.usedKnowledgeBase ? "Bilgi Bankası" : "AI Asistan",
+          description: data.systemMessage,
+        });
+      }
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {

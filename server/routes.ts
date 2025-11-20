@@ -72,7 +72,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance } from "./ai";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -2173,29 +2173,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/knowledge-base/ask', isAuthenticated, async (req: any, res) => {
     try {
-      const { question } = req.body;
-      const userId = req.user.id; // For rate limiting
+      const { question, equipmentId } = req.body;
+      const userId = req.user.id;
       
       if (!question || typeof question !== 'string') {
         return res.status(400).json({ message: "Soru gereklidir" });
       }
 
-      const queryEmbedding = await generateEmbedding(question);
-      const relevantChunks = await storage.semanticSearch(queryEmbedding, 5);
+      // Fetch equipment context if equipmentId provided
+      let equipmentContext;
+      if (equipmentId) {
+        const equipment = await storage.getEquipment(equipmentId);
+        if (equipment) {
+          const branch = equipment.branchId ? await storage.getBranch(equipment.branchId) : null;
+          const recentFaults = await storage.getFaults();
+          const equipmentFaults = recentFaults
+            .filter(f => f.equipmentId === equipmentId)
+            .slice(0, 3)
+            .map(f => ({
+              description: f.description,
+              date: new Date(f.createdAt).toLocaleDateString('tr-TR')
+            }));
 
-      if (relevantChunks.length === 0) {
-        return res.json({
-          answer: "Bu konuda bilgi bankasında bilgi bulamadım. Lütfen daha fazla içerik ekleyin veya sorunuzu farklı şekilde sorun.",
-          sources: [],
-          noKnowledgeFound: true,
-        });
+          equipmentContext = {
+            type: equipment.equipmentType,
+            serialNumber: equipment.serialNumber || undefined,
+            branch: branch?.name,
+            recentFaults: equipmentFaults.length > 0 ? equipmentFaults : undefined
+          };
+        }
       }
 
-      const response = await answerQuestionWithRAG(question, relevantChunks, userId);
-      res.json({ ...response, noKnowledgeFound: false });
-    } catch (error) {
+      // Use enhanced technical assistant with fallback LLM
+      const response = await answerTechnicalQuestion(question, equipmentContext, userId);
+      res.json(response);
+    } catch (error: any) {
       console.error("Error answering question:", error);
-      res.status(500).json({ message: "Soru cevaplanamadı" });
+      res.status(500).json({ message: error.message || "Soru cevaplanamadı" });
     }
   });
 

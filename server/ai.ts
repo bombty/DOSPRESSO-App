@@ -828,6 +828,123 @@ export async function answerQuestionWithRAG(
   }
 }
 
+// Enhanced Technical Assistant with fallback LLM (for $100/month budget)
+export async function answerTechnicalQuestion(
+  question: string,
+  equipmentContext?: { type: string; serialNumber?: string; branch?: string; recentFaults?: Array<{ description: string; date: string }> },
+  userId?: string,
+  skipCache: boolean = false
+): Promise<RAGResponse & { usedKnowledgeBase: boolean; systemMessage?: string }> {
+  // Increased rate limit for $100/month budget
+  const TECH_ASSIST_LIMIT = 50; // 50 calls per day (up from 5)
+  
+  if (userId && !aiRateLimiter.canMakeRequest(userId, 'tech_assist', TECH_ASSIST_LIMIT)) {
+    console.warn(`⚠️ RATE LIMIT - User ${userId} exceeded daily tech assist quota`);
+    throw new Error("Günlük AI asistan limitiniz doldu (50/gün). Yarın tekrar deneyin.");
+  }
+
+  // Build enriched context for better answers
+  let enrichedQuestion = question;
+  if (equipmentContext) {
+    const contextParts = [
+      `Cihaz Tipi: ${equipmentContext.type}`,
+      equipmentContext.serialNumber ? `Seri No: ${equipmentContext.serialNumber}` : null,
+      equipmentContext.branch ? `Şube: ${equipmentContext.branch}` : null,
+    ].filter(Boolean);
+    
+    if (equipmentContext.recentFaults && equipmentContext.recentFaults.length > 0) {
+      const faultsText = equipmentContext.recentFaults
+        .map(f => `- ${f.description} (${f.date})`)
+        .join('\n');
+      contextParts.push(`Son Arızalar:\n${faultsText}`);
+    }
+    
+    if (contextParts.length > 0) {
+      enrichedQuestion = `${contextParts.join('\n')}\n\nSoru: ${question}`;
+    }
+  }
+
+  // Step 1: Try knowledge base first (RAG)
+  try {
+    const queryEmbedding = await generateEmbedding(enrichedQuestion);
+    const relevantChunks = await storage.semanticSearch(queryEmbedding, 5);
+
+    if (relevantChunks.length > 0) {
+      // Knowledge base found - use RAG
+      const ragResponse = await answerQuestionWithRAG(enrichedQuestion, relevantChunks, userId, skipCache);
+      
+      if (userId) {
+        aiRateLimiter.incrementRequest(userId, 'tech_assist');
+        const remaining = aiRateLimiter.getRemainingCalls(userId, 'tech_assist', TECH_ASSIST_LIMIT);
+        console.log(`💰 AI call - Tech Assist RAG (${remaining}/${TECH_ASSIST_LIMIT} remaining)`);
+      }
+      
+      return {
+        ...ragResponse,
+        usedKnowledgeBase: true,
+        systemMessage: "Bilgi bankasından cevap verildi"
+      };
+    }
+  } catch (error) {
+    console.warn("Knowledge base search failed, falling back to LLM:", error);
+  }
+
+  // Step 2: Fallback to general LLM (no knowledge base)
+  const cacheKey = generateCacheKey('tech-assist-fallback', enrichedQuestion);
+  if (!skipCache) {
+    const cached = cache.get<RAGResponse & { usedKnowledgeBase: boolean }>(cacheKey);
+    if (cached) {
+      console.log('✅ Cache HIT - Fallback LLM (cost saved!)');
+      return { ...cached, systemMessage: "Genel AI bilgisinden cevap verildi" };
+    }
+  }
+
+  try {
+    const systemPrompt = `Sen DOSPRESSO kahve dükkanları için bir AI teknik asistanısın. 
+Görevin ekipman ayarları, kalibrasyonlar, arıza giderme ve teknik detaylar hakkında yardımcı olmak.
+${equipmentContext ? `Şu anda ${equipmentContext.type} cihazı hakkında sorular cevaplanıyor.` : ''}
+
+Türkçe, net ve teknik olarak doğru cevaplar ver. 
+Eğer kesin bilgi yoksa, genel kahve ekipmanları bilgisinden yararlanarak yardımcı ol.
+Samimi ve profesyonel ol.`;
+
+    const response = await openai.chat.completions.create({
+      model: CHAT_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: question }
+      ],
+      max_completion_tokens: 8192,
+      temperature: 0.7,
+    });
+
+    const answer = response.choices[0]?.message?.content || "Cevap oluşturulamadı";
+    
+    const result = {
+      answer,
+      sources: [],
+      usedKnowledgeBase: false,
+      systemMessage: "Genel AI bilgisinden cevap verildi (bilgi bankasında ilgili içerik bulunamadı)"
+    };
+
+    // Cache for 12 hours (shorter than RAG since no sources)
+    cache.set(cacheKey, result, 12 * 60 * 60 * 1000);
+    
+    if (userId) {
+      aiRateLimiter.incrementRequest(userId, 'tech_assist');
+      const remaining = aiRateLimiter.getRemainingCalls(userId, 'tech_assist', TECH_ASSIST_LIMIT);
+      console.log(`💰 AI call - Tech Assist Fallback LLM (${remaining}/${TECH_ASSIST_LIMIT} remaining)`);
+    } else {
+      console.log('💰 AI call - Tech Assist Fallback LLM');
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Fallback LLM error:", error);
+    throw new Error("AI asistan şu anda cevap veremiyor. Lütfen daha sonra tekrar deneyin.");
+  }
+}
+
 // Generate AI-powered shift plan based on historical data and workload
 export async function generateShiftPlan(
   branchId: number,
