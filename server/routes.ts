@@ -8123,13 +8123,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const itemSchema = insertAuditTemplateItemSchema.omit({ templateId: true }).superRefine((data, ctx) => {
         // Conditional validation for multiple_choice type
         if (data.itemType === 'multiple_choice') {
-          if (!data.options || data.options.length < 2) {
+          // Filter out empty/whitespace-only options
+          const validOptions = (data.options || []).filter(opt => opt && opt.trim() !== '');
+          
+          if (validOptions.length < 2) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              message: "Çoktan seçmeli sorular için en az 2 şık gerekli",
+              message: "Çoktan seçmeli sorular için en az 2 geçerli şık gerekli (boş şıklar kabul edilmez)",
               path: ['options'],
             });
           }
+          
+          // Check each option is non-empty
+          if (data.options) {
+            data.options.forEach((opt, idx) => {
+              if (!opt || opt.trim() === '') {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: `Şık ${idx + 1} boş olamaz`,
+                  path: ['options', idx],
+                });
+              }
+            });
+          }
+          
           if (!data.correctAnswer || data.correctAnswer.trim() === '') {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -8137,6 +8154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               path: ['correctAnswer'],
             });
           }
+          
           if (data.options && data.correctAnswer && !data.options.includes(data.correctAnswer)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -8182,13 +8200,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const itemSchema = insertAuditTemplateItemSchema.omit({ templateId: true }).superRefine((data, ctx) => {
           // Conditional validation for multiple_choice type
           if (data.itemType === 'multiple_choice') {
-            if (!data.options || data.options.length < 2) {
+            // Filter out empty/whitespace-only options
+            const validOptions = (data.options || []).filter(opt => opt && opt.trim() !== '');
+            
+            if (validOptions.length < 2) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "Çoktan seçmeli sorular için en az 2 şık gerekli",
+                message: "Çoktan seçmeli sorular için en az 2 geçerli şık gerekli (boş şıklar kabul edilmez)",
                 path: ['options'],
               });
             }
+            
+            // Check each option is non-empty
+            if (data.options) {
+              data.options.forEach((opt, idx) => {
+                if (!opt || opt.trim() === '') {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `Şık ${idx + 1} boş olamaz`,
+                    path: ['options', idx],
+                  });
+                }
+              });
+            }
+            
             if (!data.correctAnswer || data.correctAnswer.trim() === '') {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
@@ -8196,6 +8231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 path: ['correctAnswer'],
               });
             }
+            
             if (data.options && data.correctAnswer && !data.options.includes(data.correctAnswer)) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,

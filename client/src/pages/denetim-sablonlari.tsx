@@ -67,13 +67,30 @@ const templateItemFormSchema = insertAuditTemplateItemSchema.omit({
 }).superRefine((data, ctx) => {
   // Conditional validation for multiple_choice type
   if (data.itemType === 'multiple_choice') {
-    if (!data.options || data.options.length < 2) {
+    // Filter out empty/whitespace-only options
+    const validOptions = (data.options || []).filter(opt => opt && opt.trim() !== '');
+    
+    if (validOptions.length < 2) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Çoktan seçmeli sorular için en az 2 şık gerekli",
+        message: "Çoktan seçmeli sorular için en az 2 geçerli şık gerekli (boş şıklar kabul edilmez)",
         path: ['options'],
       });
     }
+    
+    // Check each option is non-empty
+    if (data.options) {
+      data.options.forEach((opt, idx) => {
+        if (!opt || opt.trim() === '') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Şık ${idx + 1} boş olamaz`,
+            path: ['options', idx],
+          });
+        }
+      });
+    }
+    
     if (!data.correctAnswer || data.correctAnswer.trim() === '') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -81,6 +98,7 @@ const templateItemFormSchema = insertAuditTemplateItemSchema.omit({
         path: ['correctAnswer'],
       });
     }
+    
     if (data.options && data.correctAnswer && !data.options.includes(data.correctAnswer)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -686,6 +704,7 @@ export default function DenetimSablonlariPage() {
                               <SelectItem value="rating" data-testid={`option-itemtype-${index}-rating`}>Rating (1-5)</SelectItem>
                               <SelectItem value="text" data-testid={`option-itemtype-${index}-text`}>Metin Yanıt</SelectItem>
                               <SelectItem value="photo" data-testid={`option-itemtype-${index}-photo`}>Fotoğraf</SelectItem>
+                              <SelectItem value="multiple_choice" data-testid={`option-itemtype-${index}-multiple_choice`}>Çoktan Seçmeli Test</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -741,6 +760,83 @@ export default function DenetimSablonlariPage() {
                             className="h-20"
                             data-testid={`textarea-ai-prompt-${index}`}
                           />
+                        </div>
+                      )}
+
+                      {/* Multiple Choice Options */}
+                      {item.itemType === 'multiple_choice' && (
+                        <div className="space-y-3">
+                          <div>
+                            <Label>Şıklar (En az 2 şık gerekli)</Label>
+                            <div className="space-y-2 mt-2">
+                              {(item.options || []).map((option: string, optionIndex: number) => (
+                                <div key={optionIndex} className="flex gap-2">
+                                  <Input
+                                    value={option}
+                                    onChange={(e) => {
+                                      const newOptions = [...(item.options || [])];
+                                      newOptions[optionIndex] = e.target.value;
+                                      handleUpdateItem(index, 'options', newOptions);
+                                    }}
+                                    placeholder={`Şık ${optionIndex + 1}`}
+                                    data-testid={`input-option-${index}-${optionIndex}`}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                      const newOptions = (item.options || []).filter((_: any, i: number) => i !== optionIndex);
+                                      handleUpdateItem(index, 'options', newOptions.length > 0 ? newOptions : null);
+                                      // Clear correctAnswer if it was the removed option
+                                      if (item.correctAnswer === option) {
+                                        handleUpdateItem(index, 'correctAnswer', null);
+                                      }
+                                    }}
+                                    data-testid={`button-remove-option-${index}-${optionIndex}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const newOptions = [...(item.options || []), ''];
+                                  handleUpdateItem(index, 'options', newOptions);
+                                }}
+                                data-testid={`button-add-option-${index}`}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Şık Ekle
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label htmlFor={`correct-answer-${index}`}>Doğru Cevap</Label>
+                            <Select
+                              value={item.correctAnswer || ''}
+                              onValueChange={(value) => handleUpdateItem(index, 'correctAnswer', value)}
+                            >
+                              <SelectTrigger id={`correct-answer-${index}`} data-testid={`select-correct-answer-${index}`}>
+                                <SelectValue placeholder="Doğru şıkkı seçin..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(item.options || []).map((option: string, optionIndex: number) => (
+                                  <SelectItem 
+                                    key={optionIndex} 
+                                    value={option}
+                                    data-testid={`option-correct-answer-${index}-${optionIndex}`}
+                                  >
+                                    {option || `Şık ${optionIndex + 1}`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       )}
                     </CardContent>
