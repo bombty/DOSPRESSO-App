@@ -297,6 +297,18 @@ export default function DenetimSablonlariPage() {
   const handleUpdateItem = (index: number, field: keyof TemplateItemFormData, value: any) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
+    
+    // Auto-initialize options array when changing to multiple_choice
+    if (field === 'itemType' && value === 'multiple_choice' && !newItems[index].options) {
+      newItems[index].options = ['', ''];
+    }
+    
+    // Clear MC fields when changing away from multiple_choice
+    if (field === 'itemType' && value !== 'multiple_choice') {
+      newItems[index].options = null;
+      newItems[index].correctAnswer = null;
+    }
+    
     setItems(newItems);
   };
 
