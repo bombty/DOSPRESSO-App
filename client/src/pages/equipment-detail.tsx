@@ -1853,17 +1853,17 @@ export default function EquipmentDetail() {
                 </div>
                 
                 {aiAnswer && (
-                  <div className="bg-background rounded-lg p-3 space-y-2 border">
+                  <div className="bg-background rounded-lg p-3 space-y-2 border" data-testid="ai-response-container">
                     <div className="flex items-start gap-2">
                       <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                       <div className="flex-1 space-y-2">
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{aiAnswer.answer}</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap" data-testid="text-ai-answer">{aiAnswer.answer}</p>
                         {aiAnswer.sources && aiAnswer.sources.length > 0 && (
                           <div className="pt-2 border-t">
                             <p className="text-xs font-medium text-muted-foreground mb-1">Kaynaklar:</p>
                             <div className="flex flex-wrap gap-1">
                               {aiAnswer.sources.map((source: any, idx: number) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
+                                <Badge key={idx} variant="outline" className="text-xs" data-testid={`badge-ai-source-${idx}`}>
                                   {source.title || `Kaynak ${idx + 1}`}
                                 </Badge>
                               ))}
