@@ -328,7 +328,32 @@ export default function EquipmentFaults() {
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Ekipman Arızaları</h1>
           <p className="text-muted-foreground mt-1">Ekipman arızalarını raporlayın ve AI ile analiz edin</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog 
+          open={isAddDialogOpen} 
+          onOpenChange={(open) => {
+            setIsAddDialogOpen(open);
+            if (open && availableEquipment && availableEquipment.length > 0) {
+              // Auto-select first equipment when dialog opens
+              const firstEquipment = availableEquipment[0];
+              form.setValue('equipmentId', firstEquipment.id);
+              const equipmentLabel = `${EQUIPMENT_METADATA[firstEquipment.equipmentType as keyof typeof EQUIPMENT_METADATA]?.nameTr} - ${firstEquipment.serialNumber || 'S/N Yok'}`;
+              form.setValue('equipmentName', equipmentLabel);
+              if (firstEquipment.branchId) {
+                form.setValue('branchId', firstEquipment.branchId);
+              }
+              // Load troubleshooting steps for first equipment
+              setSelectedEquipmentType(firstEquipment.equipmentType);
+              setCompletedStepIds(new Set());
+              setStepNotes({});
+            } else if (!open) {
+              // Reset when closing
+              form.reset();
+              setSelectedEquipmentType(null);
+              setCompletedStepIds(new Set());
+              setStepNotes({});
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button data-testid="button-add-fault">
               <AlertTriangle className="mr-2 h-4 w-4" />
@@ -360,7 +385,7 @@ export default function EquipmentFaults() {
                               form.setValue('branchId', selectedEquipment.branchId);
                             }
                             // Trigger troubleshooting steps fetch
-                            setSelectedEquipmentType(selectedEquipment.type);
+                            setSelectedEquipmentType(selectedEquipment.equipmentType);
                             // Reset troubleshooting state
                             setCompletedStepIds(new Set());
                             setStepNotes({});
