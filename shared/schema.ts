@@ -3038,3 +3038,156 @@ export const insertBranchQualityAuditSchema = createInsertSchema(branchQualityAu
 
 export type InsertBranchQualityAudit = z.infer<typeof insertBranchQualityAuditSchema>;
 export type BranchQualityAudit = typeof branchQualityAudits.$inferSelect;
+
+// ========================================
+// EMPLOYEE DOCUMENTS - Özlük Dosyası Belgeleri
+// ========================================
+
+export const employeeDocuments = pgTable("employee_documents", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  documentType: varchar("document_type", { length: 100 }).notNull(), // id_card, diploma, health_report, contract, bank_info, insurance, certificate
+  documentName: varchar("document_name", { length: 255 }).notNull(),
+  fileUrl: text("file_url").notNull(),
+  description: text("description"),
+  expiryDate: date("expiry_date"),
+  uploadedById: varchar("uploaded_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  isVerified: boolean("is_verified").notNull().default(false),
+  verifiedById: varchar("verified_by_id").references(() => users.id, { onDelete: "set null" }),
+  verifiedAt: timestamp("verified_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_documents_user_idx").on(table.userId),
+  index("employee_documents_type_idx").on(table.documentType),
+  index("employee_documents_expiry_idx").on(table.expiryDate),
+]);
+
+export const insertEmployeeDocumentSchema = createInsertSchema(employeeDocuments).omit({
+  id: true,
+  uploadedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeDocument = z.infer<typeof insertEmployeeDocumentSchema>;
+export type EmployeeDocument = typeof employeeDocuments.$inferSelect;
+
+// ========================================
+// DISCIPLINARY REPORTS - Tutanaklar, Disiplin İşlemleri, Yazılı Savunmalar
+// ========================================
+
+export const disciplinaryReports = pgTable("disciplinary_reports", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  reportType: varchar("report_type", { length: 50 }).notNull(), // warning, investigation, defense, meeting_minutes
+  severity: varchar("severity", { length: 20 }).notNull().default("low"), // low, medium, high, critical
+  subject: varchar("subject", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  incidentDate: date("incident_date").notNull(),
+  incidentTime: varchar("incident_time", { length: 5 }), // HH:MM format
+  location: varchar("location", { length: 255 }),
+  witnessIds: text("witness_ids").array(), // Array of user IDs
+  attachmentUrls: text("attachment_urls").array(), // Fotoğraflar ve belgeler
+  createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  employeeResponse: text("employee_response"), // Yazılı savunma
+  employeeResponseDate: timestamp("employee_response_date"),
+  employeeResponseAttachments: text("employee_response_attachments").array(),
+  status: varchar("status", { length: 20 }).notNull().default("open"), // open, under_review, resolved, closed
+  resolution: text("resolution"),
+  resolvedById: varchar("resolved_by_id").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at"),
+  actionTaken: varchar("action_taken", { length: 100 }), // verbal_warning, written_warning, suspension, termination, cleared
+  followUpRequired: boolean("follow_up_required").notNull().default(false),
+  followUpDate: date("follow_up_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("disciplinary_reports_user_idx").on(table.userId),
+  index("disciplinary_reports_branch_idx").on(table.branchId),
+  index("disciplinary_reports_type_idx").on(table.reportType),
+  index("disciplinary_reports_status_idx").on(table.status),
+  index("disciplinary_reports_date_idx").on(table.incidentDate),
+]);
+
+export const insertDisciplinaryReportSchema = createInsertSchema(disciplinaryReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDisciplinaryReport = z.infer<typeof insertDisciplinaryReportSchema>;
+export type DisciplinaryReport = typeof disciplinaryReports.$inferSelect;
+
+// ========================================
+// EMPLOYEE ONBOARDING - Yeni Personel Onboarding Süreci
+// ========================================
+
+export const employeeOnboarding = pgTable("employee_onboarding", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull().default("not_started"), // not_started, in_progress, completed
+  startDate: date("start_date").notNull(),
+  expectedCompletionDate: date("expected_completion_date"),
+  actualCompletionDate: date("actual_completion_date"),
+  completionPercentage: integer("completion_percentage").notNull().default(0), // 0-100
+  assignedMentorId: varchar("assigned_mentor_id").references(() => users.id, { onDelete: "set null" }),
+  supervisorNotes: text("supervisor_notes"),
+  employeeNotes: text("employee_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_onboarding_user_idx").on(table.userId),
+  index("employee_onboarding_branch_idx").on(table.branchId),
+  index("employee_onboarding_status_idx").on(table.status),
+]);
+
+export const insertEmployeeOnboardingSchema = createInsertSchema(employeeOnboarding).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeOnboarding = z.infer<typeof insertEmployeeOnboardingSchema>;
+export type EmployeeOnboarding = typeof employeeOnboarding.$inferSelect;
+
+// ========================================
+// EMPLOYEE ONBOARDING TASKS - Onboarding Görevleri
+// ========================================
+
+export const employeeOnboardingTasks = pgTable("employee_onboarding_tasks", {
+  id: serial("id").primaryKey(),
+  onboardingId: integer("onboarding_id").notNull().references(() => employeeOnboarding.id, { onDelete: "cascade" }),
+  taskType: varchar("task_type", { length: 100 }).notNull(), // document_upload, training, orientation, system_access, meet_team
+  taskName: varchar("task_name", { length: 255 }).notNull(),
+  description: text("description"),
+  dueDate: date("due_date"),
+  priority: varchar("priority", { length: 20 }).notNull().default("medium"), // low, medium, high
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, in_progress, completed, skipped
+  completedById: varchar("completed_by_id").references(() => users.id, { onDelete: "set null" }),
+  completedAt: timestamp("completed_at"),
+  verifiedById: varchar("verified_by_id").references(() => users.id, { onDelete: "set null" }),
+  verifiedAt: timestamp("verified_at"),
+  attachmentUrls: text("attachment_urls").array(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("onboarding_tasks_onboarding_idx").on(table.onboardingId),
+  index("onboarding_tasks_status_idx").on(table.status),
+  index("onboarding_tasks_due_date_idx").on(table.dueDate),
+]);
+
+export const insertEmployeeOnboardingTaskSchema = createInsertSchema(employeeOnboardingTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeOnboardingTask = z.infer<typeof insertEmployeeOnboardingTaskSchema>;
+export type EmployeeOnboardingTask = typeof employeeOnboardingTasks.$inferSelect;
