@@ -4691,17 +4691,39 @@ export class DatabaseStorage implements IStorage {
     followUpRequired?: boolean, 
     followUpDate?: string
   ): Promise<AuditInstance | undefined> {
-    // Calculate total score from items
-    const instanceItems = await db
-      .select()
+    // Calculate total score from items with weighted average
+    const instanceItemsWithTemplate = await db
+      .select({
+        score: auditInstanceItems.score,
+        weight: auditTemplateItems.weight,
+      })
       .from(auditInstanceItems)
+      .leftJoin(auditTemplateItems, eq(auditInstanceItems.templateItemId, auditTemplateItems.id))
       .where(eq(auditInstanceItems.instanceId, id));
 
-    // Calculate average score
-    const scoresWithValues = instanceItems.filter(item => item.score !== null);
-    const totalScore = scoresWithValues.length > 0
-      ? Math.round(scoresWithValues.reduce((sum, item) => sum + (item.score || 0), 0) / scoresWithValues.length)
-      : null;
+    // Calculate weighted average score
+    const itemsWithScores = instanceItemsWithTemplate.filter(item => item.score !== null);
+    let totalScore: number | null = null;
+    
+    if (itemsWithScores.length > 0) {
+      const weightedSum = itemsWithScores.reduce((sum, item) => {
+        const weight = item.weight ?? 1; // Default weight to 1 if null or template deleted
+        return sum + (item.score || 0) * weight;
+      }, 0);
+      
+      const totalWeight = itemsWithScores.reduce((sum, item) => {
+        return sum + (item.weight ?? 1);
+      }, 0);
+      
+      // Guard against zero total weight (edge case)
+      totalScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : null;
+      
+      // Log warning if any items are missing templates
+      const missingTemplates = instanceItemsWithTemplate.filter(item => item.weight === null);
+      if (missingTemplates.length > 0) {
+        console.warn(`Audit instance ${id}: ${missingTemplates.length} items missing template data (using default weight=1)`);
+      }
+    }
 
     const maxScore = 100;
 

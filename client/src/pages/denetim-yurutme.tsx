@@ -27,6 +27,8 @@ type AuditTemplateItem = {
   aiCheckEnabled: boolean | null;
   aiPrompt: string | null;
   sortOrder: number;
+  options: string[] | null; // For multiple choice questions
+  correctAnswer: string | null; // Correct answer for test questions
 };
 
 type AuditInstanceItem = {
@@ -121,18 +123,26 @@ export default function DenetimYurutmePage() {
     },
   });
 
-  const handleResponseChange = (templateItemId: number, response: string, itemType: string) => {
-    // Calculate score based on response and item type
-    let score: number = 0;
+  const handleResponseChange = (templateItemId: number, response: string, itemType: string, weight?: number | null, correctAnswer?: string | null) => {
+    // Calculate base score (0-100) based on response and item type
+    let baseScore: number = 0;
     if (itemType === 'checkbox') {
-      score = response === 'yes' ? 100 : 0;
+      baseScore = response === 'yes' ? 100 : 0;
     } else if (itemType === 'rating') {
       const rating = parseInt(response);
-      score = (rating / 5) * 100;
+      baseScore = (rating / 5) * 100;
+    } else if (itemType === 'multiple_choice') {
+      // For multiple choice: 100 if correct, 0 if incorrect
+      baseScore = response === correctAnswer ? 100 : 0;
     } else {
       // For text/photo responses, default to neutral score
-      score = 50;
+      baseScore = 50;
     }
+
+    // Store percentage score (0-100)
+    // Weighted aggregation is handled by backend completeAuditInstance using leftJoin on template weights
+    // Weight parameter is available for future client-side preview features
+    const score = baseScore;
 
     updateItemMutation.mutate({
       templateItemId,
@@ -174,11 +184,22 @@ export default function DenetimYurutmePage() {
   const totalItems = audit.items.length;
   const progress = totalItems > 0 ? (answeredItems / totalItems) * 100 : 0;
 
-  // Calculate current average score
+  // Calculate current weighted average score (matches backend completeAuditInstance logic)
   const scoresWithValues = audit.items.filter(item => item.score !== null);
-  const currentScore = scoresWithValues.length > 0
-    ? Math.round(scoresWithValues.reduce((sum, item) => sum + (item.score || 0), 0) / scoresWithValues.length)
-    : 0;
+  let currentScore = 0;
+  
+  if (scoresWithValues.length > 0) {
+    const weightedSum = scoresWithValues.reduce((sum, item) => {
+      const weight = item.templateItem.weight ?? 1; // Default weight to 1 if null
+      return sum + (item.score || 0) * weight;
+    }, 0);
+    
+    const totalWeight = scoresWithValues.reduce((sum, item) => {
+      return sum + (item.templateItem.weight ?? 1);
+    }, 0);
+    
+    currentScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -251,7 +272,7 @@ export default function DenetimYurutmePage() {
                 {itemType === 'checkbox' && (
                   <RadioGroup
                     value={item.response || ''}
-                    onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType)}
+                    onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType, item.templateItem.weight)}
                     data-testid={`radio-group-${index}`}
                   >
                     <div className="flex items-center space-x-2">
@@ -268,7 +289,7 @@ export default function DenetimYurutmePage() {
                 {itemType === 'rating' && (
                   <RadioGroup
                     value={item.response || ''}
-                    onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType)}
+                    onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType, item.templateItem.weight)}
                     className="flex gap-2"
                     data-testid={`rating-group-${index}`}
                   >
@@ -284,10 +305,29 @@ export default function DenetimYurutmePage() {
                 {itemType === 'text' && (
                   <Textarea
                     value={item.response || ''}
-                    onChange={(e) => handleResponseChange(item.templateItemId, e.target.value, itemType)}
+                    onChange={(e) => handleResponseChange(item.templateItemId, e.target.value, itemType, item.templateItem.weight)}
                     placeholder="Cevabınızı girin..."
                     data-testid={`textarea-response-${index}`}
                   />
+                )}
+
+                {itemType === 'multiple_choice' && (
+                  <RadioGroup
+                    value={item.response || ''}
+                    onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType, item.templateItem.weight, item.templateItem.correctAnswer)}
+                    data-testid={`radio-group-mc-${index}`}
+                  >
+                    {(item.templateItem.options || []).map((option: string, optionIndex: number) => (
+                      <div key={optionIndex} className="flex items-center space-x-2">
+                        <RadioGroupItem 
+                          value={option} 
+                          id={`option-${item.id}-${optionIndex}`} 
+                          data-testid={`radio-option-${index}-${optionIndex}`} 
+                        />
+                        <Label htmlFor={`option-${item.id}-${optionIndex}`}>{option}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 )}
 
                 {/* Photo Upload */}
