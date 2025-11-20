@@ -70,6 +70,12 @@ export default function EquipmentFaults() {
     enabled: !!selectedEquipmentType,
   });
 
+  // Calculate if troubleshooting is complete
+  const requiredSteps = troubleshootingSteps?.filter(step => step.isRequired) || [];
+  const missingRequiredSteps = requiredSteps.filter(step => !completedStepIds.has(step.id));
+  const isTroubleshootingComplete = requiredSteps.length === 0 || missingRequiredSteps.length === 0;
+  const hasSteps = troubleshootingSteps && troubleshootingSteps.length > 0;
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const statusParam = params.get('status');
@@ -125,6 +131,11 @@ export default function EquipmentFaults() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FaultFormData) => {
+      // Defensive guard: Re-check troubleshooting completion before submission
+      if (hasSteps && !isTroubleshootingComplete) {
+        throw new Error("Lütfen tüm zorunlu sorun giderme adımlarını tamamlayın");
+      }
+      
       // Build completed troubleshooting steps array
       const completedTroubleshootingSteps = Array.from(completedStepIds).map(stepId => ({
         stepId,
@@ -393,43 +404,56 @@ export default function EquipmentFaults() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {troubleshootingSteps.map((step) => (
-                          <div key={step.id} className="flex items-start gap-3 p-3 bg-background rounded border">
-                            <Checkbox
-                              checked={completedStepIds.has(step.id)}
-                              onCheckedChange={(checked) => {
-                                const newSet = new Set(completedStepIds);
-                                if (checked) {
-                                  newSet.add(step.id);
-                                } else {
-                                  newSet.delete(step.id);
-                                }
-                                setCompletedStepIds(newSet);
-                              }}
-                              data-testid={`checkbox-troubleshooting-step-${step.id}`}
-                            />
-                            <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">
-                                  {step.order}. {step.stepTitle}
-                                  {step.isRequired && <span className="text-destructive">*</span>}
-                                </span>
+                        {troubleshootingSteps.map((step) => {
+                          const isMissing = step.isRequired && !completedStepIds.has(step.id);
+                          return (
+                            <div 
+                              key={step.id} 
+                              className={`flex items-start gap-3 p-3 bg-background rounded border ${
+                                isMissing ? 'border-destructive border-2' : ''
+                              }`}
+                            >
+                              <Checkbox
+                                checked={completedStepIds.has(step.id)}
+                                onCheckedChange={(checked) => {
+                                  const newSet = new Set(completedStepIds);
+                                  if (checked) {
+                                    newSet.add(step.id);
+                                  } else {
+                                    newSet.delete(step.id);
+                                  }
+                                  setCompletedStepIds(newSet);
+                                }}
+                                data-testid={`checkbox-troubleshooting-step-${step.id}`}
+                              />
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-medium ${isMissing ? 'text-destructive' : ''}`}>
+                                    {step.order}. {step.stepTitle}
+                                    {step.isRequired && <span className="text-destructive">*</span>}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground">{step.stepDescription}</p>
+                                {isMissing && (
+                                  <p className="text-sm text-destructive font-medium">
+                                    Bu adım zorunludur
+                                  </p>
+                                )}
+                                {completedStepIds.has(step.id) && (
+                                  <Input
+                                    placeholder="Not (opsiyonel)"
+                                    value={stepNotes[step.id] || ""}
+                                    onChange={(e) => {
+                                      setStepNotes({ ...stepNotes, [step.id]: e.target.value });
+                                    }}
+                                    className="text-sm"
+                                    data-testid={`input-step-note-${step.id}`}
+                                  />
+                                )}
                               </div>
-                              <p className="text-sm text-muted-foreground">{step.stepDescription}</p>
-                              {completedStepIds.has(step.id) && (
-                                <Input
-                                  placeholder="Not (opsiyonel)"
-                                  value={stepNotes[step.id] || ""}
-                                  onChange={(e) => {
-                                    setStepNotes({ ...stepNotes, [step.id]: e.target.value });
-                                  }}
-                                  className="text-sm"
-                                  data-testid={`input-step-note-${step.id}`}
-                                />
-                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                     {troubleshootingSteps.some(s => s.isRequired) && (
@@ -475,11 +499,27 @@ export default function EquipmentFaults() {
                     </FormItem>
                   )}
                 />
+                {/* Warning about missing required steps */}
+                {hasSteps && !isTroubleshootingComplete && (
+                  <div className="bg-destructive/10 border border-destructive rounded-lg p-3">
+                    <p className="text-sm text-destructive font-medium">
+                      {missingRequiredSteps.length} zorunlu adım eksik
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Lütfen yukarıdaki işaretli adımları tamamlayın
+                    </p>
+                  </div>
+                )}
+                
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                     İptal
                   </Button>
-                  <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-fault">
+                  <Button 
+                    type="submit" 
+                    disabled={createMutation.isPending || (hasSteps && !isTroubleshootingComplete)} 
+                    data-testid="button-submit-fault"
+                  >
                     {createMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
                   </Button>
                 </div>
