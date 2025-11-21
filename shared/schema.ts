@@ -850,6 +850,7 @@ export const equipmentFaults = pgTable("equipment_faults", {
     stepId: number;
     completedAt: string;
     photoUrl?: string;
+    notes?: string;
   }>>().default([]),
   // Detailed fault report (checkbox selections)
   faultReportDetails: jsonb("fault_report_details").$type<{

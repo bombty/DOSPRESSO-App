@@ -1336,7 +1336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (equipment) {
           const completedSteps = validatedData.completedTroubleshootingSteps || [];
           const troubleshootingCheck = await storage.isTroubleshootingCompleteForEquipment(
-            equipment.type,
+            equipment.equipmentType,
             completedSteps
           );
           
