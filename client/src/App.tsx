@@ -16,7 +16,6 @@ import Branches from "@/pages/branches";
 import Subeler from "@/pages/subeler";
 import SubeDetay from "@/pages/sube-detay";
 import PersonelProfil from "@/pages/personel-profil.tsx";
-import PersonelYonetimi from "@/pages/personel-yonetimi";
 import PersonelDetay from "@/pages/personel-detay";
 import Tasks from "@/pages/tasks";
 import Checklists from "@/pages/checklists";
@@ -81,8 +80,7 @@ function Router() {
           <Route path="/subeler/:id" component={SubeDetay} />
           <Route path="/subeler" component={Subeler} />
           <Route path="/personel/:id" component={PersonelProfil} />
-          <Route path="/personel-yonetimi/:id" component={PersonelDetay} />
-          <Route path="/personel-yonetimi" component={PersonelYonetimi} />
+          <Route path="/personel-detay/:id" component={PersonelDetay} />
           <Route path="/gorevler" component={Tasks} />
           <Route path="/checklistler" component={Checklists} />
           <Route path="/ekipman/:id" component={EquipmentDetail} />
