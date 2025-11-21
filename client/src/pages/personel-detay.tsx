@@ -149,17 +149,7 @@ export default function PersonelDetay() {
 
   const uploadDocumentMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch("/api/employee-documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Belge eklenirken hata oluştu");
-      }
-      return response.json();
+      return apiRequest("POST", "/api/employee-documents", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employee-documents", id] });
@@ -184,15 +174,7 @@ export default function PersonelDetay() {
 
   const verifyDocumentMutation = useMutation({
     mutationFn: async (documentId: number) => {
-      const response = await fetch(`/api/employee-documents/${documentId}/verify`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Belge onaylanırken hata oluştu");
-      }
-      return response.json();
+      return apiRequest("POST", `/api/employee-documents/${documentId}/verify`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employee-documents", id] });
@@ -212,15 +194,7 @@ export default function PersonelDetay() {
 
   const deleteDocumentMutation = useMutation({
     mutationFn: async (documentId: number) => {
-      const response = await fetch(`/api/employee-documents/${documentId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Belge silinirken hata oluştu");
-      }
-      return response.json();
+      return apiRequest("DELETE", `/api/employee-documents/${documentId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employee-documents", id] });
@@ -240,15 +214,7 @@ export default function PersonelDetay() {
 
   const completeOnboardingTaskMutation = useMutation({
     mutationFn: async (taskId: number) => {
-      const response = await fetch(`/api/onboarding-tasks/${taskId}/complete`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Görev tamamlanırken hata oluştu");
-      }
-      return response.json();
+      return apiRequest("POST", `/api/onboarding-tasks/${taskId}/complete`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", onboarding?.id] });
@@ -269,15 +235,7 @@ export default function PersonelDetay() {
 
   const verifyOnboardingTaskMutation = useMutation({
     mutationFn: async (taskId: number) => {
-      const response = await fetch(`/api/onboarding-tasks/${taskId}/verify`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Görev doğrulanırken hata oluştu");
-      }
-      return response.json();
+      return apiRequest("POST", `/api/onboarding-tasks/${taskId}/verify`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", onboarding?.id] });
