@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -21,9 +21,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { 
   insertTrainingModuleSchema, 
   type TrainingModule, 
-  type InsertTrainingModule 
+  type InsertTrainingModule,
+  type UserTrainingProgress
 } from "@shared/schema";
-import { BookOpen, Plus, Play, Trash2 } from "lucide-react";
+import { BookOpen, Plus, Play, Trash2, CheckCircle, Clock, Star } from "lucide-react";
 
 export default function Training() {
   const { toast } = useToast();
@@ -36,6 +37,24 @@ export default function Training() {
   const { data: modules, isLoading } = useQuery<TrainingModule[]>({
     queryKey: ["/api/training/modules"],
   });
+
+  const { data: userProgress, isLoading: progressLoading } = useQuery<UserTrainingProgress[]>({
+    queryKey: ["/api/training/progress"],
+    enabled: !!user,
+  });
+
+  // Calculate mandatory trainings for user's role
+  const mandatoryModules = useMemo(() => {
+    if (!modules || !user) return [];
+    return modules.filter(m => 
+      m.isPublished && m.requiredForRole && m.requiredForRole.includes(user.role)
+    );
+  }, [modules, user]);
+
+  // Create progress map for easy lookup
+  const progressMap = useMemo(() => {
+    return new Map(userProgress?.map(p => [p.moduleId, p]) || []);
+  }, [userProgress]);
 
   const form = useForm<InsertTrainingModule>({
     resolver: zodResolver(insertTrainingModuleSchema),
@@ -110,7 +129,36 @@ export default function Training() {
     advanced: "İleri",
   };
 
-  if (isLoading) {
+  const roleLabels: Record<string, string> = {
+    barista: "Barista",
+    shift_lead: "Vardiya Lideri",
+    supervisor: "Supervisor",
+    regional_manager: "Bölge Müdürü",
+    coach: "Koç",
+    trainer: "Eğitmen",
+    quality_auditor: "Kalite Denetçisi",
+    tech_support: "Teknik Destek",
+    hr_manager: "İK Müdürü",
+    finance_manager: "Finans Müdürü",
+    operations_manager: "Operasyon Müdürü",
+    marketing_manager: "Pazarlama Müdürü",
+    admin: "Admin"
+  };
+
+  // Get progress status for a module
+  const getProgressStatus = (moduleId: number) => {
+    const progress = progressMap.get(moduleId);
+    if (!progress) return { status: 'not_started', label: 'Başla', icon: Play };
+    if (progress.status === 'completed') return { status: 'completed', label: 'Tamamlandı', icon: CheckCircle };
+    return { status: 'in_progress', label: 'Devam Et', icon: Clock };
+  };
+
+  // Check if module is mandatory for user
+  const isMandatory = (module: TrainingModule) => {
+    return module.requiredForRole && user && module.requiredForRole.includes(user.role);
+  };
+
+  if (isLoading || progressLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-12 w-64" />
@@ -245,6 +293,45 @@ export default function Training() {
 
                   <FormField
                     control={form.control}
+                    name="requiredForRole"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Zorunlu Roller</FormLabel>
+                        <div className="text-sm text-muted-foreground mb-2">
+                          Bu eğitimin zorunlu olduğu rolleri seçin
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 p-4 border rounded-md max-h-48 overflow-y-auto">
+                          {Object.entries(roleLabels).map(([roleValue, roleLabel]) => (
+                            <div key={roleValue} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`role-${roleValue}`}
+                                checked={field.value?.includes(roleValue) || false}
+                                onCheckedChange={(checked) => {
+                                  const currentValue = field.value || [];
+                                  if (checked) {
+                                    field.onChange([...currentValue, roleValue]);
+                                  } else {
+                                    field.onChange(currentValue.filter((r: string) => r !== roleValue));
+                                  }
+                                }}
+                                data-testid={`checkbox-role-${roleValue}`}
+                              />
+                              <label
+                                htmlFor={`role-${roleValue}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                              >
+                                {roleLabel}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name="isPublished"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-start space-x-3 space-y-0">
@@ -288,70 +375,193 @@ export default function Training() {
         )}
       </div>
 
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs defaultValue={mandatoryModules.length > 0 ? "my-trainings" : "all"} className="space-y-4">
         <TabsList>
+          {mandatoryModules.length > 0 && (
+            <TabsTrigger value="my-trainings" data-testid="tab-my-trainings">
+              <Star className="h-4 w-4 mr-2" />
+              Benim Eğitimlerim
+              <Badge variant="secondary" className="ml-2">{mandatoryModules.length}</Badge>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
-          <TabsTrigger value="published" data-testid="tab-published">Yayında</TabsTrigger>
-          <TabsTrigger value="draft" data-testid="tab-draft">Taslak</TabsTrigger>
+          {isAdminOrCoach && (
+            <>
+              <TabsTrigger value="published" data-testid="tab-published">Yayında</TabsTrigger>
+              <TabsTrigger value="draft" data-testid="tab-draft">Taslak</TabsTrigger>
+            </>
+          )}
         </TabsList>
+
+        {/* My Trainings Tab - Mandatory modules with progress */}
+        <TabsContent value="my-trainings" className="space-y-4">
+          {mandatoryModules.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Henüz zorunlu eğitiminiz yok</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {mandatoryModules.map((module) => {
+                const progressStatus = getProgressStatus(module.id);
+                const StatusIcon = progressStatus.icon;
+                
+                return (
+                  <Card 
+                    key={module.id} 
+                    className="hover-elevate" 
+                    data-testid={`card-module-${module.id}`}
+                  >
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-start gap-2">
+                            <Star className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                            <CardTitle className="text-lg">{module.title}</CardTitle>
+                          </div>
+                          <div className="flex gap-2 flex-wrap">
+                            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                              Zorunlu
+                            </Badge>
+                            {progressStatus.status === 'completed' && (
+                              <Badge variant="default" className="bg-green-600">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Tamamlandı
+                              </Badge>
+                            )}
+                            {progressStatus.status === 'in_progress' && (
+                              <Badge variant="secondary">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Devam Ediyor
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {module.description || "Açıklama yok"}
+                      </p>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" data-testid={`badge-category-${module.id}`}>
+                          <BookOpen className="h-3 w-3 mr-1" />
+                          {categoryLabels[module.category || "barista_basics"]}
+                        </Badge>
+                        <Badge variant="outline" data-testid={`badge-duration-${module.id}`}>
+                          {module.estimatedDuration || 30} dk
+                        </Badge>
+                        <Badge variant="outline" data-testid={`badge-level-${module.id}`}>
+                          {levelLabels[module.level || "beginner"]}
+                        </Badge>
+                      </div>
+
+                      <div className="pt-2 border-t">
+                        <Button 
+                          variant={progressStatus.status === 'completed' ? "outline" : "default"}
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => setLocation(`/egitim/${module.id}`)}
+                          data-testid={`button-start-${module.id}`}
+                        >
+                          <StatusIcon className="h-4 w-4 mr-2" />
+                          {progressStatus.label}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
 
         <TabsContent value="all" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {modules?.map((module) => (
-              <Card key={module.id} className="hover-elevate" data-testid={`card-module-${module.id}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">{module.title}</CardTitle>
-                      <Badge variant={module.isPublished ? "default" : "secondary"} data-testid={`badge-status-${module.id}`}>
-                        {module.isPublished ? "Yayında" : "Taslak"}
+            {modules?.map((module) => {
+              const progressStatus = getProgressStatus(module.id);
+              const StatusIcon = progressStatus.icon;
+              const mandatory = isMandatory(module);
+              
+              return (
+                <Card key={module.id} className="hover-elevate" data-testid={`card-module-${module.id}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-start gap-2">
+                          {mandatory && <Star className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />}
+                          <CardTitle className="text-lg">{module.title}</CardTitle>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          <Badge variant={module.isPublished ? "default" : "secondary"} data-testid={`badge-status-${module.id}`}>
+                            {module.isPublished ? "Yayında" : "Taslak"}
+                          </Badge>
+                          {mandatory && (
+                            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                              Zorunlu
+                            </Badge>
+                          )}
+                          {progressStatus.status === 'completed' && (
+                            <Badge variant="default" className="bg-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Tamamlandı
+                            </Badge>
+                          )}
+                          {progressStatus.status === 'in_progress' && (
+                            <Badge variant="secondary">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Devam Ediyor
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      {isAdminOrCoach && (
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => deleteMutation.mutate(module.id)}
+                            data-testid={`button-delete-${module.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline" data-testid={`badge-category-${module.id}`}>
+                        <BookOpen className="h-3 w-3 mr-1" />
+                        {categoryLabels[module.category || "barista_basics"]}
+                      </Badge>
+                      <Badge variant="outline" data-testid={`badge-duration-${module.id}`}>
+                        {module.estimatedDuration || 30} dk
+                      </Badge>
+                      <Badge variant="outline" data-testid={`badge-level-${module.id}`}>
+                        {levelLabels[module.level || "beginner"]}
                       </Badge>
                     </div>
-                    {isAdminOrCoach && (
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => deleteMutation.mutate(module.id)}
-                          data-testid={`button-delete-${module.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline" data-testid={`badge-category-${module.id}`}>
-                      <BookOpen className="h-3 w-3 mr-1" />
-                      {categoryLabels[module.category || "barista_basics"]}
-                    </Badge>
-                    <Badge variant="outline" data-testid={`badge-duration-${module.id}`}>
-                      {module.estimatedDuration || 30} dk
-                    </Badge>
-                    <Badge variant="outline" data-testid={`badge-level-${module.id}`}>
-                      {levelLabels[module.level || "beginner"]}
-                    </Badge>
-                  </div>
 
-                  <div className="pt-2 border-t">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                      onClick={() => setLocation(`/egitim/${module.id}`)}
-                      data-testid={`button-view-${module.id}`}
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      Modülü Görüntüle
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="pt-2 border-t">
+                      <Button 
+                        variant={progressStatus.status === 'completed' ? "outline" : "default"}
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => setLocation(`/egitim/${module.id}`)}
+                        data-testid={`button-view-${module.id}`}
+                      >
+                        <StatusIcon className="h-4 w-4 mr-2" />
+                        {mandatory ? progressStatus.label : "Modülü Görüntüle"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
 

@@ -13,14 +13,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { AnnouncementBanner } from "@/components/announcement-banner";
-import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy, Award, Users } from "lucide-react";
+import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy, Award, Users, BookOpen, GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import type { Task, EquipmentFault, PerformanceMetric, AISummaryResponse, SummaryCategoryType, User as UserType, Branch } from "@shared/schema";
+import type { Task, EquipmentFault, PerformanceMetric, AISummaryResponse, SummaryCategoryType, User as UserType, Branch, TrainingModule, UserTrainingProgress } from "@shared/schema";
 import { isBranchRole, isHQRole } from "@shared/schema";
 
 export default function Dashboard() {
@@ -113,6 +113,18 @@ export default function Dashboard() {
     },
   });
 
+  // Fetch training modules
+  const { data: trainingModules, isLoading: modulesLoading } = useQuery<TrainingModule[]>({
+    queryKey: ["/api/training/modules"],
+    enabled: !!user,
+  });
+
+  // Fetch user training progress
+  const { data: userProgress, isLoading: progressLoading } = useQuery<UserTrainingProgress[]>({
+    queryKey: ["/api/training/progress"],
+    enabled: !!user,
+  });
+
   // Calculate weekly performance score from daily scores (not double-averaging)
   const weeklyPerformanceScore = useMemo(() => {
     if (!userPerformanceScores || userPerformanceScores.length === 0) return null;
@@ -127,6 +139,35 @@ export default function Dashboard() {
     const totalScore = last7Days.reduce((sum, score) => sum + (score.dailyScore || 0), 0);
     return Math.round(totalScore / last7Days.length);
   }, [userPerformanceScores]);
+
+  // Calculate training statistics
+  const trainingStats = useMemo(() => {
+    if (!trainingModules || !user) return { mandatory: 0, inProgress: 0, completed: 0 };
+    
+    // Filter mandatory trainings for user's role
+    const mandatoryModules = trainingModules.filter(m => 
+      m.isPublished && m.requiredForRole && m.requiredForRole.includes(user.role)
+    );
+    
+    // Get user's progress
+    const progressMap = new Map(userProgress?.map(p => [p.moduleId, p]) || []);
+    
+    const inProgress = mandatoryModules.filter(m => {
+      const progress = progressMap.get(m.id);
+      return progress?.status === 'in_progress';
+    }).length;
+    
+    const completed = mandatoryModules.filter(m => {
+      const progress = progressMap.get(m.id);
+      return progress?.status === 'completed';
+    }).length;
+    
+    return {
+      mandatory: mandatoryModules.length,
+      inProgress,
+      completed,
+    };
+  }, [trainingModules, userProgress, user]);
 
   const completedTasks = tasks?.filter(t => t.status === "tamamlandi").length || 0;
   const pendingTasks = tasks?.filter(t => t.status === "beklemede").length || 0;
@@ -539,6 +580,106 @@ export default function Dashboard() {
                   Son 7 günlük ortalama
                 </p>
               </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Akademi Section */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card 
+          className="cursor-pointer hover-elevate transition-all" 
+          onClick={() => setLocation("/training")}
+          data-testid="card-akademi"
+        >
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5" />
+              Akademi - Eğitimlerim
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Zorunlu ve devam eden eğitimleriniz
+            </p>
+          </CardHeader>
+          <CardContent>
+            {modulesLoading || progressLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ) : trainingStats.mandatory === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">Henüz zorunlu eğitiminiz bulunmuyor</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="mt-4"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocation("/training");
+                  }}
+                  data-testid="button-view-all-trainings"
+                >
+                  Tüm Eğitimleri Gör
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Zorunlu Eğitimler</span>
+                  </div>
+                  <Badge variant="secondary" data-testid="badge-mandatory-count">
+                    {trainingStats.mandatory}
+                  </Badge>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Devam Eden</span>
+                    <span className="font-medium" data-testid="text-in-progress-count">
+                      {trainingStats.inProgress}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Tamamlanan</span>
+                    <span className="font-medium text-green-600" data-testid="text-completed-count">
+                      {trainingStats.completed}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-muted-foreground">Tamamlanma</span>
+                    <span className="font-medium">
+                      {Math.round((trainingStats.completed / trainingStats.mandatory) * 100)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-primary rounded-full h-2 transition-all"
+                      style={{ width: `${Math.round((trainingStats.completed / trainingStats.mandatory) * 100)}%` }}
+                      data-testid="progress-bar-training"
+                    />
+                  </div>
+                </div>
+
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocation("/training");
+                  }}
+                  data-testid="button-view-trainings"
+                >
+                  Tüm Eğitimleri Gör
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

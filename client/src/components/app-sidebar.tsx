@@ -116,6 +116,14 @@ const standaloneItems: MenuItem[] = [
     scope: "both",
   },
   {
+    title: "Akademi",
+    titleTr: "Akademi",
+    url: "/training",
+    icon: GraduationCap,
+    module: "training",
+    scope: "both",
+  },
+  {
     title: "Şubeler",
     titleTr: "Şubeler",
     url: "/subeler",
