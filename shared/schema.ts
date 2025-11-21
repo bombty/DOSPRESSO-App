@@ -64,7 +64,7 @@ export const UserRole = {
   BARISTA: "barista",
   SUPERVISOR_BUDDY: "supervisor_buddy",
   SUPERVISOR: "supervisor",
-  YATIRIMCI: "yatirimci", // Branch investor (read-only)
+  YATIRIMCI_BRANCH: "yatirimci_branch", // Branch investor (read-only)
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
@@ -87,7 +87,7 @@ export const BRANCH_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.BARISTA,
   UserRole.SUPERVISOR_BUDDY,
   UserRole.SUPERVISOR,
-  UserRole.YATIRIMCI,
+  UserRole.YATIRIMCI_BRANCH,
 ]);
 
 // Helper functions for role checking
@@ -119,7 +119,9 @@ export type PermissionModule =
   | 'schedules'
   | 'messages'
   | 'announcements'
-  | 'complaints';
+  | 'complaints'
+  | 'leave_requests'
+  | 'overtime_requests';
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -143,6 +145,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create', 'delete'],
     announcements: ['view', 'create', 'edit', 'delete'],
     complaints: ['view', 'create', 'edit', 'delete', 'approve'],
+    leave_requests: ['view', 'create', 'edit', 'approve'],
+    overtime_requests: ['view', 'create', 'edit', 'approve'],
   },
   // HQ ROLES
   muhasebe: {
@@ -164,6 +168,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: ['view'],
+    leave_requests: ['view'],
+    overtime_requests: ['view'],
   },
   satinalma: {
     dashboard: ['view'],
@@ -184,6 +190,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: [],
+    leave_requests: [],
+    overtime_requests: [],
   },
   coach: {
     dashboard: ['view'],
@@ -204,6 +212,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view', 'create', 'edit', 'delete'],
     complaints: ['view', 'edit'],
+    leave_requests: ['view', 'approve'],
+    overtime_requests: ['view', 'approve'],
   },
   teknik: {
     dashboard: ['view'],
@@ -224,6 +234,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: [],
+    leave_requests: [],
+    overtime_requests: [],
   },
   destek: {
     dashboard: ['view'],
@@ -244,6 +256,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view', 'create', 'edit'],
     complaints: [],
+    leave_requests: [],
+    overtime_requests: [],
   },
   fabrika: {
     dashboard: ['view'],
@@ -264,6 +278,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: [],
+    leave_requests: [],
+    overtime_requests: [],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -272,7 +288,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     equipment: [],
     equipment_faults: [],
     knowledge_base: ['view'],
-    ai_assistant: [],
+    ai_assistant: ['view'],
     performance: ['view'],
     attendance: ['view'],
     branches: ['view'],
@@ -284,6 +300,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: [],
+    leave_requests: [],
+    overtime_requests: [],
   },
   // BRANCH ROLES
   supervisor: {
@@ -305,6 +323,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: ['view', 'create', 'edit'],
+    leave_requests: ['view', 'create', 'approve'],
+    overtime_requests: ['view', 'create', 'approve'],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -325,6 +345,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: [],
+    leave_requests: ['view', 'create'],
+    overtime_requests: ['view', 'create'],
   },
   barista: {
     dashboard: ['view'],
@@ -345,6 +367,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: [],
+    leave_requests: ['view', 'create'],
+    overtime_requests: ['view', 'create'],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -365,6 +389,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: [],
+    leave_requests: ['view', 'create'],
+    overtime_requests: ['view', 'create'],
   },
   stajyer: {
     dashboard: ['view'],
@@ -385,15 +411,17 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view', 'create'],
     announcements: ['view'],
     complaints: [],
+    leave_requests: ['view', 'create'],
+    overtime_requests: ['view', 'create'],
   },
-  yatirimci: {
+  yatirimci_branch: {
     dashboard: ['view'],
     tasks: [],
     checklists: [],
     equipment: [],
     equipment_faults: [],
     knowledge_base: ['view'],
-    ai_assistant: [],
+    ai_assistant: ['view'],
     performance: ['view'],
     attendance: ['view'],
     branches: [],
@@ -405,6 +433,8 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     messages: ['view'],
     announcements: ['view'],
     complaints: [],
+    leave_requests: [],
+    overtime_requests: [],
   },
 };
 

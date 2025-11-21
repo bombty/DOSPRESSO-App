@@ -571,7 +571,7 @@ const roleLabels: Record<string, string> = {
   barista: "Barista",
   supervisor_buddy: "Supervisor Buddy",
   supervisor: "Supervisor",
-  yatirimci: "Yatırımcı",
+  yatirimci_branch: "Yatırımcı (Şube)",
 };
 
 export function AppSidebar() {
