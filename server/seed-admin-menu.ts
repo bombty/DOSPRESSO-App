@@ -3,14 +3,13 @@ import { menuSections, menuItems } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 /**
- * Seeds the complete admin menu structure with 15 main sections and all submenu items
+ * Seeds simplified admin menu with 12 logical categories, no duplicates
  * IDEMPOTENT: Uses ON CONFLICT DO UPDATE for sections and checks for existing items
  */
 export async function seedAdminMenu() {
-  console.log("🌱 Starting admin menu seed...");
+  console.log("🌱 Starting admin menu seed (simplified structure)...");
   
   let sectionsInserted = 0;
-  let sectionsUpdated = 0;
   let itemsInserted = 0;
   let itemsSkipped = 0;
   
@@ -40,7 +39,7 @@ export async function seedAdminMenu() {
     sectionsInserted++;
 
     await insertMenuItem(dashboardSection.id, {
-      titleTr: 'Genel Gösterge Paneli',
+      titleTr: 'Kontrol Paneli',
       path: '/',
       icon: 'LayoutDashboard',
       moduleKey: 'dashboard',
@@ -114,58 +113,34 @@ export async function seedAdminMenu() {
       sortOrder: 10,
     });
 
-    // ========================================
-    // 4. FRANCHISE AÇILIŞ YÖNETİMİ
-    // ========================================
-    const [franchiseSection] = await db
-      .insert(menuSections)
-      .values({
-        slug: 'franchise',
-        titleTr: 'Franchise Açılış Yönetimi',
-        scope: 'hq',
-        icon: 'Store',
-        sortOrder: 40,
-      })
-      .onConflictDoUpdate({
-        target: menuSections.slug,
-        set: {
-          titleTr: 'Franchise Açılış Yönetimi',
-          scope: 'hq',
-          icon: 'Store',
-          sortOrder: 40,
-        },
-      })
-      .returning();
-    sectionsInserted++;
-
-    await insertMenuItem(franchiseSection.id, {
-      titleTr: 'Franchise Açılış Yönetimi',
+    await insertMenuItem(subelerSection.id, {
+      titleTr: 'Franchise Açılış',
       path: '/franchise-acilis',
       icon: 'Store',
       moduleKey: 'branches',
       scope: 'hq',
-      sortOrder: 10,
+      sortOrder: 20,
     });
 
     // ========================================
-    // 5. OPERASYON YÖNETİMİ
+    // 4. OPERASYON (Unified: Tasks + Checklists + Equipment)
     // ========================================
     const [operasyonSection] = await db
       .insert(menuSections)
       .values({
         slug: 'operasyon',
-        titleTr: 'Operasyon Yönetimi',
+        titleTr: 'Operasyon',
         scope: 'both',
         icon: 'ClipboardCheck',
-        sortOrder: 50,
+        sortOrder: 40,
       })
       .onConflictDoUpdate({
         target: menuSections.slug,
         set: {
-          titleTr: 'Operasyon Yönetimi',
+          titleTr: 'Operasyon',
           scope: 'both',
           icon: 'ClipboardCheck',
-          sortOrder: 50,
+          sortOrder: 40,
         },
       })
       .returning();
@@ -183,82 +158,58 @@ export async function seedAdminMenu() {
     await insertMenuItem(operasyonSection.id, {
       titleTr: 'Checklistler',
       path: '/checklistler',
-      icon: 'ListChecks',
+      icon: 'ClipboardList',
       moduleKey: 'checklists',
       scope: 'both',
       sortOrder: 20,
     });
 
-    // ========================================
-    // 6. EKİPMAN & ARIZA YÖNETİMİ
-    // ========================================
-    const [ekipmanSection] = await db
-      .insert(menuSections)
-      .values({
-        slug: 'ekipman',
-        titleTr: 'Ekipman & Arıza Yönetimi',
-        scope: 'both',
-        icon: 'Wrench',
-        sortOrder: 60,
-      })
-      .onConflictDoUpdate({
-        target: menuSections.slug,
-        set: {
-          titleTr: 'Ekipman & Arıza Yönetimi',
-          scope: 'both',
-          icon: 'Wrench',
-          sortOrder: 60,
-        },
-      })
-      .returning();
-    sectionsInserted++;
-
-    await insertMenuItem(ekipmanSection.id, {
-      titleTr: 'Ekipman Listesi',
+    await insertMenuItem(operasyonSection.id, {
+      titleTr: 'Ekipman Yönetimi',
       path: '/ekipman',
-      icon: 'Wrench',
-      moduleKey: 'equipment',
-      scope: 'both',
-      sortOrder: 10,
-    });
-
-    await insertMenuItem(ekipmanSection.id, {
-      titleTr: 'Arıza Bildirimleri',
-      path: '/ekipman-arizalari',
-      icon: 'AlertTriangle',
-      moduleKey: 'equipment_faults',
-      scope: 'both',
-      sortOrder: 20,
-    });
-
-    await insertMenuItem(ekipmanSection.id, {
-      titleTr: 'Troubleshooting',
-      path: '/ekipman-troubleshooting',
-      icon: 'Search',
+      icon: 'Settings',
       moduleKey: 'equipment',
       scope: 'both',
       sortOrder: 30,
     });
 
+    await insertMenuItem(operasyonSection.id, {
+      titleTr: 'Arıza Bildirimleri',
+      path: '/ekipman-arizalari',
+      icon: 'Wrench',
+      moduleKey: 'equipment_faults',
+      scope: 'both',
+      sortOrder: 40,
+    });
+
+    await insertMenuItem(operasyonSection.id, {
+      titleTr: 'Troubleshooting',
+      path: '/ekipman-troubleshooting',
+      icon: 'Wrench',
+      moduleKey: 'equipment',
+      scope: 'both',
+      sortOrder: 50,
+    });
+
     // ========================================
-    // 7. VARDİYA & DEVAM YÖNETİMİ
+    // 5. VARDIYA & DEVAM
     // ========================================
     const [vardiyaSection] = await db
       .insert(menuSections)
       .values({
         slug: 'vardiya',
-        titleTr: 'Vardiya & Devam Yönetimi',
+        titleTr: 'Vardiya & Devam',
         scope: 'both',
-        icon: 'Calendar',
-        sortOrder: 70,
+        icon: 'Clock',
+        sortOrder: 50,
       })
       .onConflictDoUpdate({
         target: menuSections.slug,
         set: {
-          titleTr: 'Vardiya & Devam Yönetimi',
+          titleTr: 'Vardiya & Devam',
           scope: 'both',
-          icon: 'Calendar',
-          sortOrder: 70,
+          icon: 'Clock',
+          sortOrder: 50,
         },
       })
       .returning();
@@ -267,17 +218,17 @@ export async function seedAdminMenu() {
     await insertMenuItem(vardiyaSection.id, {
       titleTr: 'Vardiya Planı',
       path: '/vardiyalar',
-      icon: 'Calendar',
-      moduleKey: 'schedules',
+      icon: 'Clock',
+      moduleKey: 'dashboard',
       scope: 'both',
       sortOrder: 10,
     });
 
     await insertMenuItem(vardiyaSection.id, {
-      titleTr: 'Vardiya Check-in',
+      titleTr: 'Giriş/Çıkış (QR)',
       path: '/vardiya-checkin',
-      icon: 'CheckCircle',
-      moduleKey: 'attendance',
+      icon: 'QrCode',
+      moduleKey: 'dashboard',
       scope: 'both',
       sortOrder: 20,
     });
@@ -285,91 +236,67 @@ export async function seedAdminMenu() {
     await insertMenuItem(vardiyaSection.id, {
       titleTr: 'Vardiya Şablonları',
       path: '/vardiya-sablonlari',
-      icon: 'FileText',
-      moduleKey: 'schedules',
+      icon: 'Calendar',
+      moduleKey: 'dashboard',
       scope: 'both',
       sortOrder: 30,
     });
 
     await insertMenuItem(vardiyaSection.id, {
-      titleTr: 'Personel Müsaitlik',
+      titleTr: 'Müsaitlik Takvimi',
       path: '/personel-musaitlik',
-      icon: 'UserCheck',
-      moduleKey: 'schedules',
+      icon: 'CalendarDays',
+      moduleKey: 'dashboard',
       scope: 'both',
       sortOrder: 40,
     });
 
     await insertMenuItem(vardiyaSection.id, {
       titleTr: 'Devam Takibi',
-      path: '/devam',
-      icon: 'ClipboardList',
-      moduleKey: 'attendance',
+      path: '/devam-takibi',
+      icon: 'Clock',
+      moduleKey: 'employees',
       scope: 'both',
       sortOrder: 50,
     });
 
-    // ========================================
-    // 8. İZİN & MESAİ YÖNETİMİ
-    // ========================================
-    const [izinMesaiSection] = await db
-      .insert(menuSections)
-      .values({
-        slug: 'izin-mesai',
-        titleTr: 'İzin & Mesai Yönetimi',
-        scope: 'both',
-        icon: 'Clock',
-        sortOrder: 80,
-      })
-      .onConflictDoUpdate({
-        target: menuSections.slug,
-        set: {
-          titleTr: 'İzin & Mesai Yönetimi',
-          scope: 'both',
-          icon: 'Clock',
-          sortOrder: 80,
-        },
-      })
-      .returning();
-    sectionsInserted++;
-
-    await insertMenuItem(izinMesaiSection.id, {
+    await insertMenuItem(vardiyaSection.id, {
       titleTr: 'İzin Talepleri',
       path: '/izin-talepleri',
       icon: 'Calendar',
-      moduleKey: 'leave_requests',
+      moduleKey: 'employees',
       scope: 'both',
-      sortOrder: 10,
+      sortOrder: 60,
     });
 
-    await insertMenuItem(izinMesaiSection.id, {
+    await insertMenuItem(vardiyaSection.id, {
       titleTr: 'Mesai Talepleri',
       path: '/mesai-talepleri',
       icon: 'Clock',
-      moduleKey: 'overtime_requests',
+      moduleKey: 'employees',
       scope: 'both',
-      sortOrder: 20,
+      sortOrder: 70,
     });
 
     // ========================================
-    // 9. FİNANS
+    // 6. FINANS
     // ========================================
     const [finansSection] = await db
       .insert(menuSections)
       .values({
         slug: 'finans',
         titleTr: 'Finans',
-        scope: 'hq',
-        icon: 'DollarSign',
-        sortOrder: 90,
+        scope: 'both',
+        icon: 'Wallet',
+        sortOrder: 60,
       })
       .onConflictDoUpdate({
         target: menuSections.slug,
         set: {
           titleTr: 'Finans',
-          scope: 'hq',
-          icon: 'DollarSign',
-          sortOrder: 90,
+          scope: 'both',
+          icon: 'Wallet',
+          sortOrder: 60,
         },
       })
       .returning();
@@ -378,31 +305,31 @@ export async function seedAdminMenu() {
     await insertMenuItem(finansSection.id, {
       titleTr: 'Kasa Raporları',
       path: '/kasa-raporlari',
-      icon: 'FileText',
+      icon: 'Wallet',
       moduleKey: 'dashboard',
-      scope: 'hq',
+      scope: 'both',
       sortOrder: 10,
     });
 
     // ========================================
-    // 10. İNSAN KAYNAKLARI
+    // 7. İNSAN KAYNAKLARI
     // ========================================
     const [ikSection] = await db
       .insert(menuSections)
       .values({
         slug: 'ik',
         titleTr: 'İnsan Kaynakları',
-        scope: 'hq',
+        scope: 'both',
         icon: 'Users',
-        sortOrder: 100,
+        sortOrder: 70,
       })
       .onConflictDoUpdate({
         target: menuSections.slug,
         set: {
           titleTr: 'İnsan Kaynakları',
-          scope: 'hq',
+          scope: 'both',
           icon: 'Users',
-          sortOrder: 100,
+          sortOrder: 70,
         },
       })
       .returning();
@@ -413,30 +340,48 @@ export async function seedAdminMenu() {
       path: '/ik',
       icon: 'Users',
       moduleKey: 'employees',
-      scope: 'hq',
+      scope: 'both',
       sortOrder: 10,
     });
 
     await insertMenuItem(ikSection.id, {
       titleTr: 'Personel Yönetimi',
       path: '/personel-yonetimi',
-      icon: 'UserCog',
+      icon: 'Users',
       moduleKey: 'hr',
-      scope: 'hq',
+      scope: 'both',
       sortOrder: 20,
+    });
+
+    await insertMenuItem(ikSection.id, {
+      titleTr: 'Disiplin Yönetimi',
+      path: '/disiplin-yonetimi',
+      icon: 'ClipboardList',
+      moduleKey: 'hr',
+      scope: 'both',
+      sortOrder: 30,
+    });
+
+    await insertMenuItem(ikSection.id, {
+      titleTr: 'Yeni Personel Onboarding',
+      path: '/personel-onboarding',
+      icon: 'GraduationCap',
+      moduleKey: 'hr',
+      scope: 'both',
+      sortOrder: 40,
     });
 
     await insertMenuItem(ikSection.id, {
       titleTr: 'İK Raporları',
       path: '/ik-raporlari',
-      icon: 'FileText',
-      moduleKey: 'hr',
+      icon: 'BarChart3',
+      moduleKey: 'employees',
       scope: 'hq',
-      sortOrder: 30,
+      sortOrder: 50,
     });
 
     // ========================================
-    // 11. KALİTE & GELİŞİM
+    // 8. KALİTE & GELİŞİM
     // ========================================
     const [kaliteSection] = await db
       .insert(menuSections)
@@ -445,7 +390,7 @@ export async function seedAdminMenu() {
         titleTr: 'Kalite & Gelişim',
         scope: 'hq',
         icon: 'Award',
-        sortOrder: 110,
+        sortOrder: 80,
       })
       .onConflictDoUpdate({
         target: menuSections.slug,
@@ -453,7 +398,7 @@ export async function seedAdminMenu() {
           titleTr: 'Kalite & Gelişim',
           scope: 'hq',
           icon: 'Award',
-          sortOrder: 110,
+          sortOrder: 80,
         },
       })
       .returning();
@@ -462,7 +407,7 @@ export async function seedAdminMenu() {
     await insertMenuItem(kaliteSection.id, {
       titleTr: 'Kalite Denetimleri',
       path: '/kalite-denetimi',
-      icon: 'ClipboardCheck',
+      icon: 'FileSearch',
       moduleKey: 'dashboard',
       scope: 'hq',
       sortOrder: 10,
@@ -471,7 +416,7 @@ export async function seedAdminMenu() {
     await insertMenuItem(kaliteSection.id, {
       titleTr: 'Denetim Şablonları',
       path: '/denetim-sablonlari',
-      icon: 'FileText',
+      icon: 'ClipboardList',
       moduleKey: 'dashboard',
       scope: 'hq',
       sortOrder: 20,
@@ -480,7 +425,7 @@ export async function seedAdminMenu() {
     await insertMenuItem(kaliteSection.id, {
       titleTr: 'Denetimler',
       path: '/denetimler',
-      icon: 'Search',
+      icon: 'FileSearch',
       moduleKey: 'dashboard',
       scope: 'hq',
       sortOrder: 30,
@@ -489,8 +434,8 @@ export async function seedAdminMenu() {
     await insertMenuItem(kaliteSection.id, {
       titleTr: 'Müşteri Geri Bildirimi',
       path: '/musteri-geribildirimi',
-      icon: 'MessageSquare',
-      moduleKey: 'complaints',
+      icon: 'Star',
+      moduleKey: 'dashboard',
       scope: 'hq',
       sortOrder: 40,
     });
@@ -498,8 +443,8 @@ export async function seedAdminMenu() {
     await insertMenuItem(kaliteSection.id, {
       titleTr: 'Şikayetler',
       path: '/sikayetler',
-      icon: 'AlertCircle',
-      moduleKey: 'complaints',
+      icon: 'MessageSquare',
+      moduleKey: 'dashboard',
       scope: 'hq',
       sortOrder: 50,
     });
@@ -507,31 +452,31 @@ export async function seedAdminMenu() {
     await insertMenuItem(kaliteSection.id, {
       titleTr: 'Kampanya Yönetimi',
       path: '/kampanya-yonetimi',
-      icon: 'TrendingUp',
+      icon: 'Megaphone',
       moduleKey: 'dashboard',
       scope: 'hq',
       sortOrder: 60,
     });
 
     // ========================================
-    // 12. AKADEMİ (EĞİTİM YÖNETİMİ)
+    // 9. AKADEMİ
     // ========================================
     const [akademiSection] = await db
       .insert(menuSections)
       .values({
         slug: 'akademi',
-        titleTr: 'Akademi (Eğitim Yönetimi)',
+        titleTr: 'Akademi',
         scope: 'both',
         icon: 'GraduationCap',
-        sortOrder: 120,
+        sortOrder: 90,
       })
       .onConflictDoUpdate({
         target: menuSections.slug,
         set: {
-          titleTr: 'Akademi (Eğitim Yönetimi)',
+          titleTr: 'Akademi',
           scope: 'both',
           icon: 'GraduationCap',
-          sortOrder: 120,
+          sortOrder: 90,
         },
       })
       .returning();
@@ -540,31 +485,31 @@ export async function seedAdminMenu() {
     await insertMenuItem(akademiSection.id, {
       titleTr: 'Eğitim Modülleri',
       path: '/training',
-      icon: 'BookOpen',
+      icon: 'GraduationCap',
       moduleKey: 'training',
       scope: 'both',
       sortOrder: 10,
     });
 
     // ========================================
-    // 13. BİLGİ BANKASI
+    // 10. BİLGİ BANKASI
     // ========================================
     const [bilgiBankasiSection] = await db
       .insert(menuSections)
       .values({
         slug: 'bilgi-bankasi',
         titleTr: 'Bilgi Bankası',
-        scope: 'hq',
+        scope: 'both',
         icon: 'BookOpen',
-        sortOrder: 130,
+        sortOrder: 100,
       })
       .onConflictDoUpdate({
         target: menuSections.slug,
         set: {
           titleTr: 'Bilgi Bankası',
-          scope: 'hq',
+          scope: 'both',
           icon: 'BookOpen',
-          sortOrder: 130,
+          sortOrder: 100,
         },
       })
       .returning();
@@ -575,29 +520,29 @@ export async function seedAdminMenu() {
       path: '/bilgi-bankasi',
       icon: 'BookOpen',
       moduleKey: 'knowledge_base',
-      scope: 'hq',
+      scope: 'both',
       sortOrder: 10,
     });
 
     // ========================================
-    // 14. DESTEK MERKEZİ
+    // 11. DESTEK
     // ========================================
     const [destekSection] = await db
       .insert(menuSections)
       .values({
         slug: 'destek',
-        titleTr: 'Destek Merkezi',
+        titleTr: 'Destek',
         scope: 'both',
         icon: 'MessageSquare',
-        sortOrder: 140,
+        sortOrder: 110,
       })
       .onConflictDoUpdate({
         target: menuSections.slug,
         set: {
-          titleTr: 'Destek Merkezi',
+          titleTr: 'Destek',
           scope: 'both',
           icon: 'MessageSquare',
-          sortOrder: 140,
+          sortOrder: 110,
         },
       })
       .returning();
@@ -613,7 +558,7 @@ export async function seedAdminMenu() {
     });
 
     // ========================================
-    // 15. YÖNETİM / AYARLAR
+    // 12. YÖNETİM / AYARLAR
     // ========================================
     const [yonetimSection] = await db
       .insert(menuSections)
@@ -622,7 +567,7 @@ export async function seedAdminMenu() {
         titleTr: 'Yönetim / Ayarlar',
         scope: 'hq',
         icon: 'Settings',
-        sortOrder: 150,
+        sortOrder: 120,
       })
       .onConflictDoUpdate({
         target: menuSections.slug,
@@ -630,16 +575,16 @@ export async function seedAdminMenu() {
           titleTr: 'Yönetim / Ayarlar',
           scope: 'hq',
           icon: 'Settings',
-          sortOrder: 150,
+          sortOrder: 120,
         },
       })
       .returning();
     sectionsInserted++;
 
     await insertMenuItem(yonetimSection.id, {
-      titleTr: 'Rol & Yetki Yönetimi',
+      titleTr: 'Rol ve Yetki Yönetimi',
       path: '/yonetim/rol-yetkileri',
-      icon: 'Shield',
+      icon: 'Users',
       moduleKey: 'users',
       scope: 'hq',
       sortOrder: 10,
@@ -666,7 +611,7 @@ export async function seedAdminMenu() {
     await insertMenuItem(yonetimSection.id, {
       titleTr: 'Menü Yönetimi',
       path: '/yonetim/menu',
-      icon: 'Menu',
+      icon: 'LayoutDashboard',
       moduleKey: 'dashboard',
       scope: 'hq',
       sortOrder: 40,
@@ -699,16 +644,7 @@ export async function seedAdminMenu() {
       sortOrder: 70,
     });
 
-    await insertMenuItem(yonetimSection.id, {
-      titleTr: 'Servis Talepleri',
-      path: '/yonetim/servis-talepleri',
-      icon: 'Inbox',
-      moduleKey: 'dashboard',
-      scope: 'hq',
-      sortOrder: 80,
-    });
-
-    console.log(`✅ Admin menu seed completed:`);
+    console.log(`✅ Simplified admin menu seed completed:`);
     console.log(`   - Sections processed: ${sectionsInserted}`);
     console.log(`   - Menu items inserted: ${itemsInserted}`);
     console.log(`   - Menu items skipped (already exist): ${itemsSkipped}`);
