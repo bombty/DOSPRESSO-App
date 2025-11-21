@@ -271,6 +271,35 @@ const menuGroups: MenuGroup[] = [
       },
     ],
   },
+  // BRANCH - İnsan Kaynakları (Supervisor)
+  {
+    groupTr: "İnsan Kaynakları",
+    icon: Users,
+    scope: "branch",
+    items: [
+      {
+        title: "Personel Yönetimi",
+        titleTr: "Personel Yönetimi",
+        url: "/personel-yonetimi",
+        icon: Users,
+        module: "hr",
+      },
+      {
+        title: "Disiplin Yönetimi",
+        titleTr: "Disiplin Yönetimi",
+        url: "/disiplin-yonetimi",
+        icon: ClipboardList,
+        module: "hr",
+      },
+      {
+        title: "Yeni Personel Onboarding",
+        titleTr: "Yeni Personel Onboarding",
+        url: "/personel-onboarding",
+        icon: GraduationCap,
+        module: "hr",
+      },
+    ],
+  },
   // HQ - Merkez Yönetim
   {
     groupTr: "İK Yönetimi",
@@ -290,6 +319,27 @@ const menuGroups: MenuGroup[] = [
         url: "/ik",
         icon: Users,
         module: "employees",
+      },
+      {
+        title: "Personel Yönetimi",
+        titleTr: "Personel Yönetimi",
+        url: "/personel-yonetimi",
+        icon: Users,
+        module: "hr",
+      },
+      {
+        title: "Disiplin Yönetimi",
+        titleTr: "Disiplin Yönetimi",
+        url: "/disiplin-yonetimi",
+        icon: ClipboardList,
+        module: "hr",
+      },
+      {
+        title: "Yeni Personel Onboarding",
+        titleTr: "Yeni Personel Onboarding",
+        url: "/personel-onboarding",
+        icon: GraduationCap,
+        module: "hr",
       },
       {
         title: "İzin Talepleri",
