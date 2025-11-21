@@ -54,8 +54,8 @@ export default function PersonelYonetimi() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
-      const email = employee.email.toLowerCase();
+      const fullName = `${employee.firstName || ""} ${employee.lastName || ""}`.toLowerCase();
+      const email = (employee.email || "").toLowerCase();
       if (!fullName.includes(query) && !email.includes(query)) {
         return false;
       }
@@ -97,7 +97,8 @@ export default function PersonelYonetimi() {
     return "outline";
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
+  const getInitials = (firstName: string | null, lastName: string | null) => {
+    if (!firstName || !lastName) return "?";
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
@@ -213,7 +214,7 @@ export default function PersonelYonetimi() {
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <Avatar>
-                            <AvatarImage src={employee.profilePhotoUrl || undefined} />
+                            <AvatarImage src={employee.profileImageUrl || undefined} />
                             <AvatarFallback>
                               {getInitials(employee.firstName, employee.lastName)}
                             </AvatarFallback>
@@ -241,15 +242,15 @@ export default function PersonelYonetimi() {
                       <TableCell>
                         <div className="space-y-1">
                           <p className="text-sm">{employee.phoneNumber || "-"}</p>
-                          {employee.emergencyContact && (
+                          {employee.emergencyContactName && (
                             <p className="text-xs text-muted-foreground">
-                              Acil: {employee.emergencyContact}
+                              Acil: {employee.emergencyContactName}
                             </p>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {employee.status === "active" ? (
+                        {employee.accountStatus === "active" ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200" data-testid={`badge-status-${employee.id}`}>
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Aktif
@@ -257,7 +258,7 @@ export default function PersonelYonetimi() {
                         ) : (
                           <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200" data-testid={`badge-status-${employee.id}`}>
                             <AlertCircle className="h-3 w-3 mr-1" />
-                            {employee.status === "pending" ? "Onay Bekliyor" : "Pasif"}
+                            {employee.accountStatus === "pending" ? "Onay Bekliyor" : "Pasif"}
                           </Badge>
                         )}
                       </TableCell>

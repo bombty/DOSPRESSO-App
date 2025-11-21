@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { hasPermission, isHQRole, type User, type EmployeeWarning, insertUserSchema, insertEmployeeWarningSchema } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -60,8 +61,10 @@ import {
   Calendar,
   Filter,
   Key,
+  FileText,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
+import { useLocation } from "wouter";
 
 const roleLabels: Record<string, string> = {
   admin: "Admin",
@@ -415,6 +418,15 @@ export default function IKPage() {
                                 <Edit className="h-4 w-4" />
                               </Button>
                             )}
+                            <Link href={`/personel-detay/${employee.id}`}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                data-testid={`button-detail-${employee.id}`}
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </Link>
                             <Button
                               size="sm"
                               variant="outline"
@@ -711,7 +723,7 @@ function AddEmployeeDialog({
                     <FormLabel>Şube {userRole === "supervisor" && "(otomatik)"}</FormLabel>
                     <Select
                       onValueChange={(value) => field.onChange(parseInt(value))}
-                      value={field.value?.toString()}
+                      value={field.value ? field.value.toString() : ""}
                       disabled={userRole === "supervisor"}
                     >
                       <FormControl>
