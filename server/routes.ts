@@ -2744,14 +2744,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Audit log: Record password reset event
       await storage.createAuditLog({
+        userId: user.id, // Who performed the action
         action: 'password_reset',
-        targetUserId: employeeId,
-        performedBy: user.id,
-        performedByRole: role,
-        ipAddress: req.ip || null,
+        resource: 'users',
+        resourceId: employeeId, // Target user
         details: {
+          performedByRole: role,
+          targetUserId: employeeId,
           timestamp: new Date().toISOString(),
         },
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
       });
 
       res.json({ message: "Şifre başarıyla sıfırlandı" });

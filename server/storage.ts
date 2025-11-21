@@ -4120,7 +4120,7 @@ export class DatabaseStorage implements IStorage {
     const earlyLeaveScore = Math.max(0, 100 - (totalEarlyLeaveMinutes * 2));
     const breakComplianceScore = Math.max(0, 100 - (totalBreakOverageMinutes * 1)); // -1 point per minute
     const shiftComplianceScore = avgComplianceScore;
-    // Calculate overtime compliance score based on approved overtime requests
+    // Calculate overtime compliance score: weighted ratio of approved to requested minutes
     let overtimeComplianceScore = 100;
     try {
       const overtimeRecords = await db
@@ -4128,17 +4128,31 @@ export class DatabaseStorage implements IStorage {
         .from(overtimeRequests)
         .where(and(
           eq(overtimeRequests.userId, userId),
-          sql`${overtimeRequests.requestDate} >= ${date} - interval '30 days'`,
-          sql`${overtimeRequests.requestDate} <= ${date}`
+          sql`${overtimeRequests.createdAt} >= ${date}::timestamp - interval '30 days'`,
+          sql`${overtimeRequests.createdAt} <= ${date}::timestamp`
         ));
 
       if (overtimeRecords.length > 0) {
-        const approvedCount = overtimeRecords.filter(r => r.status === 'approved').length;
-        const rejectedCount = overtimeRecords.filter(r => r.status === 'rejected').length;
-        const pendingCount = overtimeRecords.filter(r => r.status === 'pending').length;
+        const totalRequested = overtimeRecords.reduce((sum, r) => sum + (r.requestedMinutes || 0), 0);
+        const totalApproved = overtimeRecords
+          .filter(r => r.status === 'approved')
+          .reduce((sum, r) => sum + (r.approvedMinutes || r.requestedMinutes || 0), 0);
+        const totalPending = overtimeRecords
+          .filter(r => r.status === 'pending')
+          .reduce((sum, r) => sum + (r.requestedMinutes || 0), 0);
 
-        // Penalize: -10 points per rejected, -5 points per pending overtime request
-        overtimeComplianceScore = Math.max(0, 100 - (rejectedCount * 10) - (pendingCount * 5));
+        if (totalRequested > 0) {
+          // Base score: approved/requested * 100
+          // Pending penalty: -5 points per 10% pending (supervisor latency)
+          const approvalRatio = totalApproved / totalRequested;
+          const pendingRatio = totalPending / totalRequested;
+          
+          overtimeComplianceScore = Math.round(
+            Math.max(0, Math.min(100, (approvalRatio * 100) - (pendingRatio * 50)))
+          );
+        } else {
+          overtimeComplianceScore = 100; // No overtime requests
+        }
       }
     } catch (error) {
       console.error('[Performance] Error calculating overtime compliance:', error);
@@ -4684,30 +4698,45 @@ export class DatabaseStorage implements IStorage {
     const completedShifts = attendanceRecords.filter(a => a.status === 'checked_out').length;
     const latenessCount = attendanceRecords.filter(a => a.latenessMinutes && a.latenessMinutes > 0).length;
     
-    // Calculate absence count: scheduled shifts with no check-in
+    // Calculate absence count: scheduled shifts with no check-in (excluding approved leaves)
     let absenceCount = 0;
     try {
-      const scheduledShifts = await db
-        .select()
+      // Query: Find shifts with no attendance OR excused attendance, exclude approved leaves
+      const shiftResults = await db
+        .select({
+          shiftId: shifts.id,
+          shiftDate: shifts.shiftDate,
+        })
         .from(shifts)
+        .leftJoin(shiftAttendance, and(
+          eq(shifts.id, shiftAttendance.shiftId),
+          eq(shiftAttendance.userId, userId)
+        ))
         .where(and(
           eq(shifts.userId, userId),
           sql`${shifts.shiftDate} >= ${thirtyDaysAgo.toISOString().split('T')[0]}`,
-          sql`${shifts.shiftDate} <= ${new Date().toISOString().split('T')[0]}`
+          sql`${shifts.shiftDate} <= ${new Date().toISOString().split('T')[0]}`,
+          sql`${shiftAttendance.id} IS NULL` // No attendance record
         ));
 
-      // Count shifts where user didn't check in
-      for (const shift of scheduledShifts) {
-        const attendance = await db
-          .select()
-          .from(shiftAttendance)
-          .where(and(
-            eq(shiftAttendance.userId, userId),
-            eq(shiftAttendance.shiftId, shift.id)
-          ))
-          .limit(1);
+      // Deduplicate by shiftId (in case of multiple attendance records)
+      const uniqueShifts = Array.from(new Map(shiftResults.map(s => [s.shiftId, s])).values());
 
-        if (attendance.length === 0) {
+      // Get all approved leaves for user in the time range
+      const approvedLeaves = await db
+        .select()
+        .from(leaveRequests)
+        .where(and(
+          eq(leaveRequests.userId, userId),
+          eq(leaveRequests.status, 'approved')
+        ));
+
+      // Count shifts NOT covered by approved leave
+      for (const shift of uniqueShifts) {
+        const isCovered = approvedLeaves.some(leave => 
+          shift.shiftDate >= leave.startDate && shift.shiftDate <= leave.endDate
+        );
+        if (!isCovered) {
           absenceCount++;
         }
       }
@@ -4756,13 +4785,14 @@ export class DatabaseStorage implements IStorage {
 
   async getAuditLogs(filters?: {
     action?: string;
-    targetUserId?: string;
-    performedBy?: string;
+    resource?: string;
+    resourceId?: string;
+    userId?: string;
     startDate?: string;
     endDate?: string;
     limit?: number;
   }): Promise<AuditLog[]> {
-    let query = db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp));
+    let query = db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
 
     if (filters) {
       const conditions: any[] = [];
@@ -4770,17 +4800,20 @@ export class DatabaseStorage implements IStorage {
       if (filters.action) {
         conditions.push(eq(auditLogs.action, filters.action));
       }
-      if (filters.targetUserId) {
-        conditions.push(eq(auditLogs.targetUserId, filters.targetUserId));
+      if (filters.resource) {
+        conditions.push(eq(auditLogs.resource, filters.resource));
       }
-      if (filters.performedBy) {
-        conditions.push(eq(auditLogs.performedBy, filters.performedBy));
+      if (filters.resourceId) {
+        conditions.push(eq(auditLogs.resourceId, filters.resourceId));
+      }
+      if (filters.userId) {
+        conditions.push(eq(auditLogs.userId, filters.userId));
       }
       if (filters.startDate) {
-        conditions.push(sql`${auditLogs.timestamp} >= ${filters.startDate}`);
+        conditions.push(sql`${auditLogs.createdAt} >= ${filters.startDate}`);
       }
       if (filters.endDate) {
-        conditions.push(sql`${auditLogs.timestamp} <= ${filters.endDate}`);
+        conditions.push(sql`${auditLogs.createdAt} <= ${filters.endDate}`);
       }
 
       if (conditions.length > 0) {
