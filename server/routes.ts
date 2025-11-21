@@ -48,6 +48,10 @@ import {
   insertGuestComplaintSchema,
   insertEquipmentTroubleshootingStepSchema,
   insertMonthlyAttendanceSummarySchema,
+  insertEmployeeDocumentSchema,
+  insertDisciplinaryReportSchema,
+  insertEmployeeOnboardingSchema,
+  insertEmployeeOnboardingTaskSchema,
   auditTemplates,
   auditTemplateItems,
   qualityAudits,
@@ -8789,6 +8793,528 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking SLA breaches:", error);
       res.status(500).json({ message: "SLA kontrolleri yapılırken hata oluştu" });
+    }
+  });
+
+  // ========================
+  // HR MANAGEMENT ENDPOINTS
+  // ========================
+
+  // Employee Documents (Özlük Dosyası)
+  app.get('/api/employee-documents/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const targetUserId = req.params.userId;
+      
+      // Supervisors can view their branch employees, HQ can view all
+      if (!isHQRole(user.role as any)) {
+        ensurePermission(user, 'hr', 'view', 'Personel belgelerini görüntüleme yetkiniz yok');
+        
+        // Verify target user is in same branch
+        const targetUser = await storage.getUser(targetUserId);
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubenizin personelini görüntüleyebilirsiniz" });
+        }
+      }
+      
+      const documents = await storage.getEmployeeDocuments(targetUserId);
+      res.json(documents);
+    } catch (error: any) {
+      console.error("Error fetching employee documents:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Belgeler yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/employee-documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'hr', 'create', 'Personel belgesi ekleme yetkiniz yok');
+      
+      const validatedData = insertEmployeeDocumentSchema.parse({
+        ...req.body,
+        uploadedById: user.id,
+      });
+      
+      // Verify user can add documents for this employee
+      if (!isHQRole(user.role as any)) {
+        const targetUser = await storage.getUser(validatedData.userId);
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubenizin personeline belge ekleyebilirsiniz" });
+        }
+      }
+      
+      const document = await storage.createEmployeeDocument(validatedData);
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error creating employee document:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Belge eklenirken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/employee-documents/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const docId = parseInt(req.params.id);
+      
+      ensurePermission(user, 'hr', 'edit', 'Personel belgesi düzenleme yetkiniz yok');
+      
+      const document = await storage.getEmployeeDocument(docId);
+      if (!document) {
+        return res.status(404).json({ message: "Belge bulunamadı" });
+      }
+      
+      // Verify permission for this document's user
+      if (!isHQRole(user.role as any)) {
+        const targetUser = await storage.getUser(document.userId);
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu belgeyi düzenleme yetkiniz yok" });
+        }
+      }
+      
+      const updated = await storage.updateEmployeeDocument(docId, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating employee document:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Belge güncellenirken hata oluştu" });
+    }
+  });
+
+  app.delete('/api/employee-documents/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const docId = parseInt(req.params.id);
+      
+      ensurePermission(user, 'hr', 'delete', 'Personel belgesi silme yetkiniz yok');
+      
+      const document = await storage.getEmployeeDocument(docId);
+      if (!document) {
+        return res.status(404).json({ message: "Belge bulunamadı" });
+      }
+      
+      // Verify permission
+      if (!isHQRole(user.role as any)) {
+        const targetUser = await storage.getUser(document.userId);
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu belgeyi silme yetkiniz yok" });
+        }
+      }
+      
+      await storage.deleteEmployeeDocument(docId);
+      res.json({ message: "Belge silindi" });
+    } catch (error: any) {
+      console.error("Error deleting employee document:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Belge silinirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/employee-documents/:id/verify', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const docId = parseInt(req.params.id);
+      
+      // Only HQ can verify documents
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Sadece merkez personel belgeleri onaylayabilir" });
+      }
+      
+      const verified = await storage.verifyEmployeeDocument(docId, user.id);
+      res.json(verified);
+    } catch (error: any) {
+      console.error("Error verifying employee document:", error);
+      res.status(500).json({ message: "Belge onaylanırken hata oluştu" });
+    }
+  });
+
+  // Disciplinary Reports (Disiplin İşlemleri)
+  app.get('/api/disciplinary-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'hr', 'view', 'Disiplin kayıtlarını görüntüleme yetkiniz yok');
+      
+      const { userId, status } = req.query;
+      let branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      
+      // Branch users can only see their own branch
+      if (!isHQRole(user.role as any)) {
+        branchId = user.branchId!;
+      }
+      
+      const reports = await storage.getDisciplinaryReports(
+        userId as string | undefined,
+        branchId,
+        status as string | undefined
+      );
+      
+      res.json(reports);
+    } catch (error: any) {
+      console.error("Error fetching disciplinary reports:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Disiplin kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/disciplinary-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const reportId = parseInt(req.params.id);
+      
+      ensurePermission(user, 'hr', 'view', 'Disiplin kaydını görüntüleme yetkiniz yok');
+      
+      const report = await storage.getDisciplinaryReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Kayıt bulunamadı" });
+      }
+      
+      // Verify permission
+      if (!isHQRole(user.role as any) && report.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu kaydı görüntüleme yetkiniz yok" });
+      }
+      
+      res.json(report);
+    } catch (error: any) {
+      console.error("Error fetching disciplinary report:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Kayıt yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/disciplinary-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'hr', 'create', 'Disiplin kaydı oluşturma yetkiniz yok');
+      
+      const validatedData = insertDisciplinaryReportSchema.parse({
+        ...req.body,
+        reportedById: user.id,
+      });
+      
+      // Verify branch access
+      if (!isHQRole(user.role as any)) {
+        if (validatedData.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubeniz için kayıt oluşturabilirsiniz" });
+        }
+        
+        // Verify target user is in same branch
+        const targetUser = await storage.getUser(validatedData.userId);
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubenizin personeli için kayıt oluşturabilirsiniz" });
+        }
+      }
+      
+      const report = await storage.createDisciplinaryReport(validatedData);
+      res.json(report);
+    } catch (error: any) {
+      console.error("Error creating disciplinary report:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Kayıt oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/disciplinary-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const reportId = parseInt(req.params.id);
+      
+      ensurePermission(user, 'hr', 'edit', 'Disiplin kaydı düzenleme yetkiniz yok');
+      
+      const report = await storage.getDisciplinaryReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Kayıt bulunamadı" });
+      }
+      
+      // Verify permission
+      if (!isHQRole(user.role as any) && report.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu kaydı düzenleme yetkiniz yok" });
+      }
+      
+      const updated = await storage.updateDisciplinaryReport(reportId, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating disciplinary report:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Kayıt güncellenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/disciplinary-reports/:id/employee-response', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const reportId = parseInt(req.params.id);
+      const { response, attachments } = req.body;
+      
+      const report = await storage.getDisciplinaryReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Kayıt bulunamadı" });
+      }
+      
+      // Only the employee can add their response
+      if (report.userId !== user.id) {
+        return res.status(403).json({ message: "Sadece kendi savunmanızı ekleyebilirsiniz" });
+      }
+      
+      const updated = await storage.addEmployeeResponse(reportId, response, attachments);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error adding employee response:", error);
+      res.status(500).json({ message: "Savunma eklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/disciplinary-reports/:id/resolve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const reportId = parseInt(req.params.id);
+      const { resolution, actionTaken } = req.body;
+      
+      ensurePermission(user, 'hr', 'edit', 'Disiplin kaydını sonuçlandırma yetkiniz yok');
+      
+      const report = await storage.getDisciplinaryReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Kayıt bulunamadı" });
+      }
+      
+      // Verify permission
+      if (!isHQRole(user.role as any) && report.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu kaydı sonuçlandırma yetkiniz yok" });
+      }
+      
+      const updated = await storage.resolveDisciplinaryReport(reportId, resolution, actionTaken, user.id);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error resolving disciplinary report:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Kayıt sonuçlandırılırken hata oluştu" });
+    }
+  });
+
+  // Employee Onboarding
+  app.get('/api/employee-onboarding/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const targetUserId = req.params.userId;
+      
+      ensurePermission(user, 'hr', 'view', 'Onboarding kayıtlarını görüntüleme yetkiniz yok');
+      
+      // Verify access
+      if (!isHQRole(user.role as any)) {
+        const targetUser = await storage.getUser(targetUserId);
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu kaydı görüntüleme yetkiniz yok" });
+        }
+      }
+      
+      const onboarding = await storage.getEmployeeOnboarding(targetUserId);
+      res.json(onboarding);
+    } catch (error: any) {
+      console.error("Error fetching employee onboarding:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Onboarding kaydı yüklenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/employee-onboarding/branch/:branchId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const branchId = parseInt(req.params.branchId);
+      const { status } = req.query;
+      
+      ensurePermission(user, 'hr', 'view', 'Onboarding kayıtlarını görüntüleme yetkiniz yok');
+      
+      // Branch users can only see their own branch
+      if (!isHQRole(user.role as any) && branchId !== user.branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubenizi görüntüleyebilirsiniz" });
+      }
+      
+      const onboardings = await storage.getOnboardingsByBranch(branchId, status as string | undefined);
+      res.json(onboardings);
+    } catch (error: any) {
+      console.error("Error fetching onboardings by branch:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Onboarding kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/employee-onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'hr', 'create', 'Onboarding kaydı oluşturma yetkiniz yok');
+      
+      const validatedData = insertEmployeeOnboardingSchema.parse({
+        ...req.body,
+        assignedById: user.id,
+      });
+      
+      // Verify branch access
+      if (!isHQRole(user.role as any) && validatedData.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubeniz için kayıt oluşturabilirsiniz" });
+      }
+      
+      const onboarding = await storage.createEmployeeOnboarding(validatedData);
+      res.json(onboarding);
+    } catch (error: any) {
+      console.error("Error creating employee onboarding:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Onboarding kaydı oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/employee-onboarding/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const onboardingId = parseInt(req.params.id);
+      
+      ensurePermission(user, 'hr', 'edit', 'Onboarding kaydı düzenleme yetkiniz yok');
+      
+      const onboarding = await storage.getEmployeeOnboarding(req.body.userId);
+      if (!onboarding || onboarding.id !== onboardingId) {
+        return res.status(404).json({ message: "Kayıt bulunamadı" });
+      }
+      
+      // Verify permission
+      if (!isHQRole(user.role as any) && onboarding.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu kaydı düzenleme yetkiniz yok" });
+      }
+      
+      const updated = await storage.updateEmployeeOnboarding(onboardingId, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating employee onboarding:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Onboarding kaydı güncellenirken hata oluştu" });
+    }
+  });
+
+  // Onboarding Tasks
+  app.get('/api/onboarding-tasks/:onboardingId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const onboardingId = parseInt(req.params.onboardingId);
+      
+      ensurePermission(user, 'hr', 'view', 'Onboarding görevlerini görüntüleme yetkiniz yok');
+      
+      const tasks = await storage.getOnboardingTasks(onboardingId);
+      res.json(tasks);
+    } catch (error: any) {
+      console.error("Error fetching onboarding tasks:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Görevler yüklenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/onboarding-tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'hr', 'create', 'Onboarding görevi oluşturma yetkiniz yok');
+      
+      const validatedData = insertEmployeeOnboardingTaskSchema.parse(req.body);
+      
+      const task = await storage.createOnboardingTask(validatedData);
+      res.json(task);
+    } catch (error: any) {
+      console.error("Error creating onboarding task:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Görev oluşturulurken hata oluştu" });
+    }
+  });
+
+  app.patch('/api/onboarding-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      
+      ensurePermission(user, 'hr', 'edit', 'Onboarding görevi düzenleme yetkiniz yok');
+      
+      const updated = await storage.updateOnboardingTask(taskId, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating onboarding task:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Görev güncellenirken hata oluştu" });
+    }
+  });
+
+  app.post('/api/onboarding-tasks/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { attachments } = req.body;
+      
+      ensurePermission(user, 'hr', 'edit', 'Onboarding görevi tamamlama yetkiniz yok');
+      
+      const completed = await storage.completeOnboardingTask(taskId, user.id, attachments);
+      res.json(completed);
+    } catch (error: any) {
+      console.error("Error completing onboarding task:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Görev tamamlanırken hata oluştu" });
+    }
+  });
+
+  app.post('/api/onboarding-tasks/:id/verify', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      
+      // Only supervisors and HQ can verify
+      if (!isHQRole(user.role as any) && user.role !== 'supervisor' && user.role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Sadece yöneticiler görevleri onaylayabilir" });
+      }
+      
+      const verified = await storage.verifyOnboardingTask(taskId, user.id);
+      res.json(verified);
+    } catch (error: any) {
+      console.error("Error verifying onboarding task:", error);
+      res.status(500).json({ message: "Görev onaylanırken hata oluştu" });
     }
   });
 
