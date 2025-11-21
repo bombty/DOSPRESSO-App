@@ -1363,7 +1363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createTroubleshootingCompletion({
             faultId: fault.id,
             stepId: step.stepId,
-            completedAt: new Date(),
+            completedById: userId,
             notes: step.notes || null,
           });
         }
