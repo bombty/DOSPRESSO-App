@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Shield, Building2, Factory, Save, Loader2, AlertCircle } from "lucide-react";
 import { UserRole, PERMISSIONS, type UserRoleType, type PermissionModule, type PermissionAction } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -102,35 +103,53 @@ const ACTION_LABELS: Record<PermissionAction, string> = {
 
 export default function RolYetkileri() {
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   const [permissions, setPermissions] = useState<Record<UserRoleType, Record<PermissionModule, PermissionAction[]>>>(PERMISSIONS);
+  const [moduleLabels, setModuleLabels] = useState<Record<string, string>>(MODULE_LABELS);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Fetch role permissions from backend
-  const { data: backendPermissions, isLoading, error } = useQuery({
+  // Fetch role permissions and modules from backend - only when authenticated as admin
+  const { data: backendData, isLoading, error } = useQuery({
     queryKey: ['/api/admin/role-permissions'],
+    enabled: !!user && user.role === 'admin',
   });
 
-  // Merge backend permissions with default PERMISSIONS
+  // Merge backend permissions and modules with defaults
   useEffect(() => {
-    if (backendPermissions && Array.isArray(backendPermissions)) {
-      // Deep clone default PERMISSIONS to avoid reference sharing
-      const mergedPermissions = JSON.parse(JSON.stringify(PERMISSIONS)) as Record<UserRoleType, Record<PermissionModule, PermissionAction[]>>;
-      
-      // Override with backend data (immutable merge)
-      backendPermissions.forEach((perm: { role: string; module: string; actions: string[] }) => {
-        const role = perm.role as UserRoleType;
-        const module = perm.module as PermissionModule;
+    if (backendData && typeof backendData === 'object') {
+      const { permissions: backendPermissions, modules: backendModules } = backendData as {
+        permissions?: Array<{ role: string; module: string; actions: string[] }>;
+        modules?: Array<{ moduleKey: string; moduleName: string; description: string | null; category: string | null; isActive: boolean }>;
+      };
+
+      // Update permissions
+      if (backendPermissions && Array.isArray(backendPermissions)) {
+        const mergedPermissions = JSON.parse(JSON.stringify(PERMISSIONS)) as Record<UserRoleType, Record<PermissionModule, PermissionAction[]>>;
         
-        if (!mergedPermissions[role]) {
-          mergedPermissions[role] = {} as Record<PermissionModule, PermissionAction[]>;
-        }
+        backendPermissions.forEach((perm) => {
+          const role = perm.role as UserRoleType;
+          const module = perm.module as PermissionModule;
+          
+          if (!mergedPermissions[role]) {
+            mergedPermissions[role] = {} as Record<PermissionModule, PermissionAction[]>;
+          }
+          
+          mergedPermissions[role][module] = [...perm.actions] as PermissionAction[];
+        });
         
-        mergedPermissions[role][module] = [...perm.actions] as PermissionAction[];
-      });
-      
-      setPermissions(mergedPermissions);
+        setPermissions(mergedPermissions);
+      }
+
+      // Update module labels from backend if available
+      if (backendModules && Array.isArray(backendModules) && backendModules.length > 0) {
+        const newLabels: Record<string, string> = {};
+        backendModules.forEach((mod) => {
+          newLabels[mod.moduleKey] = mod.moduleName;
+        });
+        setModuleLabels(newLabels);
+      }
     }
-  }, [backendPermissions]);
+  }, [backendData]);
 
   // Mutation for updating permissions
   const updatePermissionsMutation = useMutation({
@@ -209,11 +228,31 @@ export default function RolYetkileri() {
   // Tüm aksiyonlar
   const allActions: PermissionAction[] = ['view', 'create', 'edit', 'delete', 'approve'];
 
-  // Tüm modüller
-  const allModules: PermissionModule[] = Object.keys(MODULE_LABELS) as PermissionModule[];
+  // Tüm modüller - use moduleLabels state which can be updated from backend
+  const allModules: PermissionModule[] = Object.keys(moduleLabels) as PermissionModule[];
+
+  // Auth check - show unauthorized if not admin
+  if (!authLoading && (!user || user.role !== 'admin')) {
+    return (
+      <div className="container mx-auto py-6 space-y-6" data-testid="page-rol-yetkileri">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
+          <p className="text-muted-foreground mt-1">
+            Sistem rollerinin modül ve işlem yetkilerini yönetin
+          </p>
+        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Bu sayfaya erişim yetkiniz yok. Sadece admin kullanıcılar rol yönetimi yapabilir.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   // Loading state
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="container mx-auto py-6 space-y-6" data-testid="page-rol-yetkileri">
         <div>
@@ -323,7 +362,7 @@ export default function RolYetkileri() {
                                 data-testid={`module-${role}-${module}`}
                               >
                                 <Label className="font-medium text-sm">
-                                  {MODULE_LABELS[module]}
+                                  {moduleLabels[module] || module}
                                 </Label>
                                 <div className="flex flex-wrap gap-4">
                                   {allActions.map(action => {

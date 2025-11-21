@@ -196,6 +196,7 @@ import {
   roleModulePermissions,
   RoleModulePermission,
   InsertRoleModulePermission,
+  permissionModules,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -639,6 +640,9 @@ export interface IStorage {
   getRolePermissions(): Promise<Array<{ role: string; module: string; actions: string[] }>>;
   updateRolePermissions(role: string, module: string, actions: string[]): Promise<void>;
   bulkUpdateRolePermissions(updates: Array<{ role: string; module: string; actions: string[] }>): Promise<void>;
+  
+  // Permission Modules operations
+  getPermissionModules(): Promise<Array<{ moduleKey: string; moduleName: string; description: string | null; category: string | null; isActive: boolean }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5302,6 +5306,22 @@ export class DatabaseStorage implements IStorage {
         }
       }
     });
+  }
+
+  async getPermissionModules(): Promise<Array<{ moduleKey: string; moduleName: string; description: string | null; category: string | null; isActive: boolean }>> {
+    const modules = await db
+      .select({
+        moduleKey: permissionModules.moduleKey,
+        moduleName: permissionModules.moduleName,
+        description: permissionModules.description,
+        category: permissionModules.category,
+        isActive: permissionModules.isActive,
+      })
+      .from(permissionModules)
+      .where(eq(permissionModules.isActive, true))
+      .orderBy(asc(permissionModules.category), asc(permissionModules.moduleName));
+    
+    return modules;
   }
 }
 

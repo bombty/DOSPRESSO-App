@@ -7541,7 +7541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== ROLE PERMISSIONS ROUTES =====
   
-  // GET /api/admin/role-permissions - Get all role permissions
+  // GET /api/admin/role-permissions - Get all role permissions and modules
   app.get('/api/admin/role-permissions', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -7551,9 +7551,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
       }
 
-      const permissions = await storage.getRolePermissions();
+      // Fetch both permissions and modules from database
+      const [permissions, modules] = await Promise.all([
+        storage.getRolePermissions(),
+        storage.getPermissionModules(),
+      ]);
       
-      res.json(permissions);
+      res.json({
+        permissions,
+        modules,
+      });
     } catch (error) {
       console.error("Error fetching role permissions:", error);
       res.status(500).json({ message: "Rol yetkileri yüklenirken hata oluştu" });

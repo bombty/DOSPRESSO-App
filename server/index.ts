@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { startSLACheckSystem } from "./reminders";
 import { seedRolePermissions } from "./seed-role-permissions";
+import { seedPermissionModules } from "./seed-permission-modules";
 
 const app = express();
 
@@ -84,6 +85,11 @@ app.use((req, res, next) => {
     reusePort: true,
   }, async () => {
     log(`serving on port ${port}`);
+    
+    // Seed permission modules (idempotent)
+    await seedPermissionModules().catch((error) => {
+      console.error("Error seeding permission modules:", error);
+    });
     
     // Seed role permissions from PERMISSIONS constant (idempotent)
     await seedRolePermissions().catch((error) => {
