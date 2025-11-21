@@ -119,6 +119,34 @@ export default function PersonelDetay() {
     enabled: !!onboarding?.id,
   });
 
+  const createOnboardingMutation = useMutation({
+    mutationFn: async () => {
+      if (!employee?.branchId) throw new Error("Branch ID bulunamadı");
+      const today = new Date().toISOString().split('T')[0];
+      return apiRequest("POST", "/api/employee-onboarding", {
+        userId: id!,
+        branchId: employee.branchId,
+        startDate: today,
+        status: "in_progress",
+        completionPercentage: 0,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding", id] });
+      toast({
+        title: "Onboarding başlatıldı",
+        description: "Personel için onboarding süreci başlatıldı",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Onboarding başlatılamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
   const uploadDocumentMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await fetch("/api/employee-documents", {
@@ -822,7 +850,15 @@ export default function PersonelDetay() {
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Bu personel için onboarding süreci başlatılmamış</p>
+                  <p className="mb-4">Bu personel için onboarding süreci başlatılmamış</p>
+                  <Button 
+                    onClick={() => createOnboardingMutation.mutate()}
+                    disabled={createOnboardingMutation.isPending || !employee}
+                    data-testid="button-start-onboarding"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Onboarding Başlat
+                  </Button>
                 </div>
               )}
             </CardContent>
