@@ -56,14 +56,18 @@ const lucideIconMap: Record<string, any> = {
   "Home": LucideIcons.Home,
   "Users": LucideIcons.Users,
   "Calendar": LucideIcons.Calendar,
+  "CalendarDays": LucideIcons.CalendarDays,
   "Clipboard": LucideIcons.Clipboard,
   "ClipboardList": LucideIcons.ClipboardList,
+  "ClipboardCheck": LucideIcons.ClipboardCheck,
   "CheckSquare": LucideIcons.CheckSquare,
+  "ListChecks": LucideIcons.ListChecks,
   "Settings": LucideIcons.Settings,
   "Wrench": LucideIcons.Wrench,
   "BookOpen": LucideIcons.BookOpen,
   "GraduationCap": LucideIcons.GraduationCap,
   "Bot": LucideIcons.Bot,
+  "Sparkles": LucideIcons.Sparkles,
   "BarChart": LucideIcons.BarChart3,
   "BarChart3": LucideIcons.BarChart3,
   "Building2": LucideIcons.Building2,
@@ -83,6 +87,8 @@ const lucideIconMap: Record<string, any> = {
   "FileSearch": LucideIcons.FileSearch,
   "Store": LucideIcons.Store,
   "Star": LucideIcons.Star,
+  "Award": LucideIcons.Award,
+  "Circle": LucideIcons.Circle,
 };
 
 const getIconComponent = (iconName: string | null | undefined) => {
@@ -106,44 +112,14 @@ type MenuGroup = {
   items: MenuItem[];
 };
 
+// Minimal standalone items for quick access (notifications/messages)
+// All other menu items come from dynamic menu loaded from database
 const standaloneItems: MenuItem[] = [
-  {
-    title: "Dashboard",
-    titleTr: "Kontrol Paneli",
-    url: "/",
-    icon: LayoutDashboard,
-    module: "dashboard",
-    scope: "both",
-  },
-  {
-    title: "Akademi",
-    titleTr: "Akademi",
-    url: "/training",
-    icon: GraduationCap,
-    module: "training",
-    scope: "both",
-  },
-  {
-    title: "Şubeler",
-    titleTr: "Şubeler",
-    url: "/subeler",
-    icon: Building2,
-    module: "branches",
-    scope: "hq",
-  },
   {
     title: "Bildirimler",
     titleTr: "Bildirimler",
     url: "/bildirimler",
     icon: Bell,
-    module: "dashboard",
-    scope: "both",
-  },
-  {
-    title: "Duyurular",
-    titleTr: "Duyurular",
-    url: "/duyurular",
-    icon: Megaphone,
     module: "dashboard",
     scope: "both",
   },
@@ -155,317 +131,11 @@ const standaloneItems: MenuItem[] = [
     module: "dashboard",
     scope: "both",
   },
-  {
-    title: "Performans",
-    titleTr: "Performans",
-    url: "/performans",
-    icon: BarChart3,
-    module: "performance",
-    scope: "hq",
-  },
 ];
 
-const menuGroups: MenuGroup[] = [
-  // BRANCH - Şube Operasyonları
-  {
-    groupTr: "Operasyon",
-    icon: CheckSquare,
-    scope: "branch",
-    items: [
-      {
-        title: "Görevler",
-        titleTr: "Görevler",
-        url: "/gorevler",
-        icon: CheckSquare,
-        module: "tasks",
-      },
-      {
-        title: "Checklistler",
-        titleTr: "Checklistler",
-        url: "/checklistler",
-        icon: ClipboardList,
-        module: "checklists",
-      },
-      {
-        title: "Ekipman",
-        titleTr: "Ekipman",
-        url: "/ekipman",
-        icon: Settings,
-        module: "equipment",
-      },
-      {
-        title: "Ekipman Arızaları",
-        titleTr: "Ekipman Arızaları",
-        url: "/ekipman-arizalari",
-        icon: Wrench,
-        module: "equipment_faults",
-      },
-      {
-        title: "Ekipman Troubleshooting",
-        titleTr: "Ekipman Troubleshooting",
-        url: "/ekipman-troubleshooting",
-        icon: Wrench,
-        module: "equipment",
-      },
-      {
-        title: "QR Tara",
-        titleTr: "QR Tara",
-        url: "/qr-tara",
-        icon: QrCode,
-        module: "equipment",
-      },
-    ],
-  },
-  {
-    groupTr: "Vardiya & Devam",
-    icon: Clock,
-    scope: "branch",
-    items: [
-      {
-        title: "Vardiya Yönetimi",
-        titleTr: "Vardiya Yönetimi",
-        url: "/vardiyalar",
-        icon: Clock,
-        module: "dashboard",
-      },
-      {
-        title: "Giriş/Çıkış (QR)",
-        titleTr: "Giriş/Çıkış (QR)",
-        url: "/vardiya-checkin",
-        icon: QrCode,
-        module: "dashboard",
-      },
-      {
-        title: "Vardiya Şablonları",
-        titleTr: "Vardiya Şablonları",
-        url: "/vardiya-sablonlari",
-        icon: Calendar,
-        module: "dashboard",
-      },
-      {
-        title: "Müsaitlik Takvimi",
-        titleTr: "Müsaitlik Takvimi",
-        url: "/personel-musaitlik",
-        icon: CalendarDays,
-        module: "dashboard",
-      },
-      {
-        title: "Devam Takibi",
-        titleTr: "Devam Takibi",
-        url: "/devam-takibi",
-        icon: Clock,
-        module: "employees",
-      },
-      {
-        title: "Mesai Talepleri",
-        titleTr: "Mesai Talepleri",
-        url: "/mesai-talepleri",
-        icon: Clock,
-        module: "employees",
-      },
-    ],
-  },
-  {
-    groupTr: "Finans",
-    icon: Wallet,
-    scope: "branch",
-    items: [
-      {
-        title: "Kasa Raporları",
-        titleTr: "Kasa Raporları",
-        url: "/kasa-raporlari",
-        icon: Wallet,
-        module: "dashboard",
-      },
-    ],
-  },
-  // BRANCH - İnsan Kaynakları (Supervisor)
-  {
-    groupTr: "İnsan Kaynakları",
-    icon: Users,
-    scope: "branch",
-    items: [
-      {
-        title: "Personel Yönetimi",
-        titleTr: "Personel Yönetimi",
-        url: "/personel-yonetimi",
-        icon: Users,
-        module: "hr",
-      },
-      {
-        title: "Disiplin Yönetimi",
-        titleTr: "Disiplin Yönetimi",
-        url: "/disiplin-yonetimi",
-        icon: ClipboardList,
-        module: "hr",
-      },
-      {
-        title: "Yeni Personel Onboarding",
-        titleTr: "Yeni Personel Onboarding",
-        url: "/personel-onboarding",
-        icon: GraduationCap,
-        module: "hr",
-      },
-    ],
-  },
-  // HQ - Merkez Yönetim
-  {
-    groupTr: "İK Yönetimi",
-    icon: Users,
-    scope: "hq",
-    items: [
-      {
-        title: "Eğitim",
-        titleTr: "Eğitim",
-        url: "/egitim",
-        icon: GraduationCap,
-        module: "training",
-      },
-      {
-        title: "Personel",
-        titleTr: "Personel",
-        url: "/ik",
-        icon: Users,
-        module: "employees",
-      },
-      {
-        title: "Personel Yönetimi",
-        titleTr: "Personel Yönetimi",
-        url: "/personel-yonetimi",
-        icon: Users,
-        module: "hr",
-      },
-      {
-        title: "Disiplin Yönetimi",
-        titleTr: "Disiplin Yönetimi",
-        url: "/disiplin-yonetimi",
-        icon: ClipboardList,
-        module: "hr",
-      },
-      {
-        title: "Yeni Personel Onboarding",
-        titleTr: "Yeni Personel Onboarding",
-        url: "/personel-onboarding",
-        icon: GraduationCap,
-        module: "hr",
-      },
-      {
-        title: "İzin Talepleri",
-        titleTr: "İzin Talepleri",
-        url: "/izin-talepleri",
-        icon: Calendar,
-        module: "employees",
-      },
-      {
-        title: "Mesai Talepleri",
-        titleTr: "Mesai Talepleri",
-        url: "/mesai-talepleri",
-        icon: Clock,
-        module: "employees",
-      },
-      {
-        title: "İK Raporları",
-        titleTr: "İK Raporları",
-        url: "/ik-raporlari",
-        icon: BarChart3,
-        module: "employees",
-      },
-    ],
-  },
-  {
-    groupTr: "Bilgi Bankası",
-    icon: BookOpen,
-    scope: "hq",
-    items: [
-      {
-        title: "Bilgi Bankası",
-        titleTr: "Bilgi Bankası",
-        url: "/bilgi-bankasi",
-        icon: BookOpen,
-        module: "knowledge_base",
-      },
-    ],
-  },
-  {
-    groupTr: "Kalite & Gelişim",
-    icon: FileSearch,
-    scope: "hq",
-    items: [
-      {
-        title: "Denetim Şablonları",
-        titleTr: "Denetim Şablonları",
-        url: "/denetim-sablonlari",
-        icon: ClipboardList,
-        module: "dashboard",
-      },
-      {
-        title: "Kalite Denetimi",
-        titleTr: "Kalite Denetimi",
-        url: "/kalite-denetimi",
-        icon: FileSearch,
-        module: "dashboard",
-      },
-      {
-        title: "Misafir Geri Bildirimi",
-        titleTr: "Misafir Geri Bildirimi",
-        url: "/misafir-geri-bildirim",
-        icon: Star,
-        module: "dashboard",
-      },
-      {
-        title: "Kampanya Yönetimi",
-        titleTr: "Kampanya Yönetimi",
-        url: "/kampanya-yonetimi",
-        icon: Megaphone,
-        module: "dashboard",
-      },
-      {
-        title: "Franchise Açılış",
-        titleTr: "Franchise Açılış",
-        url: "/franchise-acilis",
-        icon: Store,
-        module: "dashboard",
-      },
-    ],
-  },
-  // HQ - Destek & AI
-  {
-    groupTr: "Destek",
-    icon: MessageSquare,
-    scope: "hq",
-    items: [
-      {
-        title: "HQ Destek",
-        titleTr: "HQ Destek",
-        url: "/hq-destek",
-        icon: MessageSquare,
-        module: "messages",
-      },
-      {
-        title: "AI Asistan",
-        titleTr: "AI Asistan",
-        url: "/ai-asistan",
-        icon: Bot,
-        module: "ai_assistant",
-      },
-    ],
-  },
-  // Admin - Yönetim
-  {
-    groupTr: "Yönetim",
-    icon: Settings,
-    scope: "hq",
-    items: [
-      {
-        title: "Ayarlar",
-        titleTr: "Ayarlar",
-        url: "/yonetim/ayarlar",
-        icon: Settings,
-        module: "dashboard",
-      },
-    ],
-  },
-];
+// Fallback hardcoded menu groups (used only if dynamic menu fails to load)
+// In normal operation, dynamic menu from database takes precedence
+const menuGroups: MenuGroup[] = [];
 
 // PHASE 4: Visibility Rules Logic
 const checkVisibilityRules = (
