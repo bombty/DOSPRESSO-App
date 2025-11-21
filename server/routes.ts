@@ -129,7 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Valid roles from UserRole enum
       const validRoles = [
         'admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq',
-        'stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'yatirimci'
+        'stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'yatirimci_branch'
       ] as const;
       
       const registerSchema = z.object({
@@ -7536,6 +7536,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting site setting:", error);
       res.status(500).json({ message: "Ayar silinirken hata oluştu" });
+    }
+  });
+
+  // ===== ROLE PERMISSIONS ROUTES =====
+  
+  // GET /api/admin/role-permissions - Get all role permissions
+  app.get('/api/admin/role-permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Admin-only access
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+
+      const permissions = await storage.getRolePermissions();
+      
+      res.json(permissions);
+    } catch (error) {
+      console.error("Error fetching role permissions:", error);
+      res.status(500).json({ message: "Rol yetkileri yüklenirken hata oluştu" });
+    }
+  });
+
+  // PUT /api/admin/role-permissions - Bulk update role permissions
+  app.put('/api/admin/role-permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Admin-only access
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+
+      // Validate request body is an array of role permission updates
+      const updatesSchema = z.array(z.object({
+        role: z.string(),
+        module: z.string(),
+        actions: z.array(z.string()),
+      }));
+
+      const updates = updatesSchema.parse(req.body);
+      
+      await storage.bulkUpdateRolePermissions(updates);
+      
+      res.json({ message: "Rol yetkileri güncellendi" });
+    } catch (error: any) {
+      console.error("Error updating role permissions:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Rol yetkileri güncellenirken hata oluştu" });
     }
   });
 

@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Building2, Factory, Save } from "lucide-react";
+import { Shield, Building2, Factory, Save, Loader2, AlertCircle } from "lucide-react";
 import { UserRole, PERMISSIONS, type UserRoleType, type PermissionModule, type PermissionAction } from "@shared/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Rol grupları
 const ROLE_GROUPS = {
@@ -98,42 +102,108 @@ const ACTION_LABELS: Record<PermissionAction, string> = {
 
 export default function RolYetkileri() {
   const { toast } = useToast();
-  const [permissions, setPermissions] = useState(PERMISSIONS);
+  const [permissions, setPermissions] = useState<Record<UserRoleType, Record<PermissionModule, PermissionAction[]>>>(PERMISSIONS);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Yetki toggle fonksiyonu
+  // Fetch role permissions from backend
+  const { data: backendPermissions, isLoading, error } = useQuery({
+    queryKey: ['/api/admin/role-permissions'],
+  });
+
+  // Merge backend permissions with default PERMISSIONS
+  useEffect(() => {
+    if (backendPermissions && Array.isArray(backendPermissions)) {
+      // Deep clone default PERMISSIONS to avoid reference sharing
+      const mergedPermissions = JSON.parse(JSON.stringify(PERMISSIONS)) as Record<UserRoleType, Record<PermissionModule, PermissionAction[]>>;
+      
+      // Override with backend data (immutable merge)
+      backendPermissions.forEach((perm: { role: string; module: string; actions: string[] }) => {
+        const role = perm.role as UserRoleType;
+        const module = perm.module as PermissionModule;
+        
+        if (!mergedPermissions[role]) {
+          mergedPermissions[role] = {} as Record<PermissionModule, PermissionAction[]>;
+        }
+        
+        mergedPermissions[role][module] = [...perm.actions] as PermissionAction[];
+      });
+      
+      setPermissions(mergedPermissions);
+    }
+  }, [backendPermissions]);
+
+  // Mutation for updating permissions
+  const updatePermissionsMutation = useMutation({
+    mutationFn: async (updates: Array<{ role: string; module: string; actions: string[] }>) => {
+      return await apiRequest('/api/admin/role-permissions', {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/role-permissions'] });
+      toast({
+        title: "Başarılı",
+        description: "Rol yetkileri güncellendi",
+      });
+      setHasChanges(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Rol yetkileri güncellenirken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Yetki toggle fonksiyonu - immutable deep update
   const togglePermission = (
     role: UserRoleType,
     module: PermissionModule,
     action: PermissionAction
   ) => {
     setPermissions(prev => {
-      const rolePerms = prev[role];
-      const modulePerms = rolePerms[module] || [];
+      // Deep clone to avoid mutation
+      const newPermissions = JSON.parse(JSON.stringify(prev)) as Record<UserRoleType, Record<PermissionModule, PermissionAction[]>>;
+      
+      const modulePerms = newPermissions[role]?.[module] || [];
       
       const newModulePerms = modulePerms.includes(action)
         ? modulePerms.filter(a => a !== action)
         : [...modulePerms, action];
 
-      return {
-        ...prev,
-        [role]: {
-          ...rolePerms,
-          [module]: newModulePerms,
-        },
-      };
+      newPermissions[role][module] = newModulePerms;
+      
+      return newPermissions;
     });
     setHasChanges(true);
   };
 
-  // Değişiklikleri kaydet
+  // Değişiklikleri kaydet - send ALL role-module combinations including empty arrays
   const handleSave = () => {
-    // TODO: Backend API'sine gönder
-    toast({
-      title: "Başarılı",
-      description: "Rol yetkileri güncellendi",
+    // Convert permissions object to array for backend
+    const updates: Array<{ role: string; module: string; actions: string[] }> = [];
+    
+    // Iterate through ALL roles
+    Object.keys(PERMISSIONS).forEach((role) => {
+      // Iterate through ALL modules
+      allModules.forEach((module) => {
+        const actions = permissions[role as UserRoleType]?.[module] || [];
+        
+        // Always send the entry, even if actions is empty (to notify backend of deletions)
+        updates.push({
+          role,
+          module,
+          actions,
+        });
+      });
     });
-    setHasChanges(false);
+
+    updatePermissionsMutation.mutate(updates);
   };
 
   // Tüm aksiyonlar
@@ -141,6 +211,45 @@ export default function RolYetkileri() {
 
   // Tüm modüller
   const allModules: PermissionModule[] = Object.keys(MODULE_LABELS) as PermissionModule[];
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6 space-y-6" data-testid="page-rol-yetkileri">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
+          <p className="text-muted-foreground mt-1">
+            Sistem rollerinin modül ve işlem yetkilerini yönetin
+          </p>
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container mx-auto py-6 space-y-6" data-testid="page-rol-yetkileri">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
+          <p className="text-muted-foreground mt-1">
+            Sistem rollerinin modül ve işlem yetkilerini yönetin
+          </p>
+        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Rol yetkileri yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6" data-testid="page-rol-yetkileri">
@@ -152,9 +261,22 @@ export default function RolYetkileri() {
           </p>
         </div>
         {hasChanges && (
-          <Button onClick={handleSave} data-testid="button-save-permissions">
-            <Save className="w-4 h-4 mr-2" />
-            Değişiklikleri Kaydet
+          <Button 
+            onClick={handleSave} 
+            disabled={updatePermissionsMutation.isPending}
+            data-testid="button-save-permissions"
+          >
+            {updatePermissionsMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Değişiklikleri Kaydet
+              </>
+            )}
           </Button>
         )}
       </div>
@@ -193,10 +315,6 @@ export default function RolYetkileri() {
                         <div className="space-y-4">
                           {allModules.map(module => {
                             const modulePerms = permissions[role]?.[module] || [];
-                            if (modulePerms.length === 0 && role !== UserRole.ADMIN) {
-                              // Yetkisi olmayan modülleri gizle (admin hariç)
-                              return null;
-                            }
                             
                             return (
                               <div 
@@ -247,16 +365,30 @@ export default function RolYetkileri() {
           <Button
             variant="outline"
             onClick={() => {
-              setPermissions(PERMISSIONS);
+              // Deep clone to reset properly
+              setPermissions(JSON.parse(JSON.stringify(PERMISSIONS)));
               setHasChanges(false);
             }}
             data-testid="button-reset-permissions"
           >
             İptal
           </Button>
-          <Button onClick={handleSave} data-testid="button-save-permissions-bottom">
-            <Save className="w-4 h-4 mr-2" />
-            Değişiklikleri Kaydet
+          <Button 
+            onClick={handleSave} 
+            disabled={updatePermissionsMutation.isPending}
+            data-testid="button-save-permissions-bottom"
+          >
+            {updatePermissionsMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Değişiklikleri Kaydet
+              </>
+            )}
           </Button>
         </div>
       )}

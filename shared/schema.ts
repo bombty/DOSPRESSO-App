@@ -3237,3 +3237,59 @@ export const insertEmployeeOnboardingTaskSchema = createInsertSchema(employeeOnb
 
 export type InsertEmployeeOnboardingTask = z.infer<typeof insertEmployeeOnboardingTaskSchema>;
 export type EmployeeOnboardingTask = typeof employeeOnboardingTasks.$inferSelect;
+
+// ========================================
+// PERMISSION MODULES - Yetki Modülleri Tanımları
+// ========================================
+
+export const permissionModules = pgTable("permission_modules", {
+  id: serial("id").primaryKey(),
+  moduleKey: varchar("module_key", { length: 50 }).notNull().unique(), // dashboard, tasks, checklists, etc.
+  moduleName: varchar("module_name", { length: 100 }).notNull(), // "Panel", "Görevler", etc.
+  description: text("description"),
+  category: varchar("category", { length: 50 }), // hq, branch, factory, shared
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("permission_modules_module_key_idx").on(table.moduleKey),
+  index("permission_modules_category_idx").on(table.category),
+]);
+
+export const insertPermissionModuleSchema = createInsertSchema(permissionModules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPermissionModule = z.infer<typeof insertPermissionModuleSchema>;
+export type PermissionModule_DB = typeof permissionModules.$inferSelect;
+
+// ========================================
+// ROLE MODULE PERMISSIONS - Rol-Modül-Aksiyon İlişkileri  
+// ========================================
+
+export const roleModulePermissions = pgTable("role_module_permissions", {
+  id: serial("id").primaryKey(),
+  role: varchar("role", { length: 50 }).notNull(), // admin, muhasebe, barista, etc.
+  module: varchar("module", { length: 50 }).notNull(), // dashboard, tasks, etc.
+  actions: text("actions").array().notNull().default(sql`ARRAY[]::text[]`), // ['view', 'create', 'edit', 'delete', 'approve']
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("role_module_permissions_role_idx").on(table.role),
+  index("role_module_permissions_module_idx").on(table.module),
+  unique("role_module_permissions_role_module_unique").on(table.role, table.module),
+]);
+
+export const insertRoleModulePermissionSchema = createInsertSchema(roleModulePermissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateRoleModulePermissionSchema = insertRoleModulePermissionSchema.partial();
+
+export type InsertRoleModulePermission = z.infer<typeof insertRoleModulePermissionSchema>;
+export type UpdateRoleModulePermission = z.infer<typeof updateRoleModulePermissionSchema>;
+export type RoleModulePermission = typeof roleModulePermissions.$inferSelect;

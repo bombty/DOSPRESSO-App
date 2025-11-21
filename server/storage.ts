@@ -193,6 +193,9 @@ import {
   disciplinaryReports,
   employeeOnboarding,
   employeeOnboardingTasks,
+  roleModulePermissions,
+  RoleModulePermission,
+  InsertRoleModulePermission,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -631,6 +634,11 @@ export interface IStorage {
   getTroubleshootingCompletions(faultId: number): Promise<EquipmentTroubleshootingCompletion[]>;
   createTroubleshootingCompletion(data: InsertEquipmentTroubleshootingCompletion): Promise<EquipmentTroubleshootingCompletion>;
   isTroubleshootingCompleteForEquipment(equipmentType: string, completedSteps: Array<{ stepId: number }>): Promise<{ complete: boolean; requiredSteps: EquipmentTroubleshootingStep[]; missingSteps: EquipmentTroubleshootingStep[] }>;
+  
+  // Role Permissions operations
+  getRolePermissions(): Promise<Array<{ role: string; module: string; actions: string[] }>>;
+  updateRolePermissions(role: string, module: string, actions: string[]): Promise<void>;
+  bulkUpdateRolePermissions(updates: Array<{ role: string; module: string; actions: string[] }>): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5243,6 +5251,57 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return updatedInstance;
+  }
+
+  // Role Permissions operations
+  async getRolePermissions(): Promise<Array<{ role: string; module: string; actions: string[] }>> {
+    const permissions = await db.select().from(roleModulePermissions).orderBy(asc(roleModulePermissions.role), asc(roleModulePermissions.module));
+    return permissions;
+  }
+
+  async updateRolePermissions(role: string, module: string, actions: string[]): Promise<void> {
+    // Check if record exists
+    const [existing] = await db
+      .select()
+      .from(roleModulePermissions)
+      .where(and(eq(roleModulePermissions.role, role), eq(roleModulePermissions.module, module)));
+
+    if (existing) {
+      // Update existing record
+      await db
+        .update(roleModulePermissions)
+        .set({ actions, updatedAt: new Date() })
+        .where(and(eq(roleModulePermissions.role, role), eq(roleModulePermissions.module, module)));
+    } else {
+      // Insert new record
+      await db.insert(roleModulePermissions).values({ role, module, actions });
+    }
+  }
+
+  async bulkUpdateRolePermissions(updates: Array<{ role: string; module: string; actions: string[] }>): Promise<void> {
+    // Use a transaction for atomic bulk update
+    await db.transaction(async (tx) => {
+      for (const update of updates) {
+        const { role, module, actions } = update;
+        
+        // Check if record exists
+        const [existing] = await tx
+          .select()
+          .from(roleModulePermissions)
+          .where(and(eq(roleModulePermissions.role, role), eq(roleModulePermissions.module, module)));
+
+        if (existing) {
+          // Update existing record
+          await tx
+            .update(roleModulePermissions)
+            .set({ actions, updatedAt: new Date() })
+            .where(and(eq(roleModulePermissions.role, role), eq(roleModulePermissions.module, module)));
+        } else {
+          // Insert new record
+          await tx.insert(roleModulePermissions).values({ role, module, actions });
+        }
+      }
+    });
   }
 }
 

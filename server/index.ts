@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { startSLACheckSystem } from "./reminders";
+import { seedRolePermissions } from "./seed-role-permissions";
 
 const app = express();
 
@@ -83,6 +84,11 @@ app.use((req, res, next) => {
     reusePort: true,
   }, async () => {
     log(`serving on port ${port}`);
+    
+    // Seed role permissions from PERMISSIONS constant (idempotent)
+    await seedRolePermissions().catch((error) => {
+      console.error("Error seeding role permissions:", error);
+    });
     
     // Ensure admin user is always approved and active (self-healing)
     await ensureAdminUserApproved();
