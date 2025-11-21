@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { startSLACheckSystem } from "./reminders";
 import { seedRolePermissions } from "./seed-role-permissions";
 import { seedPermissionModules } from "./seed-permission-modules";
+import { seedAdminMenu } from "./seed-admin-menu";
 
 const app = express();
 
@@ -94,6 +95,11 @@ app.use((req, res, next) => {
     // Seed role permissions from PERMISSIONS constant (idempotent)
     await seedRolePermissions().catch((error) => {
       console.error("Error seeding role permissions:", error);
+    });
+    
+    // Seed admin menu structure (idempotent)
+    await seedAdminMenu().catch((error) => {
+      console.error("Error seeding admin menu:", error);
     });
     
     // Ensure admin user is always approved and active (self-healing)
