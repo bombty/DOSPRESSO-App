@@ -75,7 +75,10 @@ export function CreateDisciplinaryDialog({ userId, branchId }: CreateDisciplinar
       return apiRequest("POST", "/api/disciplinary-reports", data);
     },
     onSuccess: () => {
+      // Invalidate user-specific queries
       queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports", userId] });
+      // Invalidate all disciplinary report queries (exact: false for prefix match)
+      queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports"], exact: false });
       setOpen(false);
       form.reset();
       toast({
@@ -271,7 +274,10 @@ export function AddResponseDialog({ reportId, userId }: AddResponseDialogProps) 
       return apiRequest("POST", `/api/disciplinary-reports/${reportId}/response`, data);
     },
     onSuccess: () => {
+      // Invalidate user-specific queries
       queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports", userId] });
+      // Invalidate all disciplinary report queries (exact: false for prefix match)
+      queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports"], exact: false });
       setOpen(false);
       form.reset();
       toast({
@@ -370,7 +376,10 @@ export function ResolveDialog({ reportId, userId }: ResolveDialogProps) {
       return apiRequest("POST", `/api/disciplinary-reports/${reportId}/resolve`, data);
     },
     onSuccess: () => {
+      // Invalidate user-specific queries
       queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports", userId] });
+      // Invalidate all disciplinary report queries (exact: false for prefix match)
+      queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports"], exact: false });
       setOpen(false);
       form.reset();
       toast({

@@ -1,7 +1,17 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { hasPermission, isHQRole, type User, type EmployeeWarning, insertUserSchema, insertEmployeeWarningSchema } from "@shared/schema";
+import { 
+  hasPermission, 
+  isHQRole, 
+  type User, 
+  type EmployeeWarning, 
+  type DisciplinaryReport,
+  type EmployeeOnboarding,
+  type EmployeeDocument,
+  insertUserSchema, 
+  insertEmployeeWarningSchema 
+} from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -48,6 +58,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -62,9 +78,14 @@ import {
   Filter,
   Key,
   FileText,
+  Users,
+  FileWarning,
+  UserCheck,
+  FolderOpen,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useLocation } from "wouter";
+import { CreateDisciplinaryDialog } from "@/components/hr/DisciplinaryDialogs";
 
 const roleLabels: Record<string, string> = {
   admin: "Admin",
@@ -95,11 +116,20 @@ export default function IKPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Filters
+  // Filters - Section 1: Employee List
   const [branchFilter, setBranchFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [probationFilter, setProbationFilter] = useState<string>("all");
   const [trainingFilter, setTrainingFilter] = useState<string>("all");
+
+  // Filters - Section 2: Disciplinary
+  const [disciplinaryStatusFilter, setDisciplinaryStatusFilter] = useState<string>("all");
+
+  // Filters - Section 3: Onboarding
+  const [onboardingStatusFilter, setOnboardingStatusFilter] = useState<string>("all");
+
+  // Filters - Section 4: Documents
+  const [documentTypeFilter, setDocumentTypeFilter] = useState<string>("all");
 
   // Dialogs
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -115,30 +145,19 @@ export default function IKPage() {
     queryKey: ["/api/branches"],
   });
 
-  // Fetch employees (with branch filtering for non-HQ users)
+  // Fetch employees (backend handles branch filtering automatically)
+  const employeesQueryKey = useMemo(() => {
+    const baseUrl = '/api/employees';
+    // HQ users can filter by branch via query param
+    if (user?.role && isHQRole(user.role as any) && branchFilter !== "all") {
+      return [`${baseUrl}?branchId=${branchFilter}`];
+    }
+    // Branch users get auto-filtered by backend
+    return [baseUrl];
+  }, [user?.role, branchFilter]);
+
   const { data: employees = [], isLoading } = useQuery<User[]>({
-    queryKey: ["/api/employees", branchFilter, user?.branchId],
-    queryFn: async () => {
-      // Branch users can only see their own branch employees
-      // HQ users can see all or filter by branch
-      let url = '/api/employees';
-      
-      if (user?.role && !isHQRole(user.role as any)) {
-        // Branch user: force filter to their branch
-        if (user.branchId) {
-          url = `/api/employees?branchId=${user.branchId}`;
-        }
-      } else {
-        // HQ user: respect the branch filter dropdown
-        if (branchFilter !== "all") {
-          url = `/api/employees?branchId=${branchFilter}`;
-        }
-      }
-      
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) throw new Error(res.statusText);
-      return res.json();
-    },
+    queryKey: employeesQueryKey,
     enabled: !!user,
   });
 
@@ -168,14 +187,69 @@ export default function IKPage() {
     enabled: !!selectedEmployee?.id,
   });
 
+  // Fetch disciplinary reports (backend handles branch filtering automatically)
+  const disciplinaryQueryKey = useMemo(() => {
+    // Structured query keys for proper cache invalidation
+    if (user?.role && isHQRole(user.role as any) && branchFilter !== "all") {
+      return ["/api/disciplinary-reports", { branchId: branchFilter }];
+    }
+    return ["/api/disciplinary-reports"];
+  }, [user?.role, branchFilter]);
+
+  const { data: disciplinaryReports = [], isLoading: isDisciplinaryLoading } = useQuery<DisciplinaryReport[]>({
+    queryKey: disciplinaryQueryKey,
+    // Wrapper fetcher: params object → query string
+    queryFn: async ({ queryKey }) => {
+      const [path, params] = queryKey;
+      const queryString = params ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : "";
+      const url = `${path}${queryString}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  // Fetch onboarding records (backend handles branch filtering automatically)
+  const onboardingQueryKey = useMemo(() => {
+    const baseUrl = '/api/employee-onboarding';
+    // HQ users can filter by branch via query param
+    if (user?.role && isHQRole(user.role as any) && branchFilter !== "all") {
+      return [`${baseUrl}?branchId=${branchFilter}`];
+    }
+    // Branch users get auto-filtered by backend
+    return [baseUrl];
+  }, [user?.role, branchFilter]);
+
+  const { data: onboardingRecords = [], isLoading: isOnboardingLoading } = useQuery<(EmployeeOnboarding & { user?: User })[]>({
+    queryKey: onboardingQueryKey,
+    enabled: !!user,
+  });
+
+  // Fetch employee documents (backend handles branch filtering automatically)
+  const documentsQueryKey = useMemo(() => {
+    const baseUrl = '/api/employee-documents';
+    // HQ users can filter by branch via query param
+    if (user?.role && isHQRole(user.role as any) && branchFilter !== "all") {
+      return [`${baseUrl}?branchId=${branchFilter}`];
+    }
+    // Branch users get auto-filtered by backend
+    return [baseUrl];
+  }, [user?.role, branchFilter]);
+
+  const { data: employeeDocuments = [], isLoading: isDocumentsLoading } = useQuery<(EmployeeDocument & { user?: User })[]>({
+    queryKey: documentsQueryKey,
+    enabled: !!user,
+  });
+
   // Check permissions
   const canCreate = user?.role && hasPermission(user.role as any, "employees", "create");
   const canEdit = user?.role && hasPermission(user.role as any, "employees", "edit");
   const canWarn = user?.role && hasPermission(user.role as any, "employees", "approve");
 
-  // Filter employees
+  // Filter employees (branchFilter handled by backend via query params)
   const filteredEmployees = employees.filter((emp) => {
-    if (branchFilter !== "all" && emp.branchId !== parseInt(branchFilter)) return false;
+    // Role filter
     if (roleFilter !== "all" && emp.role !== roleFilter) return false;
     
     if (probationFilter !== "all") {
@@ -220,6 +294,83 @@ export default function IKPage() {
     return { label: `${daysLeft} gün kaldı`, variant: "secondary" as const };
   };
 
+  // Filter disciplinary reports
+  const filteredDisciplinaryReports = disciplinaryReports.filter((report) => {
+    if (disciplinaryStatusFilter !== "all") {
+      if (disciplinaryStatusFilter === "open" && report.status !== "open") return false;
+      if (disciplinaryStatusFilter === "resolved" && report.status !== "resolved") return false;
+    }
+    return true;
+  });
+
+  // Filter onboarding records
+  const filteredOnboardingRecords = onboardingRecords.filter((record) => {
+    if (onboardingStatusFilter !== "all" && record.status !== onboardingStatusFilter) return false;
+    return true;
+  });
+
+  // Filter employee documents (latest 20)
+  const filteredEmployeeDocuments = employeeDocuments
+    .filter((doc) => {
+      if (documentTypeFilter !== "all" && doc.documentType !== documentTypeFilter) return false;
+      return true;
+    })
+    .slice(0, 20);
+
+  // Helper function to get employee name from userId
+  const getEmployeeName = (userId: string) => {
+    const employee = employees.find((emp) => emp.id === userId);
+    return employee ? `${employee.firstName} ${employee.lastName}` : "Bilinmiyor";
+  };
+
+  // Helper function to get severity label
+  const getSeverityLabel = (severity: string) => {
+    const labels: Record<string, string> = {
+      low: "Düşük",
+      medium: "Orta",
+      high: "Yüksek",
+      critical: "Kritik",
+    };
+    return labels[severity] || severity;
+  };
+
+  // Helper function to get report type label
+  const getReportTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      verbal_warning: "Sözlü Uyarı",
+      written_warning: "Yazılı Uyarı",
+      suspension: "Uzaklaştırma",
+      termination: "Fesih",
+      other: "Diğer",
+    };
+    return labels[type] || type;
+  };
+
+  // Helper function to get status label
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      not_started: "Başlamadı",
+      in_progress: "Devam Ediyor",
+      completed: "Tamamlandı",
+      open: "Açık",
+      under_review: "İnceleniyor",
+      resolved: "Çözüldü",
+      closed: "Kapalı",
+    };
+    return labels[status] || status;
+  };
+
+  // Helper function to get document type label
+  const getDocumentTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      id_card: "Kimlik",
+      diploma: "Diploma",
+      contract: "Sözleşme",
+      health_report: "Sağlık Raporu",
+    };
+    return labels[type] || type;
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -235,247 +386,565 @@ export default function IKPage() {
         )}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtreler
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-4">
-          {/* Branch filter - only for HQ users */}
-          {user?.role && isHQRole(user.role as any) && (
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium">Şube</label>
-              <Select value={branchFilter} onValueChange={setBranchFilter}>
-                <SelectTrigger data-testid="select-branch-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm Şubeler</SelectItem>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id.toString()}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+      {/* Accordion Sections */}
+      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="space-y-4">
+        {/* Section 1: Personel Listesi */}
+        <AccordionItem value="personel" data-testid="accordion-personel">
+          <Card>
+            <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-personel">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                <span className="text-lg font-semibold">Personel Listesi</span>
+                <Badge variant="secondary" className="ml-2">{filteredEmployees.length}</Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <CardContent className="space-y-4">
+                {/* Filters */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Filter className="h-5 w-5" />
+                      Filtreler
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-4">
+                    {/* Branch filter - only for HQ users */}
+                    {user?.role && isHQRole(user.role as any) && (
+                      <div className="flex-1 min-w-[200px]">
+                        <label className="text-sm font-medium">Şube</label>
+                        <Select value={branchFilter} onValueChange={setBranchFilter}>
+                          <SelectTrigger data-testid="select-branch-filter">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tüm Şubeler</SelectItem>
+                            {branches.map((branch) => (
+                              <SelectItem key={branch.id} value={branch.id.toString()}>
+                                {branch.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium">Rol</label>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger data-testid="select-role-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tüm Roller</SelectItem>
-                {Object.entries(roleLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="text-sm font-medium">Rol</label>
+                      <Select value={roleFilter} onValueChange={setRoleFilter}>
+                        <SelectTrigger data-testid="select-role-filter">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tüm Roller</SelectItem>
+                          {Object.entries(roleLabels).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium">Deneme Süresi</label>
-            <Select value={probationFilter} onValueChange={setProbationFilter}>
-              <SelectTrigger data-testid="select-probation-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tümü</SelectItem>
-                <SelectItem value="ending_soon">Yakında Bitenler (30 gün)</SelectItem>
-                <SelectItem value="active">Devam Edenler</SelectItem>
-                <SelectItem value="ended">Bitenler</SelectItem>
-                <SelectItem value="no_probation">Deneme Süresi Yok</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="text-sm font-medium">Deneme Süresi</label>
+                      <Select value={probationFilter} onValueChange={setProbationFilter}>
+                        <SelectTrigger data-testid="select-probation-filter">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tümü</SelectItem>
+                          <SelectItem value="ending_soon">Yakında Bitenler (30 gün)</SelectItem>
+                          <SelectItem value="active">Devam Edenler</SelectItem>
+                          <SelectItem value="ended">Bitenler</SelectItem>
+                          <SelectItem value="no_probation">Deneme Süresi Yok</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium">Eğitim Durumu</label>
-            <Select value={trainingFilter} onValueChange={setTrainingFilter}>
-              <SelectTrigger data-testid="select-training-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tümü</SelectItem>
-                <SelectItem value="completed">Tamamlanmış</SelectItem>
-                <SelectItem value="incomplete">Tamamlanmamış</SelectItem>
-                <SelectItem value="none">Eğitim Atanmamış</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="text-sm font-medium">Eğitim Durumu</label>
+                      <Select value={trainingFilter} onValueChange={setTrainingFilter}>
+                        <SelectTrigger data-testid="select-training-filter">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tümü</SelectItem>
+                          <SelectItem value="completed">Tamamlanmış</SelectItem>
+                          <SelectItem value="incomplete">Tamamlanmamış</SelectItem>
+                          <SelectItem value="none">Eğitim Atanmamış</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
 
-      {/* Employee List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Personel Listesi ({filteredEmployees.length})</CardTitle>
-          <CardDescription>
-            Tüm personellerin listesi ve deneme süresi durumları
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ad Soyad</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead>Şube</TableHead>
-                  <TableHead>İşe Giriş</TableHead>
-                  <TableHead>Deneme Süresi</TableHead>
-                  <TableHead>Eğitim</TableHead>
-                  <TableHead>İletişim</TableHead>
-                  <TableHead className="text-right">İşlemler</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEmployees.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
-                      Personel bulunamadı
-                    </TableCell>
-                  </TableRow>
+                {/* Employee Table */}
+                {isLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
                 ) : (
-                  filteredEmployees.map((employee) => {
-                    const probationStatus = getProbationStatus(employee.probationEndDate);
-                    const branch = branches.find((b) => b.id === employee.branchId);
-                    const trainingStats = userTrainingCompletion.get(employee.id);
-                    
-                    return (
-                      <TableRow key={employee.id} data-testid={`row-employee-${employee.id}`}>
-                        <TableCell className="font-medium">
-                          {employee.firstName} {employee.lastName}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{roleLabels[employee.role] || employee.role}</Badge>
-                        </TableCell>
-                        <TableCell>{branch?.name || "-"}</TableCell>
-                        <TableCell>
-                          {employee.hireDate ? (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              {format(new Date(employee.hireDate), "dd.MM.yyyy")}
-                            </div>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {probationStatus ? (
-                            <Badge variant={probationStatus.variant}>
-                              {probationStatus.label}
-                            </Badge>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {trainingStats && trainingStats.total > 0 ? (
-                            <Badge
-                              variant={
-                                trainingStats.completed === trainingStats.total
-                                  ? "default"
-                                  : "secondary"
-                              }
-                            >
-                              {trainingStats.completed}/{trainingStats.total}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          <div>{employee.phoneNumber || "-"}</div>
-                          <div className="text-muted-foreground">{employee.email || "-"}</div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
-                            {canEdit && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedEmployee(employee);
-                                  setEditDialogOpen(true);
-                                }}
-                                data-testid={`button-edit-${employee.id}`}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Link href={`/personel-detay/${employee.id}`}>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                data-testid={`button-detail-${employee.id}`}
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedEmployee(employee);
-                                setWarningsDialogOpen(true);
-                              }}
-                              data-testid={`button-warnings-${employee.id}`}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {canWarn && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedEmployee(employee);
-                                  setAddWarningDialogOpen(true);
-                                }}
-                                data-testid={`button-add-warning-${employee.id}`}
-                              >
-                                <AlertTriangle className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {(user?.role === 'admin' || user?.role === 'coach') && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedEmployee(employee);
-                                  setNewPassword("");
-                                  setResetPasswordDialogOpen(true);
-                                }}
-                                data-testid={`button-reset-password-${employee.id}`}
-                              >
-                                <Key className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ad Soyad</TableHead>
+                        <TableHead>Rol</TableHead>
+                        <TableHead>Şube</TableHead>
+                        <TableHead>İşe Giriş</TableHead>
+                        <TableHead>Deneme Süresi</TableHead>
+                        <TableHead>Eğitim</TableHead>
+                        <TableHead>İletişim</TableHead>
+                        <TableHead className="text-right">İşlemler</TableHead>
                       </TableRow>
-                    );
-                  })
+                    </TableHeader>
+                    <TableBody>
+                      {filteredEmployees.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-muted-foreground">
+                            Personel bulunamadı
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredEmployees.map((employee) => {
+                          const probationStatus = getProbationStatus(employee.probationEndDate);
+                          const branch = branches.find((b) => b.id === employee.branchId);
+                          const trainingStats = userTrainingCompletion.get(employee.id);
+                          
+                          return (
+                            <TableRow key={employee.id} data-testid={`row-employee-${employee.id}`}>
+                              <TableCell className="font-medium">
+                                {employee.firstName} {employee.lastName}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">{roleLabels[employee.role] || employee.role}</Badge>
+                              </TableCell>
+                              <TableCell>{branch?.name || "-"}</TableCell>
+                              <TableCell>
+                                {employee.hireDate ? (
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                                    {format(new Date(employee.hireDate), "dd.MM.yyyy")}
+                                  </div>
+                                ) : (
+                                  "-"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {probationStatus ? (
+                                  <Badge variant={probationStatus.variant}>
+                                    {probationStatus.label}
+                                  </Badge>
+                                ) : (
+                                  "-"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {trainingStats && trainingStats.total > 0 ? (
+                                  <Badge
+                                    variant={
+                                      trainingStats.completed === trainingStats.total
+                                        ? "default"
+                                        : "secondary"
+                                    }
+                                  >
+                                    {trainingStats.completed}/{trainingStats.total}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                <div>{employee.phoneNumber || "-"}</div>
+                                <div className="text-muted-foreground">{employee.email || "-"}</div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex gap-2 justify-end">
+                                  {canEdit && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedEmployee(employee);
+                                        setEditDialogOpen(true);
+                                      }}
+                                      data-testid={`button-edit-${employee.id}`}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  <Link href={`/personel-detay/${employee.id}`}>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      data-testid={`button-detail-${employee.id}`}
+                                    >
+                                      <FileText className="h-4 w-4" />
+                                    </Button>
+                                  </Link>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedEmployee(employee);
+                                      setWarningsDialogOpen(true);
+                                    }}
+                                    data-testid={`button-warnings-${employee.id}`}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  {canWarn && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedEmployee(employee);
+                                        setAddWarningDialogOpen(true);
+                                      }}
+                                      data-testid={`button-add-warning-${employee.id}`}
+                                    >
+                                      <AlertTriangle className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {(user?.role === 'admin' || user?.role === 'coach') && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedEmployee(employee);
+                                        setNewPassword("");
+                                        setResetPasswordDialogOpen(true);
+                                      }}
+                                      data-testid={`button-reset-password-${employee.id}`}
+                                    >
+                                      <Key className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
                 )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              </CardContent>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
+
+        {/* Section 2: Disiplin Yönetimi */}
+        <AccordionItem value="disiplin" data-testid="accordion-disiplin">
+          <Card>
+            <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-disiplin">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <FileWarning className="h-5 w-5" />
+                  <span className="text-lg font-semibold">Disiplin Yönetimi</span>
+                  <Badge variant="secondary" className="ml-2">{filteredDisciplinaryReports.length}</Badge>
+                </div>
+                {canWarn && user?.id && user?.branchId && (
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <CreateDisciplinaryDialog 
+                      userId={user.id} 
+                      branchId={user.branchId} 
+                    />
+                  </div>
+                )}
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <CardContent className="space-y-4">
+                {/* Disciplinary Filter */}
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-4">
+                    <div className="w-[200px]">
+                      <label className="text-sm font-medium">Durum</label>
+                      <Select value={disciplinaryStatusFilter} onValueChange={setDisciplinaryStatusFilter}>
+                        <SelectTrigger data-testid="select-disciplinary-status-filter">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tümü</SelectItem>
+                          <SelectItem value="open">Açık</SelectItem>
+                          <SelectItem value="resolved">Çözüldü</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Disciplinary Table */}
+                {isDisciplinaryLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Personel</TableHead>
+                        <TableHead>Kayıt Türü</TableHead>
+                        <TableHead>Önem</TableHead>
+                        <TableHead>Olay Tarihi</TableHead>
+                        <TableHead>Durum</TableHead>
+                        <TableHead className="text-right">İşlemler</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredDisciplinaryReports.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground">
+                            Disiplin kaydı bulunamadı
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredDisciplinaryReports.map((report) => (
+                          <TableRow key={report.id} data-testid={`row-disciplinary-${report.id}`}>
+                            <TableCell className="font-medium">
+                              {getEmployeeName(report.userId)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{getReportTypeLabel(report.reportType)}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  report.severity === 'critical' ? 'destructive' : 
+                                  report.severity === 'high' ? 'default' : 
+                                  'secondary'
+                                }
+                              >
+                                {getSeverityLabel(report.severity)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {format(new Date(report.incidentDate), "dd.MM.yyyy")}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={report.status === 'resolved' ? 'default' : 'secondary'}>
+                                {getStatusLabel(report.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Link href={`/personel-detay/${report.userId}`}>
+                                <Button size="sm" variant="outline" data-testid={`button-disciplinary-detail-${report.id}`}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Detaylar
+                                </Button>
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
+
+        {/* Section 3: Yeni Personel Onboarding */}
+        <AccordionItem value="onboarding" data-testid="accordion-onboarding">
+          <Card>
+            <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-onboarding">
+              <div className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5" />
+                <span className="text-lg font-semibold">Yeni Personel Onboarding</span>
+                <Badge variant="secondary" className="ml-2">{filteredOnboardingRecords.length}</Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <CardContent className="space-y-4">
+                {/* Onboarding Filter */}
+                <div className="flex gap-4">
+                  <div className="w-[200px]">
+                    <label className="text-sm font-medium">Durum</label>
+                    <Select value={onboardingStatusFilter} onValueChange={setOnboardingStatusFilter}>
+                      <SelectTrigger data-testid="select-onboarding-status-filter">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tümü</SelectItem>
+                        <SelectItem value="not_started">Başlamadı</SelectItem>
+                        <SelectItem value="in_progress">Devam Ediyor</SelectItem>
+                        <SelectItem value="completed">Tamamlandı</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Onboarding Table */}
+                {isOnboardingLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Personel</TableHead>
+                        <TableHead>Durum</TableHead>
+                        <TableHead>Başlangıç</TableHead>
+                        <TableHead>Tamamlanma %</TableHead>
+                        <TableHead>Mentor</TableHead>
+                        <TableHead className="text-right">İşlemler</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredOnboardingRecords.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground">
+                            Onboarding kaydı bulunamadı
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredOnboardingRecords.map((record) => (
+                          <TableRow key={record.id} data-testid={`row-onboarding-${record.id}`}>
+                            <TableCell className="font-medium">
+                              {getEmployeeName(record.userId)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  record.status === 'completed' ? 'default' : 
+                                  record.status === 'in_progress' ? 'secondary' : 
+                                  'outline'
+                                }
+                              >
+                                {getStatusLabel(record.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {format(new Date(record.startDate), "dd.MM.yyyy")}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{record.completionPercentage}%</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {record.assignedMentorId ? getEmployeeName(record.assignedMentorId) : "-"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Link href={`/personel-detay/${record.userId}`}>
+                                <Button size="sm" variant="outline" data-testid={`button-onboarding-detail-${record.id}`}>
+                                  Detayları Gör
+                                </Button>
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
+
+        {/* Section 4: Özlük Dosyaları */}
+        <AccordionItem value="documents" data-testid="accordion-documents">
+          <Card>
+            <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-documents">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5" />
+                <span className="text-lg font-semibold">Özlük Dosyaları</span>
+                <Badge variant="secondary" className="ml-2">{filteredEmployeeDocuments.length}</Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <CardContent className="space-y-4">
+                {/* Documents Filter */}
+                <div className="flex gap-4">
+                  <div className="w-[200px]">
+                    <label className="text-sm font-medium">Belge Türü</label>
+                    <Select value={documentTypeFilter} onValueChange={setDocumentTypeFilter}>
+                      <SelectTrigger data-testid="select-document-type-filter">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tümü</SelectItem>
+                        <SelectItem value="id_card">Kimlik</SelectItem>
+                        <SelectItem value="diploma">Diploma</SelectItem>
+                        <SelectItem value="contract">Sözleşme</SelectItem>
+                        <SelectItem value="health_report">Sağlık Raporu</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Documents Table */}
+                {isDocumentsLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Personel</TableHead>
+                        <TableHead>Belge Türü</TableHead>
+                        <TableHead>Belge Adı</TableHead>
+                        <TableHead>Yükleme Tarihi</TableHead>
+                        <TableHead>Doğrulandı</TableHead>
+                        <TableHead className="text-right">İşlemler</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredEmployeeDocuments.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground">
+                            Belge bulunamadı
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredEmployeeDocuments.map((doc) => (
+                          <TableRow key={doc.id} data-testid={`row-document-${doc.id}`}>
+                            <TableCell className="font-medium">
+                              {getEmployeeName(doc.userId)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{getDocumentTypeLabel(doc.documentType)}</Badge>
+                            </TableCell>
+                            <TableCell>{doc.documentName}</TableCell>
+                            <TableCell>
+                              {doc.uploadedAt && format(new Date(doc.uploadedAt), "dd.MM.yyyy")}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={doc.isVerified ? 'default' : 'secondary'}>
+                                {doc.isVerified ? 'Evet' : 'Hayır'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Link href={`/personel-detay/${doc.userId}`}>
+                                <Button size="sm" variant="outline" data-testid={`button-document-detail-${doc.id}`}>
+                                  Tüm Belgeler
+                                </Button>
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
+      </Accordion>
 
       {/* Add Employee Dialog */}
       {canCreate && (

@@ -8804,6 +8804,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================
 
   // Employee Documents (Özlük Dosyası)
+  // Get all employee documents (latest 20, with branch restrictions for branch users)
+  app.get('/api/employee-documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId } = req.query;
+      
+      ensurePermission(user, 'hr', 'view', 'Personel belgelerini görüntüleme yetkiniz yok');
+      
+      // Get all employees
+      const allEmployees = await storage.getUsers();
+      let documentsToReturn: any[] = [];
+      
+      // Collect all documents from all employees
+      for (const employee of allEmployees) {
+        // Branch users can only see their own branch (ignore query param)
+        if (!isHQRole(user.role as any) && employee.branchId !== user.branchId) {
+          continue;
+        }
+        
+        // HQ users: respect branchId query param if provided
+        if (isHQRole(user.role as any) && branchId) {
+          const targetBranchId = parseInt(branchId as string);
+          if (employee.branchId !== targetBranchId) {
+            continue;
+          }
+        }
+        
+        const docs = await storage.getEmployeeDocuments(employee.id);
+        // Attach user info to each document
+        const docsWithUser = docs.map(doc => ({
+          ...doc,
+          user: {
+            id: employee.id,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+          },
+        }));
+        documentsToReturn.push(...docsWithUser);
+      }
+      
+      // Sort by upload date (newest first) and take latest 20
+      documentsToReturn.sort((a, b) => {
+        const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+        const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+        return dateB - dateA;
+      });
+      
+      const latest20 = documentsToReturn.slice(0, 20);
+      
+      res.json(latest20);
+    } catch (error: any) {
+      console.error("Error fetching all employee documents:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Belgeler yüklenirken hata oluştu" });
+    }
+  });
+
   app.get('/api/employee-documents/:userId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -9119,6 +9178,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Employee Onboarding
+  // Get all onboarding records (with optional branch filter via query param)
+  app.get('/api/employee-onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId } = req.query;
+      
+      ensurePermission(user, 'hr', 'view', 'Onboarding kayıtlarını görüntüleme yetkiniz yok');
+      
+      // Get all employees first
+      const allEmployees = await storage.getUsers();
+      let onboardingRecords: any[] = [];
+      
+      // Branch users can only see their own branch (ignore query param)
+      if (!isHQRole(user.role as any) && user.branchId) {
+        onboardingRecords = await storage.getOnboardingsByBranch(user.branchId);
+      } else if (isHQRole(user.role as any)) {
+        // HQ users: respect branchId query param or get all
+        if (branchId) {
+          const targetBranchId = parseInt(branchId as string);
+          onboardingRecords = await storage.getOnboardingsByBranch(targetBranchId);
+        } else {
+          // Get all - fetch from all branches
+          const branches = await storage.getBranches();
+          for (const branch of branches) {
+            const branchOnboardings = await storage.getOnboardingsByBranch(branch.id);
+            onboardingRecords.push(...branchOnboardings);
+          }
+        }
+      }
+      
+      // Attach user info to each record
+      const recordsWithUsers = onboardingRecords.map(record => {
+        const employee = allEmployees.find(e => e.id === record.userId);
+        return {
+          ...record,
+          user: employee ? {
+            id: employee.id,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            email: employee.email,
+          } : undefined,
+        };
+      });
+      
+      res.json(recordsWithUsers);
+    } catch (error: any) {
+      console.error("Error fetching all onboarding records:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Onboarding kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
   app.get('/api/employee-onboarding/:userId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -9142,30 +9255,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Onboarding kaydı yüklenirken hata oluştu" });
-    }
-  });
-
-  app.get('/api/employee-onboarding/branch/:branchId', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const branchId = parseInt(req.params.branchId);
-      const { status } = req.query;
-      
-      ensurePermission(user, 'hr', 'view', 'Onboarding kayıtlarını görüntüleme yetkiniz yok');
-      
-      // Branch users can only see their own branch
-      if (!isHQRole(user.role as any) && branchId !== user.branchId) {
-        return res.status(403).json({ message: "Sadece kendi şubenizi görüntüleyebilirsiniz" });
-      }
-      
-      const onboardings = await storage.getOnboardingsByBranch(branchId, status as string | undefined);
-      res.json(onboardings);
-    } catch (error: any) {
-      console.error("Error fetching onboardings by branch:", error);
-      if (error instanceof AuthorizationError) {
-        return res.status(403).json({ message: error.message });
-      }
-      res.status(500).json({ message: "Onboarding kayıtları yüklenirken hata oluştu" });
     }
   });
 
