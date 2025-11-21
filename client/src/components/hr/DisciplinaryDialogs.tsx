@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,8 +13,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -21,7 +31,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { insertDisciplinaryReportSchema } from "@shared/schema";
 import { Plus, MessageSquare, CheckCircle } from "lucide-react";
 
 interface CreateDisciplinaryDialogProps {
@@ -29,45 +40,44 @@ interface CreateDisciplinaryDialogProps {
   branchId: number;
 }
 
+const createDisciplinarySchema = insertDisciplinaryReportSchema.extend({
+  reportType: z.enum(["verbal_warning", "written_warning", "suspension", "termination", "other"]),
+  severity: z.enum(["low", "medium", "high", "critical"]),
+  subject: z.string().min(1, "Konu gereklidir"),
+  description: z.string().min(1, "Açıklama gereklidir"),
+  incidentDate: z.string().min(1, "Olay tarihi gereklidir"),
+});
+
+type CreateDisciplinaryFormData = z.infer<typeof createDisciplinarySchema>;
+
 export function CreateDisciplinaryDialog({ userId, branchId }: CreateDisciplinaryDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    reportType: "",
-    severity: "low",
-    subject: "",
-    description: "",
-    incidentDate: "",
-    incidentTime: "",
-    location: "",
+
+  const form = useForm<CreateDisciplinaryFormData>({
+    resolver: zodResolver(createDisciplinarySchema),
+    defaultValues: {
+      userId,
+      branchId,
+      reportType: "verbal_warning",
+      severity: "low",
+      subject: "",
+      description: "",
+      incidentDate: "",
+      incidentTime: "",
+      location: "",
+      status: "pending",
+    },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch("/api/disciplinary-reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Disiplin kaydı oluşturulamadı");
-      }
-      return response.json();
+    mutationFn: async (data: CreateDisciplinaryFormData) => {
+      return apiRequest("POST", "/api/disciplinary-reports", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports", userId] });
       setOpen(false);
-      setFormData({
-        reportType: "",
-        severity: "low",
-        subject: "",
-        description: "",
-        incidentDate: "",
-        incidentTime: "",
-        location: "",
-      });
+      form.reset();
       toast({
         title: "Disiplin kaydı oluşturuldu",
         description: "Kayıt başarıyla eklendi",
@@ -82,21 +92,8 @@ export function CreateDisciplinaryDialog({ userId, branchId }: CreateDisciplinar
     },
   });
 
-  const handleSubmit = () => {
-    if (!formData.reportType || !formData.subject || !formData.description || !formData.incidentDate) {
-      toast({
-        title: "Eksik bilgi",
-        description: "Lütfen tüm gerekli alanları doldurun",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    createMutation.mutate({
-      userId,
-      branchId,
-      ...formData,
-    });
+  const onSubmit = (data: CreateDisciplinaryFormData) => {
+    createMutation.mutate(data);
   };
 
   return (
@@ -114,99 +111,134 @@ export function CreateDisciplinaryDialog({ userId, branchId }: CreateDisciplinar
             Personel için disiplin kaydı oluşturun
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="reportType">Kayıt Türü *</Label>
-              <Select value={formData.reportType} onValueChange={(value) => setFormData({ ...formData, reportType: value })}>
-                <SelectTrigger id="reportType" data-testid="select-report-type">
-                  <SelectValue placeholder="Seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="warning">Uyarı</SelectItem>
-                  <SelectItem value="investigation">Soruşturma</SelectItem>
-                  <SelectItem value="defense">Savunma</SelectItem>
-                  <SelectItem value="meeting_minutes">Toplantı Tutanağı</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="severity">Önem Derecesi *</Label>
-              <Select value={formData.severity} onValueChange={(value) => setFormData({ ...formData, severity: value })}>
-                <SelectTrigger id="severity" data-testid="select-severity">
-                  <SelectValue placeholder="Seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Düşük</SelectItem>
-                  <SelectItem value="medium">Orta</SelectItem>
-                  <SelectItem value="high">Yüksek</SelectItem>
-                  <SelectItem value="critical">Kritik</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="subject">Konu *</Label>
-            <Input
-              id="subject"
-              value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-              placeholder="Örn: Geç kalma"
-              data-testid="input-subject"
-            />
-          </div>
-          <div>
-            <Label htmlFor="description">Açıklama *</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Detaylı açıklama yazın"
-              rows={4}
-              data-testid="textarea-description"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="incidentDate">Olay Tarihi *</Label>
-              <Input
-                id="incidentDate"
-                type="date"
-                value={formData.incidentDate}
-                onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
-                data-testid="input-incident-date"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="reportType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kayıt Türü *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-report-type">
+                          <SelectValue placeholder="Seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="verbal_warning">Sözlü Uyarı</SelectItem>
+                        <SelectItem value="written_warning">Yazılı Uyarı</SelectItem>
+                        <SelectItem value="suspension">Uzaklaştırma</SelectItem>
+                        <SelectItem value="termination">İş Akdinin Feshi</SelectItem>
+                        <SelectItem value="other">Diğer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="severity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Önem Derecesi *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-severity">
+                          <SelectValue placeholder="Seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="low">Düşük</SelectItem>
+                        <SelectItem value="medium">Orta</SelectItem>
+                        <SelectItem value="high">Yüksek</SelectItem>
+                        <SelectItem value="critical">Kritik</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-            <div>
-              <Label htmlFor="incidentTime">Olay Saati</Label>
-              <Input
-                id="incidentTime"
-                type="time"
-                value={formData.incidentTime}
-                onChange={(e) => setFormData({ ...formData, incidentTime: e.target.value })}
-                data-testid="input-incident-time"
+            <FormField
+              control={form.control}
+              name="subject"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Konu *</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Örn: Geç kalma" data-testid="input-subject" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Açıklama *</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="Detaylı açıklama yazın" rows={4} data-testid="textarea-description" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="incidentDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Olay Tarihi *</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" data-testid="input-incident-date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="incidentTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Olay Saati</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ""} type="time" data-testid="input-incident-time" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-          </div>
-          <div>
-            <Label htmlFor="location">Konum</Label>
-            <Input
-              id="location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="Örn: Şube ana kasa"
-              data-testid="input-location"
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Konum</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value ?? ""} placeholder="Örn: Şube ana kasa" data-testid="input-location" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel">
-            İptal
-          </Button>
-          <Button onClick={handleSubmit} disabled={createMutation.isPending} data-testid="button-submit">
-            Oluştur
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel">
+                İptal
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
+                Oluştur
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
@@ -217,29 +249,31 @@ interface AddResponseDialogProps {
   userId: string;
 }
 
+const addResponseSchema = z.object({
+  employeeResponse: z.string().min(1, "Yanıt metni gereklidir"),
+});
+
+type AddResponseFormData = z.infer<typeof addResponseSchema>;
+
 export function AddResponseDialog({ reportId, userId }: AddResponseDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const [response, setResponse] = useState("");
+
+  const form = useForm<AddResponseFormData>({
+    resolver: zodResolver(addResponseSchema),
+    defaultValues: {
+      employeeResponse: "",
+    },
+  });
 
   const addResponseMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch(`/api/disciplinary-reports/${reportId}/response`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Yanıt eklenemedi");
-      }
-      return res.json();
+    mutationFn: async (data: AddResponseFormData) => {
+      return apiRequest("POST", `/api/disciplinary-reports/${reportId}/response`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports", userId] });
       setOpen(false);
-      setResponse("");
+      form.reset();
       toast({
         title: "Yanıt eklendi",
         description: "Personel yanıtı başarıyla kaydedildi",
@@ -254,17 +288,8 @@ export function AddResponseDialog({ reportId, userId }: AddResponseDialogProps) 
     },
   });
 
-  const handleSubmit = () => {
-    if (!response.trim()) {
-      toast({
-        title: "Eksik bilgi",
-        description: "Lütfen yanıt metnini girin",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    addResponseMutation.mutate({ employeeResponse: response });
+  const onSubmit = (data: AddResponseFormData) => {
+    addResponseMutation.mutate(data);
   };
 
   return (
@@ -282,27 +307,31 @@ export function AddResponseDialog({ reportId, userId }: AddResponseDialogProps) 
             Personelin bu disiplin kaydı hakkındaki yazılı savunmasını ekleyin
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div>
-            <Label htmlFor="response">Yanıt Metni *</Label>
-            <Textarea
-              id="response"
-              value={response}
-              onChange={(e) => setResponse(e.target.value)}
-              placeholder="Personelin yazılı savunmasını girin"
-              rows={6}
-              data-testid="textarea-response"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="employeeResponse"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Yanıt Metni *</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="Personelin yazılı savunmasını girin" rows={6} data-testid="textarea-response" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel">
-            İptal
-          </Button>
-          <Button onClick={handleSubmit} disabled={addResponseMutation.isPending} data-testid="button-submit">
-            Kaydet
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel">
+                İptal
+              </Button>
+              <Button type="submit" disabled={addResponseMutation.isPending} data-testid="button-submit">
+                Kaydet
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
@@ -313,39 +342,37 @@ interface ResolveDialogProps {
   userId: string;
 }
 
+const resolveSchema = z.object({
+  resolution: z.string().min(1, "Çözüm gereklidir"),
+  actionTaken: z.enum(["verbal_warning", "written_warning", "suspension", "termination", "cleared"]),
+  followUpRequired: z.boolean(),
+  followUpDate: z.string().optional(),
+});
+
+type ResolveFormData = z.infer<typeof resolveSchema>;
+
 export function ResolveDialog({ reportId, userId }: ResolveDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    resolution: "",
-    actionTaken: "",
-    followUpRequired: false,
-    followUpDate: "",
+
+  const form = useForm<ResolveFormData>({
+    resolver: zodResolver(resolveSchema),
+    defaultValues: {
+      resolution: "",
+      actionTaken: "verbal_warning",
+      followUpRequired: false,
+      followUpDate: "",
+    },
   });
 
   const resolveMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch(`/api/disciplinary-reports/${reportId}/resolve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Kayıt çözümlenemedi");
-      }
-      return res.json();
+    mutationFn: async (data: ResolveFormData) => {
+      return apiRequest("POST", `/api/disciplinary-reports/${reportId}/resolve`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/disciplinary-reports", userId] });
       setOpen(false);
-      setFormData({
-        resolution: "",
-        actionTaken: "",
-        followUpRequired: false,
-        followUpDate: "",
-      });
+      form.reset();
       toast({
         title: "Kayıt çözümlendi",
         description: "Disiplin kaydı başarıyla çözümlendi",
@@ -360,17 +387,8 @@ export function ResolveDialog({ reportId, userId }: ResolveDialogProps) {
     },
   });
 
-  const handleSubmit = () => {
-    if (!formData.resolution.trim() || !formData.actionTaken) {
-      toast({
-        title: "Eksik bilgi",
-        description: "Lütfen çözüm ve alınan aksiyonu girin",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    resolveMutation.mutate(formData);
+  const onSubmit = (data: ResolveFormData) => {
+    resolveMutation.mutate(data);
   };
 
   return (
@@ -388,64 +406,82 @@ export function ResolveDialog({ reportId, userId }: ResolveDialogProps) {
             Bu disiplin kaydını sonuçlandırın ve alınan aksiyonu belirtin
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div>
-            <Label htmlFor="resolution">Çözüm *</Label>
-            <Textarea
-              id="resolution"
-              value={formData.resolution}
-              onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
-              placeholder="Kaydın nasıl çözümlendiğini açıklayın"
-              rows={4}
-              data-testid="textarea-resolution"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="resolution"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Çözüm *</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="Kaydın nasıl çözümlendiğini açıklayın" rows={4} data-testid="textarea-resolution" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div>
-            <Label htmlFor="actionTaken">Alınan Aksiyon *</Label>
-            <Select value={formData.actionTaken} onValueChange={(value) => setFormData({ ...formData, actionTaken: value })}>
-              <SelectTrigger id="actionTaken" data-testid="select-action-taken">
-                <SelectValue placeholder="Seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="verbal_warning">Sözlü Uyarı</SelectItem>
-                <SelectItem value="written_warning">Yazılı Uyarı</SelectItem>
-                <SelectItem value="suspension">Uzaklaştırma</SelectItem>
-                <SelectItem value="termination">İş Akdi Feshi</SelectItem>
-                <SelectItem value="cleared">Temize Çıkarıldı</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="followUpRequired"
-              checked={formData.followUpRequired}
-              onChange={(e) => setFormData({ ...formData, followUpRequired: e.target.checked })}
-              data-testid="checkbox-follow-up"
+            <FormField
+              control={form.control}
+              name="actionTaken"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Alınan Aksiyon *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-action-taken">
+                        <SelectValue placeholder="Seçin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="verbal_warning">Sözlü Uyarı</SelectItem>
+                      <SelectItem value="written_warning">Yazılı Uyarı</SelectItem>
+                      <SelectItem value="suspension">Uzaklaştırma</SelectItem>
+                      <SelectItem value="termination">İş Akdi Feshi</SelectItem>
+                      <SelectItem value="cleared">Temize Çıkarıldı</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            <Label htmlFor="followUpRequired">Takip gerekli mi?</Label>
-          </div>
-          {formData.followUpRequired && (
-            <div>
-              <Label htmlFor="followUpDate">Takip Tarihi</Label>
-              <Input
-                id="followUpDate"
-                type="date"
-                value={formData.followUpDate}
-                onChange={(e) => setFormData({ ...formData, followUpDate: e.target.value })}
-                data-testid="input-follow-up-date"
+            <FormField
+              control={form.control}
+              name="followUpRequired"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <input type="checkbox" checked={field.value} onChange={field.onChange} data-testid="checkbox-follow-up" className="mt-1" />
+                  </FormControl>
+                  <FormLabel>Takip gerekli mi?</FormLabel>
+                </FormItem>
+              )}
+            />
+            {form.watch("followUpRequired") && (
+              <FormField
+                control={form.control}
+                name="followUpDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Takip Tarihi</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" data-testid="input-follow-up-date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel">
-            İptal
-          </Button>
-          <Button onClick={handleSubmit} disabled={resolveMutation.isPending} data-testid="button-submit">
-            Çözümle
-          </Button>
-        </DialogFooter>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel">
+                İptal
+              </Button>
+              <Button type="submit" disabled={resolveMutation.isPending} data-testid="button-submit">
+                Çözümle
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
