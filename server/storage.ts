@@ -239,7 +239,7 @@ export interface IStorage {
   // Employee Onboarding operations
   getEmployeeOnboarding(userId: string): Promise<EmployeeOnboarding | undefined>;
   getOnboardingsByBranch(branchId: number, status?: string): Promise<EmployeeOnboarding[]>;
-  getOrCreateEmployeeOnboarding(userId: string, branchId: number): Promise<EmployeeOnboarding>;
+  getOrCreateEmployeeOnboarding(userId: string, branchId: number, assignedById: string): Promise<EmployeeOnboarding>;
   createEmployeeOnboarding(onboarding: InsertEmployeeOnboarding): Promise<EmployeeOnboarding>;
   updateEmployeeOnboarding(id: number, updates: Partial<InsertEmployeeOnboarding>): Promise<EmployeeOnboarding | undefined>;
   updateOnboardingProgress(id: number): Promise<EmployeeOnboarding | undefined>;
@@ -1591,18 +1591,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(employeeOnboarding.startDate));
   }
 
-  async getOrCreateEmployeeOnboarding(userId: string, branchId: number): Promise<EmployeeOnboarding> {
+  async getOrCreateEmployeeOnboarding(userId: string, branchId: number, assignedById: string): Promise<EmployeeOnboarding> {
     // Try to get existing onboarding record
     const existing = await this.getEmployeeOnboarding(userId);
     if (existing) {
       return existing;
     }
 
-    // Create new onboarding record with default values
+    // Create new onboarding record with all required defaults
     const today = new Date().toISOString().split('T')[0];
     const [newOnboarding] = await db.insert(employeeOnboarding).values({
       userId,
       branchId,
+      assignedById,
       startDate: today,
       status: 'in_progress',
       completionPercentage: 0,

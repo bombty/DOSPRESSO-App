@@ -121,14 +121,12 @@ export default function PersonelDetay() {
 
   const createOnboardingMutation = useMutation({
     mutationFn: async () => {
-      if (!employee?.branchId) throw new Error("Branch ID bulunamadı");
-      const today = new Date().toISOString().split('T')[0];
+      if (!employee?.branchId) {
+        throw new Error("Personel şube bilgisi eksik. Lütfen personel kaydını kontrol edin.");
+      }
       return apiRequest("POST", "/api/employee-onboarding", {
         userId: id!,
         branchId: employee.branchId,
-        startDate: today,
-        status: "in_progress",
-        completionPercentage: 0,
       });
     },
     onSuccess: () => {
@@ -141,7 +139,7 @@ export default function PersonelDetay() {
     onError: (error: any) => {
       toast({
         title: "Hata",
-        description: error.message || "Onboarding başlatılamadı",
+        description: error.message || "Onboarding başlatılamadı. Lütfen tekrar deneyin.",
         variant: "destructive",
       });
     },

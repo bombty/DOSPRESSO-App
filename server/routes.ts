@@ -9171,17 +9171,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Onboarding kaydı oluşturma yetkiniz yok');
       
-      const validatedData = insertEmployeeOnboardingSchema.parse({
-        ...req.body,
-        assignedById: user.id,
-      });
+      // Validate required fields
+      const validatedData = z.object({
+        userId: z.string().min(1, "userId gereklidir"),
+        branchId: z.number().int().positive("Geçerli bir branchId gereklidir"),
+      }).parse(req.body);
+      
+      const { userId, branchId } = validatedData;
       
       // Verify branch access
-      if (!isHQRole(user.role as any) && validatedData.branchId !== user.branchId) {
+      if (!isHQRole(user.role as any) && branchId !== user.branchId) {
         return res.status(403).json({ message: "Sadece kendi şubeniz için kayıt oluşturabilirsiniz" });
       }
       
-      const onboarding = await storage.createEmployeeOnboarding(validatedData);
+      // Use getOrCreate for idempotent operation - it handles all defaults internally
+      const onboarding = await storage.getOrCreateEmployeeOnboarding(userId, branchId, user.id);
       res.json(onboarding);
     } catch (error: any) {
       console.error("Error creating employee onboarding:", error);
