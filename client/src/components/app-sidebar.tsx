@@ -190,6 +190,14 @@ const transformDynamicMenu = (
   const sectionItemsMap = new Map<number, DBMenuItem[]>();
   items.forEach(item => {
     if (!item.isActive) return;
+    
+    // Explicit scope filtering (before visibility rules)
+    // Admin can see all scopes
+    if (user.role !== 'admin') {
+      if (item.scope === 'hq' && !isHQRole(user.role as any)) return;
+      if (item.scope === 'branch' && !isBranchRole(user.role as any)) return;
+    }
+    
     if (item.moduleKey && !canAccessModule(user.role as any, item.moduleKey as PermissionModule)) return;
     
     if (!checkVisibilityRules(item.id, rules, user)) return;
@@ -201,6 +209,12 @@ const transformDynamicMenu = (
 
   const groups: MenuGroup[] = sections
     .filter(section => {
+      // Explicit section scope filtering (before checking items)
+      if (user.role !== 'admin') {
+        if (section.scope === 'hq' && !isHQRole(user.role as any)) return false;
+        if (section.scope === 'branch' && !isBranchRole(user.role as any)) return false;
+      }
+      
       const sectionItems = sectionItemsMap.get(section.id) || [];
       return sectionItems.length > 0;
     })
