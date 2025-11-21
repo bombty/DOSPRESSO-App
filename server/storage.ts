@@ -649,30 +649,30 @@ export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return user as User | undefined;
   }
 
   async getUserById(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return user as User | undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    return user as User | undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    return user as User | undefined;
   }
 
   async getUsersByRole(role: string): Promise<User[]> {
-    return db.select().from(users).where(eq(users.role, role));
+    return db.select().from(users).where(eq(users.role, role)) as Promise<User[]>;
   }
 
   async getUsersByBranchAndRole(branchId: number, role: string): Promise<User[]> {
-    return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.role, role)));
+    return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.role, role))) as Promise<User[]>;
   }
 
   async updateUserPassword(id: string, hashedPassword: string): Promise<void> {
@@ -713,7 +713,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(users)
       .where(and(eq(users.id, employeeId), eq(users.branchId, allowedBranchId)));
-    return user;
+    return user as User | undefined;
   }
 
   async createUser(insertUser: UpsertUser): Promise<User> {
@@ -721,7 +721,7 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(insertUser)
       .returning();
-    return result[0];
+    return result[0] as User;
   }
 
   async upsertUser(insertUser: UpsertUser): Promise<User> {
@@ -739,7 +739,7 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
-    return result[0];
+    return result[0] as User;
   }
 
   async updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined> {
@@ -748,7 +748,7 @@ export class DatabaseStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return user;
+    return user as User | undefined;
   }
 
   async deleteUser(id: string): Promise<void> {
@@ -757,9 +757,9 @@ export class DatabaseStorage implements IStorage {
 
   async getAllEmployees(branchId?: number): Promise<User[]> {
     if (branchId !== undefined) {
-      return db.select().from(users).where(eq(users.branchId, branchId));
+      return db.select().from(users).where(eq(users.branchId, branchId)) as Promise<User[]>;
     }
-    return db.select().from(users);
+    return db.select().from(users) as Promise<User[]>;
   }
 
   async getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string; accountStatus?: string }): Promise<User[]> {
@@ -782,9 +782,9 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (conditions.length > 0) {
-      return db.select().from(users).where(and(...conditions)).orderBy(users.firstName, users.lastName);
+      return db.select().from(users).where(and(...conditions)).orderBy(users.firstName, users.lastName) as Promise<User[]>;
     }
-    return db.select().from(users).orderBy(users.firstName, users.lastName);
+    return db.select().from(users).orderBy(users.firstName, users.lastName) as Promise<User[]>;
   }
 
   async bulkImportUsers(insertUsers: UpsertUser[]): Promise<User[]> {
@@ -807,7 +807,7 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     
-    return imported;
+    return imported as User[];
   }
 
   // Branch operations
@@ -2504,7 +2504,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUsersByBranch(branchId: number): Promise<User[]> {
-    return db.select().from(users).where(eq(users.branchId, branchId));
+    return db.select().from(users).where(eq(users.branchId, branchId)) as Promise<User[]>;
   }
 
   async getFaultsByBranch(branchId: number): Promise<EquipmentFault[]> {
@@ -4595,7 +4595,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(users)
       .where(eq(users.branchId, branchId))
-      .orderBy(users.firstName);
+      .orderBy(users.firstName) as User[];
 
     // Get equipment for this branch
     const equipmentList = await db
@@ -4725,7 +4725,7 @@ export class DatabaseStorage implements IStorage {
           eq(shiftAttendance.userId, userId)
         ))
         .where(and(
-          eq(shifts.userId, userId),
+          eq(shifts.assignedToId, userId),
           sql`${shifts.shiftDate} >= ${thirtyDaysAgo.toISOString().split('T')[0]}`,
           sql`${shifts.shiftDate} <= ${new Date().toISOString().split('T')[0]}`,
           sql`${shiftAttendance.id} IS NULL` // No attendance record
@@ -4762,17 +4762,17 @@ export class DatabaseStorage implements IStorage {
 
     return {
       id: user.id,
-      username: user.username,
-      fullName: user.fullName,
-      email: user.email,
+      username: user.username || '',
+      fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      email: user.email || '',
       phoneNumber: user.phoneNumber,
       role: user.role,
       branchId: user.branchId,
       branchName,
       hireDate: user.hireDate,
       probationEndDate: user.probationEndDate,
-      emergencyContact: user.emergencyContact,
-      emergencyPhone: user.emergencyPhone,
+      emergencyContact: user.emergencyContactName,
+      emergencyPhone: user.emergencyContactPhone,
       isActive: user.isActive,
       accountStatus: user.accountStatus,
       performanceScore,

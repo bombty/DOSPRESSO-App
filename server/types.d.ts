@@ -15,4 +15,13 @@ declare global {
   }
 }
 
+// Replit object storage integration types
+declare module '@replit/object-storage' {
+  export class Client {
+    constructor();
+    uploadFromBytes(path: string, buffer: Buffer): Promise<{ ok: boolean; error?: any }>;
+    downloadAsBytes(path: string): Promise<{ ok: boolean; value?: Uint8Array; error?: any }>;
+  }
+}
+
 export {};

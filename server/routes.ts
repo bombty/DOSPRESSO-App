@@ -52,6 +52,7 @@ import {
   insertDisciplinaryReportSchema,
   insertEmployeeOnboardingSchema,
   insertEmployeeOnboardingTaskSchema,
+  insertMessageSchema,
   auditTemplates,
   auditTemplateItems,
   qualityAudits,
@@ -72,7 +73,8 @@ import {
   isBranchRole,
   type UpdateUser,
   type UserRoleType,
-  type InsertAuditTemplateItem
+  type InsertAuditTemplateItem,
+  type ServiceRequestStatusType
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
@@ -80,6 +82,11 @@ import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArt
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+
+// Global type declarations for runtime state
+declare global {
+  var fileAccessTokens: Map<string, { path: string; userId: string; expiresAt: number }> | undefined;
+}
 
 // Update schema for page content - allows partial updates, immutable createdById
 const updatePageContentSchema = insertPageContentSchema.partial().omit({
