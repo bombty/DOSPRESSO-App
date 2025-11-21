@@ -2743,16 +2743,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateUser(employeeId, { hashedPassword });
 
       // Audit log: Record password reset event
-      // TODO: Store in dedicated audit_logs table for compliance and security tracking
-      const auditLog = {
-        timestamp: new Date().toISOString(),
+      await storage.createAuditLog({
         action: 'password_reset',
         targetUserId: employeeId,
         performedBy: user.id,
         performedByRole: role,
-        ipAddress: req.ip,
-      };
-      console.log('[AUDIT] Password reset:', JSON.stringify(auditLog));
+        ipAddress: req.ip || null,
+        details: {
+          timestamp: new Date().toISOString(),
+        },
+      });
 
       res.json({ message: "Şifre başarıyla sıfırlandı" });
     } catch (error) {

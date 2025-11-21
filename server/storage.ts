@@ -114,6 +114,8 @@ import type {
   InsertEmployeeOnboarding,
   EmployeeOnboardingTask,
   InsertEmployeeOnboardingTask,
+  AuditLog,
+  InsertAuditLog,
 } from "@shared/schema";
 import {
   users,
@@ -137,6 +139,7 @@ import {
   userTrainingProgress,
   userQuizAttempts,
   employeeWarnings,
+  auditLogs,
   messages,
   messageReads,
   threadParticipants,
@@ -4117,7 +4120,30 @@ export class DatabaseStorage implements IStorage {
     const earlyLeaveScore = Math.max(0, 100 - (totalEarlyLeaveMinutes * 2));
     const breakComplianceScore = Math.max(0, 100 - (totalBreakOverageMinutes * 1)); // -1 point per minute
     const shiftComplianceScore = avgComplianceScore;
-    const overtimeComplianceScore = 100; // TODO: Calculate based on overtime approval compliance
+    // Calculate overtime compliance score based on approved overtime requests
+    let overtimeComplianceScore = 100;
+    try {
+      const overtimeRecords = await db
+        .select()
+        .from(overtimeRequests)
+        .where(and(
+          eq(overtimeRequests.userId, userId),
+          sql`${overtimeRequests.requestDate} >= ${date} - interval '30 days'`,
+          sql`${overtimeRequests.requestDate} <= ${date}`
+        ));
+
+      if (overtimeRecords.length > 0) {
+        const approvedCount = overtimeRecords.filter(r => r.status === 'approved').length;
+        const rejectedCount = overtimeRecords.filter(r => r.status === 'rejected').length;
+        const pendingCount = overtimeRecords.filter(r => r.status === 'pending').length;
+
+        // Penalize: -10 points per rejected, -5 points per pending overtime request
+        overtimeComplianceScore = Math.max(0, 100 - (rejectedCount * 10) - (pendingCount * 5));
+      }
+    } catch (error) {
+      console.error('[Performance] Error calculating overtime compliance:', error);
+      overtimeComplianceScore = 100; // Fallback to 100
+    }
 
     // Weighted average (attendance 20%, lateness 25%, earlyLeave 15%, break 15%, shift 25%)
     const dailyTotalScore = Math.round(
@@ -4658,13 +4684,37 @@ export class DatabaseStorage implements IStorage {
     const completedShifts = attendanceRecords.filter(a => a.status === 'checked_out').length;
     const latenessCount = attendanceRecords.filter(a => a.latenessMinutes && a.latenessMinutes > 0).length;
     
-    // TODO: Implement absence counting by comparing scheduled shifts from `shifts` table
-    // with actual check-ins from `shiftAttendance` table
-    // Currently set to 0 as this requires complex join logic:
-    // 1. Get all shifts scheduled for user in last 30 days from `shifts` table
-    // 2. Left join with `shiftAttendance` where checkInTime is NULL
-    // 3. Count rows where user was scheduled but never checked in
-    const absenceCount = 0; // Placeholder - needs implementation
+    // Calculate absence count: scheduled shifts with no check-in
+    let absenceCount = 0;
+    try {
+      const scheduledShifts = await db
+        .select()
+        .from(shifts)
+        .where(and(
+          eq(shifts.userId, userId),
+          sql`${shifts.shiftDate} >= ${thirtyDaysAgo.toISOString().split('T')[0]}`,
+          sql`${shifts.shiftDate} <= ${new Date().toISOString().split('T')[0]}`
+        ));
+
+      // Count shifts where user didn't check in
+      for (const shift of scheduledShifts) {
+        const attendance = await db
+          .select()
+          .from(shiftAttendance)
+          .where(and(
+            eq(shiftAttendance.userId, userId),
+            eq(shiftAttendance.shiftId, shift.id)
+          ))
+          .limit(1);
+
+        if (attendance.length === 0) {
+          absenceCount++;
+        }
+      }
+    } catch (error) {
+      console.error('[Employee Profile] Error calculating absence count:', error);
+      absenceCount = 0; // Fallback
+    }
 
     // Calculate attendance rate
     const attendanceRate = totalShifts > 0 ? (completedShifts / totalShifts) * 100 : null;
@@ -4691,6 +4741,58 @@ export class DatabaseStorage implements IStorage {
       totalShifts,
       completedShifts,
     };
+  }
+
+  // ===============================================
+  // AUDIT LOGS - Security & Compliance
+  // ===============================================
+
+  async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {
+    const [auditLog] = await db.insert(auditLogs)
+      .values(data)
+      .returning();
+    return auditLog;
+  }
+
+  async getAuditLogs(filters?: {
+    action?: string;
+    targetUserId?: string;
+    performedBy?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }): Promise<AuditLog[]> {
+    let query = db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp));
+
+    if (filters) {
+      const conditions: any[] = [];
+      
+      if (filters.action) {
+        conditions.push(eq(auditLogs.action, filters.action));
+      }
+      if (filters.targetUserId) {
+        conditions.push(eq(auditLogs.targetUserId, filters.targetUserId));
+      }
+      if (filters.performedBy) {
+        conditions.push(eq(auditLogs.performedBy, filters.performedBy));
+      }
+      if (filters.startDate) {
+        conditions.push(sql`${auditLogs.timestamp} >= ${filters.startDate}`);
+      }
+      if (filters.endDate) {
+        conditions.push(sql`${auditLogs.timestamp} <= ${filters.endDate}`);
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+
+      if (filters.limit) {
+        query = query.limit(filters.limit) as any;
+      }
+    }
+
+    return query;
   }
 
   // ===============================================

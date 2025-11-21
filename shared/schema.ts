@@ -3207,3 +3207,32 @@ export const insertEmployeeOnboardingTaskSchema = createInsertSchema(employeeOnb
 
 export type InsertEmployeeOnboardingTask = z.infer<typeof insertEmployeeOnboardingTaskSchema>;
 export type EmployeeOnboardingTask = typeof employeeOnboardingTasks.$inferSelect;
+
+// ========================================
+// AUDIT LOGS - Security & Compliance Audit Trail
+// ========================================
+
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  action: varchar("action", { length: 100 }).notNull(), // password_reset, user_created, role_changed, etc.
+  targetUserId: varchar("target_user_id").references(() => users.id, { onDelete: "set null" }),
+  performedBy: varchar("performed_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  performedByRole: varchar("performed_by_role", { length: 50 }).notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }), // IPv4/IPv6
+  details: jsonb("details"), // Additional context
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("audit_logs_timestamp_idx").on(table.timestamp),
+  index("audit_logs_action_idx").on(table.action),
+  index("audit_logs_target_user_idx").on(table.targetUserId),
+  index("audit_logs_performed_by_idx").on(table.performedBy),
+]);
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
