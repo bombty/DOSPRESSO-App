@@ -1601,13 +1601,12 @@ export class DatabaseStorage implements IStorage {
     // Create new onboarding record with all required defaults
     const today = new Date().toISOString().split('T')[0];
     const [newOnboarding] = await db.insert(employeeOnboarding).values({
-      userId,
       branchId,
       assignedById,
       startDate: today,
       status: 'in_progress',
       completionPercentage: 0,
-    }).returning();
+    } as InsertEmployeeOnboarding).returning();
     return newOnboarding;
   }
 
@@ -1725,6 +1724,9 @@ export class DatabaseStorage implements IStorage {
         subject: messages.subject,
         body: messages.body,
         type: messages.type,
+        threadId: messages.threadId,
+        parentMessageId: messages.parentMessageId,
+        attachments: messages.attachments,
         createdAt: messages.createdAt,
         isReadByUser: sql<boolean>`${messageReads.id} IS NOT NULL`,
       })
@@ -1750,6 +1752,9 @@ export class DatabaseStorage implements IStorage {
       subject: msg.subject,
       body: msg.body,
       type: msg.type,
+      threadId: msg.threadId,
+      parentMessageId: msg.parentMessageId,
+      attachments: msg.attachments,
       createdAt: msg.createdAt,
       isRead: msg.isReadByUser || false,
     }));
@@ -1985,21 +1990,9 @@ export class DatabaseStorage implements IStorage {
 
   // Equipment Service Request operations
   async createServiceRequest(data: InsertEquipmentServiceRequest): Promise<EquipmentServiceRequest> {
-    // Initialize timeline with creation entry
-    const initialTimeline = [{
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      status: data.status || 'created',
-      actorId: data.createdById,
-      notes: 'Servis talebi oluşturuldu',
-    }];
-
     const [newRequest] = await db
       .insert(equipmentServiceRequests)
-      .values({
-        ...data,
-        timeline: initialTimeline,
-      })
+      .values(data)
       .returning();
     return newRequest;
   }
@@ -2451,7 +2444,7 @@ export class DatabaseStorage implements IStorage {
       shiftDate: date.toISOString().split('T')[0],
       startTime: openingHour || '08:00',
       endTime: closingHour || '22:00',
-      shiftType: shiftType || 'regular',
+      shiftType: (shiftType as "morning" | "evening" | "night") || 'morning',
       status: 'draft',
       assignedToId: null,
       notes: null,
@@ -3288,9 +3281,6 @@ export class DatabaseStorage implements IStorage {
         absent++;
       } else if (attendance.status === 'checked_in' || attendance.status === 'checked_out') {
         attended++;
-        if (attendance.status === 'late') {
-          late++;
-        }
       }
     }
 
@@ -3329,26 +3319,12 @@ export class DatabaseStorage implements IStorage {
     for (const shift of upcomingShifts) {
       if (!shift.assignedToId) continue;
       
-      // Check if we already sent a reminder for this shift
-      const existingReminder = await db.select()
-        .from(notifications)
-        .where(
-          and(
-            eq(notifications.userId, shift.assignedToId),
-            eq(notifications.type, 'shift_reminder'),
-            sql`${notifications.metadata}->>'shiftId' = ${shift.id.toString()}`
-          )
-        );
-      
-      if (existingReminder.length > 0) continue;
-      
       // Send reminder notification
       await this.createNotification({
         userId: shift.assignedToId,
         type: 'shift_reminder',
         title: 'Vardiya Hatırlatması',
         message: `Vardiyanz ${shift.startTime} - ${shift.endTime} saatleri arasında başlayacak.`,
-        metadata: { shiftId: shift.id },
       });
     }
   }
@@ -3384,7 +3360,6 @@ export class DatabaseStorage implements IStorage {
       type: 'shift_change',
       title,
       message,
-      metadata: { shiftId, changeType },
     });
   }
 
@@ -4574,7 +4549,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(equipment)
       .where(eq(equipment.branchId, branchId))
-      .orderBy(equipment.equipmentName);
+      .orderBy(equipment.equipmentType);
 
     // Get recent tasks (last 10)
     const recentTasks = await db
@@ -5111,7 +5086,7 @@ export class DatabaseStorage implements IStorage {
         notes,
         actionItems,
         followUpRequired: followUpRequired ?? false,
-        followUpDate: followUpDate ? new Date(followUpDate) : null,
+        followUpDate: followUpDate ? (typeof followUpDate === 'string' ? followUpDate : followUpDate.toISOString().split('T')[0]) : null,
         completedAt: new Date(),
         updatedAt: new Date(),
       })
