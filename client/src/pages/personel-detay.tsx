@@ -52,8 +52,10 @@ import {
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { User, EmployeeDocument } from "@shared/schema";
+import type { User, EmployeeDocument, DisciplinaryReport, EmployeeOnboarding, EmployeeOnboardingTask } from "@shared/schema";
 import { isHQRole } from "@shared/schema";
+import { CreateDisciplinaryDialog, AddResponseDialog, ResolveDialog } from "@/components/hr/DisciplinaryDialogs";
+import { OnboardingTaskDialog } from "@/components/hr/OnboardingTaskDialog";
 
 export default function PersonelDetay() {
   const { id } = useParams();
@@ -86,12 +88,50 @@ export default function PersonelDetay() {
     enabled: !!id,
   });
 
+  const { data: disciplinaryReports, isLoading: disciplinaryLoading } = useQuery<DisciplinaryReport[]>({
+    queryKey: ["/api/disciplinary-reports", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/disciplinary-reports?userId=${id}`);
+      if (!response.ok) throw new Error("Failed to fetch disciplinary reports");
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  const { data: onboarding, isLoading: onboardingLoading } = useQuery<EmployeeOnboarding | null>({
+    queryKey: ["/api/employee-onboarding", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/employee-onboarding/${id}`);
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error("Failed to fetch onboarding");
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  const { data: onboardingTasks, isLoading: onboardingTasksLoading } = useQuery<EmployeeOnboardingTask[]>({
+    queryKey: ["/api/onboarding-tasks", onboarding?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/onboarding-tasks/${onboarding!.id}`);
+      if (!response.ok) throw new Error("Failed to fetch onboarding tasks");
+      return response.json();
+    },
+    enabled: !!onboarding?.id,
+  });
+
   const uploadDocumentMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/employee-documents", {
+      const response = await fetch("/api/employee-documents", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Belge eklenirken hata oluştu");
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employee-documents", id] });
@@ -116,9 +156,15 @@ export default function PersonelDetay() {
 
   const verifyDocumentMutation = useMutation({
     mutationFn: async (documentId: number) => {
-      return apiRequest(`/api/employee-documents/${documentId}/verify`, {
+      const response = await fetch(`/api/employee-documents/${documentId}/verify`, {
         method: "POST",
+        credentials: "include",
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Belge onaylanırken hata oluştu");
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employee-documents", id] });
@@ -138,9 +184,15 @@ export default function PersonelDetay() {
 
   const deleteDocumentMutation = useMutation({
     mutationFn: async (documentId: number) => {
-      return apiRequest(`/api/employee-documents/${documentId}`, {
+      const response = await fetch(`/api/employee-documents/${documentId}`, {
         method: "DELETE",
+        credentials: "include",
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Belge silinirken hata oluştu");
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employee-documents", id] });
@@ -153,6 +205,64 @@ export default function PersonelDetay() {
       toast({
         title: "Hata",
         description: error.message || "Belge silinirken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const completeOnboardingTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const response = await fetch(`/api/onboarding-tasks/${taskId}/complete`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Görev tamamlanırken hata oluştu");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", onboarding?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding", id] });
+      toast({
+        title: "Görev tamamlandı",
+        description: "Görev başarıyla tamamlandı",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Görev tamamlanırken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const verifyOnboardingTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const response = await fetch(`/api/onboarding-tasks/${taskId}/verify`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Görev doğrulanırken hata oluştu");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding-tasks", onboarding?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding", id] });
+      toast({
+        title: "Görev doğrulandı",
+        description: "Görev başarıyla doğrulandı",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Görev doğrulanırken hata oluştu",
         variant: "destructive",
       });
     },
@@ -177,7 +287,7 @@ export default function PersonelDetay() {
     });
   };
 
-  const isLoading = employeeLoading || documentsLoading;
+  const isLoading = employeeLoading;
 
   if (isLoading) {
     return (
@@ -457,14 +567,14 @@ export default function PersonelDetay() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {doc.documentUrl && (
+                              {doc.fileUrl && (
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   asChild
                                   data-testid={`button-download-document-${doc.id}`}
                                 >
-                                  <a href={doc.documentUrl} target="_blank" rel="noopener noreferrer">
+                                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
                                     <Download className="h-4 w-4" />
                                   </a>
                                 </Button>
@@ -509,34 +619,212 @@ export default function PersonelDetay() {
 
         <TabsContent value="disciplinary">
           <Card>
-            <CardHeader>
-              <CardTitle>Disiplin İşlemleri</CardTitle>
-              <CardDescription>
-                Personelin disiplin kayıtları, uyarılar ve tutanaklar
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div>
+                <CardTitle>Disiplin İşlemleri</CardTitle>
+                <CardDescription>
+                  Personelin disiplin kayıtları, uyarılar ve tutanaklar
+                </CardDescription>
+              </div>
+              {employee && <CreateDisciplinaryDialog userId={id!} branchId={employee.branchId!} />}
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Disiplin modülü yakında eklenecek</p>
-              </div>
+              {disciplinaryLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : disciplinaryReports && disciplinaryReports.length > 0 ? (
+                <div className="space-y-4">
+                  {disciplinaryReports.map((report) => (
+                    <Card key={report.id} className="border-l-4" data-testid={`disciplinary-report-${report.id}`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CardTitle className="text-base">{report.subject}</CardTitle>
+                              <Badge variant={report.severity === 'critical' ? 'destructive' : report.severity === 'high' ? 'destructive' : 'outline'}>
+                                {report.severity === 'critical' ? 'Kritik' : report.severity === 'high' ? 'Yüksek' : report.severity === 'medium' ? 'Orta' : 'Düşük'}
+                              </Badge>
+                              <Badge variant={report.status === 'resolved' ? 'outline' : 'default'}>
+                                {report.status === 'open' ? 'Açık' : report.status === 'under_review' ? 'İnceleniyor' : report.status === 'resolved' ? 'Çözüldü' : 'Kapatıldı'}
+                              </Badge>
+                            </div>
+                            <CardDescription>
+                              {report.reportType === 'warning' ? 'Uyarı' : report.reportType === 'investigation' ? 'Soruşturma' : report.reportType === 'defense' ? 'Savunma' : 'Toplantı Tutanağı'} • {new Date(report.incidentDate).toLocaleDateString('tr-TR')}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3 text-sm">
+                          <div>
+                            <p className="font-medium mb-1">Açıklama:</p>
+                            <p className="text-muted-foreground">{report.description}</p>
+                          </div>
+                          {report.employeeResponse && (
+                            <div>
+                              <p className="font-medium mb-1">Personel Yanıtı:</p>
+                              <p className="text-muted-foreground">{report.employeeResponse}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(report.employeeResponseDate!).toLocaleDateString('tr-TR')}
+                              </p>
+                            </div>
+                          )}
+                          {report.resolution && (
+                            <div>
+                              <p className="font-medium mb-1">Çözüm:</p>
+                              <p className="text-muted-foreground">{report.resolution}</p>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 mt-4 pt-3 border-t">
+                            {!report.employeeResponse && (
+                              <AddResponseDialog reportId={report.id} userId={id!} />
+                            )}
+                            {report.status !== 'resolved' && report.status !== 'closed' && (
+                              <ResolveDialog reportId={report.id} userId={id!} />
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Henüz disiplin kaydı bulunmuyor</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="onboarding">
           <Card>
-            <CardHeader>
-              <CardTitle>Personel Onboarding</CardTitle>
-              <CardDescription>
-                Yeni personel işe alım ve eğitim süreci takibi
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div>
+                <CardTitle>Personel Onboarding</CardTitle>
+                <CardDescription>
+                  Yeni personel işe alım ve eğitim süreci takibi
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Onboarding modülü yakında eklenecek</p>
-              </div>
+              {onboardingLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : onboarding ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4 p-4 rounded-lg border">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Durum</p>
+                      <Badge className="mt-1" variant={onboarding.status === 'completed' ? 'outline' : 'default'}>
+                        {onboarding.status === 'not_started' ? 'Başlamadı' : onboarding.status === 'in_progress' ? 'Devam Ediyor' : 'Tamamlandı'}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Tamamlanma</p>
+                      <p className="text-2xl font-bold mt-1">{onboarding.completionPercentage}%</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Başlangıç Tarihi</p>
+                      <p className="mt-1">{new Date(onboarding.startDate).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Tahmini Bitiş</p>
+                      <p className="mt-1">{onboarding.expectedCompletionDate ? new Date(onboarding.expectedCompletionDate).toLocaleDateString('tr-TR') : '-'}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Onboarding Görevleri</h3>
+                      {onboarding && <OnboardingTaskDialog onboardingId={onboarding.id} userId={id!} />}
+                    </div>
+                    {onboardingTasksLoading ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                      </div>
+                    ) : onboardingTasks && onboardingTasks.length > 0 ? (
+                      <div className="space-y-3">
+                        {onboardingTasks.map((task) => (
+                          <Card key={task.id} data-testid={`onboarding-task-${task.id}`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="font-medium">{task.taskName}</p>
+                                    <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'outline'} className="text-xs">
+                                      {task.priority === 'high' ? 'Yüksek' : task.priority === 'medium' ? 'Orta' : 'Düşük'}
+                                    </Badge>
+                                    <Badge variant={task.status === 'completed' ? 'outline' : 'default'} className="text-xs">
+                                      {task.status === 'pending' ? 'Bekliyor' : task.status === 'in_progress' ? 'Devam Ediyor' : task.status === 'completed' ? 'Tamamlandı' : 'Atlandı'}
+                                    </Badge>
+                                  </div>
+                                  {task.description && (
+                                    <p className="text-sm text-muted-foreground">{task.description}</p>
+                                  )}
+                                  {task.dueDate && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Bitiş: {new Date(task.dueDate).toLocaleDateString('tr-TR')}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {task.status !== 'completed' && task.status !== 'skipped' && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => completeOnboardingTaskMutation.mutate(task.id)}
+                                      disabled={completeOnboardingTaskMutation.isPending}
+                                      data-testid={`button-complete-task-${task.id}`}
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {task.status === 'completed' && !task.verifiedAt && isHQRole(currentUser?.role as any) && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => verifyOnboardingTaskMutation.mutate(task.id)}
+                                      disabled={verifyOnboardingTaskMutation.isPending}
+                                      data-testid={`button-verify-task-${task.id}`}
+                                    >
+                                      Doğrula
+                                    </Button>
+                                  )}
+                                  {task.verifiedAt && (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Doğrulandı
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                        <p>Henüz görev eklenmemiş</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Bu personel için onboarding süreci başlatılmamış</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -3763,6 +3763,19 @@ export class DatabaseStorage implements IStorage {
   async checkSLABreaches(): Promise<void> {
     const now = new Date();
     
+    // Get admin user for system notifications
+    const adminUser = await db.select()
+      .from(users)
+      .where(eq(users.role, 'admin'))
+      .limit(1);
+    
+    if (adminUser.length === 0) {
+      console.log('[checkSLABreaches] No admin user found, skipping SLA check');
+      return;
+    }
+    
+    const adminId = adminUser[0].id;
+    
     // Get all active complaints with deadlines
     const activeComplaints = await db.select()
       .from(guestComplaints)
@@ -3788,7 +3801,7 @@ export class DatabaseStorage implements IStorage {
         
         // Send breach notification to branch supervisor and HQ
         await this.createNotification({
-          userId: 'system',
+          userId: adminId,
           title: "SLA İhlali: Şikayet Süresi Doldu",
           message: `Şikayet #${complaint.id} yanıt süresi aşıldı. Acil müdahale gerekiyor! Şube: ${complaint.branchId}, Öncelik: ${complaint.priority}`,
           type: "alert",
@@ -3801,8 +3814,8 @@ export class DatabaseStorage implements IStorage {
         const existingEscalation = await db.select()
           .from(notifications)
           .where(and(
-            sql`${notifications.type} = 'warning'`,
-            sql`${notifications.link} = '/sikayetler/${complaint.id}'`,
+            eq(notifications.type, 'warning'),
+            eq(notifications.link, `/sikayetler/${complaint.id}`),
             sql`${notifications.message} LIKE '%80% yaklaştı%'`
           ))
           .limit(1);
@@ -3810,7 +3823,7 @@ export class DatabaseStorage implements IStorage {
         if (existingEscalation.length === 0) {
           // Send 80% escalation warning
           await this.createNotification({
-            userId: 'system',
+            userId: adminId,
             title: "SLA Uyarısı: Süre Azalıyor",
             message: `Şikayet #${complaint.id} yanıt süresinin %80'ine yaklaştı. Kalan süre: ${Math.ceil(timeToDeadline / (1000 * 60 * 60))} saat. Şube: ${complaint.branchId}, Öncelik: ${complaint.priority}`,
             type: "warning",
