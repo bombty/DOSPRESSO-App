@@ -702,15 +702,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: UpsertUser): Promise<User> {
-    const [user] = await db
+    const result = await db
       .insert(users)
       .values(insertUser)
       .returning();
-    return user;
+    return result[0];
   }
 
   async upsertUser(insertUser: UpsertUser): Promise<User> {
-    const [user] = await db
+    const result = await db
       .insert(users)
       .values(insertUser)
       .onConflictDoUpdate({
@@ -724,7 +724,7 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
-    return user;
+    return result[0];
   }
 
   async updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined> {
@@ -1600,15 +1600,15 @@ export class DatabaseStorage implements IStorage {
 
     // Create new onboarding record with all required defaults
     const today = new Date().toISOString().split('T')[0];
-    const [newOnboarding] = await db.insert(employeeOnboarding).values({
+    const result = await db.insert(employeeOnboarding).values({
       userId,
       branchId,
-      assignedById,
+      assignedMentorId: assignedById,
       startDate: today,
       status: 'in_progress',
       completionPercentage: 0,
     }).returning();
-    return newOnboarding;
+    return result[0];
   }
 
   async createEmployeeOnboarding(onboarding: InsertEmployeeOnboarding): Promise<EmployeeOnboarding> {
@@ -1767,8 +1767,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const [newMessage] = await db.insert(messages).values([message]).returning();
-    return newMessage;
+    const result = await db.insert(messages).values(message).returning();
+    return result[0];
   }
 
   async markMessageAsRead(id: number, userId: string): Promise<void> {
