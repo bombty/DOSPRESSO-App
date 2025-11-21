@@ -140,7 +140,7 @@ export default function Dashboard() {
     return Math.round(totalScore / last7Days.length);
   }, [userPerformanceScores]);
 
-  // Calculate training statistics
+  // Calculate training statistics - matches "Benim Eğitimlerim" tab logic
   const trainingStats = useMemo(() => {
     if (!trainingModules || !user) return { mandatory: 0, inProgress: 0, completed: 0 };
     
@@ -152,12 +152,23 @@ export default function Dashboard() {
     // Get user's progress
     const progressMap = new Map(userProgress?.map(p => [p.moduleId, p]) || []);
     
-    const inProgress = mandatoryModules.filter(m => {
+    // Calculate "My Trainings" - mandatory + optional with progress
+    const progressModuleIds = new Set(userProgress?.map(p => p.moduleId) || []);
+    const optionalWithProgress = trainingModules.filter(m =>
+      m.isPublished && 
+      !mandatoryModules.find(mm => mm.id === m.id) && // Not already in mandatory
+      progressModuleIds.has(m.id) // Has user progress
+    );
+    
+    const myTrainings = [...mandatoryModules, ...optionalWithProgress];
+    
+    // Count in-progress and completed across all myTrainings
+    const inProgress = myTrainings.filter(m => {
       const progress = progressMap.get(m.id);
       return progress?.status === 'in_progress';
     }).length;
     
-    const completed = mandatoryModules.filter(m => {
+    const completed = myTrainings.filter(m => {
       const progress = progressMap.get(m.id);
       return progress?.status === 'completed';
     }).length;

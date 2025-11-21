@@ -51,6 +51,26 @@ export default function Training() {
     );
   }, [modules, user]);
 
+  // Calculate "My Trainings" - mandatory + optional with progress
+  const myTrainings = useMemo(() => {
+    if (!modules || !user) return [];
+    
+    // Get mandatory modules
+    const mandatory = modules.filter(m => 
+      m.isPublished && m.requiredForRole && m.requiredForRole.includes(user.role)
+    );
+    
+    // Get optional modules where user has progress
+    const progressModuleIds = new Set(userProgress?.map(p => p.moduleId) || []);
+    const optionalWithProgress = modules.filter(m =>
+      m.isPublished && 
+      !mandatory.find(mm => mm.id === m.id) && // Not already in mandatory
+      progressModuleIds.has(m.id) // Has user progress
+    );
+    
+    return [...mandatory, ...optionalWithProgress];
+  }, [modules, user, userProgress]);
+
   // Create progress map for easy lookup
   const progressMap = useMemo(() => {
     return new Map(userProgress?.map(p => [p.moduleId, p]) || []);
@@ -375,13 +395,13 @@ export default function Training() {
         )}
       </div>
 
-      <Tabs defaultValue={mandatoryModules.length > 0 ? "my-trainings" : "all"} className="space-y-4">
+      <Tabs defaultValue={myTrainings.length > 0 ? "my-trainings" : "all"} className="space-y-4">
         <TabsList>
-          {mandatoryModules.length > 0 && (
+          {myTrainings.length > 0 && (
             <TabsTrigger value="my-trainings" data-testid="tab-my-trainings">
               <Star className="h-4 w-4 mr-2" />
               Benim Eğitimlerim
-              <Badge variant="secondary" className="ml-2">{mandatoryModules.length}</Badge>
+              <Badge variant="secondary" className="ml-2">{myTrainings.length}</Badge>
             </TabsTrigger>
           )}
           <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
@@ -393,16 +413,16 @@ export default function Training() {
           )}
         </TabsList>
 
-        {/* My Trainings Tab - Mandatory modules with progress */}
+        {/* My Trainings Tab - Mandatory + optional modules with progress */}
         <TabsContent value="my-trainings" className="space-y-4">
-          {mandatoryModules.length === 0 ? (
+          {myTrainings.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Henüz zorunlu eğitiminiz yok</p>
+              <p>Henüz atanmış eğitiminiz yok</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mandatoryModules.map((module) => {
+              {myTrainings.map((module) => {
                 const progressStatus = getProgressStatus(module.id);
                 const StatusIcon = progressStatus.icon;
                 
@@ -416,13 +436,17 @@ export default function Training() {
                       <div className="flex items-start justify-between">
                         <div className="space-y-1 flex-1">
                           <div className="flex items-start gap-2">
-                            <Star className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                            {mandatoryModules.find(m => m.id === module.id) && (
+                              <Star className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                            )}
                             <CardTitle className="text-lg">{module.title}</CardTitle>
                           </div>
                           <div className="flex gap-2 flex-wrap">
-                            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                              Zorunlu
-                            </Badge>
+                            {mandatoryModules.find(m => m.id === module.id) && (
+                              <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                                Zorunlu
+                              </Badge>
+                            )}
                             {progressStatus.status === 'completed' && (
                               <Badge variant="default" className="bg-green-600">
                                 <CheckCircle className="h-3 w-3 mr-1" />
