@@ -621,7 +621,7 @@ function AddEmployeeDialog({
                   <FormItem>
                     <FormLabel>Ad *</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-first-name" />
+                      <Input {...field} value={field.value || ""} data-testid="input-first-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -635,7 +635,7 @@ function AddEmployeeDialog({
                   <FormItem>
                     <FormLabel>Soyad *</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-last-name" />
+                      <Input {...field} value={field.value || ""} data-testid="input-last-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -651,7 +651,7 @@ function AddEmployeeDialog({
                   <FormItem>
                     <FormLabel>Kullanıcı Adı *</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-username" />
+                      <Input {...field} value={field.value || ""} data-testid="input-username" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -665,7 +665,7 @@ function AddEmployeeDialog({
                   <FormItem>
                     <FormLabel>Şifre *</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} data-testid="input-password" />
+                      <Input type="password" {...field} value={field.value || ""} data-testid="input-password" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
