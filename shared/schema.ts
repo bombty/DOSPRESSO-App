@@ -451,7 +451,7 @@ export type InsertBranch = z.infer<typeof insertBranchSchema>;
 export type Branch = typeof branches.$inferSelect;
 
 // Users table (Username/Password Auth)
-export const users: ReturnType<typeof pgTable<"users", any>> = pgTable("users", {
+export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: varchar("username", { length: 100 }).unique(),
   hashedPassword: varchar("hashed_password", { length: 255 }),

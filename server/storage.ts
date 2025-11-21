@@ -1601,12 +1601,13 @@ export class DatabaseStorage implements IStorage {
     // Create new onboarding record with all required defaults
     const today = new Date().toISOString().split('T')[0];
     const [newOnboarding] = await db.insert(employeeOnboarding).values({
+      userId,
       branchId,
       assignedById,
       startDate: today,
       status: 'in_progress',
       completionPercentage: 0,
-    } as InsertEmployeeOnboarding).returning();
+    }).returning();
     return newOnboarding;
   }
 
@@ -1766,7 +1767,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const [newMessage] = await db.insert(messages).values(message).returning();
+    const [newMessage] = await db.insert(messages).values([message]).returning();
     return newMessage;
   }
 
@@ -5086,7 +5087,7 @@ export class DatabaseStorage implements IStorage {
         notes,
         actionItems,
         followUpRequired: followUpRequired ?? false,
-        followUpDate: followUpDate ? (typeof followUpDate === 'string' ? followUpDate : followUpDate.toISOString().split('T')[0]) : null,
+        followUpDate: followUpDate ? (typeof followUpDate === 'string' ? followUpDate : new Date(followUpDate).toISOString().split('T')[0]) : null,
         completedAt: new Date(),
         updatedAt: new Date(),
       })
