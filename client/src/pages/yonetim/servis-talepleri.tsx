@@ -62,6 +62,10 @@ interface ServiceRequestWithEquipment {
   notes?: string;
   createdAt: string;
   createdById: string;
+  createdByUsername?: string;
+  updatedById?: string;
+  updatedByUsername?: string;
+  updatedAt?: string;
 }
 
 export default function ServiceRequestsManagement() {

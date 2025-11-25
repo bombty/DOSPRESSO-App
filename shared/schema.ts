@@ -1390,6 +1390,7 @@ export const equipmentServiceRequests = pgTable("equipment_service_requests", {
     meta?: Record<string, any>;
   }>>().default([]),
   createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  updatedById: varchar("updated_by_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
