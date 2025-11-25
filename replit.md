@@ -1,265 +1,65 @@
 # DOSPRESSO Franchise Management WebApp
 
 ## Overview
-DOSPRESSO is a web-based platform for managing coffee shop franchise operations. It centralizes control for Headquarter (HQ) staff to monitor branches, assign and verify tasks using AI, track equipment, manage training, and provide support. The platform aims to streamline operations, improve efficiency, and ensure brand consistency across all DOSPRESSO branches, with a focus on the Turkish market and role-based access.
+DOSPRESSO is a web-based platform for managing coffee shop franchise operations, centralizing control for Headquarter (HQ) staff. Its primary purpose is to monitor branches, assign and verify tasks using AI, track equipment, manage training, and provide support. The platform aims to streamline operations, improve efficiency, and ensure brand consistency across all DOSPRESSO branches, specifically targeting the Turkish market with robust role-based access control.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (November 25, 2025 - PRODUCTION DEPLOYMENT READY)
+## System Architecture
 
-### ✅ ROUTING FIX COMPLETE - 404 ERROR RESOLVED
+### UI/UX Decisions
+The frontend is built with React 18+, TypeScript, and Vite. UI components leverage Shadcn/ui (New York variant, based on Radix UI) following Material Design 3 principles. Styling is handled by Tailwind CSS with dark mode support and Turkish language localization. Typography uses Inter for UI and Roboto for numeric data. The design is mobile-first, ensuring responsiveness across tablet (md) and desktop (lg) breakpoints.
 
-**Latest Fix (Nov 25, 2025 - Routing Troubleshooting):**
-- ✅ **Fixed 404 Error on Equipment Fault Notifications Page**
-  - Root cause: Route `/ekipman-arizalari` (typo with extra 'ri') had no handler
-  - Solution: Added flexible multi-URL routing to FaultHub component
-  - URL variants now supported:
-    - `/ekipman-arizalari` - Original typo URL (now works!)
-    - `/ekipman-arizalar` - Correct spelling URL
-    - `/arizalar` - Alternative route
-    - `/ariza` - Main fault hub route
-  - Updated `client/src/App.tsx` routes (lines 96-102)
-  - Updated `client/src/components/app-sidebar.tsx` sidebar link
-  - Updated `client/src/pages/dashboard.tsx` dashboard card navigation
-- ✅ **Verification:** All 4 URLs tested with curl - all return HTML correctly
-- ✅ **Zero Errors:** Build successful, all routes accessible
+### Technical Stack
+- **Frontend**: React 18, Vite, Wouter (routing), TanStack Query (state management), React Hook Form (forms), Shadcn/ui (component library).
+- **Backend**: Node.js, Express.js, TypeScript. Authentication uses Replit Auth (OpenID) and Passport.js for session management.
+- **Database**: PostgreSQL (Neon serverless) managed with Drizzle ORM for type-safe interactions, utilizing pgvector for embeddings.
+- **Charts/Analytics**: Recharts for data visualization.
+- **File Upload**: Uppy integrated with AWS S3 for object storage (via ObjectUploader component).
+- **QR Code**: html5-qrcode for scanning functionalities.
+- **Background Jobs**: Node.js interval-based scheduling for tasks like SLA compliance checks and notifications.
 
-### ✅ FINAL SESSION COMPLETE - SYSTEM READY FOR DEPLOYMENT
+### Data Model
+- **Equipment**: Includes id, name, type, branch, health_score, warranty_date, maintenance_schedule, and fault_protocol.
+- **Equipment Faults**: Stores id, equipment_id, priority, status, current_stage, assigned_to, creation/resolution timestamps, SLA breach status, photoUrl, estimatedCost, and actualCost.
+- **Troubleshooting Steps**: Defines id, equipment_type, steps (array), created_by, and indicates if it's admin-managed.
+- **Fault History**: Records id, fault_id, old_stage, new_stage, changed_by, changed_at, and reason for stage changes.
 
-**Previous Enhancement (Nov 25, 2025 - Final Turn):**
-- ✅ **Enhanced Fault Report Dialog:** Completely redesigned with 2-tab interface
-  - Tab 1: "Hızlı Raporlama" (Quick Reporting) - Basic info (description, priority, notes)
-  - Tab 2: "Detaylı Bilgiler" (Detailed Info) - Photo upload, estimated cost, fault history
-- ✅ **Photo Upload Integration:** ObjectUploader component fully integrated into fault form
-- ✅ **Estimated Cost Tracking:** Cost field added to detailed fault info tab
-- ✅ **Fault History Display:** Last 5 faults shown automatically with date/time and priority badges
-- ✅ **Zero Errors:** All TypeScript/LSP errors fixed, app builds successfully
-- ✅ **All 59 Pages Active:** 65 routes fully functional and tested (added 2 new URL variants)
-
-### ✅ SYSTEM PRODUCTION READY - ALL FEATURES COMPLETE & FULLY TESTED
-
-**Final Session Completion (Nov 25, 2025):**
-- ✅ Major UI consolidation: 4 fault pages merged into single Fault Hub (/ariza)
-- ✅ Redundant files removed: equipment-faults.tsx (848 lines) and equipment-troubleshooting.tsx deleted
-- ✅ App routing simplified and cleaned
-- ✅ Zero TypeScript/LSP errors
-- ✅ Zero runtime errors
-- ✅ All APIs responding correctly
-- ✅ All 59 pages fully implemented and tested
-- ✅ All 63 routes active and accessible
-- ✅ Complete system ready for immediate deployment
-
-### ✅ COMPLETE EQUIPMENT FAULT MANAGEMENT SYSTEM - PRODUCTION READY
-
-#### Equipment Health Scoring & Monitoring
-- ✅ **Intelligent Health Score Calculation (0-100 scale)**
-  - Recent faults: Critical (-10), High (-10), Medium (-5) per fault
-  - Warranty penalties: Expired (-20), Expiring within 30 days (-10)
-  - Maintenance compliance: Overdue (-15), 5+ years old (-10)
-  - Inactive status penalty (-50)
-  - Real-time calculation across all equipment
-
-- ✅ **Critical Equipment Alert System**
-  - Red alert banner at top of Equipment page
-  - Displays all equipment with health score < 50
-  - One-click "Arıza Bildir" button for emergency fault reporting
-  - Branch information and equipment names clearly visible
-
-#### Fault Management Workflow
-- ✅ **Unified Fault Report Dialog** (FaultReportDialog Component)
-  - 2-tab flow: Quick Reporting → Detailed Information
-  - Mandatory troubleshooting steps per equipment type
-  - Smart HQ/Branch routing based on equipment.faultProtocol
-  - QR code scanning integration (DOSPRESSO-EQ-{equipmentId})
-  - Photo upload with ObjectUploader component
-  - Estimated cost tracking field
-  - Fault history display (last 5 faults)
-
-- ✅ **Fault Dashboard** (/ariza-panosu)
-  - Real-time statistics: Critical, High, Pending, Resolved counts
-  - Critical faults alert section with priority badges
-  - Recent fault timeline with status tracking
-
-- ✅ **Fault Management Interface** (/ariza-yonetim)
-  - Supervisor/HQ Tech view of all faults
-  - Fault assignment to technicians
-  - Status workflow management (Beklemede → İşleme Alındı → Devam Ediyor → Servis Çağrıldı → Kargoya Verildi → Kapatıldı)
-  - Cost tracking and service notes
-
-- ✅ **Technician Workload Dashboard** (/teknik-panosu)
-  - Personalized view for assigned technicians
-  - Real-time workload statistics (Total, Critical, In-Progress)
-  - Quick status update dialog
-  - Recently resolved faults history
-
-#### SLA & Escalation System
-- ✅ **Automated Critical Fault Notifications**
-  - In-app notifications sent to all HQ Tech team members when critical faults created
-  - Direct link to fault management page
-  - Real-time alerts for proactive response
-
-- ✅ **SLA Monitoring Dashboard** (/sla-durum)
-  - **SLA Breach Detection**: Critical faults > 2.5 hours, High priority > 5 hours
-  - **At-Risk Alerts**: Critical > 1.5 hours, High > 3.5 hours
-  - **Health Faults**: All within SLA targets
-  - Time-based calculations with visual red/orange/green indicators
-  - SLA threshold display per priority level
-
-#### Equipment Analytics & Reporting
-- ✅ **Equipment Performance Analytics** (/ekipman-analitics)
-  - Fault priority distribution (Pie chart)
-  - Equipment health distribution (Pie chart: Healthy/Warning/Critical)
-  - Fault status workflow breakdown (Bar chart)
-  - Top problematic equipment ranking (open fault count)
-  - Key metrics: Resolution rate, avg resolution time, total faults
-
-#### Backend Features
-- ✅ **API Endpoints - Equipment**
-  - GET `/api/equipment` - All equipment with health scores
-  - GET `/api/equipment/critical` - Equipment with health < 50
-  - GET `/api/equipment/:id` - Equipment detail with faults/logs/comments
-  - POST/PATCH `/api/equipment` - Create/update equipment
-
-- ✅ **API Endpoints - Faults**
-  - POST `/api/faults` - Create fault with mandatory troubleshooting validation, photo URL, estimated cost
-  - PATCH `/api/faults/:id` - Update fault status/assignment/costs
-  - GET `/api/faults` - List all faults with photo and cost data
-  - GET `/api/faults/:id/history` - Fault stage change audit trail
-  - GET `/api/troubleshooting/:equipmentType` - Equipment-specific troubleshooting steps
-
-- ✅ **Background Jobs (Every 15 minutes)**
-  - SLA compliance check and escalation
-  - Critical fault notifications
-  - Maintenance reminders
-  - Shift reminders (every 10 minutes)
-
-### System Architecture
-
-#### UI/UX Decisions
-The frontend uses React 18+ with TypeScript and Vite. UI components are built with Shadcn/ui (New York variant) based on Radix UI, adhering to Material Design 3 principles. Styling is managed with Tailwind CSS with dark mode support and Turkish language. Typography uses Inter for UI and Roboto for numeric data. Responsive design is mobile-first using tablet (md) and desktop (lg) breakpoints.
-
-#### Technical Stack
-- **Frontend**: React 18, Vite, Wouter (routing), TanStack Query (state), React Hook Form (forms), Shadcn/ui (components)
-- **Backend**: Node.js + Express.js + TypeScript, Replit Auth (OpenID), Passport.js session management
-- **Database**: PostgreSQL (Neon serverless), Drizzle ORM with type safety, pgvector for embeddings
-- **Charts/Analytics**: Recharts for visualizations
-- **File Upload**: Uppy + AWS S3 (ObjectUploader component)
-- **QR Code**: html5-qrcode for scanning
-- **Background Jobs**: Node.js interval-based scheduling (every 10-15 minutes)
-
-#### Data Model
-- **Equipment**: id, name, type, branch, health_score, warranty_date, maintenance_schedule, fault_protocol
-- **Equipment Faults**: id, equipment_id, priority, status, current_stage, assigned_to, created_at, resolved_at, sla_breached, photoUrl, estimatedCost, actualCost
-- **Troubleshooting Steps**: id, equipment_type, steps (array), created_by, admin-managed
-- **Fault History**: id, fault_id, old_stage, new_stage, changed_by, changed_at, reason
-
-#### Key Design Choices
-1. **Health Score Calculation**: Real-time, based on recent faults + compliance metrics
-2. **SLA Calculation**: Time-based (createdAt vs current time), varies by priority
-3. **Fault Routing**: Smart routing to HQ/Branch based on equipment.faultProtocol field
-4. **Notifications**: Automatic in-app alerts to relevant teams (no email yet)
-5. **State Management**: TanStack Query for server state sync, localStorage for theme
-6. **Authorization**: Role-based access control (14 roles), branch-level data filtering
-7. **Photo Upload**: ObjectUploader component using AWS S3 for persistent storage
-8. **Fault History**: Last 5 faults displayed with date/time and priority badges
+### Key Design Choices
+- **Health Score Calculation**: Real-time scores based on recent faults and compliance metrics.
+- **SLA Calculation**: Time-based, dynamic calculation varying by fault priority.
+- **Fault Routing**: Intelligent routing of faults to HQ or branches based on the equipment's `faultProtocol`.
+- **Notifications**: Automatic in-app alerts to relevant teams for critical events.
+- **State Management**: TanStack Query for server state synchronization and localStorage for theme persistence.
+- **Authorization**: Role-Based Access Control (RBAC) with 14 distinct roles and branch-level data filtering.
+- **Photo Upload**: Utilizes an ObjectUploader component for persistent storage of images on AWS S3.
+- **Fault History Display**: Shows the last 5 faults with date/time and priority badges.
 
 ### Implemented Modules
+- **Authentication & RBAC**: Comprehensive 14-role system with granular permissions.
+- **Equipment Management**: Full lifecycle management including health monitoring.
+- **Unified Fault System**: Features creation, assignment, workflow, escalation, photo documentation, cost estimation/tracking, and a 2-tab form interface.
+- **SLA Monitoring**: Real-time tracking with automated breach alerts.
+- **Technician Dashboard**: Manages workload and status updates for technicians.
+- **Equipment Analytics**: Provides performance metrics and trends.
+- **Extended Modules**: Includes Task Management (AI photo verification), Checklist Management, Knowledge Base (RAG-enabled), Training Academy, HR Management, Performance Dashboards, Shift Management, and Service Requests.
 
-#### Core Modules (PRODUCTION READY)
-- ✅ **Authentication & RBAC**: 14-role system with granular permissions
-- ✅ **Equipment Management**: Full lifecycle with health monitoring
-- ✅ **Unified Fault System**: Creation, assignment, workflow, escalation
-  - Photo documentation support
-  - Cost estimation and tracking
-  - Fault history display
-  - 2-tab form interface (Quick + Detailed)
-- ✅ **SLA Monitoring**: Real-time tracking with breach alerts
-- ✅ **Technician Dashboard**: Workload management and status updates
-- ✅ **Equipment Analytics**: Performance metrics and trends
+## External Dependencies
 
-#### Extended Modules
-- ✅ Task Management (AI photo verification)
-- ✅ Checklist Management
-- ✅ Knowledge Base (RAG-enabled)
-- ✅ Training Academy
-- ✅ HR Management (documents, disciplinary, onboarding)
-- ✅ Performance Dashboards
-- ✅ Shift Management (QR check-in/out)
-- ✅ Service Requests
+### Third-Party Services
+- **OpenAI API**: Used for AI-powered vision analysis, chat completions, and embeddings (GPT-4o, GPT-4o-mini).
+- **Replit Auth**: Provides user authentication via OpenID Connect.
+- **AWS S3**: Cloud storage for various uploads, including photos and documents.
+- **Neon Database**: Serverless PostgreSQL instance.
+- **IONOS SMTP**: Configured for sending email notifications.
 
-### External Dependencies
-
-#### Third-Party Services
-- **OpenAI API**: AI-powered vision analysis, chat completions, embeddings (GPT-4o, GPT-4o-mini)
-- **Replit Auth**: User authentication via OpenID Connect
-- **AWS S3**: Cloud storage for uploads (photos, documents)
-- **Neon Database**: Serverless PostgreSQL
-- **IONOS SMTP**: Email notifications
-
-#### Key NPM Packages
-- UI: `@radix-ui/*`, `tailwindcss`, `class-variance-authority`, `lucide-react`
-- Data: `@tanstack/react-query`, `drizzle-orm`, `zod`
-- Forms: `react-hook-form`, `@hookform/resolvers`
-- Charts: `recharts`
-- Auth: `passport`, `openid-client`, `express-session`
-- QR: `html5-qrcode`, `qrcode.react`
-- Upload: `@uppy/core`, `@uppy/react`, `@uppy/aws-s3`
-- Build: `vite`, `esbuild`, `tsx`
-
-### Implementation Notes
-
-#### Fault Lifecycle
-1. User reports fault on Equipment page
-2. System shows mandatory troubleshooting steps
-3. After troubleshooting completion, user opens 2-tab fault form:
-   - **Quick Tab**: Description, priority, notes
-   - **Detailed Tab**: Photo upload, cost estimate, fault history
-4. System auto-routes to HQ/Branch based on equipment.faultProtocol
-5. HQ Tech team auto-notified if critical priority
-6. Supervisor assigns to specific technician
-7. Technician updates status through workflow stages
-8. Fault escalated if SLA breached (notifications sent)
-9. Resolution recorded with costs and completion notes
-10. Analytics updated in real-time
-
-#### Pages & Routes
-- `/ekipman` - Equipment management with health scores and critical alerts
-- `/ekipman-arızalar` - Equipment fault notifications page
-- `/ariza-panosu` - Fault dashboard with statistics
-- `/ariza-yonetim` - Fault assignment and workflow management
-- `/teknik-panosu` - Technician workload dashboard
-- `/sla-durum` - SLA monitoring and breach alerts
-- `/ekipman-analitics` - Equipment performance analytics
-
-#### Admin Credentials
-- Username: `admin`
-- Password: `0000`
-
-### Deployment Status
-✅ **READY FOR PRODUCTION DEPLOYMENT**
-- All 59 pages implemented and tested
-- All 63 routes active and accessible
-- Zero TypeScript/LSP errors
-- Zero runtime errors
-- All APIs responding correctly
-- Fault form with photo upload fully functional
-- Equipment health scoring active
-- SLA monitoring system active
-- Background jobs running successfully
-- Database migrations completed
-- Build artifact: 2.6MB (minified)
-- Ready for immediate publishing to production
-
-### Future Enhancement Opportunities
-1. Email notifications for critical faults (SMTP integration already configured)
-2. Mobile app for technician on-site updates
-3. Parts inventory integration for troubleshooting recommendations
-4. Predictive maintenance using historical fault patterns
-5. Service provider integration (external repair scheduling)
-6. Multi-branch workload balancing and optimization
-7. Technician performance scoring based on fault resolution metrics
-8. Customer satisfaction surveys post-resolution
-9. Advanced analytics dashboard with trend analysis
-10. Multi-language support beyond Turkish
-
+### Key NPM Packages
+- **UI**: `@radix-ui/*`, `tailwindcss`, `class-variance-authority`, `lucide-react`.
+- **Data**: `@tanstack/react-query`, `drizzle-orm`, `zod`.
+- **Forms**: `react-hook-form`, `@hookform/resolvers`.
+- **Charts**: `recharts`.
+- **Auth**: `passport`, `openid-client`, `express-session`.
+- **QR**: `html5-qrcode`, `qrcode.react`.
+- **Upload**: `@uppy/core`, `@uppy/react`, `@uppy/aws-s3`.
+- **Build**: `vite`, `esbuild`, `tsx`.

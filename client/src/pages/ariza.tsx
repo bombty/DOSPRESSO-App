@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -153,6 +153,14 @@ export default function FaultHub() {
     return manageFaults.slice(start, start + FAULTS_PER_PAGE);
   }, [manageFaults, managePage]);
 
+  // Clamp managePage when manageFaults shrinks
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(manageFaults.length / FAULTS_PER_PAGE));
+    if (managePage > maxPage) {
+      setManagePage(maxPage);
+    }
+  }, [manageFaults.length, managePage]);
+
   const handleUpdateFault = useCallback((fault: EquipmentFault) => {
     setSelectedFault(fault);
     form.reset({ currentStage: fault.currentStage });
@@ -185,7 +193,7 @@ export default function FaultHub() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-red-600">{criticalFaults.length}</div>
+                <div className="text-3xl font-bold text-red-600" data-testid="text-critical-count">{metrics.critical.length}</div>
                 <p className="text-xs text-muted-foreground mt-1">Acil müdahale</p>
               </CardContent>
             </Card>
@@ -198,7 +206,7 @@ export default function FaultHub() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-600">{highFaults.length}</div>
+                <div className="text-3xl font-bold text-orange-600" data-testid="text-high-count">{metrics.high.length}</div>
                 <p className="text-xs text-muted-foreground mt-1">Kısa sürede çözülmeli</p>
               </CardContent>
             </Card>
@@ -211,7 +219,7 @@ export default function FaultHub() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-600">{resolvedFaults.length}</div>
+                <div className="text-3xl font-bold text-green-600" data-testid="text-resolved-count">{metrics.resolved.length}</div>
                 <p className="text-xs text-muted-foreground mt-1">Toplam çözülen</p>
               </CardContent>
             </Card>
@@ -224,26 +232,26 @@ export default function FaultHub() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{faults.filter(f => f.currentStage !== "kapatildi").length}</div>
+                <div className="text-3xl font-bold" data-testid="text-open-count">{metrics.open.length}</div>
                 <p className="text-xs text-muted-foreground mt-1">İşlem halinde</p>
               </CardContent>
             </Card>
           </div>
 
-          {criticalFaults.length > 0 && (
+          {metrics.critical.length > 0 && (
             <Card className="border-red-500 bg-red-50 dark:bg-red-950">
               <CardHeader>
                 <CardTitle className="text-red-600 dark:text-red-400">Kritik Arızalar</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {criticalFaults.map((fault) => (
-                    <div key={fault.id} className="flex items-center justify-between p-2 bg-white dark:bg-red-900/20 rounded border border-red-200">
+                  {metrics.critical.map((fault) => (
+                    <div key={fault.id} className="flex items-center justify-between p-2 bg-white dark:bg-red-900/20 rounded border border-red-200" data-testid={`card-critical-fault-${fault.id}`}>
                       <div className="flex-1">
                         <p className="font-medium text-sm">{fault.equipmentName}</p>
                         <p className="text-xs text-muted-foreground">{fault.description}</p>
                       </div>
-                      <Badge className={getStageColor(fault.currentStage)}>{stageLabelMap[fault.currentStage] || fault.currentStage}</Badge>
+                      <Badge className={getStageColor(fault.currentStage)}>{STAGE_LABELS[fault.currentStage] || fault.currentStage}</Badge>
                     </div>
                   ))}
                 </div>
@@ -257,15 +265,15 @@ export default function FaultHub() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {faults.slice(0, 8).map((fault) => (
-                  <div key={fault.id} className="flex items-center justify-between p-2 border rounded">
+                {faults.slice(0, RECENT_FAULTS_LIMIT).map((fault) => (
+                  <div key={fault.id} className="flex items-center justify-between p-2 border rounded" data-testid={`card-recent-fault-${fault.id}`}>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{fault.equipmentName}</p>
                       <p className="text-xs text-muted-foreground">{format(new Date(fault.createdAt || new Date()), "dd MMM HH:mm", { locale: tr })}</p>
                     </div>
                     <div className="flex gap-2">
                       <Badge className={getPriorityColor(fault.priority)}>{fault.priority === "kritik" ? "Kritik" : "Yüksek"}</Badge>
-                      <Badge className={getStageColor(fault.currentStage)}>{stageLabelMap[fault.currentStage]}</Badge>
+                      <Badge className={getStageColor(fault.currentStage)}>{STAGE_LABELS[fault.currentStage]}</Badge>
                     </div>
                   </div>
                 ))}
@@ -282,7 +290,7 @@ export default function FaultHub() {
                 <CardTitle className="text-sm font-medium text-red-600">SLA İhlali</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-red-600">{breachedFaults.length}</div>
+                <div className="text-3xl font-bold text-red-600" data-testid="text-breached-count">{metrics.breached.length}</div>
               </CardContent>
             </Card>
 
@@ -291,7 +299,7 @@ export default function FaultHub() {
                 <CardTitle className="text-sm font-medium text-orange-600">Risk Altında</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-600">{atRiskFaults.length}</div>
+                <div className="text-3xl font-bold text-orange-600" data-testid="text-atrisk-count">{metrics.atRisk.length}</div>
               </CardContent>
             </Card>
 
@@ -300,20 +308,20 @@ export default function FaultHub() {
                 <CardTitle className="text-sm font-medium">Sağlıklı</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-600">{faults.filter(f => f.currentStage !== "kapatildi" && !breachedFaults.find(b => b.id === f.id) && !atRiskFaults.find(a => a.id === f.id)).length}</div>
+                <div className="text-3xl font-bold text-green-600" data-testid="text-healthy-count">{metrics.healthy.length}</div>
               </CardContent>
             </Card>
           </div>
 
-          {breachedFaults.length > 0 && (
+          {metrics.breached.length > 0 && (
             <Card className="border-red-500">
               <CardHeader>
                 <CardTitle className="text-red-600">SLA İhlali Yapan</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {breachedFaults.map((fault) => (
-                    <div key={fault.id} className="p-2 bg-red-50 dark:bg-red-950 rounded">
+                  {metrics.breached.map((fault) => (
+                    <div key={fault.id} className="p-2 bg-red-50 dark:bg-red-950 rounded" data-testid={`card-breached-fault-${fault.id}`}>
                       <p className="font-medium text-sm">{fault.equipmentName}</p>
                       <p className="text-xs text-muted-foreground">{getTimeSinceCreation(fault.createdAt)} açık</p>
                     </div>
@@ -323,15 +331,15 @@ export default function FaultHub() {
             </Card>
           )}
 
-          {atRiskFaults.length > 0 && (
+          {metrics.atRisk.length > 0 && (
             <Card className="border-orange-500">
               <CardHeader>
                 <CardTitle className="text-orange-600">Risk Altında Olan</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {atRiskFaults.map((fault) => (
-                    <div key={fault.id} className="p-2 bg-orange-50 dark:bg-orange-950 rounded">
+                  {metrics.atRisk.map((fault) => (
+                    <div key={fault.id} className="p-2 bg-orange-50 dark:bg-orange-950 rounded" data-testid={`card-atrisk-fault-${fault.id}`}>
                       <p className="font-medium text-sm">{fault.equipmentName}</p>
                       <p className="text-xs text-muted-foreground">{getTimeSinceCreation(fault.createdAt)} (sınıra yaklaşıyor)</p>
                     </div>
@@ -346,33 +354,81 @@ export default function FaultHub() {
         <TabsContent value="manage" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Tüm Arızalar</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Tüm Arızalar ({manageFaults.length})</span>
+              </CardTitle>
               <CardDescription>Arızaları atayın, durumlarını güncelleyin ve maliyeti takip edin</CardDescription>
+              <div className="relative mt-2">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Ekipman veya açıklama ara..."
+                  value={searchText}
+                  onChange={(e) => { setSearchText(e.target.value); setManagePage(1); }}
+                  className="pl-9"
+                  data-testid="input-search-faults"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {faults
-                  .filter(f => f.currentStage !== "kapatildi")
-                  .map((fault) => (
-                    <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted">
+                {paginatedManageFaults.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Arıza bulunamadı</p>
+                ) : (
+                  paginatedManageFaults.map((fault) => (
+                    <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted" data-testid={`card-manage-fault-${fault.id}`}>
                       <div className="flex-1">
-                        <p className="font-medium">{fault.equipmentName}</p>
-                        <p className="text-xs text-muted-foreground">{fault.description}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium">{fault.equipmentName}</p>
+                          <Badge className={getPriorityColor(fault.priority)}>
+                            {fault.priority === "kritik" ? "Kritik" : fault.priority === "yuksek" ? "Yüksek" : "Normal"}
+                          </Badge>
+                          <Badge className={getStageColor(fault.currentStage)}>
+                            {STAGE_LABELS[fault.currentStage]}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{fault.description}</p>
                       </div>
                       <Button
                         size="sm"
-                        onClick={() => {
-                          setSelectedFault(fault);
-                          form.reset({ currentStage: fault.currentStage });
-                          setIsUpdateDialogOpen(true);
-                        }}
+                        onClick={() => handleUpdateFault(fault)}
                         variant="outline"
+                        data-testid={`button-update-fault-${fault.id}`}
                       >
                         Güncelle
                       </Button>
                     </div>
-                  ))}
+                  ))
+                )}
               </div>
+
+              {/* Pagination */}
+              {manageFaults.length > FAULTS_PER_PAGE && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    {(managePage - 1) * FAULTS_PER_PAGE + 1} - {Math.min(managePage * FAULTS_PER_PAGE, manageFaults.length)} / {manageFaults.length}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setManagePage(p => Math.max(1, p - 1))}
+                      disabled={managePage === 1}
+                      data-testid="button-prev-page"
+                    >
+                      Önceki
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setManagePage(p => p + 1)}
+                      disabled={managePage * FAULTS_PER_PAGE >= manageFaults.length}
+                      data-testid="button-next-page"
+                    >
+                      Sonraki
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -476,7 +532,7 @@ export default function FaultHub() {
                   <CardTitle className="text-sm font-medium">Toplam</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{myFaults.length}</div>
+                  <div className="text-3xl font-bold" data-testid="text-my-total">{metrics.myFaults.length}</div>
                 </CardContent>
               </Card>
 
@@ -485,7 +541,7 @@ export default function FaultHub() {
                   <CardTitle className="text-sm font-medium text-red-600">Kritik</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-red-600">{myFaults.filter(f => f.priority === "kritik").length}</div>
+                  <div className="text-3xl font-bold text-red-600" data-testid="text-my-critical">{metrics.myFaults.filter(f => f.priority === "kritik").length}</div>
                 </CardContent>
               </Card>
 
@@ -494,7 +550,7 @@ export default function FaultHub() {
                   <CardTitle className="text-sm font-medium text-blue-600">Devam Ediyor</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-blue-600">{myFaults.filter(f => f.currentStage === "devam_ediyor").length}</div>
+                  <div className="text-3xl font-bold text-blue-600" data-testid="text-my-inprogress">{metrics.myFaults.filter(f => f.currentStage === "devam_ediyor").length}</div>
                 </CardContent>
               </Card>
             </div>
@@ -505,11 +561,11 @@ export default function FaultHub() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {myFaults.length === 0 ? (
+                  {metrics.myFaults.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">Size atanmış arıza yok</p>
                   ) : (
-                    myFaults.map((fault) => (
-                      <div key={fault.id} className="p-3 border rounded">
+                    metrics.myFaults.map((fault) => (
+                      <div key={fault.id} className="p-3 border rounded" data-testid={`card-my-fault-${fault.id}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <p className="font-medium">{fault.equipmentName}</p>
@@ -517,7 +573,7 @@ export default function FaultHub() {
                           </div>
                           <div className="flex gap-2">
                             <Badge className={getPriorityColor(fault.priority)}>{fault.priority === "kritik" ? "Kritik" : "Yüksek"}</Badge>
-                            <Badge className={getStageColor(fault.currentStage)}>{stageLabelMap[fault.currentStage]}</Badge>
+                            <Badge className={getStageColor(fault.currentStage)}>{STAGE_LABELS[fault.currentStage]}</Badge>
                           </div>
                         </div>
                       </div>
