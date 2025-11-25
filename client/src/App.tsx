@@ -11,6 +11,7 @@ import FaultDashboard from "@/pages/ariza-panosu";
 import FaultManagement from "@/pages/ariza-yonetim";
 import TechnicianDashboard from "@/pages/teknik-panosu";
 import SLADashboard from "@/pages/sla-durum";
+import EquipmentAnalytics from "@/pages/ekipman-analitics";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import ForgotPassword from "@/pages/forgot-password";
@@ -98,6 +99,7 @@ function Router() {
           <Route path="/ariza-yonetim" component={FaultManagement} />
           <Route path="/teknik-panosu" component={TechnicianDashboard} />
           <Route path="/sla-durum" component={SLADashboard} />
+          <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
           <Route path="/ekipman-arizalari" component={EquipmentFaults} />
           <Route path="/ekipman-troubleshooting" component={EquipmentTroubleshooting} />
           <Route path="/qr-tara" component={QRScanner} />

@@ -11,19 +11,25 @@ export default function SLADashboard() {
     queryKey: ["/api/faults"],
   });
 
-  // Filter faults by SLA status
-  const breachedFaults = faults.filter(f => f.slaBreached && f.currentStage !== "kapatildi");
-  const atRiskFaults = faults.filter(f => {
-    if (f.slaBreached || f.currentStage === "kapatildi") return false;
-    if (!f.createdAt) return false;
+  // Filter faults by SLA status - calculated based on time and priority
+  const breachedFaults = faults.filter(f => {
+    if (f.currentStage === "kapatildi" || !f.createdAt) return false;
     const hoursSinceCreation = differenceInHours(new Date(), new Date(f.createdAt));
-    // At risk: critical faults open > 2 hours, or high priority > 4 hours
-    return (f.priority === "kritik" && hoursSinceCreation > 2) ||
-           (f.priority === "yuksek" && hoursSinceCreation > 4);
+    // Breached: critical faults open > 2.5 hours, or high priority > 5 hours
+    return (f.priority === "kritik" && hoursSinceCreation > 2.5) ||
+           (f.priority === "yuksek" && hoursSinceCreation > 5);
+  });
+  const atRiskFaults = faults.filter(f => {
+    if (f.currentStage === "kapatildi" || !f.createdAt) return false;
+    if (breachedFaults.find(bf => bf.id === f.id)) return false;
+    const hoursSinceCreation = differenceInHours(new Date(), new Date(f.createdAt));
+    // At risk: critical faults open > 1.5 hours, or high priority > 3.5 hours
+    return (f.priority === "kritik" && hoursSinceCreation > 1.5) ||
+           (f.priority === "yuksek" && hoursSinceCreation > 3.5);
   });
   const healthyFaults = faults.filter(f => 
-    !f.slaBreached && 
     f.currentStage !== "kapatildi" &&
+    !breachedFaults.find(bf => bf.id === f.id) &&
     !atRiskFaults.find(af => af.id === f.id)
   );
   const resolvedFaults = faults.filter(f => f.currentStage === "kapatildi");
@@ -37,10 +43,15 @@ export default function SLADashboard() {
   };
 
   const getSLAStatus = (fault: EquipmentFault) => {
-    if (fault.slaBreached) return { label: "SLA İhlali", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" };
     if (!fault.createdAt) return { label: "Bilinmiyor", color: "bg-gray-100 text-gray-800" };
     
     const hoursSinceCreation = differenceInHours(new Date(), new Date(fault.createdAt));
+    if (fault.priority === "kritik" && hoursSinceCreation > 2.5) {
+      return { label: "SLA İhlali", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" };
+    }
+    if (fault.priority === "yuksek" && hoursSinceCreation > 5) {
+      return { label: "SLA İhlali", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" };
+    }
     if (fault.priority === "kritik" && hoursSinceCreation > 1.5) {
       return { label: "Risk Altında", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" };
     }
