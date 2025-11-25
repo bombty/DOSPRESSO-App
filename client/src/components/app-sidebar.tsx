@@ -133,22 +133,6 @@ const standaloneItems: MenuItem[] = [
     module: "dashboard",
     scope: "both",
   },
-  {
-    title: "Arıza Panosu",
-    titleTr: "Arıza Panosu",
-    url: "/ariza-panosu",
-    icon: AlertTriangle,
-    module: "equipment",
-    scope: "hq",
-  },
-  {
-    title: "Arıza Yönetimi",
-    titleTr: "Arıza Yönetimi",
-    url: "/ariza-yonetim",
-    icon: Zap,
-    module: "equipment",
-    scope: "both",
-  },
 ];
 
 // Fallback hardcoded menu groups (used only if dynamic menu fails to load)
