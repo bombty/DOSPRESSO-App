@@ -6,6 +6,12 @@ DOSPRESSO is a web-based platform for managing coffee shop franchise operations.
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (November 25, 2025)
+- **Servis Talepleri Modülü**: Tamamlandı - Service request tracking, timeline history, user audit trail (oluşturan/güncelleyen), durum yönetimi
+  - Detaylı update dialog (son görüşme tarihi, servis durumu notları, tahmini bitiş, gerçek maliyet)
+  - Timeline görüntüleme (tüm değişikliklerin kronolojisi)
+  - 6 test veri seedi (farklı statüler, şubeler, kullanıcılar)
+
 ## System Architecture
 
 ### UI/UX Decisions
