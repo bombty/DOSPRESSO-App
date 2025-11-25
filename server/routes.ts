@@ -2099,7 +2099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             equipmentName: equipment.name,
             equipmentType: equipment.type,
             branchId: equipment.branchId,
-            branchName: (await storage.getBranchById(equipment.branchId))?.name,
+            branchName: (await storage.getBranch(equipment.branchId))?.name,
             createdByUsername: createdByUser?.username,
             updatedByUsername: updatedByUser?.username,
           });
