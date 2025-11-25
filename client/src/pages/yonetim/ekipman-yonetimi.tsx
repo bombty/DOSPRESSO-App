@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap, History, CheckCircle2, Plus, X, ChevronRight, Search } from 'lucide-react';
+import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap, History, CheckCircle2, Plus, X, ChevronRight, Search, Download } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -264,6 +264,51 @@ export default function EquipmentManagement() {
     updateMutation.mutate({ notes });
   };
 
+  const exportToCSV = () => {
+    if (pendingRequests.length === 0) {
+      toast({ title: 'Hata', description: 'Dışa aktarılacak talep yok' });
+      return;
+    }
+
+    // Prepare CSV rows
+    const headers = ['ID', 'Ekipman Türü', 'Şube', 'Durum', 'Teknisyen', 'Notlar', 'Oluşturma Tarihi'];
+    const rows = pendingRequests.map(req => {
+      const eq = equipment.find(e => e.id === req.equipmentId);
+      const branch = branches.find(b => b.id === eq?.branchId);
+      return [
+        req.id,
+        EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type || 'Bilinmiyor',
+        branch?.name || 'Bilinmiyor',
+        STATUS_LABELS[req.status] || req.status,
+        req.serviceProvider || '-',
+        (req.notes || '').replace(/"/g, '""'), // Escape quotes for CSV
+        format(parseISO(req.createdAt), 'dd.MM.yyyy HH:mm', { locale: tr }),
+      ];
+    });
+
+    // Build CSV string
+    const csvContent = [
+      headers.map(h => `"${h}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `servis-talepleri-${format(new Date(), 'dd-MM-yyyy-HHmm')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: 'Başarılı',
+      description: `${pendingRequests.length} talep dışa aktarıldı`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -382,6 +427,17 @@ export default function EquipmentManagement() {
                   Filtreleri Temizle
                 </Button>
               )}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportToCSV}
+                className="gap-2 ml-auto"
+                data-testid="button-export-csv"
+              >
+                <Download className="w-4 h-4" />
+                CSV Dışa Aktar
+              </Button>
             </div>
           </div>
           {requestsLoading ? (
