@@ -302,7 +302,8 @@ export default function ServiceRequestsManagement() {
           } catch (error) {
             console.error('QR parsing error:', error);
           }
-        }
+        },
+        () => {} // Error callback (no-op)
       );
     } catch (error) {
       console.error('QR scanner error:', error);
