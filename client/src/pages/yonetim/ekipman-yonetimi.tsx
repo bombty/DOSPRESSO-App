@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap, History, CheckCircle2, Plus, X, ChevronRight } from 'lucide-react';
+import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap, History, CheckCircle2, Plus, X, ChevronRight, Search } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -99,6 +100,9 @@ export default function EquipmentManagement() {
   const [createStep, setCreateStep] = useState(1);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterBranch, setFilterBranch] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
 
   // Queries
   const { data: branches = [] } = useQuery<Branch[]>({
@@ -172,9 +176,40 @@ export default function EquipmentManagement() {
   );
 
   const pendingRequests = useMemo(
-    () => serviceRequests.filter(sr => ['talep_edildi', 'planlandı'].includes(sr.status))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [serviceRequests]
+    () => {
+      let filtered = serviceRequests.filter(sr => ['talep_edildi', 'planlandı'].includes(sr.status));
+      
+      // Search filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(sr => {
+          const eq = equipment.find(e => e.id === sr.equipmentId);
+          const branch = branches.find(b => b.id === eq?.branchId);
+          return (
+            sr.notes?.toLowerCase().includes(query) ||
+            sr.serviceProvider?.toLowerCase().includes(query) ||
+            eq?.type.toLowerCase().includes(query) ||
+            branch?.name.toLowerCase().includes(query)
+          );
+        });
+      }
+      
+      // Branch filter
+      if (filterBranch !== 'all') {
+        filtered = filtered.filter(sr => {
+          const eq = equipment.find(e => e.id === sr.equipmentId);
+          return eq?.branchId === parseInt(filterBranch);
+        });
+      }
+      
+      // Status filter
+      if (filterStatus !== 'all') {
+        filtered = filtered.filter(sr => sr.status === filterStatus);
+      }
+      
+      return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    },
+    [serviceRequests, equipment, branches, searchQuery, filterBranch, filterStatus]
   );
 
   const inProgressRequests = useMemo(
@@ -283,7 +318,7 @@ export default function EquipmentManagement() {
       {/* Main Tabs */}
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="pending">Bekleyen ({stats.pending})</TabsTrigger>
+          <TabsTrigger value="pending">Bekleyen ({pendingRequests.length})</TabsTrigger>
           <TabsTrigger value="inprogress">Devam Eden ({stats.inProgress})</TabsTrigger>
           <TabsTrigger value="completed">Tamamlanan ({stats.completed})</TabsTrigger>
           <TabsTrigger value="equipment">Ekipman Durumu</TabsTrigger>
@@ -291,6 +326,64 @@ export default function EquipmentManagement() {
 
         {/* TAB 1: Bekleyen Talepler */}
         <TabsContent value="pending" className="space-y-4">
+          {/* Filters */}
+          <div className="bg-muted p-4 rounded-lg space-y-3">
+            <div className="flex gap-2 items-center">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Ara: ekipman, şube, teknisyen, notlar..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1"
+                data-testid="input-search-requests"
+              />
+              {searchQuery && (
+                <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')} data-testid="button-clear-search">
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex gap-2 flex-wrap">
+              <Select value={filterBranch} onValueChange={setFilterBranch}>
+                <SelectTrigger className="w-[180px]" data-testid="select-filter-branch">
+                  <SelectValue placeholder="Şube" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Şubeler</SelectItem>
+                  {branches.map(b => (
+                    <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[180px]" data-testid="select-filter-status">
+                  <SelectValue placeholder="Durum" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Durumlar</SelectItem>
+                  <SelectItem value="talep_edildi">Talep Edildi</SelectItem>
+                  <SelectItem value="planlandı">Planlandı</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {(searchQuery || filterBranch !== 'all' || filterStatus !== 'all') && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFilterBranch('all');
+                    setFilterStatus('all');
+                  }}
+                  data-testid="button-reset-filters"
+                >
+                  Filtreleri Temizle
+                </Button>
+              )}
+            </div>
+          </div>
           {requestsLoading ? (
             <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
           ) : pendingRequests.length === 0 ? (
