@@ -1389,6 +1389,8 @@ export const equipmentServiceRequests = pgTable("equipment_service_requests", {
     notes?: string;
     meta?: Record<string, any>;
   }>>().default([]),
+  photo1Url: text("photo1_url"),
+  photo2Url: text("photo2_url"),
   createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   updatedById: varchar("updated_by_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),

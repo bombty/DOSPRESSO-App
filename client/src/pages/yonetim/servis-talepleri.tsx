@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User } from 'lucide-react';
+import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch } from '@shared/schema';
 import { format } from 'date-fns';
@@ -60,6 +60,8 @@ interface ServiceRequestWithEquipment {
   estimatedCost?: string;
   actualCost?: string;
   notes?: string;
+  photo1Url?: string;
+  photo2Url?: string;
   createdAt: string;
   createdById: string;
   createdByUsername?: string;
@@ -88,6 +90,9 @@ export default function ServiceRequestsManagement() {
   const [serviceUpdate, setServiceUpdate] = useState<string>('');
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState<string>('');
   const [actualCostInput, setActualCostInput] = useState<string>('');
+  const [photo1Preview, setPhoto1Preview] = useState<string>('');
+  const [photo2Preview, setPhoto2Preview] = useState<string>('');
+  const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
@@ -164,7 +169,48 @@ export default function ServiceRequestsManagement() {
     setServiceUpdate('');
     setEstimatedCompletionDate('');
     setActualCostInput('');
+    setPhoto1Preview(request.photo1Url || '');
+    setPhoto2Preview(request.photo2Url || '');
     setStatusDialogOpen(true);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, photoNumber: 1 | 2) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedRequest) return;
+
+    setUploadingPhoto(photoNumber);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = (event.target?.result as string).split(',')[1];
+        
+        const response = await apiRequest('POST', `/api/service-requests/${selectedRequest.id}/upload-photo`, {
+          photoData: base64,
+          photoNumber,
+        });
+
+        if (response.photoUrl) {
+          if (photoNumber === 1) {
+            setPhoto1Preview(response.photoUrl);
+          } else {
+            setPhoto2Preview(response.photoUrl);
+          }
+          toast({
+            title: "Başarılı",
+            description: `Fotoğraf ${photoNumber} yüklendi`,
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Fotoğraf yüklenemedi",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingPhoto(null);
+    }
   };
 
   const handleEquipmentClick = (request: ServiceRequestWithEquipment) => {
@@ -636,6 +682,87 @@ export default function ServiceRequestsManagement() {
                   step="0.01"
                 />
               </div>
+            </div>
+
+            {/* Photo Uploads */}
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <ImageIcon className="w-4 h-4" />
+                Kırık Parça Fotoğrafları
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {/* Photo 1 */}
+                <div className="space-y-2">
+                  <Label>Fotoğraf 1</Label>
+                  {photo1Preview && (
+                    <img src={photo1Preview} alt="Photo 1" className="w-full h-32 object-cover rounded-md border" />
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('photo1-input')?.click()}
+                    disabled={uploadingPhoto === 1}
+                    className="w-full"
+                    data-testid="button-upload-photo-1"
+                  >
+                    {uploadingPhoto === 1 ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Yükleniyor...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Fotoğraf Seç
+                      </>
+                    )}
+                  </Button>
+                  <input
+                    id="photo1-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handlePhotoUpload(e, 1)}
+                  />
+                </div>
+
+                {/* Photo 2 */}
+                <div className="space-y-2">
+                  <Label>Fotoğraf 2</Label>
+                  {photo2Preview && (
+                    <img src={photo2Preview} alt="Photo 2" className="w-full h-32 object-cover rounded-md border" />
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('photo2-input')?.click()}
+                    disabled={uploadingPhoto === 2}
+                    className="w-full"
+                    data-testid="button-upload-photo-2"
+                  >
+                    {uploadingPhoto === 2 ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Yükleniyor...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Fotoğraf Seç
+                      </>
+                    )}
+                  </Button>
+                  <input
+                    id="photo2-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handlePhotoUpload(e, 2)}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Fotoğraflar otomatik olarak sıkıştırılır ve kalitesi korunur</p>
             </div>
 
             {/* Info Box */}

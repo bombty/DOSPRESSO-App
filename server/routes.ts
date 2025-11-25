@@ -2123,6 +2123,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Photo upload endpoint for service requests
+  app.post('/api/service-requests/:id/upload-photo', isAuthenticated, async (req, res) => {
+    try {
+      const { compressAndConvertImage } = await import('./photo-utils');
+      const requestId = parseInt(req.params.id);
+      const { photoData, photoNumber } = req.body;
+      
+      if (!photoData || !photoNumber || ![1, 2].includes(photoNumber)) {
+        return res.status(400).json({ message: 'photoData ve photoNumber (1 veya 2) gerekli' });
+      }
+
+      const compressed = await compressAndConvertImage(photoData);
+      const base64 = compressed.toString('base64');
+      const photoUrl = `data:image/webp;base64,${base64}`;
+      
+      const photoField = photoNumber === 1 ? 'photo1Url' : 'photo2Url';
+      const updatedRequest = await db
+        .update(equipmentServiceRequests)
+        .set({ [photoField]: photoUrl })
+        .where(eq(equipmentServiceRequests.id, requestId))
+        .returning();
+
+      if (updatedRequest.length === 0) {
+        return res.status(404).json({ message: 'Servis talebi bulunamadı' });
+      }
+
+      res.json({ success: true, photoUrl, photoNumber });
+    } catch (error: any) {
+      console.error('Foto yükleme hatası:', error);
+      res.status(500).json({ message: 'Foto yükleme başarısız' });
+    }
+  });
+
   app.get('/api/knowledge-base', isAuthenticated, async (req, res) => {
     try {
       const category = req.query.category as string | undefined;
