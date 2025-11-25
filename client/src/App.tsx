@@ -91,9 +91,11 @@ function Router() {
           <Route path="/equipment/:id" component={EquipmentDetail} />
           <Route path="/ekipman" component={Equipment} />
           <Route path="/ariza" component={FaultHub} />
+          <Route path="/arizalar" component={FaultHub} />
           <Route path="/ariza-panosu" component={FaultHub} />
           <Route path="/ariza-yonetim" component={FaultHub} />
           <Route path="/ekipman-arizalar" component={FaultHub} />
+          <Route path="/ekipman-arizalari" component={FaultHub} />
           <Route path="/teknik-panosu" component={FaultHub} />
           <Route path="/sla-durum" component={FaultHub} />
           <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
