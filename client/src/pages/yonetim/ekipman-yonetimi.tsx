@@ -118,7 +118,7 @@ export default function EquipmentManagement() {
     resolver: zodResolver(insertEquipmentServiceRequestSchema),
     defaultValues: {
       equipmentId: 0,
-      priority: 'orta',
+      serviceDecision: '',
       serviceProvider: '',
       notes: '',
       status: 'talep_edildi',
@@ -173,13 +173,7 @@ export default function EquipmentManagement() {
 
   const pendingRequests = useMemo(
     () => serviceRequests.filter(sr => ['talep_edildi', 'planlandı'].includes(sr.status))
-      .sort((a, b) => {
-        const priorityOrder = { 'kritik': 0, 'yüksek': 1, 'orta': 2, 'düşük': 3 };
-        const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 999;
-        const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 999;
-        if (aPriority !== bPriority) return aPriority - bPriority;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }),
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [serviceRequests]
   );
 
@@ -205,7 +199,7 @@ export default function EquipmentManagement() {
       pending: pendingRequests.length,
       inProgress: inProgressRequests.length,
       completed: completedRequests.length,
-      critical: pendingRequests.filter(r => r.priority === 'kritik').length,
+      critical: 0,
     }),
     [pendingRequests, inProgressRequests, completedRequests]
   );
@@ -309,12 +303,6 @@ export default function EquipmentManagement() {
               {pendingRequests.map(req => {
                 const eq = equipment.find(e => e.id === req.equipmentId);
                 const branch = branches.find(b => b.id === eq?.branchId);
-                const priorityColor = {
-                  'kritik': 'bg-red-100 text-red-800 dark:bg-red-900',
-                  'yüksek': 'bg-orange-100 text-orange-800 dark:bg-orange-900',
-                  'orta': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900',
-                  'düşük': 'bg-blue-100 text-blue-800 dark:bg-blue-900',
-                };
 
                 return (
                   <Card
@@ -325,13 +313,8 @@ export default function EquipmentManagement() {
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge className={priorityColor[req.priority as keyof typeof priorityColor] || 'bg-gray-100'}>
-                            {req.priority?.toUpperCase()}
-                          </Badge>
-                          <div className="font-medium">
-                            {EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type || 'Bilinmiyor'}
-                          </div>
+                        <div className="font-medium">
+                          {EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type || 'Bilinmiyor'}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {branch?.name} • {req.serviceProvider || 'Teknisyen atanmadı'}
@@ -595,65 +578,36 @@ export default function EquipmentManagement() {
 
             {/* Step 3: Form */}
             {createStep === 3 && (
-              <Form {...form}>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="priority"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Öncelik</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="düşük">Düşük</SelectItem>
-                            <SelectItem value="orta">Orta</SelectItem>
-                            <SelectItem value="yüksek">Yüksek</SelectItem>
-                            <SelectItem value="kritik">Kritik</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="serviceProvider"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Teknik / Sağlayıcı</FormLabel>
-                        <FormControl>
-                          <input
-                            {...field}
-                            placeholder="Teknisyen adı"
-                            className="w-full px-3 py-2 border border-input rounded-md"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Açıklama</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} placeholder="Sorun açıklaması..." />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Teknik / Sağlayıcı *</label>
+                  <input
+                    placeholder="Teknisyen adı"
+                    value={form.watch('serviceProvider') || ''}
+                    onChange={(e) => form.setValue('serviceProvider', e.target.value)}
+                    className="w-full px-3 py-2 border border-input rounded-md"
                   />
                 </div>
-              </Form>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Açıklama / Sorun</label>
+                  <Textarea
+                    placeholder="Sorun açıklaması..."
+                    value={form.watch('notes') || ''}
+                    onChange={(e) => form.setValue('notes', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Hizmet Kararı</label>
+                  <input
+                    placeholder="Bakım / Tamir vb..."
+                    value={form.watch('serviceDecision') || ''}
+                    onChange={(e) => form.setValue('serviceDecision', e.target.value)}
+                    className="w-full px-3 py-2 border border-input rounded-md"
+                  />
+                </div>
+              </div>
             )}
 
             {/* Buttons */}
