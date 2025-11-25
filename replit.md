@@ -6,7 +6,7 @@ DOSPRESSO is a web-based platform for managing coffee shop franchise operations.
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (November 25, 2025 - FINAL SESSION - UNIFIED FAULT REPORT SYSTEM COMPLETE)
+## Recent Changes (November 25, 2025 - FINAL SESSION - UNIFIED FAULT REPORT SYSTEM + SERVICE RESPONSIBILITY)
 
 ### ✅ UNIFIED FAULT REPORT SYSTEM - PRODUCTION READY
 **2-Step Troubleshooting + Fault Creation Flow with Smart HQ Routing**
@@ -43,6 +43,27 @@ Preferred communication style: Simple, everyday language.
   - `POST /api/faults 200 in 379ms` - Fault creation successful
   - All API endpoints responding correctly
   - No console errors or warnings
+
+### ✅ EQUIPMENT SERVICE RESPONSIBILITY - NEWLY ADDED
+**Selective Fault Management Assignment (Şube vs Merkez)**
+
+- ✅ **Equipment Creation Form Enhancement**
+  - New "Arıza Yönetimi Sorumlusu" (Fault Management Responsibility) field
+  - Options: "Şube" (Branch) or "Merkez (HQ Teknik)" (Headquarters Technical Team)
+  - Dynamic helper text showing who will manage faults for selected option
+  - Dropdown integrates seamlessly with existing equipment form
+
+- ✅ **Equipment Edit Form Enhancement**
+  - Same "Arıza Yönetimi Sorumlusu" field in equipment edit dialog
+  - Users can update fault routing responsibility when editing equipment
+  - Maintains consistency with creation form interface
+
+- ✅ **Fault Dashboard Page** (/ariza-panosu)
+  - Real-time fault statistics with priority breakdown (Kritik, Yüksek, Beklemede)
+  - Critical faults alert section showing high-priority issues
+  - Recent faults list with status badges and priority indicators
+  - Turkish language UI with proper date formatting (dd MMM HH:mm)
+  - Responsive design with grid layout for stats cards
 
 ### Previous Session Features
 - **Servis Talepleri Modülü (Service Requests)**: FULLY COMPLETED & PRODUCTION-READY
