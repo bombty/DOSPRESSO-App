@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Loader2 } from "lucide-react";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
-import { FixedSizeList as List } from "react-window";
 import type { EquipmentFault } from "@shared/schema";
 
 // Constants
@@ -97,6 +96,16 @@ function FaultSkeleton() {
   );
 }
 
+function FaultSkeletonList() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <FaultSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
 export default function FaultHub() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -143,25 +152,25 @@ export default function FaultHub() {
 
   // Memoized calculations
   const metrics = useMemo(() => {
-    const critical = faults.filter(f => f.priority === "kritik" && f.currentStage !== "kapatildi");
-    const high = faults.filter(f => f.priority === "yuksek" && f.currentStage !== "kapatildi");
-    const resolved = faults.filter(f => f.currentStage === "kapatildi");
-    const open = faults.filter(f => f.currentStage !== "kapatildi");
-    const myFaults = faults.filter(f => f.assignedTo === user?.id && f.currentStage !== "kapatildi");
+    const critical = faults.filter((f: EquipmentFault) => f.priority === "kritik" && f.currentStage !== "kapatildi");
+    const high = faults.filter((f: EquipmentFault) => f.priority === "yuksek" && f.currentStage !== "kapatildi");
+    const resolved = faults.filter((f: EquipmentFault) => f.currentStage === "kapatildi");
+    const open = faults.filter((f: EquipmentFault) => f.currentStage !== "kapatildi");
+    const myFaults = faults.filter((f: EquipmentFault) => f.assignedTo === user?.id && f.currentStage !== "kapatildi");
     
-    const breached = open.filter(f => {
+    const breached = open.filter((f: EquipmentFault) => {
       if (!f.createdAt) return false;
       const hours = differenceInHours(new Date(), new Date(f.createdAt));
       return (f.priority === "kritik" && hours > SLA_CRITICAL_HOURS) || (f.priority === "yuksek" && hours > SLA_HIGH_HOURS);
     });
 
-    const atRisk = open.filter(f => {
-      if (!f.createdAt || breached.some(b => b.id === f.id)) return false;
+    const atRisk = open.filter((f: EquipmentFault) => {
+      if (!f.createdAt || breached.some((b: EquipmentFault) => b.id === f.id)) return false;
       const hours = differenceInHours(new Date(), new Date(f.createdAt));
       return (f.priority === "kritik" && hours > SLA_CRITICAL_RISK_HOURS) || (f.priority === "yuksek" && hours > SLA_HIGH_RISK_HOURS);
     });
 
-    const healthy = open.filter(f => !breached.some(b => b.id === f.id) && !atRisk.some(a => a.id === f.id));
+    const healthy = open.filter((f: EquipmentFault) => !breached.some((b: EquipmentFault) => b.id === f.id) && !atRisk.some((a: EquipmentFault) => a.id === f.id));
 
     return { critical, high, resolved, open, myFaults, breached, atRisk, healthy };
   }, [faults, user?.id]);
