@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap, History, CheckCircle2, Plus, X, ChevronRight, Search, Download } from 'lucide-react';
+import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap, History, CheckCircle2, Plus, X, ChevronRight, Search, Download, Smartphone } from 'lucide-react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -130,6 +131,57 @@ export default function EquipmentManagement() {
   const [filterBranch, setFilterBranch] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const qrScannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+  // QR Scanner effect
+  useEffect(() => {
+    if (showQRScanner && !qrScannerRef.current) {
+      const scanner = new Html5QrcodeScanner(
+        'qr-reader',
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        false
+      );
+      qrScannerRef.current = scanner;
+      
+      scanner.render(
+        (decodedText) => {
+          // Parse QR code: DOSPRESSO-EQ-{equipmentId}
+          const match = decodedText.match(/DOSPRESSO-EQ-(\d+)/);
+          if (match && match[1]) {
+            const equipmentId = parseInt(match[1]);
+            const foundEquipment = equipment.find(e => e.id === equipmentId);
+            if (foundEquipment) {
+              setSelectedEquipmentDetail(foundEquipment);
+              setShowQRScanner(false);
+              scanner.clear().catch(() => {});
+              qrScannerRef.current = null;
+              toast({
+                title: 'Başarılı',
+                description: `${EQUIPMENT_TYPE_LABELS[foundEquipment.type] || foundEquipment.type} tarandi`,
+              });
+            } else {
+              toast({
+                title: 'Hata',
+                description: 'Bu ekipman bulunamadi',
+                variant: 'destructive',
+              });
+            }
+          }
+        },
+        (error) => {
+          console.log('QR scan error:', error);
+        }
+      );
+    }
+
+    return () => {
+      if (qrScannerRef.current && !showQRScanner) {
+        qrScannerRef.current.clear().catch(() => {});
+        qrScannerRef.current = null;
+      }
+    };
+  }, [showQRScanner, equipment, toast]);
 
   // Queries
   const { data: branches = [] } = useQuery<Branch[]>({
@@ -359,10 +411,21 @@ export default function EquipmentManagement() {
           <h1 className="text-3xl font-bold tracking-tight">Ekipman & Servis Yönetimi</h1>
           <p className="text-muted-foreground mt-2">Tüm talepleri, devam eden işleri ve ekipman durumunu merkezi yerde yönetin</p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} className="gap-2" data-testid="button-create-request">
-          <Plus className="w-4 h-4" />
-          Yeni Talep
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setShowQRScanner(true)} 
+            variant="outline"
+            className="gap-2" 
+            data-testid="button-qr-scanner"
+          >
+            <Smartphone className="w-4 h-4" />
+            QR Kod Tarayıcı
+          </Button>
+          <Button onClick={() => setShowCreateDialog(true)} className="gap-2" data-testid="button-create-request">
+            <Plus className="w-4 h-4" />
+            Yeni Talep
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -869,6 +932,33 @@ export default function EquipmentManagement() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* QR Code Scanner Modal */}
+      <Dialog open={showQRScanner} onOpenChange={setShowQRScanner}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>QR Kod Tarayıcı</DialogTitle>
+            <DialogDescription>
+              Ekipman QR kodunu kameraya gösteriniz
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div 
+              id="qr-reader" 
+              className="w-full rounded-lg overflow-hidden bg-black"
+              style={{ minHeight: '300px' }}
+            />
+            <Button 
+              variant="outline"
+              onClick={() => setShowQRScanner(false)}
+              className="w-full"
+              data-testid="button-close-qr-scanner"
+            >
+              İptal Et
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
