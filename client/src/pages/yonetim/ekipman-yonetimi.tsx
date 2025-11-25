@@ -398,6 +398,51 @@ export default function EquipmentManagement() {
                 <div>{selectedEquipment.nextMaintenanceDate ? format(parseISO(selectedEquipment.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr }) : 'N/A'}</div>
               </div>
             </div>
+
+            {/* Service History Timeline */}
+            <div className="mt-6 pt-6 border-t">
+              <h3 className="font-medium mb-4 flex items-center gap-2">
+                <History className="w-4 h-4" />
+                Servis Geçmişi
+              </h3>
+              {(() => {
+                const services = getAllServices(selectedEquipment.id);
+                return services.length > 0 ? (
+                  <div className="space-y-3">
+                    {services.map((service, idx) => (
+                      <div key={service.id} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center justify-center">
+                            {getStatusIcon(service.status)}
+                          </div>
+                          {idx < services.length - 1 && <div className="w-0.5 h-8 bg-border mt-1" />}
+                        </div>
+                        <div className="flex-1 pb-3">
+                          <div className="flex items-center justify-between">
+                            <Badge className={STATUS_COLORS[service.status as keyof typeof STATUS_COLORS] || 'bg-gray-100'}>
+                              {STATUS_LABELS[service.status as keyof typeof STATUS_LABELS] || service.status}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {format(parseISO(service.createdAt), 'dd MMM HH:mm', { locale: tr })}
+                            </span>
+                          </div>
+                          {service.notes && (
+                            <p className="text-sm text-muted-foreground mt-1">{service.notes}</p>
+                          )}
+                          {service.serviceProvider && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Teknisyen: {service.serviceProvider}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">Henüz servis talebı yok</p>
+                );
+              })()}
+            </div>
           </CardContent>
         </Card>
       )}
