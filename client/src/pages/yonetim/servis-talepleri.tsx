@@ -187,7 +187,7 @@ export default function ServiceRequestsManagement() {
         const response = await apiRequest('POST', `/api/service-requests/${selectedRequest.id}/upload-photo`, {
           photoData: base64,
           photoNumber,
-        });
+        }) as unknown as { photoUrl: string; photoNumber: number; success: boolean };
 
         if (response.photoUrl) {
           if (photoNumber === 1) {
