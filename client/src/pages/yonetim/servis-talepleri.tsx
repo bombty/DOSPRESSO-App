@@ -9,11 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon, Download } from 'lucide-react';
+import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon, Download, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch } from '@shared/schema';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import machine1 from '@assets/stock_images/coffee_machine_equip_c86e5250.jpg';
+import machine2 from '@assets/stock_images/coffee_machine_equip_8e9d0f33.jpg';
+import machine3 from '@assets/stock_images/coffee_machine_equip_c7ddb01a.jpg';
+import machine4 from '@assets/stock_images/coffee_machine_equip_29a816b5.jpg';
 
 const STATUS_LABELS = {
   'talep_edildi': 'Talep Edildi',
@@ -78,6 +82,13 @@ interface ServiceRequestWithEquipment {
   }>;
 }
 
+const MACHINE_TEMPLATES = [
+  { id: 'espresso', name: 'Espresso Makinesi', type: 'Espresso Machine', image: machine1 },
+  { id: 'grinder', name: 'Kahve Değirmeni', type: 'Grinder', image: machine2 },
+  { id: 'cappuccino', name: 'Cappuccino Makinesi', type: 'Cappuccino Machine', image: machine3 },
+  { id: 'water_filter', name: 'Su Filtresi Sistemi', type: 'Water Filter System', image: machine4 },
+];
+
 export default function ServiceRequestsManagement() {
   const { toast } = useToast();
   const [filterBranch, setFilterBranch] = useState<string>('all');
@@ -85,6 +96,7 @@ export default function ServiceRequestsManagement() {
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequestWithEquipment | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<string>('');
   const [lastContactDate, setLastContactDate] = useState<string>('');
   const [serviceUpdate, setServiceUpdate] = useState<string>('');
@@ -93,6 +105,12 @@ export default function ServiceRequestsManagement() {
   const [photo1Preview, setPhoto1Preview] = useState<string>('');
   const [photo2Preview, setPhoto2Preview] = useState<string>('');
   const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
+  const [selectedMachine, setSelectedMachine] = useState<string>('');
+  const [createBranch, setCreateBranch] = useState<string>('');
+  const [createPriority, setCreatePriority] = useState<string>('orta');
+  const [createServiceProvider, setCreateServiceProvider] = useState<string>('');
+  const [createNotes, setCreateNotes] = useState<string>('');
+  const [creatingRequest, setCreatingRequest] = useState(false);
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
@@ -130,6 +148,61 @@ export default function ServiceRequestsManagement() {
       });
     },
   });
+
+  const createRequestMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest('/api/service-requests/', 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/service-requests'] });
+      setCreateDialogOpen(false);
+      setSelectedMachine('');
+      setCreateBranch('');
+      setCreatePriority('orta');
+      setCreateServiceProvider('');
+      setCreateNotes('');
+      toast({
+        title: 'Başarılı',
+        description: 'Servis talebi oluşturuldu',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Hata',
+        description: error.message || 'Talep oluşturulamadı',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleCreateRequest = async () => {
+    if (!selectedMachine || !createBranch || !createServiceProvider) {
+      toast({
+        title: 'Hata',
+        description: 'Zorunlu alanları doldurunuz',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const machine = MACHINE_TEMPLATES.find(m => m.id === selectedMachine);
+    if (!machine) return;
+
+    setCreatingRequest(true);
+    try {
+      await createRequestMutation.mutateAsync({
+        branchId: parseInt(createBranch),
+        equipmentName: machine.name,
+        equipmentType: machine.type,
+        priority: createPriority,
+        serviceProvider: createServiceProvider,
+        notes: createNotes,
+        status: 'talep_edildi',
+      });
+    } finally {
+      setCreatingRequest(false);
+    }
+  };
 
   const filteredRequests = useMemo(() => {
     return serviceRequests.filter(request => {
@@ -249,9 +322,15 @@ export default function ServiceRequestsManagement() {
 
   return (
     <div className="container mx-auto p-4 lg:p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold" data-testid="text-page-title">Servis Talepleri</h1>
-        <p className="text-muted-foreground mt-1">Ekipman bakım ve servis taleplerini yönetin</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold" data-testid="text-page-title">Servis Talepleri</h1>
+          <p className="text-muted-foreground mt-1">Ekipman bakım ve servis taleplerini yönetin</p>
+        </div>
+        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2" data-testid="button-create-service-request">
+          <Plus className="w-4 h-4" />
+          Yeni Talep
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -825,6 +904,131 @@ export default function ServiceRequestsManagement() {
             >
               {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Güncelle ve Kaydet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Service Request Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5" />
+              Yeni Servis Talebi Oluştur
+            </DialogTitle>
+            <DialogDescription>
+              Cihaz seçimi yaparak yeni bir servis talebi oluşturun
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Machine Selection with Images */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Cihaz Seçimi</Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {MACHINE_TEMPLATES.map((machine) => (
+                  <button
+                    key={machine.id}
+                    onClick={() => setSelectedMachine(machine.id)}
+                    className={`p-3 rounded-lg border-2 transition-all cursor-pointer overflow-hidden hover-elevate ${
+                      selectedMachine === machine.id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border'
+                    }`}
+                    data-testid={`button-machine-${machine.id}`}
+                  >
+                    <img
+                      src={machine.image}
+                      alt={machine.name}
+                      className="w-full h-24 object-cover rounded mb-2"
+                    />
+                    <p className="text-sm font-medium text-center">{machine.name}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="create-branch">Şube *</Label>
+                  <Select value={createBranch} onValueChange={setCreateBranch}>
+                    <SelectTrigger id="create-branch" data-testid="select-create-branch">
+                      <SelectValue placeholder="Şube seçiniz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map(branch => (
+                        <SelectItem key={branch.id} value={String(branch.id)}>
+                          {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="create-priority">Öncelik</Label>
+                  <Select value={createPriority} onValueChange={setCreatePriority}>
+                    <SelectTrigger id="create-priority" data-testid="select-create-priority">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="düşük">Düşük</SelectItem>
+                      <SelectItem value="orta">Orta</SelectItem>
+                      <SelectItem value="yüksek">Yüksek</SelectItem>
+                      <SelectItem value="kritik">Kritik</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-provider">Servis Sağlayıcı *</Label>
+                <Input
+                  id="create-provider"
+                  placeholder="Örn: DOSPRESSO Technical Support"
+                  value={createServiceProvider}
+                  onChange={(e) => setCreateServiceProvider(e.target.value)}
+                  data-testid="input-service-provider"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-notes">Notlar</Label>
+                <Textarea
+                  id="create-notes"
+                  placeholder="Sorun açıklaması ve ek notlar..."
+                  value={createNotes}
+                  onChange={(e) => setCreateNotes(e.target.value)}
+                  className="resize-none"
+                  rows={3}
+                  data-testid="textarea-notes"
+                />
+              </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md p-3">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                💡 <span className="font-medium">Bilgi:</span> Yeni talep "Talep Edildi" durumuyla oluşturulacak. Daha sonra fotoğraf ekleyebilir ve durumunu güncelleyebilirsiniz.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              İptal
+            </Button>
+            <Button
+              onClick={handleCreateRequest}
+              disabled={creatingRequest || !selectedMachine || !createBranch || !createServiceProvider}
+              data-testid="button-submit-create-request"
+              className="gap-2"
+            >
+              {creatingRequest && <Loader2 className="w-4 h-4 animate-spin" />}
+              Talebi Oluştur
             </Button>
           </DialogFooter>
         </DialogContent>
