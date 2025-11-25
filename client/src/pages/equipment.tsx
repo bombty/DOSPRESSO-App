@@ -16,8 +16,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Plus, QrCode, Wrench, Calendar, MapPin, Pencil } from "lucide-react";
+import { Settings, Plus, QrCode, Wrench, Calendar, MapPin, Pencil, AlertTriangle } from "lucide-react";
 import { DialogFooter } from "@/components/ui/dialog";
+import { FaultReportDialog } from "@/components/fault-report-dialog";
 
 export default function Equipment() {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ export default function Equipment() {
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>(undefined);
   const [maintenanceFilter, setMaintenanceFilter] = useState<string | undefined>(undefined);
+  const [faultReportEquipment, setFaultReportEquipment] = useState<EquipmentType | null>(null);
 
   const { data: equipment, isLoading } = useQuery<EquipmentType[]>({
     queryKey: ["/api/equipment"],
@@ -740,33 +742,44 @@ export default function Equipment() {
                     </p>
                   )}
 
-                  {canEdit && (
-                    <div className="pt-2 flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => logMaintenanceMutation.mutate(item.id)}
-                        disabled={logMaintenanceMutation.isPending}
-                        className="flex-1"
-                        data-testid={`button-log-maintenance-${item.id}`}
-                      >
-                        <Wrench className="mr-2 h-4 w-4" />
-                        Bakım Kaydet
-                      </Button>
-                      {item.qrCodeUrl && (
+                  <div className="pt-2 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFaultReportEquipment(item)}
+                      className="flex-1"
+                      data-testid={`button-report-fault-${item.id}`}
+                    >
+                      <AlertTriangle className="mr-2 h-4 w-4" />
+                      Arıza Bildir
+                    </Button>
+                    {canEdit && (
+                      <>
                         <Button
                           variant="outline"
                           size="sm"
-                          asChild
-                          data-testid={`button-view-qr-${item.id}`}
+                          onClick={() => logMaintenanceMutation.mutate(item.id)}
+                          disabled={logMaintenanceMutation.isPending}
+                          data-testid={`button-log-maintenance-${item.id}`}
                         >
-                          <a href={item.qrCodeUrl} target="_blank" rel="noopener noreferrer">
-                            <QrCode className="h-4 w-4" />
-                          </a>
+                          <Wrench className="mr-2 h-4 w-4" />
+                          Bakım
                         </Button>
-                      )}
-                    </div>
-                  )}
+                        {item.qrCodeUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            data-testid={`button-view-qr-${item.id}`}
+                          >
+                            <a href={item.qrCodeUrl} target="_blank" rel="noopener noreferrer">
+                              <QrCode className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -793,6 +806,14 @@ export default function Equipment() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {faultReportEquipment && (
+        <FaultReportDialog
+          equipment={faultReportEquipment}
+          isOpen={!!faultReportEquipment}
+          onOpenChange={(open) => !open && setFaultReportEquipment(null)}
+        />
       )}
     </div>
   );
