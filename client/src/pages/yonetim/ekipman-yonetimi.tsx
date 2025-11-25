@@ -1,39 +1,49 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap, History, CheckCircle2, AlertCircle as AlertIcon } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap, History, CheckCircle2, Plus, X, ChevronRight } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import type { Branch } from '@shared/schema';
-
-interface Equipment {
-  id: number;
-  branchId: number;
-  equipmentType: string;
-  serialNumber?: string;
-  purchaseDate?: string;
-  warrantyEndDate?: string;
-  maintenanceResponsible: string;
-  lastMaintenanceDate?: string;
-  nextMaintenanceDate?: string;
-  maintenanceIntervalDays: number;
-  isActive: boolean;
-  maxServiceTimeHours: number;
-  alertThresholdHours: number;
-}
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import type { Branch, Equipment as EquipmentType, InsertEquipmentServiceRequest } from '@shared/schema';
+import { insertEquipmentServiceRequestSchema } from '@shared/schema';
 
 interface ServiceRequest {
   id: number;
   equipmentId: number;
   status: string;
-  createdAt: string;
   priority?: string;
   serviceProvider?: string;
   notes?: string;
+  createdAt: string;
+  createdById?: string;
+  photo1Url?: string;
+  photo2Url?: string;
+  lastUpdated?: string;
+}
+
+interface Equipment {
+  id: number;
+  branchId: number;
+  name: string;
+  type: string;
+  serialNumber?: string;
+  purchaseDate?: string;
+  warrantyExpiryDate?: string;
+  lastMaintenanceDate?: string;
+  nextMaintenanceDate?: string;
+  isActive: boolean;
 }
 
 const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
@@ -48,17 +58,17 @@ const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   'talep_edildi': 'Talep Edildi',
-  'planlandi': 'Planlandı',
+  'planlandı': 'Planlandı',
   'devam_ediyor': 'Devam Ediyor',
-  'tamamlandi': 'Tamamlandı',
+  'tamamlandı': 'Tamamlandı',
   'iptal_edildi': 'İptal Edildi',
 };
 
 const STATUS_COLORS: Record<string, string> = {
   'talep_edildi': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  'planlandi': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  'planlandı': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   'devam_ediyor': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  'tamamlandi': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  'tamamlandı': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   'iptal_edildi': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
 };
 
@@ -67,8 +77,8 @@ const getHealthStatus = (equipment: Equipment): { status: string; color: string;
     return { status: 'Pasif', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200', icon: <Clock className="w-4 h-4" /> };
   }
 
-  if (equipment.warrantyEndDate) {
-    const warrantyEnd = parseISO(equipment.warrantyEndDate);
+  if (equipment.warrantyExpiryDate) {
+    const warrantyEnd = parseISO(equipment.warrantyExpiryDate);
     const daysToWarrantyEnd = differenceInDays(warrantyEnd, new Date());
     if (daysToWarrantyEnd < 0) {
       return { status: 'Garanti Sona Erdi', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <AlertCircle className="w-4 h-4" /> };
@@ -78,265 +88,265 @@ const getHealthStatus = (equipment: Equipment): { status: string; color: string;
     }
   }
 
-  if (equipment.nextMaintenanceDate) {
-    const nextMaint = parseISO(equipment.nextMaintenanceDate);
-    const daysToMaintenance = differenceInDays(nextMaint, new Date());
-    if (daysToMaintenance < 0) {
-      return { status: 'Bakım Gerekli', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <AlertCircle className="w-4 h-4" /> };
-    }
-    if (daysToMaintenance < 7) {
-      return { status: 'Yakında Bakım', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200', icon: <Wrench className="w-4 h-4" /> };
-    }
-  }
-
   return { status: 'Sağlıklı', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: <Zap className="w-4 h-4" /> };
 };
 
 export default function EquipmentManagement() {
-  const [filterBranch, setFilterBranch] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createStep, setCreateStep] = useState(1);
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [selectedEquipment, setSelectedEquipment] = useState<string>('');
 
+  // Queries
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
   });
 
-  const { data: equipment = [], isLoading } = useQuery<Equipment[]>({
+  const { data: equipment = [] } = useQuery<Equipment[]>({
     queryKey: ['/api/equipment'],
   });
 
-  const { data: serviceRequests = [] } = useQuery<ServiceRequest[]>({
+  const { data: serviceRequests = [], isLoading: requestsLoading } = useQuery<ServiceRequest[]>({
     queryKey: ['/api/service-requests'],
   });
 
-  const filteredEquipment = useMemo(() => {
-    return equipment.filter(eq => {
-      if (filterBranch !== 'all' && eq.branchId !== parseInt(filterBranch)) return false;
-      
-      if (filterStatus !== 'all') {
-        const health = getHealthStatus(eq);
-        if (filterStatus === 'healthy' && health.status !== 'Sağlıklı') return false;
-        if (filterStatus === 'warning' && !['Yakında Bakım', 'Garanti Bitme Yakın'].includes(health.status)) return false;
-        if (filterStatus === 'critical' && !['Bakım Gerekli', 'Garanti Sona Erdi'].includes(health.status)) return false;
-        if (filterStatus === 'inactive' && health.status !== 'Pasif') return false;
+  // Form
+  const form = useForm<InsertEquipmentServiceRequest>({
+    resolver: zodResolver(insertEquipmentServiceRequestSchema),
+    defaultValues: {
+      equipmentId: 0,
+      priority: 'orta',
+      serviceProvider: '',
+      notes: '',
+      status: 'talep_edildi',
+    },
+  });
+
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: async (data: InsertEquipmentServiceRequest) => {
+      await apiRequest('POST', '/api/service-requests/', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/service-requests'] });
+      toast({
+        title: 'Başarılı',
+        description: 'Servis talebi oluşturuldu',
+      });
+      setShowCreateDialog(false);
+      setCreateStep(1);
+      form.reset();
+    },
+    onError: () => {
+      toast({
+        title: 'Hata',
+        description: 'Servis talebi oluşturulamadı',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { status?: string; notes?: string }) => {
+      if (selectedRequest) {
+        await apiRequest('PATCH', `/api/service-requests/${selectedRequest.id}`, data);
       }
-      
-      return true;
-    });
-  }, [equipment, filterBranch, filterStatus]);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/service-requests'] });
+      toast({
+        title: 'Başarılı',
+        description: 'Talep güncellendi',
+      });
+      setSelectedRequest(null);
+    },
+  });
 
-  const stats = useMemo(() => {
-    const total = filteredEquipment.length;
-    const healthy = filteredEquipment.filter(eq => getHealthStatus(eq).status === 'Sağlıklı').length;
-    const warning = filteredEquipment.filter(eq => ['Yakında Bakım', 'Garanti Bitme Yakın'].includes(getHealthStatus(eq).status)).length;
-    const critical = filteredEquipment.filter(eq => ['Bakım Gerekli', 'Garanti Sona Erdi'].includes(getHealthStatus(eq).status)).length;
-    return { total, healthy, warning, critical };
-  }, [filteredEquipment]);
+  // Filters & Sorting
+  const branchEquipment = useMemo(
+    () => equipment.filter(eq => eq.branchId === parseInt(selectedBranch)),
+    [equipment, selectedBranch]
+  );
 
-  const getAllServices = (equipId: number) => {
-    return serviceRequests
-      .filter(sr => sr.equipmentId === equipId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const pendingRequests = useMemo(
+    () => serviceRequests.filter(sr => ['talep_edildi', 'planlandı'].includes(sr.status))
+      .sort((a, b) => {
+        const priorityOrder = { 'kritik': 0, 'yüksek': 1, 'orta': 2, 'düşük': 3 };
+        const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 999;
+        const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 999;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }),
+    [serviceRequests]
+  );
+
+  const inProgressRequests = useMemo(
+    () => serviceRequests.filter(sr => sr.status === 'devam_ediyor'),
+    [serviceRequests]
+  );
+
+  const completedRequests = useMemo(
+    () => serviceRequests.filter(sr => ['tamamlandı', 'iptal_edildi'].includes(sr.status))
+      .sort((a, b) => new Date(b.lastUpdated || b.createdAt).getTime() - new Date(a.lastUpdated || a.createdAt).getTime())
+      .slice(0, 20),
+    [serviceRequests]
+  );
+
+  const equipmentForDisplay = useMemo(
+    () => equipment.sort((a, b) => a.branchId - b.branchId),
+    [equipment]
+  );
+
+  const stats = useMemo(
+    () => ({
+      pending: pendingRequests.length,
+      inProgress: inProgressRequests.length,
+      completed: completedRequests.length,
+      critical: pendingRequests.filter(r => r.priority === 'kritik').length,
+    }),
+    [pendingRequests, inProgressRequests, completedRequests]
+  );
+
+  const handleCreateSubmit = () => {
+    if (createStep === 1 && !selectedBranch) {
+      toast({ title: 'Hata', description: 'Şube seçiniz' });
+      return;
+    }
+    if (createStep === 2 && !selectedEquipment) {
+      toast({ title: 'Hata', description: 'Ekipman seçiniz' });
+      return;
+    }
+    if (createStep === 3) {
+      form.setValue('equipmentId', parseInt(selectedEquipment));
+      createMutation.mutate(form.getValues());
+      return;
+    }
+    setCreateStep(createStep + 1);
   };
 
-  const getStatusIcon = (status: string) => {
-    if (status === 'tamamlandi') return <CheckCircle2 className="w-4 h-4 text-green-600" />;
-    if (status === 'iptal_edildi') return <Clock className="w-4 h-4 text-gray-600" />;
-    if (status === 'devam_ediyor') return <Wrench className="w-4 h-4 text-orange-600" />;
-    return <AlertIcon className="w-4 h-4 text-blue-600" />;
+  const handleStatusChange = (newStatus: string) => {
+    updateMutation.mutate({ status: newStatus });
   };
 
-  const getBranchName = (branchId: number) => {
-    return branches.find(b => b.id === branchId)?.name || `Şube ${branchId}`;
+  const handleNotesSubmit = (notes: string) => {
+    updateMutation.mutate({ notes });
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Ekipman Yönetimi</h1>
-        <p className="text-muted-foreground mt-2">Tüm şubeler genelinde ekipman durumu, bakım tarihleri ve hizmet taleplerini izleyin</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Ekipman & Servis Yönetimi</h1>
+          <p className="text-muted-foreground mt-2">Tüm talepleri, devam eden işleri ve ekipman durumunu merkezi yerde yönetin</p>
+        </div>
+        <Button onClick={() => setShowCreateDialog(true)} className="gap-2" data-testid="button-create-request">
+          <Plus className="w-4 h-4" />
+          Yeni Talep
+        </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pending}</div>
+            {stats.critical > 0 && <div className="text-xs text-red-600 mt-1">🚨 {stats.critical} Kritik</div>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Devam Eden</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats.inProgress}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Tamamlanan (30gün)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Toplam Ekipman</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Sağlıklı</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.healthy}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Uyarı</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.warning}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Kritik</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.critical}</div>
+            <div className="text-2xl font-bold">{equipment.length}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4">
-        <Select value={filterBranch} onValueChange={setFilterBranch}>
-          <SelectTrigger className="w-[200px]" data-testid="select-filter-branch">
-            <SelectValue placeholder="Şube Seçin" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tüm Şubeler</SelectItem>
-            {branches.map(branch => (
-              <SelectItem key={branch.id} value={branch.id.toString()}>{branch.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[200px]" data-testid="select-filter-status">
-            <SelectValue placeholder="Durum Seçin" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tüm Durumlar</SelectItem>
-            <SelectItem value="healthy">Sağlıklı</SelectItem>
-            <SelectItem value="warning">Uyarı</SelectItem>
-            <SelectItem value="critical">Kritik</SelectItem>
-            <SelectItem value="inactive">Pasif</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Equipment List */}
-      <Tabs defaultValue="grid" className="w-full">
-        <TabsList>
-          <TabsTrigger value="grid">Kart Görünüm</TabsTrigger>
-          <TabsTrigger value="list">Liste Görünüm</TabsTrigger>
+      {/* Main Tabs */}
+      <Tabs defaultValue="pending" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="pending">Bekleyen ({stats.pending})</TabsTrigger>
+          <TabsTrigger value="inprogress">Devam Eden ({stats.inProgress})</TabsTrigger>
+          <TabsTrigger value="completed">Tamamlanan ({stats.completed})</TabsTrigger>
+          <TabsTrigger value="equipment">Ekipman Durumu</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="grid" className="space-y-4">
-          {isLoading ? (
+        {/* TAB 1: Bekleyen Talepler */}
+        <TabsContent value="pending" className="space-y-4">
+          {requestsLoading ? (
             <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
-          ) : filteredEquipment.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">Ekipman bulunamadı</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredEquipment.map(eq => {
-                const health = getHealthStatus(eq);
-                const recentServices = getAllServices(eq.id);
-                
-                return (
-                  <Card key={eq.id} className="hover-elevate cursor-pointer" onClick={() => setSelectedEquipment(eq)} data-testid={`card-equipment-${eq.id}`}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-base">{EQUIPMENT_TYPE_LABELS[eq.equipmentType] || eq.equipmentType}</CardTitle>
-                          <CardDescription className="text-xs mt-1">{getBranchName(eq.branchId)}</CardDescription>
-                        </div>
-                        <Badge className={health.color}>
-                          {health.icon}
-                          <span className="ml-1 text-xs">{health.status}</span>
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {eq.serialNumber && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Seri No: </span>
-                          <span className="font-mono text-xs">{eq.serialNumber}</span>
-                        </div>
-                      )}
-                      
-                      {eq.lastMaintenanceDate && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Son bakım: </span>
-                          <span>{format(parseISO(eq.lastMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</span>
-                        </div>
-                      )}
-
-                      {eq.nextMaintenanceDate && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Clock className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Sonraki bakım: </span>
-                          <span>{format(parseISO(eq.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</span>
-                        </div>
-                      )}
-
-                      {eq.warrantyEndDate && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Wrench className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Garanti sonu: </span>
-                          <span>{format(parseISO(eq.warrantyEndDate), 'dd MMM yyyy', { locale: tr })}</span>
-                        </div>
-                      )}
-
-                      {recentServices.length > 0 && (
-                        <div className="pt-2 border-t">
-                          <div className="text-xs font-semibold text-muted-foreground mb-1">Son Hizmetler</div>
-                          <div className="space-y-1">
-                            {recentServices.map(sr => (
-                              <div key={sr.id} className="text-xs bg-muted px-2 py-1 rounded">
-                                {format(parseISO(sr.createdAt), 'dd MMM', { locale: tr })} - {sr.status}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
+          ) : pendingRequests.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">Bekleyen talep yok</p>
+              <Button onClick={() => setShowCreateDialog(true)}>Yeni Talep Oluştur</Button>
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="list" className="space-y-2">
-          {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
-          ) : filteredEquipment.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">Ekipman bulunamadı</div>
           ) : (
             <div className="space-y-2">
-              {filteredEquipment.map(eq => {
-                const health = getHealthStatus(eq);
-                
+              {pendingRequests.map(req => {
+                const eq = equipment.find(e => e.id === req.equipmentId);
+                const branch = branches.find(b => b.id === eq?.branchId);
+                const priorityColor = {
+                  'kritik': 'bg-red-100 text-red-800 dark:bg-red-900',
+                  'yüksek': 'bg-orange-100 text-orange-800 dark:bg-orange-900',
+                  'orta': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900',
+                  'düşük': 'bg-blue-100 text-blue-800 dark:bg-blue-900',
+                };
+
                 return (
-                  <Card key={eq.id} className="hover-elevate cursor-pointer p-4" onClick={() => setSelectedEquipment(eq)} data-testid={`row-equipment-${eq.id}`}>
+                  <Card
+                    key={req.id}
+                    className="hover-elevate cursor-pointer p-4"
+                    onClick={() => setSelectedRequest(req)}
+                    data-testid={`card-request-${req.id}`}
+                  >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
-                        <div className="font-medium">{EQUIPMENT_TYPE_LABELS[eq.equipmentType] || eq.equipmentType}</div>
-                        <div className="text-sm text-muted-foreground">{getBranchName(eq.branchId)} • Seri: {eq.serialNumber || 'N/A'}</div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        {eq.nextMaintenanceDate && (
-                          <div className="text-sm text-right">
-                            <div className="text-muted-foreground">Sonraki Bakım</div>
-                            <div className="font-medium">{format(parseISO(eq.nextMaintenanceDate), 'dd MMM', { locale: tr })}</div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge className={priorityColor[req.priority as keyof typeof priorityColor] || 'bg-gray-100'}>
+                            {req.priority?.toUpperCase()}
+                          </Badge>
+                          <div className="font-medium">
+                            {EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type || 'Bilinmiyor'}
                           </div>
-                        )}
-                        
-                        <Badge className={health.color}>
-                          {health.icon}
-                          <span className="ml-1">{health.status}</span>
-                        </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {branch?.name} • {req.serviceProvider || 'Teknisyen atanmadı'}
+                        </div>
+                        {req.notes && <p className="text-sm mt-2">{req.notes.substring(0, 100)}</p>}
                       </div>
+                      <div className="text-right">
+                        <Badge className={STATUS_COLORS[req.status] || 'bg-gray-100'}>
+                          {STATUS_LABELS[req.status] || req.status}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          {format(parseISO(req.createdAt), 'dd MMM HH:mm', { locale: tr })}
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
                     </div>
                   </Card>
                 );
@@ -344,108 +354,325 @@ export default function EquipmentManagement() {
             </div>
           )}
         </TabsContent>
+
+        {/* TAB 2: Devam Eden */}
+        <TabsContent value="inprogress" className="space-y-4">
+          {inProgressRequests.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">Devam eden talep yok</div>
+          ) : (
+            <div className="space-y-2">
+              {inProgressRequests.map(req => {
+                const eq = equipment.find(e => e.id === req.equipmentId);
+                const branch = branches.find(b => b.id === eq?.branchId);
+
+                return (
+                  <Card
+                    key={req.id}
+                    className="hover-elevate cursor-pointer p-4"
+                    onClick={() => setSelectedRequest(req)}
+                    data-testid={`card-request-${req.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="font-medium">{EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type}</div>
+                        <div className="text-sm text-muted-foreground">{branch?.name}</div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* TAB 3: Tamamlanan */}
+        <TabsContent value="completed" className="space-y-4">
+          {completedRequests.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">Tamamlanan talep yok</div>
+          ) : (
+            <div className="space-y-2">
+              {completedRequests.map(req => {
+                const eq = equipment.find(e => e.id === req.equipmentId);
+                const branch = branches.find(b => b.id === eq?.branchId);
+
+                return (
+                  <Card key={req.id} className="p-4 opacity-75">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type}</div>
+                        <div className="text-sm text-muted-foreground">{branch?.name}</div>
+                      </div>
+                      <Badge className={STATUS_COLORS[req.status] || 'bg-gray-100'}>
+                        {STATUS_LABELS[req.status] || req.status}
+                      </Badge>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* TAB 4: Ekipman Durumu */}
+        <TabsContent value="equipment" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {equipmentForDisplay.map(eq => {
+              const health = getHealthStatus(eq);
+              const branch = branches.find(b => b.id === eq.branchId);
+              const relatedRequests = serviceRequests.filter(r => r.equipmentId === eq.id);
+
+              return (
+                <Card key={eq.id} className="hover-elevate" data-testid={`card-equipment-${eq.id}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-base">{EQUIPMENT_TYPE_LABELS[eq.type] || eq.type}</CardTitle>
+                        <CardDescription className="text-xs">{branch?.name}</CardDescription>
+                      </div>
+                      <Badge className={health.color}>
+                        {health.icon}
+                        <span className="ml-1">{health.status}</span>
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {eq.serialNumber && <div><span className="text-muted-foreground">Seri: </span>{eq.serialNumber}</div>}
+                    {eq.warrantyExpiryDate && (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        <span className="text-muted-foreground">Garanti: </span>
+                        {format(parseISO(eq.warrantyExpiryDate), 'dd MMM yyyy', { locale: tr })}
+                      </div>
+                    )}
+                    {eq.nextMaintenanceDate && (
+                      <div className="flex items-center gap-2">
+                        <Wrench className="w-4 h-4" />
+                        <span className="text-muted-foreground">Bakım: </span>
+                        {format(parseISO(eq.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr })}
+                      </div>
+                    )}
+                    {relatedRequests.length > 0 && (
+                      <div className="pt-2 border-t text-xs">
+                        <span className="text-muted-foreground">{relatedRequests.length} talep</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </TabsContent>
       </Tabs>
 
-      {/* Detail View */}
-      {selectedEquipment && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Ekipman Detayları</CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setSelectedEquipment(null)}
-              className="absolute top-4 right-4"
-              data-testid="button-close-details"
-            >
-              Kapat
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-muted-foreground">Tür</div>
-                <div className="font-medium">{EQUIPMENT_TYPE_LABELS[selectedEquipment.equipmentType] || selectedEquipment.equipmentType}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Şube</div>
-                <div className="font-medium">{getBranchName(selectedEquipment.branchId)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Seri Numarası</div>
-                <div className="font-mono text-sm">{selectedEquipment.serialNumber || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Durumu</div>
-                <Badge className={`${getHealthStatus(selectedEquipment).color} mt-1`}>
-                  {getHealthStatus(selectedEquipment).status}
-                </Badge>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Satın Alma Tarihi</div>
-                <div>{selectedEquipment.purchaseDate ? format(parseISO(selectedEquipment.purchaseDate), 'dd MMM yyyy', { locale: tr }) : 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Garanti Sonu</div>
-                <div>{selectedEquipment.warrantyEndDate ? format(parseISO(selectedEquipment.warrantyEndDate), 'dd MMM yyyy', { locale: tr }) : 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Son Bakım</div>
-                <div>{selectedEquipment.lastMaintenanceDate ? format(parseISO(selectedEquipment.lastMaintenanceDate), 'dd MMM yyyy', { locale: tr }) : 'Hiç'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Sonraki Bakım</div>
-                <div>{selectedEquipment.nextMaintenanceDate ? format(parseISO(selectedEquipment.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr }) : 'N/A'}</div>
-              </div>
-            </div>
+      {/* Detail Panel Modal */}
+      {selectedRequest && (
+        <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Talep Detayı #{selectedRequest.id}</DialogTitle>
+              <DialogDescription>
+                {format(parseISO(selectedRequest.createdAt), 'dd MMM yyyy HH:mm', { locale: tr })}
+              </DialogDescription>
+            </DialogHeader>
 
-            {/* Service History Timeline */}
-            <div className="mt-6 pt-6 border-t">
-              <h3 className="font-medium mb-4 flex items-center gap-2">
-                <History className="w-4 h-4" />
-                Servis Geçmişi
-              </h3>
-              {(() => {
-                const services = getAllServices(selectedEquipment.id);
-                return services.length > 0 ? (
-                  <div className="space-y-3">
-                    {services.map((service, idx) => (
-                      <div key={service.id} className="flex gap-3">
-                        <div className="flex flex-col items-center">
-                          <div className="flex items-center justify-center">
-                            {getStatusIcon(service.status)}
-                          </div>
-                          {idx < services.length - 1 && <div className="w-0.5 h-8 bg-border mt-1" />}
-                        </div>
-                        <div className="flex-1 pb-3">
-                          <div className="flex items-center justify-between">
-                            <Badge className={STATUS_COLORS[service.status as keyof typeof STATUS_COLORS] || 'bg-gray-100'}>
-                              {STATUS_LABELS[service.status as keyof typeof STATUS_LABELS] || service.status}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {format(parseISO(service.createdAt), 'dd MMM HH:mm', { locale: tr })}
-                            </span>
-                          </div>
-                          {service.notes && (
-                            <p className="text-sm text-muted-foreground mt-1">{service.notes}</p>
-                          )}
-                          {service.serviceProvider && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Teknisyen: {service.serviceProvider}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+            <div className="space-y-6">
+              {/* Equipment Info */}
+              {equipment.find(e => e.id === selectedRequest.equipmentId) && (
+                <div className="bg-muted p-4 rounded-lg">
+                  <div className="font-medium">Ekipman Bilgisi</div>
+                  <div className="text-sm mt-2 text-muted-foreground">
+                    {EQUIPMENT_TYPE_LABELS[equipment.find(e => e.id === selectedRequest.equipmentId)?.type || ''] || 'Bilinmiyor'} •{' '}
+                    {branches.find(b => b.id === equipment.find(e => e.id === selectedRequest.equipmentId)?.branchId)?.name}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">Henüz servis talebı yok</p>
-                );
-              })()}
+                </div>
+              )}
+
+              {/* Status */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Durum</label>
+                <div className="flex gap-2 flex-wrap">
+                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      variant={selectedRequest.status === key ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleStatusChange(key)}
+                      data-testid={`button-status-${key}`}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notlar</label>
+                <Textarea
+                  placeholder="Not ekleyin..."
+                  defaultValue={selectedRequest.notes || ''}
+                  onBlur={(e) => {
+                    if (e.target.value !== (selectedRequest.notes || '')) {
+                      handleNotesSubmit(e.target.value);
+                    }
+                  }}
+                  className="min-h-20"
+                />
+              </div>
+
+              {/* Timeline */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <History className="w-4 h-4" />
+                  Zaman Çizelgesi
+                </label>
+                <div className="bg-muted p-3 rounded text-sm text-muted-foreground">
+                  Oluşturma: {format(parseISO(selectedRequest.createdAt), 'dd MMM HH:mm', { locale: tr })}
+                  {selectedRequest.lastUpdated && (
+                    <>
+                      <br />
+                      Son güncelleme: {format(parseISO(selectedRequest.lastUpdated), 'dd MMM HH:mm', { locale: tr })}
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
       )}
+
+      {/* Create Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Yeni Servis Talebi - Adım {createStep}/3</DialogTitle>
+            <DialogDescription>
+              {createStep === 1 && 'Şubeyi seçiniz'}
+              {createStep === 2 && 'Ekipmanı seçiniz'}
+              {createStep === 3 && 'Detayları doldurunuz'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Step 1: Branch */}
+            {createStep === 1 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Şube Seçiniz</label>
+                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                  <SelectTrigger data-testid="select-branch-create">
+                    <SelectValue placeholder="Şube seçiniz..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map(b => (
+                      <SelectItem key={b.id} value={b.id.toString()}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Step 2: Equipment */}
+            {createStep === 2 && selectedBranch && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ekipman Seçiniz</label>
+                <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
+                  <SelectTrigger data-testid="select-equipment-create">
+                    <SelectValue placeholder="Ekipman seçiniz..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branchEquipment.map(eq => (
+                      <SelectItem key={eq.id} value={eq.id.toString()}>
+                        {EQUIPMENT_TYPE_LABELS[eq.type] || eq.type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Step 3: Form */}
+            {createStep === 3 && (
+              <Form {...form}>
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Öncelik</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="düşük">Düşük</SelectItem>
+                            <SelectItem value="orta">Orta</SelectItem>
+                            <SelectItem value="yüksek">Yüksek</SelectItem>
+                            <SelectItem value="kritik">Kritik</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="serviceProvider"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Teknik / Sağlayıcı</FormLabel>
+                        <FormControl>
+                          <input
+                            {...field}
+                            placeholder="Teknisyen adı"
+                            className="w-full px-3 py-2 border border-input rounded-md"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Açıklama</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="Sorun açıklaması..." />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </Form>
+            )}
+
+            {/* Buttons */}
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                İptal
+              </Button>
+              {createStep > 1 && (
+                <Button variant="outline" onClick={() => setCreateStep(createStep - 1)}>
+                  Geri
+                </Button>
+              )}
+              <Button onClick={handleCreateSubmit} disabled={createMutation.isPending}>
+                {createStep === 3 ? 'Oluştur' : 'İleri'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
