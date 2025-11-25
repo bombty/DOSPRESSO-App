@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,10 +15,27 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Clock, CheckCircle2, Wrench, Zap } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle2, Wrench, Search } from "lucide-react";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
 import type { EquipmentFault } from "@shared/schema";
+
+// Constants
+const SLA_CRITICAL_HOURS = 2.5;
+const SLA_HIGH_HOURS = 5;
+const SLA_CRITICAL_RISK_HOURS = 1.5;
+const SLA_HIGH_RISK_HOURS = 3.5;
+const RECENT_FAULTS_LIMIT = 8;
+const FAULTS_PER_PAGE = 10;
+
+const STAGE_LABELS: Record<string, string> = {
+  bekliyor: "Beklemede",
+  isleme_alindi: "İşleme Alındı",
+  devam_ediyor: "Devam Ediyor",
+  servis_cagrildi: "Servis Çağrıldı",
+  kargoya_verildi: "Kargoya Verildi",
+  kapatildi: "Kapatıldı",
+};
 
 const updateFaultSchema = z.object({
   currentStage: z.string(),
@@ -27,11 +44,42 @@ const updateFaultSchema = z.object({
   actualCost: z.string().optional(),
 });
 
+const PRIORITY_COLORS: Record<string, string> = {
+  kritik: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  yuksek: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  default: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+};
+
+const STAGE_COLORS: Record<string, string> = {
+  bekliyor: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+  isleme_alindi: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  devam_ediyor: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  servis_cagrildi: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  kargoya_verildi: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  kapatildi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+};
+
+const getPriorityColor = (priority: string | null): string => 
+  PRIORITY_COLORS[priority as string] || PRIORITY_COLORS.default;
+
+const getStageColor = (stage: string | null): string => 
+  STAGE_COLORS[stage as string] || "bg-gray-100 text-gray-800";
+
+const getTimeSinceCreation = (createdAt: any): string => {
+  if (!createdAt) return "-";
+  const hours = differenceInHours(new Date(), new Date(createdAt));
+  if (hours < 1) return "< 1 saat";
+  if (hours < 24) return `${hours} saat`;
+  return `${Math.floor(hours / 24)} gün`;
+};
+
 export default function FaultHub() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<EquipmentFault | null>(null);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [managePage, setManagePage] = useState(1);
 
   const { data: faults = [] } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
@@ -66,62 +114,50 @@ export default function FaultHub() {
     },
   });
 
-  // Calculate metrics
-  const criticalFaults = faults.filter(f => f.priority === "kritik" && f.currentStage !== "kapatildi");
-  const highFaults = faults.filter(f => f.priority === "yuksek" && f.currentStage !== "kapatildi");
-  const resolvedFaults = faults.filter(f => f.currentStage === "kapatildi");
-  const myFaults = faults.filter(f => f.assignedTo === user?.id && f.currentStage !== "kapatildi");
+  // Memoized calculations
+  const metrics = useMemo(() => {
+    const critical = faults.filter(f => f.priority === "kritik" && f.currentStage !== "kapatildi");
+    const high = faults.filter(f => f.priority === "yuksek" && f.currentStage !== "kapatildi");
+    const resolved = faults.filter(f => f.currentStage === "kapatildi");
+    const open = faults.filter(f => f.currentStage !== "kapatildi");
+    const myFaults = faults.filter(f => f.assignedTo === user?.id && f.currentStage !== "kapatildi");
+    
+    const breached = open.filter(f => {
+      if (!f.createdAt) return false;
+      const hours = differenceInHours(new Date(), new Date(f.createdAt));
+      return (f.priority === "kritik" && hours > SLA_CRITICAL_HOURS) || (f.priority === "yuksek" && hours > SLA_HIGH_HOURS);
+    });
 
-  // SLA calculations
-  const breachedFaults = faults.filter(f => {
-    if (f.currentStage === "kapatildi" || !f.createdAt) return false;
-    const hoursSinceCreation = differenceInHours(new Date(), new Date(f.createdAt));
-    return (f.priority === "kritik" && hoursSinceCreation > 2.5) || (f.priority === "yuksek" && hoursSinceCreation > 5);
-  });
+    const atRisk = open.filter(f => {
+      if (!f.createdAt || breached.some(b => b.id === f.id)) return false;
+      const hours = differenceInHours(new Date(), new Date(f.createdAt));
+      return (f.priority === "kritik" && hours > SLA_CRITICAL_RISK_HOURS) || (f.priority === "yuksek" && hours > SLA_HIGH_RISK_HOURS);
+    });
 
-  const atRiskFaults = faults.filter(f => {
-    if (f.currentStage === "kapatildi" || !f.createdAt) return false;
-    if (breachedFaults.find(bf => bf.id === f.id)) return false;
-    const hoursSinceCreation = differenceInHours(new Date(), new Date(f.createdAt));
-    return (f.priority === "kritik" && hoursSinceCreation > 1.5) || (f.priority === "yuksek" && hoursSinceCreation > 3.5);
-  });
+    const healthy = open.filter(f => !breached.some(b => b.id === f.id) && !atRisk.some(a => a.id === f.id));
 
-  const getTimeSinceCreation = (createdAt: any) => {
-    if (!createdAt) return "-";
-    const hours = differenceInHours(new Date(), new Date(createdAt));
-    if (hours < 1) return "< 1 saat";
-    if (hours < 24) return `${hours} saat`;
-    return `${Math.floor(hours / 24)} gün`;
-  };
+    return { critical, high, resolved, open, myFaults, breached, atRisk, healthy };
+  }, [faults, user?.id]);
 
-  const getPriorityColor = (priority: string | null) => {
-    switch (priority) {
-      case "kritik": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "yuksek": return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
-      default: return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-    }
-  };
+  // Memoized search results
+  const manageFaults = useMemo(() => {
+    return metrics.open.filter(f => 
+      searchText === "" || 
+      f.equipmentName.toLowerCase().includes(searchText.toLowerCase()) ||
+      f.description?.toLowerCase().includes(searchText.toLowerCase())
+    );
+  }, [metrics.open, searchText]);
 
-  const getStageColor = (stage: string | null) => {
-    switch (stage) {
-      case "bekliyor": return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-      case "isleme_alindi": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "devam_ediyor": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "servis_cagrildi": return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
-      case "kargoya_verildi": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      case "kapatildi": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
+  const paginatedManageFaults = useMemo(() => {
+    const start = (managePage - 1) * FAULTS_PER_PAGE;
+    return manageFaults.slice(start, start + FAULTS_PER_PAGE);
+  }, [manageFaults, managePage]);
 
-  const stageLabelMap: Record<string, string> = {
-    bekliyor: "Beklemede",
-    isleme_alindi: "İşleme Alındı",
-    devam_ediyor: "Devam Ediyor",
-    servis_cagrildi: "Servis Çağrıldı",
-    kargoya_verildi: "Kargoya Verildi",
-    kapatildi: "Kapatıldı",
-  };
+  const handleUpdateFault = useCallback((fault: EquipmentFault) => {
+    setSelectedFault(fault);
+    form.reset({ currentStage: fault.currentStage });
+    setIsUpdateDialogOpen(true);
+  }, [form]);
 
   return (
     <div className="space-y-6">
