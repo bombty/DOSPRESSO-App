@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Equipment, EQUIPMENT_METADATA } from "@shared/schema";
+import { Equipment, EQUIPMENT_METADATA, EquipmentFault } from "@shared/schema";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -66,16 +66,16 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     },
   });
 
-  const createFaultMutation = useMutation({
+  const createFaultMutation = useMutation<EquipmentFault, Error, CreateFaultInput>({
     mutationFn: async (data: CreateFaultInput) => {
       const response = await apiRequest('POST', '/api/faults', {
         equipmentId: equipment.id,
         branchId: equipment.branchId,
         ...data,
       });
-      return response;
+      return response as EquipmentFault;
     },
-    onSuccess: (fault) => {
+    onSuccess: (fault: EquipmentFault) => {
       // Determine outcome based on faultProtocol
       if (equipment.faultProtocol === 'hq_teknik') {
         setOutcome({
