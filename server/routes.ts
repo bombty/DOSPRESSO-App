@@ -1658,6 +1658,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Critical equipment endpoint - for alert/monitoring system
+  app.get('/api/equipment/critical', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'equipment', 'view');
+      
+      const allEquipment = await storage.getEquipment();
+      
+      // Filter critical equipment (healthScore < 50)
+      const criticalEquipment = allEquipment.filter((item: any) => (item.healthScore ?? 100) < 50);
+      
+      // Authorization: Branch users only see their branch
+      if (user.role && isBranchRole(user.role as UserRoleType) && user.branchId) {
+        const filtered = criticalEquipment.filter((item: any) => item.branchId === user.branchId);
+        return res.json(filtered);
+      }
+      
+      res.json(criticalEquipment);
+    } catch (error) {
+      console.error("Error fetching critical equipment:", error);
+      if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to fetch critical equipment" });
+    }
+  });
+
   app.get('/api/equipment/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;

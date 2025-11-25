@@ -56,6 +56,10 @@ export default function Equipment() {
     queryKey: ["/api/branches"],
   });
 
+  const { data: criticalEquipment } = useQuery<EquipmentWithHealth[]>({
+    queryKey: ["/api/equipment/critical"],
+  });
+
   const canCreate = user?.role && hasPermission(user.role as any, "equipment", "create");
   const canEdit = user?.role && hasPermission(user.role as any, "equipment", "edit");
 
@@ -285,6 +289,43 @@ export default function Equipment() {
 
   return (
     <div className="space-y-6">
+      {criticalEquipment && criticalEquipment.length > 0 && (
+        <Card className="border-red-500 bg-red-50 dark:bg-red-950">
+          <CardHeader>
+            <CardTitle className="text-red-600 dark:text-red-400 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Kritik Ekipmanlar ({criticalEquipment.length})
+            </CardTitle>
+            <CardDescription className="text-red-700 dark:text-red-300">
+              Sağlık skoru 50'nin altında olan ekipmanlar acil bakım gerektiriyor
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 md:grid-cols-2">
+              {criticalEquipment.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-md border border-red-200 dark:border-red-800">
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm" data-testid={`text-critical-${item.id}`}>
+                      {EQUIPMENT_METADATA[item.equipmentType as keyof typeof EQUIPMENT_METADATA]?.nameTr || item.equipmentType}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{getBranchName(item.branchId)}</p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setFaultReportEquipment(item)}
+                    data-testid={`button-critical-report-${item.id}`}
+                  >
+                    <AlertTriangle className="mr-1 h-3 w-3" />
+                    Arıza
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Ekipman Yönetimi</h1>
