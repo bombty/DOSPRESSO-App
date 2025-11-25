@@ -1056,7 +1056,7 @@ export class DatabaseStorage implements IStorage {
 
   // Health Score Calculation (0-100)
   // Based on: recent faults, maintenance compliance, warranty status, age
-  private async calculateHealthScore(eq: Equipment): Promise<number> {
+  private async calculateHealthScore(item: Equipment): Promise<number> {
     const now = new Date();
     let score = 100;
 
@@ -1067,7 +1067,7 @@ export class DatabaseStorage implements IStorage {
       .from(equipmentFaults)
       .where(
         and(
-          eq(equipmentFaults.equipmentId, eq.id),
+          eq(equipmentFaults.equipmentId, item.id),
           gte(equipmentFaults.createdAt, thirtyDaysAgo)
         )
       );
@@ -1082,8 +1082,8 @@ export class DatabaseStorage implements IStorage {
     });
 
     // Warranty penalty: -20 if expired
-    if (eq.warrantyEndDate) {
-      const warrantyEnd = new Date(eq.warrantyEndDate);
+    if (item.warrantyEndDate) {
+      const warrantyEnd = new Date(item.warrantyEndDate);
       if (warrantyEnd < now) {
         score -= 20;
       } else {
@@ -1093,16 +1093,16 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Maintenance compliance: -15 if overdue
-    if (eq.nextMaintenanceDate) {
-      const nextMaint = new Date(eq.nextMaintenanceDate);
+    if (item.nextMaintenanceDate) {
+      const nextMaint = new Date(item.nextMaintenanceDate);
       if (nextMaint < now) {
         score -= 15;
       }
     }
 
     // Equipment age penalty: -5 for each year over 5 years
-    if (eq.purchaseDate) {
-      const purchaseDate = new Date(eq.purchaseDate);
+    if (item.purchaseDate) {
+      const purchaseDate = new Date(item.purchaseDate);
       const ageInYears = (now.getTime() - purchaseDate.getTime()) / (365 * 24 * 60 * 60 * 1000);
       if (ageInYears > 5) {
         score -= Math.floor((ageInYears - 5) * 5);
@@ -1110,7 +1110,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Inactive penalty: -50
-    if (!eq.isActive) {
+    if (!item.isActive) {
       score -= 50;
     }
 
@@ -1124,9 +1124,9 @@ export class DatabaseStorage implements IStorage {
       : await db.select().from(equipment).orderBy(equipment.equipmentType);
 
     return Promise.all(
-      equipmentList.map(async (eq) => ({
-        ...eq,
-        healthScore: await this.calculateHealthScore(eq),
+      equipmentList.map(async (item) => ({
+        ...item,
+        healthScore: await this.calculateHealthScore(item),
       }))
     );
   }

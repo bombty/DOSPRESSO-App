@@ -16,13 +16,24 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Plus, QrCode, Wrench, Calendar, MapPin, Pencil, AlertTriangle } from "lucide-react";
+import { Settings, Plus, QrCode, Wrench, Calendar, MapPin, Pencil, AlertTriangle, Heart } from "lucide-react";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FaultReportDialog } from "@/components/fault-report-dialog";
 
 interface EquipmentWithHealth extends EquipmentType {
   healthScore?: number;
 }
+
+const getHealthScoreBadge = (score?: number) => {
+  if (score === undefined) return null;
+  if (score >= 80) {
+    return { label: `${Math.round(score)} Sağlıklı`, variant: "default" as const, color: "text-green-600" };
+  }
+  if (score >= 50) {
+    return { label: `${Math.round(score)} Uyarı`, variant: "secondary" as const, color: "text-yellow-600" };
+  }
+  return { label: `${Math.round(score)} Kritik`, variant: "destructive" as const, color: "text-red-600" };
+};
 
 export default function Equipment() {
   const { user } = useAuth();
@@ -32,7 +43,9 @@ export default function Equipment() {
   const [editingEquipment, setEditingEquipment] = useState<EquipmentType | null>(null);
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>(undefined);
-  const [maintenanceFilter, setMaintenanceFilter] = useState<string | undefined>(undefined);
+  const [maintenanceFilter, setMaintenanceFilter] = useState<string>("all");
+  const [healthFilter, setHealthFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"type" | "health">("type");
   const [faultReportEquipment, setFaultReportEquipment] = useState<EquipmentType | null>(null);
 
   const { data: equipment, isLoading } = useQuery<EquipmentWithHealth[]>({
@@ -207,26 +220,48 @@ export default function Equipment() {
     setIsEditDialogOpen(true);
   };
 
-  const filteredEquipment = equipment?.filter((item) => {
-    // Branch-level filtering: non-HQ users can only see their branch equipment
-    if (user?.role && !isHQRole(user.role as any)) {
-      if (user.branchId && item.branchId !== user.branchId) return false;
-    }
-    
-    // Manual filters (for HQ users)
-    if (selectedType && item.equipmentType !== selectedType) return false;
-    if (selectedBranch && item.branchId !== parseInt(selectedBranch)) return false;
-    if (maintenanceFilter === "overdue") {
-      if (!item.nextMaintenanceDate) return false;
-      return new Date(item.nextMaintenanceDate) < new Date();
-    }
-    if (maintenanceFilter === "upcoming") {
-      if (!item.nextMaintenanceDate) return false;
-      const daysUntilMaintenance = Math.ceil((new Date(item.nextMaintenanceDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-      return daysUntilMaintenance >= 0 && daysUntilMaintenance <= 7;
-    }
-    return true;
-  });
+  const filteredEquipment = equipment
+    ?.filter((item: EquipmentWithHealth) => {
+      // Branch-level filtering: non-HQ users can only see their branch equipment
+      if (user?.role && !isHQRole(user.role as any)) {
+        if (user.branchId && item.branchId !== user.branchId) return false;
+      }
+      
+      // Manual filters (for HQ users)
+      if (selectedType && item.equipmentType !== selectedType) return false;
+      if (selectedBranch && item.branchId !== parseInt(selectedBranch)) return false;
+      if (maintenanceFilter && maintenanceFilter !== "all") {
+        if (maintenanceFilter === "overdue") {
+          if (!item.nextMaintenanceDate) return false;
+          return new Date(item.nextMaintenanceDate) < new Date();
+        }
+        if (maintenanceFilter === "upcoming") {
+          if (!item.nextMaintenanceDate) return false;
+          const daysUntilMaintenance = Math.ceil((new Date(item.nextMaintenanceDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+          return daysUntilMaintenance >= 0 && daysUntilMaintenance <= 7;
+        }
+      }
+      // Health filter
+      if (healthFilter && healthFilter !== "all") {
+        if (healthFilter === "critical") {
+          return (item.healthScore ?? 100) < 50;
+        }
+        if (healthFilter === "warning") {
+          const score = item.healthScore ?? 100;
+          return score >= 50 && score < 80;
+        }
+        if (healthFilter === "healthy") {
+          return (item.healthScore ?? 100) >= 80;
+        }
+      }
+      return true;
+    })
+    .sort((a: EquipmentWithHealth, b: EquipmentWithHealth) => {
+      if (sortBy === "health") {
+        return (b.healthScore ?? 100) - (a.healthScore ?? 100);
+      }
+      return a.equipmentType.localeCompare(b.equipmentType);
+    });
 
   const getMaintenanceStatus = (item: EquipmentType) => {
     if (!item.nextMaintenanceDate) return null;
@@ -698,13 +733,36 @@ export default function Equipment() {
           </SelectContent>
         </Select>
 
-        {(selectedType || selectedBranch || maintenanceFilter) && (
+        <Select value={healthFilter} onValueChange={setHealthFilter}>
+          <SelectTrigger className="w-[200px]" data-testid="filter-health">
+            <SelectValue placeholder="Sağlık Durumu" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tüm Durumlar</SelectItem>
+            <SelectItem value="healthy">Sağlıklı (80+)</SelectItem>
+            <SelectItem value="warning">Uyarı (50-79)</SelectItem>
+            <SelectItem value="critical">Kritik (&lt;50)</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={sortBy} onValueChange={(value) => setSortBy(value as "type" | "health")}>
+          <SelectTrigger className="w-[200px]" data-testid="sort-by">
+            <SelectValue placeholder="Sıralama" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="type">Türe Göre</SelectItem>
+            <SelectItem value="health">Sağlık Skoruna Göre</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(selectedType || selectedBranch || (maintenanceFilter && maintenanceFilter !== "all") || (healthFilter && healthFilter !== "all")) && (
           <Button
             variant="outline"
             onClick={() => {
               setSelectedType(undefined);
               setSelectedBranch(undefined);
-              setMaintenanceFilter(undefined);
+              setMaintenanceFilter("all");
+              setHealthFilter("all");
             }}
             data-testid="button-clear-filters"
           >
@@ -789,6 +847,18 @@ export default function Equipment() {
                     </div>
                   )}
 
+                  {(() => {
+                    const healthBadge = getHealthScoreBadge((item as EquipmentWithHealth).healthScore);
+                    return healthBadge ? (
+                      <div className="flex items-center gap-2">
+                        <Heart className={`h-4 w-4 ${healthBadge.color}`} />
+                        <Badge variant={healthBadge.variant} data-testid={`badge-health-${item.id}`}>
+                          {healthBadge.label}
+                        </Badge>
+                      </div>
+                    ) : null;
+                  })()}
+
                   {item.qrCodeUrl && (
                     <div className="pt-2">
                       <img 
@@ -854,11 +924,11 @@ export default function Equipment() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Settings className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              {selectedType || selectedBranch || maintenanceFilter
+              {selectedType || selectedBranch || (maintenanceFilter && maintenanceFilter !== "all") || (healthFilter && healthFilter !== "all")
                 ? "Filtrelere uygun ekipman bulunamadı"
                 : "Henüz ekipman kaydı yok"}
             </p>
-            {canCreate && !selectedType && !selectedBranch && !maintenanceFilter && (
+            {canCreate && !selectedType && !selectedBranch && (!maintenanceFilter || maintenanceFilter === "all") && (!healthFilter || healthFilter === "all") && (
               <Button
                 className="mt-4"
                 onClick={() => setIsAddDialogOpen(true)}
