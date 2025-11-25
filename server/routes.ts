@@ -74,7 +74,8 @@ import {
   type UpdateUser,
   type UserRoleType,
   type InsertAuditTemplateItem,
-  type ServiceRequestStatusType
+  type ServiceRequestStatusType,
+  equipmentServiceRequests
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
@@ -2153,6 +2154,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Foto yükleme hatası:', error);
       res.status(500).json({ message: 'Foto yükleme başarısız' });
+    }
+  });
+
+  // Create new service request endpoint (from form with machine templates)
+  app.post('/api/service-requests/', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const { branchId, equipmentName, equipmentType, priority, serviceProvider, notes, status } = req.body;
+
+      // Validation
+      if (!branchId || !equipmentName || !equipmentType || !serviceProvider) {
+        return res.status(400).json({ message: "Zorunlu alanlar eksik: branchId, equipmentName, equipmentType, serviceProvider" });
+      }
+
+      // Authorization: Branch users can only create requests for their own branch
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        const userBranchId = assertBranchScope(user);
+        if (branchId !== userBranchId) {
+          return res.status(403).json({ message: "Bu şube için servis talebi oluşturma yetkiniz yok" });
+        }
+      }
+
+      // Find or create placeholder equipment for this request
+      const allEquipment = await storage.getEquipment(branchId);
+      let equipment = allEquipment.find(e => e.name === equipmentName && e.type === equipmentType);
+      
+      if (!equipment) {
+        // Create a new equipment entry as placeholder for this service request
+        equipment = await storage.createEquipment({
+          branchId,
+          name: equipmentName,
+          type: equipmentType,
+          serialNumber: `SR-${Date.now()}`, // Temporary serial
+          purchaseDate: new Date().toISOString(),
+          warrantyExpiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'aktif',
+          notes: 'Servis talebi formu üzerinden oluşturulan cihaz',
+        });
+      }
+
+      // Create the service request
+      const serviceRequest = await storage.createServiceRequest({
+        equipmentId: equipment.id,
+        status: status || 'talep_edildi',
+        priority: priority || 'orta',
+        serviceProvider,
+        notes: notes || '',
+        createdById: userId,
+      });
+
+      res.json(serviceRequest);
+    } catch (error: any) {
+      console.error("Error creating service request:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid service request data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Servis talebi oluşturulamadı" });
     }
   });
 
