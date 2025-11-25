@@ -2134,10 +2134,10 @@ export class DatabaseStorage implements IStorage {
 
     if (!updated) return undefined;
 
-    // Update the status field
+    // Update the status field and updatedById
     const [finalUpdated] = await db
       .update(equipmentServiceRequests)
-      .set({ status: newStatus, updatedAt: new Date() })
+      .set({ status: newStatus, updatedById: actorId, updatedAt: new Date() })
       .where(eq(equipmentServiceRequests.id, id))
       .returning();
 

@@ -103,6 +103,11 @@ app.use((req, res, next) => {
       console.error("Error seeding admin menu:", error);
     });
     
+    // Seed service requests (test data - idempotent)
+    await seedServiceRequests().catch((error) => {
+      console.error("Error seeding service requests:", error);
+    });
+    
     // Ensure admin user is always approved and active (self-healing)
     await ensureAdminUserApproved();
     
