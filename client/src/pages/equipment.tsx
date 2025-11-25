@@ -20,6 +20,10 @@ import { Settings, Plus, QrCode, Wrench, Calendar, MapPin, Pencil, AlertTriangle
 import { DialogFooter } from "@/components/ui/dialog";
 import { FaultReportDialog } from "@/components/fault-report-dialog";
 
+interface EquipmentWithHealth extends EquipmentType {
+  healthScore?: number;
+}
+
 export default function Equipment() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -31,7 +35,7 @@ export default function Equipment() {
   const [maintenanceFilter, setMaintenanceFilter] = useState<string | undefined>(undefined);
   const [faultReportEquipment, setFaultReportEquipment] = useState<EquipmentType | null>(null);
 
-  const { data: equipment, isLoading } = useQuery<EquipmentType[]>({
+  const { data: equipment, isLoading } = useQuery<EquipmentWithHealth[]>({
     queryKey: ["/api/equipment"],
   });
 

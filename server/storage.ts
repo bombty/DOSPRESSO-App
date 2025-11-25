@@ -1054,12 +1054,81 @@ export class DatabaseStorage implements IStorage {
     await db.delete(checklists).where(eq(checklists.id, id));
   }
 
-  // Equipment operations
-  async getEquipment(branchId?: number): Promise<Equipment[]> {
-    if (branchId) {
-      return db.select().from(equipment).where(eq(equipment.branchId, branchId)).orderBy(equipment.equipmentType);
+  // Health Score Calculation (0-100)
+  // Based on: recent faults, maintenance compliance, warranty status, age
+  private async calculateHealthScore(eq: Equipment): Promise<number> {
+    const now = new Date();
+    let score = 100;
+
+    // Get recent faults (last 30 days)
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const recentFaults = await db
+      .select()
+      .from(equipmentFaults)
+      .where(
+        and(
+          eq(equipmentFaults.equipmentId, eq.id),
+          gte(equipmentFaults.createdAt, thirtyDaysAgo)
+        )
+      );
+
+    // Fault penalty: -10 per critical/high fault, -5 per medium
+    recentFaults.forEach(fault => {
+      if (fault.priority === 'kritik' || fault.priority === 'yüksek') {
+        score -= 10;
+      } else if (fault.priority === 'orta') {
+        score -= 5;
+      }
+    });
+
+    // Warranty penalty: -20 if expired
+    if (eq.warrantyEndDate) {
+      const warrantyEnd = new Date(eq.warrantyEndDate);
+      if (warrantyEnd < now) {
+        score -= 20;
+      } else {
+        const daysUntilExpiry = Math.floor((warrantyEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+        if (daysUntilExpiry < 30) score -= 10; // Warning
+      }
     }
-    return db.select().from(equipment).orderBy(equipment.equipmentType);
+
+    // Maintenance compliance: -15 if overdue
+    if (eq.nextMaintenanceDate) {
+      const nextMaint = new Date(eq.nextMaintenanceDate);
+      if (nextMaint < now) {
+        score -= 15;
+      }
+    }
+
+    // Equipment age penalty: -5 for each year over 5 years
+    if (eq.purchaseDate) {
+      const purchaseDate = new Date(eq.purchaseDate);
+      const ageInYears = (now.getTime() - purchaseDate.getTime()) / (365 * 24 * 60 * 60 * 1000);
+      if (ageInYears > 5) {
+        score -= Math.floor((ageInYears - 5) * 5);
+      }
+    }
+
+    // Inactive penalty: -50
+    if (!eq.isActive) {
+      score -= 50;
+    }
+
+    return Math.max(0, Math.min(100, score)); // Clamp 0-100
+  }
+
+  // Equipment operations
+  async getEquipment(branchId?: number): Promise<(Equipment & { healthScore: number })[]> {
+    const equipmentList = branchId
+      ? await db.select().from(equipment).where(eq(equipment.branchId, branchId)).orderBy(equipment.equipmentType)
+      : await db.select().from(equipment).orderBy(equipment.equipmentType);
+
+    return Promise.all(
+      equipmentList.map(async (eq) => ({
+        ...eq,
+        healthScore: await this.calculateHealthScore(eq),
+      }))
+    );
   }
 
   async getEquipmentById(id: number): Promise<Equipment | undefined> {
