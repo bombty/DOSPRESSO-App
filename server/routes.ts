@@ -79,7 +79,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault } from "./ai";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -1387,6 +1387,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Failed to create fault" });
+    }
+  });
+
+  app.post('/api/faults/ai-diagnose', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { equipmentType, faultDescription } = req.body;
+      
+      if (!equipmentType || !faultDescription) {
+        return res.status(400).json({ message: "Ekipman tipi ve arıza açıklaması zorunludur" });
+      }
+
+      const diagnosis = await diagnoseFault(equipmentType, faultDescription, user.id);
+      res.json(diagnosis);
+    } catch (error: any) {
+      console.error("Error diagnosing fault:", error);
+      res.status(500).json({ message: error.message || "Arıza analiz edilemedi" });
     }
   });
 

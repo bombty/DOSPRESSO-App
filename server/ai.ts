@@ -1845,3 +1845,79 @@ export async function evaluateBranchPerformance(
     throw error;
   }
 }
+
+export interface FaultDiagnosis {
+  diagnosis: string;
+  troubleshootingSteps: string[];
+  estimatedSeverity: 'low' | 'medium' | 'high' | 'critical';
+  estimatedRepairTime: string;
+  recommendedAction: string;
+}
+
+export async function diagnoseFault(
+  equipmentType: string,
+  faultDescription: string,
+  userId?: string
+): Promise<FaultDiagnosis> {
+  const cacheKey = generateCacheKey('fault-diagnosis', `${equipmentType}-${faultDescription}`);
+  
+  // Check cache first
+  const cached = cache.get<FaultDiagnosis>(cacheKey);
+  if (cached) {
+    console.log('✅ Cache HIT - Fault Diagnosis');
+    return cached;
+  }
+
+  const FAULT_DIAGNOSIS_LIMIT = 50;
+  const effectiveUserId = userId || 'system';
+  
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'fault_diagnosis', FAULT_DIAGNOSIS_LIMIT)) {
+    throw new Error("Günlük arıza tanı limitiniz doldu. Yarın tekrar deneyin.");
+  }
+
+  try {
+    const systemPrompt = `Sen DOSPRESSO kahve makineleri için bir AI tanı uzmanısın.
+Görevin, ekipman arızalarını analiz etmek ve çözüm önerileri sunmaktır.
+
+Türkçe, net ve teknik olarak doğru cevaplar ver.
+JSON formatında yanıt ver: {
+  "diagnosis": "Arızanın muhtemel nedeni",
+  "troubleshootingSteps": ["Adım 1", "Adım 2", "Adım 3"],
+  "estimatedSeverity": "low|medium|high|critical",
+  "estimatedRepairTime": "Tahmini onarım süresi",
+  "recommendedAction": "Önerilen eylem (onarım/değişim/teknik destek)"
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: CHAT_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `${equipmentType} - Arıza: ${faultDescription}` }
+      ],
+      max_completion_tokens: 1024,
+      temperature: 0.7,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("OpenAI yanıt boş");
+
+    const result = JSON.parse(content);
+    const diagnosis: FaultDiagnosis = {
+      diagnosis: result.diagnosis || "Tanı yapılamadı",
+      troubleshootingSteps: result.troubleshootingSteps || [],
+      estimatedSeverity: result.estimatedSeverity || 'medium',
+      estimatedRepairTime: result.estimatedRepairTime || "Belirsiz",
+      recommendedAction: result.recommendedAction || "Teknik destek ile iletişime geçin",
+    };
+
+    cache.set(cacheKey, diagnosis, 24 * 60 * 60 * 1000);
+    aiRateLimiter.incrementRequest(effectiveUserId, 'fault_diagnosis');
+    const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'fault_diagnosis', FAULT_DIAGNOSIS_LIMIT);
+    console.log(`💰 AI call - Fault Diagnosis (${remaining}/${FAULT_DIAGNOSIS_LIMIT} remaining)`);
+
+    return diagnosis;
+  } catch (error) {
+    console.error("Fault diagnosis error:", error);
+    throw new Error("Arıza analiz edilemedi");
+  }
+}

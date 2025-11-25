@@ -85,6 +85,8 @@ export default function EkipmanServis() {
   // Fault fields
   const [faultDescription, setFaultDescription] = useState<string>('');
   const [faultSeverity, setFaultSeverity] = useState<string>('medium');
+  const [aiDiagnosis, setAiDiagnosis] = useState<any>(null);
+  const [loadingAiDiagnosis, setLoadingAiDiagnosis] = useState(false);
   
   // Service fields
   const [serviceProvider, setServiceProvider] = useState<string>('');
@@ -356,6 +358,7 @@ export default function EkipmanServis() {
     setCreateType('fault');
     setFaultDescription('');
     setFaultSeverity('medium');
+    setAiDiagnosis(null);
     setServiceProvider('');
     setPriority('orta');
     setNotes('');
@@ -363,6 +366,38 @@ export default function EkipmanServis() {
     setPhoto2Preview('');
     setPhoto1File(null);
     setPhoto2File(null);
+  };
+
+  const handleGetAiDiagnosis = async () => {
+    if (!createEquipment || !faultDescription) {
+      toast({
+        title: 'Hata',
+        description: 'Ekipman ve arıza açıklaması seçiniz',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoadingAiDiagnosis(true);
+    try {
+      const response = await apiRequest('POST', '/api/faults/ai-diagnose', {
+        equipmentType: createEquipment.equipmentType,
+        faultDescription,
+      });
+      setAiDiagnosis(response);
+      toast({
+        title: 'Başarılı',
+        description: 'AI arıza analizi tamamlandı',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Hata',
+        description: error.message || 'AI analiz başarısız',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingAiDiagnosis(false);
+    }
   };
 
   const stats = useMemo(() => ({
@@ -636,7 +671,54 @@ export default function EkipmanServis() {
                     onChange={(e) => setFaultDescription(e.target.value)}
                     rows={4}
                   />
+                  {createEquipment && faultDescription && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGetAiDiagnosis}
+                      disabled={loadingAiDiagnosis}
+                      className="w-full mt-2"
+                      data-testid="button-ai-diagnose"
+                    >
+                      {loadingAiDiagnosis && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      ✨ AI Analiz Yap
+                    </Button>
+                  )}
                 </div>
+
+                {aiDiagnosis && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">AI Tanısı</p>
+                      <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">{aiDiagnosis.diagnosis}</p>
+                    </div>
+                    {aiDiagnosis.troubleshootingSteps?.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Sorun Giderme Adımları</p>
+                        <ul className="text-sm text-blue-800 dark:text-blue-200 mt-1 list-disc list-inside space-y-1">
+                          {aiDiagnosis.troubleshootingSteps.map((step: string, idx: number) => (
+                            <li key={idx}>{step}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="bg-white dark:bg-blue-900 p-2 rounded">
+                        <p className="text-gray-600 dark:text-gray-300">Ciddiyet</p>
+                        <p className="font-semibold text-blue-900 dark:text-blue-100">{aiDiagnosis.estimatedSeverity}</p>
+                      </div>
+                      <div className="bg-white dark:bg-blue-900 p-2 rounded">
+                        <p className="text-gray-600 dark:text-gray-300">Süre</p>
+                        <p className="font-semibold text-blue-900 dark:text-blue-100">{aiDiagnosis.estimatedRepairTime}</p>
+                      </div>
+                      <div className="bg-white dark:bg-blue-900 p-2 rounded">
+                        <p className="text-gray-600 dark:text-gray-300">Eylem</p>
+                        <p className="font-semibold text-blue-900 dark:text-blue-100 truncate">{aiDiagnosis.recommendedAction?.substring(0, 10)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label>Ciddiyet Seviyesi</Label>
                   <Select value={faultSeverity} onValueChange={setFaultSeverity}>
