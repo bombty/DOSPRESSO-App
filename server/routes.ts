@@ -1548,6 +1548,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/faults/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { currentStage, assignedTo, notes, actualCost } = req.body;
+      const userId = req.user.id;
+      const userRole = req.user.role;
+
+      const existingFault = await storage.getFault(id);
+      if (!existingFault) {
+        return res.status(404).json({ message: "Fault not found" });
+      }
+
+      // Permission logic: branch users can only manage their own branch's faults
+      const isTeknik = userRole === 'teknik';
+      const isBranchUser = ['supervisor', 'barista', 'stajyer'].includes(userRole);
+      const userBranchId = req.user.branchId;
+
+      if (!isTeknik) {
+        if (!isBranchUser || !userBranchId || existingFault.branchId !== userBranchId) {
+          return res.status(403).json({ message: "Yetkisiz işlem - Bu arızayı düzenleme yetkiniz yok" });
+        }
+      }
+
+      const updateData: any = {};
+      if (currentStage) updateData.currentStage = currentStage;
+      if (assignedTo !== undefined) updateData.assignedTo = assignedTo || null;
+      if (actualCost !== undefined) updateData.actualCost = actualCost ? parseFloat(actualCost) : null;
+
+      // If stage is being updated, record the transition
+      if (currentStage && currentStage !== existingFault.currentStage) {
+        // Record stage transition with notes
+        await storage.changeFaultStage(id, currentStage, userId, notes || undefined);
+      } else if (assignedTo !== undefined || actualCost !== undefined) {
+        // Just update the fault without stage change
+        const updated = await storage.updateFault(id, updateData);
+        return res.json(updated);
+      }
+
+      const updated = await storage.getFault(id);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating fault:", error);
+      res.status(500).json({ message: "Failed to update fault" });
+    }
+  });
+
   app.get('/api/faults/:id/history', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
