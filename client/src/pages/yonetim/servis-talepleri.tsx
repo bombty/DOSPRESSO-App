@@ -406,9 +406,13 @@ export default function ServiceRequestsManagement() {
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Öncelik</p>
-                    <Badge className={`${PRIORITY_COLORS[selectedRequest.priority]} border ${PRIORITY_VARIANTS[selectedRequest.priority]}`}>
-                      {selectedRequest.priority.charAt(0).toUpperCase() + selectedRequest.priority.slice(1)}
-                    </Badge>
+                    {selectedRequest.priority ? (
+                      <Badge className={`${PRIORITY_COLORS[selectedRequest.priority]} border ${PRIORITY_VARIANTS[selectedRequest.priority]}`}>
+                        {selectedRequest.priority.charAt(0).toUpperCase() + selectedRequest.priority.slice(1)}
+                      </Badge>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Servis Sağlayıcı</p>
