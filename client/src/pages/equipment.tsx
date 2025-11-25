@@ -367,6 +367,36 @@ export default function Equipment() {
                   />
                   <FormField
                     control={form.control}
+                    name="faultProtocol"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Arıza Yönetimi Sorumlusu</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || 'branch'}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-fault-protocol">
+                              <SelectValue placeholder="Sorumlu seçin" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="branch">
+                              <span className="flex items-center gap-2">Şube</span>
+                            </SelectItem>
+                            <SelectItem value="hq_teknik">
+                              <span className="flex items-center gap-2">Merkez (HQ Teknik)</span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {field.value === 'hq_teknik' 
+                            ? 'Arızalar Merkez Teknik Ekibine iletilecektir' 
+                            : 'Arızalar Şube tarafından yönetilecektir'}
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="notes"
                     render={({ field }) => (
                       <FormItem>

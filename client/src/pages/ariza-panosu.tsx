@@ -118,10 +118,10 @@ export default function FaultDashboard() {
               {criticalFaults.map((fault) => (
                 <div key={fault.id} className="flex items-center justify-between p-2 bg-white dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
                   <div>
-                    <p className="font-medium text-sm">{fault.equipmentName}</p>
-                    <p className="text-xs text-muted-foreground">{fault.description}</p>
+                    <p className="font-medium text-sm">{fault.equipmentName || "Bilinmeyen Ekipman"}</p>
+                    <p className="text-xs text-muted-foreground">{fault.description || ""}</p>
                   </div>
-                  <Badge className={getPriorityColor(fault.priority)}>Kritik</Badge>
+                  <Badge className={getPriorityColor(fault.priority || "normal")}>Kritik</Badge>
                 </div>
               ))}
             </div>
@@ -140,17 +140,17 @@ export default function FaultDashboard() {
             {faults.slice(0, 10).map((fault) => (
               <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted transition-colors">
                 <div className="flex-1">
-                  <p className="font-medium text-sm">{fault.equipmentName}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{fault.description}</p>
+                  <p className="font-medium text-sm">{fault.equipmentName || "Bilinmeyen Ekipman"}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{fault.description || ""}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {format(parseISO(fault.createdAt.toString()), "dd MMM HH:mm", { locale: tr })}
+                    {fault.createdAt ? format(parseISO(fault.createdAt.toString()), "dd MMM HH:mm", { locale: tr }) : "Tarih bilinmiyor"}
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Badge className={getPriorityColor(fault.priority)}>
+                  <Badge className={getPriorityColor(fault.priority || "normal")}>
                     {fault.priority === "kritik" ? "Kritik" : fault.priority === "yuksek" ? "Yüksek" : "Normal"}
                   </Badge>
-                  <Badge className={getStatusColor(fault.status)}>
+                  <Badge className={getStatusColor(fault.status || "beklemede")}>
                     {fault.status === "beklemede" ? "Beklemede" : fault.status === "devam_ediyor" ? "Devam Ediyor" : "Çözüldü"}
                   </Badge>
                 </div>
