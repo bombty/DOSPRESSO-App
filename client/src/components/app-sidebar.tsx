@@ -404,9 +404,11 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
               
+              <div className="my-3 border-t" />
+              
               {branchMenuGroups.length > 0 && (
                 <>
-                  <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
+                  <div className="mt-4 mb-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground border-t">
                     Şube Operasyonları
                   </div>
                   {branchMenuGroups.map((group) => (
@@ -439,9 +441,13 @@ export function AppSidebar() {
                 </>
               )}
               
+              {branchMenuGroups.length > 0 && hqMenuGroups.length > 0 && (
+                <div className="my-2" />
+              )}
+              
               {hqMenuGroups.length > 0 && (
                 <>
-                  <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
+                  <div className="mt-4 mb-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground border-t">
                     Merkez (HQ)
                   </div>
                   {hqMenuGroups.map((group) => (
@@ -472,6 +478,16 @@ export function AppSidebar() {
                     </Collapsible>
                   ))}
                 </>
+              )}
+              
+              {(branchMenuGroups.length > 0 || hqMenuGroups.length > 0) && bothMenuGroups.length > 0 && (
+                <div className="my-2 border-t" />
+              )}
+              
+              {bothMenuGroups.length > 0 && (
+                <div className="mb-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Genel İşlemler
+                </div>
               )}
               
               {bothMenuGroups.map((group) => (
