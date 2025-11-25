@@ -27,6 +27,7 @@ import KnowledgeBase from "@/pages/knowledge-base";
 import Training from "@/pages/training";
 import TrainingDetail from "@/pages/training-detail";
 import IK from "@/pages/ik";
+import PersonelOnboarding from "@/pages/personel-onboarding";
 import LeaveRequests from "@/pages/leave-requests";
 import OvertimeRequests from "@/pages/overtime-requests";
 import EquipmentTroubleshooting from "@/pages/equipment-troubleshooting";
@@ -94,6 +95,7 @@ function Router() {
           <Route path="/egitim/:id" component={TrainingDetail} />
           <Route path="/egitim" component={Training} />
           <Route path="/ik" component={IK} />
+          <Route path="/personel-onboarding" component={PersonelOnboarding} />
           <Route path="/izin-talepleri" component={LeaveRequests} />
           <Route path="/mesai-talepleri" component={OvertimeRequests} />
           <Route path="/devam-takibi" component={Attendance} />
