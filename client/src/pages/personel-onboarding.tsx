@@ -1,25 +1,14 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { hasPermission, type User, type EmployeeOnboarding } from "@shared/schema";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { hasPermission } from "@/lib/permissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -29,10 +18,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -44,28 +39,43 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ArrowLeft,
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+} from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { CheckCircle2, Clock, AlertCircle, ArrowLeft, Plus, Edit, Trash2, Search } from "lucide-react";
+import { z } from "zod";
+import type { User, EmployeeOnboarding } from "@shared/schema";
 
 const statusLabels: Record<string, string> = {
-  pending: "Bekleniyor",
+  not_started: "Başlamadı",
   in_progress: "Devam Ediyor",
   completed: "Tamamlandı",
 };
 
 const statusIcons: Record<string, any> = {
-  pending: AlertCircle,
+  not_started: AlertCircle,
   in_progress: Clock,
   completed: CheckCircle2,
 };
 
 const onboardingSchema = z.object({
   userId: z.string().min(1, "Personel seçin"),
+  branchId: z.string().min(1, "Şube seçin"),
   startDate: z.string().min(1, "Başlangıç tarihi seçin"),
-  orientationDate: z.string().optional().default(""),
-  status: z.enum(["pending", "in_progress", "completed"]),
-  notes: z.string().optional().default(""),
+  expectedCompletionDate: z.string().optional().default(""),
+  status: z.enum(["not_started", "in_progress", "completed"]),
+  supervisorNotes: z.string().optional().default(""),
 });
 
 type OnboardingFormData = z.infer<typeof onboardingSchema>;
@@ -80,13 +90,19 @@ export default function PersonelOnboardingPage() {
 
   // Fetch onboarding records
   const { data: onboardingRecords = [], isLoading } = useQuery<(EmployeeOnboarding & { user?: User })[]>({
-    queryKey: ["/api/employee-onboarding"],
+    queryKey: ["/api/employee-onboarding", { filter: "all" }],
     enabled: !!user && hasPermission(user, "hr_management"),
   });
 
   // Fetch employees for dropdown
   const { data: employees = [] } = useQuery<User[]>({
     queryKey: ["/api/employees"],
+    enabled: !!user,
+  });
+
+  // Fetch branches
+  const { data: branches = [] } = useQuery<any[]>({
+    queryKey: ["/api/branches"],
     enabled: !!user,
   });
 
@@ -106,7 +122,7 @@ export default function PersonelOnboardingPage() {
   // Stats
   const stats = useMemo(() => ({
     total: onboardingRecords.length,
-    pending: onboardingRecords.filter(r => r.status === "pending").length,
+    notStarted: onboardingRecords.filter(r => r.status === "not_started").length,
     inProgress: onboardingRecords.filter(r => r.status === "in_progress").length,
     completed: onboardingRecords.filter(r => r.status === "completed").length,
   }), [onboardingRecords]);
@@ -222,10 +238,10 @@ export default function PersonelOnboardingPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Bekleniyor</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Başlamadı</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
+            <div className="text-2xl font-bold text-amber-600">{stats.notStarted}</div>
           </CardContent>
         </Card>
         <Card>
@@ -261,7 +277,7 @@ export default function PersonelOnboardingPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tümü</SelectItem>
-                  <SelectItem value="pending">Bekleniyor</SelectItem>
+                  <SelectItem value="not_started">Başlamadı</SelectItem>
                   <SelectItem value="in_progress">Devam Ediyor</SelectItem>
                   <SelectItem value="completed">Tamamlandı</SelectItem>
                 </SelectContent>
@@ -304,7 +320,7 @@ export default function PersonelOnboardingPage() {
                 <TableRow>
                   <TableHead>Personel Adı</TableHead>
                   <TableHead>Başlangıç Tarihi</TableHead>
-                  <TableHead>Oryantasyon Tarihi</TableHead>
+                  <TableHead>Tamamlanma Hedefi</TableHead>
                   <TableHead>Durum</TableHead>
                   <TableHead>Notlar</TableHead>
                   <TableHead className="text-right">İşlemler</TableHead>
@@ -322,7 +338,7 @@ export default function PersonelOnboardingPage() {
                         {record.startDate ? format(new Date(record.startDate), "d MMM yyyy", { locale: tr }) : "-"}
                       </TableCell>
                       <TableCell>
-                        {record.orientationDate ? format(new Date(record.orientationDate), "d MMM yyyy", { locale: tr }) : "-"}
+                        {record.expectedCompletionDate ? format(new Date(record.expectedCompletionDate), "d MMM yyyy", { locale: tr }) : "-"}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -333,7 +349,7 @@ export default function PersonelOnboardingPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                        {record.notes || "-"}
+                        {record.supervisorNotes || "-"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -376,6 +392,7 @@ export default function PersonelOnboardingPage() {
         onOpenChange={setDialogOpen}
         editingRecord={editingRecord}
         employees={employees}
+        branches={branches}
         onSubmit={(data) => {
           if (editingRecord) {
             updateMutation.mutate({ recordId: editingRecord.id, data });
@@ -395,6 +412,7 @@ function OnboardingDialog({
   onOpenChange,
   editingRecord,
   employees,
+  branches,
   onSubmit,
   isLoading,
 }: {
@@ -402,6 +420,7 @@ function OnboardingDialog({
   onOpenChange: (open: boolean) => void;
   editingRecord: EmployeeOnboarding | null;
   employees: User[];
+  branches: any[];
   onSubmit: (data: OnboardingFormData) => void;
   isLoading: boolean;
 }) {
@@ -409,10 +428,11 @@ function OnboardingDialog({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       userId: editingRecord?.userId || "",
+      branchId: editingRecord?.branchId?.toString() || "",
       startDate: editingRecord?.startDate || "",
-      orientationDate: editingRecord?.orientationDate || "",
-      status: (editingRecord?.status as any) || "pending",
-      notes: editingRecord?.notes || "",
+      expectedCompletionDate: editingRecord?.expectedCompletionDate || "",
+      status: (editingRecord?.status as any) || "not_started",
+      supervisorNotes: editingRecord?.supervisorNotes || "",
     },
   });
 
@@ -467,6 +487,31 @@ function OnboardingDialog({
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="branchId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Şube</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-branch">
+                        <SelectValue placeholder="Şube seçin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id.toString()}>
+                          {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -484,12 +529,12 @@ function OnboardingDialog({
 
               <FormField
                 control={form.control}
-                name="orientationDate"
+                name="expectedCompletionDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Oryantasyon Tarihi</FormLabel>
+                    <FormLabel>Hedef Tamamlanma</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} value={field.value || ""} data-testid="input-orientation-date" />
+                      <Input type="date" {...field} value={field.value || ""} data-testid="input-completion-date" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -510,7 +555,7 @@ function OnboardingDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="pending">Bekleniyor</SelectItem>
+                      <SelectItem value="not_started">Başlamadı</SelectItem>
                       <SelectItem value="in_progress">Devam Ediyor</SelectItem>
                       <SelectItem value="completed">Tamamlandı</SelectItem>
                     </SelectContent>
@@ -522,10 +567,10 @@ function OnboardingDialog({
 
             <FormField
               control={form.control}
-              name="notes"
+              name="supervisorNotes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notlar</FormLabel>
+                  <FormLabel>Supervisor Notları</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Ek notlar..."
@@ -539,22 +584,19 @@ function OnboardingDialog({
               )}
             />
 
-            <DialogFooter>
+            <div className="flex gap-2 justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => handleOpenChange(false)}
+                disabled={isLoading}
               >
                 İptal
               </Button>
-              <Button
-                type="submit"
-                disabled={isLoading}
-                data-testid="button-submit-onboarding"
-              >
-                {isLoading ? "Kaydediliyor..." : editingRecord ? "Güncelle" : "Kayıt Oluştur"}
+              <Button type="submit" disabled={isLoading} data-testid="button-submit">
+                {isLoading ? "Kaydediliyor..." : "Kaydet"}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </Form>
       </DialogContent>
