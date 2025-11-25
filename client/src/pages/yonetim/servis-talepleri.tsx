@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch } from '@shared/schema';
@@ -70,6 +72,10 @@ export default function ServiceRequestsManagement() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<string>('');
+  const [lastContactDate, setLastContactDate] = useState<string>('');
+  const [serviceUpdate, setServiceUpdate] = useState<string>('');
+  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState<string>('');
+  const [actualCostInput, setActualCostInput] = useState<string>('');
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
@@ -80,10 +86,14 @@ export default function ServiceRequestsManagement() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ requestId, status }: { requestId: number; status: string }) => {
+    mutationFn: async ({ requestId, status, details }: { requestId: number; status: string; details?: any }) => {
       return await apiRequest(`/api/equipment/service-requests/${requestId}/status`, 'PATCH', {
         newStatus: status,
-        notes: `Durum güncellendi: ${STATUS_LABELS[status as keyof typeof STATUS_LABELS]}`,
+        lastContactDate: details?.lastContactDate,
+        serviceUpdate: details?.serviceUpdate,
+        estimatedCompletionDate: details?.estimatedCompletionDate,
+        actualCost: details?.actualCost,
+        notes: details?.serviceUpdate || `Durum güncellendi: ${STATUS_LABELS[status as keyof typeof STATUS_LABELS]}`,
       });
     },
     onSuccess: () => {
@@ -123,7 +133,26 @@ export default function ServiceRequestsManagement() {
 
   const handleUpdateStatus = () => {
     if (!selectedRequest || !newStatus) return;
-    updateStatusMutation.mutate({ requestId: selectedRequest.id, status: newStatus });
+    updateStatusMutation.mutate({ 
+      requestId: selectedRequest.id, 
+      status: newStatus,
+      details: {
+        lastContactDate,
+        serviceUpdate,
+        estimatedCompletionDate,
+        actualCost: actualCostInput ? parseFloat(actualCostInput) : undefined,
+      }
+    });
+  };
+
+  const handleStatusDialogOpen = (request: ServiceRequestWithEquipment) => {
+    setSelectedRequest(request);
+    setNewStatus(request.status);
+    setLastContactDate('');
+    setServiceUpdate('');
+    setEstimatedCompletionDate('');
+    setActualCostInput('');
+    setStatusDialogOpen(true);
   };
 
   const handleEquipmentClick = (request: ServiceRequestWithEquipment) => {
@@ -341,11 +370,7 @@ export default function ServiceRequestsManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          setSelectedRequest(request);
-                          setNewStatus(request.status);
-                          setStatusDialogOpen(true);
-                        }}
+                        onClick={() => handleStatusDialogOpen(request)}
                         data-testid={`button-update-status-${request.id}`}
                       >
                         Durumu Güncelle
@@ -487,16 +512,20 @@ export default function ServiceRequestsManagement() {
 
       {/* Update Status Dialog */}
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Servis Talebi Durumunu Güncelle</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="w-5 h-5" />
+              Servis Talebi Güncelle
+            </DialogTitle>
             <DialogDescription>
-              {selectedRequest?.equipmentName} için servis talebi durumunu güncelleyin
+              {selectedRequest?.equipmentName} - Detaylı servis durumu güncellemesi
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Status */}
             <div className="space-y-2">
-              <Label>Yeni Durum</Label>
+              <Label>Yeni Durum *</Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger data-testid="select-new-status">
                   <SelectValue />
@@ -510,6 +539,64 @@ export default function ServiceRequestsManagement() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Last Contact Date */}
+            <div className="space-y-2">
+              <Label>Son Görüşme Tarihi</Label>
+              <Input 
+                type="datetime-local" 
+                value={lastContactDate}
+                onChange={(e) => setLastContactDate(e.target.value)}
+                data-testid="input-last-contact"
+              />
+              <p className="text-xs text-muted-foreground">Servis sağlayıcısı ile son iletişim zamanı</p>
+            </div>
+
+            {/* Service Status Update */}
+            <div className="space-y-2">
+              <Label>Servis Durumu / Güncellemeler</Label>
+              <Textarea
+                placeholder="Teknikçinin çalışma durumu, bulduğu sorunlar, yapılan işlemler vs..."
+                value={serviceUpdate}
+                onChange={(e) => setServiceUpdate(e.target.value)}
+                rows={4}
+                data-testid="textarea-service-update"
+              />
+              <p className="text-xs text-muted-foreground">Servis sağlayıcının güncel durumu ve yapılan işlemler</p>
+            </div>
+
+            {/* Estimated Completion */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tahmini Bitiş Tarihi</Label>
+                <Input 
+                  type="date" 
+                  value={estimatedCompletionDate}
+                  onChange={(e) => setEstimatedCompletionDate(e.target.value)}
+                  data-testid="input-estimated-completion"
+                />
+              </div>
+
+              {/* Actual Cost */}
+              <div className="space-y-2">
+                <Label>Gerçek Maliyet (₺)</Label>
+                <Input 
+                  type="number" 
+                  placeholder="0.00"
+                  value={actualCostInput}
+                  onChange={(e) => setActualCostInput(e.target.value)}
+                  data-testid="input-actual-cost"
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md p-3">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                💡 <span className="font-medium">İpucu:</span> Durum "Devam Ediyor" olduğunda son görüşme ve güncellemeler kaydedilir. "Tamamlandı" olduğunda gerçek maliyet kaydedilir.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>
@@ -519,9 +606,10 @@ export default function ServiceRequestsManagement() {
               onClick={handleUpdateStatus}
               disabled={updateStatusMutation.isPending || newStatus === selectedRequest?.status}
               data-testid="button-submit-status-update"
+              className="gap-2"
             >
-              {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Güncelle
+              {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Güncelle ve Kaydet
             </Button>
           </DialogFooter>
         </DialogContent>
