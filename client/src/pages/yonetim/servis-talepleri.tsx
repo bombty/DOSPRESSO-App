@@ -364,6 +364,15 @@ export default function ServiceRequestsManagement() {
                     </CardDescription>
                   </div>
                   <div className="flex flex-col gap-2 items-end">
+                    <Button
+                      size="sm"
+                      onClick={() => handleStatusDialogOpen(request)}
+                      data-testid={`button-quick-status-${request.id}`}
+                      className="gap-1"
+                    >
+                      <Wrench className="w-3 h-3" />
+                      Durum Güncelle
+                    </Button>
                     <Badge className={STATUS_VARIANTS[request.status]} data-testid={`badge-status-${request.id}`}>
                       {STATUS_LABELS[request.status]}
                     </Badge>
