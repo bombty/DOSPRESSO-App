@@ -96,6 +96,7 @@ export default function EquipmentManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
+  const [selectedEquipmentDetail, setSelectedEquipmentDetail] = useState<EquipmentType | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createStep, setCreateStep] = useState(1);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
@@ -555,49 +556,178 @@ export default function EquipmentManagement() {
               const relatedRequests = serviceRequests.filter(r => r.equipmentId === eq.id);
 
               return (
-                <Card key={eq.id} className="hover-elevate" data-testid={`card-equipment-${eq.id}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-base">{EQUIPMENT_TYPE_LABELS[eq.type] || eq.type}</CardTitle>
-                        <CardDescription className="text-xs">{branch?.name}</CardDescription>
+                <div 
+                  key={eq.id} 
+                  onClick={() => setSelectedEquipmentDetail(eq)}
+                  className="cursor-pointer"
+                  data-testid={`button-view-equipment-${eq.id}`}
+                >
+                  <Card className="hover-elevate" data-testid={`card-equipment-${eq.id}`}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-base">{EQUIPMENT_TYPE_LABELS[eq.type] || eq.type}</CardTitle>
+                          <CardDescription className="text-xs">{branch?.name}</CardDescription>
+                        </div>
+                        <Badge className={health.color}>
+                          {health.icon}
+                          <span className="ml-1">{health.status}</span>
+                        </Badge>
                       </div>
-                      <Badge className={health.color}>
-                        {health.icon}
-                        <span className="ml-1">{health.status}</span>
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    {eq.serialNumber && <div><span className="text-muted-foreground">Seri: </span>{eq.serialNumber}</div>}
-                    {eq.warrantyExpiryDate && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        <span className="text-muted-foreground">Garanti: </span>
-                        {format(parseISO(eq.warrantyExpiryDate), 'dd MMM yyyy', { locale: tr })}
-                      </div>
-                    )}
-                    {eq.nextMaintenanceDate && (
-                      <div className="flex items-center gap-2">
-                        <Wrench className="w-4 h-4" />
-                        <span className="text-muted-foreground">Bakım: </span>
-                        {format(parseISO(eq.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr })}
-                      </div>
-                    )}
-                    {relatedRequests.length > 0 && (
-                      <div className="pt-2 border-t text-xs">
-                        <span className="text-muted-foreground">{relatedRequests.length} talep</span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                      {eq.serialNumber && <div><span className="text-muted-foreground">Seri: </span>{eq.serialNumber}</div>}
+                      {eq.warrantyExpiryDate && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          <span className="text-muted-foreground">Garanti: </span>
+                          {format(parseISO(eq.warrantyExpiryDate), 'dd MMM yyyy', { locale: tr })}
+                        </div>
+                      )}
+                      {eq.nextMaintenanceDate && (
+                        <div className="flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          <span className="text-muted-foreground">Bakım: </span>
+                          {format(parseISO(eq.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr })}
+                        </div>
+                      )}
+                      {relatedRequests.length > 0 && (
+                        <div className="pt-2 border-t text-xs">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <span>{relatedRequests.length} talep</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               );
             })}
           </div>
         </TabsContent>
       </Tabs>
 
-      {/* Detail Panel Modal */}
+      {/* Equipment Detail Modal */}
+      {selectedEquipmentDetail && (
+        <Dialog open={!!selectedEquipmentDetail} onOpenChange={() => setSelectedEquipmentDetail(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{EQUIPMENT_TYPE_LABELS[selectedEquipmentDetail.type] || selectedEquipmentDetail.type}</DialogTitle>
+              <DialogDescription>
+                {branches.find(b => b.id === selectedEquipmentDetail.branchId)?.name}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Equipment Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Seri No</div>
+                  <div className="font-semibold">{selectedEquipmentDetail.serialNumber || '-'}</div>
+                </div>
+                <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Durum</div>
+                  <div className="font-semibold">
+                    <Badge className={getHealthStatus(selectedEquipmentDetail).color}>
+                      {getHealthStatus(selectedEquipmentDetail).icon}
+                      <span className="ml-1">{getHealthStatus(selectedEquipmentDetail).status}</span>
+                    </Badge>
+                  </div>
+                </div>
+                {selectedEquipmentDetail.purchaseDate && (
+                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                    <div className="text-sm font-medium text-muted-foreground">Satın Alma Tarihi</div>
+                    <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.purchaseDate), 'dd MMM yyyy', { locale: tr })}</div>
+                  </div>
+                )}
+                {selectedEquipmentDetail.warrantyExpiryDate && (
+                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                    <div className="text-sm font-medium text-muted-foreground">Garanti Bitiş</div>
+                    <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.warrantyExpiryDate), 'dd MMM yyyy', { locale: tr })}</div>
+                  </div>
+                )}
+                {selectedEquipmentDetail.lastMaintenanceDate && (
+                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                    <div className="text-sm font-medium text-muted-foreground">Son Bakım</div>
+                    <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.lastMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</div>
+                  </div>
+                )}
+                {selectedEquipmentDetail.nextMaintenanceDate && (
+                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                    <div className="text-sm font-medium text-muted-foreground">Sonraki Bakım</div>
+                    <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Service History */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <History className="w-4 h-4" />
+                  Servis Geçmişi ({serviceRequests.filter(r => r.equipmentId === selectedEquipmentDetail.id).length} talep)
+                </label>
+                {serviceRequests.filter(r => r.equipmentId === selectedEquipmentDetail.id).length === 0 ? (
+                  <div className="text-sm text-muted-foreground bg-muted p-4 rounded-lg text-center">
+                    Bu ekipman için servis talebi yok
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {serviceRequests
+                      .filter(r => r.equipmentId === selectedEquipmentDetail.id)
+                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .map(req => (
+                        <div 
+                          key={req.id}
+                          className="border rounded-lg p-3 hover-elevate cursor-pointer"
+                          onClick={() => {
+                            setSelectedEquipmentDetail(null);
+                            setSelectedRequest(req);
+                          }}
+                          data-testid={`link-view-request-${req.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium flex items-center gap-2">
+                                <span>Talep #{req.id}</span>
+                                <Badge variant="outline" className={STATUS_COLORS[req.status] || 'bg-gray-100'}>
+                                  {STATUS_LABELS[req.status] || req.status}
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {format(parseISO(req.createdAt), 'dd MMM yyyy HH:mm', { locale: tr })}
+                              </div>
+                              {req.notes && <div className="text-sm mt-1 line-clamp-2">{req.notes}</div>}
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Create New Request Button */}
+              <Button
+                onClick={() => {
+                  setSelectedEquipmentDetail(null);
+                  setShowCreateDialog(true);
+                  setSelectedBranch(selectedEquipmentDetail.branchId.toString());
+                  setSelectedEquipment(selectedEquipmentDetail.id.toString());
+                  setCreateStep(3);
+                }}
+                className="w-full gap-2"
+                data-testid="button-create-request-from-equipment"
+              >
+                <Plus className="w-4 h-4" />
+                Bu Ekipman İçin Talep Oluştur
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Service Request Detail Modal */}
       {selectedRequest && (
         <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
           <DialogContent className="max-w-2xl">
