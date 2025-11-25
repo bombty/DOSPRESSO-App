@@ -200,10 +200,10 @@ export default function TechnicianDashboard() {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {fault.notes || "Açıklama yok"}
+                      {fault.description || "Açıklama yok"}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Raporlanan: {fault.createdAt ? format(parseISO(fault.createdAt), "dd MMM HH:mm", { locale: tr }) : "-"}
+                      Raporlanan: {fault.createdAt ? format(fault.createdAt instanceof Date ? fault.createdAt : parseISO(fault.createdAt), "dd MMM HH:mm", { locale: tr }) : "-"}
                     </p>
                   </div>
                   <Button
@@ -241,7 +241,7 @@ export default function TechnicianDashboard() {
                 <div key={fault.id} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg text-sm">
                   <span>Arıza #{fault.id}</span>
                   <span className="text-xs text-muted-foreground">
-                    {fault.closedAt ? format(parseISO(fault.closedAt), "dd MMM", { locale: tr }) : "-"}
+                    {fault.resolvedAt ? format(fault.resolvedAt instanceof Date ? fault.resolvedAt : parseISO(fault.resolvedAt), "dd MMM", { locale: tr }) : "-"}
                   </span>
                 </div>
               ))}

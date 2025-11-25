@@ -1388,6 +1388,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
+
+      // CRITICAL FAULT NOTIFICATION: Auto-notify HQ Tech team if critical priority
+      if (fault.priority === "kritik") {
+        try {
+          const hqTechUsers = await storage.getUsersByRole("teknik");
+          const branch = faultBranchId ? await storage.getBranchById(faultBranchId) : null;
+          const equipment = fault.equipmentId ? await storage.getEquipmentById(fault.equipmentId) : null;
+
+          // Send in-app notifications to all HQ tech team members
+          for (const techUser of hqTechUsers) {
+            await storage.createNotification({
+              userId: techUser.id,
+              type: "critical_fault",
+              title: "KRİTİK ARIZA UYARISI",
+              message: `${branch?.name || "Şube"} - ${equipment?.equipmentName || "Ekipman"} için kritik arıza rapor edildi (#${fault.id})`,
+              link: `/ariza-yonetim`,
+              isRead: false,
+            });
+          }
+
+          // Log for monitoring
+          console.log(`Critical fault notification sent to ${hqTechUsers.length} technicians - Fault #${fault.id}`);
+        } catch (notificationError) {
+          console.error("Error sending critical fault notifications:", notificationError);
+          // Don't fail the fault creation if notifications fail
+        }
+      }
       
       res.json(fault);
     } catch (error: any) {
