@@ -192,21 +192,28 @@ export default function SubeDetayPage() {
                   {staff.map((emp) => (
                     <Link key={emp.id} href={`/personel/${emp.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`employee-${emp.id}`}>
-                        <div className="flex-1">
-                          <p className="font-medium">{emp.fullName}</p>
-                          <p className="text-sm text-muted-foreground">{emp.role}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold truncate">{emp.fullName}</p>
+                            <Badge variant="outline" className="flex-shrink-0">{emp.role}</Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {emp.performanceScore !== undefined && (
+                              <div className="flex items-center gap-1" data-testid={`performance-${emp.id}`}>
+                                <Award className="h-3.5 w-3.5 text-amber-500" />
+                                <span className="text-xs font-medium">Skor: {emp.performanceScore.toFixed(1)}</span>
+                              </div>
+                            )}
+                            {emp.hireDate && (
+                              <span className="text-xs text-muted-foreground">
+                                Başlangıç: {new Date(emp.hireDate).toLocaleDateString('tr-TR')}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          {emp.performanceScore !== undefined && (
-                            <div className="flex items-center gap-2" data-testid={`performance-${emp.id}`}>
-                              <Award className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">{emp.performanceScore.toFixed(1)}</span>
-                            </div>
-                          )}
-                          <Badge variant={emp.isActive ? "default" : "secondary"}>
-                            {emp.isActive ? "Aktif" : "Pasif"}
-                          </Badge>
-                        </div>
+                        <Badge variant={emp.isActive ? "default" : "secondary"} className="flex-shrink-0 ml-2">
+                          {emp.isActive ? "Aktif" : "Pasif"}
+                        </Badge>
                       </div>
                     </Link>
                   ))}
