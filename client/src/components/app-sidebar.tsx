@@ -24,6 +24,8 @@ import {
   FileSearch,
   Store,
   Star,
+  AlertTriangle,
+  Zap,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -129,6 +131,22 @@ const standaloneItems: MenuItem[] = [
     url: "/mesajlar",
     icon: MessageSquare,
     module: "dashboard",
+    scope: "both",
+  },
+  {
+    title: "Arıza Panosu",
+    titleTr: "Arıza Panosu",
+    url: "/ariza-panosu",
+    icon: AlertTriangle,
+    module: "equipment",
+    scope: "hq",
+  },
+  {
+    title: "Arıza Yönetimi",
+    titleTr: "Arıza Yönetimi",
+    url: "/ariza-yonetim",
+    icon: Zap,
+    module: "equipment",
     scope: "both",
   },
 ];
