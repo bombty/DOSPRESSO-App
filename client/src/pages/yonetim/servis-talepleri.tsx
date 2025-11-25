@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon, Download, Plus } from 'lucide-react';
+import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon, Download, Plus, QrCode, Camera, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch } from '@shared/schema';
 import { format } from 'date-fns';
@@ -18,6 +18,7 @@ import machine1 from '@assets/stock_images/coffee_machine_equip_c86e5250.jpg';
 import machine2 from '@assets/stock_images/coffee_machine_equip_8e9d0f33.jpg';
 import machine3 from '@assets/stock_images/coffee_machine_equip_c7ddb01a.jpg';
 import machine4 from '@assets/stock_images/coffee_machine_equip_29a816b5.jpg';
+import { Html5Qrcode } from 'html5-qrcode';
 
 const STATUS_LABELS = {
   'talep_edildi': 'Talep Edildi',
@@ -118,6 +119,8 @@ export default function ServiceRequestsManagement() {
   const [uploadingCreatePhoto, setUploadingCreatePhoto] = useState<number | null>(null);
   const [createdRequestId, setCreatedRequestId] = useState<number | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
@@ -245,6 +248,92 @@ export default function ServiceRequestsManagement() {
     };
     reader.readAsDataURL(file);
   };
+
+  const startQRScanner = async () => {
+    try {
+      setQrScannerOpen(true);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const html5QrCode = new Html5Qrcode("qr-reader-service");
+      qrScannerRef.current = html5QrCode;
+
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        async (decodedText) => {
+          try {
+            let equipmentId: string | null = null;
+            
+            // Parse equipment ID from QR code (supports /ekipman/123 or /equipment/123)
+            if (decodedText.includes('/ekipman/')) {
+              equipmentId = decodedText.split('/ekipman/')[1];
+            } else if (decodedText.includes('/equipment/')) {
+              equipmentId = decodedText.split('/equipment/')[1];
+            }
+
+            if (equipmentId && !isNaN(parseInt(equipmentId))) {
+              // Find and select the scanned equipment
+              const equipment = allEquipment?.find(e => e.id === parseInt(equipmentId));
+              if (equipment) {
+                setSelectedEquipment(equipment);
+                toast({
+                  title: 'Başarılı',
+                  description: `${equipment.equipmentType} seçildi`,
+                });
+                await html5QrCode.stop();
+                setQrScannerOpen(false);
+              } else {
+                toast({
+                  title: 'Hata',
+                  description: 'Ekipman bulunamadı',
+                  variant: 'destructive',
+                });
+              }
+            } else {
+              toast({
+                title: 'Hata',
+                description: 'Geçersiz ekipman QR kodu',
+                variant: 'destructive',
+              });
+            }
+          } catch (error) {
+            console.error('QR parsing error:', error);
+          }
+        }
+      );
+    } catch (error) {
+      console.error('QR scanner error:', error);
+      toast({
+        title: 'Hata',
+        description: 'Kamera başlatılamadı',
+        variant: 'destructive',
+      });
+      setQrScannerOpen(false);
+    }
+  };
+
+  const stopQRScanner = async () => {
+    if (qrScannerRef.current) {
+      try {
+        await qrScannerRef.current.stop();
+        qrScannerRef.current = null;
+      } catch (error) {
+        console.error('Error stopping scanner:', error);
+      }
+    }
+    setQrScannerOpen(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (qrScannerRef.current) {
+        qrScannerRef.current.stop().catch(console.error);
+      }
+    };
+  }, []);
 
   const handleCreateRequest = async () => {
     if (!selectedEquipment || !createBranch || !createServiceProvider) {
