@@ -136,51 +136,72 @@ export default function EquipmentManagement() {
 
   // QR Scanner effect - defined AFTER queries
   useEffect(() => {
-    if (showQRScanner && !qrScannerRef.current) {
-      const scanner = new Html5QrcodeScanner(
-        'qr-reader',
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        false
-      );
-      qrScannerRef.current = scanner;
-      
-      scanner.render(
-        (decodedText) => {
-          // Parse QR code: DOSPRESSO-EQ-{equipmentId}
-          const match = decodedText.match(/DOSPRESSO-EQ-(\d+)/);
-          if (match && match[1]) {
-            const equipmentId = parseInt(match[1]);
-            const foundEquipment = equipment.find(e => e.id === equipmentId);
-            if (foundEquipment) {
-              setSelectedEquipmentDetail(foundEquipment);
-              setShowQRScanner(false);
-              scanner.clear().catch(() => {});
-              qrScannerRef.current = null;
-              toast({
-                title: 'Başarılı',
-                description: `${EQUIPMENT_TYPE_LABELS[foundEquipment.equipmentType] || foundEquipment.equipmentType} tarandi`,
-              });
-            } else {
-              toast({
-                title: 'Hata',
-                description: 'Bu ekipman bulunamadi',
-                variant: 'destructive',
-              });
-            }
-          }
-        },
-        (error) => {
-          console.log('QR scan error:', error);
+    if (!showQRScanner) {
+      if (qrScannerRef.current) {
+        try {
+          qrScannerRef.current.clear().catch(() => {});
+        } catch (e) {
+          console.error('Error clearing QR scanner:', e);
         }
-      );
-    }
-
-    return () => {
-      if (qrScannerRef.current && !showQRScanner) {
-        qrScannerRef.current.clear().catch(() => {});
         qrScannerRef.current = null;
       }
-    };
+      return;
+    }
+
+    if (showQRScanner && !qrScannerRef.current) {
+      // Use requestAnimationFrame to wait for DOM to be painted
+      const initializeScanner = () => {
+        const element = document.getElementById('qr-reader');
+        if (!element) {
+          // Try again on next frame if element not ready
+          requestAnimationFrame(initializeScanner);
+          return;
+        }
+        
+        try {
+          const scanner = new Html5QrcodeScanner(
+            'qr-reader',
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            false
+          );
+          qrScannerRef.current = scanner;
+          
+          scanner.render(
+            (decodedText) => {
+              // Parse QR code: DOSPRESSO-EQ-{equipmentId}
+              const match = decodedText.match(/DOSPRESSO-EQ-(\d+)/);
+              if (match && match[1]) {
+                const equipmentId = parseInt(match[1]);
+                const foundEquipment = equipment.find(e => e.id === equipmentId);
+                if (foundEquipment) {
+                  setSelectedEquipmentDetail(foundEquipment);
+                  setShowQRScanner(false);
+                  scanner.clear().catch(() => {});
+                  qrScannerRef.current = null;
+                  toast({
+                    title: 'Başarılı',
+                    description: `${EQUIPMENT_TYPE_LABELS[foundEquipment.equipmentType] || foundEquipment.equipmentType} tarandi`,
+                  });
+                } else {
+                  toast({
+                    title: 'Hata',
+                    description: 'Bu ekipman bulunamadi',
+                    variant: 'destructive',
+                  });
+                }
+              }
+            },
+            (error) => {
+              console.log('QR scan error:', error);
+            }
+          );
+        } catch (error) {
+          console.error('QR scanner initialization error:', error);
+        }
+      };
+      
+      requestAnimationFrame(initializeScanner);
+    }
   }, [showQRScanner, equipment, toast]);
 
   // Form
