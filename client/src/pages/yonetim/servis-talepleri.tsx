@@ -265,7 +265,7 @@ export default function ServiceRequestsManagement() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {filteredRequests.map(request => (
-            <Card key={request.id} className="hover-elevate border-l-4" style={{ borderLeftColor: request.priority === 'kritik' ? '#ef4444' : request.priority === 'yüksek' ? '#f97316' : request.priority === 'orta' ? '#eab308' : '#3b82f6' }} data-testid={`card-service-request-${request.id}`}>
+            <Card key={request.id} className="hover-elevate border-l-4" style={{ borderLeftColor: !request.priority ? '#3b82f6' : request.priority === 'kritik' ? '#ef4444' : request.priority === 'yüksek' ? '#f97316' : request.priority === 'orta' ? '#eab308' : '#3b82f6' }} data-testid={`card-service-request-${request.id}`}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 cursor-pointer" onClick={() => handleEquipmentClick(request)}>
@@ -280,9 +280,11 @@ export default function ServiceRequestsManagement() {
                     <Badge className={STATUS_VARIANTS[request.status]} data-testid={`badge-status-${request.id}`}>
                       {STATUS_LABELS[request.status]}
                     </Badge>
-                    <Badge className={`${PRIORITY_COLORS[request.priority]} border ${PRIORITY_VARIANTS[request.priority]}`}>
-                      {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)}
-                    </Badge>
+                    {request.priority && (
+                      <Badge className={`${PRIORITY_COLORS[request.priority]} border ${PRIORITY_VARIANTS[request.priority]}`}>
+                        {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CardHeader>
