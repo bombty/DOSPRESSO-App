@@ -67,7 +67,7 @@ export default function SubeDetayPage() {
 
   // Fetch comprehensive branch details with scores and staff
   const { data: branchData, isLoading: branchLoading } = useQuery<BranchDetails>({
-    queryKey: ["/api/branches/details", branchId],
+    queryKey: [`/api/branches/${branchId}/detail`],
     enabled: !!branchId,
   });
 
