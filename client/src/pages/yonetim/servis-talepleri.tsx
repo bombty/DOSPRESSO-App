@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch } from '@shared/schema';
 import { format } from 'date-fns';
@@ -66,6 +66,14 @@ interface ServiceRequestWithEquipment {
   updatedById?: string;
   updatedByUsername?: string;
   updatedAt?: string;
+  timeline?: Array<{
+    id: string;
+    timestamp: string;
+    status: string;
+    actorId: string;
+    notes?: string;
+    meta?: Record<string, any>;
+  }>;
 }
 
 export default function ServiceRequestsManagement() {
@@ -501,6 +509,41 @@ export default function ServiceRequestsManagement() {
                 <div className="border-t pt-4 space-y-4">
                   <h3 className="font-semibold">Notlar</h3>
                   <p className="text-sm whitespace-pre-wrap">{selectedRequest.notes}</p>
+                </div>
+              )}
+
+              {/* Timeline */}
+              {selectedRequest.timeline && selectedRequest.timeline.length > 0 && (
+                <div className="border-t pt-4 space-y-4">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <History className="w-4 h-4" />
+                    Tarih
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedRequest.timeline.map((entry, idx) => (
+                      <div key={entry.id} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                          {idx < selectedRequest.timeline!.length - 1 && (
+                            <div className="w-0.5 h-8 bg-blue-200 mt-1"></div>
+                          )}
+                        </div>
+                        <div className="flex-1 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-foreground">
+                              {STATUS_LABELS[entry.status as keyof typeof STATUS_LABELS] || entry.status}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(entry.timestamp), 'd MMM yyyy, HH:mm', { locale: tr })}
+                            </span>
+                          </div>
+                          {entry.notes && (
+                            <p className="text-sm text-muted-foreground mt-1">{entry.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
