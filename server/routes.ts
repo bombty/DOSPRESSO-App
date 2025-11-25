@@ -1291,6 +1291,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get troubleshooting steps for equipment type
+  app.get('/api/troubleshooting/:equipmentType', isAuthenticated, async (req, res) => {
+    try {
+      const equipmentType = req.params.equipmentType;
+      const steps = await storage.getEquipmentTroubleshootingSteps(equipmentType);
+      res.json(steps);
+    } catch (error) {
+      console.error("Error fetching troubleshooting steps:", error);
+      res.status(500).json({ message: "Sorun giderme adımları yüklenirken hata oluştu" });
+    }
+  });
+
   app.get('/api/faults', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
