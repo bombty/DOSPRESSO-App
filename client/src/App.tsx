@@ -23,7 +23,6 @@ import Tasks from "@/pages/tasks";
 import Checklists from "@/pages/checklists";
 import Equipment from "@/pages/equipment";
 import EquipmentDetail from "@/pages/equipment-detail";
-import EquipmentFaults from "@/pages/equipment-faults";
 import QRScanner from "@/pages/qr-scanner";
 import KnowledgeBase from "@/pages/knowledge-base";
 import Training from "@/pages/training";
@@ -32,7 +31,6 @@ import IK from "@/pages/ik";
 import PersonelOnboarding from "@/pages/personel-onboarding";
 import LeaveRequests from "@/pages/leave-requests";
 import OvertimeRequests from "@/pages/overtime-requests";
-import EquipmentTroubleshooting from "@/pages/equipment-troubleshooting";
 import Attendance from "@/pages/attendance";
 import HRReports from "@/pages/hr-reports";
 import HQSupport from "@/pages/hq-support";
@@ -98,8 +96,6 @@ function Router() {
           <Route path="/teknik-panosu" component={FaultHub} />
           <Route path="/sla-durum" component={FaultHub} />
           <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
-          <Route path="/ekipman-arizalari" component={EquipmentFaults} />
-          <Route path="/ekipman-troubleshooting" component={EquipmentTroubleshooting} />
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
           <Route path="/egitim/:id" component={TrainingDetail} />
