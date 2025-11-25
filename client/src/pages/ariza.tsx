@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,9 +15,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Clock, CheckCircle2, Wrench, Search } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Loader2 } from "lucide-react";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
+import { FixedSizeList as List } from "react-window";
 import type { EquipmentFault } from "@shared/schema";
 
 // Constants
@@ -73,6 +74,29 @@ const getTimeSinceCreation = (createdAt: any): string => {
   return `${Math.floor(hours / 24)} gün`;
 };
 
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+// Skeleton loading component
+function FaultSkeleton() {
+  return (
+    <div className="flex items-center justify-between p-3 border rounded animate-pulse">
+      <div className="flex-1 space-y-2">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+      </div>
+      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+    </div>
+  );
+}
+
 export default function FaultHub() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -80,10 +104,13 @@ export default function FaultHub() {
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [managePage, setManagePage] = useState(1);
+  const debouncedSearch = useDebounce(searchText, 300);
 
-  const { data: faults = [] } = useQuery<EquipmentFault[]>({
+  const { data: faultsData = [], isLoading: isFaultsLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
   });
+
+  const faults = Array.isArray(faultsData) ? faultsData : faultsData?.data || [];
 
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],
@@ -139,14 +166,14 @@ export default function FaultHub() {
     return { critical, high, resolved, open, myFaults, breached, atRisk, healthy };
   }, [faults, user?.id]);
 
-  // Memoized search results
+  // Memoized search results with debounced search
   const manageFaults = useMemo(() => {
     return metrics.open.filter(f => 
-      searchText === "" || 
-      f.equipmentName.toLowerCase().includes(searchText.toLowerCase()) ||
-      f.description?.toLowerCase().includes(searchText.toLowerCase())
+      debouncedSearch === "" || 
+      f.equipmentName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      f.description?.toLowerCase().includes(debouncedSearch.toLowerCase())
     );
-  }, [metrics.open, searchText]);
+  }, [metrics.open, debouncedSearch]);
 
   const paginatedManageFaults = useMemo(() => {
     const start = (managePage - 1) * FAULTS_PER_PAGE;
