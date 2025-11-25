@@ -6,6 +6,7 @@ import { startSLACheckSystem } from "./reminders";
 import { seedRolePermissions } from "./seed-role-permissions";
 import { seedPermissionModules } from "./seed-permission-modules";
 import { seedAdminMenu } from "./seed-admin-menu";
+import { seedServiceRequests } from "./seed-service-requests";
 
 const app = express();
 
