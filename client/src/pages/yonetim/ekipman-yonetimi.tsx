@@ -73,6 +73,31 @@ const STATUS_COLORS: Record<string, string> = {
   'iptal_edildi': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
 };
 
+const PRIORITY_COLORS: Record<string, string> = {
+  'kritik': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  'yuksek': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  'normal': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+};
+
+const getPriority = (req: ServiceRequest, equipment: Equipment[]): string => {
+  const eq = equipment.find(e => e.id === req.equipmentId);
+  if (!eq) return 'normal';
+  
+  // Critical if warranty expired or pending for >24 hours
+  const health = getHealthStatus(eq);
+  if (health.status === 'Garanti Sona Erdi') return 'kritik';
+  
+  const createdTime = new Date(req.createdAt).getTime();
+  const hoursOld = (Date.now() - createdTime) / (1000 * 60 * 60);
+  if (hoursOld > 24) return 'kritik';
+  
+  // High priority if warranty expiring soon or pending >8 hours
+  if (health.status === 'Garanti Bitme Yakın') return 'yuksek';
+  if (hoursOld > 8) return 'yuksek';
+  
+  return 'normal';
+};
+
 const getHealthStatus = (equipment: Equipment): { status: string; color: string; icon: React.ReactNode } => {
   if (!equipment.isActive) {
     return { status: 'Pasif', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200', icon: <Clock className="w-4 h-4" /> };
@@ -104,6 +129,7 @@ export default function EquipmentManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBranch, setFilterBranch] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterPriority, setFilterPriority] = useState<string>('all');
 
   // Queries
   const { data: branches = [] } = useQuery<Branch[]>({
@@ -208,9 +234,24 @@ export default function EquipmentManagement() {
         filtered = filtered.filter(sr => sr.status === filterStatus);
       }
       
-      return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      // Priority filter
+      if (filterPriority !== 'all') {
+        filtered = filtered.filter(sr => getPriority(sr, equipment) === filterPriority);
+      }
+      
+      // Sort: Critical first, then by date
+      return filtered.sort((a, b) => {
+        const aPriority = getPriority(a, equipment);
+        const bPriority = getPriority(b, equipment);
+        const priorityOrder = { kritik: 0, yuksek: 1, normal: 2 };
+        
+        const priorityDiff = priorityOrder[aPriority as keyof typeof priorityOrder] - priorityOrder[bPriority as keyof typeof priorityOrder];
+        if (priorityDiff !== 0) return priorityDiff;
+        
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
     },
-    [serviceRequests, equipment, branches, searchQuery, filterBranch, filterStatus]
+    [serviceRequests, equipment, branches, searchQuery, filterBranch, filterStatus, filterPriority]
   );
 
   const inProgressRequests = useMemo(
@@ -235,9 +276,9 @@ export default function EquipmentManagement() {
       pending: pendingRequests.length,
       inProgress: inProgressRequests.length,
       completed: completedRequests.length,
-      critical: 0,
+      critical: pendingRequests.filter(r => getPriority(r, equipment) === 'kritik').length,
     }),
-    [pendingRequests, inProgressRequests, completedRequests]
+    [pendingRequests, inProgressRequests, completedRequests, equipment]
   );
 
   const handleCreateSubmit = () => {
@@ -326,13 +367,17 @@ export default function EquipmentManagement() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className={stats.critical > 0 ? 'border-red-200 dark:border-red-800' : ''}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.pending}</div>
-            {stats.critical > 0 && <div className="text-xs text-red-600 mt-1">🚨 {stats.critical} Kritik</div>}
+            {stats.critical > 0 && (
+              <div className="text-xs text-red-600 dark:text-red-400 mt-1 font-semibold">
+                ⚠️ {stats.critical} Kritik
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -414,7 +459,19 @@ export default function EquipmentManagement() {
                 </SelectContent>
               </Select>
 
-              {(searchQuery || filterBranch !== 'all' || filterStatus !== 'all') && (
+              <Select value={filterPriority} onValueChange={setFilterPriority}>
+                <SelectTrigger className="w-[180px]" data-testid="select-filter-priority">
+                  <SelectValue placeholder="Öncelik" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Öncelikler</SelectItem>
+                  <SelectItem value="kritik">Kritik</SelectItem>
+                  <SelectItem value="yuksek">Yüksek</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {(searchQuery || filterBranch !== 'all' || filterStatus !== 'all' || filterPriority !== 'all') && (
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -422,6 +479,7 @@ export default function EquipmentManagement() {
                     setSearchQuery('');
                     setFilterBranch('all');
                     setFilterStatus('all');
+                    setFilterPriority('all');
                   }}
                   data-testid="button-reset-filters"
                 >
@@ -453,23 +511,31 @@ export default function EquipmentManagement() {
               {pendingRequests.map(req => {
                 const eq = equipment.find(e => e.id === req.equipmentId);
                 const branch = branches.find(b => b.id === eq?.branchId);
+                const priority = getPriority(req, equipment);
+                const hoursOld = (Date.now() - new Date(req.createdAt).getTime()) / (1000 * 60 * 60);
 
                 return (
                   <Card
                     key={req.id}
-                    className="hover-elevate cursor-pointer p-4"
+                    className={`hover-elevate cursor-pointer p-4 ${priority === 'kritik' ? 'border-red-300 dark:border-red-700' : priority === 'yuksek' ? 'border-orange-200 dark:border-orange-700' : ''}`}
                     onClick={() => setSelectedRequest(req)}
                     data-testid={`card-request-${req.id}`}
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
-                        <div className="font-medium">
+                        <div className="font-medium flex items-center gap-2">
                           {EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type || 'Bilinmiyor'}
+                          {priority !== 'normal' && (
+                            <Badge className={PRIORITY_COLORS[priority]}>
+                              {priority === 'kritik' ? 'KRITIK' : 'YÜKSEK'}
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {branch?.name} • {req.serviceProvider || 'Teknisyen atanmadı'}
                         </div>
                         {req.notes && <p className="text-sm mt-2">{req.notes.substring(0, 100)}</p>}
+                        <div className="text-xs text-muted-foreground mt-1">{hoursOld.toFixed(1)}s önce oluşturuldu</div>
                       </div>
                       <div className="text-right">
                         <Badge className={STATUS_COLORS[req.status] || 'bg-gray-100'}>
