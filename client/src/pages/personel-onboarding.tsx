@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { hasPermission } from "@/lib/permissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,7 +90,7 @@ export default function PersonelOnboardingPage() {
   // Fetch onboarding records
   const { data: onboardingRecords = [], isLoading } = useQuery<(EmployeeOnboarding & { user?: User })[]>({
     queryKey: ["/api/employee-onboarding", { filter: "all" }],
-    enabled: !!user && hasPermission(user, "hr_management"),
+    enabled: !!user,
   });
 
   // Fetch employees for dropdown
