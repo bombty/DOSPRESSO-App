@@ -35,19 +35,6 @@ interface ServiceRequest {
   lastUpdated?: string;
 }
 
-interface Equipment {
-  id: number;
-  branchId: number;
-  name: string;
-  type: string;
-  serialNumber?: string;
-  purchaseDate?: string;
-  warrantyExpiryDate?: string;
-  lastMaintenanceDate?: string;
-  nextMaintenanceDate?: string;
-  isActive: boolean;
-}
-
 const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
   espresso: 'Espresso Makinesi',
   grinder: 'Kahve Değirmeni',
@@ -80,7 +67,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   'normal': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
 };
 
-const getPriority = (req: ServiceRequest, equipment: Equipment[]): string => {
+const getPriority = (req: ServiceRequest, equipment: EquipmentType[]): string => {
   const eq = equipment.find(e => e.id === req.equipmentId);
   if (!eq) return 'normal';
   
@@ -99,13 +86,13 @@ const getPriority = (req: ServiceRequest, equipment: Equipment[]): string => {
   return 'normal';
 };
 
-const getHealthStatus = (equipment: Equipment): { status: string; color: string; icon: React.ReactNode } => {
+const getHealthStatus = (equipment: EquipmentType): { status: string; color: string; icon: React.ReactNode } => {
   if (!equipment.isActive) {
     return { status: 'Pasif', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200', icon: <Clock className="w-4 h-4" /> };
   }
 
-  if (equipment.warrantyExpiryDate) {
-    const warrantyEnd = parseISO(equipment.warrantyExpiryDate);
+  if (equipment.warrantyEndDate) {
+    const warrantyEnd = parseISO(equipment.warrantyEndDate.toString());
     const daysToWarrantyEnd = differenceInDays(warrantyEnd, new Date());
     if (daysToWarrantyEnd < 0) {
       return { status: 'Garanti Sona Erdi', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <AlertCircle className="w-4 h-4" /> };
@@ -134,7 +121,20 @@ export default function EquipmentManagement() {
   const [showQRScanner, setShowQRScanner] = useState(false);
   const qrScannerRef = useRef<Html5QrcodeScanner | null>(null);
 
-  // QR Scanner effect
+  // Queries
+  const { data: branches = [] } = useQuery<Branch[]>({
+    queryKey: ['/api/branches'],
+  });
+
+  const { data: equipment = [] } = useQuery<Equipment[]>({
+    queryKey: ['/api/equipment'],
+  });
+
+  const { data: serviceRequests = [], isLoading: requestsLoading } = useQuery<ServiceRequest[]>({
+    queryKey: ['/api/service-requests'],
+  });
+
+  // QR Scanner effect - defined AFTER queries
   useEffect(() => {
     if (showQRScanner && !qrScannerRef.current) {
       const scanner = new Html5QrcodeScanner(
@@ -158,7 +158,7 @@ export default function EquipmentManagement() {
               qrScannerRef.current = null;
               toast({
                 title: 'Başarılı',
-                description: `${EQUIPMENT_TYPE_LABELS[foundEquipment.type] || foundEquipment.type} tarandi`,
+                description: `${EQUIPMENT_TYPE_LABELS[foundEquipment.equipmentType] || foundEquipment.equipmentType} tarandi`,
               });
             } else {
               toast({
@@ -182,19 +182,6 @@ export default function EquipmentManagement() {
       }
     };
   }, [showQRScanner, equipment, toast]);
-
-  // Queries
-  const { data: branches = [] } = useQuery<Branch[]>({
-    queryKey: ['/api/branches'],
-  });
-
-  const { data: equipment = [] } = useQuery<Equipment[]>({
-    queryKey: ['/api/equipment'],
-  });
-
-  const { data: serviceRequests = [], isLoading: requestsLoading } = useQuery<ServiceRequest[]>({
-    queryKey: ['/api/service-requests'],
-  });
 
   // Form
   const form = useForm<InsertEquipmentServiceRequest>({
@@ -267,7 +254,7 @@ export default function EquipmentManagement() {
           return (
             sr.notes?.toLowerCase().includes(query) ||
             sr.serviceProvider?.toLowerCase().includes(query) ||
-            eq?.type.toLowerCase().includes(query) ||
+            eq?.equipmentType.toLowerCase().includes(query) ||
             branch?.name.toLowerCase().includes(query)
           );
         });
@@ -371,7 +358,7 @@ export default function EquipmentManagement() {
       const branch = branches.find(b => b.id === eq?.branchId);
       return [
         req.id,
-        EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type || 'Bilinmiyor',
+        EQUIPMENT_TYPE_LABELS[eq?.equipmentType || ''] || eq?.equipmentType || 'Bilinmiyor',
         branch?.name || 'Bilinmiyor',
         STATUS_LABELS[req.status] || req.status,
         req.serviceProvider || '-',
@@ -587,7 +574,7 @@ export default function EquipmentManagement() {
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
                         <div className="font-medium flex items-center gap-2">
-                          {EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type || 'Bilinmiyor'}
+                          {EQUIPMENT_TYPE_LABELS[eq?.equipmentType || ''] || eq?.equipmentType || 'Bilinmiyor'}
                           {priority !== 'normal' && (
                             <Badge className={PRIORITY_COLORS[priority]}>
                               {priority === 'kritik' ? 'KRITIK' : 'YÜKSEK'}
@@ -636,7 +623,7 @@ export default function EquipmentManagement() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="font-medium">{EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type}</div>
+                        <div className="font-medium">{EQUIPMENT_TYPE_LABELS[eq?.equipmentType || ''] || eq?.equipmentType}</div>
                         <div className="text-sm text-muted-foreground">{branch?.name}</div>
                       </div>
                       <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -662,7 +649,7 @@ export default function EquipmentManagement() {
                   <Card key={req.id} className="p-4 opacity-75">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="font-medium">{EQUIPMENT_TYPE_LABELS[eq?.type || ''] || eq?.type}</div>
+                        <div className="font-medium">{EQUIPMENT_TYPE_LABELS[eq?.equipmentType || ''] || eq?.equipmentType}</div>
                         <div className="text-sm text-muted-foreground">{branch?.name}</div>
                       </div>
                       <Badge className={STATUS_COLORS[req.status] || 'bg-gray-100'}>
@@ -695,7 +682,7 @@ export default function EquipmentManagement() {
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="text-base">{EQUIPMENT_TYPE_LABELS[eq.type] || eq.type}</CardTitle>
+                          <CardTitle className="text-base">{EQUIPMENT_TYPE_LABELS[eq.equipmentType] || eq.equipmentType}</CardTitle>
                           <CardDescription className="text-xs">{branch?.name}</CardDescription>
                         </div>
                         <Badge className={health.color}>
@@ -706,11 +693,11 @@ export default function EquipmentManagement() {
                     </CardHeader>
                     <CardContent className="space-y-2 text-sm">
                       {eq.serialNumber && <div><span className="text-muted-foreground">Seri: </span>{eq.serialNumber}</div>}
-                      {eq.warrantyExpiryDate && (
+                      {eq.warrantyEndDate && (
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
                           <span className="text-muted-foreground">Garanti: </span>
-                          {format(parseISO(eq.warrantyExpiryDate), 'dd MMM yyyy', { locale: tr })}
+                          {format(parseISO(eq.warrantyEndDate), 'dd MMM yyyy', { locale: tr })}
                         </div>
                       )}
                       {eq.nextMaintenanceDate && (
@@ -742,7 +729,7 @@ export default function EquipmentManagement() {
         <Dialog open={!!selectedEquipmentDetail} onOpenChange={() => setSelectedEquipmentDetail(null)}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{EQUIPMENT_TYPE_LABELS[selectedEquipmentDetail.type] || selectedEquipmentDetail.type}</DialogTitle>
+              <DialogTitle>{EQUIPMENT_TYPE_LABELS[selectedEquipmentDetail.equipmentType] || selectedEquipmentDetail.equipmentType}</DialogTitle>
               <DialogDescription>
                 {branches.find(b => b.id === selectedEquipmentDetail.branchId)?.name}
               </DialogDescription>
@@ -770,10 +757,10 @@ export default function EquipmentManagement() {
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.purchaseDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
-                {selectedEquipmentDetail.warrantyExpiryDate && (
+                {selectedEquipmentDetail.warrantyEndDate && (
                   <div className="bg-muted p-4 rounded-lg space-y-2">
                     <div className="text-sm font-medium text-muted-foreground">Garanti Bitiş</div>
-                    <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.warrantyExpiryDate), 'dd MMM yyyy', { locale: tr })}</div>
+                    <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.warrantyEndDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.lastMaintenanceDate && (
@@ -873,7 +860,7 @@ export default function EquipmentManagement() {
                 <div className="bg-muted p-4 rounded-lg">
                   <div className="font-medium">Ekipman Bilgisi</div>
                   <div className="text-sm mt-2 text-muted-foreground">
-                    {EQUIPMENT_TYPE_LABELS[equipment.find(e => e.id === selectedRequest.equipmentId)?.type || ''] || 'Bilinmiyor'} •{' '}
+                    {EQUIPMENT_TYPE_LABELS[equipment.find(e => e.id === selectedRequest.equipmentId)?.equipmentType || ''] || 'Bilinmiyor'} •{' '}
                     {branches.find(b => b.id === equipment.find(e => e.id === selectedRequest.equipmentId)?.branchId)?.name}
                   </div>
                 </div>
@@ -1003,7 +990,7 @@ export default function EquipmentManagement() {
                   <SelectContent>
                     {branchEquipment.map(eq => (
                       <SelectItem key={eq.id} value={eq.id.toString()}>
-                        {EQUIPMENT_TYPE_LABELS[eq.type] || eq.type}
+                        {EQUIPMENT_TYPE_LABELS[eq.equipmentType] || eq.equipmentType}
                       </SelectItem>
                     ))}
                   </SelectContent>
