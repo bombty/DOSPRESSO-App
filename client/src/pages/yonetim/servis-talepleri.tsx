@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch } from '@shared/schema';
 import { format } from 'date-fns';
@@ -220,6 +220,33 @@ export default function ServiceRequestsManagement() {
 
   const activeFiltersCount = (filterBranch !== 'all' ? 1 : 0) + (filterStatus !== 'all' ? 1 : 0);
 
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Cihaz Adı', 'Cihaz Tipi', 'Şube', 'Durum', 'Öncelik', 'Servis Sağlayıcı', 'Tahmini Maliyet', 'Gerçek Maliyet', 'Oluşturulma Tarihi'];
+    const rows = filteredRequests.map(req => [
+      req.id,
+      req.equipmentName,
+      req.equipmentType,
+      req.branchName || `Şube #${req.branchId}`,
+      STATUS_LABELS[req.status],
+      req.priority ? req.priority.charAt(0).toUpperCase() + req.priority.slice(1) : '',
+      req.serviceProvider,
+      req.estimatedCost || '',
+      req.actualCost || '',
+      format(new Date(req.createdAt), 'd MMM yyyy, HH:mm', { locale: tr }),
+    ]);
+
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `servis-talepleri-${format(new Date(), 'dd-MM-yyyy-HHmm', { locale: tr })}.csv`;
+    link.click();
+  };
+
   return (
     <div className="container mx-auto p-4 lg:p-6 space-y-4">
       <div>
@@ -274,7 +301,7 @@ export default function ServiceRequestsManagement() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Filter className="w-5 h-5" />
               <CardTitle>Filtreler</CardTitle>
@@ -284,20 +311,34 @@ export default function ServiceRequestsManagement() {
                 </Badge>
               )}
             </div>
-            {activeFiltersCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setFilterBranch('all');
-                  setFilterStatus('all');
-                }}
-                data-testid="button-clear-filters"
-              >
-                <X className="w-4 h-4 mr-1" />
-                Temizle
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {filteredRequests.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCSV}
+                  data-testid="button-export-csv"
+                  className="gap-1"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV İndir
+                </Button>
+              )}
+              {activeFiltersCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterBranch('all');
+                    setFilterStatus('all');
+                  }}
+                  data-testid="button-clear-filters"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Temizle
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
