@@ -4,11 +4,9 @@ import { eq } from "drizzle-orm";
 
 export async function seedServiceRequests() {
   try {
-    const existingCount = await db.select({ id: equipmentServiceRequests.id }).from(equipmentServiceRequests);
-    if (existingCount.length > 0) {
-      console.log("✓ Service requests already seeded, skipping...");
-      return;
-    }
+    // Always delete and reseed to ensure fresh data
+    await db.delete(equipmentServiceRequests);
+    console.log("🌱 Clearing old service requests...");
 
     // Get users for createdById and updatedById
     const adminUser = await db.select().from(users).where(eq(users.username, "admin"));
