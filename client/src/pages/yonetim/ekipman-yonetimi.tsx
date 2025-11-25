@@ -126,7 +126,7 @@ export default function EquipmentManagement() {
     queryKey: ['/api/branches'],
   });
 
-  const { data: equipment = [] } = useQuery<Equipment[]>({
+  const { data: equipment = [] } = useQuery<EquipmentType[]>({
     queryKey: ['/api/equipment'],
   });
 
