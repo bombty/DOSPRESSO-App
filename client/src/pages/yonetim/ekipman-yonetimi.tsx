@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap } from 'lucide-react';
+import { AlertCircle, Wrench, Calendar, Clock, Building2, Zap, History, CheckCircle2, AlertCircle as AlertIcon } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { Branch } from '@shared/schema';
@@ -31,6 +31,9 @@ interface ServiceRequest {
   equipmentId: number;
   status: string;
   createdAt: string;
+  priority?: string;
+  serviceProvider?: string;
+  notes?: string;
 }
 
 const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
@@ -41,6 +44,22 @@ const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
   kiosk: 'Kiosk Sistemi',
   tea: 'Çay Makinesi',
   ice: 'Buz Makinesi',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  'talep_edildi': 'Talep Edildi',
+  'planlandi': 'Planlandı',
+  'devam_ediyor': 'Devam Ediyor',
+  'tamamlandi': 'Tamamlandı',
+  'iptal_edildi': 'İptal Edildi',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  'talep_edildi': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  'planlandi': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  'devam_ediyor': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  'tamamlandi': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  'iptal_edildi': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
 };
 
 const getHealthStatus = (equipment: Equipment): { status: string; color: string; icon: React.ReactNode } => {
@@ -114,10 +133,17 @@ export default function EquipmentManagement() {
     return { total, healthy, warning, critical };
   }, [filteredEquipment]);
 
-  const getRecentServices = (equipId: number) => {
-    return serviceRequests.filter(sr => sr.equipmentId === equipId).sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ).slice(0, 3);
+  const getAllServices = (equipId: number) => {
+    return serviceRequests
+      .filter(sr => sr.equipmentId === equipId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  };
+
+  const getStatusIcon = (status: string) => {
+    if (status === 'tamamlandi') return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+    if (status === 'iptal_edildi') return <Clock className="w-4 h-4 text-gray-600" />;
+    if (status === 'devam_ediyor') return <Wrench className="w-4 h-4 text-orange-600" />;
+    return <AlertIcon className="w-4 h-4 text-blue-600" />;
   };
 
   const getBranchName = (branchId: number) => {
