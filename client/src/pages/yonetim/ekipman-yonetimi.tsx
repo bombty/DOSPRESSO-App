@@ -351,7 +351,7 @@ export default function EquipmentManagement() {
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Durumu</div>
-                <Badge className={getHealthStatus(selectedEquipment).color} className="mt-1">
+                <Badge className={`${getHealthStatus(selectedEquipment).color} mt-1`}>
                   {getHealthStatus(selectedEquipment).status}
                 </Badge>
               </div>
