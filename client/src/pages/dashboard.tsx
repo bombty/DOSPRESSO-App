@@ -1657,11 +1657,11 @@ export default function Dashboard() {
                   className="w-full"
                   onClick={() => {
                     setFaultSheetOpen(false);
-                    setLocation(`/ekipman-arizalari?id=${selectedFault.id}`);
+                    setLocation(`/yonetim/ekipman-yonetimi?equipmentId=${selectedFault.equipmentId}`);
                   }}
                   data-testid="button-view-fault-full"
                 >
-                  Detaylı Görüntüle
+                  Ekipmanı Yönetim Sayfasında Aç
                 </Button>
               </div>
             </div>
