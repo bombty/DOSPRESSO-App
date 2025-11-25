@@ -1009,6 +1009,28 @@ export default function ServiceRequestsManagement() {
               </div>
             </div>
 
+            {/* Photo Preview Section */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Fotoğraf Alanları (Talep Oluşturduktan Sonra Eklenebilir)</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                  <div className="text-center">
+                    <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 1</p>
+                  </div>
+                </div>
+                <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                  <div className="text-center">
+                    <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 2</p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Her fotoğraf otomatik olarak WebP formatında sıkıştırılır (1920x1080, %80 kalite)
+              </p>
+            </div>
+
             {/* Info Box */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md p-3">
               <p className="text-sm text-blue-800 dark:text-blue-200">
