@@ -136,7 +136,7 @@ const standaloneItems: MenuItem[] = [
   {
     title: "Arızalar",
     titleTr: "Arızalar",
-    url: "/ariza",
+    url: "/ekipman-arizalar",
     icon: AlertTriangle,
     module: "equipment",
     scope: "both",
