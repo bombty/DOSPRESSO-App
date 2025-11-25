@@ -111,6 +111,12 @@ export default function ServiceRequestsManagement() {
   const [createServiceProvider, setCreateServiceProvider] = useState<string>('');
   const [createNotes, setCreateNotes] = useState<string>('');
   const [creatingRequest, setCreatingRequest] = useState(false);
+  const [createPhoto1Preview, setCreatePhoto1Preview] = useState<string>('');
+  const [createPhoto2Preview, setCreatePhoto2Preview] = useState<string>('');
+  const [createPhoto1File, setCreatePhoto1File] = useState<File | null>(null);
+  const [createPhoto2File, setCreatePhoto2File] = useState<File | null>(null);
+  const [uploadingCreatePhoto, setUploadingCreatePhoto] = useState<number | null>(null);
+  const [createdRequestId, setCreatedRequestId] = useState<number | null>(null);
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
@@ -149,21 +155,61 @@ export default function ServiceRequestsManagement() {
     },
   });
 
+  const uploadCreatePhotos = async (requestId: number) => {
+    if (!createPhoto1File && !createPhoto2File) return;
+
+    try {
+      if (createPhoto1File) {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const base64 = (event.target?.result as string).split(',')[1];
+          await apiRequest(`/api/service-requests/${requestId}/upload-photo`, 'POST', {
+            photoData: base64,
+            photoNumber: 1,
+          });
+        };
+        reader.readAsDataURL(createPhoto1File);
+      }
+
+      if (createPhoto2File) {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const base64 = (event.target?.result as string).split(',')[1];
+          await apiRequest(`/api/service-requests/${requestId}/upload-photo`, 'POST', {
+            photoData: base64,
+            photoNumber: 2,
+          });
+        };
+        reader.readAsDataURL(createPhoto2File);
+      }
+    } catch (error) {
+      console.error('Photo upload error:', error);
+    }
+  };
+
   const createRequestMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest('/api/service-requests/', 'POST', data);
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/service-requests'] });
       setCreateDialogOpen(false);
+      const newRequestId = response?.id;
+      if (newRequestId && (createPhoto1File || createPhoto2File)) {
+        uploadCreatePhotos(newRequestId);
+      }
       setSelectedMachine('');
       setCreateBranch('');
       setCreatePriority('orta');
       setCreateServiceProvider('');
       setCreateNotes('');
+      setCreatePhoto1Preview('');
+      setCreatePhoto2Preview('');
+      setCreatePhoto1File(null);
+      setCreatePhoto2File(null);
       toast({
         title: 'Başarılı',
-        description: 'Servis talebi oluşturuldu',
+        description: 'Servis talebi oluşturuldu' + (createPhoto1File || createPhoto2File ? ' ve fotoğraflar yükleniyor' : ''),
       });
     },
     onError: (error: any) => {
@@ -174,6 +220,24 @@ export default function ServiceRequestsManagement() {
       });
     },
   });
+
+  const handleCreatePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, photoNumber: 1 | 2) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (photoNumber === 1) {
+        setCreatePhoto1Preview(base64);
+        setCreatePhoto1File(file);
+      } else {
+        setCreatePhoto2Preview(base64);
+        setCreatePhoto2File(file);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleCreateRequest = async () => {
     if (!selectedMachine || !createBranch || !createServiceProvider) {
@@ -1009,21 +1073,87 @@ export default function ServiceRequestsManagement() {
               </div>
             </div>
 
-            {/* Photo Preview Section */}
+            {/* Photo Upload Section */}
             <div className="space-y-3">
-              <Label className="text-base font-semibold">Fotoğraf Alanları (Talep Oluşturduktan Sonra Eklenebilir)</Label>
+              <Label className="text-base font-semibold">Fotoğraflar (İsteğe Bağlı)</Label>
               <div className="grid grid-cols-2 gap-3">
-                <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
-                  <div className="text-center">
-                    <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 1</p>
-                  </div>
+                <div>
+                  {createPhoto1Preview ? (
+                    <img src={createPhoto1Preview} alt="Fotoğraf 1" className="w-full aspect-square object-cover rounded-lg border" />
+                  ) : (
+                    <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                      <div className="text-center">
+                        <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 1</p>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => document.getElementById('create-photo1-input')?.click()}
+                    disabled={uploadingCreatePhoto === 1}
+                    data-testid="button-upload-create-photo-1"
+                  >
+                    {uploadingCreatePhoto === 1 ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Yükleniyor...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Fotoğraf Seç
+                      </>
+                    )}
+                  </Button>
+                  <input
+                    id="create-photo1-input"
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => handleCreatePhotoUpload(e, 1)}
+                  />
                 </div>
-                <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
-                  <div className="text-center">
-                    <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 2</p>
-                  </div>
+                <div>
+                  {createPhoto2Preview ? (
+                    <img src={createPhoto2Preview} alt="Fotoğraf 2" className="w-full aspect-square object-cover rounded-lg border" />
+                  ) : (
+                    <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                      <div className="text-center">
+                        <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 2</p>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => document.getElementById('create-photo2-input')?.click()}
+                    disabled={uploadingCreatePhoto === 2}
+                    data-testid="button-upload-create-photo-2"
+                  >
+                    {uploadingCreatePhoto === 2 ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Yükleniyor...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Fotoğraf Seç
+                      </>
+                    )}
+                  </Button>
+                  <input
+                    id="create-photo2-input"
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => handleCreatePhotoUpload(e, 2)}
+                  />
                 </div>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
