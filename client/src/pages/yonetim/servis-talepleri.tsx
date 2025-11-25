@@ -123,7 +123,7 @@ export default function ServiceRequestsManagement() {
     queryKey: ['/api/branches'],
   });
 
-  const { data: allEquipment = [] } = useQuery({
+  const { data: allEquipment = [] } = useQuery<any[]>({
     queryKey: ['/api/equipment'],
   });
 

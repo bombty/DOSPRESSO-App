@@ -6,19 +6,32 @@ DOSPRESSO is a web-based platform for managing coffee shop franchise operations.
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (November 25, 2025)
-- **Servis Talepleri Modülü**: FULLY COMPLETED & PRODUCTION-READY
+## Recent Changes (November 25, 2025 - Final Session)
+- **Servis Talepleri Modülü (Service Requests)**: FULLY COMPLETED & PRODUCTION-READY
   - ✅ Service request tracking with timeline history
   - ✅ User audit trail (oluşturan/güncelleyen)
   - ✅ Status management (talep_edildi, planlandı, devam_ediyor, tamamlandı, iptal_edildi)
   - ✅ Detailed update dialog (son görüşme tarihi, servis durumu notları, tahmini bitiş, gerçek maliyet)
   - ✅ Timeline view (kronolojik değişikliklerin tam kaydı)
-  - ✅ Photo upload system (2 photos with auto WebP compression to 1920x1080, 80% quality)
+  - ✅ Photo upload system during creation (2 photos with auto WebP compression to 1920x1080, 80% quality)
   - ✅ CSV export for filtered service request data
-  - ✅ Machine template form with 4 visual coffee machine options for creating new requests
+  - ✅ Branch-based equipment filtering - users select branch, then choose from that branch's equipment only
+  - ✅ Equipment selection from branch's equipment list (not hardcoded templates)
+  - ✅ Photo uploads work during service request creation
   - ✅ Backend POST endpoint: /api/service-requests/ for form submissions
-  - ✅ Auto equipment creation from service request form
+  - ✅ Auto equipment linking from service request form
   - ✅ 6 test data seeds (farklı statüler, şubeler, kullanıcılar)
+
+- **Ekipman Yönetimi (Equipment Management)**: FULLY COMPLETED & PRODUCTION-READY
+  - ✅ Dashboard showing all equipment across branches with real-time health status
+  - ✅ Equipment health indicators (Sağlıklı/Healthy, Uyarı/Warning, Kritik/Critical, Pasif/Inactive)
+  - ✅ Maintenance schedule tracking with warranty date monitoring
+  - ✅ Warranty expiration alerts
+  - ✅ Grid and list view options for easy browsing
+  - ✅ Stats cards showing equipment overview
+  - ✅ Filters by branch and status
+  - ✅ Branch filtering in create dialog - only shows equipment for selected branch
+  - ✅ Equipment detail view panel
 
 ## System Architecture
 
@@ -27,6 +40,16 @@ The frontend uses React 18+ with TypeScript and Vite. UI components are built wi
 
 ### Technical Implementations
 The backend is built with Node.js and Express.js using TypeScript, offering RESTful APIs protected by authentication middleware. Replit Auth (OpenID Connect) handles authentication with Passport.js and PostgreSQL for session management. Drizzle ORM provides type-safe database queries. Key modules include Authentication & RBAC (13-role system), Task Management (AI photo verification), Checklist Management, Equipment Management, Knowledge Base RAG, Training Academy, HQ Support Tickets, Performance Dashboards, Shift Management (QR check-in/out), Messaging, and Customer Feedback. Advanced features include an attendance penalty system, guest complaint SLA automation, overtime request workflow, employee performance scoring, equipment troubleshooting, and HR management (personnel documents, disciplinary tracking, onboarding). An audit logging infrastructure tracks security-relevant actions.
+
+### Service Request Creation Flow
+**NEW Workflow (November 25, 2025)**:
+1. User clicks "Yeni Talep" (Create New Request)
+2. Step 1: Select a branch from dropdown
+3. Step 2: System loads and displays only that branch's equipment
+4. User selects equipment from the filtered equipment list
+5. User fills remaining form fields (priority, service provider, notes)
+6. User optionally uploads 2 photos (auto-compressed to WebP)
+7. Click "Talebi Oluştur" to create request with all photos
 
 ### Feature Specifications
 - **AI Integration**: Utilizes OpenAI API (GPT-4o, GPT-4o-mini) for task photo analysis, equipment fault diagnosis, knowledge base RAG, AI-powered Q&A, shift planning, dashboard summaries, performance insights, branch evaluations, and training content generation. Budgeted at $200/month with intelligent caching and rate limiting.
@@ -53,3 +76,19 @@ The application uses a micro-frontend-like approach for UI components with Shadc
 -   **Build Tools**: `vite`, `esbuild`, `tsx`.
 -   **Content Management**: `react-markdown`, `rehype-sanitize`.
 -   **QR Code**: `html5-qrcode`, `qrcode.react`.
+
+## Implementation Notes
+
+### Service Requests Form - Current Implementation
+- **Adım 1 (Step 1)**: Branch Selection dropdown (required)
+- **Adım 2 (Step 2)**: Equipment list for selected branch (only shows equipment assigned to that branch, required)
+- **Form Fields**: Priority, Service Provider, Notes (service provider is required)
+- **Photo Upload**: Optional photo upload with preview (2 photos max, auto-compressed)
+- **API Endpoint**: POST /api/service-requests/ receives branch, equipment, priority, service provider, notes, and photo data
+
+### Future Enhancement Opportunities
+1. QR code scanning for equipment selection (branch staff can scan equipment QR code to create request)
+2. Equipment card navigation - click equipment to view full details and service history
+3. Real-time notification system for high-priority service requests
+4. Maintenance schedule automation based on equipment type and usage patterns
+5. Integration with parts inventory for equipment troubleshooting
