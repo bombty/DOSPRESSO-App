@@ -2084,16 +2084,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all equipment for the branch (or all if HQ)
       const allEquipment = await storage.getEquipment(branchId);
       
-      // Get service requests for each equipment
+      // Get service requests for each equipment with user info
       const allRequests = [];
       for (const equipment of allEquipment) {
         const requests = await storage.listServiceRequests(equipment.id, requestedStatus);
-        allRequests.push(...requests.map(r => ({
-          ...r,
-          equipmentName: equipment.name,
-          equipmentType: equipment.type,
-          branchId: equipment.branchId,
-        })));
+        
+        for (const r of requests) {
+          // Get creator and updater user names
+          const createdByUser = await storage.getUserById(r.createdById);
+          const updatedByUser = r.updatedById ? await storage.getUserById(r.updatedById) : null;
+          
+          allRequests.push({
+            ...r,
+            equipmentName: equipment.name,
+            equipmentType: equipment.type,
+            branchId: equipment.branchId,
+            branchName: (await storage.getBranchById(equipment.branchId))?.name,
+            createdByUsername: createdByUser?.username,
+            updatedByUsername: updatedByUser?.username,
+          });
+        }
       }
       
       // Sort by created date (newest first)
