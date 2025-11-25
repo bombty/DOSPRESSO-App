@@ -2222,6 +2222,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdById: userId,
       });
 
+      // Send critical notifications to HQ staff if priority is high/critical
+      const finalPriority = priority || 'orta';
+      if (finalPriority === 'yüksek' || finalPriority === 'kritik') {
+        try {
+          const hqUsers = await storage.getUsersByRole('hq_staff');
+          const branch = await storage.getBranch(branchId);
+          
+          for (const hqUser of hqUsers) {
+            await storage.createNotification({
+              userId: hqUser.id,
+              type: 'critical_service_request',
+              title: finalPriority === 'kritik' ? '🚨 KRİTİK Servis Talebi!' : '⚠️ Yüksek Öncelikli Talep',
+              message: `${branch?.name || 'Bilinmeyen Şube'} - ${equipmentType}: ${notes?.substring(0, 50) || 'Acil teknik destek gerekiyor'}`,
+              relatedId: serviceRequest.id,
+              read: false,
+            });
+          }
+          console.log(`📢 Critical notification sent to HQ staff for service request ${serviceRequest.id}`);
+        } catch (notificationError) {
+          console.error('Failed to send critical notifications:', notificationError);
+        }
+      }
+
       res.json(serviceRequest);
     } catch (error: any) {
       console.error("Error creating service request:", error);

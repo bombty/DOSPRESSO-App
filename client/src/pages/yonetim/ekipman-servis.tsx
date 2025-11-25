@@ -336,9 +336,15 @@ export default function EkipmanServis() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/faults'] });
       queryClient.invalidateQueries({ queryKey: ['/api/service-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+      
+      const isPriorityCritical = createType === 'service' && (priority === 'yüksek' || priority === 'kritik');
+      
       toast({
         title: 'Başarılı',
-        description: createType === 'fault' ? 'Arıza raporu oluşturuldu' : 'Servis talebi oluşturuldu',
+        description: isPriorityCritical 
+          ? `🚨 ${priority === 'kritik' ? 'KRİTİK' : 'Yüksek Öncelikli'} Servis Talebi oluşturuldu - HQ personeli bilgilendirildi`
+          : createType === 'fault' ? 'Arıza raporu oluşturuldu' : 'Servis talebi oluşturuldu',
       });
       setCreateDialogOpen(false);
       resetForm();
@@ -750,16 +756,28 @@ export default function EkipmanServis() {
                 <div className="space-y-2">
                   <Label>Öncelik</Label>
                   <Select value={priority} onValueChange={setPriority}>
-                    <SelectTrigger>
+                    <SelectTrigger className={
+                      priority === 'kritik' ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+                      priority === 'yüksek' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' : ''
+                    }>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="düşük">Düşük</SelectItem>
                       <SelectItem value="orta">Orta</SelectItem>
-                      <SelectItem value="yüksek">Yüksek</SelectItem>
-                      <SelectItem value="kritik">Kritik</SelectItem>
+                      <SelectItem value="yüksek">⚠️ Yüksek</SelectItem>
+                      <SelectItem value="kritik">🚨 Kritik</SelectItem>
                     </SelectContent>
                   </Select>
+                  {(priority === 'yüksek' || priority === 'kritik') && (
+                    <div className={`text-xs p-2 rounded ${
+                      priority === 'kritik' 
+                        ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200' 
+                        : 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
+                    }`}>
+                      ℹ️ HQ personeli otomatik olarak bilgilendirilecek
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Notlar</Label>
