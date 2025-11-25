@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import FaultDashboard from "@/pages/ariza-panosu";
+import FaultManagement from "@/pages/ariza-yonetim";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import ForgotPassword from "@/pages/forgot-password";
@@ -92,6 +93,7 @@ function Router() {
           <Route path="/equipment/:id" component={EquipmentDetail} />
           <Route path="/ekipman" component={Equipment} />
           <Route path="/ariza-panosu" component={FaultDashboard} />
+          <Route path="/ariza-yonetim" component={FaultManagement} />
           <Route path="/ekipman-arizalari" component={EquipmentFaults} />
           <Route path="/ekipman-troubleshooting" component={EquipmentTroubleshooting} />
           <Route path="/qr-tara" component={QRScanner} />

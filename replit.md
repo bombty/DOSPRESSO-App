@@ -65,6 +65,17 @@ Preferred communication style: Simple, everyday language.
   - Turkish language UI with proper date formatting (dd MMM HH:mm)
   - Responsive design with grid layout for stats cards
 
+- ✅ **Fault Management & Assignment Page** (/ariza-yonetim)
+  - Comprehensive fault workflow management for technicians and supervisors
+  - View all open/unresolved faults with filtering
+  - Assign faults to specific technicians from user list
+  - Update fault status through multi-stage workflow (Beklemede → İşleme Alındı → Devam Ediyor → Servis Çağrıldı → Kargoya Verildi → Kapatıldı)
+  - Track actual service costs and add detailed service notes
+  - Real-time statistics (Open faults, In-Progress, Resolved this month)
+  - View resolved/closed faults with completion tracking
+  - Audit trail with timestamp and assigned user information
+  - Dialog-based update interface for efficient fault management
+
 ### Previous Session Features
 - **Servis Talepleri Modülü (Service Requests)**: FULLY COMPLETED & PRODUCTION-READY
   - ✅ Service request tracking with timeline history
