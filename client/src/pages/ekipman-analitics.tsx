@@ -34,7 +34,7 @@ export default function EquipmentAnalytics() {
 
   // Top problematic equipment
   const equipmentFaultCounts = equipment.map(eq => ({
-    name: eq.equipmentName,
+    name: eq.name,
     faults: faults.filter(f => f.equipmentId === eq.id && f.currentStage !== "kapatildi").length,
     health: eq.healthScore || 100,
     id: eq.id,
