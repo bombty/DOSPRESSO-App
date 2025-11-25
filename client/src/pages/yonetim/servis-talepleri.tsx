@@ -117,18 +117,25 @@ export default function ServiceRequestsManagement() {
   const [createPhoto2File, setCreatePhoto2File] = useState<File | null>(null);
   const [uploadingCreatePhoto, setUploadingCreatePhoto] = useState<number | null>(null);
   const [createdRequestId, setCreatedRequestId] = useState<number | null>(null);
+  const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+  });
+
+  const { data: allEquipment = [] } = useQuery({
+    queryKey: ['/api/equipment'],
   });
 
   const { data: serviceRequests = [], isLoading } = useQuery<ServiceRequestWithEquipment[]>({
     queryKey: ['/api/service-requests', filterBranch !== 'all' ? parseInt(filterBranch) : undefined, filterStatus !== 'all' ? filterStatus : undefined],
   });
 
+  const branchEquipment = selectedEquipment ? [] : (createBranch ? allEquipment.filter((eq: any) => eq.branchId === parseInt(createBranch)) : []);
+
   const updateStatusMutation = useMutation({
     mutationFn: async ({ requestId, status, details }: { requestId: number; status: string; details?: any }) => {
-      return await apiRequest(`/api/equipment/service-requests/${requestId}/status`, 'PATCH', {
+      return await apiRequest('PATCH', `/api/equipment/service-requests/${requestId}/status`, {
         newStatus: status,
         lastContactDate: details?.lastContactDate,
         serviceUpdate: details?.serviceUpdate,
@@ -163,7 +170,7 @@ export default function ServiceRequestsManagement() {
         const reader = new FileReader();
         reader.onload = async (event) => {
           const base64 = (event.target?.result as string).split(',')[1];
-          await apiRequest(`/api/service-requests/${requestId}/upload-photo`, 'POST', {
+          await apiRequest('POST', `/api/service-requests/${requestId}/upload-photo`, {
             photoData: base64,
             photoNumber: 1,
           });
@@ -175,7 +182,7 @@ export default function ServiceRequestsManagement() {
         const reader = new FileReader();
         reader.onload = async (event) => {
           const base64 = (event.target?.result as string).split(',')[1];
-          await apiRequest(`/api/service-requests/${requestId}/upload-photo`, 'POST', {
+          await apiRequest('POST', `/api/service-requests/${requestId}/upload-photo`, {
             photoData: base64,
             photoNumber: 2,
           });
@@ -189,7 +196,7 @@ export default function ServiceRequestsManagement() {
 
   const createRequestMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('/api/service-requests/', 'POST', data);
+      return await apiRequest('POST', '/api/service-requests/', data);
     },
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/service-requests'] });
@@ -198,7 +205,7 @@ export default function ServiceRequestsManagement() {
       if (newRequestId && (createPhoto1File || createPhoto2File)) {
         uploadCreatePhotos(newRequestId);
       }
-      setSelectedMachine('');
+      setSelectedEquipment(null);
       setCreateBranch('');
       setCreatePriority('orta');
       setCreateServiceProvider('');
@@ -240,7 +247,7 @@ export default function ServiceRequestsManagement() {
   };
 
   const handleCreateRequest = async () => {
-    if (!selectedMachine || !createBranch || !createServiceProvider) {
+    if (!selectedEquipment || !createBranch || !createServiceProvider) {
       toast({
         title: 'Hata',
         description: 'Zorunlu alanları doldurunuz',
@@ -249,15 +256,13 @@ export default function ServiceRequestsManagement() {
       return;
     }
 
-    const machine = MACHINE_TEMPLATES.find(m => m.id === selectedMachine);
-    if (!machine) return;
-
     setCreatingRequest(true);
     try {
       await createRequestMutation.mutateAsync({
         branchId: parseInt(createBranch),
-        equipmentName: machine.name,
-        equipmentType: machine.type,
+        equipmentId: selectedEquipment.id,
+        equipmentName: selectedEquipment.equipmentType,
+        equipmentType: selectedEquipment.equipmentType,
         priority: createPriority,
         serviceProvider: createServiceProvider,
         notes: createNotes,
@@ -987,50 +992,54 @@ export default function ServiceRequestsManagement() {
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Machine Selection with Images */}
+            {/* Step 1: Branch Selection */}
             <div className="space-y-3">
-              <Label className="text-base font-semibold">Cihaz Seçimi</Label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {MACHINE_TEMPLATES.map((machine) => (
-                  <button
-                    key={machine.id}
-                    onClick={() => setSelectedMachine(machine.id)}
-                    className={`p-3 rounded-lg border-2 transition-all cursor-pointer overflow-hidden hover-elevate ${
-                      selectedMachine === machine.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border'
-                    }`}
-                    data-testid={`button-machine-${machine.id}`}
-                  >
-                    <img
-                      src={machine.image}
-                      alt={machine.name}
-                      className="w-full h-24 object-cover rounded mb-2"
-                    />
-                    <p className="text-sm font-medium text-center">{machine.name}</p>
-                  </button>
-                ))}
-              </div>
+              <Label htmlFor="create-branch" className="text-base font-semibold">Adım 1: Şube Seçimi *</Label>
+              <Select value={createBranch} onValueChange={(val) => { setCreateBranch(val); setSelectedEquipment(null); }}>
+                <SelectTrigger id="create-branch" data-testid="select-create-branch">
+                  <SelectValue placeholder="Şube seçiniz" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map(branch => (
+                    <SelectItem key={branch.id} value={String(branch.id)}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Step 2: Equipment Selection */}
+            {createBranch && (
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">Adım 2: Cihaz Seçimi *</Label>
+                {branchEquipment.length > 0 ? (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {branchEquipment.map((eq: any) => (
+                      <button
+                        key={eq.id}
+                        onClick={() => setSelectedEquipment(eq)}
+                        className={`w-full p-3 rounded-lg border-2 transition-all text-left hover-elevate ${
+                          selectedEquipment?.id === eq.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border'
+                        }`}
+                        data-testid={`button-equipment-${eq.id}`}
+                      >
+                        <div className="font-medium">{eq.equipmentType}</div>
+                        <div className="text-sm text-muted-foreground">Seri: {eq.serialNumber || 'N/A'}</div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 text-center text-muted-foreground">Bu şube için cihaz bulunmuyor</div>
+                )}
+              </div>
+            )}
 
             {/* Form Fields */}
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="create-branch">Şube *</Label>
-                  <Select value={createBranch} onValueChange={setCreateBranch}>
-                    <SelectTrigger id="create-branch" data-testid="select-create-branch">
-                      <SelectValue placeholder="Şube seçiniz" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches.map(branch => (
-                        <SelectItem key={branch.id} value={String(branch.id)}>
-                          {branch.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="create-priority">Öncelik</Label>
@@ -1175,7 +1184,7 @@ export default function ServiceRequestsManagement() {
             </Button>
             <Button
               onClick={handleCreateRequest}
-              disabled={creatingRequest || !selectedMachine || !createBranch || !createServiceProvider}
+              disabled={creatingRequest || !selectedEquipment || !createBranch || !createServiceProvider}
               data-testid="button-submit-create-request"
               className="gap-2"
             >
