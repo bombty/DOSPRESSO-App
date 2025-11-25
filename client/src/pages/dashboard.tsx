@@ -524,7 +524,7 @@ export default function Dashboard() {
 
         <Card 
           className="cursor-pointer hover-elevate transition-all" 
-          onClick={() => setLocation("/ekipman-arizalari?status=acik")}
+          onClick={() => setLocation("/ekipman-arizalar")}
           data-testid="card-open-faults"
         >
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
