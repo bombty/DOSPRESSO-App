@@ -1307,6 +1307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
+      const offset = parseInt(req.query.offset as string) || 0;
       
       ensurePermission(user, 'equipment_faults', 'view');
       
@@ -1318,12 +1320,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // Force branch users to see only their branch
         const faults = await storage.getFaults(branchId);
-        return res.json(faults);
+        const paginated = faults.slice(offset, offset + limit);
+        return res.json({ data: paginated, total: faults.length, limit, offset });
       }
       
       // HQ users can access all or filter by branch
       const faults = await storage.getFaults(requestedBranchId);
-      res.json(faults);
+      const paginated = faults.slice(offset, offset + limit);
+      res.json({ data: paginated, total: faults.length, limit, offset });
     } catch (error) {
       console.error("Error fetching faults:", error);
       if (error instanceof AuthorizationError) {
