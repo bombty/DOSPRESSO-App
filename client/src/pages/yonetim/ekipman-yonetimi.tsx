@@ -238,7 +238,7 @@ export default function EquipmentManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredEquipment.map(eq => {
                 const health = getHealthStatus(eq);
-                const recentServices = getRecentServices(eq.id);
+                const recentServices = getAllServices(eq.id);
                 
                 return (
                   <Card key={eq.id} className="hover-elevate cursor-pointer" onClick={() => setSelectedEquipment(eq)} data-testid={`card-equipment-${eq.id}`}>

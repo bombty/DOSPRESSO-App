@@ -90,7 +90,7 @@ export default function Dashboard() {
     totalDays: number;
   }>>({
     queryKey: ["/api/performance/team"],
-    enabled: !!user && isBranchRole(user.role),
+    enabled: !!user && isBranchRole(user.role as any),
   });
 
   // Fetch composite branch scores (HQ only)
@@ -105,7 +105,7 @@ export default function Dashboard() {
     lastUpdated: Date;
   }>>({
     queryKey: ["/api/performance/branches/composite", branchScoresTimeRange],
-    enabled: !!user && isHQRole(user.role),
+    enabled: !!user && isHQRole(user.role as any),
     queryFn: async () => {
       const response = await fetch(`/api/performance/branches/composite?timeRange=${branchScoresTimeRange}`);
       if (!response.ok) throw new Error('Failed to fetch composite branch scores');
@@ -973,7 +973,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Team Performance Section - Supervisor/Branch Manager Only */}
-      {user && isBranchRole(user.role) && (
+      {user && isBranchRole(user.role as any) && (
         <Card data-testid="card-team-performance">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1034,7 +1034,7 @@ export default function Dashboard() {
       )}
 
       {/* Branch Performance Table - HQ Only */}
-      {user && isHQRole(user.role) && (
+      {user && isHQRole(user.role as any) && (
         <Card data-testid="card-branches-performance">
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
