@@ -209,9 +209,12 @@ export default function FaultHub() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold">Arıza Yönetimi</h1>
-        <p className="text-muted-foreground mt-1">Tüm ekipman arızalarını merkezi olarak yönetin</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold">Arıza Yönetimi</h1>
+          <p className="text-muted-foreground mt-1">Tüm ekipman arızalarını merkezi olarak yönetin</p>
+        </div>
+        <Button onClick={() => setLocation("/ariza-yeni")}>Yeni Arıza Bildir</Button>
       </div>
 
       <Tabs defaultValue="overview" className="w-full">

@@ -41,11 +41,11 @@ export default function NewFaultReport() {
   const [isUploading, setIsUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
-  const { data: branches } = useQuery({
+  const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
   });
 
-  const { data: equipment } = useQuery({
+  const { data: equipment = [] } = useQuery<Equipment[]>({
     queryKey: ["/api/equipment"],
   });
 
@@ -141,11 +141,11 @@ export default function NewFaultReport() {
     }
   };
 
-  const selectedBranch = branches?.find(b => b.id === form.watch("branchId"));
-  const selectedEquipment = equipment?.find(eq => eq.id === form.watch("equipmentId"));
+  const selectedBranch = branches.find(b => b.id === form.watch("branchId"));
+  const selectedEquipment = equipment.find(eq => eq.id === form.watch("equipmentId"));
 
   if (form.watch("equipmentId") && selectedEquipment) {
-    form.setValue("equipmentName", selectedEquipment.equipmentName);
+    form.setValue("equipmentName", (selectedEquipment as any).equipmentName || "");
   }
 
   return (
@@ -197,7 +197,7 @@ export default function NewFaultReport() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {branches?.map((branch) => (
+                        {branches.map((branch: Branch) => (
                           <SelectItem key={branch.id} value={String(branch.id)}>
                             {branch.name}
                           </SelectItem>
@@ -227,10 +227,10 @@ export default function NewFaultReport() {
                       <SelectContent>
                         <SelectItem value="">Seçim yapma</SelectItem>
                         {equipment
-                          ?.filter((eq) => eq.branchId === form.watch("branchId"))
-                          .map((eq) => (
+                          .filter((eq: Equipment) => eq.branchId === form.watch("branchId"))
+                          .map((eq: Equipment) => (
                             <SelectItem key={eq.id} value={String(eq.id)}>
-                              {eq.equipmentName}
+                              {(eq as any).equipmentName || "Ekipman"}
                             </SelectItem>
                           ))}
                       </SelectContent>

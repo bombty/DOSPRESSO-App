@@ -150,7 +150,10 @@ export default function FaultDetail() {
           <h1 className="text-3xl font-semibold">{fault.equipmentName}</h1>
           <p className="text-muted-foreground mt-1">Arıza ID: #{fault.id}</p>
         </div>
-        <Button onClick={() => setIsEditDialogOpen(true)}>Güncelle</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setLocation("/ariza-yeni")}>Yeni Arıza</Button>
+          <Button onClick={() => setIsEditDialogOpen(true)}>Güncelle</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
