@@ -119,7 +119,7 @@ export default function FaultHub() {
     queryKey: ["/api/faults"],
   });
 
-  const faults = Array.isArray(faultsData) ? faultsData : faultsData?.data || [];
+  const faults = (Array.isArray(faultsData) ? faultsData : (faultsData as any)?.data || []) as EquipmentFault[];
 
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],
@@ -177,7 +177,7 @@ export default function FaultHub() {
 
   // Memoized search results with debounced search
   const manageFaults = useMemo(() => {
-    return metrics.open.filter(f => 
+    return metrics.open.filter((f: EquipmentFault) => 
       debouncedSearch === "" || 
       f.equipmentName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
       f.description?.toLowerCase().includes(debouncedSearch.toLowerCase())
@@ -281,7 +281,7 @@ export default function FaultHub() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {metrics.critical.map((fault) => (
+                  {metrics.critical.map((fault: EquipmentFault) => (
                     <div key={fault.id} className="flex items-center justify-between p-2 bg-white dark:bg-red-900/20 rounded border border-red-200" data-testid={`card-critical-fault-${fault.id}`}>
                       <div className="flex-1">
                         <p className="font-medium text-sm">{fault.equipmentName}</p>
@@ -301,7 +301,7 @@ export default function FaultHub() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {faults.slice(0, RECENT_FAULTS_LIMIT).map((fault) => (
+                {faults.slice(0, RECENT_FAULTS_LIMIT).map((fault: EquipmentFault) => (
                   <div key={fault.id} className="flex items-center justify-between p-2 border rounded" data-testid={`card-recent-fault-${fault.id}`}>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{fault.equipmentName}</p>
@@ -356,7 +356,7 @@ export default function FaultHub() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {metrics.breached.map((fault) => (
+                  {metrics.breached.map((fault: EquipmentFault) => (
                     <div key={fault.id} className="p-2 bg-red-50 dark:bg-red-950 rounded" data-testid={`card-breached-fault-${fault.id}`}>
                       <p className="font-medium text-sm">{fault.equipmentName}</p>
                       <p className="text-xs text-muted-foreground">{getTimeSinceCreation(fault.createdAt)} açık</p>
@@ -374,7 +374,7 @@ export default function FaultHub() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {metrics.atRisk.map((fault) => (
+                  {metrics.atRisk.map((fault: EquipmentFault) => (
                     <div key={fault.id} className="p-2 bg-orange-50 dark:bg-orange-950 rounded" data-testid={`card-atrisk-fault-${fault.id}`}>
                       <p className="font-medium text-sm">{fault.equipmentName}</p>
                       <p className="text-xs text-muted-foreground">{getTimeSinceCreation(fault.createdAt)} (sınıra yaklaşıyor)</p>
@@ -407,10 +407,12 @@ export default function FaultHub() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {paginatedManageFaults.length === 0 ? (
+                {isFaultsLoading ? (
+                  <FaultSkeletonList />
+                ) : paginatedManageFaults.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">Arıza bulunamadı</p>
                 ) : (
-                  paginatedManageFaults.map((fault) => (
+                  paginatedManageFaults.map((fault: EquipmentFault) => (
                     <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted" data-testid={`card-manage-fault-${fault.id}`}>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -577,7 +579,7 @@ export default function FaultHub() {
                   <CardTitle className="text-sm font-medium text-red-600">Kritik</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-red-600" data-testid="text-my-critical">{metrics.myFaults.filter(f => f.priority === "kritik").length}</div>
+                  <div className="text-3xl font-bold text-red-600" data-testid="text-my-critical">{metrics.myFaults.filter((f: EquipmentFault) => f.priority === "kritik").length}</div>
                 </CardContent>
               </Card>
 
@@ -586,7 +588,7 @@ export default function FaultHub() {
                   <CardTitle className="text-sm font-medium text-blue-600">Devam Ediyor</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-blue-600" data-testid="text-my-inprogress">{metrics.myFaults.filter(f => f.currentStage === "devam_ediyor").length}</div>
+                  <div className="text-3xl font-bold text-blue-600" data-testid="text-my-inprogress">{metrics.myFaults.filter((f: EquipmentFault) => f.currentStage === "devam_ediyor").length}</div>
                 </CardContent>
               </Card>
             </div>
@@ -600,7 +602,7 @@ export default function FaultHub() {
                   {metrics.myFaults.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">Size atanmış arıza yok</p>
                   ) : (
-                    metrics.myFaults.map((fault) => (
+                    metrics.myFaults.map((fault: EquipmentFault) => (
                       <div key={fault.id} className="p-3 border rounded" data-testid={`card-my-fault-${fault.id}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
