@@ -162,8 +162,8 @@ export default function FaultDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge className={PRIORITY_COLORS[fault.priority] || PRIORITY_COLORS.normal}>
-              {PRIORITY_LABELS[fault.priority] || fault.priority}
+            <Badge className={fault.priority ? PRIORITY_COLORS[fault.priority] : PRIORITY_COLORS.normal}>
+              {fault.priority ? (PRIORITY_LABELS[fault.priority] || fault.priority) : "Normal"}
             </Badge>
           </CardContent>
         </Card>
@@ -191,7 +191,7 @@ export default function FaultDetail() {
           </CardHeader>
           <CardContent>
             <p className="text-sm font-medium">
-              {fault.maintenanceResponsible || fault.faultProtocol || "-"}
+              {(fault as any).maintenanceResponsible || (fault as any).faultProtocol || "-"}
             </p>
           </CardContent>
         </Card>
@@ -205,7 +205,7 @@ export default function FaultDetail() {
           </CardHeader>
           <CardContent>
             <p className="text-sm font-medium">
-              {fault.actualCost ? `₺${fault.actualCost.toFixed(2)}` : "-"}
+              {fault.actualCost ? `₺${typeof fault.actualCost === 'string' ? parseFloat(fault.actualCost).toFixed(2) : Number(fault.actualCost).toFixed(2)}` : "-"}
             </p>
           </CardContent>
         </Card>
@@ -248,9 +248,9 @@ export default function FaultDetail() {
               <p className="text-sm font-medium">{fault.assignedTo || "-"}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">SLA Durumu</p>
-              <Badge variant={fault.slaBreached ? "destructive" : "default"}>
-                {fault.slaBreached ? "İhlal Edildi" : "Normal"}
+              <p className="text-sm text-muted-foreground">Durumu</p>
+              <Badge variant={fault.currentStage === "kapatildi" ? "default" : "secondary"}>
+                {fault.currentStage === "kapatildi" ? "Çözüldü" : "Açık"}
               </Badge>
             </div>
           </div>
