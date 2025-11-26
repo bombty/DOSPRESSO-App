@@ -46,9 +46,11 @@ export default function Dashboard() {
     queryKey: ["/api/tasks"],
   });
 
-  const { data: faults, isLoading: faultsLoading } = useQuery<EquipmentFault[]>({
+  const { data: faultsData = [], isLoading: faultsLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
   });
+  
+  const faults = (Array.isArray(faultsData) ? faultsData : (faultsData as any)?.data || []) as EquipmentFault[];
 
   const { data: metrics, isLoading: metricsLoading } = useQuery<PerformanceMetric[]>({
     queryKey: ["/api/performance/latest"],
@@ -183,7 +185,7 @@ export default function Dashboard() {
   const completedTasks = tasks?.filter(t => t.status === "tamamlandi").length || 0;
   const pendingTasks = tasks?.filter(t => t.status === "beklemede").length || 0;
   const overdueTasks = tasks?.filter(t => t.status === "gecikmiş").length || 0;
-  const openFaults = faults?.filter(f => f.status === "acik").length || 0;
+  const openFaults = faults?.filter((f: EquipmentFault) => f.currentStage !== "kapatildi").length || 0;
 
   const latestMetric = metrics?.[0];
   const completionRate = latestMetric?.completionRate || 0;
@@ -234,17 +236,17 @@ export default function Dashboard() {
 
   // Equipment MTTR Data (Mean Time To Repair in hours)
   const mttrData = useMemo(() => {
-    if (!faults) return [];
+    if (!faults || faults.length === 0) return [];
     
-    const resolvedFaults = faults.filter(f => f.status === "cozuldu" && f.resolvedAt && f.createdAt);
+    const resolvedFaults = faults.filter((f: EquipmentFault) => f.currentStage === "kapatildi" && f.createdAt);
     
     const equipmentMTTR: Record<string, { total: number; count: number; name: string }> = {};
     
-    resolvedFaults.forEach(fault => {
-      const key = `${fault.equipmentId}`;
+    resolvedFaults.forEach((fault: EquipmentFault) => {
+      const key = `${fault.id}`;
       const reportedTime = new Date(fault.createdAt!).getTime();
-      const resolvedTime = new Date(fault.resolvedAt!).getTime();
-      const hoursToResolve = (resolvedTime - reportedTime) / (1000 * 60 * 60);
+      const now = new Date().getTime();
+      const hoursToResolve = (now - reportedTime) / (1000 * 60 * 60);
       
       if (!equipmentMTTR[key]) {
         equipmentMTTR[key] = { 
