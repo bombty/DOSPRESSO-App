@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Loader2 } from "lucide-react";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
+import { useLocation } from "wouter";
 import type { EquipmentFault } from "@shared/schema";
 
 // Constants
@@ -109,6 +110,7 @@ function FaultSkeletonList() {
 export default function FaultHub() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedFault, setSelectedFault] = useState<EquipmentFault | null>(null);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [searchText, setSearchText] = useState("");

@@ -90,7 +90,7 @@ export default function FaultDetail() {
       currentStage: fault?.currentStage || "bekliyor",
       assignedTo: fault?.assignedTo || undefined,
       actualCost: fault?.actualCost ? String(fault.actualCost) : undefined,
-      notes: fault?.notes ? String(fault.notes) : undefined,
+      notes: undefined,
     },
   });
 
@@ -233,7 +233,7 @@ export default function FaultDetail() {
             <div>
               <p className="text-sm text-muted-foreground">Tahmini Maliyet</p>
               <p className="text-sm font-medium">
-                {fault.estimatedCost ? `₺${typeof fault.estimatedCost === 'string' ? parseFloat(fault.estimatedCost).toFixed(2) : fault.estimatedCost.toFixed(2)}` : "-"}
+                {fault.estimatedCost ? `₺${typeof fault.estimatedCost === 'string' ? parseFloat(fault.estimatedCost).toFixed(2) : (Number(fault.estimatedCost)).toFixed(2)}` : "-"}
               </p>
             </div>
             <div>
