@@ -90,7 +90,7 @@ export default function FaultDetail() {
       currentStage: fault?.currentStage || "bekliyor",
       assignedTo: fault?.assignedTo || undefined,
       actualCost: fault?.actualCost ? String(fault.actualCost) : undefined,
-      notes: fault?.notes || undefined,
+      notes: fault?.notes ? String(fault.notes) : undefined,
     },
   });
 
@@ -186,12 +186,12 @@ export default function FaultDetail() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <User className="w-4 h-4" />
-              Sorumlu
+              Sorumluluğu
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm font-medium">
-              {fault.maintenanceResponsible || "-"}
+              {fault.maintenanceResponsible || fault.faultProtocol || "-"}
             </p>
           </CardContent>
         </Card>
@@ -230,7 +230,7 @@ export default function FaultDetail() {
             <div>
               <p className="text-sm text-muted-foreground">Tahmini Maliyet</p>
               <p className="text-sm font-medium">
-                {fault.estimatedCost ? `₺${fault.estimatedCost.toFixed(2)}` : "-"}
+                {fault.estimatedCost ? `₺${typeof fault.estimatedCost === 'string' ? parseFloat(fault.estimatedCost).toFixed(2) : fault.estimatedCost.toFixed(2)}` : "-"}
               </p>
             </div>
             <div>
