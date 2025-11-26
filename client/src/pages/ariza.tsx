@@ -115,11 +115,15 @@ export default function FaultHub() {
   const [managePage, setManagePage] = useState(1);
   const debouncedSearch = useDebounce(searchText, 300);
 
-  const { data: faultsData = [], isLoading: isFaultsLoading } = useQuery<EquipmentFault[]>({
+  const { data: faults = [], isLoading: isFaultsLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
+    queryFn: async () => {
+      const response = await fetch("/api/faults");
+      if (!response.ok) throw new Error("Failed to fetch faults");
+      const data = await response.json();
+      return Array.isArray(data) ? data : (data.data || []);
+    },
   });
-
-  const faults = (Array.isArray(faultsData) ? faultsData : (faultsData as any)?.data || []) as EquipmentFault[];
 
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],

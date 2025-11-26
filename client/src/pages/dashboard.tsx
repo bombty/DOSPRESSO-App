@@ -46,11 +46,15 @@ export default function Dashboard() {
     queryKey: ["/api/tasks"],
   });
 
-  const { data: faultsData = [], isLoading: faultsLoading } = useQuery<EquipmentFault[]>({
+  const { data: faults = [], isLoading: faultsLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
+    queryFn: async () => {
+      const response = await fetch("/api/faults");
+      if (!response.ok) throw new Error("Failed to fetch faults");
+      const data = await response.json();
+      return Array.isArray(data) ? data : (data.data || []);
+    },
   });
-  
-  const faults = (Array.isArray(faultsData) ? faultsData : (faultsData as any)?.data || []) as EquipmentFault[];
 
   const { data: metrics, isLoading: metricsLoading } = useQuery<PerformanceMetric[]>({
     queryKey: ["/api/performance/latest"],
