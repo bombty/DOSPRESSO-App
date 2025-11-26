@@ -403,8 +403,7 @@ export default function Dashboard() {
   };
 
   const handleFaultClick = (fault: EquipmentFault) => {
-    setSelectedFault(fault);
-    setFaultSheetOpen(true);
+    setLocation(`/ariza-detay/${fault.id}`);
   };
 
   const handleBranchClick = async (branch: any) => {
@@ -1215,7 +1214,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Son Arızalar</CardTitle>
+            <CardTitle>Son Raporlanan Sorunlar</CardTitle>
           </CardHeader>
           <CardContent>
             {faultsLoading ? (

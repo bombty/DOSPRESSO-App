@@ -133,14 +133,6 @@ const standaloneItems: MenuItem[] = [
     module: "dashboard",
     scope: "both",
   },
-  {
-    title: "Arızalar",
-    titleTr: "Arızalar",
-    url: "/ekipman-arizalar",
-    icon: AlertTriangle,
-    module: "equipment",
-    scope: "both",
-  },
 ];
 
 // Fallback hardcoded menu groups (used only if dynamic menu fails to load)

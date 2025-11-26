@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import FaultHub from "@/pages/ariza";
+import FaultDetail from "@/pages/ariza-detay";
 import EquipmentAnalytics from "@/pages/ekipman-analitics";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -98,6 +99,7 @@ function Router() {
           <Route path="/ekipman-arizalari" component={FaultHub} />
           <Route path="/teknik-panosu" component={FaultHub} />
           <Route path="/sla-durum" component={FaultHub} />
+          <Route path="/ariza-detay/:id" component={FaultDetail} />
           <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
