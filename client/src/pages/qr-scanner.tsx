@@ -51,10 +51,10 @@ export default function QRScanner() {
               if (equipmentId && !isNaN(parseInt(equipmentId))) {
                 toast({
                   title: "Başarılı",
-                  description: "Ekipman sayfasına yönlendiriliyorsunuz...",
+                  description: "Arıza bildirimi sayfasına yönlendiriliyorsunuz...",
                 });
                 html5QrCode.stop().then(() => {
-                  setLocation(`/ekipman/${equipmentId}`);
+                  setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
                 });
               } else {
                 toast({
@@ -68,10 +68,10 @@ export default function QRScanner() {
               if (equipmentId && !isNaN(parseInt(equipmentId))) {
                 toast({
                   title: "Başarılı",
-                  description: "Ekipman sayfasına yönlendiriliyorsunuz...",
+                  description: "Arıza bildirimi sayfasına yönlendiriliyorsunuz...",
                 });
                 html5QrCode.stop().then(() => {
-                  setLocation(`/ekipman/${equipmentId}`);
+                  setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
                 });
               } else {
                 toast({

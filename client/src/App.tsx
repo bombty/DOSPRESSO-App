@@ -25,6 +25,7 @@ import Checklists from "@/pages/checklists";
 import Equipment from "@/pages/equipment";
 import EquipmentDetail from "@/pages/equipment-detail";
 import QRScanner from "@/pages/qr-scanner";
+import NewFaultReport from "@/pages/ariza-yeni";
 import KnowledgeBase from "@/pages/knowledge-base";
 import Training from "@/pages/training";
 import TrainingDetail from "@/pages/training-detail";
@@ -100,6 +101,7 @@ function Router() {
           <Route path="/teknik-panosu" component={FaultHub} />
           <Route path="/sla-durum" component={FaultHub} />
           <Route path="/ariza-detay/:id" component={FaultDetail} />
+          <Route path="/ariza-yeni" component={NewFaultReport} />
           <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
