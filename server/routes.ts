@@ -5503,6 +5503,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Yoklama kayıtları getirilemedi" });
     }
   });
+
+  // GET /api/shift-attendance/today - Get today's attendance for current user
+  app.get('/api/shift-attendance/today', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const today = new Date().toISOString().split('T')[0];
+      
+      const attendances = await storage.getShiftAttendances(undefined, user.id);
+      const todayAttendance = attendances.find(a => {
+        const checkInDate = a.checkInTime ? new Date(a.checkInTime).toISOString().split('T')[0] : null;
+        return checkInDate === today;
+      });
+      
+      res.json(todayAttendance || null);
+    } catch (error) {
+      console.error("Error fetching today's attendance:", error);
+      res.status(500).json({ message: "Bugünkü kayıt alınamadı" });
+    }
+  });
   
   // Get single attendance record
   app.get('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
@@ -6284,25 +6303,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== CHECK-IN/CHECK-OUT ENDPOINTS =====
-
-  // GET /api/shift-attendance/today - Get today's attendance for current user
-  app.get('/api/shift-attendance/today', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const today = new Date().toISOString().split('T')[0];
-      
-      const attendances = await storage.getShiftAttendances(undefined, user.id);
-      const todayAttendance = attendances.find(a => {
-        const checkInDate = a.checkInTime ? new Date(a.checkInTime).toISOString().split('T')[0] : null;
-        return checkInDate === today;
-      });
-      
-      res.json(todayAttendance || null);
-    } catch (error) {
-      console.error("Error fetching today's attendance:", error);
-      res.status(500).json({ message: "Bugünkü kayıt alınamadı" });
-    }
-  });
 
   // GET /api/shifts/my - Get shifts assigned to current user
   app.get('/api/shifts/my', isAuthenticated, async (req: any, res) => {
