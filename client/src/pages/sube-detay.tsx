@@ -72,8 +72,21 @@ export default function SubeDetayPage() {
   const [geoRadius, setGeoRadius] = useState("50");
   const [wifiSsid, setWifiSsid] = useState("");
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState("personel");
   
   const isAdmin = user?.role && isHQRole(user.role as any);
+
+  // Fetch active check-ins for this branch
+  const { data: activeEmployees } = useQuery<any[]>({
+    queryKey: ['/api/shift-attendance', 'active', branchId],
+    enabled: !!branchId && isAdmin,
+    refetchInterval: activeTab === 'canlı' ? 15000 : false,
+    queryFn: async () => {
+      const response = await fetch(`/api/shift-attendance?status=checked_in&branchId=${branchId}&date=${new Date().toISOString().split('T')[0]}`);
+      if (!response.ok) return [];
+      return response.json();
+    }
+  });
 
   // Authorization: Supervisor can only view their own branch
   if (user?.role === 'supervisor' && user?.branchId !== branchId) {
@@ -288,8 +301,14 @@ export default function SubeDetayPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="personel" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="flex-wrap">
+          {isAdmin && (
+            <TabsTrigger value="canlı" data-testid="tab-active-employees">
+              <span className="mr-1">🟢</span>
+              Canlı ({activeEmployees?.length || 0})
+            </TabsTrigger>
+          )}
           <TabsTrigger value="personel" data-testid="tab-personnel">Personel</TabsTrigger>
           <TabsTrigger value="gorevler" data-testid="tab-tasks">Görevler</TabsTrigger>
           <TabsTrigger value="ekipman" data-testid="tab-equipment">Ekipman</TabsTrigger>
@@ -300,6 +319,60 @@ export default function SubeDetayPage() {
             </TabsTrigger>
           )}
         </TabsList>
+
+        <TabsContent value="canlı" className="space-y-4">
+          <Card data-testid="card-active-employees">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-2xl">🟢</span>
+                Şu An Aktif Çalışanlar
+              </CardTitle>
+              <CardDescription>
+                {activeEmployees?.length || 0} personel giriş yapmış durumda
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {activeEmployees && activeEmployees.length > 0 ? (
+                <div className="space-y-3">
+                  {activeEmployees.map((attendance: any) => {
+                    const emp = staff?.find(s => s.id === attendance.userId);
+                    const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
+                    const duration = checkInTime ? Math.floor((Date.now() - checkInTime.getTime()) / (60 * 1000)) : 0;
+                    const hours = Math.floor(duration / 60);
+                    const minutes = duration % 60;
+                    return (
+                      <div 
+                        key={attendance.id} 
+                        className="flex items-center justify-between p-4 rounded-lg border bg-green-50 dark:bg-green-950/20"
+                        data-testid={`active-emp-${emp?.id}`}
+                      >
+                        <div className="flex-1">
+                          <p className="font-semibold">{emp?.fullName || 'Bilinmeyen'}</p>
+                          <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                            <span>Giriş: {checkInTime ? checkInTime.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'}) : '-'}</span>
+                            <span>⏱️ {hours > 0 ? `${hours}s ${minutes}d` : `${minutes}d`}</span>
+                            {attendance.location_confidence && (
+                              <span>📍 {Math.round(attendance.location_confidence)}%</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse mx-auto" />
+                          <p className="text-xs text-green-600 font-medium mt-1">Canlı</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">Şu an hiç kimse giriş yapmamış</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="personel" className="space-y-4">
           <Card>
