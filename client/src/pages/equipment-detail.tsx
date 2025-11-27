@@ -1214,11 +1214,11 @@ export default function EquipmentDetail() {
               {maintenanceSchedules.filter(s => s.equipmentId === parseInt(equipmentId)).length > 0 ? (
                 <div className="space-y-3" data-testid="list-maintenance-schedules">
                   {maintenanceSchedules.filter(s => s.equipmentId === parseInt(equipmentId)).map((schedule) => (
-                    <Card key={schedule.id} data-testid={`card-maintenance-schedule-${schedule.id}`}>
+                    <Card key={schedule.id} data-testid={`card-maintenance-schedule-${String(schedule.id)}`}>
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-base">{schedule.maintenanceType}</CardTitle>
-                          <Badge variant={schedule.isActive ? "default" : "secondary"} data-testid={`badge-schedule-status-${schedule.id}`}>
+                          <Badge variant={schedule.isActive ? "default" : "secondary"} data-testid={`badge-schedule-status-${String(schedule.id)}`}>
                             {schedule.isActive ? "Aktif" : "Pasif"}
                           </Badge>
                         </div>
@@ -1226,23 +1226,23 @@ export default function EquipmentDetail() {
                       <CardContent className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Periyod:</span>
-                          <span data-testid={`text-interval-${schedule.id}`}>{schedule.intervalDays} gün</span>
+                          <span data-testid={`text-interval-${String(schedule.id)}`}>{schedule.intervalDays} gün</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Son Bakım:</span>
-                          <span data-testid={`text-last-maintenance-${schedule.id}`}>
+                          <span data-testid={`text-last-maintenance-${String(schedule.id)}`}>
                             {schedule.lastMaintenanceDate ? format(new Date(schedule.lastMaintenanceDate), "d MMM yyyy", { locale: tr }) : "Henüz yapılmadı"}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Sonraki Bakım:</span>
-                          <span className="font-medium" data-testid={`text-next-maintenance-${schedule.id}`}>
+                          <span className="font-medium" data-testid={`text-next-maintenance-${String(schedule.id)}`}>
                             {format(new Date(schedule.nextMaintenanceDate), "d MMM yyyy", { locale: tr })}
                           </span>
                         </div>
                         {schedule.notes && (
                           <div className="pt-2 border-t">
-                            <p className="text-muted-foreground text-xs" data-testid={`text-schedule-notes-${schedule.id}`}>{schedule.notes}</p>
+                            <p className="text-muted-foreground text-xs" data-testid={`text-schedule-notes-${String(schedule.id)}`}>{schedule.notes}</p>
                           </div>
                         )}
                       </CardContent>
@@ -1267,24 +1267,24 @@ export default function EquipmentDetail() {
               {proactiveMaintenanceLogs.filter(l => l.equipmentId === parseInt(equipmentId)).length > 0 ? (
                 <div className="space-y-3" data-testid="list-maintenance-logs">
                   {proactiveMaintenanceLogs.filter(l => l.equipmentId === parseInt(equipmentId)).map((log) => (
-                    <Card key={log.id} data-testid={`card-maintenance-log-${log.id}`}>
+                    <Card key={log.id} data-testid={`card-maintenance-log-${String(log.id)}`}>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base">{log.maintenanceType}</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Yapılma Tarihi:</span>
-                          <span data-testid={`text-performed-date-${log.id}`}>
+                          <span data-testid={`text-performed-date-${String(log.id)}`}>
                             {format(new Date(log.performedDate), "d MMM yyyy", { locale: tr })}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Yapan:</span>
-                          <span data-testid={`text-performed-by-${log.id}`}>{log.performedById}</span>
+                          <span data-testid={`text-performed-by-${String(log.id)}`}>{log.performedById}</span>
                         </div>
                         {log.notes && (
                           <div className="pt-2 border-t">
-                            <p className="text-muted-foreground text-xs" data-testid={`text-log-notes-${log.id}`}>{log.notes}</p>
+                            <p className="text-muted-foreground text-xs" data-testid={`text-log-notes-${String(log.id)}`}>{log.notes}</p>
                           </div>
                         )}
                       </CardContent>
