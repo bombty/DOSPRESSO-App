@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -154,6 +154,7 @@ function Router() {
 
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [, setLocation] = useLocation();
   const { data: branches } = useQuery<any[]>({
     queryKey: ["/api/branches"],
     enabled: isAuthenticated && !!user,
@@ -223,7 +224,13 @@ function AppContent() {
           <header className="flex items-center justify-between px-4 py-2 border-b bg-white dark:bg-slate-900 shadow-sm">
             <div className="flex items-center gap-2 md:gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <img src={logoPath} alt="DOSPRESSO" className="h-8 md:h-10 object-contain" data-testid="logo-header" />
+              <img 
+                src={logoPath} 
+                alt="DOSPRESSO" 
+                className="h-8 md:h-10 object-contain cursor-pointer hover:opacity-75 transition-opacity" 
+                onClick={() => setLocation("/")}
+                data-testid="logo-header" 
+              />
               <div className="hidden sm:block">{userDisplayInfo}</div>
             </div>
             <InboxDialog />
