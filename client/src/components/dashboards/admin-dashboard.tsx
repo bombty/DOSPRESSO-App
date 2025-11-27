@@ -2,8 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
-import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock, Zap } from "lucide-react";
+import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock, Zap, AlertTriangle, Flame } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AdminDashboardProps {
   compositeBranchScores: any[];
@@ -60,6 +61,21 @@ export function AdminDashboard({
     if (score >= 70) return 'text-yellow-700';
     return 'text-red-700';
   };
+
+  // Get color for heat map based on score
+  const getHeatColor = (score: number) => {
+    if (score >= 85) return 'bg-green-500 hover:bg-green-600';
+    if (score >= 75) return 'bg-lime-500 hover:bg-lime-600';
+    if (score >= 65) return 'bg-yellow-500 hover:bg-yellow-600';
+    if (score >= 50) return 'bg-orange-500 hover:bg-orange-600';
+    return 'bg-red-600 hover:bg-red-700';
+  };
+
+  // Get critical alerts
+  const criticalBranches = compositeBranchScores
+    .filter(s => s.compositeScore < 70)
+    .sort((a, b) => a.compositeScore - b.compositeScore)
+    .slice(0, 3);
 
   return (
     <div className="space-y-3 md:space-y-6">
@@ -298,6 +314,105 @@ export function AdminDashboard({
                   })}
                 </tbody>
               </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Heat Map Grid - Branch Performance at a Glance */}
+      {!isLoading && compositeBranchScores.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Şube Performans Isı Haritası</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 grid-cols-3 md:grid-cols-5 lg:grid-cols-6">
+              {compositeBranchScores.map((score) => (
+                <Tooltip key={score.branchId}>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={`p-3 rounded-md text-center cursor-pointer transition-all ${getHeatColor(
+                        score.compositeScore
+                      )} text-white text-xs font-semibold`}
+                    >
+                      <div className="truncate text-xs">{score.branchName.split(' ')[0]}</div>
+                      <div className="font-bold">{score.compositeScore.toFixed(0)}</div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs max-w-xs">
+                    <div className="font-semibold">{score.branchName}</div>
+                    <div>Personel: {score.employeePerformanceScore.toFixed(0)}</div>
+                    <div>Ekipman: {score.equipmentScore.toFixed(0)}</div>
+                    <div>Kalite: {score.qualityAuditScore.toFixed(0)}</div>
+                    <div>Müşteri: {score.customerSatisfactionScore.toFixed(0)}</div>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+            <div className="mt-4 flex items-center justify-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                <span>85%+</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-lime-500 rounded"></div>
+                <span>75-84%</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                <span>65-74%</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                <span>50-64%</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-600 rounded"></div>
+                <span>&lt;50%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Critical Alerts */}
+      {!isLoading && criticalBranches.length > 0 && (
+        <Card className="border-l-4 border-l-red-600 bg-red-50 dark:bg-red-950/20">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2 text-red-700">
+              <Flame className="h-4 w-4" />
+              Kritik Uyarılar - Dikkat Gerektiren Şubeler
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {criticalBranches.map((score) => (
+                <div
+                  key={score.branchId}
+                  className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-900 rounded-md border border-red-200 dark:border-red-800"
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm text-red-700">{score.branchName}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Skor: <span className="font-bold text-red-600">{score.compositeScore.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0 text-xs">
+                    {score.employeePerformanceScore < 70 && (
+                      <Badge variant="destructive" className="text-xs">Personel</Badge>
+                    )}
+                    {score.equipmentScore < 70 && (
+                      <Badge variant="destructive" className="text-xs">Ekipman</Badge>
+                    )}
+                    {score.qualityAuditScore < 70 && (
+                      <Badge variant="destructive" className="text-xs">Kalite</Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
