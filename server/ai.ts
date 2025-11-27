@@ -52,8 +52,8 @@ function calculateCost(model: string, promptTokens: number, completionTokens: nu
 
 // QR Code Generation for Equipment
 export async function generateEquipmentQR(equipmentId: number): Promise<string> {
-  // QR data: equipment ID with DOSPRESSO prefix
-  const qrData = `DOSPRESSO-EQ-${equipmentId}`;
+  // QR data: equipment path for frontend routing
+  const qrData = `/ekipman/${equipmentId}`;
   
   // Generate base64 data URL
   const qrCodeDataURL = await QRCode.toDataURL(qrData, {
