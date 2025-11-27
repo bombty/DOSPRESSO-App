@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -13,50 +13,36 @@ import {
   type User,
   isBranchRole,
 } from "@shared/schema";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Calendar as CalendarIcon, Edit, Trash2, Clock, User as UserIcon, Sparkles, List, LayoutGrid, ArrowLeftRight, Check, X } from "lucide-react";
-import { format, parseISO, startOfWeek, endOfWeek, addWeeks } from "date-fns";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { 
+  Plus, Calendar as CalendarIcon, Clock, Users, CheckCircle2, 
+  AlertCircle, TrendingUp, FileText, QrCode, ArrowRight,
+  Sun, Moon, Sunset, UserCheck, UserX, Timer, Edit, Trash2, MoreHorizontal
+} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { format, parseISO, startOfWeek, endOfWeek, isToday, isTomorrow, addDays, differenceInMinutes } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import type { ShiftTradeRequest } from "@shared/schema";
-import { Calendar as BigCalendar, dateFnsLocalizer, Event } from 'react-big-calendar';
-import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
-import { getDay, parse, startOfWeek as startOfWeekFns, getISOWeek } from 'date-fns';
-
-const locales = {
-  'tr': tr,
-};
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek: () => startOfWeekFns(new Date(), { weekStartsOn: 1 }),
-  getDay,
-  locales,
-});
-
-const DragDropCalendar = withDragAndDrop(BigCalendar);
+import { Link } from "wouter";
 
 type ShiftWithRelations = Shift & {
-  branch: {
-    name: string;
-  };
-  assignedTo: {
-    fullName: string;
-  } | null;
-  createdBy: {
-    fullName: string;
-  };
+  branch: { name: string };
+  assignedTo: { fullName: string } | null;
+  createdBy: { fullName: string };
 };
 
 const shiftTypeLabels: Record<string, string> = {
@@ -65,105 +51,68 @@ const shiftTypeLabels: Record<string, string> = {
   night: "Gece",
 };
 
+const shiftTypeIcons: Record<string, any> = {
+  morning: Sun,
+  evening: Sunset,
+  night: Moon,
+};
+
 const shiftTypeColors: Record<string, string> = {
-  morning: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  evening: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  night: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  morning: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+  evening: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+  night: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800",
 };
 
 const statusLabels: Record<string, string> = {
   draft: "Taslak",
-  pending_hq: "HQ Onayı Bekliyor",
+  pending_hq: "Onay Bekliyor",
   confirmed: "Onaylandı",
   completed: "Tamamlandı",
   cancelled: "İptal",
 };
 
 const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-  pending_hq: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  confirmed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  completed: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-};
-
-type AIShiftSuggestion = {
-  shiftDate: string;
-  shiftType: string;
-  suggestedAssignee: { id: string; name: string; confidenceScore: number } | null;
-  reasoning: string;
-  startTime: string;
-  endTime: string;
-};
-
-type AIShiftPlanResponse = {
-  suggestions: AIShiftSuggestion[];
-  summary: string;
-  cached?: boolean;
-};
-
-type CalendarEvent = Event & {
-  shift: ShiftWithRelations;
+  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  pending_hq: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+  confirmed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  completed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
 };
 
 export default function Vardiyalar() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("overview");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [editingShift, setEditingShift] = useState<ShiftWithRelations | null>(null);
-  const [selectedBranchFilter, setSelectedBranchFilter] = useState<number | undefined>(undefined);
-  const [selectedUserFilter, setSelectedUserFilter] = useState<string | undefined>(undefined);
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
-  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [aiSuggestions, setAiSuggestions] = useState<AIShiftPlanResponse | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'month'>('list');
-  const [isTradeDialogOpen, setIsTradeDialogOpen] = useState(false);
-  const [selectedShiftForTrade, setSelectedShiftForTrade] = useState<ShiftWithRelations | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
 
   const isSupervisor = user?.role && (user.role === 'supervisor' || user.role === 'supervisor_buddy');
   const isHQIK = user?.role === 'destek';
   const isEmployee = user?.role && isBranchRole(user.role as any) && !isSupervisor;
 
-  const { data: branches } = useQuery<Branch[]>({
-    queryKey: ['/api/branches'],
-    enabled: isHQIK,
+  const { data: shifts, isLoading, refetch } = useQuery<ShiftWithRelations[]>({
+    queryKey: ['/api/shifts'],
   });
+
+  useEffect(() => {
+    if (activeTab === 'live') {
+      refetch();
+      const interval = setInterval(() => {
+        refetch();
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, refetch]);
 
   const { data: users } = useQuery<User[]>({
     queryKey: ['/api/users'],
-    enabled: !!isSupervisor,
+    enabled: !!isSupervisor || !!isHQIK,
   });
 
   const branchUsers = users?.filter((u: User) => u.branchId === user?.branchId);
-
-  const buildQueryParams = () => {
-    const params = new URLSearchParams();
-    if (dateFrom) params.append('dateFrom', format(dateFrom, 'yyyy-MM-dd'));
-    if (dateTo) params.append('dateTo', format(dateTo, 'yyyy-MM-dd'));
-    if (selectedUserFilter) params.append('assignedToId', selectedUserFilter);
-    return params.toString() ? `?${params.toString()}` : '';
-  };
-
-  const { data: shifts, isLoading } = useQuery<ShiftWithRelations[]>({
-    queryKey: ['/api/shifts', dateFrom, dateTo, selectedUserFilter],
-    queryFn: async () => {
-      const queryParams = buildQueryParams();
-      const response = await fetch(`/api/shifts${queryParams}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch shifts');
-      return response.json();
-    },
-  });
-
-  const filteredShifts = shifts?.filter(shift => {
-    if (isHQIK && selectedBranchFilter && shift.branchId !== selectedBranchFilter) {
-      return false;
-    }
-    return true;
-  });
 
   const form = useForm<InsertShift>({
     resolver: zodResolver(insertShiftSchema),
@@ -186,10 +135,7 @@ export default function Vardiyalar() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      toast({
-        title: "Başarılı",
-        description: "Vardiya oluşturuldu",
-      });
+      toast({ title: "Başarılı", description: "Vardiya oluşturuldu" });
       setIsCreateDialogOpen(false);
       form.reset();
     },
@@ -208,11 +154,10 @@ export default function Vardiyalar() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      toast({
-        title: "Başarılı",
-        description: "Vardiya güncellendi",
-      });
+      toast({ title: "Başarılı", description: "Vardiya güncellendi" });
+      setIsEditDialogOpen(false);
       setEditingShift(null);
+      form.reset();
     },
     onError: (error: any) => {
       toast({
@@ -229,10 +174,8 @@ export default function Vardiyalar() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      toast({
-        title: "Başarılı",
-        description: "Vardiya silindi",
-      });
+      toast({ title: "Başarılı", description: "Vardiya silindi" });
+      setShiftToDelete(null);
     },
     onError: (error: any) => {
       toast({
@@ -243,140 +186,7 @@ export default function Vardiyalar() {
     },
   });
 
-  const aiSuggestMutation = useMutation({
-    mutationFn: async (data: { branchId: number; weekStart: string; weekEnd: string }) => {
-      const response = await apiRequest('POST', '/api/shifts/ai-suggest', data);
-      return await response.json();
-    },
-    onSuccess: (data: AIShiftPlanResponse) => {
-      setAiSuggestions(data);
-      toast({
-        title: "AI Öneri Hazır",
-        description: data.cached ? "Önbelleğe alınmış plan kullanıldı" : `${data.suggestions.length} vardiya önerisi oluşturuldu`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Hata",
-        description: error.message || "AI öneri oluşturulamadı",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const applyAISuggestionsMutation = useMutation({
-    mutationFn: async (suggestions: AIShiftSuggestion[]) => {
-      const shiftsToCreate = suggestions.map(s => ({
-        branchId: user!.branchId!,
-        shiftDate: s.shiftDate,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        shiftType: s.shiftType as "morning" | "evening" | "night",
-        status: "draft" as const,
-        assignedToId: s.suggestedAssignee?.id || null,
-        notes: `AI Önerisi: ${s.reasoning}`,
-        createdById: user!.id,
-      }));
-      
-      // Backend expects { shifts: [...], checklistIds?: [...] } format (line 3647 in routes.ts)
-      return apiRequest('POST', '/api/shifts/bulk-create', { shifts: shiftsToCreate });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      toast({
-        title: "✅ Başarılı",
-        description: `${aiSuggestions?.suggestions.length || 0} vardiya oluşturuldu`,
-      });
-      setAiSuggestions(null);
-      setIsAIDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Hata",
-        description: error.message || "Vardiyalar oluşturulamadı",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const { data: shiftTrades } = useQuery<ShiftTradeRequest[]>({
-    queryKey: ['/api/shift-trades'],
-    enabled: !!user,
-  });
-
-  const createTradeMutation = useMutation({
-    mutationFn: async (data: { requesterId: string; responderId: string; requesterShiftId: number; responderShiftId: number; notes?: string }) => {
-      await apiRequest('POST', '/api/shift-trades', data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shift-trades'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      toast({
-        title: "Başarılı",
-        description: "Vardiya takas talebi oluşturuldu",
-      });
-      setIsTradeDialogOpen(false);
-      setSelectedShiftForTrade(null);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Hata",
-        description: error.message || "Takas talebi oluşturulamadı",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const respondTradeMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest('PATCH', `/api/shift-trades/${id}/respond`, {});
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shift-trades'] });
-      toast({
-        title: "Başarılı",
-        description: "Takas talebi onaylandı",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Hata",
-        description: error.message || "Takas talebi yanıtlanamadı",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const approveTradeMutation = useMutation({
-    mutationFn: async ({ id, approved, notes }: { id: number; approved: boolean; notes?: string }) => {
-      await apiRequest('PATCH', `/api/shift-trades/${id}/approve`, { approved, notes });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shift-trades'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      toast({
-        title: "Başarılı",
-        description: "Takas talebi işlendi",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Hata",
-        description: error.message || "Takas talebi işlenemedi",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (data: InsertShift) => {
-    if (editingShift) {
-      updateMutation.mutate({ id: editingShift.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
-  };
-
-  const handleEdit = (shift: ShiftWithRelations) => {
+  const handleEditShift = (shift: ShiftWithRelations) => {
     setEditingShift(shift);
     form.reset({
       branchId: shift.branchId,
@@ -389,452 +199,210 @@ export default function Vardiyalar() {
       notes: shift.notes,
       createdById: shift.createdById,
     });
+    setIsEditDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setIsCreateDialogOpen(false);
-    setEditingShift(null);
-    form.reset();
-  };
-
-  const handleAISuggest = () => {
-    if (!user?.branchId) return;
-    const weekEnd = endOfWeek(selectedWeekStart, { weekStartsOn: 1 });
-    aiSuggestMutation.mutate({
-      branchId: user.branchId,
-      weekStart: format(selectedWeekStart, 'yyyy-MM-dd'),
-      weekEnd: format(weekEnd, 'yyyy-MM-dd'),
-    });
-  };
-
-  const calendarEvents: CalendarEvent[] = useMemo(() => {
-    if (!shifts) return [];
-    return shifts.map((shift) => {
-      const start = parseISO(`${shift.shiftDate}T${shift.startTime}`);
-      const end = parseISO(`${shift.shiftDate}T${shift.endTime}`);
-      return {
-        start,
-        end,
-        title: `${shift.assignedTo?.fullName || 'Atanmamış'} - ${shiftTypeLabels[shift.shiftType]}`,
-        shift,
-        resourceId: shift.assignedToId || undefined,
+  const handleUpdateSubmit = (data: InsertShift) => {
+    if (editingShift) {
+      const updateData = {
+        shiftDate: data.shiftDate,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        shiftType: data.shiftType,
+        status: data.status,
+        assignedToId: data.assignedToId,
+        notes: data.notes,
       };
+      updateMutation.mutate({ id: editingShift.id, data: updateData });
+    }
+  };
+
+  const todayShifts = useMemo(() => {
+    if (!shifts) return [];
+    const today = format(new Date(), 'yyyy-MM-dd');
+    return shifts.filter(s => s.shiftDate === today);
+  }, [shifts]);
+
+  const tomorrowShifts = useMemo(() => {
+    if (!shifts) return [];
+    const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+    return shifts.filter(s => s.shiftDate === tomorrow);
+  }, [shifts]);
+
+  const thisWeekShifts = useMemo(() => {
+    if (!shifts) return [];
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+    return shifts.filter(s => {
+      const date = parseISO(s.shiftDate);
+      return date >= weekStart && date <= weekEnd;
     });
   }, [shifts]);
 
-  // Client-side validation for shift updates
-  const validateShiftUpdate = useCallback((
-    shiftId: number,
-    newData: Partial<InsertShift>
-  ): { valid: boolean; error?: string } => {
-    if (!shifts || !branchUsers) return { valid: true };
+  const confirmedCount = thisWeekShifts.filter(s => s.status === 'confirmed').length;
+  const pendingCount = thisWeekShifts.filter(s => s.status === 'pending_hq' || s.status === 'draft').length;
+  const completedCount = thisWeekShifts.filter(s => s.status === 'completed').length;
+  const totalWeekShifts = thisWeekShifts.length;
+  const coverageRate = totalWeekShifts > 0 ? Math.round((confirmedCount / totalWeekShifts) * 100) : 0;
 
-    const shift = shifts.find(s => s.id === shiftId);
-    if (!shift) return { valid: true };
+  const getShiftsForDate = (date: Date) => {
+    if (!shifts) return [];
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return shifts.filter(s => s.shiftDate === dateStr);
+  };
 
-    const employeeId = newData.assignedToId !== undefined ? newData.assignedToId : shift.assignedToId;
-    if (!employeeId) return { valid: true };
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  }, [selectedDate]);
 
-    const shiftDate = newData.shiftDate || shift.shiftDate;
-    const startTime = newData.startTime || shift.startTime;
-    const endTime = newData.endTime || shift.endTime;
-
-    // 1. Check 1-hour break validation (shift duration)
-    const start = parseISO(`${shiftDate}T${startTime}`);
-    const end = parseISO(`${shiftDate}T${endTime}`);
-    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    
-    if (durationHours > 6 && durationHours < 7) {
-      return { 
-        valid: false, 
-        error: "6 saatten uzun vardiyalar için 1 saat mola gereklidir. Toplam vardiya süresi en az 7 saat olmalıdır." 
-      };
-    }
-
-    // Get week boundaries
-    const weekStart = startOfWeek(parseISO(shiftDate), { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(parseISO(shiftDate), { weekStartsOn: 1 });
-
-    // Get all shifts for this employee in this week
-    const employeeWeekShifts = shifts.filter(s => {
-      if (s.assignedToId !== employeeId) return false;
-      const sDate = parseISO(s.shiftDate);
-      return sDate >= weekStart && sDate <= weekEnd;
-    });
-
-    // Calculate total weekly hours and days worked
-    let totalWeeklyHours = 0;
-    const daysWorked = new Set<string>();
-
-    employeeWeekShifts.forEach(s => {
-      if (s.id === shiftId) {
-        totalWeeklyHours += durationHours;
-        daysWorked.add(shiftDate);
-      } else {
-        const sStart = parseISO(`${s.shiftDate}T${s.startTime}`);
-        const sEnd = parseISO(`${s.shiftDate}T${s.endTime}`);
-        const sDuration = (sEnd.getTime() - sStart.getTime()) / (1000 * 60 * 60);
-        totalWeeklyHours += sDuration;
-        daysWorked.add(s.shiftDate);
-      }
-    });
-
-    // 2. Check 45h/week limit
-    if (totalWeeklyHours > 45) {
-      return { 
-        valid: false, 
-        error: `Bu çalışan haftalık 45 saat sınırını aşacak (${totalWeeklyHours.toFixed(1)} saat). Lütfen vardiya süresini azaltın.` 
-      };
-    }
-
-    // 3. Check minimum 1 day off per week (must work max 6 days)
-    if (daysWorked.size > 6) {
-      return { 
-        valid: false, 
-        error: "Çalışanlar haftada en az 1 gün izinli olmalıdır. Bu çalışan zaten 7 gün çalışıyor." 
-      };
-    }
-
-    return { valid: true };
-  }, [shifts, branchUsers]);
-
-  const handleEventDrop = useCallback(({ event, start, end, resourceId }: { event: CalendarEvent; start: Date; end: Date; resourceId?: string }) => {
-    if (!isSupervisor) return;
-    
-    const shiftDate = format(start, 'yyyy-MM-dd');
-    const startTime = format(start, 'HH:mm:ss');
-    const endTime = format(end, 'HH:mm:ss');
-
-    const updateData: Partial<InsertShift> = {
-      shiftDate,
-      startTime,
-      endTime,
-    };
-
-    if (resourceId && resourceId !== event.shift.assignedToId) {
-      updateData.assignedToId = resourceId;
-    }
-
-    // Validate before mutation
-    const validation = validateShiftUpdate(event.shift.id, updateData);
-    if (!validation.valid) {
-      toast({
-        title: "Uyarı",
-        description: validation.error,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    updateMutation.mutate({
-      id: event.shift.id,
-      data: updateData,
-    });
-  }, [isSupervisor, updateMutation, validateShiftUpdate, toast]);
-
-  const handleEventResize = useCallback(({ event, start, end }: { event: CalendarEvent; start: Date; end: Date }) => {
-    if (!isSupervisor) return;
-
-    const startTime = format(start, 'HH:mm:ss');
-    const endTime = format(end, 'HH:mm:ss');
-
-    const updateData = {
-      startTime,
-      endTime,
-    };
-
-    // Validate before mutation
-    const validation = validateShiftUpdate(event.shift.id, updateData);
-    if (!validation.valid) {
-      toast({
-        title: "Uyarı",
-        description: validation.error,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    updateMutation.mutate({
-      id: event.shift.id,
-      data: updateData,
-    });
-  }, [isSupervisor, updateMutation, validateShiftUpdate, toast]);
-
-  const handleSelectEvent = useCallback((event: CalendarEvent) => {
-    handleEdit(event.shift);
-  }, []);
-
-  const handleSelectSlot = useCallback((slotInfo: { start: Date; end: Date }) => {
-    if (!isSupervisor) return;
-    
-    // Preserve current branchId or use filter (never 0)
-    const targetBranchId = user?.branchId || selectedBranchFilter || form.getValues().branchId;
-    
-    // Validate branchId exists
-    if (!targetBranchId) {
-      toast({
-        title: "Uyarı",
-        description: "Lütfen önce şube seçin",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Partial reset - only update date/time fields, preserve context
-    const currentValues = form.getValues();
-    form.reset({
-      ...currentValues,
-      shiftDate: format(slotInfo.start, 'yyyy-MM-dd'),
-      startTime: '09:00:00',
-      endTime: '17:00:00',
-      shiftType: 'morning',
-      status: 'draft',
-      assignedToId: null,
-      branchId: targetBranchId,
-      createdById: user?.id || '',
-    });
-    setEditingShift(null);
-    setIsCreateDialogOpen(true);
-  }, [form, user, isSupervisor, selectedBranchFilter, toast]);
-
-  const eventStyleGetter = useCallback((event: CalendarEvent) => {
-    const shiftType = event.shift.shiftType;
-    let backgroundColor = '#3174ad';
-    
-    if (shiftType === 'morning') backgroundColor = '#f59e0b';
-    if (shiftType === 'evening') backgroundColor = '#3b82f6';
-    if (shiftType === 'night') backgroundColor = '#8b5cf6';
-
-    return {
-      style: {
-        backgroundColor,
-        borderRadius: '4px',
-        opacity: 0.9,
-        color: 'white',
-        border: '0px',
-        display: 'block',
-      },
-    };
-  }, []);
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4 sm:p-6 space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="text-page-title">
             Vardiya Yönetimi
           </h1>
           <p className="text-muted-foreground mt-1" data-testid="text-page-description">
-            {isSupervisor && "Şubenizin vardiyalarını yönetin"}
+            {isSupervisor && "Şubenizin vardiyalarını planlayın ve takip edin"}
             {isHQIK && "Tüm şubelerin vardiyalarını görüntüleyin"}
-            {isEmployee && "Size atanmış vardiyalarınızı görüntüleyin"}
+            {isEmployee && "Vardiya programınızı görüntüleyin"}
           </p>
         </div>
 
         {isSupervisor && (
           <div className="flex gap-2">
-            <div className="flex gap-1 mr-2">
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="icon"
-                onClick={() => setViewMode('list')}
-                data-testid="button-view-list"
-              >
-                <List className="w-4 h-4" />
+            <Link href="/vardiya-sablonlari">
+              <Button variant="outline" data-testid="button-templates">
+                <FileText className="w-4 h-4 mr-2" />
+                Şablonlar
               </Button>
-              <Button
-                variant={viewMode === 'month' ? 'default' : 'outline'}
-                size="icon"
-                onClick={() => setViewMode('month')}
-                data-testid="button-view-month"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </Button>
-            </div>
-            <Dialog open={isAIDialogOpen} onOpenChange={setIsAIDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" data-testid="button-ai-suggest">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  🤖 AI Vardiya Öner
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>AI Vardiya Önerisi</DialogTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Geçmiş verilerinizi analiz ederek optimal vardiya planı oluşturulur. (Günde 3 öneri hakkınız var)
-                  </p>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Hafta Seçin</label>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedWeekStart(addWeeks(selectedWeekStart, -1))}
-                        data-testid="button-prev-week"
-                      >
-                        ← Önceki Hafta
-                      </Button>
-                      <div className="flex-1 text-center py-2">
-                        {format(selectedWeekStart, "d MMM", { locale: tr })} - {format(endOfWeek(selectedWeekStart, { weekStartsOn: 1 }), "d MMM yyyy", { locale: tr })}
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedWeekStart(addWeeks(selectedWeekStart, 1))}
-                        data-testid="button-next-week"
-                      >
-                        Sonraki Hafta →
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleAISuggest}
-                    disabled={aiSuggestMutation.isPending}
-                    className="w-full"
-                    data-testid="button-generate-ai-plan"
-                  >
-                    {aiSuggestMutation.isPending ? "AI Analiz Ediyor..." : "✨ AI Öneri Oluştur"}
-                  </Button>
-
-                  {aiSuggestions && (
-                    <div className="space-y-4 mt-4">
-                      <div className="p-4 bg-muted rounded-lg">
-                        <h3 className="font-semibold mb-2">AI Özeti:</h3>
-                        <p className="text-sm text-muted-foreground">{aiSuggestions.summary}</p>
-                        {aiSuggestions.cached && (
-                          <Badge variant="outline" className="mt-2">
-                            Önbellekten Yüklendi
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold">Önerilen Vardiyalar:</h3>
-                          <Button
-                            onClick={() => applyAISuggestionsMutation.mutate(aiSuggestions.suggestions)}
-                            disabled={applyAISuggestionsMutation.isPending}
-                            size="sm"
-                            data-testid="button-apply-ai-suggestions"
-                          >
-                            <Check className="w-4 h-4 mr-1" />
-                            {applyAISuggestionsMutation.isPending ? "Uygulanıyor..." : "Hepsini Uygula"}
-                          </Button>
-                        </div>
-                        {aiSuggestions.suggestions.map((suggestion, idx) => (
-                          <div key={idx} className="p-3 border rounded-lg space-y-1">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <CalendarIcon className="w-4 h-4" />
-                                <span className="font-medium">
-                                  {format(parseISO(suggestion.shiftDate), "d MMMM yyyy", { locale: tr })}
-                                </span>
-                                <Badge className={shiftTypeColors[suggestion.shiftType]}>
-                                  {shiftTypeLabels[suggestion.shiftType]}
-                                </Badge>
-                              </div>
-                              <span className="text-sm text-muted-foreground">
-                                {suggestion.startTime} - {suggestion.endTime}
-                              </span>
-                            </div>
-                            {suggestion.suggestedAssignee && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <UserIcon className="w-3 h-3" />
-                                <span>{suggestion.suggestedAssignee.name}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {Math.round(suggestion.suggestedAssignee.confidenceScore)}% güven
-                                </Badge>
-                              </div>
-                            )}
-                            <p className="text-sm text-muted-foreground">{suggestion.reasoning}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isCreateDialogOpen || !!editingShift} onOpenChange={(open) => {
-              if (!open) handleCloseDialog();
-              else setIsCreateDialogOpen(true);
-            }}>
+            </Link>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button data-testid="button-create-shift">
                   <Plus className="w-4 h-4 mr-2" />
                   Yeni Vardiya
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingShift ? "Vardiya Düzenle" : "Yeni Vardiya"}
-                </DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="shiftDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Vardiya Tarihi *</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Yeni Vardiya Oluştur</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="shiftDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tarih</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="button-date-picker">
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value ? format(parseISO(field.value), "d MMMM yyyy", { locale: tr }) : "Tarih seçin"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={field.value ? parseISO(field.value) : undefined}
+                                onSelect={(date) => date && field.onChange(format(date, 'yyyy-MM-dd'))}
+                                locale={tr}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="shiftType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vardiya Tipi</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                data-testid="button-select-date"
-                              >
-                                {field.value ? (
-                                  format(parseISO(field.value), "PPP", { locale: tr })
-                                ) : (
-                                  <span>Tarih seçin</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
+                              <SelectTrigger data-testid="select-shift-type">
+                                <SelectValue placeholder="Seçin" />
+                              </SelectTrigger>
                             </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value ? parseISO(field.value) : undefined}
-                              onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
-                              disabled={(date) =>
-                                date < new Date("2024-01-01")
-                              }
-                              initialFocus
-                              locale={tr}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                            <SelectContent>
+                              <SelectItem value="morning">🌅 Sabah (06:00-14:00)</SelectItem>
+                              <SelectItem value="evening">🌆 Akşam (14:00-22:00)</SelectItem>
+                              <SelectItem value="night">🌙 Gece (22:00-06:00)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="startTime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Başlangıç</FormLabel>
+                            <FormControl>
+                              <Input type="time" {...field} data-testid="input-start-time" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="endTime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bitiş</FormLabel>
+                            <FormControl>
+                              <Input type="time" {...field} data-testid="input-end-time" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     <FormField
                       control={form.control}
-                      name="startTime"
+                      name="assignedToId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Başlangıç Saati *</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="time"
-                              {...field}
-                              placeholder="09:00"
-                              data-testid="input-start-time"
-                            />
-                          </FormControl>
+                          <FormLabel>Personel</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-employee">
+                                <SelectValue placeholder="Personel seçin (opsiyonel)" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {branchUsers?.map((u) => (
+                                <SelectItem key={u.id} value={u.id}>
+                                  {u.fullName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -842,647 +410,692 @@ export default function Vardiyalar() {
 
                     <FormField
                       control={form.control}
-                      name="endTime"
+                      name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Bitiş Saati *</FormLabel>
+                          <FormLabel>Notlar (Opsiyonel)</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="time"
-                              {...field}
-                              placeholder="17:00"
-                              data-testid="input-end-time"
+                            <Textarea 
+                              placeholder="Vardiya ile ilgili notlar..." 
+                              {...field} 
+                              value={field.value || ''}
+                              data-testid="input-notes" 
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name="shiftType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Vardiya Tipi *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-shift-type">
-                              <SelectValue placeholder="Vardiya tipi seçin" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="morning">Sabah (08:00-16:00)</SelectItem>
-                            <SelectItem value="evening">Akşam (16:00-00:00)</SelectItem>
-                            <SelectItem value="night">Gece (00:00-08:00)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Durum *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-status">
-                              <SelectValue placeholder="Durum seçin" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="draft">Taslak</SelectItem>
-                            <SelectItem value="pending_hq">HQ Onayı Bekliyor</SelectItem>
-                            <SelectItem value="confirmed">Onaylandı</SelectItem>
-                            <SelectItem value="completed">Tamamlandı</SelectItem>
-                            <SelectItem value="cancelled">İptal</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="assignedToId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Atanan Çalışan</FormLabel>
-                        <Select 
-                          onValueChange={(value) => field.onChange(value === 'none' ? null : value)} 
-                          value={field.value || 'none'}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-assigned-to">
-                              <SelectValue placeholder="Çalışan seçin (opsiyonel)" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">Atanmamış</SelectItem>
-                            {branchUsers?.map((employee: User) => (
-                              <SelectItem key={employee.id} value={employee.id}>
-                                {employee.firstName} {employee.lastName} ({employee.role})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notlar</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            {...field}
-                            value={field.value ?? ''}
-                            placeholder="Opsiyonel notlar..."
-                            rows={3}
-                            data-testid="input-notes"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex justify-end gap-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={handleCloseDialog}
-                      data-testid="button-cancel"
-                    >
-                      İptal
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                      data-testid="button-submit"
-                    >
-                      {createMutation.isPending || updateMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                        İptal
+                      </Button>
+                      <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-shift">
+                        {createMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filtreler</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {isHQIK && (
-              <div>
-                <label className="text-sm font-medium mb-2 block">Şube</label>
-                <Select 
-                  value={selectedBranchFilter?.toString()} 
-                  onValueChange={(value) => setSelectedBranchFilter(value === 'all' ? undefined : Number(value))}
-                >
-                  <SelectTrigger data-testid="select-branch-filter">
-                    <SelectValue placeholder="Tüm şubeler" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm Şubeler</SelectItem>
-                    {branches?.map((branch) => (
-                      <SelectItem key={branch.id} value={branch.id.toString()}>
-                        {branch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
+          <TabsTrigger value="overview" data-testid="tab-overview">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Genel Bakış
+          </TabsTrigger>
+          <TabsTrigger value="planning" data-testid="tab-planning">
+            <CalendarIcon className="w-4 h-4 mr-2" />
+            Planlama
+          </TabsTrigger>
+          <TabsTrigger value="live" data-testid="tab-live">
+            <Clock className="w-4 h-4 mr-2" />
+            Canlı Takip
+          </TabsTrigger>
+        </TabsList>
 
-            {isSupervisor && (
-              <div>
-                <label className="text-sm font-medium mb-2 block">Çalışan</label>
-                <Select 
-                  value={selectedUserFilter || 'all'} 
-                  onValueChange={(value) => setSelectedUserFilter(value === 'all' ? undefined : value)}
-                >
-                  <SelectTrigger data-testid="select-user-filter">
-                    <SelectValue placeholder="Tüm çalışanlar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm Çalışanlar</SelectItem>
-                    {branchUsers?.map((employee: User) => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        {employee.firstName} {employee.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Başlangıç Tarihi</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateFrom && "text-muted-foreground"
-                    )}
-                    data-testid="button-date-from"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFrom ? format(dateFrom, "PPP", { locale: tr }) : "Tarih seçin"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateFrom}
-                    onSelect={setDateFrom}
-                    initialFocus
-                    locale={tr}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Bitiş Tarihi</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateTo && "text-muted-foreground"
-                    )}
-                    data-testid="button-date-to"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? format(dateTo, "PPP", { locale: tr }) : "Tarih seçin"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateTo}
-                    onSelect={setDateTo}
-                    initialFocus
-                    locale={tr}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          {(dateFrom || dateTo || selectedBranchFilter || selectedUserFilter) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setDateFrom(undefined);
-                setDateTo(undefined);
-                setSelectedBranchFilter(undefined);
-                setSelectedUserFilter(undefined);
-              }}
-              data-testid="button-clear-filters"
-            >
-              Filtreleri Temizle
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {viewMode === 'month' ? (
-        <Card className="p-4">
-          <div style={{ height: '700px' }}>
-            <DragDropCalendar
-              localizer={localizer}
-              events={calendarEvents}
-              startAccessor="start"
-              endAccessor="end"
-              resources={branchUsers?.map((u: User) => ({
-                id: u.id,
-                title: `${u.firstName} ${u.lastName}`,
-              })) || []}
-              resourceIdAccessor="id"
-              resourceTitleAccessor="title"
-              style={{ height: '100%' }}
-              onEventDrop={handleEventDrop}
-              onEventResize={handleEventResize}
-              onSelectEvent={handleSelectEvent}
-              onSelectSlot={handleSelectSlot}
-              selectable={isSupervisor}
-              eventPropGetter={eventStyleGetter}
-              resizable={isSupervisor}
-              draggableAccessor={() => isSupervisor}
-              views={['month']}
-              defaultView="month"
-              culture="tr"
-              messages={{
-                next: "Sonraki",
-                previous: "Önceki",
-                today: "Bugün",
-                month: "Ay",
-                week: "Hafta",
-                day: "Gün",
-                agenda: "Gündem",
-                date: "Tarih",
-                time: "Saat",
-                event: "Vardiya",
-                noEventsInRange: "Bu tarih aralığında vardiya yok",
-                showMore: (total) => `+${total} daha`,
-                allDay: "Tüm Gün",
-                work_week: "Çalışma Haftası",
-                yesterday: "Dün",
-                tomorrow: "Yarın",
-              }}
-            />
-          </div>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <Skeleton className="h-20 w-full" />
-                </CardContent>
-              </Card>
-            ))
-          ) : filteredShifts && filteredShifts.length > 0 ? (
-            filteredShifts.map((shift) => (
-            <Card key={shift.id} className="hover-elevate" data-testid={`card-shift-${shift.id}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CalendarIcon className="w-5 h-5 text-muted-foreground" />
-                    <div>
-                      <CardTitle className="text-lg" data-testid={`text-shift-date-${shift.id}`}>
-                        {format(parseISO(shift.shiftDate), "PPP", { locale: tr })}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground" data-testid={`text-branch-${shift.id}`}>
-                        {shift.branch.name}
-                      </p>
-                    </div>
-                  </div>
-
-                  {isSupervisor && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleEdit(shift)}
-                        data-testid={`button-edit-${shift.id}`}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          if (confirm("Bu vardiyayı silmek istediğinize emin misiniz?")) {
-                            deleteMutation.mutate(shift.id);
-                          }
-                        }}
-                        data-testid={`button-delete-${shift.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card data-testid="card-total-shifts">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Bu Hafta</CardTitle>
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Saat Aralığı</div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-medium" data-testid={`text-time-${shift.id}`}>
-                        {shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)}
-                      </span>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalWeekShifts}</div>
+                <p className="text-xs text-muted-foreground">toplam vardiya</p>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-confirmed">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Onaylı</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{confirmedCount}</div>
+                <p className="text-xs text-muted-foreground">kesinleşmiş vardiya</p>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-pending">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
+                <AlertCircle className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
+                <p className="text-xs text-muted-foreground">onay bekliyor</p>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-coverage">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Doluluk</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{coverageRate}%</div>
+                <Progress value={coverageRate} className="mt-2 h-2" />
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card data-testid="card-today">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sun className="h-5 w-5 text-amber-500" />
+                  Bugün
+                  <Badge variant="secondary" className="ml-auto">{todayShifts.length} vardiya</Badge>
+                </CardTitle>
+                <CardDescription>{format(new Date(), "d MMMM yyyy, EEEE", { locale: tr })}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {todayShifts.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Bugün planlanmış vardiya yok</p>
+                ) : (
+                  <ScrollArea className="h-[200px]">
+                    <div className="space-y-3">
+                      {todayShifts.map((shift) => {
+                        const ShiftIcon = shiftTypeIcons[shift.shiftType];
+                        return (
+                          <div key={shift.id} className={cn("flex items-center justify-between p-3 rounded-lg border", shiftTypeColors[shift.shiftType])} data-testid={`shift-today-${shift.id}`}>
+                            <div className="flex items-center gap-3">
+                              <ShiftIcon className="h-5 w-5" />
+                              <div>
+                                <p className="font-medium">{shift.assignedTo?.fullName || "Atanmamış"}</p>
+                                <p className="text-sm opacity-80">{shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)}</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={statusColors[shift.status]}>
+                              {statusLabels[shift.status]}
+                            </Badge>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Vardiya Tipi</div>
-                    <Badge 
-                      className={cn("rounded-md", shiftTypeColors[shift.shiftType])}
-                      data-testid={`badge-type-${shift.id}`}
-                    >
-                      {shiftTypeLabels[shift.shiftType]}
-                    </Badge>
-                  </div>
-
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Durum</div>
-                    <Badge 
-                      className={cn("rounded-md", statusColors[shift.status])}
-                      data-testid={`badge-status-${shift.id}`}
-                    >
-                      {statusLabels[shift.status]}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Atanan Çalışan</div>
-                    <div className="flex items-center gap-2">
-                      <UserIcon className="w-4 h-4 text-muted-foreground" />
-                      <span data-testid={`text-assigned-${shift.id}`}>
-                        {shift.assignedTo?.fullName || "Atanmamış"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Oluşturan</div>
-                    <span className="text-sm" data-testid={`text-created-by-${shift.id}`}>
-                      {shift.createdBy.fullName}
-                    </span>
-                  </div>
-                </div>
-
-                {shift.notes && (
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Notlar</div>
-                    <p className="text-sm" data-testid={`text-notes-${shift.id}`}>
-                      {shift.notes}
-                    </p>
-                  </div>
-                )}
-
-                {shift.assignedToId === user?.id && (
-                  <div className="pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedShiftForTrade(shift);
-                        setIsTradeDialogOpen(true);
-                      }}
-                      data-testid={`button-trade-${shift.id}`}
-                      className="w-full"
-                    >
-                      <ArrowLeftRight className="w-4 h-4 mr-2" />
-                      Vardiya Takası
-                    </Button>
-                  </div>
+                  </ScrollArea>
                 )}
               </CardContent>
             </Card>
-          ))
-        ) : (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              <p data-testid="text-no-shifts">Henüz vardiya bulunmuyor</p>
-              {isSupervisor && <p className="text-sm mt-2">Yeni bir vardiya oluşturmak için yukarıdaki butonu kullanın</p>}
+
+            <Card data-testid="card-tomorrow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowRight className="h-5 w-5 text-blue-500" />
+                  Yarın
+                  <Badge variant="secondary" className="ml-auto">{tomorrowShifts.length} vardiya</Badge>
+                </CardTitle>
+                <CardDescription>{format(addDays(new Date(), 1), "d MMMM yyyy, EEEE", { locale: tr })}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {tomorrowShifts.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">Yarın için vardiya planlanmamış</p>
+                    {isSupervisor && (
+                      <Button variant="outline" size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Vardiya Ekle
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[200px]">
+                    <div className="space-y-3">
+                      {tomorrowShifts.map((shift) => {
+                        const ShiftIcon = shiftTypeIcons[shift.shiftType];
+                        return (
+                          <div key={shift.id} className={cn("flex items-center justify-between p-3 rounded-lg border", shiftTypeColors[shift.shiftType])} data-testid={`shift-tomorrow-${shift.id}`}>
+                            <div className="flex items-center gap-3">
+                              <ShiftIcon className="h-5 w-5" />
+                              <div>
+                                <p className="font-medium">{shift.assignedTo?.fullName || "Atanmamış"}</p>
+                                <p className="text-sm opacity-80">{shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)}</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={statusColors[shift.status]}>
+                              {statusLabels[shift.status]}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card data-testid="card-quick-actions">
+            <CardHeader>
+              <CardTitle>Hızlı Erişim</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <Link href="/vardiya-checkin">
+                  <Button variant="outline" className="w-full h-24 flex-col gap-2" data-testid="button-checkin">
+                    <QrCode className="h-6 w-6" />
+                    <span>Giriş/Çıkış</span>
+                  </Button>
+                </Link>
+                <Link href="/vardiya-sablonlari">
+                  <Button variant="outline" className="w-full h-24 flex-col gap-2" data-testid="button-templates-quick">
+                    <FileText className="h-6 w-6" />
+                    <span>Şablonlar</span>
+                  </Button>
+                </Link>
+                {isSupervisor && (
+                  <>
+                    <Button variant="outline" className="w-full h-24 flex-col gap-2" onClick={() => setIsCreateDialogOpen(true)} data-testid="button-new-shift-quick">
+                      <Plus className="h-6 w-6" />
+                      <span>Yeni Vardiya</span>
+                    </Button>
+                    <Button variant="outline" className="w-full h-24 flex-col gap-2" onClick={() => setActiveTab('planning')} data-testid="button-weekly-plan">
+                      <CalendarIcon className="h-6 w-6" />
+                      <span>Haftalık Plan</span>
+                    </Button>
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
-        )}
-        </div>
-      )}
+        </TabsContent>
 
-      {/* Shift Trade Dialog */}
-      <Dialog open={isTradeDialogOpen} onOpenChange={setIsTradeDialogOpen}>
-        <DialogContent data-testid="dialog-shift-trade">
-          <DialogHeader>
-            <DialogTitle>Vardiya Takası Talebi</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {selectedShiftForTrade && (
-              <div className="p-4 bg-muted rounded-md">
-                <p className="text-sm text-muted-foreground mb-1">Takas Edilecek Vardiya</p>
-                <p className="font-medium">
-                  {format(parseISO(selectedShiftForTrade.shiftDate), "PPP", { locale: tr })}
-                </p>
-                <p className="text-sm">
-                  {selectedShiftForTrade.startTime.slice(0, 5)} - {selectedShiftForTrade.endTime.slice(0, 5)} ({shiftTypeLabels[selectedShiftForTrade.shiftType]})
-                </p>
+        <TabsContent value="planning" className="space-y-6">
+          <Card data-testid="card-week-view">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>Haftalık Plan</CardTitle>
+                  <CardDescription>
+                    {format(weekDays[0], "d MMM", { locale: tr })} - {format(weekDays[6], "d MMM yyyy", { locale: tr })}
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, -7))}>
+                    Önceki Hafta
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date())}>
+                    Bu Hafta
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, 7))}>
+                    Sonraki Hafta
+                  </Button>
+                </div>
               </div>
-            )}
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Takas Yapılacak Vardiya</label>
-              <Select
-                onValueChange={(value) => {
-                  const targetShift = filteredShifts?.find(s => s.id === parseInt(value));
-                  if (targetShift && selectedShiftForTrade && user) {
-                    createTradeMutation.mutate({
-                      requesterId: user.id,
-                      responderId: targetShift.assignedToId!,
-                      requesterShiftId: selectedShiftForTrade.id,
-                      responderShiftId: targetShift.id,
-                      notes: '',
-                    });
-                  }
-                }}
-                disabled={createTradeMutation.isPending}
-              >
-                <SelectTrigger data-testid="select-target-shift">
-                  <SelectValue placeholder="Bir vardiya seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredShifts
-                    ?.filter(s => 
-                      s.id !== selectedShiftForTrade?.id && 
-                      s.assignedToId && 
-                      s.assignedToId !== user?.id &&
-                      s.branchId === selectedShiftForTrade?.branchId
-                    )
-                    .map(shift => (
-                      <SelectItem key={shift.id} value={shift.id.toString()} data-testid={`option-shift-${shift.id}`}>
-                        {format(parseISO(shift.shiftDate), "PPP", { locale: tr })} - {shift.assignedTo?.fullName} ({shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-2">
+                {weekDays.map((day, index) => {
+                  const dayShifts = getShiftsForDate(day);
+                  const isCurrentDay = isToday(day);
+                  return (
+                    <div 
+                      key={index} 
+                      className={cn(
+                        "min-h-[150px] border rounded-lg p-2",
+                        isCurrentDay && "ring-2 ring-primary"
+                      )}
+                      data-testid={`day-column-${index}`}
+                    >
+                      <div className={cn(
+                        "text-center mb-2 pb-2 border-b",
+                        isCurrentDay && "font-bold text-primary"
+                      )}>
+                        <p className="text-xs text-muted-foreground">{format(day, "EEE", { locale: tr })}</p>
+                        <p className="text-lg">{format(day, "d")}</p>
+                      </div>
+                      <div className="space-y-1">
+                        {dayShifts.length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-4">-</p>
+                        ) : (
+                          dayShifts.slice(0, 3).map((shift) => (
+                            <div 
+                              key={shift.id} 
+                              className={cn("text-xs p-1.5 rounded border", shiftTypeColors[shift.shiftType])}
+                              title={`${shift.assignedTo?.fullName || 'Atanmamış'} - ${shift.startTime.slice(0,5)}-${shift.endTime.slice(0,5)}`}
+                            >
+                              <p className="font-medium truncate">{shift.assignedTo?.fullName?.split(' ')[0] || '?'}</p>
+                              <p className="opacity-70">{shift.startTime.slice(0, 5)}</p>
+                            </div>
+                          ))
+                        )}
+                        {dayShifts.length > 3 && (
+                          <p className="text-xs text-muted-foreground text-center">+{dayShifts.length - 3} daha</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-all-shifts">
+            <CardHeader>
+              <CardTitle>Bu Haftanın Tüm Vardiyaları</CardTitle>
+              <CardDescription>{thisWeekShifts.length} vardiya planlandı</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {thisWeekShifts.length === 0 ? (
+                <div className="text-center py-12">
+                  <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">Bu hafta için henüz vardiya planlanmamış</p>
+                  {isSupervisor && (
+                    <Button onClick={() => setIsCreateDialogOpen(true)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      İlk Vardiyayı Oluştur
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2">
+                    {thisWeekShifts
+                      .sort((a, b) => a.shiftDate.localeCompare(b.shiftDate) || a.startTime.localeCompare(b.startTime))
+                      .map((shift) => {
+                        const ShiftIcon = shiftTypeIcons[shift.shiftType];
+                        const shiftDate = parseISO(shift.shiftDate);
+                        return (
+                          <div 
+                            key={shift.id} 
+                            className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                            data-testid={`shift-item-${shift.id}`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={cn("p-2 rounded-lg", shiftTypeColors[shift.shiftType])}>
+                                <ShiftIcon className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{shift.assignedTo?.fullName || "Atanmamış"}</p>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <span>{format(shiftDate, "d MMM, EEE", { locale: tr })}</span>
+                                  <span>•</span>
+                                  <span>{shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className={shiftTypeColors[shift.shiftType]}>
+                                {shiftTypeLabels[shift.shiftType]}
+                              </Badge>
+                              <Badge variant="outline" className={statusColors[shift.status]}>
+                                {statusLabels[shift.status]}
+                              </Badge>
+                              {isSupervisor && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" data-testid={`button-shift-menu-${shift.id}`}>
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleEditShift(shift)} data-testid={`button-edit-shift-${shift.id}`}>
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Düzenle
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => setShiftToDelete(shift)} 
+                                      className="text-destructive"
+                                      data-testid={`button-delete-shift-${shift.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Sil
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="live" className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card data-testid="card-live-active">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Şu An Çalışıyor</CardTitle>
+                <UserCheck className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600">
+                  {todayShifts.filter(s => s.status === 'confirmed').length}
+                </div>
+                <p className="text-xs text-muted-foreground">aktif personel</p>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-live-late">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Geç Giriş</CardTitle>
+                <Timer className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-orange-600">0</div>
+                <p className="text-xs text-muted-foreground">gecikmeli giriş</p>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-live-missing">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Gelmedi</CardTitle>
+                <UserX className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600">0</div>
+                <p className="text-xs text-muted-foreground">eksik personel</p>
+              </CardContent>
+            </Card>
           </div>
+
+          <Card data-testid="card-live-timeline">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Bugünkü Zaman Çizelgesi
+              </CardTitle>
+              <CardDescription>{format(new Date(), "d MMMM yyyy, EEEE", { locale: tr })}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {todayShifts.length === 0 ? (
+                <div className="text-center py-12">
+                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Bugün için planlanmış vardiya yok</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {['morning', 'evening', 'night'].map((type) => {
+                    const typeShifts = todayShifts.filter(s => s.shiftType === type);
+                    if (typeShifts.length === 0) return null;
+                    const ShiftIcon = shiftTypeIcons[type];
+                    return (
+                      <div key={type} className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className={cn("p-1.5 rounded", shiftTypeColors[type])}>
+                            <ShiftIcon className="h-4 w-4" />
+                          </div>
+                          <span className="font-medium">{shiftTypeLabels[type]} Vardiyası</span>
+                          <Badge variant="secondary">{typeShifts.length} kişi</Badge>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 ml-8">
+                          {typeShifts.map((shift) => (
+                            <div 
+                              key={shift.id}
+                              className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                              data-testid={`live-shift-${shift.id}`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500" />
+                                <span className="font-medium">{shift.assignedTo?.fullName || "Atanmamış"}</span>
+                              </div>
+                              <span className="text-sm text-muted-foreground">
+                                {shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-checkin-prompt">
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-primary/10">
+                    <QrCode className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Vardiya Giriş/Çıkış</p>
+                    <p className="text-sm text-muted-foreground">QR kod ile hızlı giriş yapın</p>
+                  </div>
+                </div>
+                <Link href="/vardiya-checkin">
+                  <Button data-testid="button-go-checkin">
+                    Giriş Yap
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Vardiya Düzenle</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleUpdateSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="shiftDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tarih</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="button-edit-date-picker">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(parseISO(field.value), "d MMMM yyyy", { locale: tr }) : "Tarih seçin"}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={field.value ? parseISO(field.value) : undefined}
+                          onSelect={(date) => date && field.onChange(format(date, 'yyyy-MM-dd'))}
+                          locale={tr}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="shiftType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vardiya Tipi</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-shift-type">
+                          <SelectValue placeholder="Seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="morning">🌅 Sabah</SelectItem>
+                        <SelectItem value="evening">🌆 Akşam</SelectItem>
+                        <SelectItem value="night">🌙 Gece</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Başlangıç</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} data-testid="input-edit-start-time" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bitiş</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} data-testid="input-edit-end-time" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="assignedToId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Personel</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-employee">
+                          <SelectValue placeholder="Personel seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {branchUsers?.map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.fullName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Durum</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-status">
+                          <SelectValue placeholder="Durum seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="draft">Taslak</SelectItem>
+                        <SelectItem value="pending_hq">Onay Bekliyor</SelectItem>
+                        <SelectItem value="confirmed">Onaylandı</SelectItem>
+                        <SelectItem value="completed">Tamamlandı</SelectItem>
+                        <SelectItem value="cancelled">İptal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notlar</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Vardiya ile ilgili notlar..." 
+                        {...field} 
+                        value={field.value || ''}
+                        data-testid="input-edit-notes" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  İptal
+                </Button>
+                <Button type="submit" disabled={updateMutation.isPending} data-testid="button-submit-edit">
+                  {updateMutation.isPending ? "Güncelleniyor..." : "Güncelle"}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
-      {/* Pending Trades Panel */}
-      {shiftTrades && shiftTrades.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Bekleyen Takas Talepleri</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {shiftTrades.map((trade) => {
-              const requesterShift = shifts?.find(s => s.id === trade.requesterShiftId);
-              const responderShift = shifts?.find(s => s.id === trade.responderShiftId);
-              
-              const statusLabels: Record<string, string> = {
-                taslak: "Taslak",
-                calisan_onayi: "Çalışan Onayı",
-                yonetici_onayi: "Yönetici Onayı",
-                reddedildi: "Reddedildi",
-                iptal: "İptal",
-              };
-
-              const statusColors: Record<string, string> = {
-                taslak: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-                calisan_onayi: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-                yonetici_onayi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-                reddedildi: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-                iptal: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-              };
-
-              const isResponder = trade.responderId === user?.id;
-              const isRequester = trade.requesterId === user?.id;
-              const canApprove = isSupervisor || user?.role === 'coach' || user?.role === 'admin';
-
-              return (
-                <Card key={trade.id} data-testid={`card-trade-${trade.id}`}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Badge className={cn("rounded-md", statusColors[trade.status])} data-testid={`badge-trade-status-${trade.id}`}>
-                        {statusLabels[trade.status]}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {format(new Date(trade.createdAt!), "PPP", { locale: tr })}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-3 bg-muted rounded-md">
-                        <p className="text-sm text-muted-foreground mb-1">Takas Eden</p>
-                        {requesterShift && (
-                          <>
-                            <p className="font-medium">{requesterShift.assignedTo?.fullName}</p>
-                            <p className="text-sm">{format(parseISO(requesterShift.shiftDate), "PP", { locale: tr })}</p>
-                            <p className="text-sm">{requesterShift.startTime.slice(0, 5)} - {requesterShift.endTime.slice(0, 5)}</p>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="p-3 bg-muted rounded-md">
-                        <p className="text-sm text-muted-foreground mb-1">Takas Alacak</p>
-                        {responderShift && (
-                          <>
-                            <p className="font-medium">{responderShift.assignedTo?.fullName}</p>
-                            <p className="text-sm">{format(parseISO(responderShift.shiftDate), "PP", { locale: tr })}</p>
-                            <p className="text-sm">{responderShift.startTime.slice(0, 5)} - {responderShift.endTime.slice(0, 5)}</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {trade.notes && (
-                      <div className="p-3 bg-muted rounded-md">
-                        <p className="text-sm text-muted-foreground mb-1">Not</p>
-                        <p className="text-sm">{trade.notes}</p>
-                      </div>
-                    )}
-
-                    {trade.supervisorNotes && (
-                      <div className="p-3 bg-muted rounded-md">
-                        <p className="text-sm text-muted-foreground mb-1">Yönetici Notu</p>
-                        <p className="text-sm">{trade.supervisorNotes}</p>
-                      </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      {isResponder && trade.status === 'taslak' && (
-                        <Button
-                          onClick={() => respondTradeMutation.mutate(trade.id)}
-                          disabled={respondTradeMutation.isPending}
-                          data-testid={`button-respond-${trade.id}`}
-                          className="flex-1"
-                        >
-                          <Check className="w-4 h-4 mr-2" />
-                          Onayla
-                        </Button>
-                      )}
-
-                      {canApprove && trade.status === 'calisan_onayi' && (
-                        <>
-                          <Button
-                            onClick={() => approveTradeMutation.mutate({ id: trade.id, approved: true })}
-                            disabled={approveTradeMutation.isPending}
-                            data-testid={`button-approve-${trade.id}`}
-                            className="flex-1"
-                          >
-                            <Check className="w-4 h-4 mr-2" />
-                            Onayla
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={() => approveTradeMutation.mutate({ id: trade.id, approved: false })}
-                            disabled={approveTradeMutation.isPending}
-                            data-testid={`button-reject-${trade.id}`}
-                            className="flex-1"
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            Reddet
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
+      <AlertDialog open={!!shiftToDelete} onOpenChange={(open) => !open && setShiftToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vardiyayı Sil</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu vardiyayı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+              {shiftToDelete && (
+                <div className="mt-2 p-3 bg-muted rounded-lg">
+                  <p className="font-medium">{shiftToDelete.assignedTo?.fullName || "Atanmamış"}</p>
+                  <p className="text-sm">{format(parseISO(shiftToDelete.shiftDate), "d MMMM yyyy", { locale: tr })}</p>
+                  <p className="text-sm">{shiftToDelete.startTime.slice(0, 5)} - {shiftToDelete.endTime.slice(0, 5)}</p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>İptal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => shiftToDelete && deleteMutation.mutate(shiftToDelete.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Siliniyor..." : "Sil"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
