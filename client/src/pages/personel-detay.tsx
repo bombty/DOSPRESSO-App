@@ -81,9 +81,9 @@ export default function PersonelDetay() {
   const [messageText, setMessageText] = useState("");
 
   const { data: employee, isLoading: employeeLoading } = useQuery<User>({
-    queryKey: ["/api/users", id],
+    queryKey: ["/api/personnel", id],
     queryFn: async () => {
-      const response = await fetch(`/api/users/${id}`);
+      const response = await fetch(`/api/personnel/${id}`);
       if (!response.ok) throw new Error("Failed to fetch employee");
       return response.json();
     },

@@ -523,6 +523,9 @@ export function AppSidebar() {
           if (!user?.role) return false;
           // Admin can access all modules
           if (user.role === 'admin') return true;
+          // Check item scope visibility first
+          if (!canSeeScope(item.scope)) return false;
+          // Then check module access
           return canAccessModule(user.role as any, item.module);
         }),
       }))

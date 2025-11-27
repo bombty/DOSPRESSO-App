@@ -72,7 +72,7 @@ export function ManagerDashboard({
 
       {/* KPI Cards - Manager View */}
       <div className="grid gap-0.5 grid-cols-4">
-        <Card className="border-l-4 border-l-green-600 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-completed-tasks">
+        <Card className="border-l-4 border-l-green-600 cursor-pointer hover-elevate" onClick={() => navigate('/gorevler')} data-testid="card-completed-tasks">
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <CheckCircle className="h-3.5 w-3.5 text-green-600" />
@@ -82,7 +82,7 @@ export function ManagerDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-blue-600 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-pending-tasks">
+        <Card className="border-l-4 border-l-blue-600 cursor-pointer hover-elevate" onClick={() => navigate('/gorevler')} data-testid="card-pending-tasks">
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <Clock className="h-3.5 w-3.5 text-blue-600" />
@@ -92,7 +92,7 @@ export function ManagerDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-red-600 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-faults">
+        <Card className="border-l-4 border-l-red-600 cursor-pointer hover-elevate" onClick={() => navigate('/ariza')} data-testid="card-faults">
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
@@ -102,7 +102,7 @@ export function ManagerDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-amber-600 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-completion-rate">
+        <Card className="border-l-4 border-l-amber-600 cursor-pointer hover-elevate" onClick={() => navigate('/gorevler')} data-testid="card-completion-rate">
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
