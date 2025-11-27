@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
-import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock, Zap } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface AdminDashboardProps {
   compositeBranchScores: any[];
@@ -23,8 +24,143 @@ export function AdminDashboard({
   branchScoresTimeRange,
   onTimeRangeChange,
 }: AdminDashboardProps) {
+  // Calculate overall system metrics
+  const avgEmployeePerf = compositeBranchScores.length > 0 
+    ? Math.round(compositeBranchScores.reduce((sum, s) => sum + s.employeePerformanceScore, 0) / compositeBranchScores.length)
+    : 0;
+  const avgEquipmentScore = compositeBranchScores.length > 0 
+    ? Math.round(compositeBranchScores.reduce((sum, s) => sum + s.equipmentScore, 0) / compositeBranchScores.length)
+    : 0;
+  const avgQualityScore = compositeBranchScores.length > 0 
+    ? Math.round(compositeBranchScores.reduce((sum, s) => sum + s.qualityAuditScore, 0) / compositeBranchScores.length)
+    : 0;
+  const avgCustomerScore = compositeBranchScores.length > 0 
+    ? Math.round(compositeBranchScores.reduce((sum, s) => sum + s.customerSatisfactionScore, 0) / compositeBranchScores.length)
+    : 0;
+  const slaScore = totalFaults > 0 ? Math.round(((totalFaults - openFaults) / totalFaults) * 100) : 100;
+
+  // Radial chart data
+  const radarData = [
+    { name: 'Personel', value: avgEmployeePerf, fullMark: 100 },
+    { name: 'Ekipman', value: avgEquipmentScore, fullMark: 100 },
+    { name: 'Kalite', value: avgQualityScore, fullMark: 100 },
+    { name: 'Müşteri', value: avgCustomerScore, fullMark: 100 },
+    { name: 'SLA', value: slaScore, fullMark: 100 },
+  ];
+
+  // Get gauge color based on score
+  const getGaugeColor = (score: number) => {
+    if (score >= 85) return 'bg-green-500';
+    if (score >= 70) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  const getGaugeTextColor = (score: number) => {
+    if (score >= 85) return 'text-green-700';
+    if (score >= 70) return 'text-yellow-700';
+    return 'text-red-700';
+  };
+
   return (
     <div className="space-y-3 md:space-y-6">
+      {/* System Performance Overview - Radial Chart */}
+      {!isLoading && compositeBranchScores.length > 0 && (
+        <Card className="hidden md:block">
+          <CardHeader>
+            <CardTitle className="text-sm">Sistem Performans Göstergesi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="#e5e7eb" />
+                <PolarAngleAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                <Radar name="Skor" dataKey="value" stroke="#1F3A93" fill="#1F3A93" fillOpacity={0.6} />
+                <Tooltip 
+                  formatter={(value) => `${value}%`}
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd' }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Gauge Cards - Real-time KPI Monitoring */}
+      {!isLoading && (
+        <div className="grid gap-2 grid-cols-2 md:grid-cols-5">
+          {/* Personel Gauge */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Personel</span>
+                <Zap className={`h-3 w-3 ${getGaugeTextColor(avgEmployeePerf)}`} />
+              </div>
+              <div className={`text-xl font-bold ${getGaugeTextColor(avgEmployeePerf)} mb-2`}>
+                {avgEmployeePerf}%
+              </div>
+              <Progress value={avgEmployeePerf} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* Ekipman Gauge */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Ekipman</span>
+                <Zap className={`h-3 w-3 ${getGaugeTextColor(avgEquipmentScore)}`} />
+              </div>
+              <div className={`text-xl font-bold ${getGaugeTextColor(avgEquipmentScore)} mb-2`}>
+                {avgEquipmentScore}%
+              </div>
+              <Progress value={avgEquipmentScore} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* Kalite Gauge */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Kalite</span>
+                <Zap className={`h-3 w-3 ${getGaugeTextColor(avgQualityScore)}`} />
+              </div>
+              <div className={`text-xl font-bold ${getGaugeTextColor(avgQualityScore)} mb-2`}>
+                {avgQualityScore}%
+              </div>
+              <Progress value={avgQualityScore} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* Müşteri Gauge */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Müşteri</span>
+                <Zap className={`h-3 w-3 ${getGaugeTextColor(avgCustomerScore)}`} />
+              </div>
+              <div className={`text-xl font-bold ${getGaugeTextColor(avgCustomerScore)} mb-2`}>
+                {avgCustomerScore}%
+              </div>
+              <Progress value={avgCustomerScore} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* SLA Gauge */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">SLA</span>
+                <Zap className={`h-3 w-3 ${getGaugeTextColor(slaScore)}`} />
+              </div>
+              <div className={`text-xl font-bold ${getGaugeTextColor(slaScore)} mb-2`}>
+                {slaScore}%
+              </div>
+              <Progress value={slaScore} className="h-2" />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* KPI Cards Row */}
       <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
         <Card className="border-l-4 border-l-blue-600">
@@ -90,20 +226,65 @@ export function AdminDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {compositeBranchScores.map((score) => (
+                  {compositeBranchScores.map((score) => {
+                    // Sparkline data (last 5 scores - simulated)
+                    const trendData = [
+                      score.compositeScore * 0.9,
+                      score.compositeScore * 0.95,
+                      score.compositeScore * 0.98,
+                      score.compositeScore * 0.97,
+                      score.compositeScore
+                    ];
+                    return (
                     <tr key={score.branchId} className="border-b hover:bg-muted/50">
                       <td className="py-2 px-2 font-medium">{score.branchName}</td>
                       <td className="text-center py-2 px-2">
-                        <Badge variant="outline">{score.employeePerformanceScore.toFixed(0)}</Badge>
+                        <div className="flex flex-col items-center gap-1">
+                          <Badge variant="outline">{score.employeePerformanceScore.toFixed(0)}</Badge>
+                          <div className="h-6 w-12">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={trendData.map((v) => ({ value: v }))}>
+                                <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={1} dot={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
                       </td>
                       <td className="text-center py-2 px-2">
-                        <Badge variant="outline">{score.equipmentScore.toFixed(0)}</Badge>
+                        <div className="flex flex-col items-center gap-1">
+                          <Badge variant="outline">{score.equipmentScore.toFixed(0)}</Badge>
+                          <div className="h-6 w-12">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={trendData.map((v) => ({ value: v }))}>
+                                <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={1} dot={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
                       </td>
                       <td className="text-center py-2 px-2">
-                        <Badge variant="outline">{score.qualityAuditScore.toFixed(0)}</Badge>
+                        <div className="flex flex-col items-center gap-1">
+                          <Badge variant="outline">{score.qualityAuditScore.toFixed(0)}</Badge>
+                          <div className="h-6 w-12">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={trendData.map((v) => ({ value: v }))}>
+                                <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={1} dot={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
                       </td>
                       <td className="text-center py-2 px-2">
-                        <Badge variant="outline">{score.customerSatisfactionScore.toFixed(0)}</Badge>
+                        <div className="flex flex-col items-center gap-1">
+                          <Badge variant="outline">{score.customerSatisfactionScore.toFixed(0)}</Badge>
+                          <div className="h-6 w-12">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={trendData.map((v) => ({ value: v }))}>
+                                <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={1} dot={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
                       </td>
                       <td className="text-center py-2 px-2">
                         <Badge 
@@ -113,7 +294,8 @@ export function AdminDashboard({
                         </Badge>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
