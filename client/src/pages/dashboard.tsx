@@ -13,7 +13,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { AnnouncementBanner } from "@/components/announcement-banner";
-import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy, Award, Users, BookOpen, GraduationCap } from "lucide-react";
+import { UniversalQRScanner } from "@/components/universal-qr-scanner";
+import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy, Award, Users, BookOpen, GraduationCap, QrCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<SummaryCategoryType | null>(null);
   const [currentSummary, setCurrentSummary] = useState<AISummaryResponse | null>(null);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
   
   // Sheet state management
   const [taskSheetOpen, setTaskSheetOpen] = useState(false);
@@ -465,9 +467,20 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold" data-testid="text-page-title">Kontrol Paneli</h1>
-        <p className="text-muted-foreground mt-1">DOSPRESSO operasyon özeti</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold" data-testid="text-page-title">Kontrol Paneli</h1>
+          <p className="text-muted-foreground mt-1">DOSPRESSO operasyon özeti</p>
+        </div>
+        <Button 
+          onClick={() => setQrScannerOpen(true)}
+          variant="outline"
+          size="icon"
+          title="QR Kod Tara"
+          data-testid="button-open-qr-scanner"
+        >
+          <QrCode className="h-5 w-5" />
+        </Button>
       </div>
 
       <AnnouncementBanner />
@@ -1826,6 +1839,12 @@ export default function Dashboard() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Universal QR Scanner */}
+      <UniversalQRScanner 
+        isOpen={qrScannerOpen} 
+        onOpenChange={setQrScannerOpen}
+      />
     </div>
   );
 }
