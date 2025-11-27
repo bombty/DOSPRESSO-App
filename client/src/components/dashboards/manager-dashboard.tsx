@@ -152,9 +152,9 @@ export function ManagerDashboard({
           <CardContent>
             <div className="space-y-2">
               {teamPerformance.slice(0, 5).map((member) => (
-                <div key={member.userId} className="flex items-center justify-between p-2 bg-muted/50 rounded gap-2">
+                <div key={member.userId} className="flex items-center justify-between p-2 bg-muted/50 rounded gap-2 cursor-pointer hover-elevate" onClick={() => navigate(`/personel-detay/${member.userId}`)} data-testid={`row-employee-${member.userId}`}>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">{member.firstName} {member.lastName?.charAt(0)}.</p>
+                    <p className="font-semibold text-sm text-blue-600 hover:underline">{member.firstName} {member.lastName?.charAt(0)}.</p>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                       <div
                         className={`h-1.5 rounded-full ${
