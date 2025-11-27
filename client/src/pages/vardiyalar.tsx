@@ -114,6 +114,18 @@ export default function Vardiyalar() {
     enabled: !!isSupervisor || !!isHQIK,
   });
 
+  // Fetch active check-ins for live tab
+  const { data: activeAttendances, refetch: refetchAttendances } = useQuery<any[]>({
+    queryKey: ['/api/shift-attendance', 'active'],
+    enabled: !!isSupervisor,
+    refetchInterval: activeTab === 'live' ? 15000 : false,
+    queryFn: async () => {
+      const response = await fetch(`/api/shift-attendance?status=checked_in&date=${format(new Date(), 'yyyy-MM-dd')}`);
+      if (!response.ok) throw new Error('Failed to fetch active attendance');
+      return response.json();
+    }
+  });
+
   const branchUsers = users?.filter((u: User) => u.branchId === user?.branchId);
 
   const form = useForm<InsertShift>({
@@ -792,39 +804,87 @@ export default function Vardiyalar() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card data-testid="card-live-active">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Şu An Çalışıyor</CardTitle>
+                <CardTitle className="text-sm font-medium">Canlı Çalışanlar</CardTitle>
                 <UserCheck className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-600">
-                  {todayShifts.filter(s => s.status === 'confirmed').length}
+                  {activeAttendances?.length || 0}
                 </div>
-                <p className="text-xs text-muted-foreground">aktif personel</p>
+                <p className="text-xs text-muted-foreground">şu an giriş yapan</p>
               </CardContent>
             </Card>
 
             <Card data-testid="card-live-late">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Geç Giriş</CardTitle>
-                <Timer className="h-4 w-4 text-orange-500" />
+                <CardTitle className="text-sm font-medium">Toplam Vardiyalar</CardTitle>
+                <Timer className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-600">0</div>
-                <p className="text-xs text-muted-foreground">gecikmeli giriş</p>
+                <div className="text-3xl font-bold text-blue-600">{todayShifts.length}</div>
+                <p className="text-xs text-muted-foreground">bugün planlanmış</p>
               </CardContent>
             </Card>
 
             <Card data-testid="card-live-missing">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Gelmedi</CardTitle>
+                <CardTitle className="text-sm font-medium">Henüz Gelmedi</CardTitle>
                 <UserX className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-red-600">0</div>
+                <div className="text-3xl font-bold text-red-600">
+                  {(todayShifts.length - (activeAttendances?.length || 0)) > 0 ? todayShifts.length - (activeAttendances?.length || 0) : 0}
+                </div>
                 <p className="text-xs text-muted-foreground">eksik personel</p>
               </CardContent>
             </Card>
           </div>
+
+          {/* Active Check-ins */}
+          {isSupervisor && (
+            <Card data-testid="card-active-checkins">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCheck className="h-5 w-5 text-green-500" />
+                  Canlı Giriş Yapanlar
+                </CardTitle>
+                <CardDescription>Şu an faal olan personel listesi</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {activeAttendances && activeAttendances.length > 0 ? (
+                  <div className="space-y-3">
+                    {activeAttendances.map((attendance: any) => {
+                      const user = users?.find(u => u.id === attendance.userId);
+                      const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
+                      const duration = checkInTime ? Math.floor((Date.now() - checkInTime.getTime()) / (60 * 1000)) : 0;
+                      return (
+                        <div key={attendance.id} className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950/20">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            <div className="flex-1">
+                              <p className="font-medium">{user?.fullName || 'Bilinmeyen'}</p>
+                              <div className="flex gap-4 text-xs text-muted-foreground mt-1">
+                                <span>📍 {attendance.location_confidence ? Math.round(attendance.location_confidence) + '%' : 'Bilinmeyen'}</span>
+                                <span>⏱️ {duration} dakika</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-green-600">{checkInTime ? format(checkInTime, 'HH:mm') : '-'}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <UserX className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground">Henüz kimse giriş yapmadı</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Card data-testid="card-live-timeline">
             <CardHeader>
