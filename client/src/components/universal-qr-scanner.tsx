@@ -50,8 +50,6 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
             fps: 10,
             qrbox: { width: 250, height: 250 },
             aspectRatio: 1,
-            disableFlip: false,
-            supportedScanTypes: ['SCAN_TYPE_CAMERA'],
           },
           false
         );
