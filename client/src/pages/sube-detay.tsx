@@ -144,10 +144,8 @@ export default function SubeDetayPage() {
   const pendingTasks = recentTasks.filter(t => t.status === 'bekliyor').length;
   const activeEquipment = equipment.filter(e => e.isActive).length;
 
-  // QR code value - includes branch ID and token
-  const qrValue = branch.qrCodeToken 
-    ? `dospresso://checkin?branch=${branchId}&token=${branch.qrCodeToken}`
-    : "";
+  // QR code value - format: "branch:ID"
+  const qrValue = branch.qrCodeToken ? `branch:${branchId}` : "";
 
   const handleSaveLocation = () => {
     updateLocationMutation.mutate({

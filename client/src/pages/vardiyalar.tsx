@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { 
   insertShiftSchema, 
   type Shift, 
@@ -1112,6 +1113,8 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   const [locationStatus, setLocationStatus] = useState<'idle' | 'checking' | 'success' | 'failed'>('idle');
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationConfidence, setLocationConfidence] = useState(0);
+  const [scannedShiftId, setScannedShiftId] = useState<number | null>(null);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   const { data: todayAttendance, refetch: refetchAttendance } = useQuery<any>({
     queryKey: ['/api/shift-attendance/today'],
@@ -1126,6 +1129,55 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   const { data: myShifts } = useQuery<ShiftWithRelations[]>({
     queryKey: ['/api/shifts/my'],
   });
+
+  // Initialize QR Scanner
+  useEffect(() => {
+    if (scannerActive && !scannerRef.current) {
+      const scanner = new Html5QrcodeScanner(
+        "qr-scanner-container",
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        false
+      );
+      
+      scanner.render(
+        (decodedText) => {
+          try {
+            // QR kod formatı: "branch:123"
+            const [type, id] = decodedText.split(':');
+            if (type === 'branch') {
+              setScannerActive(false);
+              scanner.clear();
+              scannerRef.current = null;
+              
+              // Bugünkü vardiyaları bul ve ilkini seç
+              if (todayShifts && todayShifts.length > 0) {
+                handleQRCheckIn(todayShifts[0]);
+              } else {
+                toast({ title: "Hata", description: "Bugün için vardiya bulunamadı", variant: "destructive" });
+              }
+            }
+          } catch (err) {
+            console.error("QR decode error:", err);
+          }
+        },
+        (error) => {
+          console.log("QR scan error:", error);
+        }
+      );
+      
+      scannerRef.current = scanner;
+    } else if (!scannerActive && scannerRef.current) {
+      scannerRef.current.clear();
+      scannerRef.current = null;
+    }
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    };
+  }, [scannerActive, myShifts, toast]);
 
   const checkInMutation = useMutation({
     mutationFn: async (data: { shiftId: number; checkInMethod: string; latitude?: number; longitude?: number; locationConfidenceScore?: number }) => {
@@ -1174,6 +1226,21 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
     } else {
       setLocationStatus('failed');
     }
+  };
+
+  const handleQRCheckIn = (shift: ShiftWithRelations) => {
+    checkLocation();
+    setTimeout(() => {
+      if (currentLocation) {
+        checkInMutation.mutate({
+          shiftId: shift.id,
+          checkInMethod: 'qr',
+          latitude: currentLocation.lat,
+          longitude: currentLocation.lng,
+          locationConfidenceScore: locationConfidence,
+        });
+      }
+    }, 500);
   };
 
   const handleManualCheckIn = (shift: ShiftWithRelations) => {
@@ -1307,13 +1374,24 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center gap-4 py-6">
-                <div className="w-48 h-48 border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center bg-muted/30">
-                  <div className="text-center">
-                    <QrCode className="h-16 w-16 mx-auto text-muted-foreground/50" />
-                    <p className="mt-2 text-sm text-muted-foreground">QR tarayıcı</p>
+                {!scannerActive ? (
+                  <div className="w-full max-w-sm">
+                    <div className="w-full aspect-square border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center bg-muted/30">
+                      <div className="text-center">
+                        <QrCode className="h-16 w-16 mx-auto text-muted-foreground/50" />
+                        <p className="mt-2 text-sm text-muted-foreground">QR tarayıcı kapalı</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <Button variant="outline" onClick={() => setScannerActive(!scannerActive)} data-testid="button-toggle-scanner">
+                ) : (
+                  <div id="qr-scanner-container" className="w-full max-w-sm" />
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={() => setScannerActive(!scannerActive)} 
+                  data-testid="button-toggle-scanner"
+                  disabled={checkInMutation.isPending}
+                >
                   {scannerActive ? "Tarayıcıyı Kapat" : "Tarayıcıyı Aç"}
                 </Button>
               </div>
