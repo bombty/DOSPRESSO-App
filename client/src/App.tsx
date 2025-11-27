@@ -16,7 +16,6 @@ import Register from "@/pages/register";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import Dashboard from "@/pages/dashboard";
-import Branches from "@/pages/branches";
 import Subeler from "@/pages/subeler";
 import SubeDetay from "@/pages/sube-detay";
 import PersonelProfil from "@/pages/personel-profil.tsx";
@@ -84,58 +83,66 @@ function Router() {
         <Route path="/" component={Login} />
       ) : (
         <>
+          {/* Ana Sayfa */}
           <Route path="/" component={Dashboard} />
+
+          {/* Personel & Vardiya */}
           <Route path="/subeler/:id" component={SubeDetay} />
           <Route path="/subeler" component={Subeler} />
           <Route path="/personel/:id" component={PersonelProfil} />
           <Route path="/personel-detay/:id" component={PersonelDetay} />
+          <Route path="/personel-onboarding" component={PersonelOnboarding} />
+          <Route path="/vardiyalar" component={Vardiyalar} />
+          <Route path="/vardiya-checkin" component={VardiyaCheckin} />
+          <Route path="/vardiya-sablonlari" component={VardiyaSablonlari} />
+          <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
+          <Route path="/devam-takibi" component={Attendance} />
+
+          {/* Operasyon & Görevler */}
           <Route path="/gorevler" component={Tasks} />
           <Route path="/gorev-detay/:id" component={GorevDetay} />
           <Route path="/checklistler" component={Checklists} />
+
+          {/* Ekipman & Bakım */}
           <Route path="/ekipman/:id" component={EquipmentDetail} />
-          <Route path="/equipment/:id" component={EquipmentDetail} />
           <Route path="/ekipman" component={Equipment} />
           <Route path="/ariza" component={FaultHub} />
-          <Route path="/arizalar" component={FaultHub} />
-          <Route path="/ariza-panosu" component={FaultHub} />
-          <Route path="/ariza-yonetim" component={FaultHub} />
-          <Route path="/ekipman-arizalar" component={FaultHub} />
-          <Route path="/ekipman-arizalari" component={FaultHub} />
-          <Route path="/teknik-panosu" component={FaultHub} />
-          <Route path="/sla-durum" component={FaultHub} />
           <Route path="/ariza-detay/:id" component={FaultDetail} />
           <Route path="/ariza-yeni" component={NewFaultReport} />
           <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
+
+          {/* Bilgi & İletişim */}
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
           <Route path="/egitim/:id" component={TrainingDetail} />
           <Route path="/egitim" component={Training} />
-          <Route path="/ik" component={IK} />
-          <Route path="/personel-onboarding" component={PersonelOnboarding} />
-          <Route path="/izin-talepleri" component={LeaveRequests} />
-          <Route path="/mesai-talepleri" component={OvertimeRequests} />
-          <Route path="/devam-takibi" component={Attendance} />
-          <Route path="/ik-raporlari" component={HRReports} />
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular" component={Announcements} />
           <Route path="/mesajlar" component={Mesajlar} />
+
+          {/* İK & Raporlar */}
+          <Route path="/ik" component={IK} />
+          <Route path="/izin-talepleri" component={LeaveRequests} />
+          <Route path="/mesai-talepleri" component={OvertimeRequests} />
+          <Route path="/ik-raporlari" component={HRReports} />
           <Route path="/kasa-raporlari" component={CashReports} />
-          <Route path="/vardiyalar" component={Vardiyalar} />
-          <Route path="/vardiya-checkin" component={VardiyaCheckin} />
-          <Route path="/vardiya-checkin-checkout" component={VardiyaCheckin} />
-          <Route path="/vardiya-sablonlari" component={VardiyaSablonlari} />
-          <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
-          <Route path="/hq-destek" component={HQSupport} />
-          <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/performans" component={Performance} />
+
+          {/* Kalite & Denetim */}
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
-          <Route path="/misafir-geri-bildirim" component={MisafirGeriBildirim} />
-          <Route path="/sikayetler" component={Sikayetler} />
-          <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
-          <Route path="/franchise-acilis" component={FranchiseAcilis} />
           <Route path="/denetim-sablonlari" component={DenetimSablonlari} />
           <Route path="/denetimler" component={Denetimler} />
           <Route path="/denetim/:id" component={DenetimYurutme} />
+
+          {/* Müşteri İlişkileri */}
+          <Route path="/misafir-geri-bildirim" component={MisafirGeriBildirim} />
+          <Route path="/sikayetler" component={Sikayetler} />
+
+          {/* Yönetim (HQ-only) */}
+          <Route path="/hq-destek" component={HQSupport} />
+          <Route path="/ai-asistan" component={AIAssistant} />
+          <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
+          <Route path="/franchise-acilis" component={FranchiseAcilis} />
           <Route path="/admin/seed" component={AdminSeed} />
           <Route path="/yonetim/menu" component={AdminMenuManagement} />
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
