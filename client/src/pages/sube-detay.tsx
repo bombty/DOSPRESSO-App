@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -122,14 +122,14 @@ export default function SubeDetayPage() {
   });
 
   // Initialize form values when data loads
-  useState(() => {
+  useEffect(() => {
     if (branchData?.branch) {
       setLatitude(branchData.branch.shiftCornerLatitude || "");
       setLongitude(branchData.branch.shiftCornerLongitude || "");
       setGeoRadius(branchData.branch.geoRadius?.toString() || "50");
       setWifiSsid(branchData.branch.wifiSsid || "");
     }
-  });
+  }, [branchData]);
 
   if (branchLoading) {
     return <div className="flex items-center justify-center h-full">Yükleniyor...</div>;

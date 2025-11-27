@@ -1117,6 +1117,12 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
     queryKey: ['/api/shift-attendance/today'],
   });
 
+  // Auto-refetch attendance when tab is active
+  useEffect(() => {
+    const interval = setInterval(() => refetchAttendance(), 5000);
+    return () => clearInterval(interval);
+  }, [refetchAttendance]);
+
   const { data: myShifts } = useQuery<ShiftWithRelations[]>({
     queryKey: ['/api/shifts/my'],
   });
