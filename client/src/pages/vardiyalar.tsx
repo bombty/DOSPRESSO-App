@@ -1375,36 +1375,31 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   }, [isCheckedIn, todayAttendance?.checkInTime]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Vardiya Giriş/Çıkış</h2>
-          <p className="text-muted-foreground">
-            {format(new Date(), "d MMMM yyyy, EEEE", { locale: tr })}
-          </p>
-        </div>
+        <h2 className="text-2xl font-bold">Vardiya Giriş/Çıkış</h2>
         {locationStatus === 'idle' && (
-          <Button variant="outline" onClick={checkLocation} data-testid="button-check-location">
+          <Button variant="outline" onClick={checkLocation} size="sm" data-testid="button-check-location">
             <MapPin className="w-4 h-4 mr-2" />
-            Konumu Kontrol Et
+            Konum
           </Button>
         )}
         {locationStatus === 'checking' && (
           <Badge variant="secondary">
             <Timer className="w-4 h-4 mr-2 animate-spin" />
-            Konum alınıyor...
+            Alınıyor...
           </Badge>
         )}
         {locationStatus === 'success' && (
           <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
             <CheckCircle2 className="w-4 h-4 mr-2" />
-            Konum doğrulandı ({locationConfidence}%)
+            Doğrulandı
           </Badge>
         )}
         {locationStatus === 'failed' && (
           <Badge variant="destructive">
             <AlertCircle className="w-4 h-4 mr-2" />
-            Konum alınamadı
+            Başarısız
           </Badge>
         )}
       </div>
@@ -1414,11 +1409,8 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
               <UserCheck className="h-5 w-5" />
-              Aktif Vardiya
+              Aktif Vardiya - {format(parseISO(todayAttendance.checkInTime), "HH:mm", { locale: tr })}
             </CardTitle>
-            <CardDescription className="text-green-600 dark:text-green-400">
-              {format(parseISO(todayAttendance.checkInTime), "d MMMM HH:mm", { locale: tr })} saatinde giriş yaptınız
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1448,7 +1440,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
               <CheckCircle2 className="h-5 w-5" />
-              Bugünkü Vardiya Tamamlandı
+              Vardiya Tamamlandı
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1516,11 +1508,8 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <QrCode className="h-5 w-5" />
-                  QR Kod ile Giriş
+                  QR Kod ile Giriş Yap
                 </CardTitle>
-                <CardDescription>
-                  Şubenizdeki QR kodu okutarak hızlı giriş yapın
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button 
@@ -1540,8 +1529,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
           {todayShifts.length > 0 && (
             <Card data-testid="card-today-shifts">
               <CardHeader>
-                <CardTitle>Bugünkü Vardiyalarınız</CardTitle>
-                <CardDescription>Manuel giriş için bir vardiya seçin</CardDescription>
+                <CardTitle>Bugünkü Vardiyaları Seç</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {todayShifts.map((shift) => {
@@ -1580,8 +1568,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
           {todayShifts.length === 0 && (
             <Card data-testid="card-no-shifts">
               <CardHeader>
-                <CardTitle>Vardiyasız Giriş</CardTitle>
-                <CardDescription>Şube seçerek giriş yapın</CardDescription>
+                <CardTitle>Şube Seçerek Giriş Yap</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-1 gap-3">
