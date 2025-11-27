@@ -622,7 +622,6 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={item.url}>
                                 <SidebarMenuSubButton asChild isActive={location === item.url}>
                                   <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                                    <item.icon />
                                     <span>{item.titleTr}</span>
                                   </Link>
                                 </SidebarMenuSubButton>
@@ -661,7 +660,6 @@ export function AppSidebar() {
                               <SidebarMenuSubItem key={item.url}>
                                 <SidebarMenuSubButton asChild isActive={location === item.url}>
                                   <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                                    <item.icon />
                                     <span>{item.titleTr}</span>
                                   </Link>
                                 </SidebarMenuSubButton>
