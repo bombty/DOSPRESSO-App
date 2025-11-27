@@ -23,7 +23,12 @@ import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Task, EquipmentFault, PerformanceMetric, AISummaryResponse, SummaryCategoryType, User as UserType, Branch, TrainingModule, UserTrainingProgress } from "@shared/schema";
-import { isBranchRole, isHQRole } from "@shared/schema";
+import { isBranchRole, isHQRole, UserRole } from "@shared/schema";
+import { AdminDashboard } from "@/components/dashboards/admin-dashboard";
+import { ManagerDashboard } from "@/components/dashboards/manager-dashboard";
+import { BaristaDashboard } from "@/components/dashboards/barista-dashboard";
+import { TeknikDashboard } from "@/components/dashboards/teknik-dashboard";
+import { MuhasebeDashboard } from "@/components/dashboards/muhasebe-dashboard";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -540,6 +545,67 @@ export default function Dashboard() {
     }
   };
 
+  // Role-based dashboard selection
+  const getRoleBasedDashboard = () => {
+    if (!user?.role) return null;
+    const role = user.role.toLowerCase();
+    
+    if (role === 'admin' || role === 'muhasebe' || role === 'satinalma') {
+      return (
+        <AdminDashboard
+          compositeBranchScores={compositeBranchScores || []}
+          isLoading={compositeScoresLoading}
+          totalBranches={branches?.length || 0}
+          totalFaults={faults?.length || 0}
+          openFaults={openFaults}
+          branchScoresTimeRange={branchScoresTimeRange}
+          onTimeRangeChange={setBranchScoresTimeRange}
+        />
+      );
+    } else if (role === 'supervisor' || role === 'supervisor_buddy' || role === 'coach') {
+      return (
+        <ManagerDashboard
+          branchName={user?.branchId ? getBranchName(user.branchId) : undefined}
+          completedTasks={completedTasks}
+          pendingTasks={pendingTasks}
+          openFaults={openFaults}
+          completionRate={completionRate}
+          teamPerformance={teamPerformance}
+          isLoading={teamPerformanceLoading || tasksLoading}
+        />
+      );
+    } else if (role === 'barista' || role === 'bar_buddy' || role === 'stajyer') {
+      return (
+        <BaristaDashboard
+          completedTasks={completedTasks}
+          pendingTasks={pendingTasks}
+          tasks={tasks}
+          isLoading={tasksLoading}
+        />
+      );
+    } else if (role === 'teknik') {
+      return (
+        <TeknikDashboard
+          openFaults={openFaults}
+          totalFaults={faults?.length || 0}
+          faults={faults}
+          isLoading={faultsLoading}
+        />
+      );
+    } else if (role === 'muhasebe') {
+      return (
+        <MuhasebeDashboard
+          compositeBranchScores={compositeBranchScores || []}
+          totalBranches={branches?.length || 0}
+          faults={faults}
+          isLoading={compositeScoresLoading || faultsLoading}
+        />
+      );
+    }
+    
+    return null;
+  };
+
   return (
     <div className="space-y-3 md:space-y-6">
       <div className="flex items-center justify-between">
@@ -602,6 +668,11 @@ export default function Dashboard() {
 
       <AnnouncementBanner />
 
+      {/* Role-Based Dashboard Content */}
+      {getRoleBasedDashboard()}
+
+      {/* Legacy Dashboard Below (Hidden on Role-Specific Views) */}
+      {(!user?.role || (user?.role && !['admin', 'muhasebe', 'satinalma', 'supervisor', 'supervisor_buddy', 'coach', 'barista', 'bar_buddy', 'stajyer', 'teknik'].includes(user.role.toLowerCase()))) && (
       <div className="grid gap-2 grid-cols-3 sm:gap-3 md:grid-cols-5">
         <Card 
           className="cursor-pointer hover-elevate transition-all border-l-4 border-l-green-500" 
@@ -705,6 +776,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Akademi Section - Compact */}
       <Card 
