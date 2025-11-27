@@ -6337,7 +6337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const { z } = await import('zod');
       const manualCheckInSchema = z.object({
-        shiftId: z.number(),
+        shiftId: z.coerce.number(),
         checkInMethod: z.enum(['manual', 'qr']).default('manual'),
         latitude: z.number().optional(),
         longitude: z.number().optional(),
