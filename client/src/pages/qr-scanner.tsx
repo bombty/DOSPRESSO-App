@@ -123,6 +123,26 @@ export default function QRScanner() {
                   variant: "destructive",
                 });
               }
+            } else if (decodedText.match(/^DOSPRESSO-EQ-\d+$/)) {
+              // Legacy equipment QR format (backwards compatibility)
+              const match = decodedText.match(/DOSPRESSO-EQ-(\d+)$/);
+              if (match && match[1]) {
+                const equipmentId = match[1];
+                setLastQRType('equipment');
+                toast({
+                  title: "Başarılı",
+                  description: "Arıza bildirimi sayfasına yönlendiriliyorsunuz...",
+                });
+                html5QrCode.stop().then(() => {
+                  setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
+                });
+              } else {
+                toast({
+                  title: "Hata",
+                  description: "Geçersiz ekipman QR kodu",
+                  variant: "destructive",
+                });
+              }
             } else {
               toast({
                 title: "Hata",
