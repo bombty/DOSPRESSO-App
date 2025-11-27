@@ -7,7 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { useAuth } from "@/hooks/useAuth";
-import logoPath from "@assets/IMG_5044_1764273850958.png";
+import logoPath from "@assets/IMG_5044_1764274022052.jpeg";
 import FaultHub from "@/pages/ariza";
 import FaultDetail from "@/pages/ariza-detay";
 import EquipmentAnalytics from "@/pages/ekipman-analitics";
