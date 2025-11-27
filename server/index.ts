@@ -7,6 +7,7 @@ import { seedRolePermissions } from "./seed-role-permissions";
 import { seedPermissionModules } from "./seed-permission-modules";
 import { seedAdminMenu } from "./seed-admin-menu";
 import { seedServiceRequests } from "./seed-service-requests";
+import { startWeeklyBackupScheduler, performHealthCheck } from "./backup";
 
 const app = express();
 
@@ -116,6 +117,17 @@ app.use((req, res, next) => {
     
     // Start SLA check system (runs every 15 minutes)
     startSLACheckSystem();
+    
+    // Start weekly backup scheduler (runs every Sunday at midnight Turkey time)
+    startWeeklyBackupScheduler();
+    
+    // Perform initial health check
+    performHealthCheck().then(health => {
+      log(`🏥 Sistem sağlık durumu: ${health.status.toUpperCase()}`);
+      health.details.forEach(d => log(`   ${d}`));
+    }).catch(err => {
+      console.error('Health check hatası:', err);
+    });
   });
 })();
 

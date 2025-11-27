@@ -98,11 +98,13 @@ const setCachedResponse = (key: string, data: any, ttlSeconds: number = 60) => {
   responseCache.set(key, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
 };
 const invalidateCache = (pattern: string) => {
-  for (const key of responseCache.keys()) {
+  const keysToDelete: string[] = [];
+  responseCache.forEach((_, key) => {
     if (key.includes(pattern)) {
-      responseCache.delete(key);
+      keysToDelete.push(key);
     }
-  }
+  });
+  keysToDelete.forEach(key => responseCache.delete(key));
 };
 
 // Global type declarations for runtime state
@@ -1456,7 +1458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (fault.priority === "kritik") {
         try {
           const hqTechUsers = await storage.getUsersByRole("teknik");
-          const branch = faultBranchId ? await storage.getBranchById(faultBranchId) : null;
+          const branch = faultBranchId ? await storage.getBranch(faultBranchId) : null;
           const equipment = fault.equipmentId ? await storage.getEquipmentById(fault.equipmentId) : null;
 
           // Send in-app notifications to all HQ tech team members
@@ -1465,7 +1467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               userId: techUser.id,
               type: "critical_fault",
               title: "KRİTİK ARIZA UYARISI",
-              message: `${branch?.name || "Şube"} - ${equipment?.equipmentName || "Ekipman"} için kritik arıza rapor edildi (#${fault.id})`,
+              message: `${branch?.name || "Şube"} - ${equipment?.equipmentType || "Ekipman"} için kritik arıza rapor edildi (#${fault.id})`,
               link: `/ariza-yonetim`,
               isRead: false,
             });
@@ -1478,6 +1480,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Don't fail the fault creation if notifications fail
         }
       }
+      
+      // Invalidate equipment cache as health scores may change
+      invalidateCache('equipment');
+      invalidateCache('critical-equipment');
       
       res.json(fault);
     } catch (error: any) {
@@ -1631,6 +1637,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const fault = await storage.changeFaultStage(id, stage, userId, notes);
+      
+      // Invalidate caches
+      invalidateCache('equipment');
+      invalidateCache('critical-equipment');
+      
       res.json(fault);
     } catch (error) {
       console.error("Error changing fault stage:", error);
@@ -1673,10 +1684,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (assignedTo !== undefined || actualCost !== undefined) {
         // Just update the fault without stage change
         const updated = await storage.updateFault(id, updateData);
+        // Invalidate caches
+        invalidateCache('equipment');
+        invalidateCache('critical-equipment');
         return res.json(updated);
       }
 
       const updated = await storage.getFault(id);
+      
+      // Invalidate caches
+      invalidateCache('equipment');
+      invalidateCache('critical-equipment');
+      
       res.json(updated);
     } catch (error) {
       console.error("Error updating fault:", error);
@@ -1862,6 +1881,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const qrCodeUrl = await generateEquipmentQR(equipment.id);
       await storage.updateEquipment(equipment.id, { qrCodeUrl });
       
+      // Invalidate equipment cache
+      invalidateCache('equipment');
+      invalidateCache('critical-equipment');
+      
       res.json({ ...equipment, qrCodeUrl });
     } catch (error) {
       console.error("Error creating equipment:", error);
@@ -1899,6 +1922,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const equipment = await storage.updateEquipment(id, validatedData);
+      
+      // Invalidate equipment cache
+      invalidateCache('equipment');
+      invalidateCache('critical-equipment');
+      
       res.json(equipment);
     } catch (error) {
       console.error("Error updating equipment:", error);
@@ -10042,6 +10070,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   startReminderSystem();
+
+  // System health and backup endpoints
+  app.get('/api/system/health', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only admin and genel_mudur can view system health
+      if (user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ message: 'Sistem durumunu görüntüleme yetkiniz yok' });
+      }
+      
+      const { performHealthCheck, getBackupStatus, getDataStats } = await import('./backup');
+      
+      const [health, backupStatus, dataStats] = await Promise.all([
+        performHealthCheck(),
+        getBackupStatus(),
+        getDataStats(),
+      ]);
+      
+      res.json({
+        health,
+        backupStatus,
+        dataStats,
+        serverTime: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("Error fetching system health:", error);
+      res.status(500).json({ message: "Sistem durumu alınırken hata oluştu" });
+    }
+  });
+  
+  app.post('/api/system/backup', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only admin can trigger manual backup
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Manuel backup tetikleme yetkiniz yok' });
+      }
+      
+      const { triggerManualBackup } = await import('./backup');
+      const backupRecord = await triggerManualBackup();
+      
+      res.json({
+        success: backupRecord.success,
+        backupId: backupRecord.id,
+        timestamp: backupRecord.timestamp,
+        recordCounts: backupRecord.recordCounts,
+        durationMs: backupRecord.durationMs,
+        errorMessage: backupRecord.errorMessage,
+      });
+    } catch (error: any) {
+      console.error("Error triggering manual backup:", error);
+      res.status(500).json({ message: "Backup tetiklenirken hata oluştu" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

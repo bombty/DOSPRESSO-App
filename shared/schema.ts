@@ -3302,3 +3302,30 @@ export const updateRoleModulePermissionSchema = insertRoleModulePermissionSchema
 export type InsertRoleModulePermission = z.infer<typeof insertRoleModulePermissionSchema>;
 export type UpdateRoleModulePermission = z.infer<typeof updateRoleModulePermissionSchema>;
 export type RoleModulePermission = typeof roleModulePermissions.$inferSelect;
+
+// ========================================
+// BACKUP RECORDS - Yedekleme Kayıtları
+// ========================================
+
+export const backupRecords = pgTable("backup_records", {
+  id: serial("id").primaryKey(),
+  backupId: varchar("backup_id", { length: 100 }).notNull().unique(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  success: boolean("success").notNull().default(false),
+  tablesBackedUp: text("tables_backed_up").array().notNull().default(sql`ARRAY[]::text[]`),
+  recordCounts: jsonb("record_counts").notNull().default('{}'),
+  errorMessage: text("error_message"),
+  durationMs: integer("duration_ms").notNull().default(0),
+  backupType: varchar("backup_type", { length: 20 }).notNull().default('weekly'), // weekly, manual, automatic
+}, (table) => [
+  index("backup_records_timestamp_idx").on(table.timestamp),
+  index("backup_records_success_idx").on(table.success),
+]);
+
+export const insertBackupRecordSchema = createInsertSchema(backupRecords).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertBackupRecord = z.infer<typeof insertBackupRecordSchema>;
+export type BackupRecord = typeof backupRecords.$inferSelect;
