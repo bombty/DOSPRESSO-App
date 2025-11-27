@@ -602,26 +602,24 @@ export default function Dashboard() {
 
       <AnnouncementBanner />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-2 grid-cols-3 sm:gap-3 md:grid-cols-5">
         <Card 
           className="cursor-pointer hover-elevate transition-all" 
           onClick={() => setLocation("/gorevler?status=onaylandi")}
           data-testid="card-completed-tasks"
         >
-          <CardContent className="pt-4 text-center">
+          <CardContent className="pt-2 pb-2 text-center">
             {tasksLoading ? (
-              <Skeleton className="h-12 w-12 mx-auto" />
+              <Skeleton className="h-10 w-10 mx-auto" />
             ) : (
               <>
-                <div className="flex justify-center mb-2">
-                  <CheckCircle className="h-7 w-7 text-primary" />
+                <div className="flex justify-center mb-1">
+                  <CheckCircle className="h-5 w-5 text-primary" />
                 </div>
-                <div className="text-2xl font-bold" data-testid="text-completed-tasks">
+                <div className="text-xl font-bold" data-testid="text-completed-tasks">
                   {completedTasks}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tamamlanan Görevler
-                </p>
+                <p className="text-xs text-muted-foreground">Tamamlandı</p>
               </>
             )}
           </CardContent>
@@ -632,20 +630,18 @@ export default function Dashboard() {
           onClick={() => setLocation("/gorevler?status=beklemede")}
           data-testid="card-pending-tasks"
         >
-          <CardContent className="pt-4 text-center">
+          <CardContent className="pt-2 pb-2 text-center">
             {tasksLoading ? (
-              <Skeleton className="h-12 w-12 mx-auto" />
+              <Skeleton className="h-10 w-10 mx-auto" />
             ) : (
               <>
-                <div className="flex justify-center mb-2">
-                  <Clock className="h-7 w-7 text-accent" />
+                <div className="flex justify-center mb-1">
+                  <Clock className="h-5 w-5 text-accent" />
                 </div>
-                <div className="text-2xl font-bold" data-testid="text-pending-tasks">
+                <div className="text-xl font-bold" data-testid="text-pending-tasks">
                   {pendingTasks}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {overdueTasks > 0 ? `${overdueTasks} Gecikmiş` : "Beklemede"}
-                </p>
+                <p className="text-xs text-muted-foreground">Beklemede</p>
               </>
             )}
           </CardContent>
@@ -656,83 +652,73 @@ export default function Dashboard() {
           onClick={() => setLocation("/ekipman-arizalar")}
           data-testid="card-open-faults"
         >
-          <CardContent className="pt-4 text-center">
+          <CardContent className="pt-2 pb-2 text-center">
             {faultsLoading ? (
-              <Skeleton className="h-12 w-12 mx-auto" />
+              <Skeleton className="h-10 w-10 mx-auto" />
             ) : (
               <>
-                <div className="flex justify-center mb-2">
-                  <AlertTriangle className="h-7 w-7 text-destructive" />
+                <div className="flex justify-center mb-1">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
                 </div>
-                <div className="text-2xl font-bold" data-testid="text-open-faults">
+                <div className="text-xl font-bold" data-testid="text-open-faults">
                   {openFaults}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Açık Arızalar
-                </p>
+                <p className="text-xs text-muted-foreground">Arızalar</p>
               </>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-4 text-center">
+          <CardContent className="pt-2 pb-2 text-center">
             {metricsLoading ? (
-              <Skeleton className="h-12 w-12 mx-auto" />
+              <Skeleton className="h-10 w-10 mx-auto" />
             ) : (
               <>
-                <div className="flex justify-center mb-2">
-                  <TrendingUp className="h-7 w-7 text-primary" />
+                <div className="flex justify-center mb-1">
+                  <TrendingUp className="h-5 w-5 text-primary" />
                 </div>
-                <div className="text-2xl font-bold" data-testid="text-completion-rate">
+                <div className="text-xl font-bold" data-testid="text-completion-rate">
                   %{completionRate}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tamamlanma Oranı
-                </p>
+                <p className="text-xs text-muted-foreground">Oran</p>
               </>
             )}
           </CardContent>
         </Card>
 
         <Card data-testid="card-performance-score">
-          <CardContent className="pt-4 text-center">
+          <CardContent className="pt-2 pb-2 text-center">
             {performanceLoading ? (
-              <Skeleton className="h-12 w-12 mx-auto" />
+              <Skeleton className="h-10 w-10 mx-auto" />
             ) : (
               <>
-                <div className="flex justify-center mb-2">
-                  <Award className="h-7 w-7 text-accent-foreground" />
+                <div className="flex justify-center mb-1">
+                  <Award className="h-5 w-5 text-accent-foreground" />
                 </div>
-                <div className="text-2xl font-bold" data-testid="text-performance-score">
+                <div className="text-xl font-bold" data-testid="text-performance-score">
                   {weeklyPerformanceScore !== null ? weeklyPerformanceScore : "-"}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Performans Skoru
-                </p>
+                <p className="text-xs text-muted-foreground">Performans</p>
               </>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Akademi Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card 
-          className="cursor-pointer hover-elevate transition-all" 
-          onClick={() => setLocation("/training")}
-          data-testid="card-akademi"
-        >
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5" />
-              Akademi - Eğitimlerim
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Zorunlu ve devam eden eğitimleriniz
-            </p>
-          </CardHeader>
-          <CardContent>
+      {/* Akademi Section - Compact */}
+      <Card 
+        className="cursor-pointer hover-elevate transition-all" 
+        onClick={() => setLocation("/training")}
+        data-testid="card-akademi"
+      >
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <GraduationCap className="h-4 w-4" />
+            Eğitimler
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
             {modulesLoading || progressLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-4 w-full" />
@@ -813,11 +799,10 @@ export default function Dashboard() {
               </div>
             )}
           </CardContent>
-        </Card>
-      </div>
+      </Card>
 
-      {/* Analytics Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* Analytics Charts - Hidden on Mobile */}
+      <div className="grid gap-6 md:grid-cols-2 hidden md:grid">
         {/* Task Completion Trend Chart */}
         <Card data-testid="card-task-trend-chart">
           <CardHeader>
@@ -890,7 +875,7 @@ export default function Dashboard() {
 
       {canAccessAISummaries && (
         <>
-          <Card>
+          <Card className="hidden lg:block">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5" />
@@ -960,7 +945,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hidden lg:block">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
@@ -1036,8 +1021,8 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* Performance Details Section */}
-      <Card data-testid="card-performance-details">
+      {/* Performance Details Section - Hidden on Mobile */}
+      <Card data-testid="card-performance-details" className="hidden md:block">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Award className="h-5 w-5" />
@@ -1092,9 +1077,9 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Team Performance Section - Supervisor/Branch Manager Only */}
+      {/* Team Performance Section - Supervisor/Branch Manager Only - Hidden on Mobile */}
       {user && isBranchRole(user.role as any) && (
-        <Card data-testid="card-team-performance">
+        <Card data-testid="card-team-performance" className="hidden md:block">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
@@ -1153,9 +1138,9 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Branch Performance Table - HQ Only */}
+      {/* Branch Performance Table - HQ Only - Hidden on Mobile */}
       {user && isHQRole(user.role as any) && (
-        <Card data-testid="card-branches-performance">
+        <Card data-testid="card-branches-performance" className="hidden lg:block">
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
@@ -1275,33 +1260,29 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Son Görevler</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Son Görevler</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {tasksLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+              <div className="space-y-1">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
               </div>
             ) : (
-              <div className="space-y-3">
-                {tasks?.slice(0, 5).map((task) => (
+              <div className="space-y-1 text-sm">
+                {tasks?.slice(0, 2).map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between border-b pb-2 last:border-0 cursor-pointer hover-elevate rounded-md p-2 -m-2"
+                    className="flex items-center justify-between border-b pb-1 last:border-0 cursor-pointer hover-elevate rounded-md p-1 -m-1"
                     onClick={() => handleTaskClick(task)}
                     data-testid={`task-item-clickable-${task.id}`}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
+                      <p className="text-xs font-medium truncate">
                         {task.description}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(task.createdAt!).toLocaleDateString("tr-TR")}
                       </p>
                     </div>
                     <Badge
@@ -1328,31 +1309,27 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Son Raporlanan Sorunlar</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Son Arızalar</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {faultsLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+              <div className="space-y-1">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
               </div>
             ) : (
-              <div className="space-y-3">
-                {faults?.slice(0, 5).map((fault) => (
+              <div className="space-y-1 text-sm">
+                {faults?.slice(0, 2).map((fault) => (
                   <div
                     key={fault.id}
-                    className="flex items-center justify-between border-b pb-2 last:border-0 cursor-pointer hover-elevate rounded-md p-2 -m-2"
+                    className="flex items-center justify-between border-b pb-1 last:border-0 cursor-pointer hover-elevate rounded-md p-1 -m-1"
                     onClick={() => handleFaultClick(fault)}
                     data-testid={`fault-item-clickable-${fault.id}`}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
+                      <p className="text-xs font-medium truncate">
                         {fault.equipmentName}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {fault.description}
                       </p>
                     </div>
                     <Badge
