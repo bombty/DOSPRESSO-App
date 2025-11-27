@@ -32,34 +32,49 @@ export function UniversalQRScanner({ isOpen, onOpenChange }: UniversalQRScannerP
       return;
     }
 
-    // Start scanner when dialog opens
-    setScanStatus('scanning');
-    setScanMessage('');
-    
-    const scanner = new Html5QrcodeScanner(
-      containerId,
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1,
-      },
-      false
-    );
-
-    scanner.render(
-      (decodedText) => {
-        console.log("[QR Scanner] Decoded:", decodedText);
-        handleQRData(decodedText);
-        scanner.pause();
-      },
-      (error) => {
-        // Ignore errors - scanner will retry
+    // Small delay to ensure DOM is ready after Dialog renders
+    const timer = setTimeout(() => {
+      const container = document.getElementById(containerId);
+      if (!container) {
+        console.log("[QR Scanner] Container not ready yet");
+        return;
       }
-    );
 
-    scannerRef.current = scanner;
+      setScanStatus('scanning');
+      setScanMessage('');
+      
+      try {
+        const scanner = new Html5QrcodeScanner(
+          containerId,
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1,
+          },
+          false
+        );
+
+        scanner.render(
+          (decodedText) => {
+            console.log("[QR Scanner] Decoded:", decodedText);
+            handleQRData(decodedText);
+            scanner.pause();
+          },
+          (error) => {
+            // Ignore errors - scanner will retry
+          }
+        );
+
+        scannerRef.current = scanner;
+      } catch (error) {
+        console.error("[QR Scanner] Initialization error:", error);
+        setScanStatus('error');
+        setScanMessage('Scanner başlatılamadı');
+      }
+    }, 100);
 
     return () => {
+      clearTimeout(timer);
       if (scannerRef.current) {
         try {
           scannerRef.current.clear();
