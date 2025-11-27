@@ -413,7 +413,7 @@ export default function Vardiyalar() {
                             <SelectContent>
                               {branchUsers?.map((u) => (
                                 <SelectItem key={u.id} value={u.id}>
-                                  {u.fullName}
+                                  {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username || 'Bilinmeyen'}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -863,7 +863,7 @@ export default function Vardiyalar() {
                           <div className="flex items-center gap-3 flex-1">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                             <div className="flex-1">
-                              <p className="font-medium">{user?.fullName || 'Bilinmeyen'}</p>
+                              <p className="font-medium">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || 'Bilinmeyen'}</p>
                               <div className="flex gap-4 text-xs text-muted-foreground mt-1">
                                 <span>📍 {attendance.location_confidence ? Math.round(attendance.location_confidence) + '%' : 'Bilinmeyen'}</span>
                                 <span>⏱️ {duration} dakika</span>
@@ -1070,7 +1070,7 @@ export default function Vardiyalar() {
                       <SelectContent>
                         {branchUsers?.map((u) => (
                           <SelectItem key={u.id} value={u.id}>
-                            {u.fullName}
+                            {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username || 'Bilinmeyen'}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1175,6 +1175,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationConfidence, setLocationConfidence] = useState(0);
   const [scannedShiftId, setScannedShiftId] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   const { data: todayAttendance, refetch: refetchAttendance } = useQuery<any>({
