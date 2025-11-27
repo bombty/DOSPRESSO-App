@@ -469,6 +469,9 @@ export const branches = pgTable("branches", {
   shiftCornerPhotoUrl: text("shift_corner_photo_url"),
   shiftCornerLatitude: numeric("shift_corner_latitude", { precision: 10, scale: 7 }),
   shiftCornerLongitude: numeric("shift_corner_longitude", { precision: 10, scale: 7 }),
+  qrCodeToken: varchar("qr_code_token", { length: 64 }),
+  geoRadius: integer("geo_radius").default(50),
+  wifiSsid: varchar("wifi_ssid", { length: 100 }),
 });
 
 export const insertBranchSchema = createInsertSchema(branches).omit({
@@ -1809,6 +1812,9 @@ export const shiftAttendance = pgTable("shift_attendance", {
   complianceScore: integer("compliance_score").default(100), // 0-100
   status: varchar("status", { length: 20 }).notNull().default("scheduled"), // scheduled, checked_in, on_break, checked_out, absent, late
   notes: text("notes"),
+  // Check-in Method & Verification
+  checkInMethod: varchar("check_in_method", { length: 20 }).default("manual"),
+  locationConfidenceScore: integer("location_confidence_score"),
   // Check-in Photo & Location Verification fields
   checkInPhotoUrl: text("check_in_photo_url"),
   checkInLatitude: numeric("check_in_latitude", { precision: 10, scale: 7 }),
