@@ -1269,6 +1269,22 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
     });
   };
 
+  const handleBranchCheckIn = (branchId: number) => {
+    if (!currentLocation) {
+      checkLocation();
+      toast({ title: "Konum kontrol ediliyor", description: "Lütfen bekleyin..." });
+      return;
+    }
+    
+    checkInMutation.mutate({
+      branchId: branchId,
+      checkInMethod: 'manual',
+      latitude: currentLocation.lat,
+      longitude: currentLocation.lng,
+      locationConfidenceScore: locationConfidence,
+    });
+  };
+
   const todayShifts = myShifts?.filter(s => {
     const shiftDate = parseISO(s.shiftDate);
     return isToday(shiftDate);
@@ -1450,13 +1466,26 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
 
           {todayShifts.length === 0 && (
             <Card data-testid="card-no-shifts">
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <CalendarIcon className="h-16 w-16 mx-auto text-muted-foreground/50" />
-                  <p className="mt-4 text-lg font-medium">Bugün için planlı vardiya yok</p>
-                  <p className="text-sm text-muted-foreground">
-                    Vardiya yöneticinizle iletişime geçin
-                  </p>
+              <CardHeader>
+                <CardTitle>Vardiyasız Giriş</CardTitle>
+                <CardDescription>Şube seçerek giriş yapın</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
+                  <Button
+                    onClick={() => {
+                      if (user?.branchId) {
+                        handleBranchCheckIn(user.branchId);
+                      } else {
+                        toast({ title: "Hata", description: "Şube bilgisi bulunamadı", variant: "destructive" });
+                      }
+                    }}
+                    disabled={checkInMutation.isPending || locationStatus === 'checking'}
+                    data-testid="button-checkin-branch"
+                    className="w-full"
+                  >
+                    {checkInMutation.isPending ? "Giriş yapılıyor..." : "Şubeye Giriş Yap"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

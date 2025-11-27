@@ -6331,44 +6331,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return R * c;
   };
 
-  // POST /api/shift-attendance/manual-check-in - Manual check-in with location verification
+  // POST /api/shift-attendance/manual-check-in - Manual check-in with location verification (with optional shift)
   app.post('/api/shift-attendance/manual-check-in', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
       const { z } = await import('zod');
       const manualCheckInSchema = z.object({
-        shiftId: z.coerce.number(),
+        shiftId: z.coerce.number().optional(),
+        branchId: z.coerce.number().optional(),
         checkInMethod: z.enum(['manual', 'qr']).default('manual'),
         latitude: z.number().optional(),
         longitude: z.number().optional(),
         locationConfidenceScore: z.number().min(0).max(100).optional(),
       });
       
-      const { shiftId, checkInMethod, latitude, longitude, locationConfidenceScore } = manualCheckInSchema.parse(req.body);
+      const { shiftId, branchId, checkInMethod, latitude, longitude, locationConfidenceScore } = manualCheckInSchema.parse(req.body);
       
-      const shift = await storage.getShift(shiftId);
-      if (!shift) {
-        return res.status(404).json({ message: "Vardiya bulunamadı" });
-      }
+      let shift;
+      let targetBranchId;
       
-      if (shift.assignedToId !== user.id) {
-        return res.status(403).json({ message: "Bu vardiya size atanmamış" });
-      }
-      
-      const existingAttendances = await storage.getShiftAttendances(shiftId);
-      const userAttendance = existingAttendances.find(a => a.userId === user.id);
-      
-      if (userAttendance?.checkInTime) {
-        return res.status(400).json({ message: "Bu vardiyaya zaten giriş yaptınız" });
+      if (shiftId) {
+        shift = await storage.getShift(shiftId);
+        if (!shift) {
+          return res.status(404).json({ message: "Vardiya bulunamadı" });
+        }
+        
+        if (shift.assignedToId !== user.id) {
+          return res.status(403).json({ message: "Bu vardiya size atanmamış" });
+        }
+        targetBranchId = shift.branchId;
+      } else if (branchId) {
+        // Vardiyasız giriş - branchId kullanarak
+        const branch = await storage.getBranch(branchId);
+        if (!branch) {
+          return res.status(404).json({ message: "Şube bulunamadı" });
+        }
+        targetBranchId = branchId;
+      } else {
+        return res.status(400).json({ message: "Vardiya ID veya Şube ID zorunludur" });
       }
       
       // Geofence validation
-      if (latitude !== undefined && longitude !== undefined) {
-        const branch = await storage.getBranch(shift.branchId);
+      if (latitude !== undefined && longitude !== undefined && targetBranchId) {
+        const branch = await storage.getBranch(targetBranchId);
         if (branch && branch.shiftCornerLatitude && branch.shiftCornerLongitude) {
           const branchLat = parseFloat(branch.shiftCornerLatitude);
           const branchLon = parseFloat(branch.shiftCornerLongitude);
-          const radius = (branch.geoRadius || 50) * 1.5; // 1.5x radius for tolerance
+          const radius = (branch.geoRadius || 50) * 1.5;
           const distance = calculateDistance(latitude, longitude, branchLat, branchLon);
           
           if (distance > radius) {
@@ -6378,6 +6387,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               distance: Math.round(distance)
             });
           }
+        }
+      }
+      
+      let existingAttendances: any[] = [];
+      let userAttendance: any = null;
+      
+      if (shiftId) {
+        existingAttendances = await storage.getShiftAttendances(shiftId);
+        userAttendance = existingAttendances.find(a => a.userId === user.id);
+        
+        if (userAttendance?.checkInTime) {
+          return res.status(400).json({ message: "Bu vardiyaya zaten giriş yaptınız" });
         }
       }
       
@@ -6398,11 +6419,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       let attendance;
-      if (userAttendance) {
-        attendance = await storage.updateShiftAttendance(userAttendance.id, attendanceData);
+      if (shiftId) {
+        if (userAttendance) {
+          attendance = await storage.updateShiftAttendance(userAttendance.id, attendanceData);
+        } else {
+          attendance = await storage.createShiftAttendance({
+            shiftId: shiftId,
+            userId: user.id,
+            ...attendanceData,
+          });
+        }
       } else {
+        // Vardiyasız giriş - branchId ile branch attendance
         attendance = await storage.createShiftAttendance({
-          shiftId: shiftId,
+          shiftId: -Math.abs(branchId || 1),
           userId: user.id,
           ...attendanceData,
         });
