@@ -1155,9 +1155,12 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               } else {
                 toast({ title: "Hata", description: "Bugün için vardiya bulunamadı", variant: "destructive" });
               }
+            } else {
+              toast({ title: "Hata", description: "Bu bir vardiya QR kodu değil", variant: "destructive" });
             }
           } catch (err) {
             console.error("QR decode error:", err);
+            toast({ title: "Hata", description: "QR kod okunamadı, lütfen tekrar deneyin", variant: "destructive" });
           }
         },
         (error) => {
