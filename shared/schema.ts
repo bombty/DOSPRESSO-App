@@ -3316,7 +3316,7 @@ export const backupRecords = pgTable("backup_records", {
   recordCounts: jsonb("record_counts").notNull().default('{}'),
   errorMessage: text("error_message"),
   durationMs: integer("duration_ms").notNull().default(0),
-  backupType: varchar("backup_type", { length: 20 }).notNull().default('weekly'), // weekly, manual, automatic
+  backupType: varchar("backup_type", { length: 20 }).notNull().default('daily'), // daily, manual
 }, (table) => [
   index("backup_records_timestamp_idx").on(table.timestamp),
   index("backup_records_success_idx").on(table.success),
