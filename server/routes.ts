@@ -5456,9 +5456,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
-      const { shiftId, dateFrom, dateTo } = req.query;
+      const { shiftId, dateFrom, dateTo, status, branchId, date } = req.query;
       
       let records;
+      let targetBranchId = branchId ? parseInt(branchId) : undefined;
+      let targetDate = date;
       
       if (isHQRole(role)) {
         // HQ sees all attendance
@@ -5470,7 +5472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       } else if (role === 'supervisor' || role === 'supervisor_buddy') {
         // Supervisors see their branch
-        const branchId = assertBranchScope(user);
+        targetBranchId = targetBranchId || assertBranchScope(user);
         records = await storage.getShiftAttendances(
           shiftId ? parseInt(shiftId) : undefined,
           undefined,
@@ -5482,7 +5484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const filteredRecords = [];
         for (const record of records) {
           const shift = await storage.getShift(record.shiftId);
-          if (shift?.branchId === branchId) {
+          if (shift?.branchId === targetBranchId) {
             filteredRecords.push(record);
           }
         }
@@ -5495,6 +5497,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dateFrom,
           dateTo
         );
+      }
+      
+      // Filter by status (checked_in)
+      if (status === 'checked_in') {
+        records = records.filter(r => r.checkInTime && !r.checkOutTime);
+      }
+      
+      // Filter by date if provided
+      if (targetDate) {
+        records = records.filter(r => {
+          const checkInDate = r.checkInTime ? new Date(r.checkInTime).toISOString().split('T')[0] : null;
+          return checkInDate === targetDate;
+        });
       }
       
       res.json(records);
