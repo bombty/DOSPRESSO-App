@@ -77,9 +77,12 @@ export default function SubeDetayPage() {
   const isAdmin = user?.role && isHQRole(user.role as any);
 
   // Fetch active check-ins for this branch
+  const isSupervisor = user?.role === 'supervisor' || user?.role === 'supervisor_buddy';
+  const canViewActive = isAdmin || isSupervisor;
+  
   const { data: activeEmployees } = useQuery<any[]>({
     queryKey: ['/api/shift-attendance', 'active', branchId],
-    enabled: !!branchId && isAdmin,
+    enabled: !!branchId && canViewActive,
     refetchInterval: activeTab === 'canlı' ? 15000 : false,
     queryFn: async () => {
       const response = await fetch(`/api/shift-attendance?status=checked_in&branchId=${branchId}&date=${new Date().toISOString().split('T')[0]}`);
@@ -303,7 +306,7 @@ export default function SubeDetayPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="flex-wrap">
-          {isAdmin && (
+          {canViewActive && (
             <TabsTrigger value="canlı" data-testid="tab-active-employees">
               <span className="mr-1">🟢</span>
               Canlı ({activeEmployees?.length || 0})
