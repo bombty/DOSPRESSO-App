@@ -225,7 +225,6 @@ export default function NewFaultReport() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Seçim yapma</SelectItem>
                         {equipment
                           .filter((eq: Equipment) => eq.branchId === form.watch("branchId"))
                           .map((eq: Equipment) => (
