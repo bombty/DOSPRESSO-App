@@ -31,7 +31,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { 
   Plus, Calendar as CalendarIcon, Clock, Users, CheckCircle2, 
   AlertCircle, TrendingUp, FileText, QrCode, ArrowRight,
-  Sun, Moon, Sunset, UserCheck, UserX, Timer, Edit, Trash2, MoreHorizontal
+  Sun, Moon, Sunset, UserCheck, UserX, Timer, Edit, Trash2, MoreHorizontal,
+  MapPin
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { format, parseISO, startOfWeek, endOfWeek, isToday, isTomorrow, addDays, differenceInMinutes } from "date-fns";
@@ -444,7 +445,7 @@ export default function Vardiyalar() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-4 max-w-xl">
           <TabsTrigger value="overview" data-testid="tab-overview">
             <TrendingUp className="w-4 h-4 mr-2" />
             Genel Bakış
@@ -456,6 +457,10 @@ export default function Vardiyalar() {
           <TabsTrigger value="live" data-testid="tab-live">
             <Clock className="w-4 h-4 mr-2" />
             Canlı Takip
+          </TabsTrigger>
+          <TabsTrigger value="checkin" data-testid="tab-checkin">
+            <QrCode className="w-4 h-4 mr-2" />
+            Giriş/Çıkış
           </TabsTrigger>
         </TabsList>
 
@@ -886,15 +891,17 @@ export default function Vardiyalar() {
                     <p className="text-sm text-muted-foreground">QR kod ile hızlı giriş yapın</p>
                   </div>
                 </div>
-                <Link href="/vardiya-checkin">
-                  <Button data-testid="button-go-checkin">
-                    Giriş Yap
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
+                <Button data-testid="button-go-checkin" onClick={() => setActiveTab('checkin')}>
+                  Giriş Yap
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="checkin" className="space-y-6">
+          <CheckInContent user={user} toast={toast} />
         </TabsContent>
       </Tabs>
 
@@ -1096,6 +1103,291 @@ export default function Vardiyalar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function CheckInContent({ user, toast }: { user: any; toast: any }) {
+  const [scannerActive, setScannerActive] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'checking' | 'success' | 'failed'>('idle');
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationConfidence, setLocationConfidence] = useState(0);
+
+  const { data: todayAttendance, refetch: refetchAttendance } = useQuery<any>({
+    queryKey: ['/api/shift-attendance/today'],
+  });
+
+  const { data: myShifts } = useQuery<ShiftWithRelations[]>({
+    queryKey: ['/api/shifts/my'],
+  });
+
+  const checkInMutation = useMutation({
+    mutationFn: async (data: { shiftId: number; checkInMethod: string; latitude?: number; longitude?: number; locationConfidenceScore?: number }) => {
+      return await apiRequest('POST', '/api/shift-attendance/manual-check-in', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-attendance/today'] });
+      toast({ title: "Başarılı", description: "Vardiya girişi yapıldı" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Giriş yapılamadı", variant: "destructive" });
+    },
+  });
+
+  const checkOutMutation = useMutation({
+    mutationFn: async (data: { attendanceId: number }) => {
+      return await apiRequest('POST', '/api/shift-attendance/manual-check-out', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-attendance/today'] });
+      toast({ title: "Başarılı", description: "Vardiya çıkışı yapıldı" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Çıkış yapılamadı", variant: "destructive" });
+    },
+  });
+
+  const checkLocation = () => {
+    setLocationStatus('checking');
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setLocationConfidence(position.coords.accuracy < 50 ? 100 : position.coords.accuracy < 100 ? 80 : 60);
+          setLocationStatus('success');
+        },
+        (error) => {
+          console.error("Location error:", error);
+          setLocationStatus('failed');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      setLocationStatus('failed');
+    }
+  };
+
+  const handleManualCheckIn = (shift: ShiftWithRelations) => {
+    if (!currentLocation) {
+      checkLocation();
+      toast({ title: "Konum kontrol ediliyor", description: "Lütfen bekleyin..." });
+      return;
+    }
+    
+    checkInMutation.mutate({
+      shiftId: shift.id,
+      checkInMethod: 'manual',
+      latitude: currentLocation.lat,
+      longitude: currentLocation.lng,
+      locationConfidenceScore: locationConfidence,
+    });
+  };
+
+  const todayShifts = myShifts?.filter(s => {
+    const shiftDate = parseISO(s.shiftDate);
+    return isToday(shiftDate);
+  }) || [];
+
+  const isCheckedIn = todayAttendance?.checkInTime && !todayAttendance?.checkOutTime;
+  const hasCompletedShift = todayAttendance?.checkOutTime;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Vardiya Giriş/Çıkış</h2>
+          <p className="text-muted-foreground">
+            {format(new Date(), "d MMMM yyyy, EEEE", { locale: tr })}
+          </p>
+        </div>
+        {locationStatus === 'idle' && (
+          <Button variant="outline" onClick={checkLocation} data-testid="button-check-location">
+            <MapPin className="w-4 h-4 mr-2" />
+            Konumu Kontrol Et
+          </Button>
+        )}
+        {locationStatus === 'checking' && (
+          <Badge variant="secondary">
+            <Timer className="w-4 h-4 mr-2 animate-spin" />
+            Konum alınıyor...
+          </Badge>
+        )}
+        {locationStatus === 'success' && (
+          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+            <CheckCircle2 className="w-4 h-4 mr-2" />
+            Konum doğrulandı ({locationConfidence}%)
+          </Badge>
+        )}
+        {locationStatus === 'failed' && (
+          <Badge variant="destructive">
+            <AlertCircle className="w-4 h-4 mr-2" />
+            Konum alınamadı
+          </Badge>
+        )}
+      </div>
+
+      {isCheckedIn && todayAttendance && (
+        <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30" data-testid="card-checked-in">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
+              <UserCheck className="h-5 w-5" />
+              Aktif Vardiya
+            </CardTitle>
+            <CardDescription className="text-green-600 dark:text-green-400">
+              {format(parseISO(todayAttendance.checkInTime), "HH:mm", { locale: tr })} saatinde giriş yaptınız
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Çalışma Süresi</p>
+                <p className="text-2xl font-bold">
+                  {Math.floor(differenceInMinutes(new Date(), parseISO(todayAttendance.checkInTime)) / 60)} saat{' '}
+                  {differenceInMinutes(new Date(), parseISO(todayAttendance.checkInTime)) % 60} dakika
+                </p>
+              </div>
+              <Button 
+                size="lg"
+                variant="destructive"
+                onClick={() => checkOutMutation.mutate({ attendanceId: todayAttendance.id })}
+                disabled={checkOutMutation.isPending}
+                data-testid="button-checkout"
+              >
+                <UserX className="w-5 h-5 mr-2" />
+                {checkOutMutation.isPending ? "Çıkış yapılıyor..." : "Vardiya Çıkışı"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {hasCompletedShift && (
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30" data-testid="card-completed">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+              <CheckCircle2 className="h-5 w-5" />
+              Bugünkü Vardiya Tamamlandı
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Giriş</p>
+                <p className="font-medium">{format(parseISO(todayAttendance.checkInTime), "HH:mm", { locale: tr })}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Çıkış</p>
+                <p className="font-medium">{format(parseISO(todayAttendance.checkOutTime), "HH:mm", { locale: tr })}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isCheckedIn && !hasCompletedShift && (
+        <div className="space-y-4">
+          <Card data-testid="card-qr-scan">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                QR Kod ile Giriş
+              </CardTitle>
+              <CardDescription>
+                Şubenizdeki QR kodu okutarak hızlı giriş yapın
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center gap-4 py-6">
+                <div className="w-48 h-48 border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center bg-muted/30">
+                  <div className="text-center">
+                    <QrCode className="h-16 w-16 mx-auto text-muted-foreground/50" />
+                    <p className="mt-2 text-sm text-muted-foreground">QR tarayıcı</p>
+                  </div>
+                </div>
+                <Button variant="outline" onClick={() => setScannerActive(!scannerActive)} data-testid="button-toggle-scanner">
+                  {scannerActive ? "Tarayıcıyı Kapat" : "Tarayıcıyı Aç"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {todayShifts.length > 0 && (
+            <Card data-testid="card-today-shifts">
+              <CardHeader>
+                <CardTitle>Bugünkü Vardiyalarınız</CardTitle>
+                <CardDescription>Manuel giriş için bir vardiya seçin</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {todayShifts.map((shift) => {
+                  const ShiftIcon = shiftTypeIcons[shift.shiftType];
+                  return (
+                    <div 
+                      key={shift.id}
+                      className="flex items-center justify-between p-4 rounded-lg border bg-muted/30"
+                      data-testid={`shift-card-${shift.id}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn("p-2 rounded-lg", shiftTypeColors[shift.shiftType])}>
+                          <ShiftIcon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{shiftTypeLabels[shift.shiftType]} Vardiyası</p>
+                          <p className="text-sm text-muted-foreground">
+                            {shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => handleManualCheckIn(shift)}
+                        disabled={checkInMutation.isPending || locationStatus === 'checking'}
+                        data-testid={`button-checkin-${shift.id}`}
+                      >
+                        {checkInMutation.isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {todayShifts.length === 0 && (
+            <Card data-testid="card-no-shifts">
+              <CardContent className="pt-6">
+                <div className="text-center py-8">
+                  <CalendarIcon className="h-16 w-16 mx-auto text-muted-foreground/50" />
+                  <p className="mt-4 text-lg font-medium">Bugün için planlı vardiya yok</p>
+                  <p className="text-sm text-muted-foreground">
+                    Vardiya yöneticinizle iletişime geçin
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+        <CardContent className="pt-6">
+          <div className="flex gap-4">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg h-fit">
+              <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h4 className="font-medium text-blue-900 dark:text-blue-100">Giriş/Çıkış Sistemi Hakkında</h4>
+              <ul className="mt-2 text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                <li>1. Şubenizde bulunan QR kodu okutun veya manuel giriş yapın</li>
+                <li>2. Konum bilginiz otomatik olarak doğrulanır</li>
+                <li>3. Şube yarıçapı içinde olmanız gerekir</li>
+                <li>4. Vardiya bitiminde çıkış yapmayı unutmayın</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

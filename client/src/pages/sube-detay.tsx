@@ -1,15 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   ArrowLeft, Users, CheckCircle2, Clock, Wrench, TrendingUp, 
-  Star, Award, ClipboardCheck, ThumbsUp 
+  Star, Award, ClipboardCheck, ThumbsUp, QrCode, MapPin, 
+  Wifi, Download, RefreshCw, Copy, CheckCircle
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { isHQRole } from "@shared/schema";
 
 type Branch = {
   id: number;
@@ -18,6 +26,11 @@ type Branch = {
   city: string;
   phoneNumber: string;
   managerName: string;
+  qrCodeToken?: string;
+  geoRadius?: number;
+  wifiSsid?: string;
+  shiftCornerLatitude?: string;
+  shiftCornerLongitude?: string;
 };
 
 type User = {
@@ -51,7 +64,16 @@ type BranchDetails = {
 export default function SubeDetayPage() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { toast } = useToast();
   const branchId = parseInt(id || "0");
+  
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [geoRadius, setGeoRadius] = useState("50");
+  const [wifiSsid, setWifiSsid] = useState("");
+  const [copied, setCopied] = useState(false);
+  
+  const isAdmin = user?.role && isHQRole(user.role as any);
 
   // Authorization: Supervisor can only view their own branch
   if (user?.role === 'supervisor' && user?.branchId !== branchId) {
@@ -66,9 +88,47 @@ export default function SubeDetayPage() {
   }
 
   // Fetch comprehensive branch details with scores and staff
-  const { data: branchData, isLoading: branchLoading } = useQuery<BranchDetails>({
+  const { data: branchData, isLoading: branchLoading, refetch } = useQuery<BranchDetails>({
     queryKey: [`/api/branches/${branchId}/detail`],
     enabled: !!branchId,
+  });
+
+  // Generate QR token mutation
+  const generateQrMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('POST', `/api/branches/${branchId}/generate-qr`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/branches/${branchId}/detail`] });
+      toast({ title: "Başarılı", description: "QR kod oluşturuldu" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "QR kod oluşturulamadı", variant: "destructive" });
+    },
+  });
+
+  // Update location settings mutation
+  const updateLocationMutation = useMutation({
+    mutationFn: async (data: { shiftCornerLatitude?: string; shiftCornerLongitude?: string; geoRadius?: number; wifiSsid?: string }) => {
+      await apiRequest('PATCH', `/api/branches/${branchId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/branches/${branchId}/detail`] });
+      toast({ title: "Başarılı", description: "Lokasyon ayarları güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Ayarlar güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  // Initialize form values when data loads
+  useState(() => {
+    if (branchData?.branch) {
+      setLatitude(branchData.branch.shiftCornerLatitude || "");
+      setLongitude(branchData.branch.shiftCornerLongitude || "");
+      setGeoRadius(branchData.branch.geoRadius?.toString() || "50");
+      setWifiSsid(branchData.branch.wifiSsid || "");
+    }
   });
 
   if (branchLoading) {
@@ -83,6 +143,65 @@ export default function SubeDetayPage() {
   const completedTasks = recentTasks.filter(t => t.status === 'tamamlandi').length;
   const pendingTasks = recentTasks.filter(t => t.status === 'bekliyor').length;
   const activeEquipment = equipment.filter(e => e.isActive).length;
+
+  // QR code value - includes branch ID and token
+  const qrValue = branch.qrCodeToken 
+    ? `dospresso://checkin?branch=${branchId}&token=${branch.qrCodeToken}`
+    : "";
+
+  const handleSaveLocation = () => {
+    updateLocationMutation.mutate({
+      shiftCornerLatitude: latitude || undefined,
+      shiftCornerLongitude: longitude || undefined,
+      geoRadius: parseInt(geoRadius) || 50,
+      wifiSsid: wifiSsid || undefined,
+    });
+  };
+
+  const handleGetCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLatitude(position.coords.latitude.toFixed(7));
+          setLongitude(position.coords.longitude.toFixed(7));
+          toast({ title: "Konum Alındı", description: "GPS koordinatları güncellendi" });
+        },
+        (error) => {
+          toast({ title: "Hata", description: "Konum alınamadı: " + error.message, variant: "destructive" });
+        }
+      );
+    } else {
+      toast({ title: "Hata", description: "Tarayıcınız konum özelliğini desteklemiyor", variant: "destructive" });
+    }
+  };
+
+  const handleDownloadQr = () => {
+    const svg = document.getElementById("branch-qr-code");
+    if (svg) {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = 400;
+        canvas.height = 400;
+        ctx?.drawImage(img, 0, 0, 400, 400);
+        const pngFile = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.download = `${branch.name.replace(/\s+/g, '_')}_QR.png`;
+        downloadLink.href = pngFile;
+        downloadLink.click();
+      };
+      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+    }
+  };
+
+  const handleCopyQrLink = () => {
+    navigator.clipboard.writeText(qrValue);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({ title: "Kopyalandı", description: "QR bağlantısı panoya kopyalandı" });
+  };
 
   return (
     <div className="space-y-6">
@@ -172,10 +291,16 @@ export default function SubeDetayPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="personel" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="personel" data-testid="tab-personnel">Personel</TabsTrigger>
           <TabsTrigger value="gorevler" data-testid="tab-tasks">Görevler</TabsTrigger>
           <TabsTrigger value="ekipman" data-testid="tab-equipment">Ekipman</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="qr-ayarlar" data-testid="tab-qr-settings">
+              <QrCode className="h-4 w-4 mr-1" />
+              QR & Lokasyon
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="personel" className="space-y-4">
@@ -280,6 +405,196 @@ export default function SubeDetayPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="qr-ayarlar" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* QR Kod Üretici */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <QrCode className="h-5 w-5" />
+                    Vardiya Giriş QR Kodu
+                  </CardTitle>
+                  <CardDescription>
+                    Bu QR kodu şubeye asarak personelin vardiya girişi yapmasını sağlayın
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {branch.qrCodeToken ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-center p-4 bg-white rounded-lg">
+                        <QRCodeSVG 
+                          id="branch-qr-code"
+                          value={qrValue} 
+                          size={200}
+                          level="H"
+                          includeMargin
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Button onClick={handleDownloadQr} variant="outline" data-testid="button-download-qr">
+                          <Download className="h-4 w-4 mr-2" />
+                          İndir
+                        </Button>
+                        <Button onClick={handleCopyQrLink} variant="outline" data-testid="button-copy-qr">
+                          {copied ? <CheckCircle className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                          {copied ? "Kopyalandı" : "Kopyala"}
+                        </Button>
+                        <Button 
+                          onClick={() => generateQrMutation.mutate()} 
+                          variant="outline"
+                          disabled={generateQrMutation.isPending}
+                          data-testid="button-regenerate-qr"
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${generateQrMutation.isPending ? 'animate-spin' : ''}`} />
+                          Yenile
+                        </Button>
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground">
+                        Bu QR kodu şubede görünür bir yere asın. Personel bu kodu okutarak vardiya girişi yapabilir.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <QrCode className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground mb-4">Henüz QR kod oluşturulmamış</p>
+                      <Button 
+                        onClick={() => generateQrMutation.mutate()}
+                        disabled={generateQrMutation.isPending}
+                        data-testid="button-generate-qr"
+                      >
+                        {generateQrMutation.isPending ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Oluşturuluyor...
+                          </>
+                        ) : (
+                          <>
+                            <QrCode className="h-4 w-4 mr-2" />
+                            QR Kod Oluştur
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Lokasyon Ayarları */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    Lokasyon Doğrulama Ayarları
+                  </CardTitle>
+                  <CardDescription>
+                    Personelin şubede olduğunu doğrulamak için GPS koordinatlarını ayarlayın
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="latitude">Enlem (Latitude)</Label>
+                      <Input 
+                        id="latitude"
+                        type="text"
+                        placeholder="örn: 41.0082"
+                        value={latitude}
+                        onChange={(e) => setLatitude(e.target.value)}
+                        data-testid="input-latitude"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="longitude">Boylam (Longitude)</Label>
+                      <Input 
+                        id="longitude"
+                        type="text"
+                        placeholder="örn: 28.9784"
+                        value={longitude}
+                        onChange={(e) => setLongitude(e.target.value)}
+                        data-testid="input-longitude"
+                      />
+                    </div>
+                  </div>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={handleGetCurrentLocation}
+                    className="w-full"
+                    data-testid="button-get-location"
+                  >
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Mevcut Konumu Al
+                  </Button>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="radius">İzin Yarıçapı (metre)</Label>
+                    <Input 
+                      id="radius"
+                      type="number"
+                      placeholder="50"
+                      value={geoRadius}
+                      onChange={(e) => setGeoRadius(e.target.value)}
+                      data-testid="input-radius"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Personel bu yarıçap içinde olmalıdır. Önerilen: 50-100 metre
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="wifi" className="flex items-center gap-2">
+                      <Wifi className="h-4 w-4" />
+                      WiFi Ağ Adı (Opsiyonel)
+                    </Label>
+                    <Input 
+                      id="wifi"
+                      type="text"
+                      placeholder="örn: DOSPRESSO-SUBE1"
+                      value={wifiSsid}
+                      onChange={(e) => setWifiSsid(e.target.value)}
+                      data-testid="input-wifi"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      GPS doğrulaması yanı sıra WiFi bağlantısı da kontrol edilir
+                    </p>
+                  </div>
+
+                  <Button 
+                    onClick={handleSaveLocation}
+                    disabled={updateLocationMutation.isPending}
+                    className="w-full"
+                    data-testid="button-save-location"
+                  >
+                    {updateLocationMutation.isPending ? "Kaydediliyor..." : "Ayarları Kaydet"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Bilgi Kartı */}
+            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+              <CardContent className="pt-6">
+                <div className="flex gap-4">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg h-fit">
+                    <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-blue-900 dark:text-blue-100">Nasıl Çalışır?</h4>
+                    <ul className="mt-2 text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                      <li>1. QR kodu oluşturun ve şubeye asın</li>
+                      <li>2. GPS koordinatlarını ayarlayın (şubenin tam konumu)</li>
+                      <li>3. Personel QR kodu okuttuğunda GPS kontrolü yapılır</li>
+                      <li>4. Şube yarıçapı içindeyse giriş onaylanır</li>
+                      <li>5. GPS doğrulanamıyorsa fotoğraf istenir</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

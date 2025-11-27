@@ -792,6 +792,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate QR code token for branch check-in
+  app.post('/api/branches/:id/generate-qr', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      // Authorization: Only HQ users can generate QR codes
+      if (!user.role || !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      // Generate a secure random token
+      const crypto = await import('crypto');
+      const qrCodeToken = crypto.randomBytes(32).toString('hex');
+      
+      const branch = await storage.updateBranch(id, { qrCodeToken });
+      if (!branch) {
+        return res.status(404).json({ message: "Şube bulunamadı" });
+      }
+      
+      res.json({ success: true, qrCodeToken });
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      res.status(500).json({ message: "QR kod oluşturulamadı" });
+    }
+  });
+
   app.get('/api/tasks', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
@@ -6257,6 +6284,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== CHECK-IN/CHECK-OUT ENDPOINTS =====
+
+  // GET /api/shift-attendance/today - Get today's attendance for current user
+  app.get('/api/shift-attendance/today', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const today = new Date().toISOString().split('T')[0];
+      
+      const attendances = await storage.getShiftAttendances(undefined, user.id);
+      const todayAttendance = attendances.find(a => {
+        const checkInDate = a.checkInTime ? new Date(a.checkInTime).toISOString().split('T')[0] : null;
+        return checkInDate === today;
+      });
+      
+      res.json(todayAttendance || null);
+    } catch (error) {
+      console.error("Error fetching today's attendance:", error);
+      res.status(500).json({ message: "Bugünkü kayıt alınamadı" });
+    }
+  });
+
+  // GET /api/shifts/my - Get shifts assigned to current user
+  app.get('/api/shifts/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const allShifts = await storage.getShifts();
+      const myShifts = allShifts.filter(s => s.assignedToId === user.id);
+      
+      res.json(myShifts);
+    } catch (error) {
+      console.error("Error fetching my shifts:", error);
+      res.status(500).json({ message: "Vardiyalar alınamadı" });
+    }
+  });
+
+  // POST /api/shift-attendance/manual-check-in - Manual check-in with location verification
+  app.post('/api/shift-attendance/manual-check-in', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { z } = await import('zod');
+      const manualCheckInSchema = z.object({
+        shiftId: z.number(),
+        checkInMethod: z.enum(['manual', 'qr']).default('manual'),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
+        locationConfidenceScore: z.number().min(0).max(100).optional(),
+      });
+      
+      const { shiftId, checkInMethod, latitude, longitude, locationConfidenceScore } = manualCheckInSchema.parse(req.body);
+      
+      const shift = await storage.getShift(shiftId);
+      if (!shift) {
+        return res.status(404).json({ message: "Vardiya bulunamadı" });
+      }
+      
+      if (shift.assignedToId !== user.id) {
+        return res.status(403).json({ message: "Bu vardiya size atanmamış" });
+      }
+      
+      const existingAttendances = await storage.getShiftAttendances(shiftId);
+      const userAttendance = existingAttendances.find(a => a.userId === user.id);
+      
+      if (userAttendance?.checkInTime) {
+        return res.status(400).json({ message: "Bu vardiyaya zaten giriş yaptınız" });
+      }
+      
+      const now = new Date();
+      
+      const attendanceData: any = {
+        checkInTime: now,
+        status: 'checked_in',
+        checkInMethod: checkInMethod,
+        locationConfidenceScore: locationConfidenceScore || 0,
+      };
+      
+      if (latitude !== undefined) {
+        attendanceData.checkInLatitude = latitude.toString();
+      }
+      if (longitude !== undefined) {
+        attendanceData.checkInLongitude = longitude.toString();
+      }
+      
+      let attendance;
+      if (userAttendance) {
+        attendance = await storage.updateShiftAttendance(userAttendance.id, attendanceData);
+      } else {
+        attendance = await storage.createShiftAttendance({
+          shiftId: shiftId,
+          userId: user.id,
+          ...attendanceData,
+        });
+      }
+      
+      res.status(201).json(attendance);
+    } catch (error: any) {
+      console.error("Error manual check-in:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Giriş yapılamadı" });
+    }
+  });
+
+  // POST /api/shift-attendance/manual-check-out - Manual check-out 
+  app.post('/api/shift-attendance/manual-check-out', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { z } = await import('zod');
+      const manualCheckOutSchema = z.object({
+        attendanceId: z.number(),
+      });
+      
+      const { attendanceId } = manualCheckOutSchema.parse(req.body);
+      
+      const attendance = await storage.getShiftAttendance(attendanceId);
+      if (!attendance) {
+        return res.status(404).json({ message: "Giriş kaydı bulunamadı" });
+      }
+      
+      if (attendance.userId !== user.id) {
+        return res.status(403).json({ message: "Bu kayıt size ait değil" });
+      }
+      
+      if (attendance.checkOutTime) {
+        return res.status(400).json({ message: "Zaten çıkış yapılmış" });
+      }
+      
+      const now = new Date();
+      const updated = await storage.updateShiftAttendance(attendanceId, {
+        checkOutTime: now,
+        status: 'completed',
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error manual check-out:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Çıkış yapılamadı" });
+    }
+  });
   
   // POST /api/shift-attendance/check-in - Check in with QR code, photo & location
   app.post('/api/shift-attendance/check-in', isAuthenticated, async (req: any, res) => {
