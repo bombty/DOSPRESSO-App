@@ -421,7 +421,7 @@ export default function SubeDetayPage() {
                 <CardContent className="space-y-4">
                   {branch.qrCodeToken ? (
                     <div className="space-y-4">
-                      <div className="flex justify-center p-4 bg-white rounded-lg">
+                      <div className="flex flex-col items-center p-4 bg-white rounded-lg">
                         <QRCodeSVG 
                           id="branch-qr-code"
                           value={qrValue} 
@@ -429,6 +429,9 @@ export default function SubeDetayPage() {
                           level="H"
                           includeMargin
                         />
+                        <p className="text-xs text-gray-600 mt-2 font-mono">
+                          QR İçeriği: {qrValue || "(QR oluşturulmamış)"}
+                        </p>
                       </div>
                       <div className="flex flex-wrap gap-2 justify-center">
                         <Button onClick={handleDownloadQr} variant="outline" data-testid="button-download-qr">
