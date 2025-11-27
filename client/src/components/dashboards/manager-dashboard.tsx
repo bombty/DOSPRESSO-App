@@ -30,9 +30,9 @@ export function ManagerDashboard({
     Math.round(teamPerformance.reduce((sum, m) => sum + m.averageScore, 0) / teamPerformance.length) : 0;
   const healthScore = Math.max(0, 100 - (openFaults * 10)); // Fault-based health
 
-  // Chart data for team distribution
-  const chartData = teamPerformance?.slice(0, 6).map(m => ({
-    name: m.firstName.substring(0, 10),
+  // Chart data for team distribution - ALL members
+  const chartData = teamPerformance?.map(m => ({
+    name: `${m.firstName} ${m.lastName?.charAt(0) || ''}`.trim(),
     score: m.averageScore,
   })) || [];
 
@@ -132,22 +132,29 @@ export function ManagerDashboard({
         </Card>
       </div>
 
-      {/* Team Performance Chart */}
+      {/* Team Performance Chart - ALL Members */}
       {!isLoading && chartData.length > 0 && (
         <Card className="hidden md:block">
           <CardHeader>
-            <CardTitle className="text-sm">Takım Performans Grafiği</CardTitle>
+            <CardTitle className="text-sm">Takım Performans Grafiği - Tüm Personeller ({chartData.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis domain={[0, 100]} />
-                <Legend />
-                <Bar dataKey="score" fill="#1F3A93" name="Skor" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: chartData.length > 10 ? 400 : 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: chartData.length > 8 ? 100 : 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 11 }} 
+                    angle={chartData.length > 8 ? -45 : 0}
+                    textAnchor={chartData.length > 8 ? "end" : "middle"}
+                  />
+                  <YAxis domain={[0, 100]} />
+                  <Legend />
+                  <Bar dataKey="score" fill="#1F3A93" name="Skor" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       )}
