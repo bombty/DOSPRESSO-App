@@ -137,7 +137,39 @@ const standaloneItems: MenuItem[] = [
 
 // Fallback hardcoded menu groups (used only if dynamic menu fails to load)
 // In normal operation, dynamic menu from database takes precedence
-const menuGroups: MenuGroup[] = [];
+const menuGroups: MenuGroup[] = [
+  {
+    groupTr: "Yönetim",
+    icon: Settings,
+    scope: "hq",
+    items: [
+      {
+        title: "Kullanıcılar",
+        titleTr: "Kullanıcılar",
+        url: "/yonetim/kullanicilar",
+        icon: Users,
+        module: "users",
+        scope: "hq",
+      },
+      {
+        title: "Menü Yönetimi",
+        titleTr: "Menü Yönetimi",
+        url: "/yonetim/menu",
+        icon: Settings,
+        module: "dashboard",
+        scope: "hq",
+      },
+      {
+        title: "Ayarlar",
+        titleTr: "Ayarlar",
+        url: "/yonetim/ayarlar",
+        icon: Settings,
+        module: "dashboard",
+        scope: "hq",
+      },
+    ],
+  },
+];
 
 // PHASE 4: Visibility Rules Logic
 const checkVisibilityRules = (
