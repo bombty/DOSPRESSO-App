@@ -602,28 +602,25 @@ export default function Dashboard() {
 
       <AnnouncementBanner />
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <Card 
           className="cursor-pointer hover-elevate transition-all" 
           onClick={() => setLocation("/gorevler?status=onaylandi")}
           data-testid="card-completed-tasks"
         >
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Tamamlanan Görevler
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4 text-center">
             {tasksLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-12 w-12 mx-auto" />
             ) : (
               <>
-                <div className="text-3xl font-bold" data-testid="text-completed-tasks">
+                <div className="flex justify-center mb-2">
+                  <CheckCircle className="h-7 w-7 text-primary" />
+                </div>
+                <div className="text-2xl font-bold" data-testid="text-completed-tasks">
                   {completedTasks}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Toplam {tasks?.length || 0} görevden
+                  Tamamlanan Görevler
                 </p>
               </>
             )}
@@ -635,22 +632,19 @@ export default function Dashboard() {
           onClick={() => setLocation("/gorevler?status=beklemede")}
           data-testid="card-pending-tasks"
         >
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Bekleyen Görevler
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4 text-center">
             {tasksLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-12 w-12 mx-auto" />
             ) : (
               <>
-                <div className="text-3xl font-bold" data-testid="text-pending-tasks">
+                <div className="flex justify-center mb-2">
+                  <Clock className="h-7 w-7 text-accent" />
+                </div>
+                <div className="text-2xl font-bold" data-testid="text-pending-tasks">
                   {pendingTasks}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {overdueTasks > 0 && `${overdueTasks} gecikmiş`}
+                  {overdueTasks > 0 ? `${overdueTasks} Gecikmiş` : "Beklemede"}
                 </p>
               </>
             )}
@@ -662,22 +656,19 @@ export default function Dashboard() {
           onClick={() => setLocation("/ekipman-arizalar")}
           data-testid="card-open-faults"
         >
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Açık Arızalar
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4 text-center">
             {faultsLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-12 w-12 mx-auto" />
             ) : (
               <>
-                <div className="text-3xl font-bold" data-testid="text-open-faults">
+                <div className="flex justify-center mb-2">
+                  <AlertTriangle className="h-7 w-7 text-destructive" />
+                </div>
+                <div className="text-2xl font-bold" data-testid="text-open-faults">
                   {openFaults}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Toplam {faults?.length || 0} arızadan
+                  Açık Arızalar
                 </p>
               </>
             )}
@@ -685,22 +676,19 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Tamamlanma Oranı
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4 text-center">
             {metricsLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-12 w-12 mx-auto" />
             ) : (
               <>
-                <div className="text-3xl font-bold" data-testid="text-completion-rate">
+                <div className="flex justify-center mb-2">
+                  <TrendingUp className="h-7 w-7 text-primary" />
+                </div>
+                <div className="text-2xl font-bold" data-testid="text-completion-rate">
                   %{completionRate}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Bugünkü performans
+                  Tamamlanma Oranı
                 </p>
               </>
             )}
@@ -708,22 +696,19 @@ export default function Dashboard() {
         </Card>
 
         <Card data-testid="card-performance-score">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Performans Skoru
-            </CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4 text-center">
             {performanceLoading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-12 w-12 mx-auto" />
             ) : (
               <>
-                <div className="text-3xl font-bold" data-testid="text-performance-score">
+                <div className="flex justify-center mb-2">
+                  <Award className="h-7 w-7 text-accent-foreground" />
+                </div>
+                <div className="text-2xl font-bold" data-testid="text-performance-score">
                   {weeklyPerformanceScore !== null ? weeklyPerformanceScore : "-"}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Son 7 günlük ortalama
+                  Performans Skoru
                 </p>
               </>
             )}
