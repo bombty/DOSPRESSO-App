@@ -13,6 +13,7 @@ export default function QRScanner() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [lastQRType, setLastQRType] = useState<'shift' | 'equipment' | 'inventory' | 'audit' | null>(null);
 
   useEffect(() => {
     return () => {
@@ -45,10 +46,12 @@ export default function QRScanner() {
               // Relative URL or path - use as is
             }
             
-            // Support both /equipment/{id} and /ekipman/{id} paths
-            if (pathname.startsWith('/ekipman/')) {
-              const equipmentId = pathname.split('/ekipman/')[1];
+            // Auto-detect QR type and route accordingly
+            if (pathname.startsWith('/ekipman/') || pathname.startsWith('/equipment/')) {
+              // Equipment fault report QR
+              const equipmentId = pathname.split(/\/ekipman\/|\/equipment\//)[1];
               if (equipmentId && !isNaN(parseInt(equipmentId))) {
+                setLastQRType('equipment');
                 toast({
                   title: "Başarılı",
                   description: "Arıza bildirimi sayfasına yönlendiriliyorsunuz...",
@@ -63,27 +66,67 @@ export default function QRScanner() {
                   variant: "destructive",
                 });
               }
-            } else if (pathname.startsWith('/equipment/')) {
-              const equipmentId = pathname.split('/equipment/')[1];
-              if (equipmentId && !isNaN(parseInt(equipmentId))) {
+            } else if (pathname.startsWith('/shift/')) {
+              // Shift check-in/out QR
+              const shiftId = pathname.split('/shift/')[1];
+              if (shiftId) {
+                setLastQRType('shift');
                 toast({
                   title: "Başarılı",
-                  description: "Arıza bildirimi sayfasına yönlendiriliyorsunuz...",
+                  description: "Vardiya giriş/çıkış işlemi yapılıyor...",
                 });
                 html5QrCode.stop().then(() => {
-                  setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
+                  setLocation(`/vardiya-checkin?shiftId=${shiftId}`);
                 });
               } else {
                 toast({
                   title: "Hata",
-                  description: "Geçersiz ekipman QR kodu",
+                  description: "Geçersiz vardiya QR kodu",
+                  variant: "destructive",
+                });
+              }
+            } else if (pathname.startsWith('/inventory/')) {
+              // Inventory/stock count QR
+              const locationId = pathname.split('/inventory/')[1];
+              if (locationId) {
+                setLastQRType('inventory');
+                toast({
+                  title: "Başarılı",
+                  description: "Envanter sayfasına yönlendiriliyorsunuz...",
+                });
+                html5QrCode.stop().then(() => {
+                  setLocation(`/checklistler?type=inventory&locationId=${locationId}`);
+                });
+              } else {
+                toast({
+                  title: "Hata",
+                  description: "Geçersiz envanter QR kodu",
+                  variant: "destructive",
+                });
+              }
+            } else if (pathname.startsWith('/audit/')) {
+              // Audit/inspection QR
+              const auditId = pathname.split('/audit/')[1];
+              if (auditId) {
+                setLastQRType('audit');
+                toast({
+                  title: "Başarılı",
+                  description: "Denetim sayfasına yönlendiriliyorsunuz...",
+                });
+                html5QrCode.stop().then(() => {
+                  setLocation(`/denetim/${auditId}`);
+                });
+              } else {
+                toast({
+                  title: "Hata",
+                  description: "Geçersiz denetim QR kodu",
                   variant: "destructive",
                 });
               }
             } else {
               toast({
                 title: "Hata",
-                description: "Bu bir ekipman QR kodu değil",
+                description: "QR kod tipi tanınamadı",
                 variant: "destructive",
               });
             }
