@@ -50,6 +50,13 @@ export default function Dashboard() {
   const [aiEvaluation, setAiEvaluation] = useState<any | null>(null);
   const [evaluationLoading, setEvaluationLoading] = useState(false);
   const [branchScoresTimeRange, setBranchScoresTimeRange] = useState<'7d' | '30d' | '180d' | '365d'>('30d');
+  const [checkInLoading, setCheckInLoading] = useState(false);
+
+  // Fetch shifts for current user (supervisors/HQ only)
+  const { data: myShifts } = useQuery<any[]>({
+    queryKey: ["/api/shifts/my"],
+    enabled: !!user && (user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role as any)),
+  });
 
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -523,7 +530,7 @@ export default function Dashboard() {
     };
   }, [scannerActive]);
 
-  const handleQRData = (qrData: string) => {
+  const handleQRData = async (qrData: string) => {
     console.log("[Dashboard QR] Scanned:", qrData);
     setScannerActive(false);
     
@@ -549,13 +556,40 @@ export default function Dashboard() {
       }
     }
     
-    // Match legacy format equipment:123
+    // Match legacy format equipment:123 and branch:123
     const colonParts = qrData.split(':');
     if (colonParts.length === 2) {
       const type = colonParts[0]?.toLowerCase();
       const id = colonParts[1];
       
-      if (type === 'shift' || type === 'branch') {
+      if (type === 'branch' && user && (user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role as any))) {
+        // Handle shift check-in for supervisors/HQ admins
+        setCheckInLoading(true);
+        try {
+          if (myShifts && myShifts.length > 0) {
+            await apiRequest('POST', '/api/shift-attendance/manual-check-in', {
+              shiftId: myShifts[0].id,
+              checkInMethod: 'qr_code'
+            });
+            toast({
+              title: "Başarılı",
+              description: "Vardiya girişi yapıldı",
+            });
+            // Refresh shifts
+            return;
+          }
+        } catch (error: any) {
+          console.error("Check-in error:", error);
+          toast({
+            title: "Hata",
+            description: error.message || "Giriş yapılamadı",
+            variant: "destructive",
+          });
+        } finally {
+          setCheckInLoading(false);
+        }
+        return;
+      } else if (type === 'shift' || type === 'branch') {
         setLocation('/vardiyalar');
         return;
       } else if (type === 'equipment' && id && !isNaN(parseInt(id))) {
