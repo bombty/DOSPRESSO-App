@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { QrCode, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { QrCode, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
 interface UniversalQRScannerProps {
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
 }
 
-export function UniversalQRScanner({ isOpen, onOpenChange }: UniversalQRScannerProps) {
+export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
@@ -32,7 +32,7 @@ export function UniversalQRScanner({ isOpen, onOpenChange }: UniversalQRScannerP
       return;
     }
 
-    // Small delay to ensure DOM is ready after Dialog renders
+    // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
       const container = document.getElementById(containerId);
       if (!container) {
@@ -126,7 +126,7 @@ export function UniversalQRScanner({ isOpen, onOpenChange }: UniversalQRScannerP
         });
         
         setTimeout(() => {
-          onOpenChange(false);
+          onClose();
           setLocation('/vardiyalar');
         }, 1500);
       } else if (type === 'equipment') {
@@ -139,7 +139,7 @@ export function UniversalQRScanner({ isOpen, onOpenChange }: UniversalQRScannerP
         });
         
         setTimeout(() => {
-          onOpenChange(false);
+          onClose();
           setLocation(`/ekipman/${id}`);
         }, 1500);
       } else {
@@ -187,63 +187,74 @@ export function UniversalQRScanner({ isOpen, onOpenChange }: UniversalQRScannerP
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Card className="border-primary/50 bg-card/80 backdrop-blur-sm">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+        <div>
+          <CardTitle className="flex items-center gap-2">
             <QrCode className="h-5 w-5" />
             QR Kod Tara
-          </DialogTitle>
-          <DialogDescription>
+          </CardTitle>
+          <CardDescription className="mt-1">
             Vardiya veya ekipman QR kodunu tarayın
-          </DialogDescription>
-        </DialogHeader>
+          </CardDescription>
+        </div>
+        <Button
+          onClick={onClose}
+          variant="ghost"
+          size="icon"
+          title="Kapat"
+          data-testid="button-close-qr-scanner"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </CardHeader>
 
-        <div className="space-y-4">
-          {/* Scanner Container */}
-          <div className="border rounded-lg overflow-hidden bg-black/5">
-            <div id={containerId} style={{ width: '100%' }} />
+      <CardContent className="space-y-4">
+        {/* Scanner Container */}
+        <div className="border rounded-lg overflow-hidden bg-black/5">
+          <div id={containerId} style={{ width: '100%' }} />
+        </div>
+
+        {/* Status Messages */}
+        {scanStatus === 'success' && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+            <p className="text-sm font-medium text-green-700 dark:text-green-300">{scanMessage}</p>
           </div>
+        )}
 
-          {/* Status Messages */}
-          {scanStatus === 'success' && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-              <p className="text-sm font-medium text-green-700 dark:text-green-300">{scanMessage}</p>
-            </div>
-          )}
+        {scanStatus === 'error' && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+            <p className="text-sm font-medium text-red-700 dark:text-red-300">{scanMessage}</p>
+          </div>
+        )}
 
+        {scanStatus === 'scanning' && (
+          <div className="text-center text-sm text-muted-foreground py-2">
+            Kamera kalibre ediliyor... Lütfen QR kodunu kameraya gösterin.
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div className="flex gap-2">
           {scanStatus === 'error' && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-              <p className="text-sm font-medium text-red-700 dark:text-red-300">{scanMessage}</p>
-            </div>
-          )}
-
-          {scanStatus === 'scanning' && (
-            <div className="text-center text-sm text-muted-foreground">
-              Kamera kalibre ediliyor... Lütfen QR kodunu kameraya gösterin.
-            </div>
-          )}
-
-          {/* Resume Button */}
-          {scanStatus === 'error' && (
-            <Button onClick={resumeScanning} variant="outline" className="w-full">
+            <Button onClick={resumeScanning} variant="outline" className="flex-1">
               Tekrar Tara
             </Button>
           )}
-
-          {/* Close Button */}
           <Button 
-            onClick={() => onOpenChange(false)} 
+            onClick={onClose} 
             variant="ghost" 
-            className="w-full"
+            className="flex-1"
           >
             Kapat
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   );
 }

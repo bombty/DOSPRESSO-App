@@ -472,16 +472,26 @@ export default function Dashboard() {
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Kontrol Paneli</h1>
           <p className="text-muted-foreground mt-1">DOSPRESSO operasyon özeti</p>
         </div>
-        <Button 
-          onClick={() => setQrScannerOpen(true)}
-          variant="outline"
-          size="icon"
-          title="QR Kod Tara"
-          data-testid="button-open-qr-scanner"
-        >
-          <QrCode className="h-5 w-5" />
-        </Button>
+        {!qrScannerOpen && (
+          <Button 
+            onClick={() => setQrScannerOpen(true)}
+            variant="outline"
+            size="icon"
+            title="QR Kod Tara"
+            data-testid="button-open-qr-scanner"
+          >
+            <QrCode className="h-5 w-5" />
+          </Button>
+        )}
       </div>
+
+      {/* QR Scanner - Inline */}
+      {qrScannerOpen && (
+        <UniversalQRScanner 
+          isOpen={qrScannerOpen} 
+          onClose={() => setQrScannerOpen(false)}
+        />
+      )}
 
       <AnnouncementBanner />
 
@@ -1840,11 +1850,6 @@ export default function Dashboard() {
         </SheetContent>
       </Sheet>
 
-      {/* Universal QR Scanner */}
-      <UniversalQRScanner 
-        isOpen={qrScannerOpen} 
-        onOpenChange={setQrScannerOpen}
-      />
     </div>
   );
 }
