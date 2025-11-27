@@ -503,7 +503,10 @@ export function AppSidebar() {
         if (user?.role === 'admin') {
           return group.scope === targetScope || (!group.scope && targetScope === 'both');
         }
-        return canSeeScope(group.scope) && group.scope === targetScope;
+        // For non-admins: check visibility and match scope
+        // 'both' scope items should be visible in both 'branch' and 'hq' views
+        if (!canSeeScope(group.scope)) return false;
+        return group.scope === 'both' || group.scope === targetScope;
       })
       .map((group) => ({
         ...group,
