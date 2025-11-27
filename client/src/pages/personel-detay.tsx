@@ -372,7 +372,7 @@ export default function PersonelDetay() {
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground">Personel bulunamadı</p>
-            <Button className="mt-4" onClick={() => navigate("/personel-yonetimi")}>
+            <Button className="mt-4" onClick={() => navigate("/ik")}>
               Geri Dön
             </Button>
           </CardContent>
