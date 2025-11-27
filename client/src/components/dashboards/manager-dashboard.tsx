@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle, Clock, AlertTriangle, TrendingUp, Users, Wrench, Zap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts";
+import { useLocation } from "wouter";
 
 interface ManagerDashboardProps {
   branchName?: string;
@@ -24,6 +25,7 @@ export function ManagerDashboard({
   teamPerformance,
   isLoading,
 }: ManagerDashboardProps) {
+  const [, navigate] = useLocation();
   // Calculate metrics
   const totalTasks = completedTasks + pendingTasks;
   const avgTeamPerf = teamPerformance?.length ? 
@@ -70,27 +72,27 @@ export function ManagerDashboard({
 
       {/* KPI Cards - Manager View */}
       <div className="grid gap-0.5 grid-cols-4">
-        <Card className="border-l-4 border-l-green-600 cursor-pointer hover-elevate">
+        <Card className="border-l-4 border-l-green-600 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-completed-tasks">
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <CheckCircle className="h-3.5 w-3.5 text-green-600" />
             </div>
-            <div className="text-sm font-bold text-green-700">{completedTasks}</div>
+            <div className="text-sm font-bold text-green-700">{completedTasks}/{totalTasks}</div>
             <p className="text-xs text-muted-foreground">Tamamlanan</p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-blue-600 cursor-pointer hover-elevate">
+        <Card className="border-l-4 border-l-blue-600 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-pending-tasks">
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <Clock className="h-3.5 w-3.5 text-blue-600" />
             </div>
-            <div className="text-sm font-bold text-blue-700">{pendingTasks}</div>
+            <div className="text-sm font-bold text-blue-700">{pendingTasks}/{totalTasks}</div>
             <p className="text-xs text-muted-foreground">Beklemede</p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-red-600 cursor-pointer hover-elevate">
+        <Card className="border-l-4 border-l-red-600 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-faults">
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
@@ -100,7 +102,7 @@ export function ManagerDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-amber-600">
+        <Card className="border-l-4 border-l-amber-600 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-completion-rate">
           <CardContent className="pt-1.5 pb-1.5 text-center">
             <div className="flex justify-center mb-0.5">
               <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
