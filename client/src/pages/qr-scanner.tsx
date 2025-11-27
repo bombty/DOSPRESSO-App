@@ -4,7 +4,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { QrCode, Camera, XCircle, CheckCircle2 } from "lucide-react";
+import { QrCode, Camera, XCircle, CheckCircle2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function QRScanner() {
@@ -13,28 +13,72 @@ export default function QRScanner() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [lastQRType, setLastQRType] = useState<'shift' | 'equipment' | 'inventory' | 'audit' | null>(null);
 
   useEffect(() => {
+    console.log("QR Scanner component mounted");
     return () => {
+      console.log("QR Scanner component unmounting");
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
+        scannerRef.current.stop().catch((err) => {
+          console.error("Error stopping scanner:", err);
+        });
       }
     };
   }, []);
 
   const startScanning = async () => {
     try {
+      setError(null);
+      console.log("Starting QR scanner...");
+      
+      // Check if QR reader container exists
+      const container = document.getElementById("qr-reader");
+      if (!container) {
+        const errMsg = "QR reader container not found in DOM";
+        console.error(errMsg);
+        setError(errMsg);
+        toast({
+          title: "Hata",
+          description: errMsg,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Clear container
+      container.innerHTML = "";
+
       const html5QrCode = new Html5Qrcode("qr-reader");
       scannerRef.current = html5QrCode;
 
+      console.log("Html5Qrcode instance created, starting camera...");
+
+      const cameras = await Html5Qrcode.getCameras();
+      console.log("Available cameras:", cameras);
+
+      if (!cameras || cameras.length === 0) {
+        const errMsg = "Kamera bulunamadı";
+        console.error(errMsg);
+        setError(errMsg);
+        setHasPermission(false);
+        toast({
+          title: "Hata",
+          description: errMsg,
+          variant: "destructive",
+        });
+        return;
+      }
+
       await html5QrCode.start(
-        { facingMode: "environment" },
+        cameras[0].id,
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
         },
         (decodedText) => {
+          console.log("QR decoded:", decodedText);
           try {
             let pathname = decodedText;
             
@@ -46,10 +90,13 @@ export default function QRScanner() {
               // Relative URL or path - use as is
             }
             
+            console.log("Parsed pathname:", pathname);
+
             // Auto-detect QR type and route accordingly
             if (pathname.startsWith('/ekipman/') || pathname.startsWith('/equipment/')) {
               // Equipment fault report QR
               const equipmentId = pathname.split(/\/ekipman\/|\/equipment\//)[1];
+              console.log("Equipment ID extracted:", equipmentId);
               if (equipmentId && !isNaN(parseInt(equipmentId))) {
                 setLastQRType('equipment');
                 toast({
@@ -58,6 +105,8 @@ export default function QRScanner() {
                 });
                 html5QrCode.stop().then(() => {
                   setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
+                }).catch((err) => {
+                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -77,6 +126,8 @@ export default function QRScanner() {
                 });
                 html5QrCode.stop().then(() => {
                   setLocation(`/vardiya-checkin?shiftId=${shiftId}`);
+                }).catch((err) => {
+                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -96,6 +147,8 @@ export default function QRScanner() {
                 });
                 html5QrCode.stop().then(() => {
                   setLocation(`/checklistler?type=inventory&locationId=${locationId}`);
+                }).catch((err) => {
+                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -115,6 +168,8 @@ export default function QRScanner() {
                 });
                 html5QrCode.stop().then(() => {
                   setLocation(`/denetim/${auditId}`);
+                }).catch((err) => {
+                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -135,6 +190,8 @@ export default function QRScanner() {
                 });
                 html5QrCode.stop().then(() => {
                   setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
+                }).catch((err) => {
+                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -144,6 +201,7 @@ export default function QRScanner() {
                 });
               }
             } else {
+              console.warn("Unknown QR type:", decodedText);
               toast({
                 title: "Hata",
                 description: "QR kod tipi tanınamadı",
@@ -151,6 +209,7 @@ export default function QRScanner() {
               });
             }
           } catch (error) {
+            console.error("Error processing QR:", error);
             toast({
               title: "Hata",
               description: "QR kod okunamadı",
@@ -158,31 +217,41 @@ export default function QRScanner() {
             });
           }
         },
-        () => {}
+        () => {
+          // Handle errors during scanning
+        }
       );
 
       setIsScanning(true);
       setHasPermission(true);
+      console.log("Scanner started successfully");
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "QR tarayıcı başlatılamadı";
       console.error("QR scanner error:", err);
+      setError(errMsg);
       setHasPermission(false);
+      setIsScanning(false);
       toast({
         title: "Hata",
-        description: "Kamera erişimi reddedildi",
+        description: errMsg,
         variant: "destructive",
       });
     }
   };
 
   const stopScanning = () => {
+    console.log("Stopping QR scanner...");
     if (scannerRef.current) {
       scannerRef.current
         .stop()
         .then(() => {
           setIsScanning(false);
+          setError(null);
+          console.log("Scanner stopped");
         })
         .catch((err: Error) => {
           console.error("Stop error:", err);
+          setError(err.message);
         });
     }
   };
@@ -210,11 +279,25 @@ export default function QRScanner() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && (
+            <div className="bg-destructive/10 text-destructive p-3 rounded-md flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Hata</p>
+                <p className="text-sm">{error}</p>
+              </div>
+            </div>
+          )}
+
           <div
             id="qr-reader"
-            className="w-full rounded-lg overflow-hidden"
+            className="w-full rounded-lg overflow-hidden bg-muted min-h-[300px] flex items-center justify-center"
             data-testid="qr-reader-container"
-          />
+          >
+            {!isScanning && (
+              <p className="text-muted-foreground">Taramaya başlamak için butona tıklayın</p>
+            )}
+          </div>
 
           <div className="flex flex-col gap-4">
             {!isScanning ? (
