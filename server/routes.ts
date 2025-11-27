@@ -84,6 +84,27 @@ import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 
+// Performance: Simple in-memory cache with TTL
+const responseCache = new Map<string, { data: any; expiresAt: number }>();
+const getCachedResponse = (key: string) => {
+  const cached = responseCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+  responseCache.delete(key);
+  return null;
+};
+const setCachedResponse = (key: string, data: any, ttlSeconds: number = 60) => {
+  responseCache.set(key, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
+};
+const invalidateCache = (pattern: string) => {
+  for (const key of responseCache.keys()) {
+    if (key.includes(pattern)) {
+      responseCache.delete(key);
+    }
+  }
+};
+
 // Global type declarations for runtime state
 declare global {
   var fileAccessTokens: Map<string, { path: string; userId: string; expiresAt: number }> | undefined;
@@ -613,6 +634,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Check cache
+      const cacheKey = `branch-detail-${branchId}`;
+      const cached = getCachedResponse(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+
       const branchDetails = await storage.getBranchDetails(branchId);
       if (!branchDetails) {
         return res.status(404).json({ message: "Şube bulunamadı" });
@@ -621,10 +649,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sanitize user data in staff list based on requester's role
       const sanitizedStaff = sanitizeUsersForRole(branchDetails.staff, user.role as UserRoleType);
 
-      res.json({
+      const response = {
         ...branchDetails,
         staff: sanitizedStaff,
-      });
+      };
+      
+      // Cache for 60 seconds
+      setCachedResponse(cacheKey, response, 60);
+      res.json(response);
     } catch (error) {
       console.error("Error fetching branch details:", error);
       res.status(500).json({ message: "Şube detayları alınırken hata oluştu" });
@@ -1700,12 +1732,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
         }
         // Force branch users to see only their branch
+        const cacheKey = `equipment-branch-${user.branchId}`;
+        const cached = getCachedResponse(cacheKey);
+        if (cached) return res.json(cached);
+        
         const equipment = await storage.getEquipment(user.branchId);
+        setCachedResponse(cacheKey, equipment, 30);
         return res.json(equipment);
       }
       
       // HQ users can access all or filter by branch
+      const cacheKey = `equipment-${requestedBranchId || 'all'}`;
+      const cached = getCachedResponse(cacheKey);
+      if (cached) return res.json(cached);
+      
       const equipment = await storage.getEquipment(requestedBranchId);
+      setCachedResponse(cacheKey, equipment, 30);
       res.json(equipment);
     } catch (error) {
       console.error("Error fetching equipment:", error);
@@ -1722,6 +1764,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       ensurePermission(user, 'equipment', 'view');
       
+      // Check cache first
+      const cacheKey = user.branchId ? `critical-equipment-${user.branchId}` : 'critical-equipment-all';
+      const cached = getCachedResponse(cacheKey);
+      if (cached) return res.json(cached);
+      
       const allEquipment = await storage.getEquipment();
       
       // Filter critical equipment (healthScore < 50)
@@ -1730,9 +1777,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Authorization: Branch users only see their branch
       if (user.role && isBranchRole(user.role as UserRoleType) && user.branchId) {
         const filtered = criticalEquipment.filter((item: any) => item.branchId === user.branchId);
+        setCachedResponse(cacheKey, filtered, 30);
         return res.json(filtered);
       }
       
+      setCachedResponse(cacheKey, criticalEquipment, 30);
       res.json(criticalEquipment);
     } catch (error) {
       console.error("Error fetching critical equipment:", error);
@@ -8279,8 +8328,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const timeRange = (req.query.timeRange as '7d' | '30d' | '180d' | '365d') || '30d';
       
-      res.setHeader('Cache-Control', 'no-store');
+      // Check cache
+      const cacheKey = `composite-scores-${timeRange}`;
+      const cached = getCachedResponse(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+      
       const compositeScores = await storage.getCompositeBranchScores(timeRange);
+      
+      // Cache for 60 seconds
+      setCachedResponse(cacheKey, compositeScores, 60);
       res.json(compositeScores);
     } catch (error: any) {
       console.error("Error fetching composite branch scores:", error);
