@@ -167,12 +167,12 @@ export async function setupAuth(app: Express) {
           return res.status(500).json({ error: "Session destroy failed" });
         }
         
-        // Clear session cookie
+        // Clear session cookie (must match session cookie settings)
         res.clearCookie('connect.sid', {
           path: '/',
-          httpOnly: false,
-          secure: false,
-          sameSite: "lax",
+          httpOnly: true,
+          secure: true, // Match HTTPS environment
+          sameSite: 'lax',
         });
         res.json({ message: "Logged out" });
       });
