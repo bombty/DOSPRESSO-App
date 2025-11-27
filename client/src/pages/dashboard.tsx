@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { AnnouncementBanner } from "@/components/announcement-banner";
-import { UniversalQRScanner } from "@/components/universal-qr-scanner";
+import { Html5QrcodeScanner } from "html5-qrcode";
+import { useState as useStateHook, useRef, useEffect } from "react";
 import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy, Award, Users, BookOpen, GraduationCap, QrCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,7 +32,8 @@ export default function Dashboard() {
   const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<SummaryCategoryType | null>(null);
   const [currentSummary, setCurrentSummary] = useState<AISummaryResponse | null>(null);
-  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [scannerActive, setScannerActive] = useState(false);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   
   // Sheet state management
   const [taskSheetOpen, setTaskSheetOpen] = useState(false);
@@ -465,6 +467,83 @@ export default function Dashboard() {
     return priorityMap[priority] || priority;
   };
 
+  // QR Scanner effect
+  useEffect(() => {
+    if (!scannerActive) {
+      if (scannerRef.current) {
+        try {
+          scannerRef.current.clear();
+        } catch (e) {
+          console.log("Scanner already cleared");
+        }
+        scannerRef.current = null;
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const container = document.getElementById("dashboard-qr-scanner-container");
+      if (!container) return;
+
+      try {
+        const scanner = new Html5QrcodeScanner(
+          "dashboard-qr-scanner-container",
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1,
+          },
+          false
+        );
+
+        scanner.render(
+          (decodedText) => {
+            handleQRData(decodedText);
+            scanner.pause();
+          },
+          () => {}
+        );
+
+        scannerRef.current = scanner;
+      } catch (error) {
+        console.error("[QR Scanner] Error:", error);
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (scannerRef.current) {
+        try {
+          scannerRef.current.clear();
+        } catch (e) {
+          console.log("Cleanup: Scanner already cleared");
+        }
+      }
+    };
+  }, [scannerActive]);
+
+  const handleQRData = (qrData: string) => {
+    const parts = qrData.split(':');
+    const type = parts[0]?.toLowerCase();
+    const id = parts[1];
+
+    if (!type || !id) {
+      toast({
+        title: "Hata",
+        description: "QR kod formatı geçersiz",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setScannerActive(false);
+    if (type === 'shift' || type === 'branch') {
+      setLocation('/vardiyalar');
+    } else if (type === 'equipment') {
+      setLocation(`/ekipman/${id}`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -472,9 +551,9 @@ export default function Dashboard() {
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Kontrol Paneli</h1>
           <p className="text-muted-foreground mt-1">DOSPRESSO operasyon özeti</p>
         </div>
-        {!qrScannerOpen && (
+        {!scannerActive && (
           <Button 
-            onClick={() => setQrScannerOpen(true)}
+            onClick={() => setScannerActive(true)}
             variant="outline"
             size="icon"
             title="QR Kod Tara"
@@ -485,12 +564,44 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* QR Scanner - Inline */}
-      {qrScannerOpen && (
-        <UniversalQRScanner 
-          isOpen={qrScannerOpen} 
-          onClose={() => setQrScannerOpen(false)}
-        />
+      {/* Inline QR Scanner */}
+      {scannerActive && (
+        <Card className="border-primary/50 bg-card/80 backdrop-blur-sm" data-testid="card-qr-scan-inline">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                QR Kod Tara
+              </CardTitle>
+              <CardDescription className="mt-1">
+                QR kodu kameraya gösterin
+              </CardDescription>
+            </div>
+            <Button
+              onClick={() => setScannerActive(false)}
+              variant="ghost"
+              size="icon"
+              data-testid="button-close-scanner"
+            >
+              <AlertCircle className="h-5 w-5 opacity-50" />
+            </Button>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="border rounded-lg overflow-hidden bg-black/5">
+              <div id="dashboard-qr-scanner-container" style={{ width: '100%' }} />
+            </div>
+
+            <Button 
+              variant="outline" 
+              onClick={() => setScannerActive(false)} 
+              data-testid="button-close-qr-scanner"
+              className="w-full"
+            >
+              Kapat
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       <AnnouncementBanner />
