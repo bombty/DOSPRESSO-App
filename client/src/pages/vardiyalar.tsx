@@ -1466,10 +1466,10 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
         </Card>
       )}
 
-      {!isCheckedIn && !hasCompletedShift && myShifts && (
+      {!isCheckedIn && !hasCompletedShift && (
         <div className="space-y-4">
           {/* Inline QR Scanner - Only show when active */}
-          {scannerActive && myShifts.length > 0 && (
+          {scannerActive && (
             <Card className="border-primary/50 bg-card/80 backdrop-blur-sm" data-testid="card-qr-scan-inline">
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
                 <div>
