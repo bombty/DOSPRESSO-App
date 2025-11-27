@@ -14,12 +14,12 @@ import {
 } from "@/components/ui/sheet";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import { useState as useStateHook, useRef, useEffect } from "react";
-import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy, Award, Users, BookOpen, GraduationCap, QrCode } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy, Award, Users, BookOpen, GraduationCap, QrCode, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Task, EquipmentFault, PerformanceMetric, AISummaryResponse, SummaryCategoryType, User as UserType, Branch, TrainingModule, UserTrainingProgress } from "@shared/schema";
