@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, Clock, Coffee, ListTodo } from "lucide-react";
+import { CheckCircle, Clock, Coffee, ListTodo, TrendingUp, Zap } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface BaristaDashboardProps {
   completedTasks: number;
@@ -22,6 +23,9 @@ export function BaristaDashboard({
     return taskDate === today;
   }) || [];
 
+  const dailyRate = todaysTasks.length > 0 ? Math.round((todaysTasks.filter(t => t.status === 'onaylandi').length / todaysTasks.length) * 100) : 0;
+  const overallRate = completedTasks + pendingTasks > 0 ? Math.round((completedTasks / (completedTasks + pendingTasks)) * 100) : 0;
+
   return (
     <div className="space-y-3 md:space-y-6">
       {/* Header */}
@@ -29,6 +33,48 @@ export function BaristaDashboard({
         <Coffee className="h-6 w-6 text-blue-900" />
         <h2 className="text-lg md:text-2xl font-bold text-blue-900">Günlük Görevler</h2>
       </div>
+
+      {/* Personal Performance Gauges */}
+      {!isLoading && (
+        <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Günlük</span>
+                <TrendingUp className={`h-3 w-3 ${dailyRate >= 70 ? 'text-green-600' : 'text-yellow-600'}`} />
+              </div>
+              <div className={`text-xl font-bold mb-2 ${dailyRate >= 70 ? 'text-green-700' : 'text-yellow-700'}`}>
+                {dailyRate}%
+              </div>
+              <Progress value={dailyRate} className="h-2" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Genel</span>
+                <Zap className={`h-3 w-3 ${overallRate >= 75 ? 'text-green-600' : 'text-blue-600'}`} />
+              </div>
+              <div className={`text-xl font-bold mb-2 ${overallRate >= 75 ? 'text-green-700' : 'text-blue-700'}`}>
+                {overallRate}%
+              </div>
+              <Progress value={overallRate} className="h-2" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Kalan</span>
+                <Clock className="h-3 w-3 text-blue-600" />
+              </div>
+              <div className="text-xl font-bold text-blue-700 mb-2">{pendingTasks}</div>
+              <Progress value={Math.max(0, 100 - (pendingTasks * 20))} className="h-2" />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Quick Stats */}
       <div className="grid gap-2 grid-cols-2 md:grid-cols-3">

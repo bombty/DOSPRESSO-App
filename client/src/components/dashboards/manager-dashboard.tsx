@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, Clock, AlertTriangle, TrendingUp, Users, Wrench } from "lucide-react";
+import { CheckCircle, Clock, AlertTriangle, TrendingUp, Users, Wrench, Zap } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts";
 
 interface ManagerDashboardProps {
   branchName?: string;
@@ -22,6 +24,18 @@ export function ManagerDashboard({
   teamPerformance,
   isLoading,
 }: ManagerDashboardProps) {
+  // Calculate metrics
+  const totalTasks = completedTasks + pendingTasks;
+  const avgTeamPerf = teamPerformance?.length ? 
+    Math.round(teamPerformance.reduce((sum, m) => sum + m.averageScore, 0) / teamPerformance.length) : 0;
+  const healthScore = Math.max(0, 100 - (openFaults * 10)); // Fault-based health
+
+  // Chart data for team distribution
+  const chartData = teamPerformance?.slice(0, 6).map(m => ({
+    name: m.firstName.substring(0, 10),
+    score: m.averageScore,
+  })) || [];
+
   return (
     <div className="space-y-3 md:space-y-6">
       {/* Header with branch name */}
@@ -29,6 +43,49 @@ export function ManagerDashboard({
         <div className="flex items-center gap-2">
           <h2 className="text-lg md:text-2xl font-bold text-blue-900">{branchName}</h2>
           <Badge variant="outline" className="text-xs">Şube Müdürü</Badge>
+        </div>
+      )}
+
+      {/* Performance Gauges */}
+      {!isLoading && (
+        <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
+          {/* Completion Rate Gauge */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Görev</span>
+                <CheckCircle className="h-3 w-3 text-green-600" />
+              </div>
+              <div className="text-xl font-bold text-green-700 mb-2">{completionRate}%</div>
+              <Progress value={completionRate} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* Team Performance */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Takım</span>
+                <Users className="h-3 w-3 text-blue-600" />
+              </div>
+              <div className="text-xl font-bold text-blue-700 mb-2">{avgTeamPerf}%</div>
+              <Progress value={avgTeamPerf} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* System Health */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Sağlık</span>
+                <Zap className={`h-3 w-3 ${healthScore >= 70 ? 'text-green-600' : healthScore >= 50 ? 'text-yellow-600' : 'text-red-600'}`} />
+              </div>
+              <div className={`text-xl font-bold mb-2 ${healthScore >= 70 ? 'text-green-700' : healthScore >= 50 ? 'text-yellow-700' : 'text-red-700'}`}>
+                {healthScore}%
+              </div>
+              <Progress value={healthScore} className="h-2" />
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -75,7 +132,27 @@ export function ManagerDashboard({
         </Card>
       </div>
 
-      {/* Team Performance */}
+      {/* Team Performance Chart */}
+      {!isLoading && chartData.length > 0 && (
+        <Card className="hidden md:block">
+          <CardHeader>
+            <CardTitle className="text-sm">Takım Performans Grafiği</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis domain={[0, 100]} />
+                <Legend />
+                <Bar dataKey="score" fill="#1F3A93" name="Skor" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Team Performance List */}
       {teamPerformance && teamPerformance.length > 0 && (
         <Card>
           <CardHeader>
@@ -87,12 +164,19 @@ export function ManagerDashboard({
           <CardContent>
             <div className="space-y-2">
               {teamPerformance.slice(0, 5).map((member) => (
-                <div key={member.userId} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                  <div>
+                <div key={member.userId} className="flex items-center justify-between p-2 bg-muted/50 rounded gap-2">
+                  <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm">{member.firstName} {member.lastName?.charAt(0)}.</p>
-                    <p className="text-xs text-muted-foreground">{member.username}</p>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div
+                        className={`h-1.5 rounded-full ${
+                          member.averageScore >= 80 ? 'bg-green-600' : member.averageScore >= 70 ? 'bg-yellow-600' : 'bg-red-600'
+                        }`}
+                        style={{ width: `${member.averageScore}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <Badge variant={member.averageScore >= 80 ? "default" : "secondary"}>
+                  <Badge variant={member.averageScore >= 80 ? "default" : "secondary"} className="flex-shrink-0">
                     {member.averageScore.toFixed(0)}
                   </Badge>
                 </div>

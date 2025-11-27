@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Wrench, Zap, Clock } from "lucide-react";
+import { AlertTriangle, Wrench, Zap, Clock, TrendingDown } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts";
 
 interface TeknikDashboardProps {
   openFaults: number;
@@ -18,6 +20,17 @@ export function TeknikDashboard({
 }: TeknikDashboardProps) {
   const criticalFaults = faults?.filter(f => f.priority === "kritik") || [];
   const highFaults = faults?.filter(f => f.priority === "yuksek") || [];
+  const closedFaults = totalFaults - openFaults;
+  const resolutionRate = totalFaults > 0 ? Math.round((closedFaults / totalFaults) * 100) : 0;
+  const systemHealth = Math.max(0, 100 - (openFaults * 5) - (criticalFaults.length * 15));
+
+  // Equipment fault distribution
+  const equipmentStats = faults?.reduce((acc, f) => {
+    const eq = acc.find(e => e.name === (f.equipmentName || 'Unknown'));
+    if (eq) eq.faults++;
+    else acc.push({ name: f.equipmentName || 'Unknown', faults: 1 });
+    return acc;
+  }, [] as any[])?.sort((a, b) => b.faults - a.faults).slice(0, 5) || [];
 
   return (
     <div className="space-y-3 md:space-y-6">
@@ -26,6 +39,70 @@ export function TeknikDashboard({
         <Wrench className="h-6 w-6 text-blue-900" />
         <h2 className="text-lg md:text-2xl font-bold text-blue-900">Teknik Paneli</h2>
       </div>
+
+      {/* System Health Gauges */}
+      {!isLoading && (
+        <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
+          {/* Resolution Rate */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Çözüm</span>
+                <CheckCircle className={`h-3 w-3 ${resolutionRate >= 70 ? 'text-green-600' : 'text-yellow-600'}`} />
+              </div>
+              <div className={`text-xl font-bold mb-2 ${resolutionRate >= 70 ? 'text-green-700' : 'text-yellow-700'}`}>
+                {resolutionRate}%
+              </div>
+              <Progress value={resolutionRate} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* System Health */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Sistem</span>
+                <Zap className={`h-3 w-3 ${systemHealth >= 70 ? 'text-green-600' : systemHealth >= 40 ? 'text-yellow-600' : 'text-red-600'}`} />
+              </div>
+              <div className={`text-xl font-bold mb-2 ${systemHealth >= 70 ? 'text-green-700' : systemHealth >= 40 ? 'text-yellow-700' : 'text-red-700'}`}>
+                {systemHealth}%
+              </div>
+              <Progress value={systemHealth} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* Trend */}
+          <Card>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium">Trend</span>
+                <TrendingDown className="h-3 w-3 text-green-600" />
+              </div>
+              <div className="text-xl font-bold text-green-700 mb-2">{openFaults}</div>
+              <p className="text-xs text-muted-foreground">Açık arızalar</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Equipment Fault Distribution */}
+      {!isLoading && equipmentStats.length > 0 && (
+        <Card className="hidden md:block">
+          <CardHeader>
+            <CardTitle className="text-sm">Ekipman Arıza Dağılımı</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={equipmentStats}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
+                <YAxis />
+                <Bar dataKey="faults" fill="#dc2626" name="Arızalar" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Alert Stats */}
       <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
