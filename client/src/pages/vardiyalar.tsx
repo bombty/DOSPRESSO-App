@@ -1190,7 +1190,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   }, [scannerActive, myShifts, toast]);
 
   const checkInMutation = useMutation({
-    mutationFn: async (data: { shiftId: number; checkInMethod: string; latitude?: number; longitude?: number; locationConfidenceScore?: number }) => {
+    mutationFn: async (data: { shiftId?: number; branchId?: number; checkInMethod: string; latitude?: number; longitude?: number; locationConfidenceScore?: number }) => {
       return await apiRequest('POST', '/api/shift-attendance/manual-check-in', data);
     },
     onSuccess: () => {
