@@ -1141,21 +1141,28 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       
       scanner.render(
         (decodedText) => {
+          console.log("DEBUG: QR code decoded:", JSON.stringify(decodedText));
           try {
             // QR kod formatı: "branch:123"
-            const [type, id] = decodedText.split(':');
+            const trimmed = decodedText.trim();
+            const parts = trimmed.split(':');
+            console.log("DEBUG: Split parts:", parts);
+            const [type, id] = parts;
+            console.log("DEBUG: type=", JSON.stringify(type), "id=", JSON.stringify(id));
             if (type === 'branch') {
               setScannerActive(false);
               scanner.clear();
               scannerRef.current = null;
               
               // Bugünkü vardiyaları bul ve ilkini seç
+              console.log("DEBUG: todayShifts=", todayShifts);
               if (todayShifts && todayShifts.length > 0) {
                 handleQRCheckIn(todayShifts[0]);
               } else {
                 toast({ title: "Hata", description: "Bugün için vardiya bulunamadı", variant: "destructive" });
               }
             } else {
+              console.log("DEBUG: Invalid type, showing error");
               toast({ title: "Hata", description: "Bu bir vardiya QR kodu değil", variant: "destructive" });
             }
           } catch (err) {
