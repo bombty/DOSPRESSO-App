@@ -471,7 +471,16 @@ export function AppSidebar() {
     ? transformDynamicMenu(dynamicMenuData.sections, dynamicMenuData.items, dynamicMenuData.rules, user)
     : { groups: [], standalone: [] };
 
-  const activeMenuGroups = dynamicGroups.length > 0 ? dynamicGroups : menuGroups;
+  // Apply scope filtering to fallback menu too
+  const filteredFallbackMenuGroups = menuGroups.filter((group) => {
+    if (user?.role === 'admin') return true;
+    if (!group.scope || group.scope === 'both') return true;
+    if (group.scope === 'branch' && isBranchRole(user?.role as any)) return true;
+    if (group.scope === 'hq' && isHQRole(user?.role as any)) return true;
+    return false;
+  });
+
+  const activeMenuGroups = dynamicGroups.length > 0 ? dynamicGroups : filteredFallbackMenuGroups;
   const activeStandaloneItems = dynamicStandalone.length > 0 ? dynamicStandalone : standaloneItems;
 
   useEffect(() => {
