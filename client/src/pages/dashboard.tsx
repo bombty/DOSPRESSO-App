@@ -544,7 +544,7 @@ export default function Dashboard() {
       const equipmentId = pathname.split(/\/ekipman\/|\/equipment\//)[1];
       if (equipmentId && !isNaN(parseInt(equipmentId))) {
         console.log("[Dashboard QR] Routing to equipment:", equipmentId);
-        setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
+        setLocation(`/ekipman/${equipmentId}`);
         return;
       }
     }
@@ -559,7 +559,7 @@ export default function Dashboard() {
         setLocation('/vardiyalar');
         return;
       } else if (type === 'equipment' && id && !isNaN(parseInt(id))) {
-        setLocation(`/ariza-yeni?equipmentId=${id}`);
+        setLocation(`/ekipman/${id}`);
         return;
       }
     }
@@ -569,7 +569,7 @@ export default function Dashboard() {
       const match = qrData.match(/DOSPRESSO-EQ-(\d+)$/);
       if (match && match[1]) {
         console.log("[Dashboard QR] Legacy format, equipment:", match[1]);
-        setLocation(`/ariza-yeni?equipmentId=${match[1]}`);
+        setLocation(`/ekipman/${match[1]}`);
         return;
       }
     }
