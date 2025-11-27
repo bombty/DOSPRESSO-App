@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -90,6 +90,7 @@ export default function Vardiyalar() {
   const [editingShift, setEditingShift] = useState<ShiftWithRelations | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
+  const [elapsedTime, setElapsedTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
   const isSupervisor = user?.role && (user.role === 'supervisor' || user.role === 'supervisor_buddy');
   const isHQIK = user?.role === 'destek';
@@ -1353,6 +1354,25 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   const isCheckedIn = todayAttendance?.checkInTime && !todayAttendance?.checkOutTime;
   const hasCompletedShift = todayAttendance?.checkOutTime;
 
+  // Live timer for elapsed work time
+  useEffect(() => {
+    if (!isCheckedIn || !todayAttendance?.checkInTime) return;
+    
+    const interval = setInterval(() => {
+      const checkIn = new Date(todayAttendance.checkInTime).getTime();
+      const now = new Date().getTime();
+      const totalSeconds = Math.floor((now - checkIn) / 1000);
+      
+      setElapsedTime({
+        hours: Math.floor(totalSeconds / 3600),
+        minutes: Math.floor((totalSeconds % 3600) / 60),
+        seconds: totalSeconds % 60
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [isCheckedIn, todayAttendance?.checkInTime]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1396,17 +1416,16 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               Aktif Vardiya
             </CardTitle>
             <CardDescription className="text-green-600 dark:text-green-400">
-              {format(parseISO(todayAttendance.checkInTime), "HH:mm", { locale: tr })} saatinde giriş yaptınız
+              {format(parseISO(todayAttendance.checkInTime), "d MMMM HH:mm", { locale: tr })} saatinde giriş yaptınız
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
+              <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Çalışma Süresi</p>
-                <p className="text-2xl font-bold">
-                  {Math.floor(differenceInMinutes(new Date(), parseISO(todayAttendance.checkInTime)) / 60)} saat{' '}
-                  {differenceInMinutes(new Date(), parseISO(todayAttendance.checkInTime)) % 60} dakika
-                </p>
+                <div className="font-mono text-3xl font-bold text-green-700 dark:text-green-300 tracking-wide">
+                  {String(elapsedTime.hours).padStart(2, '0')}:{String(elapsedTime.minutes).padStart(2, '0')}:{String(elapsedTime.seconds).padStart(2, '0')}
+                </div>
               </div>
               <Button 
                 size="lg"
@@ -1448,41 +1467,74 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
 
       {!isCheckedIn && !hasCompletedShift && (
         <div className="space-y-4">
-          <Card data-testid="card-qr-scan">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <QrCode className="h-5 w-5" />
-                QR Kod ile Giriş
-              </CardTitle>
-              <CardDescription>
-                Şubenizdeki QR kodu okutarak hızlı giriş yapın
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center gap-4 py-6">
-                {!scannerActive ? (
-                  <div className="w-full max-w-sm">
-                    <div className="w-full aspect-square border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center bg-muted/30">
-                      <div className="text-center">
-                        <QrCode className="h-16 w-16 mx-auto text-muted-foreground/50" />
-                        <p className="mt-2 text-sm text-muted-foreground">QR tarayıcı kapalı</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div id="qr-scanner-container" className="w-full max-w-sm" />
-                )}
+          {/* Inline QR Scanner - Only show when active */}
+          {scannerActive && (
+            <Card className="border-primary/50 bg-card/80 backdrop-blur-sm" data-testid="card-qr-scan-inline">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <QrCode className="h-5 w-5" />
+                    QR Kod Tara
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Şubenizdeki QR kodu kameraya gösterin
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={() => setScannerActive(false)}
+                  variant="ghost"
+                  size="icon"
+                  data-testid="button-close-scanner"
+                >
+                  <AlertCircle className="h-5 w-5 opacity-50" />
+                </Button>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {/* Scanner Container */}
+                <div className="border rounded-lg overflow-hidden bg-black/5">
+                  <div id="qr-scanner-container" style={{ width: '100%' }} />
+                </div>
+
+                {/* Close Button */}
                 <Button 
                   variant="outline" 
-                  onClick={() => setScannerActive(!scannerActive)} 
-                  data-testid="button-toggle-scanner"
+                  onClick={() => setScannerActive(false)} 
+                  data-testid="button-close-qr-scanner"
+                  className="w-full"
+                >
+                  Kapat
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* QR Toggle Button - Show when scanner is closed */}
+          {!scannerActive && (
+            <Card data-testid="card-qr-prompt">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <QrCode className="h-5 w-5" />
+                  QR Kod ile Giriş
+                </CardTitle>
+                <CardDescription>
+                  Şubenizdeki QR kodu okutarak hızlı giriş yapın
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  variant="default" 
+                  onClick={() => setScannerActive(true)} 
+                  data-testid="button-open-scanner"
+                  className="w-full"
                   disabled={checkInMutation.isPending}
                 >
-                  {scannerActive ? "Tarayıcıyı Kapat" : "Tarayıcıyı Aç"}
+                  <QrCode className="h-4 w-4 mr-2" />
+                  {checkInMutation.isPending ? "Giriş yapılıyor..." : "Tarayıcıyı Aç"}
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {todayShifts.length > 0 && (
             <Card data-testid="card-today-shifts">
