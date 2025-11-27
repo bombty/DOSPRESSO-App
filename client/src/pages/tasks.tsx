@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -1158,7 +1159,12 @@ export default function Tasks() {
               </div>
             )}
 
-            <DrawerFooter>
+            <DrawerFooter className="flex flex-row gap-2">
+              <Link href={`/gorev-detay/${selectedTask?.id}`} className="flex-1">
+                <Button variant="default" className="w-full" data-testid="button-goto-task-detail">
+                  Detay Sayfası
+                </Button>
+              </Link>
               <DrawerClose asChild>
                 <Button variant="outline" data-testid="button-close-drawer">
                   <X className="mr-2 h-4 w-4" />

@@ -30,6 +30,7 @@ import NewFaultReport from "@/pages/ariza-yeni";
 import KnowledgeBase from "@/pages/knowledge-base";
 import Training from "@/pages/training";
 import TrainingDetail from "@/pages/training-detail";
+import GorevDetay from "@/pages/gorev-detay";
 import IK from "@/pages/ik";
 import PersonelOnboarding from "@/pages/personel-onboarding";
 import LeaveRequests from "@/pages/leave-requests";
@@ -89,6 +90,7 @@ function Router() {
           <Route path="/personel/:id" component={PersonelProfil} />
           <Route path="/personel-detay/:id" component={PersonelDetay} />
           <Route path="/gorevler" component={Tasks} />
+          <Route path="/gorev-detay/:id" component={GorevDetay} />
           <Route path="/checklistler" component={Checklists} />
           <Route path="/ekipman/:id" component={EquipmentDetail} />
           <Route path="/equipment/:id" component={EquipmentDetail} />

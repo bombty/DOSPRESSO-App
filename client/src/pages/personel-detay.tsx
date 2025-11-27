@@ -50,6 +50,12 @@ import {
   GraduationCap,
   Send,
   ListTodo,
+  Clock,
+  Calendar,
+  TrendingUp,
+  Award,
+  Briefcase,
+  CalendarDays,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -123,6 +129,78 @@ export default function PersonelDetay() {
       return response.json();
     },
     enabled: !!onboarding?.id,
+  });
+
+  // Vardiya/Mesai Geçmişi
+  const { data: attendanceHistory, isLoading: attendanceLoading } = useQuery<any[]>({
+    queryKey: ["/api/shift-attendance", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/shift-attendance?userId=${id}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  // Performans Skorları
+  const { data: performanceScores, isLoading: performanceLoading } = useQuery<any[]>({
+    queryKey: ["/api/performance", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/performance/${id}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  // Eğitim İlerlemesi
+  const { data: trainingProgress, isLoading: trainingLoading } = useQuery<any[]>({
+    queryKey: ["/api/training/progress", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/training/progress?userId=${id}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  // Eğitim Modülleri
+  const { data: trainingModules } = useQuery<any[]>({
+    queryKey: ["/api/training/modules"],
+    enabled: !!id,
+  });
+
+  // İzin Talepleri
+  const { data: leaveRequests, isLoading: leaveLoading } = useQuery<any[]>({
+    queryKey: ["/api/leave-requests", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/leave-requests?userId=${id}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  // Fazla Mesai Talepleri
+  const { data: overtimeRequests, isLoading: overtimeLoading } = useQuery<any[]>({
+    queryKey: ["/api/overtime-requests", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/overtime-requests?userId=${id}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  // Atanan Görevler
+  const { data: assignedTasks, isLoading: tasksLoading } = useQuery<any[]>({
+    queryKey: ["/api/tasks", "assigned", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks?assignedToId=${id}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
   });
 
   const createOnboardingMutation = useMutation({
@@ -363,9 +441,9 @@ export default function PersonelDetay() {
         <CardContent>
           <div className="flex items-start gap-6">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={employee.profilePhotoUrl || undefined} />
+              <AvatarImage src={employee.profileImageUrl || undefined} />
               <AvatarFallback className="text-2xl">
-                {getInitials(employee.firstName, employee.lastName)}
+                {getInitials(employee.firstName || "", employee.lastName || "")}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -387,11 +465,11 @@ export default function PersonelDetay() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Acil Durum İletişim</p>
-                <p className="font-medium">{employee.emergencyContact || "-"}</p>
+                <p className="font-medium">{employee.emergencyContactName || "-"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Durum</p>
-                {employee.status === "active" ? (
+                {employee.isActive ? (
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Aktif
@@ -399,7 +477,7 @@ export default function PersonelDetay() {
                 ) : (
                   <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
                     <AlertCircle className="h-3 w-3 mr-1" />
-                    {employee.status === "pending" ? "Onay Bekliyor" : "Pasif"}
+                    Pasif
                   </Badge>
                 )}
               </div>
@@ -409,25 +487,41 @@ export default function PersonelDetay() {
       </Card>
 
       <Tabs defaultValue="documents" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="documents" data-testid="tab-documents">
-            <FileText className="h-4 w-4 mr-2" />
-            Özlük Dosyası
+        <TabsList className="flex flex-wrap gap-1 h-auto p-1">
+          <TabsTrigger value="documents" data-testid="tab-documents" className="text-xs px-2 py-1.5">
+            <FileText className="h-3 w-3 mr-1" />
+            Özlük
           </TabsTrigger>
-          <TabsTrigger value="disciplinary" data-testid="tab-disciplinary">
-            <Shield className="h-4 w-4 mr-2" />
+          <TabsTrigger value="attendance" data-testid="tab-attendance" className="text-xs px-2 py-1.5">
+            <Clock className="h-3 w-3 mr-1" />
+            Vardiya
+          </TabsTrigger>
+          <TabsTrigger value="performance" data-testid="tab-performance" className="text-xs px-2 py-1.5">
+            <TrendingUp className="h-3 w-3 mr-1" />
+            Performans
+          </TabsTrigger>
+          <TabsTrigger value="training" data-testid="tab-training" className="text-xs px-2 py-1.5">
+            <Award className="h-3 w-3 mr-1" />
+            Eğitim
+          </TabsTrigger>
+          <TabsTrigger value="leave" data-testid="tab-leave" className="text-xs px-2 py-1.5">
+            <CalendarDays className="h-3 w-3 mr-1" />
+            İzin/Mesai
+          </TabsTrigger>
+          <TabsTrigger value="disciplinary" data-testid="tab-disciplinary" className="text-xs px-2 py-1.5">
+            <Shield className="h-3 w-3 mr-1" />
             Disiplin
           </TabsTrigger>
-          <TabsTrigger value="onboarding" data-testid="tab-onboarding">
-            <GraduationCap className="h-4 w-4 mr-2" />
+          <TabsTrigger value="onboarding" data-testid="tab-onboarding" className="text-xs px-2 py-1.5">
+            <GraduationCap className="h-3 w-3 mr-1" />
             Onboarding
           </TabsTrigger>
-          <TabsTrigger value="tasks" data-testid="tab-assign-task">
-            <ListTodo className="h-4 w-4 mr-2" />
-            Görev Ata
+          <TabsTrigger value="tasks" data-testid="tab-assign-task" className="text-xs px-2 py-1.5">
+            <ListTodo className="h-3 w-3 mr-1" />
+            Görev
           </TabsTrigger>
-          <TabsTrigger value="messages" data-testid="tab-send-message">
-            <Send className="h-4 w-4 mr-2" />
+          <TabsTrigger value="messages" data-testid="tab-send-message" className="text-xs px-2 py-1.5">
+            <Send className="h-3 w-3 mr-1" />
             Mesaj
           </TabsTrigger>
         </TabsList>
@@ -614,6 +708,294 @@ export default function PersonelDetay() {
                   <p className="text-sm mt-2">Üstteki "Belge Ekle" butonunu kullanarak belge ekleyebilirsiniz</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="attendance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Vardiya Geçmişi
+              </CardTitle>
+              <CardDescription>Personelin giriş-çıkış kayıtları</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {attendanceLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : attendanceHistory && attendanceHistory.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tarih</TableHead>
+                        <TableHead>Giriş</TableHead>
+                        <TableHead>Çıkış</TableHead>
+                        <TableHead>Toplam Süre</TableHead>
+                        <TableHead>Durum</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {attendanceHistory.slice(0, 20).map((record: any) => (
+                        <TableRow key={record.id} data-testid={`row-attendance-${record.id}`}>
+                          <TableCell className="font-medium">
+                            {new Date(record.date).toLocaleDateString("tr-TR")}
+                          </TableCell>
+                          <TableCell>
+                            {record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {record.totalMinutes ? `${Math.floor(record.totalMinutes / 60)}s ${record.totalMinutes % 60}dk` : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={record.status === "checked_out" ? "outline" : "default"}>
+                              {record.status === "checked_in" ? "Aktif" : record.status === "checked_out" ? "Çıkış Yapıldı" : record.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Henüz vardiya kaydı bulunmuyor</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Performans Skorları
+              </CardTitle>
+              <CardDescription>Personelin performans değerlendirmeleri</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {performanceLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : performanceScores && performanceScores.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {performanceScores.slice(0, 4).map((score: any, idx: number) => (
+                      <Card key={idx} className="text-center p-4">
+                        <p className="text-2xl font-bold text-primary">{score.overallScore || score.score || 0}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(score.periodStart || score.createdAt).toLocaleDateString("tr-TR")}
+                        </p>
+                      </Card>
+                    ))}
+                  </div>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Dönem</TableHead>
+                          <TableHead>Puan</TableHead>
+                          <TableHead>Değerlendiren</TableHead>
+                          <TableHead>Notlar</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {performanceScores.map((score: any) => (
+                          <TableRow key={score.id} data-testid={`row-performance-${score.id}`}>
+                            <TableCell className="font-medium">
+                              {new Date(score.periodStart || score.createdAt).toLocaleDateString("tr-TR")}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={score.overallScore >= 80 ? "outline" : "default"} className={score.overallScore >= 80 ? "bg-green-50 text-green-700" : ""}>
+                                {score.overallScore || score.score || 0}/100
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {score.evaluatorId || "-"}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                              {score.notes || score.feedback || "-"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Henüz performans kaydı bulunmuyor</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="training" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Eğitim Durumu
+              </CardTitle>
+              <CardDescription>Personelin eğitim ilerlemesi ve sertifikaları</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {trainingLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : trainingProgress && trainingProgress.length > 0 ? (
+                <div className="space-y-4">
+                  {trainingProgress.map((progress: any) => {
+                    const module = trainingModules?.find((m: any) => m.id === progress.moduleId);
+                    return (
+                      <Card key={progress.id} data-testid={`training-progress-${progress.id}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1">
+                              <p className="font-medium">{module?.title || `Modül ${progress.moduleId}`}</p>
+                              <p className="text-sm text-muted-foreground">{module?.description || ""}</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-primary rounded-full transition-all"
+                                    style={{ width: `${progress.progress || 0}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm font-medium">{progress.progress || 0}%</span>
+                              </div>
+                            </div>
+                            <Badge variant={progress.status === "completed" ? "outline" : "default"} className={progress.status === "completed" ? "bg-green-50 text-green-700" : ""}>
+                              {progress.status === "completed" ? "Tamamlandı" : progress.status === "in_progress" ? "Devam Ediyor" : "Başlamadı"}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Henüz eğitim kaydı bulunmuyor</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="leave" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5" />
+                İzin & Fazla Mesai Talepleri
+              </CardTitle>
+              <CardDescription>Personelin izin ve fazla mesai geçmişi</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    İzin Talepleri
+                  </h3>
+                  {leaveLoading ? (
+                    <Skeleton className="h-16 w-full" />
+                  ) : leaveRequests && leaveRequests.length > 0 ? (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tarih Aralığı</TableHead>
+                            <TableHead>Tür</TableHead>
+                            <TableHead>Gün</TableHead>
+                            <TableHead>Durum</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {leaveRequests.map((leave: any) => (
+                            <TableRow key={leave.id} data-testid={`row-leave-${leave.id}`}>
+                              <TableCell className="font-medium">
+                                {new Date(leave.startDate).toLocaleDateString("tr-TR")} - {new Date(leave.endDate).toLocaleDateString("tr-TR")}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {leave.leaveType === "annual" ? "Yıllık" : leave.leaveType === "sick" ? "Hastalık" : leave.leaveType === "unpaid" ? "Ücretsiz" : leave.leaveType}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{leave.totalDays || 1} gün</TableCell>
+                              <TableCell>
+                                <Badge variant={leave.status === "approved" ? "outline" : leave.status === "rejected" ? "destructive" : "default"} className={leave.status === "approved" ? "bg-green-50 text-green-700" : ""}>
+                                  {leave.status === "pending" ? "Bekliyor" : leave.status === "approved" ? "Onaylandı" : "Reddedildi"}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">İzin talebi bulunmuyor</p>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Fazla Mesai Talepleri
+                  </h3>
+                  {overtimeLoading ? (
+                    <Skeleton className="h-16 w-full" />
+                  ) : overtimeRequests && overtimeRequests.length > 0 ? (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tarih</TableHead>
+                            <TableHead>Saat</TableHead>
+                            <TableHead>Sebep</TableHead>
+                            <TableHead>Durum</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {overtimeRequests.map((ot: any) => (
+                            <TableRow key={ot.id} data-testid={`row-overtime-${ot.id}`}>
+                              <TableCell className="font-medium">
+                                {new Date(ot.date).toLocaleDateString("tr-TR")}
+                              </TableCell>
+                              <TableCell>{ot.hours || ot.totalHours} saat</TableCell>
+                              <TableCell className="max-w-xs truncate">{ot.reason || "-"}</TableCell>
+                              <TableCell>
+                                <Badge variant={ot.status === "approved" ? "outline" : ot.status === "rejected" ? "destructive" : "default"} className={ot.status === "approved" ? "bg-green-50 text-green-700" : ""}>
+                                  {ot.status === "pending" ? "Bekliyor" : ot.status === "approved" ? "Onaylandı" : "Reddedildi"}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">Fazla mesai talebi bulunmuyor</p>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

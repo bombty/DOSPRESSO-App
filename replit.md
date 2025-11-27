@@ -30,6 +30,16 @@ The frontend utilizes React 18+ with TypeScript and Vite. It employs Shadcn/ui (
 - **AI Integration**: AI photo verification for tasks and RAG-enabled knowledge base search.
 - **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, and shift planning.
 
+### Unified Page Architecture
+- **Single Detail Page per Entity**: Each major entity type has one comprehensive detail page serving as the single source of truth, accessible from all modules with consistent navigation patterns.
+  - `/personel-detay/:id` - Employee details with 9 tabs (Özlük Dosyası, Disiplin, Onboarding, Görev Ata, Mesaj, Vardiya Geçmişi, Performans, Eğitim Durumu, İzin/Fazla Mesai)
+  - `/subeler/:id` - Branch details with tabs for Personel, Görevler, Ekipman, Arızalar, QR & Lokasyon, plus live tracking
+  - `/ekipman/:id` - Equipment details with maintenance history and fault logs
+  - `/ariza-detay/:id` - Fault details with workflow, timeline, and cost tracking
+  - `/gorev-detay/:id` - Task details with checklist, notes, and history tabs
+  - `/egitim/:id` - Training module details with lessons, quizzes, flashcards, and progress
+- **Cross-Entity Linking**: All entity references (employee names, equipment, branches) link to their respective unified detail pages for seamless navigation.
+
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
 - **SLA Calculation**: Dynamic, time-based calculation varying by fault priority.

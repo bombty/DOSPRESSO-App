@@ -315,6 +315,7 @@ export default function SubeDetayPage() {
           <TabsTrigger value="personel" data-testid="tab-personnel">Personel</TabsTrigger>
           <TabsTrigger value="gorevler" data-testid="tab-tasks">Görevler</TabsTrigger>
           <TabsTrigger value="ekipman" data-testid="tab-equipment">Ekipman</TabsTrigger>
+          <TabsTrigger value="arizalar" data-testid="tab-faults">Arızalar</TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="qr-ayarlar" data-testid="tab-qr-settings">
               <QrCode className="h-4 w-4 mr-1" />
@@ -389,7 +390,7 @@ export default function SubeDetayPage() {
               ) : (
                 <div className="space-y-2">
                   {staff.map((emp) => (
-                    <Link key={emp.id} href={`/personel/${emp.id}`}>
+                    <Link key={emp.id} href={`/personel-detay/${emp.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`employee-${emp.id}`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -464,16 +465,53 @@ export default function SubeDetayPage() {
               ) : (
                 <div className="space-y-2">
                   {equipment.map((equip) => (
-                    <div key={equip.id} className="flex items-center justify-between p-3 rounded-lg border" data-testid={`equipment-${equip.id}`}>
-                      <div>
-                        <p className="font-medium">{equip.equipmentType}</p>
-                        <p className="text-sm text-muted-foreground">{equip.serialNumber}</p>
+                    <Link key={equip.id} href={`/ekipman/${equip.id}`}>
+                      <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`equipment-${equip.id}`}>
+                        <div>
+                          <p className="font-medium">{equip.equipmentType}</p>
+                          <p className="text-sm text-muted-foreground">{equip.serialNumber}</p>
+                        </div>
+                        <Badge variant={equip.isActive ? "default" : "secondary"}>
+                          {equip.isActive ? "Aktif" : "Pasif"}
+                        </Badge>
                       </div>
-                      <Badge variant={equip.isActive ? "default" : "secondary"}>
-                        {equip.isActive ? "Aktif" : "Pasif"}
-                      </Badge>
-                    </div>
+                    </Link>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="arizalar" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Son Arızalar</CardTitle>
+              <CardDescription>Şubeye ait ekipman arızaları</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {branchData.recentFaults && branchData.recentFaults.length > 0 ? (
+                <div className="space-y-2">
+                  {branchData.recentFaults.slice(0, 10).map((fault: any) => (
+                    <Link key={fault.id} href={`/ariza-detay/${fault.id}`}>
+                      <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`fault-${fault.id}`}>
+                        <div>
+                          <p className="font-medium">{fault.title || fault.description?.substring(0, 50) || `Arıza #${fault.id}`}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {fault.equipmentType || "Ekipman"} • {new Date(fault.createdAt).toLocaleDateString('tr-TR')}
+                          </p>
+                        </div>
+                        <Badge variant={fault.status === 'resolved' || fault.status === 'closed' ? "outline" : fault.priority === 'critical' ? "destructive" : "default"}>
+                          {fault.status === 'open' ? 'Açık' : fault.status === 'in_progress' ? 'İşlemde' : fault.status === 'resolved' ? 'Çözüldü' : 'Kapatıldı'}
+                        </Badge>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Wrench className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Aktif arıza bulunmuyor</p>
                 </div>
               )}
             </CardContent>
