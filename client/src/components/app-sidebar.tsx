@@ -139,6 +139,144 @@ const standaloneItems: MenuItem[] = [
 // In normal operation, dynamic menu from database takes precedence
 const menuGroups: MenuGroup[] = [
   {
+    groupTr: "Ana Menü",
+    icon: LayoutDashboard,
+    scope: "both",
+    items: [
+      {
+        title: "Dashboard",
+        titleTr: "Dashboard",
+        url: "/",
+        icon: LayoutDashboard,
+        module: "dashboard",
+        scope: "both",
+      },
+      {
+        title: "Şubeler",
+        titleTr: "Şubeler",
+        url: "/subeler",
+        icon: Building2,
+        module: "branches",
+        scope: "both",
+      },
+    ],
+  },
+  {
+    groupTr: "Operasyon",
+    icon: Wrench,
+    scope: "both",
+    items: [
+      {
+        title: "Ekipman",
+        titleTr: "Ekipman",
+        url: "/ekipman",
+        icon: Wrench,
+        module: "equipment",
+        scope: "both",
+      },
+      {
+        title: "Arıza Yönetimi",
+        titleTr: "Arıza Yönetimi",
+        url: "/ariza",
+        icon: AlertTriangle,
+        module: "equipment_faults",
+        scope: "both",
+      },
+      {
+        title: "QR Tara",
+        titleTr: "QR Tara",
+        url: "/qr-tara",
+        icon: QrCode,
+        module: "equipment",
+        scope: "both",
+      },
+    ],
+  },
+  {
+    groupTr: "Görevler",
+    icon: CheckSquare,
+    scope: "both",
+    items: [
+      {
+        title: "Görevler",
+        titleTr: "Görevler",
+        url: "/gorevler",
+        icon: CheckSquare,
+        module: "tasks",
+        scope: "both",
+      },
+      {
+        title: "Checklistler",
+        titleTr: "Checklistler",
+        url: "/checklistler",
+        icon: ClipboardList,
+        module: "checklists",
+        scope: "both",
+      },
+    ],
+  },
+  {
+    groupTr: "Eğitim & Bilgi",
+    icon: GraduationCap,
+    scope: "both",
+    items: [
+      {
+        title: "Eğitim Akademisi",
+        titleTr: "Eğitim Akademisi",
+        url: "/egitim",
+        icon: GraduationCap,
+        module: "training",
+        scope: "both",
+      },
+      {
+        title: "Bilgi Bankası",
+        titleTr: "Bilgi Bankası",
+        url: "/bilgi-bankasi",
+        icon: BookOpen,
+        module: "knowledge_base",
+        scope: "both",
+      },
+    ],
+  },
+  {
+    groupTr: "İK & Vardiya",
+    icon: Users,
+    scope: "both",
+    items: [
+      {
+        title: "İK Yönetimi",
+        titleTr: "İK Yönetimi",
+        url: "/ik",
+        icon: Users,
+        module: "hr",
+        scope: "both",
+      },
+      {
+        title: "Vardiyalar",
+        titleTr: "Vardiyalar",
+        url: "/vardiyalar",
+        icon: Calendar,
+        module: "schedules",
+        scope: "both",
+      },
+    ],
+  },
+  {
+    groupTr: "Performans",
+    icon: BarChart3,
+    scope: "both",
+    items: [
+      {
+        title: "Performans",
+        titleTr: "Performans",
+        url: "/performans",
+        icon: BarChart3,
+        module: "performance",
+        scope: "both",
+      },
+    ],
+  },
+  {
     groupTr: "Yönetim",
     icon: Settings,
     scope: "hq",
@@ -356,23 +494,43 @@ export function AppSidebar() {
     return canSeeScope(item.scope) && canAccessModule(user.role as any, item.module);
   });
 
-  // Filter menu groups based on scope and permissions (exact match only)
+  // Filter menu groups based on scope and permissions
+  // Admin users see ALL menu groups regardless of scope
   const filterMenuGroups = (targetScope: 'branch' | 'hq' | 'both') => {
     return activeMenuGroups
-      .filter((group) => canSeeScope(group.scope) && group.scope === targetScope)
+      .filter((group) => {
+        // Admin sees all scopes
+        if (user?.role === 'admin') {
+          return group.scope === targetScope || (!group.scope && targetScope === 'both');
+        }
+        return canSeeScope(group.scope) && group.scope === targetScope;
+      })
       .map((group) => ({
         ...group,
         items: group.items.filter((item) => {
           if (!user?.role) return false;
+          // Admin can access all modules
+          if (user.role === 'admin') return true;
           return canAccessModule(user.role as any, item.module);
         }),
       }))
       .filter((group) => group.items.length > 0);
   };
 
+  // For admin users, show all menu groups in a unified view
+  const isAdmin = user?.role === 'admin';
+  
   const branchMenuGroups = filterMenuGroups('branch');
   const hqMenuGroups = filterMenuGroups('hq');
   const bothMenuGroups = filterMenuGroups('both');
+  
+  // Combined menu for admin - shows all groups when dynamic menu fails
+  const allMenuGroups = isAdmin && dynamicGroups.length === 0 
+    ? activeMenuGroups.map(group => ({
+        ...group,
+        items: group.items.filter(() => true) // Admin sees all
+      })).filter(g => g.items.length > 0)
+    : [];
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
