@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { useAuth } from "@/hooks/useAuth";
+import logoPath from "@assets/IMG_5044_1764273850958.png";
 import FaultHub from "@/pages/ariza";
 import FaultDetail from "@/pages/ariza-detay";
 import EquipmentAnalytics from "@/pages/ekipman-analitics";
@@ -219,14 +220,15 @@ function AppContent() {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between p-4 border-b bg-background">
-            <div className="flex items-center gap-4">
+          <header className="flex items-center justify-between px-4 py-2 border-b bg-white dark:bg-slate-900 shadow-sm">
+            <div className="flex items-center gap-2 md:gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
-              {userDisplayInfo}
+              <img src={logoPath} alt="DOSPRESSO" className="h-8 md:h-10 object-contain" data-testid="logo-header" />
+              <div className="hidden sm:block">{userDisplayInfo}</div>
             </div>
             <InboxDialog />
           </header>
-          <main className="flex-1 overflow-auto p-6 bg-background">
+          <main className="flex-1 overflow-auto p-3 md:p-6 bg-background">
             <Router />
           </main>
         </div>

@@ -541,11 +541,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 md:space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-page-title">Kontrol Paneli</h1>
-          <p className="text-muted-foreground mt-1">DOSPRESSO operasyon özeti</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-blue-900" data-testid="text-page-title">Kontrol Paneli</h1>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1">Operasyonel Özet</p>
         </div>
         {!scannerActive && (
           <Button 
@@ -604,7 +604,7 @@ export default function Dashboard() {
 
       <div className="grid gap-2 grid-cols-3 sm:gap-3 md:grid-cols-5">
         <Card 
-          className="cursor-pointer hover-elevate transition-all" 
+          className="cursor-pointer hover-elevate transition-all border-l-4 border-l-green-500" 
           onClick={() => setLocation("/gorevler?status=onaylandi")}
           data-testid="card-completed-tasks"
         >
@@ -614,9 +614,9 @@ export default function Dashboard() {
             ) : (
               <>
                 <div className="flex justify-center mb-1">
-                  <CheckCircle className="h-5 w-5 text-primary" />
+                  <CheckCircle className="h-5 w-5 text-green-600" />
                 </div>
-                <div className="text-xl font-bold" data-testid="text-completed-tasks">
+                <div className="text-xl font-bold text-green-700" data-testid="text-completed-tasks">
                   {completedTasks}
                 </div>
                 <p className="text-xs text-muted-foreground">Tamamlandı</p>
@@ -626,7 +626,7 @@ export default function Dashboard() {
         </Card>
 
         <Card 
-          className="cursor-pointer hover-elevate transition-all" 
+          className="cursor-pointer hover-elevate transition-all border-l-4 border-l-blue-600" 
           onClick={() => setLocation("/gorevler?status=beklemede")}
           data-testid="card-pending-tasks"
         >
@@ -636,9 +636,9 @@ export default function Dashboard() {
             ) : (
               <>
                 <div className="flex justify-center mb-1">
-                  <Clock className="h-5 w-5 text-accent" />
+                  <Clock className="h-5 w-5 text-blue-600" />
                 </div>
-                <div className="text-xl font-bold" data-testid="text-pending-tasks">
+                <div className="text-xl font-bold text-blue-700" data-testid="text-pending-tasks">
                   {pendingTasks}
                 </div>
                 <p className="text-xs text-muted-foreground">Beklemede</p>
@@ -648,7 +648,7 @@ export default function Dashboard() {
         </Card>
 
         <Card 
-          className="cursor-pointer hover-elevate transition-all" 
+          className="cursor-pointer hover-elevate transition-all border-l-4 border-l-red-600" 
           onClick={() => setLocation("/ekipman-arizalar")}
           data-testid="card-open-faults"
         >
@@ -658,9 +658,9 @@ export default function Dashboard() {
             ) : (
               <>
                 <div className="flex justify-center mb-1">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
                 </div>
-                <div className="text-xl font-bold" data-testid="text-open-faults">
+                <div className="text-xl font-bold text-red-700" data-testid="text-open-faults">
                   {openFaults}
                 </div>
                 <p className="text-xs text-muted-foreground">Arızalar</p>
@@ -669,16 +669,16 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-l-4 border-l-blue-500">
           <CardContent className="pt-2 pb-2 text-center">
             {metricsLoading ? (
               <Skeleton className="h-10 w-10 mx-auto" />
             ) : (
               <>
                 <div className="flex justify-center mb-1">
-                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
                 </div>
-                <div className="text-xl font-bold" data-testid="text-completion-rate">
+                <div className="text-xl font-bold text-blue-700" data-testid="text-completion-rate">
                   %{completionRate}
                 </div>
                 <p className="text-xs text-muted-foreground">Oran</p>
@@ -687,16 +687,16 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card data-testid="card-performance-score">
+        <Card data-testid="card-performance-score" className="border-l-4 border-l-amber-500">
           <CardContent className="pt-2 pb-2 text-center">
             {performanceLoading ? (
               <Skeleton className="h-10 w-10 mx-auto" />
             ) : (
               <>
                 <div className="flex justify-center mb-1">
-                  <Award className="h-5 w-5 text-accent-foreground" />
+                  <Award className="h-5 w-5 text-amber-600" />
                 </div>
-                <div className="text-xl font-bold" data-testid="text-performance-score">
+                <div className="text-xl font-bold text-amber-700" data-testid="text-performance-score">
                   {weeklyPerformanceScore !== null ? weeklyPerformanceScore : "-"}
                 </div>
                 <p className="text-xs text-muted-foreground">Performans</p>

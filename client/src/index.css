@@ -9,6 +9,10 @@
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
 
+  /* DOSPRESSO Corporate Colors */
+  --dospresso-navy: 223 44% 25%;
+  --dospresso-red: 0 82% 50%;
+
   /* Automatic computation of border around primary / danger buttons */
   --opaque-button-border-intensity: -8; /* In terms of percentages */
 
@@ -28,21 +32,21 @@
 
   --card-border: 220 13% 90%;
 
-  --sidebar: 222 47% 11%;
+  --sidebar: 223 44% 25%;
 
   --sidebar-foreground: 0 0% 100%;
 
-  --sidebar-border: 222 40% 15%;
+  --sidebar-border: 223 44% 20%;
 
-  --sidebar-primary: 0 91% 62%;
+  --sidebar-primary: 0 82% 50%;
 
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 222 40% 18%;
+  --sidebar-accent: 223 44% 35%;
 
   --sidebar-accent-foreground: 0 0% 100%;
 
-  --sidebar-ring: 0 91% 62%;
+  --sidebar-ring: 0 82% 50%;
 
   --popover: 0 0% 100%;
 
@@ -50,25 +54,25 @@
 
   --popover-border: 220 13% 87%;
 
-  --primary: 0 91% 62%;
+  --primary: 0 82% 50%;
 
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 38 12% 90%;
+  --secondary: 223 44% 25%;
 
-  --secondary-foreground: 220 13% 13%;
+  --secondary-foreground: 0 0% 100%;
 
   --muted: 40 8% 93%;
 
   --muted-foreground: 220 10% 40%;
 
-  --accent: 40 12% 92%;
+  --accent: 223 44% 35%;
 
-  --accent-foreground: 220 13% 13%;
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 72% 32%;
+  --destructive: 0 82% 50%;
 
-  --destructive-foreground: 0 72% 98%;
+  --destructive-foreground: 0 0% 98%;
 
   --input: 220 13% 75%;
   --ring: 220 70% 50%;
