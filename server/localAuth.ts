@@ -21,21 +21,22 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
-  // Replit App compatibility: minimal restrictions
+  // Replit App compatibility - auto-detect secure based on environment
+  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.REPLIT;
+  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    name: 'connect.sid', // Standard Express session cookie name
-    proxy: true,
+    name: 'connect.sid',
+    proxy: true, // Trust first proxy (Replit)
     cookie: {
-      httpOnly: false, // Allow JavaScript access for debugging
-      secure: false, // No HTTPS requirement
-      sameSite: "lax" as const, // Most compatible
+      httpOnly: true, // Security: prevent XSS access
+      secure: 'auto', // Auto-detect HTTPS
+      sameSite: 'lax', // Allow same-site navigation
       maxAge: sessionTtl,
       path: '/',
-      domain: undefined, // No domain restriction
     },
   });
 }
