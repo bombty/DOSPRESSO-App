@@ -48,86 +48,86 @@ export function ManagerDashboard({
 
       {/* Performance Gauges */}
       {!isLoading && (
-        <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
+        <div className="grid gap-1 grid-cols-2 md:grid-cols-3">
           {/* Completion Rate Gauge */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Görev</span>
                 <CheckCircle className="h-3 w-3 text-green-600" />
               </div>
-              <div className="text-xl font-bold text-green-700 mb-2">{completionRate}%</div>
-              <Progress value={completionRate} className="h-2" />
+              <div className="text-lg font-bold text-green-700 mb-1">{completionRate}%</div>
+              <Progress value={completionRate} className="h-1.5" />
             </CardContent>
           </Card>
 
           {/* Team Performance */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Takım</span>
                 <Users className="h-3 w-3 text-blue-600" />
               </div>
-              <div className="text-xl font-bold text-blue-700 mb-2">{avgTeamPerf}%</div>
-              <Progress value={avgTeamPerf} className="h-2" />
+              <div className="text-lg font-bold text-blue-700 mb-1">{avgTeamPerf}%</div>
+              <Progress value={avgTeamPerf} className="h-1.5" />
             </CardContent>
           </Card>
 
           {/* System Health */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Sağlık</span>
                 <Zap className={`h-3 w-3 ${healthScore >= 70 ? 'text-green-600' : healthScore >= 50 ? 'text-yellow-600' : 'text-red-600'}`} />
               </div>
-              <div className={`text-xl font-bold mb-2 ${healthScore >= 70 ? 'text-green-700' : healthScore >= 50 ? 'text-yellow-700' : 'text-red-700'}`}>
+              <div className={`text-lg font-bold mb-1 ${healthScore >= 70 ? 'text-green-700' : healthScore >= 50 ? 'text-yellow-700' : 'text-red-700'}`}>
                 {healthScore}%
               </div>
-              <Progress value={healthScore} className="h-2" />
+              <Progress value={healthScore} className="h-1.5" />
             </CardContent>
           </Card>
         </div>
       )}
 
       {/* KPI Cards - Manager View */}
-      <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-1 grid-cols-2 md:grid-cols-4">
         <Card className="border-l-4 border-l-green-600 cursor-pointer hover-elevate">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <CheckCircle className="h-4 w-4 text-green-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-green-700">{completedTasks}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Tamamlanan</p>
+            <div className="text-base md:text-lg font-bold text-green-700">{completedTasks}</div>
+            <p className="text-xs text-muted-foreground">Tamamlanan</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-blue-600 cursor-pointer hover-elevate">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <Clock className="h-5 w-5 text-blue-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <Clock className="h-4 w-4 text-blue-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-blue-700">{pendingTasks}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Beklemede</p>
+            <div className="text-base md:text-lg font-bold text-blue-700">{pendingTasks}</div>
+            <p className="text-xs text-muted-foreground">Beklemede</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-red-600 cursor-pointer hover-elevate">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-red-700">{openFaults}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Arızalar</p>
+            <div className="text-base md:text-lg font-bold text-red-700">{openFaults}</div>
+            <p className="text-xs text-muted-foreground">Arızalar</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-amber-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <TrendingUp className="h-5 w-5 text-amber-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <TrendingUp className="h-4 w-4 text-amber-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-amber-700">%{completionRate}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Oran</p>
+            <div className="text-base md:text-lg font-bold text-amber-700">%{completionRate}</div>
+            <p className="text-xs text-muted-foreground">Oran</p>
           </CardContent>
         </Card>
       </div>

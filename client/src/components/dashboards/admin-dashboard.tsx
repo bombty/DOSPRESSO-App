@@ -104,120 +104,120 @@ export function AdminDashboard({
 
       {/* Gauge Cards - Real-time KPI Monitoring */}
       {!isLoading && (
-        <div className="grid gap-2 grid-cols-2 md:grid-cols-5">
+        <div className="grid gap-1 grid-cols-2 md:grid-cols-5">
           {/* Personel Gauge */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Personel</span>
                 <Zap className={`h-3 w-3 ${getGaugeTextColor(avgEmployeePerf)}`} />
               </div>
-              <div className={`text-xl font-bold ${getGaugeTextColor(avgEmployeePerf)} mb-2`}>
+              <div className={`text-lg font-bold ${getGaugeTextColor(avgEmployeePerf)} mb-1`}>
                 {avgEmployeePerf}%
               </div>
-              <Progress value={avgEmployeePerf} className="h-2" />
+              <Progress value={avgEmployeePerf} className="h-1.5" />
             </CardContent>
           </Card>
 
           {/* Ekipman Gauge */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Ekipman</span>
                 <Zap className={`h-3 w-3 ${getGaugeTextColor(avgEquipmentScore)}`} />
               </div>
-              <div className={`text-xl font-bold ${getGaugeTextColor(avgEquipmentScore)} mb-2`}>
+              <div className={`text-lg font-bold ${getGaugeTextColor(avgEquipmentScore)} mb-1`}>
                 {avgEquipmentScore}%
               </div>
-              <Progress value={avgEquipmentScore} className="h-2" />
+              <Progress value={avgEquipmentScore} className="h-1.5" />
             </CardContent>
           </Card>
 
           {/* Kalite Gauge */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Kalite</span>
                 <Zap className={`h-3 w-3 ${getGaugeTextColor(avgQualityScore)}`} />
               </div>
-              <div className={`text-xl font-bold ${getGaugeTextColor(avgQualityScore)} mb-2`}>
+              <div className={`text-lg font-bold ${getGaugeTextColor(avgQualityScore)} mb-1`}>
                 {avgQualityScore}%
               </div>
-              <Progress value={avgQualityScore} className="h-2" />
+              <Progress value={avgQualityScore} className="h-1.5" />
             </CardContent>
           </Card>
 
           {/* Müşteri Gauge */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Müşteri</span>
                 <Zap className={`h-3 w-3 ${getGaugeTextColor(avgCustomerScore)}`} />
               </div>
-              <div className={`text-xl font-bold ${getGaugeTextColor(avgCustomerScore)} mb-2`}>
+              <div className={`text-lg font-bold ${getGaugeTextColor(avgCustomerScore)} mb-1`}>
                 {avgCustomerScore}%
               </div>
-              <Progress value={avgCustomerScore} className="h-2" />
+              <Progress value={avgCustomerScore} className="h-1.5" />
             </CardContent>
           </Card>
 
           {/* SLA Gauge */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">SLA</span>
                 <Zap className={`h-3 w-3 ${getGaugeTextColor(slaScore)}`} />
               </div>
-              <div className={`text-xl font-bold ${getGaugeTextColor(slaScore)} mb-2`}>
+              <div className={`text-lg font-bold ${getGaugeTextColor(slaScore)} mb-1`}>
                 {slaScore}%
               </div>
-              <Progress value={slaScore} className="h-2" />
+              <Progress value={slaScore} className="h-1.5" />
             </CardContent>
           </Card>
         </div>
       )}
 
       {/* KPI Cards Row */}
-      <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-1 grid-cols-2 md:grid-cols-4">
         <Card className="border-l-4 border-l-blue-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <Building2 className="h-5 w-5 text-blue-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <Building2 className="h-4 w-4 text-blue-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-blue-700">{totalBranches}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Toplam Şubeler</p>
+            <div className="text-base md:text-lg font-bold text-blue-700">{totalBranches}</div>
+            <p className="text-xs text-muted-foreground">Toplam Şubeler</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-red-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <AlertCircle className="h-5 w-5 text-red-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <AlertCircle className="h-4 w-4 text-red-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-red-700">{openFaults}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Açık Arızalar</p>
+            <div className="text-base md:text-lg font-bold text-red-700">{openFaults}</div>
+            <p className="text-xs text-muted-foreground">Açık Arızalar</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-green-600 md:col-span-1">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <CheckCircle className="h-4 w-4 text-green-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-green-700">{totalFaults - openFaults}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Kapanan</p>
+            <div className="text-base md:text-lg font-bold text-green-700">{totalFaults - openFaults}</div>
+            <p className="text-xs text-muted-foreground">Kapanan</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-amber-600 md:col-span-1">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <TrendingUp className="h-5 w-5 text-amber-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <TrendingUp className="h-4 w-4 text-amber-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-amber-700">
+            <div className="text-base md:text-lg font-bold text-amber-700">
               {totalFaults > 0 ? Math.round(((totalFaults - openFaults) / totalFaults) * 100) : 0}%
             </div>
-            <p className="text-xs md:text-sm text-muted-foreground">Kapanış Oranı</p>
+            <p className="text-xs text-muted-foreground">Kapanış Oranı</p>
           </CardContent>
         </Card>
       </div>

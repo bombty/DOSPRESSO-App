@@ -42,43 +42,43 @@ export function TeknikDashboard({
 
       {/* System Health Gauges */}
       {!isLoading && (
-        <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
+        <div className="grid gap-1 grid-cols-2 md:grid-cols-3">
           {/* Resolution Rate */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Çözüm</span>
                 <CheckCircle className={`h-3 w-3 ${resolutionRate >= 70 ? 'text-green-600' : 'text-yellow-600'}`} />
               </div>
-              <div className={`text-xl font-bold mb-2 ${resolutionRate >= 70 ? 'text-green-700' : 'text-yellow-700'}`}>
+              <div className={`text-lg font-bold mb-1 ${resolutionRate >= 70 ? 'text-green-700' : 'text-yellow-700'}`}>
                 {resolutionRate}%
               </div>
-              <Progress value={resolutionRate} className="h-2" />
+              <Progress value={resolutionRate} className="h-1.5" />
             </CardContent>
           </Card>
 
           {/* System Health */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Sistem</span>
                 <Zap className={`h-3 w-3 ${systemHealth >= 70 ? 'text-green-600' : systemHealth >= 40 ? 'text-yellow-600' : 'text-red-600'}`} />
               </div>
-              <div className={`text-xl font-bold mb-2 ${systemHealth >= 70 ? 'text-green-700' : systemHealth >= 40 ? 'text-yellow-700' : 'text-red-700'}`}>
+              <div className={`text-lg font-bold mb-1 ${systemHealth >= 70 ? 'text-green-700' : systemHealth >= 40 ? 'text-yellow-700' : 'text-red-700'}`}>
                 {systemHealth}%
               </div>
-              <Progress value={systemHealth} className="h-2" />
+              <Progress value={systemHealth} className="h-1.5" />
             </CardContent>
           </Card>
 
           {/* Trend */}
           <Card>
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="pt-2 pb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium">Trend</span>
                 <TrendingDown className="h-3 w-3 text-green-600" />
               </div>
-              <div className="text-xl font-bold text-green-700 mb-2">{openFaults}</div>
+              <div className="text-lg font-bold text-green-700 mb-1">{openFaults}</div>
               <p className="text-xs text-muted-foreground">Açık arızalar</p>
             </CardContent>
           </Card>
@@ -105,46 +105,46 @@ export function TeknikDashboard({
       )}
 
       {/* Alert Stats */}
-      <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-1 grid-cols-2 md:grid-cols-4">
         <Card className="border-l-4 border-l-red-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-red-700">{openFaults}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Açık Arızalar</p>
+            <div className="text-base md:text-lg font-bold text-red-700">{openFaults}</div>
+            <p className="text-xs text-muted-foreground">Açık Arızalar</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-orange-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-orange-700">{criticalFaults.length}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Kritik</p>
+            <div className="text-base md:text-lg font-bold text-orange-700">{criticalFaults.length}</div>
+            <p className="text-xs text-muted-foreground">Kritik</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-yellow-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <Zap className="h-5 w-5 text-yellow-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <Zap className="h-4 w-4 text-yellow-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-yellow-700">{highFaults.length}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Yüksek</p>
+            <div className="text-base md:text-lg font-bold text-yellow-700">{highFaults.length}</div>
+            <p className="text-xs text-muted-foreground">Yüksek</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-blue-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <Clock className="h-5 w-5 text-blue-600" />
+          <CardContent className="pt-2 pb-2 text-center">
+            <div className="flex justify-center mb-0.5">
+              <Clock className="h-4 w-4 text-blue-600" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-blue-700">
+            <div className="text-base md:text-lg font-bold text-blue-700">
               {totalFaults - openFaults}
             </div>
-            <p className="text-xs md:text-sm text-muted-foreground">Kapanan</p>
+            <p className="text-xs text-muted-foreground">Kapanan</p>
           </CardContent>
         </Card>
       </div>
