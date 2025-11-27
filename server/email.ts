@@ -1,9 +1,10 @@
 import nodemailer from 'nodemailer';
 
+// Use SMTP as primary, can be extended with Resend
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+  secure: process.env.SMTP_PORT === '465',
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD,
@@ -24,13 +25,60 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
       to: options.to,
       subject: options.subject,
       html: options.html,
-      text: options.text || options.html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      text: options.text || options.html.replace(/<[^>]*>/g, ''),
     });
-    console.log(`Email sent to ${options.to}: ${options.subject}`);
+    console.log(`📧 Email sent to ${options.to}: ${options.subject}`);
   } catch (error) {
     console.error('Email send error:', error);
-    throw new Error('Failed to send email');
+    // Don't throw - notifications are best-effort
   }
+}
+
+// Send notification email
+export async function sendNotificationEmail(
+  to: string,
+  title: string,
+  message: string,
+  type: 'info' | 'warning' | 'error' = 'info'
+): Promise<void> {
+  const colorMap = {
+    info: '#3498db',
+    warning: '#f39c12',
+    error: '#e74c3c',
+  };
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .alert { border-left: 4px solid ${colorMap[type]}; padding: 15px; background-color: #f9f9f9; }
+        .title { color: ${colorMap[type]}; font-weight: bold; font-size: 16px; }
+        .message { margin: 10px 0; }
+        .footer { margin-top: 20px; font-size: 12px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="alert">
+          <div class="title">${title}</div>
+          <div class="message">${message.replace(/\n/g, '<br>')}</div>
+        </div>
+        <div class="footer">
+          <p>DOSPRESSO Franchise Management System<br>Bu otomatik bir emaildir.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail({
+    to,
+    subject: title,
+    html,
+  });
 }
 
 export async function sendPasswordResetEmail(email: string, resetToken: string): Promise<void> {

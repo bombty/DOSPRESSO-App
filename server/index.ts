@@ -8,6 +8,7 @@ import { seedPermissionModules } from "./seed-permission-modules";
 import { seedAdminMenu } from "./seed-admin-menu";
 import { seedServiceRequests } from "./seed-service-requests";
 import { startWeeklyBackupScheduler, performHealthCheck } from "./backup";
+import { startTrackingCleanup } from "./tracking";
 
 const app = express();
 
@@ -120,6 +121,9 @@ app.use((req, res, next) => {
     
     // Start weekly backup scheduler (runs every Sunday at midnight Turkey time)
     startWeeklyBackupScheduler();
+
+    // Start real-time employee tracking cleanup (runs every 10 minutes)
+    startTrackingCleanup();
     
     // Perform initial health check
     performHealthCheck().then(health => {

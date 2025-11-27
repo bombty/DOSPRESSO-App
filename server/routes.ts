@@ -80,6 +80,8 @@ import {
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault } from "./ai";
+import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
+import { sendNotificationEmail } from "./email";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -10124,6 +10126,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error triggering manual backup:", error);
       res.status(500).json({ message: "Backup tetiklenirken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // LIVE TRACKING - Real-time Employee Tracking
+  // ========================================
+  
+  app.post('/api/tracking/location', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { latitude, longitude, accuracy } = req.body;
+      
+      if (!latitude || !longitude) {
+        return res.status(400).json({ message: "Konum bilgisi gereklidir" });
+      }
+      
+      const branchId = user.branchId || 0;
+      await updateEmployeeLocation(user.id, branchId, latitude, longitude, accuracy);
+      
+      res.json({ success: true, message: "Konum güncellendi" });
+    } catch (error: any) {
+      console.error("Error updating location:", error);
+      res.status(500).json({ message: "Konum güncellenirken hata oluştu" });
+    }
+  });
+
+  app.get('/api/tracking/branch/:branchId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const branchId = parseInt(req.params.branchId);
+      
+      // Only supervisors and admins can see branch tracking
+      if (user.role !== 'supervisor' && user.role !== 'admin' && user.role !== 'genel_mudur') {
+        return res.status(403).json({ message: "Erişim yetkisi yok" });
+      }
+      
+      const activeEmployees = getActiveBranchEmployees(branchId);
+      res.json(activeEmployees.map(emp => ({
+        userId: emp.userId,
+        latitude: emp.latitude,
+        longitude: emp.longitude,
+        accuracy: emp.accuracy,
+        lastUpdate: emp.lastUpdate,
+      })));
+    } catch (error: any) {
+      console.error("Error fetching branch tracking:", error);
+      res.status(500).json({ message: "Takip bilgisi alınırken hata oluştu" });
+    }
+  });
+
+  app.post('/api/tracking/checkout', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      removeEmployeeLocation(user.id);
+      res.json({ success: true, message: "Çıkış yapıldı" });
+    } catch (error: any) {
+      console.error("Error checking out:", error);
+      res.status(500).json({ message: "Çıkış yapılırken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // RAG KNOWLEDGE BASE - Vector Search
+  // ========================================
+  
+  app.post('/api/knowledge-base/search', isAuthenticated, async (req: any, res) => {
+    try {
+      const { query, limit = 5 } = req.body;
+      const userId = req.user.id;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Arama sorgusu gereklidir" });
+      }
+
+      // Generate embedding for query
+      const queryEmbedding = await generateEmbedding(query);
+      
+      // Semantic search using vector similarity
+      const results = await db.execute(
+        sql`
+          SELECT 
+            ke.id,
+            ke.title,
+            ke.category,
+            emb.chunk_text,
+            emb.chunk_index,
+            1 - (emb.embedding <=> ${sql`'[${queryEmbedding.join(', ')}]'`}) as similarity
+          FROM knowledge_base_articles ke
+          JOIN embeddings emb ON ke.id = emb.article_id
+          WHERE ke.is_published = true
+          AND 1 - (emb.embedding <=> ${sql`'[${queryEmbedding.join(', ')}]'`}) > 0.5
+          ORDER BY similarity DESC
+          LIMIT ${limit * 3}
+        `
+      );
+
+      // Group by article
+      const groupedResults = new Map();
+      const resultRows = results.rows as any[];
+      
+      resultRows.forEach(row => {
+        const key = row.id;
+        if (!groupedResults.has(key)) {
+          groupedResults.set(key, {
+            id: row.id,
+            title: row.title,
+            category: row.category,
+            chunks: [],
+            relevance: row.similarity,
+          });
+        }
+        groupedResults.get(key).chunks.push({
+          text: row.chunk_text,
+          index: row.chunk_index,
+          similarity: row.similarity,
+        });
+      });
+
+      const finalResults = Array.from(groupedResults.values()).slice(0, limit);
+      res.json(finalResults);
+    } catch (error: any) {
+      console.error("Error searching knowledge base:", error);
+      res.status(500).json({ message: error.message || "Arama yapılırken hata oluştu" });
     }
   });
 

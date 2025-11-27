@@ -38,6 +38,9 @@ The frontend utilizes React 18+ with TypeScript and Vite. It employs Shadcn/ui (
 - **Photo Upload**: Persistent storage of images on AWS S3 via an ObjectUploader component.
 - **Fault History Display**: Displays the last 5 faults with details.
 - **Backup System**: Daily automatic backups at midnight (Turkey time, UTC+3) to object storage with file verification. 11 critical tables exported (users, branches, equipment, faults, attendance, audits, feedback, tasks, etc.). Failed backups trigger admin notifications. Backup history persisted in database for easy recovery on server migration.
+- **Email Notifications**: Transactional email system via SMTP for notifications, welcome emails, password resets, and alerts. Extensible for Resend integration.
+- **Live Tracking**: Real-time employee location tracking with in-memory cache and automatic cleanup. Supervisors can view active branch employees. Tracks latitude, longitude, and accuracy. 5-minute activity timeout.
+- **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings. `/api/knowledge-base/search` endpoint enables intelligent knowledge article discovery with similarity scoring and chunk-based results.
 
 ## External Dependencies
 
