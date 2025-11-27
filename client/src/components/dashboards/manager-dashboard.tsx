@@ -7,7 +7,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer
 import { useLocation } from "wouter";
 
 interface ManagerDashboardProps {
-  branchName?: string;
   completedTasks: number;
   pendingTasks: number;
   openFaults: number;
@@ -17,7 +16,6 @@ interface ManagerDashboardProps {
 }
 
 export function ManagerDashboard({
-  branchName,
   completedTasks,
   pendingTasks,
   openFaults,
@@ -40,14 +38,6 @@ export function ManagerDashboard({
 
   return (
     <div className="space-y-3 md:space-y-6">
-      {/* Header with branch name */}
-      {branchName && (
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg md:text-2xl font-bold text-blue-900">{branchName}</h2>
-          <Badge variant="outline" className="text-xs">Şube Müdürü</Badge>
-        </div>
-      )}
-
       {/* Performance Gauges */}
       {!isLoading && (
         <div className="grid gap-0.5 grid-cols-3">
