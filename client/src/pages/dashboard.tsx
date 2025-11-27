@@ -13,7 +13,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { AnnouncementBanner } from "@/components/announcement-banner";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { useState, useRef, useEffect } from "react";
 import { CheckCircle, Clock, AlertTriangle, TrendingUp, Sparkles, RefreshCw, User, MapPin, Calendar, Image, Wrench, BarChart3, LineChart as LineChartIcon, Trophy, Award, Users, BookOpen, GraduationCap, QrCode, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +33,7 @@ export default function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState<SummaryCategoryType | null>(null);
   const [currentSummary, setCurrentSummary] = useState<AISummaryResponse | null>(null);
   const [scannerActive, setScannerActive] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   
   // Sheet state management
   const [taskSheetOpen, setTaskSheetOpen] = useState(false);
@@ -467,57 +467,53 @@ export default function Dashboard() {
     return priorityMap[priority] || priority;
   };
 
-  // QR Scanner effect
+  // QR Scanner effect - direkt kamera açar
   useEffect(() => {
     if (!scannerActive) {
       if (scannerRef.current) {
-        try {
-          scannerRef.current.clear();
-        } catch (e) {
-          console.log("Scanner already cleared");
-        }
+        scannerRef.current.stop().catch(() => {});
         scannerRef.current = null;
       }
       return;
     }
 
-    const timer = setTimeout(() => {
+    const startScanner = async () => {
       const container = document.getElementById("dashboard-qr-scanner-container");
       if (!container) return;
 
       try {
-        const scanner = new Html5QrcodeScanner(
-          "dashboard-qr-scanner-container",
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1,
-          },
-          false
-        );
-
-        scanner.render(
+        const html5QrCode = new Html5Qrcode("dashboard-qr-scanner-container");
+        
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
           (decodedText) => {
             handleQRData(decodedText);
-            scanner.pause();
+            html5QrCode.stop().catch(() => {});
+            scannerRef.current = null;
           },
           () => {}
         );
 
-        scannerRef.current = scanner;
+        scannerRef.current = html5QrCode;
       } catch (error) {
         console.error("[QR Scanner] Error:", error);
+        toast({
+          title: "Kamera Hatası",
+          description: "Kameraya erişilemedi. Lütfen kamera izinlerini kontrol edin.",
+          variant: "destructive",
+        });
+        setScannerActive(false);
       }
-    }, 100);
+    };
+
+    const timer = setTimeout(startScanner, 100);
 
     return () => {
       clearTimeout(timer);
       if (scannerRef.current) {
-        try {
-          scannerRef.current.clear();
-        } catch (e) {
-          console.log("Cleanup: Scanner already cleared");
-        }
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
       }
     };
   }, [scannerActive]);
