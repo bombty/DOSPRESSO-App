@@ -524,25 +524,62 @@ export default function Dashboard() {
   }, [scannerActive]);
 
   const handleQRData = (qrData: string) => {
-    const parts = qrData.split(':');
-    const type = parts[0]?.toLowerCase();
-    const id = parts[1];
-
-    if (!type || !id) {
-      toast({
-        title: "Hata",
-        description: "QR kod formatı geçersiz",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    console.log("[Dashboard QR] Scanned:", qrData);
     setScannerActive(false);
-    if (type === 'shift' || type === 'branch') {
-      setLocation('/vardiyalar');
-    } else if (type === 'equipment') {
-      setLocation(`/ekipman/${id}`);
+    
+    let pathname = qrData;
+    
+    // Handle absolute URLs
+    try {
+      const url = new URL(qrData);
+      pathname = url.pathname;
+    } catch {
+      // Relative URL or path - use as is
     }
+    
+    console.log("[Dashboard QR] Parsed path:", pathname);
+    
+    // Match /ekipman/{id} or /equipment/{id} format
+    if (pathname.startsWith('/ekipman/') || pathname.startsWith('/equipment/')) {
+      const equipmentId = pathname.split(/\/ekipman\/|\/equipment\//)[1];
+      if (equipmentId && !isNaN(parseInt(equipmentId))) {
+        console.log("[Dashboard QR] Routing to equipment:", equipmentId);
+        setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
+        return;
+      }
+    }
+    
+    // Match legacy format equipment:123
+    const colonParts = qrData.split(':');
+    if (colonParts.length === 2) {
+      const type = colonParts[0]?.toLowerCase();
+      const id = colonParts[1];
+      
+      if (type === 'shift' || type === 'branch') {
+        setLocation('/vardiyalar');
+        return;
+      } else if (type === 'equipment' && id && !isNaN(parseInt(id))) {
+        setLocation(`/ariza-yeni?equipmentId=${id}`);
+        return;
+      }
+    }
+    
+    // Legacy DOSPRESSO-EQ-123 format
+    if (qrData.match(/^DOSPRESSO-EQ-\d+$/)) {
+      const match = qrData.match(/DOSPRESSO-EQ-(\d+)$/);
+      if (match && match[1]) {
+        console.log("[Dashboard QR] Legacy format, equipment:", match[1]);
+        setLocation(`/ariza-yeni?equipmentId=${match[1]}`);
+        return;
+      }
+    }
+    
+    console.error("[Dashboard QR] Unknown format:", qrData);
+    toast({
+      title: "Hata",
+      description: "QR kod formatı tanınamadı",
+      variant: "destructive",
+    });
   };
 
   // Role-based dashboard selection
