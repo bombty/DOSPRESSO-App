@@ -6318,6 +6318,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Haversine formula - iki nokta arasındaki mesafeyi metre cinsinden hesapla
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371000; // Dünya yarıçapı metre
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   // POST /api/shift-attendance/manual-check-in - Manual check-in with location verification
   app.post('/api/shift-attendance/manual-check-in', isAuthenticated, async (req: any, res) => {
     try {
@@ -6347,6 +6360,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (userAttendance?.checkInTime) {
         return res.status(400).json({ message: "Bu vardiyaya zaten giriş yaptınız" });
+      }
+      
+      // Geofence validation
+      if (latitude !== undefined && longitude !== undefined) {
+        const branch = await storage.getBranch(shift.branchId);
+        if (branch && branch.shiftCornerLatitude && branch.shiftCornerLongitude) {
+          const branchLat = parseFloat(branch.shiftCornerLatitude);
+          const branchLon = parseFloat(branch.shiftCornerLongitude);
+          const radius = (branch.geoRadius || 50) * 1.5; // 1.5x radius for tolerance
+          const distance = calculateDistance(latitude, longitude, branchLat, branchLon);
+          
+          if (distance > radius) {
+            return res.status(400).json({ 
+              message: `Şube dışındasınız (${Math.round(distance)}m, izin: ${radius}m)`,
+              locationValid: false,
+              distance: Math.round(distance)
+            });
+          }
+        }
       }
       
       const now = new Date();
