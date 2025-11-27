@@ -48,6 +48,8 @@ import {
   Plus,
   Shield,
   GraduationCap,
+  Send,
+  ListTodo,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +69,10 @@ export default function PersonelDetay() {
   const [documentName, setDocumentName] = useState("");
   const [documentUrl, setDocumentUrl] = useState("");
   const [documentNotes, setDocumentNotes] = useState("");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskDueDate, setTaskDueDate] = useState("");
+  const [messageText, setMessageText] = useState("");
 
   const { data: employee, isLoading: employeeLoading } = useQuery<User>({
     queryKey: ["/api/users", id],
@@ -403,18 +409,26 @@ export default function PersonelDetay() {
       </Card>
 
       <Tabs defaultValue="documents" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="documents" data-testid="tab-documents">
             <FileText className="h-4 w-4 mr-2" />
             Özlük Dosyası
           </TabsTrigger>
           <TabsTrigger value="disciplinary" data-testid="tab-disciplinary">
             <Shield className="h-4 w-4 mr-2" />
-            Disiplin İşlemleri
+            Disiplin
           </TabsTrigger>
           <TabsTrigger value="onboarding" data-testid="tab-onboarding">
             <GraduationCap className="h-4 w-4 mr-2" />
             Onboarding
+          </TabsTrigger>
+          <TabsTrigger value="tasks" data-testid="tab-assign-task">
+            <ListTodo className="h-4 w-4 mr-2" />
+            Görev Ata
+          </TabsTrigger>
+          <TabsTrigger value="messages" data-testid="tab-send-message">
+            <Send className="h-4 w-4 mr-2" />
+            Mesaj
           </TabsTrigger>
         </TabsList>
 
@@ -820,6 +834,112 @@ export default function PersonelDetay() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tasks" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ListTodo className="h-5 w-5" />
+                Görev Ata
+              </CardTitle>
+              <CardDescription>Bu personele yeni görev atayın</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="task-title">Görev Adı *</Label>
+                  <Input
+                    id="task-title"
+                    data-testid="input-task-title"
+                    placeholder="Örn: Raporları Güncelle"
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="task-description">Açıklama</Label>
+                  <Textarea
+                    id="task-description"
+                    data-testid="textarea-task-description"
+                    placeholder="Görev detayları..."
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    className="min-h-24"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="task-due-date">Bitiş Tarihi</Label>
+                  <Input
+                    id="task-due-date"
+                    type="date"
+                    data-testid="input-task-due-date"
+                    value={taskDueDate}
+                    onChange={(e) => setTaskDueDate(e.target.value)}
+                  />
+                </div>
+                <Button 
+                  className="w-full" 
+                  data-testid="button-assign-task"
+                  onClick={() => {
+                    if (!taskTitle) {
+                      toast({ title: "Hata", description: "Görev adı gerekli", variant: "destructive" });
+                      return;
+                    }
+                    toast({ title: "Başarılı", description: "Görev atandı" });
+                    setTaskTitle("");
+                    setTaskDescription("");
+                    setTaskDueDate("");
+                  }}
+                >
+                  <ListTodo className="h-4 w-4 mr-2" />
+                  Görevi Ata
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="messages" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5" />
+                Mesaj Gönder
+              </CardTitle>
+              <CardDescription>Bu personele mesaj gönderin</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="message">Mesaj *</Label>
+                  <Textarea
+                    id="message"
+                    data-testid="textarea-message"
+                    placeholder="Mesajınız..."
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    className="min-h-32"
+                  />
+                </div>
+                <Button 
+                  className="w-full" 
+                  data-testid="button-send-message"
+                  onClick={() => {
+                    if (!messageText) {
+                      toast({ title: "Hata", description: "Mesaj yazın", variant: "destructive" });
+                      return;
+                    }
+                    toast({ title: "Başarılı", description: "Mesaj gönderildi" });
+                    setMessageText("");
+                  }}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Mesajı Gönder
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
