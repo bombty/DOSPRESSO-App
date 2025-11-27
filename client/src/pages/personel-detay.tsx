@@ -883,15 +883,28 @@ export default function PersonelDetay() {
                 <Button 
                   className="w-full" 
                   data-testid="button-assign-task"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!taskTitle) {
                       toast({ title: "Hata", description: "Görev adı gerekli", variant: "destructive" });
                       return;
                     }
-                    toast({ title: "Başarılı", description: "Görev atandı" });
-                    setTaskTitle("");
-                    setTaskDescription("");
-                    setTaskDueDate("");
+                    try {
+                      await apiRequest("POST", "/api/tasks", {
+                        title: taskTitle,
+                        description: taskDescription || null,
+                        dueDate: taskDueDate || null,
+                        assignedToId: id,
+                        priority: "medium",
+                        status: "pending"
+                      });
+                      toast({ title: "Başarılı", description: "Görev atandı" });
+                      setTaskTitle("");
+                      setTaskDescription("");
+                      setTaskDueDate("");
+                      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+                    } catch (error: any) {
+                      toast({ title: "Hata", description: error.message || "Görev atanırken hata oluştu", variant: "destructive" });
+                    }
                   }}
                 >
                   <ListTodo className="h-4 w-4 mr-2" />
@@ -927,13 +940,23 @@ export default function PersonelDetay() {
                 <Button 
                   className="w-full" 
                   data-testid="button-send-message"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!messageText) {
                       toast({ title: "Hata", description: "Mesaj yazın", variant: "destructive" });
                       return;
                     }
-                    toast({ title: "Başarılı", description: "Mesaj gönderildi" });
-                    setMessageText("");
+                    try {
+                      await apiRequest("POST", "/api/messages", {
+                        content: messageText,
+                        recipientId: id,
+                        threadType: "direct"
+                      });
+                      toast({ title: "Başarılı", description: "Mesaj gönderildi" });
+                      setMessageText("");
+                      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+                    } catch (error: any) {
+                      toast({ title: "Hata", description: error.message || "Mesaj gönderilemedi", variant: "destructive" });
+                    }
                   }}
                 >
                   <Send className="h-4 w-4 mr-2" />
