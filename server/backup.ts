@@ -348,7 +348,7 @@ async function notifyAdminsAboutBackup(backupRecord: schema.BackupRecord): Promi
   }
 }
 
-// Weekly backup scheduler - runs every Sunday at midnight (00:00 Turkey time)
+// Daily backup scheduler - runs every day at midnight (00:00 Turkey time)
 let backupSchedulerRunning = false;
 
 export async function startWeeklyBackupScheduler(): Promise<void> {
@@ -358,7 +358,7 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
   }
   
   backupSchedulerRunning = true;
-  console.log('📅 Haftalık backup scheduler başlatıldı');
+  console.log('📅 Günlük backup scheduler başlatıldı');
   
   // Load backup history from database
   await loadBackupHistory();
@@ -366,18 +366,17 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
   // Run initial backup on startup
   runBackupWithNotification();
   
-  // Calculate time until next Sunday midnight (Turkey time, UTC+3)
+  // Calculate time until next midnight (Turkey time, UTC+3)
   const scheduleNextBackup = () => {
     const now = new Date();
     const turkeyOffset = 3 * 60 * 60 * 1000;
     const nowTurkey = new Date(now.getTime() + turkeyOffset);
     
-    const daysUntilSunday = (7 - nowTurkey.getUTCDay()) % 7 || 7;
-    const nextSunday = new Date(nowTurkey);
-    nextSunday.setUTCDate(nextSunday.getUTCDate() + daysUntilSunday);
-    nextSunday.setUTCHours(0, 0, 0, 0);
+    const nextMidnight = new Date(nowTurkey);
+    nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
+    nextMidnight.setUTCHours(0, 0, 0, 0);
     
-    const nextBackupTime = new Date(nextSunday.getTime() - turkeyOffset);
+    const nextBackupTime = new Date(nextMidnight.getTime() - turkeyOffset);
     const msUntilBackup = nextBackupTime.getTime() - now.getTime();
     
     console.log(`⏰ Sonraki backup: ${nextBackupTime.toISOString()} (${Math.round(msUntilBackup / 1000 / 60 / 60)} saat sonra)`);
@@ -393,8 +392,8 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
 
 // Run backup and send notifications
 async function runBackupWithNotification(): Promise<schema.BackupRecord> {
-  console.log('🔄 Haftalık backup çalıştırılıyor...');
-  const backupRecord = await createBackupSnapshot('weekly');
+  console.log('🔄 Günlük backup çalıştırılıyor...');
+  const backupRecord = await createBackupSnapshot('daily');
   await notifyAdminsAboutBackup(backupRecord);
   return backupRecord;
 }

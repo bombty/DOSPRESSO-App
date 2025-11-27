@@ -37,6 +37,7 @@ The frontend utilizes React 18+ with TypeScript and Vite. It employs Shadcn/ui (
 - **State Management**: TanStack Query for server state synchronization and localStorage for theme persistence.
 - **Photo Upload**: Persistent storage of images on AWS S3 via an ObjectUploader component.
 - **Fault History Display**: Displays the last 5 faults with details.
+- **Backup System**: Daily automatic backups at midnight (Turkey time, UTC+3) to object storage with file verification. 11 critical tables exported (users, branches, equipment, faults, attendance, audits, feedback, tasks, etc.). Failed backups trigger admin notifications. Backup history persisted in database for easy recovery on server migration.
 
 ## External Dependencies
 
