@@ -177,6 +177,8 @@ export default function EquipmentDetail() {
   const [selectedTimeline, setSelectedTimeline] = useState<EquipmentServiceRequest | null>(null);
   const [isFaultDialogOpen, setIsFaultDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isTroubleshootingEditOpen, setIsTroubleshootingEditOpen] = useState(false);
+  const [selectedTroubleshootingStep, setSelectedTroubleshootingStep] = useState<EquipmentTroubleshootingStep | null>(null);
   
   // Troubleshooting state
   const [completedStepIds, setCompletedStepIds] = useState<Set<number>>(new Set());
@@ -424,6 +426,29 @@ export default function EquipmentDetail() {
       toast({
         title: "Hata",
         description: "Arıza raporu oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const updateTroubleshootingMutation = useMutation({
+    mutationFn: async (data: { id: number; description: string; isRequired: boolean; requiresPhoto: boolean }) => {
+      await apiRequest("PATCH", `/api/equipment-troubleshooting-steps/${data.id}`, {
+        description: data.description,
+        isRequired: data.isRequired,
+        requiresPhoto: data.requiresPhoto,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment-troubleshooting-steps"] });
+      toast({ title: "Başarılı", description: "Adım güncellendi" });
+      setIsTroubleshootingEditOpen(false);
+      setSelectedTroubleshootingStep(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Adım güncellenemedi",
         variant: "destructive",
       });
     },
@@ -1274,8 +1299,153 @@ export default function EquipmentDetail() {
               )}
             </CardContent>
           </Card>
+
+          <Card data-testid="card-troubleshooting-steps">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Sorun Giderme Adımları</CardTitle>
+                  <CardDescription>Bu ekipman tipi için tanımlı adımlar</CardDescription>
+                </div>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTroubleshootingEditOpen(!isTroubleshootingEditOpen)}
+                  data-testid="button-toggle-troubleshooting-edit"
+                >
+                  <Edit className="h-4 w-4 mr-1" />
+                  {isTroubleshootingEditOpen ? "Kapat" : "Düzenle"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {troubleshootingSteps && troubleshootingSteps.length > 0 ? (
+                <div className="space-y-3">
+                  {troubleshootingSteps.map((step) => (
+                    <div 
+                      key={step.id} 
+                      className="flex items-start justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      data-testid={`troubleshooting-step-${step.id}`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-semibold">Adım {step.order}</span>
+                          {step.requiresPhoto && (
+                            <Badge variant="secondary" className="text-xs">Fotoğraf</Badge>
+                          )}
+                          {step.isRequired && (
+                            <Badge variant="destructive" className="text-xs">Zorunlu</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{step.description}</p>
+                      </div>
+                      {isTroubleshootingEditOpen && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTroubleshootingStep(step);
+                            setIsTroubleshootingEditOpen(true);
+                          }}
+                          data-testid={`button-edit-step-${step.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Bu ekipman tipi için adım tanımlanmamış</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Troubleshooting Step Edit Dialog */}
+      <Dialog open={isTroubleshootingEditOpen && !!selectedTroubleshootingStep} onOpenChange={(open) => {
+        setIsTroubleshootingEditOpen(open);
+        if (!open) setSelectedTroubleshootingStep(null);
+      }}>
+        <DialogContent data-testid="dialog-troubleshooting-edit">
+          <DialogHeader>
+            <DialogTitle>Sorun Giderme Adımı Düzenle</DialogTitle>
+          </DialogHeader>
+          {selectedTroubleshootingStep && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Adım Açıklaması</label>
+                <Textarea 
+                  value={selectedTroubleshootingStep.description}
+                  onChange={(e) => {
+                    setSelectedTroubleshootingStep({
+                      ...selectedTroubleshootingStep,
+                      description: e.target.value
+                    });
+                  }}
+                  className="mt-1"
+                  rows={4}
+                  data-testid="input-troubleshooting-description"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={selectedTroubleshootingStep.isRequired}
+                  onCheckedChange={(checked) => {
+                    setSelectedTroubleshootingStep({
+                      ...selectedTroubleshootingStep,
+                      isRequired: checked as boolean
+                    });
+                  }}
+                  data-testid="checkbox-troubleshooting-required"
+                />
+                <label className="text-sm font-medium cursor-pointer">Zorunlu adım</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={selectedTroubleshootingStep.requiresPhoto}
+                  onCheckedChange={(checked) => {
+                    setSelectedTroubleshootingStep({
+                      ...selectedTroubleshootingStep,
+                      requiresPhoto: checked as boolean
+                    });
+                  }}
+                  data-testid="checkbox-troubleshooting-photo"
+                />
+                <label className="text-sm font-medium cursor-pointer">Fotoğraf gerekli</label>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => {
+                  setIsTroubleshootingEditOpen(false);
+                  setSelectedTroubleshootingStep(null);
+                }} data-testid="button-cancel-troubleshooting">
+                  İptal
+                </Button>
+                <Button 
+                  onClick={() => {
+                    if (selectedTroubleshootingStep) {
+                      updateTroubleshootingMutation.mutate({
+                        id: selectedTroubleshootingStep.id,
+                        description: selectedTroubleshootingStep.description,
+                        isRequired: selectedTroubleshootingStep.isRequired,
+                        requiresPhoto: selectedTroubleshootingStep.requiresPhoto,
+                      });
+                    }
+                  }}
+                  disabled={updateTroubleshootingMutation.isPending}
+                  data-testid="button-save-troubleshooting"
+                >
+                  {updateTroubleshootingMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Service Request Dialog */}
       <Dialog open={serviceRequestDialogOpen} onOpenChange={setServiceRequestDialogOpen}>
