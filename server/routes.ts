@@ -6768,7 +6768,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== MENU MANAGEMENT ENDPOINTS (HQ Admin Only) =====
   
-  // GET /api/admin/menu - List all menu data
+  // GET /api/menu - List menu data filtered by user role and branch
+  app.get('/api/menu', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const menu = await storage.listMenu();
+      
+      // Filter menu based on user role and branch
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        // Branch users see only branch-scoped sections and items
+        const filteredSections = menu.sections.filter((section: any) => 
+          section.scope === 'branch' || section.scope === 'both'
+        );
+        const filteredItemIds = filteredSections.map((s: any) => s.id);
+        const filteredItems = menu.items.filter((item: any) => 
+          filteredItemIds.includes(item.sectionId)
+        );
+        return res.json({
+          sections: filteredSections,
+          items: filteredItems,
+          rules: menu.rules || []
+        });
+      }
+      
+      // HQ users see all menu items (no filtering)
+      res.json(menu);
+    } catch (error) {
+      console.error("Error fetching menu:", error);
+      res.status(500).json({ message: "Failed to fetch menu" });
+    }
+  });
+  
+  // GET /api/admin/menu - List all menu data (HQ Admin only, for menu management)
   app.get('/api/admin/menu', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;

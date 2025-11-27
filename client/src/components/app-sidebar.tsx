@@ -457,7 +457,7 @@ export function AppSidebar() {
     items: DBMenuItem[];
     rules: MenuVisibilityRule[];
   }>({
-    queryKey: ["/api/admin/menu"],
+    queryKey: ["/api/menu"],
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: 2,
@@ -746,5 +746,5 @@ export function AppSidebar() {
 
 // PHASE 6: Cache Invalidation Export
 export const invalidateMenuCache = () => {
-  queryClient.invalidateQueries({ queryKey: ["/api/admin/menu"] });
+  queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
 };
