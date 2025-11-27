@@ -1466,9 +1466,9 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
         </Card>
       )}
 
-      {!isCheckedIn && !hasCompletedShift && (
-        <div className="space-y-4">
-          {/* Inline QR Scanner - Only show when active */}
+      {/* QR Scanner Card - Always show unless checked in */}
+      {!isCheckedIn && (
+        <>
           {scannerActive && (
             <Card className="border-primary/50 bg-card/80 backdrop-blur-sm" data-testid="card-qr-scan-inline">
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
@@ -1510,7 +1510,6 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
             </Card>
           )}
 
-          {/* QR Toggle Button - Show when scanner is closed */}
           {!scannerActive && (
             <Card data-testid="card-qr-prompt">
               <CardHeader>
@@ -1536,6 +1535,11 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               </CardContent>
             </Card>
           )}
+        </>
+      )}
+
+      {!isCheckedIn && !hasCompletedShift && (
+        <div className="space-y-4">
 
           {todayShifts.length > 0 && (
             <Card data-testid="card-today-shifts">
