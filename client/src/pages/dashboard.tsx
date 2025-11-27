@@ -565,7 +565,6 @@ export default function Dashboard() {
     } else if (role === 'supervisor' || role === 'supervisor_buddy' || role === 'coach') {
       return (
         <ManagerDashboard
-          branchName={user?.branchId ? getBranchName(user.branchId) : undefined}
           completedTasks={completedTasks}
           pendingTasks={pendingTasks}
           openFaults={openFaults}
