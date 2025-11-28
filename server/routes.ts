@@ -10821,6 +10821,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/quiz/:quizId/questions - Get quiz questions
+  app.get('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req: any, res) => {
+    try {
+      const questions = await storage.getQuizQuestions(req.params.quizId);
+      res.json(questions);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

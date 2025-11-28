@@ -60,3 +60,62 @@ The frontend utilizes React 18+ with TypeScript and Vite. It employs Shadcn/ui (
 - **QR**: `html5-qrcode`, `qrcode.react`.
 - **Upload**: `@uppy/core`, `@uppy/react`, `@uppy/aws-s3`.
 - **Build**: `vite`, `esbuild`, `tsx`.
+
+---
+
+## Recent Changes (Session: Nov 28, 2025 - FINAL)
+
+### ✅ COMPLETED: DOSPRESSO Academy MVP - Full Gamification System (Nov 28)
+
+#### Phase 1: Quiz Tracking System (✅ COMPLETE)
+- **Database**: Created `quiz_results` table with userId, quizId, score, answers, completedAt
+- **Storage**: `addQuizResult()`, `getLeaderboard(limit)`, `getUserQuizStats(userId)`
+- **API**: GET `/api/academy/leaderboard`, POST `/api/academy/quiz-result`
+
+#### Phase 2: Badge & Achievement System (✅ COMPLETE)
+- **Database**: Created `badges` table (6 achievements) + `user_badges` table for tracking
+- **Achievements**: Ilk Sinav (10pts), Sinav Ustasi (50pts), Mukemmel Puan (30pts), En Iyi Performans (75pts), Barista Uzmani (100pts), Supervisor Yolu (150pts)
+- **Auto-unlock**: First quiz → Ilk Sinav, Perfect score (100) → Mukemmel Puan
+- **Storage**: `getBadges()`, `getUserBadges(userId)`, `unlockBadge(userId, badgeId)`
+- **API**: GET `/api/academy/badges`, GET `/api/academy/user-badges`
+
+#### Phase 3: Frontend Pages (✅ COMPLETE)
+- `/akademi` - Main academy hub (career progression, exam requests, stats)
+- `/akademi-leaderboard` - Top 5 quiz performers with branch leaders tab
+- `/akademi-quiz/:quizId` - Interactive quiz with progress tracking & scoring
+- `/akademi-badges` - Showcase all badges (unlocked vs locked) with point totals
+
+#### Phase 4: Quiz Questions System (✅ COMPLETE)
+- **Database**: `quiz_questions` table with quizId, questionText, options[], correctAnswerIndex, explanation, difficulty, category
+- **Storage**: `getQuizQuestions(quizId)` - fetches questions from database
+- **API**: GET `/api/academy/quiz/:quizId/questions` - dynamic quiz content
+
+#### Database Schema
+```
+career_levels - Career progression (5 levels: Stajyer → Supervisor)
+exam_requests - Supervisor exam requests to HQ
+user_career_progress - User's current level & progress
+quiz_results - Quiz submission scores & answers
+badges - Available achievements (6 types)
+user_badges - User's unlocked badges
+quiz_questions - Quiz questions database
+```
+
+#### API Endpoints Summary
+- `GET /api/academy/career-levels` - All career levels
+- `GET /api/academy/career-progress/:userId` - User's career status
+- `POST /api/academy/exam-request` - Submit promotion request
+- `GET /api/academy/leaderboard` - Top 5 performers
+- `POST /api/academy/quiz-result` - Submit quiz (w/auto-unlock)
+- `GET /api/academy/badges` - All achievements
+- `GET /api/academy/user-badges` - User's unlocked badges
+- `GET /api/academy/quiz/:quizId/questions` - Quiz questions
+- `GET /api/academy/stats` - Analytics
+
+#### Next Phase (Future Work)
+- Full AI Motor integration: Generate quizzes from knowledge base using OpenAI embeddings
+- Real leaderboard aggregation by branch and role
+- Supervisor exam workflow with HQ approval system
+- Performance analytics dashboard
+- Career pathway visualizations
+- Mobile app optimization for field staff
