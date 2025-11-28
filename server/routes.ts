@@ -54,6 +54,12 @@ import {
   insertEmployeeOnboardingSchema,
   insertEmployeeOnboardingTaskSchema,
   insertMessageSchema,
+  insertTrainingMaterialSchema,
+  insertTrainingAssignmentSchema,
+  insertTrainingCompletionSchema,
+  trainingMaterials,
+  trainingAssignments,
+  trainingCompletions,
   auditTemplates,
   auditTemplateItems,
   qualityAudits,
@@ -10273,6 +10279,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error checking out:", error);
       res.status(500).json({ message: "Çıkış yapılırken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // TRAINING MATERIALS - AI Eğitim Materyalleri
+  // ========================================
+
+  // GET /api/training/materials - List published training materials
+  app.get('/api/training/materials', isAuthenticated, async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      const materials = await storage.getTrainingMaterials(status || 'published');
+      res.json(materials);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Eğitim materyalleri yüklenemedi" });
+    }
+  });
+
+  // GET /api/training/assignments/:userId - Get user's training assignments
+  app.get('/api/training/assignments/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const assignments = await storage.getTrainingAssignments({ userId });
+      res.json(assignments);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Atamalar yüklenemedi" });
+    }
+  });
+
+  // POST /api/training/assignments - Bulk assign training to users/roles
+  app.post('/api/training/assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!hasPermission(req.user.role, 'training', 'create')) {
+        return res.status(403).json({ message: "Eğitim ataması yapma izniniz yok" });
+      }
+      
+      const data = insertTrainingAssignmentSchema.parse(req.body);
+      const assignment = await storage.createTrainingAssignment({
+        ...data,
+        assignedById: req.user.id,
+      });
+      res.status(201).json(assignment);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Atama oluşturulamadı" });
+    }
+  });
+
+  // POST /api/training/assignments/:id/complete - Mark assignment complete with score
+  app.post('/api/training/assignments/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { score, timeSpentSeconds, notes } = req.body;
+      
+      const assignment = await storage.getTrainingAssignments({ userId: req.user.id });
+      const target = assignment.find((a: any) => a.id === parseInt(id));
+      if (!target) return res.status(404).json({ message: "Atama bulunamadı" });
+
+      // Create completion record
+      const completion = await storage.createTrainingCompletion({
+        assignmentId: parseInt(id),
+        userId: req.user.id,
+        materialId: target.materialId,
+        status: score >= 70 ? 'passed' : 'failed',
+        score,
+        timeSpentSeconds,
+        notes,
+        completedAt: new Date(),
+      });
+
+      // Update assignment status
+      await storage.updateTrainingAssignmentStatus(parseInt(id), 'completed');
+      
+      res.json({ completion, assignment: target });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Tamamlanmadı" });
+    }
+  });
+
+  // GET /api/training/progress/:userId - Get user's training progress
+  app.get('/api/training/progress/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const progress = await storage.getUserTrainingProgress(userId);
+      const assignments = await storage.getTrainingAssignments({ userId });
+      const completions = await storage.getTrainingCompletions({ userId });
+      
+      res.json({
+        summary: progress,
+        assignments,
+        completions,
+        averageScore: completions.length > 0 
+          ? Math.round(completions.reduce((sum: number, c: any) => sum + (c.score || 0), 0) / completions.length)
+          : 0,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "İlerleme yüklenemedi" });
     }
   });
 
