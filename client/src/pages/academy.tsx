@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target } from "lucide-react";
+import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -273,15 +273,15 @@ export default function Academy() {
       )}
 
       {/* Quick Links to Analytics & Badges */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link href="/akademi-analytics">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
-                Akademi Analitikleri
+                Analitikler
               </CardTitle>
-              <CardDescription>Şube ve rol bazlı performans istatistikleri</CardDescription>
+              <CardDescription>Performans istatistikleri</CardDescription>
             </CardHeader>
           </Card>
         </Link>
@@ -291,9 +291,21 @@ export default function Academy() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Target className="w-5 h-5" />
-                Başarılar ve Rozetler
+                Rozetler
               </CardTitle>
-              <CardDescription>Kazanılan ve yaklaşan başarılar</CardDescription>
+              <CardDescription>Kazanılan başarılar</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-leaderboard">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Award className="w-5 h-5" />
+                Liderlik
+              </CardTitle>
+              <CardDescription>En iyi performanslar</CardDescription>
             </CardHeader>
           </Card>
         </Link>

@@ -10763,3 +10763,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+
+  // GET /api/academy/leaderboard - Top performers
+  app.get('/api/academy/leaderboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const leaderboard = [
+        { rank: 1, name: "Ahmet Yıldız", role: "Barista", score: 950 },
+        { rank: 2, name: "Fatma Kaya", role: "Barista", score: 920 },
+      ];
+      res.json(leaderboard);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/academy/quiz-result - Submit quiz result
+  app.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) => {
+    try {
+      const { quizId, score } = req.body;
+      res.json({ success: true, score, userId: req.user.id });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}

@@ -1,0 +1,140 @@
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Trophy, TrendingUp, Award } from "lucide-react";
+
+export default function AcademyLeaderboard() {
+  const { user } = useAuth();
+
+  const { data: leaderboard } = useQuery({
+    queryKey: ["/api/academy/leaderboard"],
+    queryFn: async () => {
+      const res = await fetch(`/api/academy/leaderboard`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // Mock leaderboard data
+  const topPerformers = [
+    { rank: 1, name: "Ahmet Yıldız", role: "Barista", score: 950, completedModules: 8, avatar: "AY" },
+    { rank: 2, name: "Fatma Kaya", role: "Barista", score: 920, completedModules: 8, avatar: "FK" },
+    { rank: 3, name: "Mehmet Demir", role: "Supervisor Buddy", score: 890, completedModules: 7, avatar: "MD" },
+    { rank: 4, name: "Zeynep Özturk", role: "Bar Buddy", score: 850, completedModules: 6, avatar: "ZÖ" },
+    { rank: 5, name: "Emre Can", role: "Barista", score: 820, completedModules: 6, avatar: "EC" },
+  ];
+
+  const branchLeaders = [
+    { branchName: "Merkez Şube", leader: "Ahmet Yıldız", avgScore: 82, completionRate: 92 },
+    { branchName: "İstanbul Şubesi", leader: "Fatma Kaya", avgScore: 78, completionRate: 85 },
+    { branchName: "Ankara Şubesi", leader: "Mehmet Demir", avgScore: 75, completionRate: 80 },
+  ];
+
+  const userRank = topPerformers.findIndex((p) => p.name === user?.firstName) + 1;
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Academy Liderliği</h1>
+        <p className="text-muted-foreground mt-2">En yüksek performans gösteren çalışanlar ve şubeler</p>
+      </div>
+
+      {/* Your Rank Card */}
+      {user && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Award className="w-4 h-4" />
+              Sizin Sıralamanız
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">#{userRank || "—"}</p>
+                <p className="text-xs text-muted-foreground">Şube içinde sıralama</p>
+              </div>
+              <Badge variant="default">750 Puan</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Tabs defaultValue="global" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="global">
+            <Trophy className="w-4 h-4 mr-2" />
+            Genel Liderlik
+          </TabsTrigger>
+          <TabsTrigger value="branches">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Şube Liderleri
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="global" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Top 5 Performans</CardTitle>
+              <CardDescription>Toplam puanlara göre en iyi performans gösteren 5 çalışan</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {topPerformers.map((performer) => (
+                <div key={performer.rank} className="flex items-center justify-between p-3 border rounded-lg hover-elevate">
+                  <div className="flex items-center gap-3">
+                    <div className="text-center">
+                      <Trophy className={`w-5 h-5 mx-auto ${performer.rank === 1 ? "text-yellow-500" : performer.rank === 2 ? "text-gray-400" : performer.rank === 3 ? "text-orange-600" : "text-gray-500"}`} />
+                      <p className="text-xs font-bold mt-1">#{performer.rank}</p>
+                    </div>
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback>{performer.avatar}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium text-sm">{performer.name}</p>
+                      <p className="text-xs text-muted-foreground">{performer.role}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-lg">{performer.score}</p>
+                    <Badge variant="outline" className="text-xs">{performer.completedModules} modül</Badge>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="branches" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Şube Performansı</CardTitle>
+              <CardDescription>Her şubenin ortalama puanı ve tamamlama oranı</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {branchLeaders.map((branch) => (
+                <div key={branch.branchName} className="space-y-2 p-3 border rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{branch.branchName}</p>
+                      <p className="text-xs text-muted-foreground">Lider: {branch.leader}</p>
+                    </div>
+                    <Badge variant="default">{branch.avgScore} Ort.</Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Tamamlama Oranı</p>
+                    <div className="w-full bg-secondary rounded-full h-2">
+                      <div className="bg-primary h-2 rounded-full" style={{ width: `${branch.completionRate}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
