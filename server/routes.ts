@@ -11077,6 +11077,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/adaptive-recommendation/:quizId - Adaptive difficulty progression
+  app.get('/api/academy/adaptive-recommendation/:quizId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { quizId } = req.params;
+      const userId = req.user.id;
+
+      // Get user's last quiz result
+      const results = await storage.getQuizResults?.() || [];
+      const userResults = results.filter((r: any) => r.userId === userId && r.quizId === quizId);
+      const lastResult = userResults.length > 0 ? userResults[userResults.length - 1] : null;
+
+      if (!lastResult) {
+        return res.json({ 
+          recommendation: 'Başlamak için bir quiz tamamla!',
+          nextDifficulty: 'easy',
+          progressionPath: ['easy', 'medium', 'hard'],
+        });
+      }
+
+      const score = lastResult.score || 0;
+      let nextDifficulty = 'medium';
+      let recommendation = '';
+
+      if (score >= 85) {
+        nextDifficulty = 'hard';
+        recommendation = 'Mükemmel! Zor seviyeye geçmeye hazırsın. Zorlu soruları dene!';
+      } else if (score >= 70) {
+        nextDifficulty = 'medium';
+        recommendation = 'Harika! Orta seviye sorulara hazırsan. Biraz daha güçlü soruları dene!';
+      } else {
+        nextDifficulty = 'easy';
+        recommendation = 'Kolay seviyede daha fazla pratik yapmayı dene. İşin temeline dönüş!';
+      }
+
+      res.json({
+        recommendation,
+        nextDifficulty,
+        currentScore: score,
+        progressionPath: ['easy', 'medium', 'hard'],
+      });
+    } catch (error: any) {
+      console.error('Adaptive recommendation error:', error);
+      res.json({ recommendation: null });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

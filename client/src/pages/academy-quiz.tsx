@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, XCircle, Clock, Loader } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap } from "lucide-react";
 
 export default function AcademyQuiz() {
   const { toast } = useToast();
@@ -22,6 +22,7 @@ export default function AcademyQuiz() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
+  const [adaptiveRec, setAdaptiveRec] = useState<any>(null);
 
   // Fetch quiz questions from database
   const { data: questions = [], isLoading } = useQuery({
@@ -32,6 +33,17 @@ export default function AcademyQuiz() {
       return res.json();
     },
     enabled: !!quizId,
+  });
+
+  // Fetch adaptive recommendation
+  const { data: recommendation } = useQuery({
+    queryKey: [`/api/academy/adaptive-recommendation/${quizId}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/academy/adaptive-recommendation/${quizId}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: submitted,
   });
 
   // Quiz metadata
@@ -108,8 +120,8 @@ export default function AcademyQuiz() {
           <CardHeader className="text-center">
             <CardTitle>Quiz Tamamlandı</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6 text-center">
-            <div>
+          <CardContent className="space-y-6">
+            <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 {score >= quiz.passingScore ? (
                   <CheckCircle className="w-12 h-12 text-green-500" />
@@ -127,6 +139,39 @@ export default function AcademyQuiz() {
               <p className="text-sm text-muted-foreground mb-1">Gerekli puan: {quiz.passingScore}%</p>
               <Progress value={score} className="h-2" />
             </div>
+
+            {/* Adaptive Progression */}
+            {recommendation && (
+              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <CardTitle className="text-base">Uyarlanabilir Yol Önerisi</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm">{recommendation.recommendation}</p>
+                  
+                  {/* Difficulty Progression Path */}
+                  <div className="flex items-center justify-between mt-3 p-2 bg-white dark:bg-slate-900 rounded-lg">
+                    <div className="text-xs text-center">
+                      <Badge variant="outline" className="bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200">Kolay</Badge>
+                      <p className="text-xs text-muted-foreground mt-1">Tamamlandı</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                    <div className="text-xs text-center">
+                      <Badge variant="outline" className={recommendation.nextDifficulty === 'medium' ? "bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200" : "bg-slate-100 dark:bg-slate-800"}>Orta</Badge>
+                      <p className="text-xs text-muted-foreground mt-1">{recommendation.nextDifficulty === 'medium' ? 'Sonraki' : 'Kilitli'}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                    <div className="text-xs text-center">
+                      <Badge variant="outline" className={recommendation.nextDifficulty === 'hard' ? "bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200" : "bg-slate-100 dark:bg-slate-800"}>Zor</Badge>
+                      <p className="text-xs text-muted-foreground mt-1">{recommendation.nextDifficulty === 'hard' ? 'Sonraki' : 'Kilitli'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Button onClick={() => window.history.back()}>Geri Dön</Button>
           </CardContent>
