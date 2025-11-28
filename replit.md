@@ -29,7 +29,7 @@ The frontend utilizes React 18+ with TypeScript and Vite. It employs Shadcn/ui (
 - **QR-Based Attendance**: Secure check-in/out with geofence validation, location confidence scoring, and optional WiFi SSID verification.
 - **AI Integration**: AI photo verification for tasks and RAG-enabled knowledge base search.
 - **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, and shift planning.
-- **DOSPRESSO Academy**: A comprehensive training system including career progression, quiz system with leaderboard, badge/achievement system, and AI-generated quiz recommendations based on career level.
+- **DOSPRESSO Academy**: A comprehensive training system including career progression, quiz system with leaderboard, badge/achievement system, AI-generated quiz recommendations, and supervisor exam approval workflow.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
@@ -98,7 +98,15 @@ The frontend utilizes React 18+ with TypeScript and Vite. It employs Shadcn/ui (
 - API: `GET /api/academy/recommended-quizzes` - Personalized suggestions
 - Frontend: Academy hub widget showing 3 recommended quizzes with quick-start links
 
-#### **Database Schema (7 Tables)**
+#### **Phase 6: Supervisor Exam Approval Workflow** (✅ COMPLETE)
+- Supervisor dashboard to view pending exam requests
+- Approve button with instant API call → HQ approves exam
+- Reject button with modal dialog for rejection reason
+- Full state management: loading states, error toasts, cache invalidation
+- Test IDs on all interactive elements for testing
+- API endpoints: PATCH `/api/academy/exam-request/:id/approve`, PATCH `/api/academy/exam-request/:id/reject`
+
+#### **Database Schema (8 Tables)**
 ```
 career_levels - Career progression (5 levels)
 exam_requests - Supervisor promotion requests
@@ -110,10 +118,12 @@ user_badges - User's unlocked achievements
 quizzes - Quiz metadata (title, description, career level, difficulty)
 ```
 
-#### **API Endpoints (8 Total)**
+#### **API Endpoints (10 Total)**
 ✅ `GET /api/academy/career-levels` - All career levels
 ✅ `GET /api/academy/career-progress/:userId` - User's current level
 ✅ `POST /api/academy/exam-request` - Request promotion
+✅ `PATCH /api/academy/exam-request/:id/approve` - Approve exam (HQ only)
+✅ `PATCH /api/academy/exam-request/:id/reject` - Reject exam with reason
 ✅ `GET /api/academy/leaderboard` - Top 5 performers by score
 ✅ `POST /api/academy/quiz-result` - Submit quiz (w/ auto-unlock)
 ✅ `GET /api/academy/badges` - All achievements
@@ -126,6 +136,7 @@ quizzes - Quiz metadata (title, description, career level, difficulty)
 ✅ `/akademi-leaderboard` - Leaderboard with leader rankings
 ✅ `/akademi-quiz/:quizId` - Interactive quiz with real questions from DB
 ✅ `/akademi-badges` - Badge showcase with progress tracking
+✅ `/akademi-supervisor` - Supervisor approval dashboard with exam request management
 
 #### **Key Features Implemented**
 - 🎯 **Gamification**: 6-badge achievement system with point rewards (10-150 pts)
@@ -134,18 +145,20 @@ quizzes - Quiz metadata (title, description, career level, difficulty)
 - 🎓 **Career Tracking**: Multi-level progression from Stajyer to Supervisor
 - ✅ **Auto-Rewards**: Badges auto-unlock on quiz completion & perfect scores
 - 💡 **Smart Recommendations**: Personalized quizzes based on career level
-- 🔄 **Full Persistence**: All quiz data, scores, badges stored in PostgreSQL
+- 👨‍💼 **Exam Approval**: HQ supervisors can approve/reject promotion exams with reasons
+- 🔄 **Full Persistence**: All quiz data, scores, badges, approvals stored in PostgreSQL
 
 #### **System Integration**
 - Database ✅ → Storage layer ✅ → API endpoints ✅ → Frontend ✅
 - All queries use career level filtering for personalization
 - TanStack Query handles data synchronization
 - Real-time badge unlock notifications on quiz submission
+- Exam approval workflow with proper state management
 
 #### **Next Phase (Future Work)**
 - AI Motor: Generate quizzes from knowledge base using OpenAI embeddings
-- Real leaderboard aggregation by branch and role
-- Supervisor exam workflow with HQ approval system
+- Auto-promotion: When exam is approved, automatically advance user's career level
+- Exam leaderboard: Track top performers across promotion exams
 - Performance analytics dashboard with career trajectory
 - Mobile app optimization for field staff
 - Quiz difficulty progression (easy → medium → hard)
@@ -153,11 +166,12 @@ quizzes - Quiz metadata (title, description, career level, difficulty)
 ---
 
 ## Development Notes
-- **Fast mode optimization**: Built entire Academy MVP in 4 fast turns with parallel operations
-- **Data integrity**: All quiz data persisted in PostgreSQL via Drizzle ORM
+- **Fast mode optimization**: Built entire Academy MVP with 6 phases in parallel turns
+- **Data integrity**: All quiz data, approval workflows persisted in PostgreSQL via Drizzle ORM
 - **Type safety**: Full TypeScript coverage with Zod schemas for validation
 - **Performance**: TanStack Query caching minimizes API calls
-- **UX**: Loading states, error handling, empty states on all pages
+- **UX**: Loading states, error handling, empty states, test IDs on all pages
 - **Turkish localization**: All UI text localized for Turkish users
+- **Test-driven design**: data-testid attributes on all interactive elements
 
-**Status: Academy MVP is production-ready and fully integrated with DOSPRESSO platform.**
+**Status: Academy MVP with Supervisor Approval Workflow is production-ready and fully integrated with DOSPRESSO platform.**

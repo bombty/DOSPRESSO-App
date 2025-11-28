@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -6,11 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Users, CheckCircle, Clock, AlertCircle, Check, X } from "lucide-react";
 
 export default function AcademySupervisor() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [rejectingId, setRejectingId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   // Get team members
   const { data: teamMembers = [], isLoading: teamLoading } = useQuery({
@@ -36,13 +41,31 @@ export default function AcademySupervisor() {
     enabled: !!user?.id,
   });
 
+  const approveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("PATCH", `/api/academy/exam-request/${id}/approve`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Sınav onaylandı", description: "Kullanıcı sınava başlayabilir." });
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/exam-requests-team", user?.id] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
   const rejectMutation = useMutation({
-    mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
-      return apiRequest("PATCH", `/api/academy/exam-request/${id}/reject`, { rejectionReason: reason });
+    mutationFn: async (id: number) => {
+      return apiRequest("PATCH", `/api/academy/exam-request/${id}/reject`, { rejectionReason: rejectReason });
     },
     onSuccess: () => {
       toast({ title: "Talep reddedildi" });
-      queryClient.invalidateQueries({ queryKey: ["/api/academy/exam-requests-team"] });
+      setRejectingId(null);
+      setRejectReason("");
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/exam-requests-team", user?.id] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
 
@@ -116,20 +139,78 @@ export default function AcademySupervisor() {
                           <p className="font-medium">{exam.userId}</p>
                           <p className="text-sm text-muted-foreground">→ {exam.targetRoleId}</p>
                         </div>
-                        <Badge variant="secondary">{exam.status}</Badge>
+                        <Badge variant="secondary" data-testid={`status-exam-${exam.id}`}>{exam.status}</Badge>
                       </div>
                       {exam.supervisorNotes && (
                         <p className="text-sm bg-muted p-2 rounded">{exam.supervisorNotes}</p>
                       )}
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline">Düzenle</Button>
                         <Button 
                           size="sm" 
-                          variant="ghost" 
-                          onClick={() => rejectMutation.mutate({ id: exam.id, reason: "İleri tarih" })}
+                          variant="default"
+                          onClick={() => approveMutation.mutate(exam.id)}
+                          disabled={approveMutation.isPending}
+                          data-testid={`button-approve-${exam.id}`}
                         >
-                          İptal
+                          <Check className="w-3 h-3 mr-1" />
+                          Onayla
                         </Button>
+
+                        <Dialog open={rejectingId === exam.id} onOpenChange={(open) => {
+                          if (!open) {
+                            setRejectingId(null);
+                            setRejectReason("");
+                          } else {
+                            setRejectingId(exam.id);
+                          }
+                        }}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              data-testid={`button-reject-${exam.id}`}
+                            >
+                              <X className="w-3 h-3 mr-1" />
+                              Reddet
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Sınav Talebini Reddet</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <p className="text-sm text-muted-foreground">
+                                {exam.userId} kullanıcısının {exam.targetRoleId} pozisyonuna geçiş talebini reddetmek üzeresin.
+                              </p>
+                              <Textarea 
+                                placeholder="Reddetme sebebini yazın..."
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                data-testid="textarea-reject-reason"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => {
+                                    setRejectingId(null);
+                                    setRejectReason("");
+                                  }}
+                                  data-testid="button-cancel-reject"
+                                >
+                                  İptal
+                                </Button>
+                                <Button 
+                                  variant="destructive"
+                                  onClick={() => rejectMutation.mutate(exam.id)}
+                                  disabled={!rejectReason.trim() || rejectMutation.isPending}
+                                  data-testid="button-confirm-reject"
+                                >
+                                  Reddet
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </div>
                   ))}
