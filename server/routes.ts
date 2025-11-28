@@ -10559,6 +10559,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/user-dashboard - Dashboard için kullanıcı Academy özeti
+  app.get('/api/academy/user-dashboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Get career progress
+      const careerProgress = await storage.getUserCareerProgress(userId);
+      
+      // Get user's career level
+      let careerLevel = null;
+      if (careerProgress?.currentCareerLevelId) {
+        const levels = await storage.getCareerLevels();
+        careerLevel = levels.find((l: any) => l.id === careerProgress.currentCareerLevelId);
+      }
+      
+      // Get user badges
+      const userBadges = await storage.getUserBadges(userId);
+      
+      // Get recent quiz performance
+      const recentQuizzes = await storage.getQuizResultsByUser(userId);
+      const quizStats = {
+        totalAttempts: recentQuizzes?.length || 0,
+        averageScore: careerProgress?.averageQuizScore || 0,
+        recentScores: recentQuizzes?.slice(0, 5).map((q: any) => q.score) || []
+      };
+      
+      res.json({
+        careerLevel,
+        careerProgress,
+        userBadges: userBadges?.slice(0, 3) || [],
+        quizStats,
+        totalBadgesEarned: userBadges?.length || 0
+      });
+    } catch (error: any) {
+      console.error("Dashboard error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // GET /api/academy/exam-requests - Sınav talepleri listesi
   app.get('/api/academy/exam-requests', isAuthenticated, async (req: any, res) => {
     try {

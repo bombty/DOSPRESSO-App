@@ -153,6 +153,12 @@ export default function Dashboard() {
     enabled: !!user?.id,
   });
 
+  // Fetch user Academy dashboard data
+  const { data: academyData, isLoading: academyLoading } = useQuery<any>({
+    queryKey: ["/api/academy/user-dashboard"],
+    enabled: !!user?.id,
+  });
+
   // Calculate weekly performance score from daily scores (not double-averaging)
   const weeklyPerformanceScore = useMemo(() => {
     if (!userPerformanceScores || userPerformanceScores.length === 0) return null;
@@ -826,99 +832,96 @@ export default function Dashboard() {
       </div>
       )}
 
-      {/* Akademi Section - Compact */}
+      {/* Akademi Section - Personalized */}
       <Card 
         className="cursor-pointer hover-elevate transition-all" 
-        onClick={() => setLocation("/training")}
+        onClick={() => setLocation("/akademi")}
         data-testid="card-akademi"
       >
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <GraduationCap className="h-4 w-4" />
-            Eğitimler
+            <Trophy className="h-4 w-4" />
+            Akademi
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-            {modulesLoading || progressLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </div>
-            ) : trainingStats.mandatory === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">Henüz zorunlu eğitiminiz bulunmuyor</p>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="mt-4"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLocation("/training");
-                  }}
-                  data-testid="button-view-all-trainings"
-                >
-                  Tüm Eğitimleri Gör
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Zorunlu Eğitimler</span>
-                  </div>
-                  <Badge variant="secondary" data-testid="badge-mandatory-count">
-                    {trainingStats.mandatory}
-                  </Badge>
+          {academyLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ) : academyData?.careerLevel ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm font-medium">{academyData.careerLevel.titleTr}</span>
                 </div>
+                <Badge variant="secondary" data-testid="badge-career-level">
+                  Seviye {academyData.careerLevel.levelNumber}
+                </Badge>
+              </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Devam Eden</span>
-                    <span className="font-medium" data-testid="text-in-progress-count">
-                      {trainingStats.inProgress}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Tamamlanan</span>
-                    <span className="font-medium text-green-600" data-testid="text-completed-count">
-                      {trainingStats.completed}
-                    </span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Quiz Başarı</span>
+                  <span className="font-medium" data-testid="text-quiz-average">
+                    {Math.round(academyData.quizStats?.averageScore || 0)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Rozetler</span>
+                  <span className="font-medium text-amber-600" data-testid="text-badges-count">
+                    {academyData.totalBadgesEarned || 0}
+                  </span>
+                </div>
+              </div>
+
+              {academyData.userBadges && academyData.userBadges.length > 0 && (
+                <div className="mt-2 pt-2 border-t">
+                  <p className="text-xs text-muted-foreground mb-2">Son Rozetler</p>
+                  <div className="flex gap-1">
+                    {academyData.userBadges.slice(0, 3).map((ub: any, idx: number) => (
+                      <Badge key={idx} variant="outline" className="text-xs" data-testid={`badge-${ub.badge?.nameEn || idx}`}>
+                        {ub.badge?.nameEn}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                <div className="mt-4">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Tamamlanma</span>
-                    <span className="font-medium">
-                      {Math.round((trainingStats.completed / trainingStats.mandatory) * 100)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-primary rounded-full h-2 transition-all"
-                      style={{ width: `${Math.round((trainingStats.completed / trainingStats.mandatory) * 100)}%` }}
-                      data-testid="progress-bar-training"
-                    />
-                  </div>
-                </div>
-
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-4"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLocation("/training");
-                  }}
-                  data-testid="button-view-trainings"
-                >
-                  Tüm Eğitimleri Gör
-                </Button>
-              </div>
-            )}
-          </CardContent>
+              <Button 
+                variant="outline" 
+                className="w-full mt-4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/akademi");
+                }}
+                data-testid="button-view-academy"
+              >
+                Akademiye Git
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-sm">Akademi henüz başlamamış</p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="mt-4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/akademi");
+                }}
+                data-testid="button-start-academy"
+              >
+                Akademiye Başla
+              </Button>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Analytics Charts - Hidden on Mobile */}
