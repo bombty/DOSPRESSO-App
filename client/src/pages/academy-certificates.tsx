@@ -57,7 +57,7 @@ export default function AcademyCertificates() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      div>
+      <div>
         <h1 className="text-3xl font-bold tracking-tight">Sertifikalar & Başarılar</h1>
         <p className="text-muted-foreground mt-2">Kariyer seviyelerine ulaştığında kazanılan resmi sertifikalar</p>
       </div>

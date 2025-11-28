@@ -3,8 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Flame, Calendar, Target, Trophy } from "lucide-react";
-import { ArrowLeft, Loader } from "lucide-react";
+import { ArrowLeft, Flame, Calendar, Target, Trophy, Loader } from "lucide-react";
 
 export default function AcademyStreakTracker() {
   const { user } = useAuth();
@@ -63,7 +62,7 @@ export default function AcademyStreakTracker() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      div>
+      <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Flame className="w-8 h-8 text-orange-500" />
           Öğrenme Serisi

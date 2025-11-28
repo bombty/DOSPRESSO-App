@@ -5,9 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
-import { ArrowLeft, Building2, TrendingUp, Users, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader } from "lucide-react";
+import { ArrowLeft, Building2, TrendingUp, Users, Zap, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AcademyBranchAnalytics() {
@@ -56,7 +54,7 @@ export default function AcademyBranchAnalytics() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      div>
+      <div>
         <h1 className="text-3xl font-bold tracking-tight">Şube Akademi Analitikleri</h1>
         <p className="text-muted-foreground mt-2">Tüm şubelerin eğitim performansı ve ilerlemesi</p>
       </div>

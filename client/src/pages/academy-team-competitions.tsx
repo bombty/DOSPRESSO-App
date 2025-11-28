@@ -5,9 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { ArrowLeft, Flame, Trophy, Target, Users, Zap, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader } from "lucide-react";
+import { ArrowLeft, Flame, Trophy, Target, Users, Zap, Lock, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AcademyTeamCompetitions() {
@@ -51,7 +49,7 @@ export default function AcademyTeamCompetitions() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      div>
+      <div>
         <h1 className="text-3xl font-bold tracking-tight">Takım Yarışmaları</h1>
         <p className="text-muted-foreground mt-2">Şubeler arası rekabetçi eğitim yarışmaları</p>
       </div>

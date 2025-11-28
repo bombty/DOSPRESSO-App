@@ -3,9 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Trophy, Flame, Target, Zap, Star, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader } from "lucide-react";
+import { ArrowLeft, Trophy, Flame, Target, Zap, Star, Lock, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ACHIEVEMENTS = [
@@ -113,7 +111,7 @@ export default function AcademyAchievements() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      div>
+      <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Trophy className="w-8 h-8 text-amber-500" />
           Başarılar

@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Brain, Zap, Target } from "lucide-react";
-import { ArrowLeft, Loader } from "lucide-react";
+import { ArrowLeft, Brain, Zap, Target, Loader } from "lucide-react";
 import { Link } from "wouter";
 
 export default function AcademyLearningPaths() {
@@ -68,7 +67,7 @@ export default function AcademyLearningPaths() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      div>
+      <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Brain className="w-8 h-8 text-purple-600 dark:text-purple-400" />
           AI Öğrenme Yolları

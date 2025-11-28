@@ -78,7 +78,7 @@ export default function AcademyHQ() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      div>
+      <div>
         <h1 className="text-3xl font-bold tracking-tight">Akademi - HQ Yönetim Paneli</h1>
         <p className="text-muted-foreground mt-2">Sınav talepleri, modül yönetimi ve kariyer onayları</p>
       </div>
