@@ -4844,6 +4844,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const role = user.role as UserRoleType;
       const id = parseInt(req.params.id);
 
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Geçersiz vardiya ID'si" });
+      }
+
       const shift = await storage.getShift(id);
       if (!shift) {
         return res.status(404).json({ message: "Vardiya bulunamadı" });
