@@ -3459,3 +3459,88 @@ export const insertTrainingCompletionSchema = createInsertSchema(trainingComplet
 
 export type InsertTrainingCompletion = z.infer<typeof insertTrainingCompletionSchema>;
 export type TrainingCompletion = typeof trainingCompletions.$inferSelect;
+
+// ========================================
+// CAREER PROGRESSION - Kariyer İlerleme Sistemi
+// ========================================
+
+// Career Levels - 5 seviye
+export const careerLevels = pgTable("career_levels", {
+  id: serial("id").primaryKey(),
+  roleId: varchar("role_id", { length: 50 }).notNull().unique(), // stajyer, bar_buddy, barista, supervisor_buddy, supervisor
+  levelNumber: integer("level_number").notNull(), // 1-5
+  titleTr: varchar("title_tr", { length: 100 }).notNull(), // "Stajyer", "Bar Buddy", vb
+  descriptionTr: text("description_tr"),
+  requiredModuleIds: integer("required_module_ids").array().default(sql`ARRAY[]::integer[]`), // Zorunlu modül ID'leri
+  prerequisiteRoles: text("prerequisite_roles").array(), // Önceki roller
+  successRateThreshold: integer("success_rate_threshold").default(80), // Sınav geçiş notu (%)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("career_levels_role_idx").on(table.roleId),
+  index("career_levels_level_idx").on(table.levelNumber),
+]);
+
+export const insertCareerLevelSchema = createInsertSchema(careerLevels).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCareerLevel = z.infer<typeof insertCareerLevelSchema>;
+export type CareerLevel = typeof careerLevels.$inferSelect;
+
+// Exam Requests - Supervisor tarafından başlatılan sınav talepleri
+export const examRequests = pgTable("exam_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  targetRoleId: varchar("target_role_id", { length: 50 }).notNull(), // Hangi role'e terfi (e.g., "barista")
+  supervisorId: varchar("supervisor_id").notNull().references(() => users.id),
+  supervisorNotes: text("supervisor_notes"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected, exam_in_progress, passed, failed
+  approvedById: varchar("approved_by_id").references(() => users.id), // HQ onaylayan
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  examStartedAt: timestamp("exam_started_at"),
+  examCompletedAt: timestamp("exam_completed_at"),
+  examScore: integer("exam_score"), // 0-100
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("exam_requests_user_idx").on(table.userId),
+  index("exam_requests_status_idx").on(table.status),
+  index("exam_requests_target_role_idx").on(table.targetRoleId),
+]);
+
+export const insertExamRequestSchema = createInsertSchema(examRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExamRequest = z.infer<typeof insertExamRequestSchema>;
+export type ExamRequest = typeof examRequests.$inferSelect;
+
+// User Career Progress - Her kullanıcının kariyer durumu
+export const userCareerProgress = pgTable("user_career_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  currentCareerLevelId: integer("current_career_level_id").notNull().references(() => careerLevels.id),
+  completedModuleIds: integer("completed_module_ids").array().default(sql`ARRAY[]::integer[]`),
+  averageQuizScore: real("average_quiz_score").default(0),
+  totalQuizzesAttempted: integer("total_quizzes_attempted").default(0),
+  lastExamRequestId: integer("last_exam_request_id").references(() => examRequests.id),
+  promotionEligibleAt: timestamp("promotion_eligible_at"), // Ne zaman terfi için hazır olacak
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("user_career_progress_user_idx").on(table.userId),
+  index("user_career_progress_level_idx").on(table.currentCareerLevelId),
+]);
+
+export const insertUserCareerProgressSchema = createInsertSchema(userCareerProgress).omit({
+  id: true,
+  lastUpdatedAt: true,
+  createdAt: true,
+});
+
+export type InsertUserCareerProgress = z.infer<typeof insertUserCareerProgressSchema>;
+export type UserCareerProgress = typeof userCareerProgress.$inferSelect;
