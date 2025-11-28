@@ -615,6 +615,8 @@ export default function Dashboard() {
           openFaults={openFaults}
           branchScoresTimeRange={branchScoresTimeRange}
           onTimeRangeChange={setBranchScoresTimeRange}
+          academyData={academyData}
+          academyLoading={academyLoading}
         />
       );
     } else if (role === 'supervisor' || role === 'supervisor_buddy' || role === 'coach') {
