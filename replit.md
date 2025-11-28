@@ -3,6 +3,13 @@
 ## Overview
 DOSPRESSO is a web-based platform designed to centralize and streamline coffee shop franchise operations for Headquarter (HQ) staff. Its core purpose is to monitor branches, assign and AI-verify tasks, track equipment health, manage training, and provide comprehensive support. The platform aims to enhance efficiency, ensure brand consistency across all DOSPRESSO branches, and provides robust role-based access control specifically tailored for the Turkish market. Key capabilities include unified fault management with QR integration, SLA monitoring, and an AI-powered knowledge base.
 
+## Recent Changes (Session: Nov 28, 2025)
+- **UI Cleanup**: Removed redundant CardDescriptions and titles from `vardiyalar.tsx` CheckInContent component - streamlined shift check-in UI
+- **Critical API Fix**: Fixed `/api/shifts/my` endpoint returning NaN error - moved route before `/api/shifts/:id` wildcard route to prevent incorrect matching
+- **Route Ordering**: Ensured specific routes (`/api/shifts/my`) are defined before wildcard routes (`/api/shifts/:id`) in Express
+- **Shift Check-in System**: Fully functional QR-based shift check-in with location verification
+- **System Status**: All critical systems stable - database, backup, QR scanning, notifications working
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
