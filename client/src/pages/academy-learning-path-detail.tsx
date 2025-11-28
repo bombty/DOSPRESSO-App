@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { ArrowLeft, Brain, Zap, BookOpen, CheckCircle2, Circle, Lock, ArrowRight
 export default function AcademyLearningPathDetail() {
   const { pathId } = useParams();
   const { user } = useAuth();
+  const [, navigate] = useLocation();
 
   const { data: pathDetail, isLoading } = useQuery({
     queryKey: ["/api/academy/learning-paths", pathId, user?.id],
@@ -143,19 +144,19 @@ export default function AcademyLearningPathDetail() {
                       {/* Action */}
                       <div className="flex gap-2">
                         {quiz.status === "completed" && (
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/akademi/quiz/${quiz.id}`)}>
                             <CheckCircle2 className="w-3 h-3 mr-1" />
                             Tekrar Al
                           </Button>
                         )}
                         {quiz.status === "recommended" && (
-                          <Button size="sm">
+                          <Button size="sm" onClick={() => navigate(`/akademi/quiz/${quiz.id}`)}>
                             <BookOpen className="w-3 h-3 mr-1" />
                             Şimdi Başla
                           </Button>
                         )}
                         {quiz.status === "available" && (
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/akademi/quiz/${quiz.id}`)}>
                             <BookOpen className="w-3 h-3 mr-1" />
                             Başla
                           </Button>
