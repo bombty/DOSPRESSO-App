@@ -10286,6 +10286,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TRAINING MATERIALS - AI Eğitim Materyalleri
   // ========================================
 
+  // Hook: Create training material when knowledge base article is published
+  app.post('/api/training/materials/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!hasPermission(req.user.role, 'training', 'create')) {
+        return res.status(403).json({ message: "İzniniz yok" });
+      }
+      
+      const { articleId, targetRoles } = req.body;
+      const article = await storage.getArticle(articleId);
+      if (!article) return res.status(404).json({ message: "Makale bulunamadı" });
+
+      // Generate training materials with AI
+      const flashcardContent = await generateFlashcardsFromLesson(article.content);
+      const quizContent = await generateQuizQuestionsFromLesson(article.content);
+      
+      const material = await storage.createTrainingMaterial({
+        articleId,
+        materialType: 'flashcard_set',
+        title: `${article.title} - Flashcard Seti`,
+        description: `${article.title} makalesinden otomatik oluşturulan flashcard seti`,
+        content: { flashcards: flashcardContent },
+        status: 'published',
+        targetRoles: targetRoles || [],
+        createdById: req.user.id,
+      });
+
+      res.status(201).json({ material, message: "Eğitim materyali oluşturuldu" });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Oluşturulamadı" });
+    }
+  });
+
   // GET /api/training/materials - List published training materials
   app.get('/api/training/materials', isAuthenticated, async (req: any, res) => {
     try {
@@ -10350,6 +10382,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update assignment status
       await storage.updateTrainingAssignmentStatus(parseInt(id), 'completed');
+
+      // SCORE INTEGRATION: Increase performance score on training completion
+      if (score >= 70) {
+        try {
+          const user = await storage.getUser(req.user.id);
+          if (user?.branchId) {
+            await storage.recordPerformanceScore({
+              branchId: user.branchId,
+              userId: req.user.id,
+              date: new Date(),
+              taskScore: score / 100 * 20, // Eğitim puanı
+              photoScore: 0,
+              timeScore: 0,
+              supervisorScore: 0,
+            });
+          }
+        } catch (e) {
+          console.error("Score recording failed:", e);
+        }
+      }
       
       res.json({ completion, assignment: target });
     } catch (error: any) {

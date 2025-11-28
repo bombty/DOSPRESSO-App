@@ -154,11 +154,11 @@ export default function PersonelDetay() {
   });
 
   // Eğitim İlerlemesi
-  const { data: trainingProgress, isLoading: trainingLoading } = useQuery<any[]>({
+  const { data: trainingProgress, isLoading: trainingLoading } = useQuery<any>({
     queryKey: ["/api/training/progress", id],
     queryFn: async () => {
-      const response = await fetch(`/api/training/progress?userId=${id}`);
-      if (!response.ok) return [];
+      const response = await fetch(`/api/training/progress/${id}`);
+      if (!response.ok) return null;
       return response.json();
     },
     enabled: !!id,
@@ -1214,6 +1214,86 @@ export default function PersonelDetay() {
                     <Plus className="h-4 w-4 mr-2" />
                     Onboarding Başlat
                   </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="training" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Eğitim Durumu
+              </CardTitle>
+              <CardDescription>Atanan ve tamamlanan eğitimler</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {trainingLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+              ) : trainingProgress ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="border rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground">Toplam</p>
+                      <p className="text-2xl font-bold">{trainingProgress.summary?.total || 0}</p>
+                    </div>
+                    <div className="border rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground">Tamamlanan</p>
+                      <p className="text-2xl font-bold text-green-600">{trainingProgress.summary?.completed || 0}</p>
+                    </div>
+                    <div className="border rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground">Devam Eden</p>
+                      <p className="text-2xl font-bold text-blue-600">{trainingProgress.summary?.inProgress || 0}</p>
+                    </div>
+                    <div className="border rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground">Geciken</p>
+                      <p className="text-2xl font-bold text-orange-600">{trainingProgress.summary?.overdue || 0}</p>
+                    </div>
+                  </div>
+
+                  {trainingProgress.averageScore > 0 && (
+                    <div className="border rounded-lg p-4 bg-blue-50">
+                      <p className="text-sm text-muted-foreground mb-1">Ortalama Başarı Oranı</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full" 
+                            style={{width: `${trainingProgress.averageScore}%`}}
+                          />
+                        </div>
+                        <span className="font-bold">{trainingProgress.averageScore}%</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {trainingProgress.assignments && trainingProgress.assignments.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-3">Atanan Eğitimler</h4>
+                      <div className="space-y-2">
+                        {trainingProgress.assignments.slice(0, 5).map((a: any) => (
+                          <div key={a.id} className="flex items-center justify-between p-2 border rounded-lg">
+                            <div>
+                              <p className="font-medium text-sm">{a.materialId}</p>
+                              <p className="text-xs text-muted-foreground">{a.status}</p>
+                            </div>
+                            <Badge variant={a.status === 'completed' ? 'default' : 'outline'}>
+                              {a.status}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Award className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Henüz eğitim atanmamış</p>
                 </div>
               )}
             </CardContent>
