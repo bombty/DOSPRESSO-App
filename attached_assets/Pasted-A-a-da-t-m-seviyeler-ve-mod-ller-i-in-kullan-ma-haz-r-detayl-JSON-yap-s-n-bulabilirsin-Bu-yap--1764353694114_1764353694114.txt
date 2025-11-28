@@ -1,0 +1,2269 @@
+Aşağıda tüm seviyeler ve modüller için kullanıma hazır detaylı JSON yapısını bulabilirsin.
+Bu yapı; rol, modül, multistep içerik, quiz, senaryo ve supervisor checklist’lerini içeriyor.
+
+{
+  "academy_name": "DOSPRESSO Academy",
+  "version": "1.0",
+  "language": "tr-TR",
+  "roles": [
+    {
+      "id": "stajyer",
+      "name": "Stajyer",
+      "level": 1,
+      "modules": [
+        {
+          "code": "S1",
+          "title": "DOSPRESSO Kültürü ve Disiplin Kuralları",
+          "estimated_duration_min": 10,
+          "description": "DOSPRESSO marka kültürü, iş disiplini, davranış kodu ve kariyer basamaklarının mantığını açıklar.",
+          "learning_objectives": [
+            "DOSPRESSO kurum kültürünü ve temel değerlerini açıklayabilir.",
+            "Disiplin ve prosedürlerin neden önemli olduğunu ifade edebilir.",
+            "Kariyer basamaklarının performans, gözlem ve disipline bağlı olduğunu anlar."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "DOSPRESSO Kimdir?",
+              "content": "Markanın tarihçesi, misyonu, vizyonu ve misafir odaklı yapısı anlatılır. Her çalışanın, misafirin gözünde markayı temsil ettiği vurgulanır.",
+              "media_suggestions": [
+                "kısa tanıtım videosu",
+                "marka hikayesi slaytı"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Neden Kurallar Var?",
+              "content": "Kuralların cezalandırma için değil; güvenlik, hizmet standardı, ekip uyumu ve misafir memnuniyeti için var olduğu açıklanır. İş disiplininin şube sonuçlarına etkisi örneklerle anlatılır.",
+              "media_suggestions": [
+                "infografik: disiplin -> kalite -> satış ilişkisi"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Davranış Kodu",
+              "content": "Saygılı iletişim, ekip içi işbirliği, misafire yaklaşım, telefon kullanımı, zamanında vardiyada hazır bulunma ve ekip arkadaşlarına karşı tutum detaylandırılır.",
+              "media_suggestions": [
+                "madde madde davranış kodu posteri"
+              ]
+            },
+            {
+              "step_number": 4,
+              "title": "Kariyer Basamakları ve Sorumluluk",
+              "content": "Stajyer → Bar Buddy → Barista → Supervisor Buddy → Supervisor yol haritası görsel olarak gösterilir. Her seviyede beklenen sorumluluk ve davranış kalıpları özetlenir.",
+              "media_suggestions": [
+                "kariyer merdiveni görseli"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "S1-Q1",
+              "question_type": "mcq",
+              "question_text": "DOSPRESSO’da kuralların temel amacı nedir?",
+              "options": [
+                "Çalışanları cezalandırmak",
+                "Güvenlik ve hizmet standardını sağlamak",
+                "Sadece yönetimin işini kolaylaştırmak",
+                "Sadece misafir sayısını arttırmak"
+              ],
+              "correct_option_index": 1
+            },
+            {
+              "question_id": "S1-Q2",
+              "question_type": "mcq",
+              "question_text": "Kariyer basamaklarında yükselmenin temel belirleyicisi nedir?",
+              "options": [
+                "Kişisel ilişkiler",
+                "Sadece şube satışları",
+                "Performans, gözlem ve disiplin",
+                "Kıdem süresi"
+              ],
+              "correct_option_index": 2
+            },
+            {
+              "question_id": "S1-Q3",
+              "question_type": "mcq",
+              "question_text": "Aşağıdakilerden hangisi doğru davranış koduna örnektir?",
+              "options": [
+                "Yoğun değilse misafiri görmezden gelmek",
+                "Sadece yöneticilere karşı saygılı olmak",
+                "Ekibi ve misafiri her durumda saygıyla karşılamak",
+                "Kurallara sadece denetlenirken uymak"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "S1-SC1",
+              "title": "Yoğunlukta Tartışma",
+              "description": "Yoğun bir anda iki ekip arkadaşı kasa önünde tartışmaya başlıyor. Misafirler bunu görüyor. Sen stajyer olarak bu durumda ne yapmalısın?",
+              "expected_actions": [
+                "Tartışmaya dahil olmadan, sakin kalmak.",
+                "Mümkünse tartışan arkadaşlardan birini nazikçe bar arkasına çekmesini supervisor’dan rica etmek.",
+                "Misafire odaklanmaya devam etmek ve güleryüzü kaybetmemek.",
+                "Durumu uygun zamanda supervisor’a bildirmek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan, misafirle iletişimde göz teması ve güleryüz kullanıyor mu?",
+            "Disiplin kuralları ile ilgili önemli maddeleri sözlü olarak ifade edebiliyor mu?",
+            "Vardiya başlangıcında zamanında ve hazır mı?"
+          ],
+          "tags": [
+            "kültür",
+            "disiplin",
+            "kariyer_yolu",
+            "stajyer"
+          ]
+        },
+        {
+          "code": "S2",
+          "title": "Dress Code ve Kişisel Bakım",
+          "estimated_duration_min": 10,
+          "description": "Doğru üniforma, kişisel bakım, hijyen ve marka imajının nasıl korunacağını anlatır.",
+          "learning_objectives": [
+            "Doğru üniforma parçalarını ve kullanım kurallarını sıralayabilir.",
+            "Kişisel bakım standartlarını (saç, sakal, tırnak, koku vb.) bilir.",
+            "Hijyenin gıda güvenliği ile ilişkisini açıklar."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Üniforma Standartları",
+              "content": "Hangi parçaların zorunlu olduğu (tişört, önlük, pantolon, ayakkabı, isimlik vb.) ve yasak olan öğeler (şort, terlik, aşırı aksesuar vb.) açıklanır.",
+              "media_suggestions": [
+                "doğru/yanlış giyim karşılaştırma görseli"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Kişisel Bakım",
+              "content": "Saçların temiz ve derli toplu olması, sakal-bıyık düzeni, tırnak uzunluğu, parfüm kullanımı, sigara kokusu, el ve ağız bakımı gibi konular detaylandırılır.",
+              "media_suggestions": [
+                "kişisel bakım ikon seti",
+                "kısa hijyen videosu"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Hijyen ve Gıda Güvenliği",
+              "content": "Ellerin sık sık ve doğru şekilde yıkanmasının önemi, yüz, saç ve cep telefonu gibi temaslardan sonra el yıkama gerekliliği; eldiven kullanımı ve önlüğün mutfak/bar hijyenine etkisi anlatılır.",
+              "media_suggestions": [
+                "el yıkama adımları posteri"
+              ]
+            },
+            {
+              "step_number": 4,
+              "title": "Marka İmajı ve İlk İzlenim",
+              "content": "Misafirin ilk fark ettiği şeyin çalışan görünümü olduğu, dağınık bir görünümün profesyonellik ve güven algısını düşürdüğü örneklerle açıklanır.",
+              "media_suggestions": [
+                "öncesi/sonrası stil görselleri"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "S2-Q1",
+              "question_type": "mcq",
+              "question_text": "Aşağıdakilerden hangisi çalışma sırasında kabul edilebilir bir davranıştır?",
+              "options": [
+                "Kirli önlükle vardiyaya devam etmek",
+                "Kapalı uçlu, temiz iş ayakkabısı kullanmak",
+                "Aşırı parfüm sıkmak",
+                "Uzun ve ojeli tırnaklarla çalışmak"
+              ],
+              "correct_option_index": 1
+            },
+            {
+              "question_id": "S2-Q2",
+              "question_type": "mcq",
+              "question_text": "Elleri hangi durumda yıkamak zorunludur?",
+              "options": [
+                "Sadece tuvalet sonrası",
+                "Sadece vardiya başında",
+                "Saça/telefona dokunduktan sonra ve her kirlenme riskinde",
+                "Sadece müşteri şikayet ederse"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "S2-SC1",
+              "title": "Eksik Üniforma ile Vardiya",
+              "description": "Çalışan, yoğunluk nedeniyle önlüğünü yıkamayı unutmuş ve üzerinde lekeler var. Müşteri sipariş vermek üzere bara geliyor.",
+              "expected_actions": [
+                "Supervisor’a durumu iletip yedek önlük talep etmek.",
+                "Mümkünse vardiyaya başlamadan önce kıyafeti değiştirmek.",
+                "Temiz görünüm sağlanmadan misafir önüne geçmemeye çalışmak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan eksiksiz ve temiz üniforma ile mi çalışıyor?",
+            "Saç/sakal düzeni ve tırnak boyu hijyen kurallarına uygun mu?",
+            "Sigara veya ağır koku problemi var mı?"
+          ],
+          "tags": [
+            "dress_code",
+            "kişisel_bakım",
+            "hijyen"
+          ]
+        },
+        {
+          "code": "S3",
+          "title": "Vardiya, Mola ve İzin Prosedürü",
+          "estimated_duration_min": 10,
+          "description": "Çalışma saatleri, vardiya disiplini, mola kullanımı ve izin taleplerinin sistem üzerinden nasıl yönetileceğini açıklar.",
+          "learning_objectives": [
+            "Vardiya başlangıcı ve bitişi kavramlarını doğru tanımlar.",
+            "Mola süreleri ve kurallarını uygular.",
+            "İzin taleplerini Kolay İK veya ilgili sistem üzerinden doğru şekilde iletir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Vardiya Başlangıcı Nedir?",
+              "content": "İş yerinde bulunmakla değil, üniforma giyip bar/istasyonda çalışmaya hazır olmakla vardiyanın başladığı vurgulanır.",
+              "media_suggestions": [
+                "vardiya akış diyagramı"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Mola Kuralları",
+              "content": "Gün içindeki mola süreleri, sigara ve özel telefon görüşmeleri için ayrılan zaman, mola dönüşlerinde mutlaka istasyonda hazır olma zorunluluğu anlatılır.",
+              "media_suggestions": [
+                "molalar için zaman çizelgesi görseli"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "İzin Talebi Süreci",
+              "content": "Ücretsiz/ücretli izin farkı, hangi durumlarda hangi tür izin talep edileceği, Kolay İK üzerinden izin talebi adımları ve onay mekanizması açıklanır.",
+              "media_suggestions": [
+                "Kolay İK ekran örneği"
+              ]
+            },
+            {
+              "step_number": 4,
+              "title": "Vardiya Devri",
+              "content": "Vardiya bitişinde istasyonun tertipli bırakılması, eksiklerin raporlanması ve bir sonraki vardiyaya devir notlarının bırakılması gerektiği anlatılır.",
+              "media_suggestions": [
+                "vardiya devir checklist görseli"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "S3-Q1",
+              "question_type": "mcq",
+              "question_text": "Vardiya ne zaman başlamış sayılır?",
+              "options": [
+                "Mağaza kapısından içeri girince",
+                "Supervisor seni görünce",
+                "Üniforma giyip istasyonda çalışmaya hazır olduğunda",
+                "Kasada ilk satış yapıldığında"
+              ],
+              "correct_option_index": 2
+            },
+            {
+              "question_id": "S3-Q2",
+              "question_type": "mcq",
+              "question_text": "İzin talebi nasıl yapılmalıdır?",
+              "options": [
+                "Supervisor’a sözlü söyleyerek",
+                "Mesajla haber vererek",
+                "Kolay İK veya resmi izin sistemi üzerinden talep açarak",
+                "Hiç haber vermeden gelmeyerek"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "S3-SC1",
+              "title": "Geç Kalma Durumu",
+              "description": "Trafik nedeniyle işe 20 dakika geç kalacağını fark ettin.",
+              "expected_actions": [
+                "En kısa sürede supervisor ile iletişime geçmek.",
+                "Sistemde geç kalma notu/raporu oluşturmak (varsa).",
+                "Vardiya başlamadan önce mümkün olduğunca telafi için hazır olmak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan vardiyalara zamanında geliyor mu?",
+            "Mola dönüşlerinde istasyonda zamanında hazır mı?",
+            "İzin taleplerini prosedüre uygun mu iletiyor?"
+          ],
+          "tags": [
+            "vardiya",
+            "mola",
+            "izin",
+            "disiplin"
+          ]
+        },
+        {
+          "code": "S4",
+          "title": "Misafir Karşılama Temelleri",
+          "estimated_duration_min": 10,
+          "description": "Misafiri ilk görme anından sipariş alma sürecine kadar gerçekleşen tüm iletişim adımlarını anlatır.",
+          "learning_objectives": [
+            "Standart karşılama cümlelerini uygular.",
+            "Göz teması, beden dili ve tonlama ile misafirle doğru iletişim kurar.",
+            "İlk izlenimin önemini kavrar."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "İlk Temas",
+              "content": "Misafir içeri girdiğinde güleryüz, göz teması ve kısa bir karşılama cümlesi kullanmanın önemi anlatılır. Örnek: “Merhaba, DOSPRESSO’ya hoş geldiniz.”",
+              "media_suggestions": [
+                "kısa karşılama videosu"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Beden Dili ve Tonlama",
+              "content": "Kolları bağlamamak, telefona gömülmemek, ayakta ve bar önünde hazır durmak; ses tonunun sıcak ve net olması gerektiği örneklerle anlatılır.",
+              "media_suggestions": [
+                "doğru/yanlış beden dili görseli"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Misafire Yol Gösterme",
+              "content": "Menüyü nasıl sunacağın, popüler ürünleri nazikçe nasıl önereceğin, karar veremeyen misafire nasıl yardımcı olacağın anlatılır.",
+              "media_suggestions": [
+                "menü kartı örneği",
+                "popüler ürünler slaytı"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "S4-Q1",
+              "question_type": "mcq",
+              "question_text": "Misafir içeri girdiğinde ilk yapılması gereken nedir?",
+              "options": [
+                "Telefona bakmaya devam etmek",
+                "Göz teması ve güleryüzle selamlamak",
+                "Sadece kasaya geldiğinde konuşmak",
+                "Sadece bakmak, konuşmamak"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "S4-SC1",
+              "title": "Kararsız Misafir",
+              "description": "Misafir menüye uzun süre bakıyor ve karar veremiyor gibi görünüyor.",
+              "expected_actions": [
+                "Nazikçe yaklaşarak; “Size öneride bulunmamı ister misiniz?” gibi bir ifade kullanmak.",
+                "İki–üç popüler ürünü kısa ve sade bir şekilde açıklamak.",
+                "Misafiri rahatsız etmeden karar sürecine destek olmak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan misafiri sürekli güleryüzle karşılıyor mu?",
+            "Misafirle göz teması kuruyor mu?",
+            "Kararsız misafirlere yardımcı oluyor mu?"
+          ],
+          "tags": [
+            "müşteri_deneyimi",
+            "karşılama",
+            "iletişim"
+          ]
+        },
+        {
+          "code": "S5",
+          "title": "Güvenlik ve Soygun Protokolü",
+          "estimated_duration_min": 10,
+          "description": "Soygun veya tehdit anında çalışanların can güvenliğini önceleyen davranış kodu ve adımlarını içerir.",
+          "learning_objectives": [
+            "Soygun anında temel yapılması ve yapılmaması gerekenleri bilir.",
+            "Can güvenliğinin her şeyden önemli olduğunu kavrar.",
+            "Olay sonrası bilgi toplama ve raporlama süreçlerini özetler."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Can Güvenliği Önceliklidir",
+              "content": "Hiçbir para veya eşyanın insan hayatından daha değerli olmadığı vurgulanır. Direnmenin, kahramanlık göstermeye çalışmanın yasak olduğu açıklanır.",
+              "media_suggestions": [
+                "metin tabanlı uyarı ekranı"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Soygun Anında Davranış",
+              "content": "Sakin kalmak, ani hareketlerden kaçınmak, soyguncunun isteklerine direnmemek, elleri görünür şekilde tutmak, gereksiz konuşmamak ve provoke etmemek gerektiği anlatılır.",
+              "media_suggestions": [
+                "adım adım soygun prosedürü görseli"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Olay Sonrası",
+              "content": "Soyguncunun fiziksel özelliklerini (boy, kilo, cinsiyet, ses tonu, kıyafet, silah bilgisi vb.) hatırlamaya çalışmak, polise ve yetkiliye haber vermek, olay yerini korumak, kamera kayıtları hakkında bilgi vermek.",
+              "media_suggestions": [
+                "form örneği: ‘olay rapor formu’"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "S5-Q1",
+              "question_type": "mcq",
+              "question_text": "Soygun anında öncelikli olan nedir?",
+              "options": [
+                "Kasadaki parayı korumak",
+                "Soyguncuya karşı koymak",
+                "İnsan hayatını ve kendi can güvenliğini korumak",
+                "Soyguncuyu gizlice takip etmek"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "S5-SC1",
+              "title": "Sessiz Soygun",
+              "description": "Bir kişi sessizce gelip silah gösteriyor ve kasadaki tüm parayı istiyor.",
+              "expected_actions": [
+                "Sakin kalmak ve ani hareketlerden kaçınmak.",
+                "İstediğini vermek, hiçbir kahramanlık yapmamak.",
+                "Soyguncu gittikten sonra polisi ve yetkiliyi aramak.",
+                "Gözlemlediğin ayrıntıları (kıyafet, ses, koku vb.) not almak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan, soygun prosedürünü sözlü olarak özetleyebiliyor mu?",
+            "Gereksiz risk almaması gerektiğini anlamış görünür mü?"
+          ],
+          "tags": [
+            "güvenlik",
+            "soygun_prosedürü",
+            "acil_durum"
+          ]
+        },
+        {
+          "code": "S6",
+          "title": "Şube Alanları ve Sorumluluk Zonları",
+          "estimated_duration_min": 10,
+          "description": "Şube içindeki tüm istasyonları (Coffee Station, POS, Food, Freshess, Creamice, Checkout, Merch) ve temel sorumluluklarını tanıtır.",
+          "learning_objectives": [
+            "Şubedeki farklı istasyonların adını ve görevini bilir.",
+            "Hangi istasyonda hangi ürünlerin hazırlandığını açıklayabilir.",
+            "Temel temizlik ve düzen sorumluluklarını anlar."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Bar İstasyonlarını Tanıyalım",
+              "content": "Coffee Station, POS Station, Food Station, Freshess Station, Creamice Station, Checkout Station ve Merch Station tanıtılır; her birinin ana fonksiyonu açıklanır.",
+              "media_suggestions": [
+                "bar üstten plan görseli",
+                "istasyon etiket çizimi"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Sorumluluk Paylaşımı",
+              "content": "Her istasyon için kimlerin sorumlu olduğu, vardiya içinde istasyon değişimi, yoğunlukta birbirine destek verme prensipleri anlatılır.",
+              "media_suggestions": [
+                "sorumluluk matrisi tablosu"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Düzen ve Temizlik Temelleri",
+              "content": "Her istasyonda iş bitince alanı temiz bırakma, ürünleri doğru yerine koyma, dolap ve tezgah düzeni gibi temel hijyen/düzen kuralları anlatılır.",
+              "media_suggestions": [
+                "önce/sonra bar düzeni fotoğrafları"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "S6-Q1",
+              "question_type": "mcq",
+              "question_text": "Freshess Station’da ağırlıklı olarak ne hazırlanır?",
+              "options": [
+                "Espresso bazlı sıcak içecekler",
+                "Fırın ürünleri",
+                "Soğuk çay, meyve bazlı içecekler ve benzeri ürünler",
+                "Kasadan ödeme alınır"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "S6-SC1",
+              "title": "İstasyon Değişimi",
+              "description": "Supervisor, yoğunluk nedeniyle Coffee Station’dan Freshess Station’a geçmeni istiyor.",
+              "expected_actions": [
+                "Coffee Station’ı temiz ve düzenli bırakmak.",
+                "Yeni istasyonda hangi ürünlerin yapıldığını hızlıca gözden geçirmek.",
+                "Supervisor’dan gerekli kısa brifi almak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan istasyonları konum ve işlevleriyle ayırt edebiliyor mu?",
+            "İstasyon değişimlerinde alanı düzenli bırakıyor mu?"
+          ],
+          "tags": [
+            "istasyonlar",
+            "bar",
+            "sorumluluk"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bar_buddy",
+      "name": "Bar Buddy",
+      "level": 2,
+      "modules": [
+        {
+          "code": "BB1",
+          "title": "Coffee Station Temelleri",
+          "estimated_duration_min": 12,
+          "description": "Coffee Station içindeki ekipmanların tanımı, açılış-kapanış hazırlığı ve temel iş akışını anlatır.",
+          "learning_objectives": [
+            "Coffee Station’da bulunan temel ekipmanları sayabilir.",
+            "Açılışta yapılması gereken hazırlıkları doğru sırayla uygular.",
+            "Yoğunlukta Coffee Station iş akışını aksatmadan sürdürebilir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Coffee Station Ekipman Haritası",
+              "content": "Espresso makinesi, grinder, filtre kahve makinesi, Türk kahve makinesi ve ilgili aksesuarların (tamper, knockbox, süt sürahileri vb.) tanıtımı yapılır.",
+              "media_suggestions": [
+                "istasyon ekipmanlarının numaralandırılmış fotoğrafı"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Açılış Rutini",
+              "content": "Makineyi açma, rinse yapma, kahve haznelerini kontrol etme, süt ürünlerini dolaptan çıkarma, temiz bardak ve ekipman hazırlığı gibi adımlar sıralanır.",
+              "media_suggestions": [
+                "açılış checklist slaytı"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Sipariş Akışı",
+              "content": "Sipariş ekrana düştüğünde önceliklendirme, aynı anda birden fazla içeceği yönetme ve ekip ile koordineli çalışma pratikleri anlatılır.",
+              "media_suggestions": [
+                "sipariş akış diyagramı"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "BB1-Q1",
+              "question_type": "mcq",
+              "question_text": "Coffee Station’da hangi ürünler öncelikli hazırlanır?",
+              "options": [
+                "Sadece soğuk içecekler",
+                "Espresso bazlı içecekler ve sıcak kahveler",
+                "Sadece filtre kahve",
+                "Yalnızca paket ürünler"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "BB1-SC1",
+              "title": "Aynı Anda Birçok Sipariş",
+              "description": "Ekrana aynı anda 4 espresso bazlı, 2 filtre kahve ve 1 Türk kahvesi düşüyor.",
+              "expected_actions": [
+                "Önce espresso shot gerektiren içecekleri sıraya almak.",
+                "Filtre kahve demleme süresini planlayarak paralel çalışmak.",
+                "Türk kahvesini uygun zamanda devreye almak.",
+                "Ekiple iletişim halinde kalarak teslim süresini dengelemek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Açılışta Coffee Station’ı eksiksiz hazırlıyor mu?",
+            "Ekipmanları doğru yerde ve düzenli tutuyor mu?",
+            "Sipariş yoğunluğunda panik yapmadan iş akışını sürdürebiliyor mu?"
+          ],
+          "tags": [
+            "coffee_station",
+            "operasyon",
+            "bar_buddy"
+          ]
+        },
+        {
+          "code": "BB2",
+          "title": "POS ve Sipariş Yönetimi",
+          "estimated_duration_min": 10,
+          "description": "POS ekranı, ürün seçimi, ekstra ve opsiyonların girilmesi, hatasız sipariş ve ödeme akışını kapsar.",
+          "learning_objectives": [
+            "POS arayüzünde temel işlemleri yapabilir.",
+            "Ürün, boy, seçenek ve ekstra girdilerini doğru işleyebilir.",
+            "Hatalı sipariş riskini en aza indirir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "POS Arayüzünü Tanıma",
+              "content": "Kategori, ürün, boy seçimi ve ekstra opsiyon alanlarını; iptal, iade ve düzeltme butonlarını tanıtır.",
+              "media_suggestions": [
+                "POS ekran görüntüsü"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Doğru Sipariş Girişi",
+              "content": "Misafirin söylediği ürünleri yüksek sesle tekrar ederek doğrulama, isim yazma (varsa), masa/gel-al bilgisi girme ve ödemeye geçme adımları anlatılır.",
+              "media_suggestions": [
+                "doğru/fazla/eksik sipariş örnekleri tablosu"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Hata Yönetimi",
+              "content": "Yanlış ürün girildiğinde nasıl düzeltilir, iptal/iade süreci ve misafire nasıl açıklama yapılacağı açıklanır.",
+              "media_suggestions": [
+                "POS’ta iptal akış diyagramı"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "BB2-Q1",
+              "question_type": "mcq",
+              "question_text": "Siparişi girerken hata riskini azaltmanın en etkili yolu nedir?",
+              "options": [
+                "Misafire tekrar sormadan hızlıca girmek",
+                "Misafirden gizli düzeltmek",
+                "Siparişi girerken yüksek sesle tekrar ederek onay almak",
+                "Sadece adını yazarak sipariş girmek"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "BB2-SC1",
+              "title": "Yanlış Ürün Girişi",
+              "description": "Latte yerine Cappuccino girmiş olduğunu fark ettin ve içecek hazırlanmak üzere.",
+              "expected_actions": [
+                "Hemen POS’ta düzeltme/iptal prosedürünü uygulamak.",
+                "Baristayı bilgilendirerek yanlış içeceğin hazırlanmamasını sağlamak.",
+                "Gerekirse misafire kısaca ve nazikçe durumu açıklamak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan POS’ta hızlı ve hatasız işlem yapıyor mu?",
+            "İptal/iade süreçlerini prosedüre uygun uyguluyor mu?"
+          ],
+          "tags": [
+            "pos",
+            "sipariş",
+            "kasa"
+          ]
+        },
+        {
+          "code": "BB3",
+          "title": "Bar Temizliği ve HACCP Giriş",
+          "estimated_duration_min": 10,
+          "description": "Gün içi ve kapanış temizlik planı, çapraz bulaşma riskleri ve HACCP mantığına giriş.",
+          "learning_objectives": [
+            "Temizlik sorumluluklarını ve periyotlarını bilir.",
+            "Çapraz bulaşma risklerini azaltacak şekilde çalışır.",
+            "Bar ve istasyonları gün sonunda standartlara uygun şekilde teslim eder."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Gün İçi Temizlik",
+              "content": "Çalışırken dökülen ürünleri hemen temizleme, yüzeyleri düzenli silme, pis bardak ve ekipmanları uzun süre bekletmeme kuralları anlatılır.",
+              "media_suggestions": [
+                "bar çalışma anı fotoğrafı"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Çapraz Bulaşma Riskleri",
+              "content": "Çiğ ve pişmiş ürünlerin ayrılması, süt ve süt dışı ürün araçlarının ayrı kullanımı, temizlik bezlerinin renk kodları gibi temel HACCP kavramları aktarılır.",
+              "media_suggestions": [
+                "renk kodlu bez şeması"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Kapanış Temizliği",
+              "content": "Makine durdurma, ekipman yıkama, yüzey, zemin, dolap ve depolama alanı düzeni için checklist anlatılır.",
+              "media_suggestions": [
+                "kapanış checklist tablosu"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "BB3-Q1",
+              "question_type": "mcq",
+              "question_text": "Çapraz bulaşma nedir?",
+              "options": [
+                "Aynı ürünü iki kere satmak",
+                "Temiz yüzeyden kirli yüzeye geçiş",
+                "Mikroorganizmaların bir yüzeyden diğerine bulaşması",
+                "Sadece soğuk ürünlerde görülen bir durum"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "BB3-SC1",
+              "title": "Dökülen Ürün",
+              "description": "Tezgaha süt ve şurup döküldü, yeni siparişler bekliyor.",
+              "expected_actions": [
+                "Hemen dökülen alanı temizlemek ve gıda güvenliğini riske atmamak.",
+                "Temizlikten sonra elleri yıkayıp işine devam etmek.",
+                "Yoğunluk bahanesi ile döküntüyü bekletmemek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan temizliği anlık mı yapıyor, erteliyor mu?",
+            "Kapanışta checklist maddelerini eksiksiz uyguluyor mu?"
+          ],
+          "tags": [
+            "temizlik",
+            "hacpp",
+            "bar"
+          ]
+        },
+        {
+          "code": "BB4",
+          "title": "Donut Sunum ve Tazelik Kontrol",
+          "estimated_duration_min": 10,
+          "description": "Şoklu donutların çözündürülmesi, sergilenmesi, tazelik kontrolü ve israf azaltma prensiplerini kapsar.",
+          "learning_objectives": [
+            "Donutların çözündürme ve bekleme sürelerini bilir.",
+            "Görsel sunum standartlarına uygun sergileme yapar.",
+            "Tazeliği geçmiş ürünleri doğru şekilde ayırır ve raporlar."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Çözündürme Prosedürü",
+              "content": "Donutların soğuk depodan çıkarılıp hangi sıcaklık ve sürede çözdürüleceği, üst üste konmama ve hava alacak şekilde dizilme kuralları anlatılır.",
+              "media_suggestions": [
+                "tray üstünde doğru dizilim fotoğrafı"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Vitrin Sunumu",
+              "content": "Donutların renk ve çeşit dengesine göre vitrine dizilmesi, kırık veya deformeli ürünlerin ayrılması, alerjen içerik etiketleri gibi noktalar anlatılır.",
+              "media_suggestions": [
+                "vitrin plan şeması"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Tazelik ve Fire Yönetimi",
+              "content": "Bekleme süresi dolan ürünlerin tespit edilmesi, misafire sunulmaması, fire raporuna işlenmesi ve israfı azaltmak için üretim planlamasına geri bildirim verilmesi anlatılır.",
+              "media_suggestions": [
+                "fire formu örneği"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "BB4-Q1",
+              "question_type": "mcq",
+              "question_text": "Tazeliğini kaybetmiş donut için doğru davranış nedir?",
+              "options": [
+                "Üstünü süsleyip yine de satmak",
+                "İskonto yaparak satmak",
+                "Misafire sunmamak ve fire raporuna işlemek",
+                "Sadece arkadaşlara ikram etmek"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "BB4-SC1",
+              "title": "Taze Olmayan Donut Şikayeti",
+              "description": "Misafir, aldığı donut’un bayat olduğunu söylüyor.",
+              "expected_actions": [
+                "Öncelikle özür dileyip ürünü değiştirmeyi teklif etmek.",
+                "Tazelik süresi ve saklama koşullarını kontrol etmek.",
+                "Durumu supervisor’a bildirip gerekiyorsa vitrin kontrolü yapmak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan donut tazelik süresini biliyor mu?",
+            "Vitrini görsel olarak düzenli ve çekici tutuyor mu?"
+          ],
+          "tags": [
+            "donut",
+            "sunum",
+            "tazelik"
+          ]
+        },
+        {
+          "code": "BB5",
+          "title": "Freshess Station Şurup ve Bardak Çizgisi Kalibrasyonu",
+          "estimated_duration_min": 10,
+          "description": "Freshess içeceklerde kullanılan şurupların dozajı, bardak çizgileri ve buz/miktar kalibrasyonunu anlatır.",
+          "learning_objectives": [
+            "Freshess içeceklerde bardak çizgilerini doğru kullanır.",
+            "Şurup dozajını tarif kartlarına göre hatasız uygular.",
+            "Ürün standardını korurken fireyi azaltır."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Bardak Çizgilerini Tanıma",
+              "content": "Less Ice, Freshess Ice, Iced Coffee Milk, Creamice Coffee, Milk Blend Iced Tea gibi bardak çizgilerinin anlamı ve hangi üründe hangisinin kullanıldığı anlatılır.",
+              "media_suggestions": [
+                "üstten bakış bardak çizgi diyagramı"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Şurup ve Baz Dozajı",
+              "content": "Pomp sayıları, kaşık/shot ölçüleri, tarif kartı okumayı öğrenme ve standardın neden önemli olduğu (tat, maliyet, misafir beklentisi) açıklanır.",
+              "media_suggestions": [
+                "tarif kartı örneği"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Buz ve Ürün Dengesi",
+              "content": "Buz miktarının tadı sulandırmayacak ama içeceği serin tutacak şekilde ayarlanması, ‘less ice’ taleplerinde nasıl hareket edileceği anlatılır.",
+              "media_suggestions": [
+                "buz seviye görseli"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "BB5-Q1",
+              "question_type": "mcq",
+              "question_text": "Bardak çizgilerinin kullanılma amacı nedir?",
+              "options": [
+                "Sadece görsel süslemek için",
+                "Ürünün hacim ve içerik oranını standart tutmak için",
+                "Bardak üreticisinin tercihi olduğu için",
+                "Sadece buz seviyesini göstermek için"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "BB5-SC1",
+              "title": "Fazla Şurup Kullanımı",
+              "description": "Arkadaşın tarifte 2 pompa yazmasına rağmen 3 pompa şurup kullanıyor.",
+              "expected_actions": [
+                "Nazikçe tarif kartını göstererek standardı hatırlatmak.",
+                "Tat ve maliyet dengesine etkisini açıklamak.",
+                "Gerekirse supervisor’a bilgi verip eğitim talep etmek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan bardak çizgilerini doğru okuyup uyguluyor mu?",
+            "Ürün tadı şubeler arası standarda uygun mu?"
+          ],
+          "tags": [
+            "freshess",
+            "kalibrasyon",
+            "şurup"
+          ]
+        },
+        {
+          "code": "BB6",
+          "title": "Müşteri Memnuniyeti Temelleri",
+          "estimated_duration_min": 10,
+          "description": "Misafir deneyimini olumlu kılacak temel davranışlar, teşekkür, veda ve şikayet önleme stratejilerini içerir.",
+          "learning_objectives": [
+            "Misafirle doğru iletişim kurarak memnuniyeti artırır.",
+            "Küçük sorunları büyümeden çözer.",
+            "Marka sadakatini destekleyen davranış gösterir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Memnuniyetin Temeli: Saygı ve İlgi",
+              "content": "Misafire ismiyle hitap etmek (mümkünse), siparişini dikkatle almak ve teşekkür etmeyi unutmamak anlatılır.",
+              "media_suggestions": [
+                "iyi hizmet örneği kısa video"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Küçük Hataları Telafi Etmek",
+              "content": "Yanlış ürün, uzun bekleme, eksik teslim gibi durumlarda özür dilemenin ve hızlı çözüm önermenin önemi anlatılır.",
+              "media_suggestions": [
+                "şikayet çözüm diyagramı"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Güleryüz ve Veda",
+              "content": "Sipariş tesliminde ve çıkışta misafire teşekkür edip uğurlamanın, tekrar gelme ihtimalini artırdığı vurgulanır.",
+              "media_suggestions": [
+                "vedalaşma örnek cümleleri posteri"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "BB6-Q1",
+              "question_type": "mcq",
+              "question_text": "Müşteri şikayet ettiğinde ilk yapılması gereken nedir?",
+              "options": [
+                "Savunmaya geçmek",
+                "Suçu ekip arkadaşına atmak",
+                "Önce dikkatle dinleyip anlayış göstermek",
+                "Şikayeti görmezden gelmek"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "BB6-SC1",
+              "title": "Uzayan Bekleme Süresi",
+              "description": "Yoğunluk nedeniyle sipariş 10 dakikadır çıkmadı, misafir rahatsız.",
+              "expected_actions": [
+                "Özür dileyip kısa bir açıklama yapmak.",
+                "Siparişin durumunu kontrol edip hızlandırmak.",
+                "Gerekirse supervisor ile iletişime geçmek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Çalışan misafirlerle çatışmadan kaçınarak çözüm odaklı mı?",
+            "Teşekkür ve veda cümlelerini kullanıyor mu?"
+          ],
+          "tags": [
+            "müşteri_memnuniyeti",
+            "şikayet_yönetimi"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "barista",
+      "name": "Barista",
+      "level": 3,
+      "modules": [
+        {
+          "code": "B1",
+          "title": "Espresso Makinesi Kalibrasyon Master",
+          "estimated_duration_min": 15,
+          "description": "Espresso makinesinin günlük kalibrasyonu, akış süresi, grinder ayarı, su basıncı ve tadım testi üzerine ileri seviye eğitim.",
+          "learning_objectives": [
+            "Single ve Double shot için doğru akış süresi, gramaj ve hacmi bilir.",
+            "Hızlı ve yavaş akış sorunlarında grinder ayarlarını doğru yönde değiştirir.",
+            "Su basıncı ve filtrasyon kalitesinin espresso tadına etkisini açıklar.",
+            "Günlük tadım testi ile kalibrasyon doğrulaması yapabilir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Espresso Standardını Anlamak",
+              "content": "Single shot için 8 g kahve, 40 ml, 13–15 sn; double shot için 16 g kahve, 80 ml, 17–23 sn hedef değerleri ve ideal crema, gövde, tat profili detaylandırılır.",
+              "media_suggestions": [
+                "shot timing video",
+                "espresso katmanları grafiği"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Grinder Ayar Yönetimi",
+              "content": "Hızlı akış (under-extract) durumunda öğütümün inceye (fine) alınması, yavaş akış (over-extract) durumunda daha kalına (coarse) çekilmesi; ayarın her seferinde 1 dişli değiştirilmesi ve test edilmesi anlatılır.",
+              "media_suggestions": [
+                "grinder dişli ayar görseli"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Rinse, Temizlik ve Doz Ayarı",
+              "content": "Gün başında ve kalibrasyon kontrolü öncesi rinse yapılması, tabletli temizleme cycle’ının önemi, shot buton sürelerinin gerektiğinde 0.2 sn düşürülmesi veya artırılması açıklanır.",
+              "media_suggestions": [
+                "makine ekranı ve buton görseli"
+              ]
+            },
+            {
+              "step_number": 4,
+              "title": "Su Basıncı ve Filtrasyon",
+              "content": "Makine su girişindeki manometrenin kontrolü, ideal basınç (min 2.5 bar, hedef 2.5–4 bar aralığı), su filtresi değişim periyotları ve TDS/pH değerlerinin tadı nasıl etkilediği anlatılır.",
+              "media_suggestions": [
+                "manometre fotoğrafı",
+                "su kalitesi infografiği"
+              ]
+            },
+            {
+              "step_number": 5,
+              "title": "Tadım Testi ve Kayıt",
+              "content": "Kalibrasyon sonrası shot tadılarak karamelsi, fındıksı, hafif bitter notaların varlığı kontrol edilir; aşırı acılık veya sulu tatta düzeltme adımları belirlenir ve sonuçlar kısa bir forma kaydedilir.",
+              "media_suggestions": [
+                "tadım notu formu"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "B1-Q1",
+              "question_type": "mcq",
+              "question_text": "Double shot için hedef akış süresi aralığı nedir?",
+              "options": [
+                "5–10 sn",
+                "10–15 sn",
+                "17–23 sn",
+                "25–35 sn"
+              ],
+              "correct_option_index": 2
+            },
+            {
+              "question_id": "B1-Q2",
+              "question_type": "mcq",
+              "question_text": "Shot çok hızlı akıyorsa ilk yapman gereken nedir?",
+              "options": [
+                "Öğütümü daha kalın yapmak",
+                "Öğütümü daha ince yapmak",
+                "Su basıncını azaltmak",
+                "Hiçbir şey yapmamak"
+              ],
+              "correct_option_index": 1
+            },
+            {
+              "question_id": "B1-Q3",
+              "question_type": "mcq",
+              "question_text": "Espresso tadında aşırı acılık ve kuruluk varsa muhtemel sebep nedir?",
+              "options": [
+                "Under-extraction (yetersiz sürede akış)",
+                "Over-extraction (çok uzun sürede akış)",
+                "Su çok soğuk",
+                "Kahve çok taze"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "B1-SC1",
+              "title": "Değişken Shot Süreleri",
+              "description": "Gün içinde shot süreleri sabah iyi iken öğleden sonra belirgin şekilde hızlanıyor.",
+              "expected_actions": [
+                "Grinder ayarını 1 diş fine yönüne almak.",
+                "Yeni bir shot alarak süreyi ve tadı test etmek.",
+                "Sorun devam ederse su basıncı, çekirdek tazeliği ve makine temizliğini kontrol etmek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Barista günlük kalibrasyonu gerçekten uyguluyor mu yoksa atlıyor mu?",
+            "Grinder ayarı konusunda bilinçli ve kontrollü müdahaleler yapabiliyor mu?",
+            "Su basıncı ve filtrasyon konularına dair temel bilgiyi sözlü ifade edebiliyor mu?"
+          ],
+          "tags": [
+            "espresso",
+            "kalibrasyon",
+            "grinder",
+            "barista"
+          ]
+        },
+        {
+          "code": "B2",
+          "title": "Süt Buhar Çubuğu ve Latte Milk Tekstürü",
+          "estimated_duration_min": 12,
+          "description": "Süt ısıtma, mikrofoam oluşturma, latte art için ideal süt tekstürü ve hijyen kuralları.",
+          "learning_objectives": [
+            "Süt ısıtma ve buhar çubuğu kullanımını doğru uygular.",
+            "Latte ve cappuccino için uygun süt tekstürünü elde eder.",
+            "Buhar çubuğu hijyeni ve süt güvenliği kurallarını bilir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Sütün Hazırlığı",
+              "content": "Soğuk süt, temiz sürahi, uygun miktar (israfı azaltacak kadar) ve süt türü (tam yağlı, alternatif sütler) seçimi anlatılır.",
+              "media_suggestions": [
+                "süt sürahisi doldurma videosu"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Stretching ve Texturing",
+              "content": "Sütün ilk aşamada yüzeye yakın konumda havayla buluşturulması (stretching) ve ardından vorteks hareketi ile kremamsı dokuya getirilmesi (texturing) adımları anlatılır.",
+              "media_suggestions": [
+                "yukarıdan çekim süt vorteks videosu"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Sıcaklık ve Güvenlik",
+              "content": "İdeal servis sıcaklığı (yaklaşık 60–65°C), el ile veya termometre ile kontrol, aşırı ısıtmanın (scalding) tat ve tekstüre etkisi açıklanır.",
+              "media_suggestions": [
+                "termometreli süt ısıtma görseli"
+              ]
+            },
+            {
+              "step_number": 4,
+              "title": "Buhar Çubuğu Hijyeni",
+              "content": "Her kullanım öncesi ve sonrası purging (buhar boşaltma), süt kalıntısının hemen silinmesi, gün sonu buhar çubuğu temizliği detaylandırılır.",
+              "media_suggestions": [
+                "önce/sonra buhar çubuğu fotoğrafı"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "B2-Q1",
+              "question_type": "mcq",
+              "question_text": "Latte için ideal süt sıcaklığı yaklaşık kaç derecedir?",
+              "options": [
+                "40–45°C",
+                "50–55°C",
+                "60–65°C",
+                "80–90°C"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "B2-SC1",
+              "title": "Aşırı Isınmış Süt",
+              "description": "Yoğunlukta sütü fazla ısıttın ve yüzeyde kabuk oluştu.",
+              "expected_actions": [
+                "Bu sütü kullanmamak.",
+                "Yeni süt hazırlayıp doğru sıcaklıkta durmak.",
+                "Buhar çubuğunu işlem sonrası hemen temizlemek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Barista sütü yanık olmadan ısıtabiliyor mu?",
+            "Mikrofoam dokusu pürüzsüz ve parlak mı?",
+            "Buhar çubuğu kullanımı sonrası hemen temizleniyor mu?"
+          ],
+          "tags": [
+            "süt",
+            "latte_art",
+            "buhar_çubuğu"
+          ]
+        },
+        {
+          "code": "B3",
+          "title": "Makine Gün Sonu Temizliği ve Kimyasal Kullanımı",
+          "estimated_duration_min": 12,
+          "description": "Espresso makinesi, grinder ve coffee station için kapanış temizlik planı ve kimyasal kullanım kuralları.",
+          "learning_objectives": [
+            "Espresso makinesinin günlük temizleme adımlarını uygular.",
+            "Grinder ve çevresini güvenle temizler.",
+            "Gıda ile temas eden yüzeylerde uygun kimyasal ve durulama süresini bilir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Espresso Makinesi Kapanış Temizliği",
+              "content": "Backflush işlemi, tabletli temizlik döngüsü, portafiltrelerin sıcak su ve kimyasal ile temizlenmesi anlatılır.",
+              "media_suggestions": [
+                "backflush video demoları"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Grinder Temizliği",
+              "content": "Çekirdek hunisinin boşaltılması, kahve kalıntılarının kuru şekilde vakumlanması ve öğütme çıkışının fırça ile temizliği açıklanır.",
+              "media_suggestions": [
+                "grinder iç temizliği görsel seti"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Kimyasal Kullanım Güvenliği",
+              "content": "Gıda ile temaslı yüzeylerde kullanılabilecek deterjanlar, durulama zorunluluğu, OPS (operasyon prosedürü) ve koruyucu ekipmanlar (eldiven vb.) anlatılır.",
+              "media_suggestions": [
+                "kimyasal işaret piktogramları"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "B3-Q1",
+              "question_type": "mcq",
+              "question_text": "Grinder içinde biriken kahve kalıntıları nasıl temizlenmelidir?",
+              "options": [
+                "Islak bezle silerek",
+                "Bıçakla kazıyarak",
+                "Vakum ve fırça ile kuru temizleyerek",
+                "Temizlemeye gerek yok"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "B3-SC1",
+              "title": "Eksik Temizlik",
+              "description": "Sabah açılışta portafiltrelerin yağlı ve kirli olduğunu fark ettin.",
+              "expected_actions": [
+                "Hemen supervisor’a haber vermek.",
+                "Kendi başına gerekli temizliği yapmak.",
+                "Bir daha tekrarlanmaması için kapanış ekibiyle geri bildirim paylaşmak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Makine iç ve dış temizliği standartlara uygun mu?",
+            "Kimyasallar doğru doz ve yüzeyde mi kullanılıyor?",
+            "Temizlik işlemleri checkliste kaydediliyor mu?"
+          ],
+          "tags": [
+            "temizlik",
+            "kimyasal",
+            "espresso_makinesi"
+          ]
+        },
+        {
+          "code": "B4",
+          "title": "Filter Coffee Pro – BUNN ICBA",
+          "estimated_duration_min": 10,
+          "description": "BUNN ICBA filtre kahve makinesinin kullanımı, demleme ayarları ve tazelik kontrolü.",
+          "learning_objectives": [
+            "Half ve Full brew ayarlarını ve gramajlarını bilir.",
+            "Filtre kahve tazeliğini kontrol eder.",
+            "Makine için temel temizlik adımlarını uygular."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Makine Başlatma",
+              "content": "Arka güç anahtarını açma, Enable Brew butonunu aktif etme ve ihtiyaç durumuna göre Half/Full seçimi anlatılır.",
+              "media_suggestions": [
+                "BUNN ICBA ön panel görseli"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Doğru Grammage",
+              "content": "Half demleme için 100 g; full demleme için 170 g drip öğütülmüş kahve kullanım standardı ve uygun öğütme numarası (4–5) açıklanır.",
+              "media_suggestions": [
+                "öğütme boyutu örnek görseli"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Termos ve Tazelik",
+              "content": "Demleme sonrası termos kapağının kapatılması, tazelik süresi (örn. 3 saat) ve sonrasında servis edilmemesi gerektiği anlatılır.",
+              "media_suggestions": [
+                "tazelik süresi zaman çizelgesi"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "B4-Q1",
+              "question_type": "mcq",
+              "question_text": "Full demleme için ne kadar kahve kullanılmalıdır?",
+              "options": [
+                "50 g",
+                "100 g",
+                "170 g",
+                "250 g"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "B4-SC1",
+              "title": "Tazeliği Geçmiş Filtre Kahve",
+              "description": "Termostaki kahvenin 3 saatten uzun süredir beklediğini fark ettin.",
+              "expected_actions": [
+                "Bu kahveyi misafire servis etmemek.",
+                "Termosu boşaltıp temizlemek.",
+                "Yeni demleme planını yoğunluğa göre ayarlamak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Filtre kahve tazelik süresi takip ediliyor mu?",
+            "Makine doğru gramajla kullanılıyor mu?",
+            "Temizlik periyodu düzenli uygulanıyor mu?"
+          ],
+          "tags": [
+            "filtre_kahve",
+            "bunn_icba",
+            "demleme"
+          ]
+        },
+        {
+          "code": "B5",
+          "title": "Donut Production Standard – Glaze ve Dekor",
+          "estimated_duration_min": 12,
+          "description": "Donut glaze kıvamı, dekor uygulaması, tekrarlanabilir görsel standardı ve üretim hızını ele alır.",
+          "learning_objectives": [
+            "Glaze kıvamını göz ve akış testiyle kontrol eder.",
+            "Dekor ve topping’leri marka standardına uygun uygular.",
+            "Üretim hız ve kalite dengesini korur."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Glaze Hazırlığı",
+              "content": "Glaze ürününün karıştırılması, topak kalmaması, akış testinin (kaşıktan akış süresi ve örtücülük) nasıl yapılacağı anlatılır.",
+              "media_suggestions": [
+                "glaze akış videosu"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Daldırma ve Kaplama",
+              "content": "Donut’u glaze’e tek seferde, yarım daire yerine tam kaplama yapacak şekilde daldırma tekniği açıklanır.",
+              "media_suggestions": [
+                "daldırma tekniği slow motion video"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Dekor ve Topping",
+              "content": "Sprinkle, crumble, drizzle vb. dekorların sırası ve miktarı, ürün fotoğraflarına uygunluk ve alerjen kontrolü anlatılır.",
+              "media_suggestions": [
+                "ürün görsel karşılaştırma tablosu"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "B5-Q1",
+              "question_type": "mcq",
+              "question_text": "Glaze çok koyu akıyorsa ne yapılmalıdır?",
+              "options": [
+                "Olduğu gibi kullanmak",
+                "Bir miktar uygun sıvı ile kontrollü inceltmek",
+                "Yeni bir glaze batch’i hazırlamak zorunlu",
+                "Daha çok donut daldırmak"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "B5-SC1",
+              "title": "Görsel Standart Dışına Çıkan Donutlar",
+              "description": "Üretilen donutların bazıları ürün fotoğraflarından bariz şekilde farklı duruyor.",
+              "expected_actions": [
+                "Seri üretime devam etmeden önce tekniği gözden geçirmek.",
+                "Gerekirse supervisor’dan kalibrasyon feedback’i almak.",
+                "Standart dışı ürünleri ayrı tutup karar verilene kadar servis etmemek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Ürün görseli menü fotoğraflarıyla uyumlu mu?",
+            "Glaze ve dekor miktarı tutarlı mı?",
+            "Üretim esnasında hız–kalite dengesi sağlanıyor mu?"
+          ],
+          "tags": [
+            "donut",
+            "glaze",
+            "dekorasyon"
+          ]
+        },
+        {
+          "code": "B6",
+          "title": "Speed & Workflow Optimization",
+          "estimated_duration_min": 12,
+          "description": "Yoğun saatlerde iş akışı optimizasyonu, istasyonlar arası koordinasyon ve hız–kalite dengesi.",
+          "learning_objectives": [
+            "Sipariş yoğunluğunda önceliklendirme yapar.",
+            "Ekip ile koordineli çalışarak bekleme süresini azaltır.",
+            "Hızı artırırken ürün ve hizmet kalitesini korur."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Sipariş Önceliklendirme",
+              "content": "Hazırlama süresi kısa olan ürünleri gruplayarak çıkarmak, aynı tip içecekleri batch olarak yapmak gibi teknikler anlatılır.",
+              "media_suggestions": [
+                "sipariş sıralama senaryosu"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "İstasyonlar Arası Mikro Görevler",
+              "content": "Coffee–Freshess–Food–Checkout uyumu; bir siparişi başlatıp diğerini beklerken paralel işlem yapma teknikleri açıklanır.",
+              "media_suggestions": [
+                "workflow diyagramı"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Kaliteyi Korumak",
+              "content": "Yoğunluk bahanesi ile standardın bozulmaması, tad ve sunumdan ödün vermemenin önemi vurgulanır.",
+              "media_suggestions": [
+                "doğru/yanlış hız örnekleri"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "B6-Q1",
+              "question_type": "mcq",
+              "question_text": "Aşağıdakilerden hangisi hız ve verimlilik için doğru bir yaklaşımdır?",
+              "options": [
+                "Tüm siparişleri tek tek, sırayla hazırlamak",
+                "Benzer içecekleri birlikte hazırlamak",
+                "Sadece en sesli müşterinin siparişini yapmak",
+                "Sürekli istasyon değiştirmek"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "B6-SC1",
+              "title": "15 Dakikada 10 İçecek",
+              "description": "Yoğunlukta 15 dakikada 10 karma içecek siparişi geldi.",
+              "expected_actions": [
+                "Soğuk/sıcak, espresso bazlı/Freshess gruplarına ayırmak.",
+                "Ekip arkadaşlarıyla kısa bir görev paylaşımı yapmak.",
+                "Ürün kalitesini bozmadan zamana karşı çalışmak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Yoğunluk anlarında barista paniğe kapılmadan planlı çalışıyor mu?",
+            "Siparişler arası süreler kabul edilebilir aralıkta mı?",
+            "Kaliteyi feda etmeden hız sağlayabiliyor mu?"
+          ],
+          "tags": [
+            "hız",
+            "iş_akışı",
+            "barista"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "supervisor_buddy",
+      "name": "Supervisor Buddy",
+      "level": 4,
+      "modules": [
+        {
+          "code": "SB1",
+          "title": "Opening & Closing Yönetimi",
+          "estimated_duration_min": 12,
+          "description": "Mağaza açılış ve kapanış adımlarının planlanması, checklist yönetimi ve ekip koordinasyonu.",
+          "learning_objectives": [
+            "Opening ve closing checklist’lerini eksiksiz yönetir.",
+            "Ekip üyelerine görev dağılımı yapar.",
+            "Gün başı ve sonu operasyon durumunu raporlar."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Açılış Öncelikleri",
+              "content": "Güvenlik kontrolü, kasanın kontrolü, makine ve ekipmanların devreye alınması, dolapların kontrolü ve bar hazırlığı.",
+              "media_suggestions": [
+                "opening checklist ekran görüntüsü"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Kapanış Sorumlulukları",
+              "content": "Makine kapatma, temizlik, sayım, kasa kapama, alarm sistemi ve kilitleme prosedürleri anlatılır.",
+              "media_suggestions": [
+                "closing checklist tablosu"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SB1-Q1",
+              "question_type": "mcq",
+              "question_text": "Açılışta ilk kontrol edilmesi gerekenlerden biri nedir?",
+              "options": [
+                "Müzik listesi",
+                "Kasa ve güvenlik durumu",
+                "Çalışanların sosyal medyası",
+                "Dekorasyon renkleri"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SB1-SC1",
+              "title": "Eksik Açılış Hazırlığı",
+              "description": "Mağaza açıldıktan sonra filtre kahve hazırlanmamış, dolaplar eksik, ekip kahve makinesinin ısınmasını bekliyor.",
+              "expected_actions": [
+                "Checklist üzerinden hangi adımların atlandığını tespit etmek.",
+                "Ekip ile kısa bir değerlendirme yapıp sorumlulukları netleştirmek.",
+                "Benzer durumların yaşanmaması için planlı görev paylaşımı oluşturmak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor Buddy opening/closing sürecini planlı yönetiyor mu?",
+            "Checklist’ler düzenli dolduruluyor mu?"
+          ],
+          "tags": [
+            "opening",
+            "closing",
+            "supervisor_buddy"
+          ]
+        },
+        {
+          "code": "SB2",
+          "title": "Envanter – Fire – COGS Temelleri",
+          "estimated_duration_min": 12,
+          "description": "Stok takibi, fire kayıtları ve temel maliyet bilinci (COGS) üzerine giriş seviyesi.",
+          "learning_objectives": [
+            "Stok sayım ve kayıt adımlarını bilir.",
+            "Fire nedenlerini analiz eder ve azaltmaya çalışır.",
+            "COGS mantığını temel düzeyde kavrar."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Stok Takibi",
+              "content": "Günlük/haftalık stok sayımı, depoya giriş–çıkış, eksik/ fazla stok tespiti süreçleri açıklanır.",
+              "media_suggestions": [
+                "stok form ekran görüntüsü"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Fire Kayıtları",
+              "content": "Tazeliği geçen, hasar gören veya yanlış hazırlanmış ürünlerin nasıl kayıt altına alınacağı ve raporlanacağı anlatılır.",
+              "media_suggestions": [
+                "fire giriş formu"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "COGS Farkındalığı",
+              "content": "Satılan ürün maliyeti (COGS) kavramı, fire ve yanlış reçetenin kârlılığa etkisi örneklerle açıklanır.",
+              "media_suggestions": [
+                "basit COGS grafiği"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SB2-Q1",
+              "question_type": "mcq",
+              "question_text": "Fire neyi ifade eder?",
+              "options": [
+                "Sadece yanmış ürünleri",
+                "Satılabilir durumda olmayan, kayda alınan ürün kaybını",
+                "Kullanılan tüm ürünleri",
+                "Müşteri sayısını"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SB2-SC1",
+              "title": "Artan Fire Rakamları",
+              "description": "Son bir ayda donut fire oranı belirgin şekilde artmış.",
+              "expected_actions": [
+                "Fire kayıtlarını analiz ederek ortak sebepleri bulmaya çalışmak.",
+                "Üretim ve sergileme planlarını gözden geçirmek.",
+                "Bölge sorumlusu ile birlikte aksiyon planı hazırlamak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Envanter ve fire kayıtları düzenli ve doğru tutuluyor mu?",
+            "COGS mantığı ekipte sık sık hatırlatılıyor mu?"
+          ],
+          "tags": [
+            "envanter",
+            "fire",
+            "cogs"
+          ]
+        },
+        {
+          "code": "SB3",
+          "title": "Eğitim Koçluğu – Stajyer ve Bar Buddy Gelişimi",
+          "estimated_duration_min": 12,
+          "description": "Yeni başlayan çalışanlara günlük iş üzerinde koçluk verme ve gelişim takibi.",
+          "learning_objectives": [
+            "Yeni çalışanlara temel süreçleri sabırla öğretebilir.",
+            "Geri bildirim verirken yapıcı bir dil kullanır.",
+            "Eğitim ilerlemesini basit formlarla takip eder."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Koçluk Rolü Nedir?",
+              "content": "Sadece emir veren değil; anlatan, gösteren ve destekleyen bir rol olduğu açıklanır.",
+              "media_suggestions": [
+                "koçluk kavramı infografiği"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "İş Üzerinde Öğretme",
+              "content": "Göster–yaptır–kontrol et modeli: önce sen yap, sonra birlikte yap, sonra onu yaptır ve geri bildirim ver.",
+              "media_suggestions": [
+                "3 adımlı öğretme modeli şeması"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Geri Bildirim",
+              "content": "Sandviç metodu (iyi–gelişmesi gereken–iyi) ile geri bildirim verme, kişiliğe değil davranışa odaklanma prensibi anlatılır.",
+              "media_suggestions": [
+                "geri bildirim diyalog örneği"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SB3-Q1",
+              "question_type": "mcq",
+              "question_text": "İyi bir koçluk yaklaşımı hangisidir?",
+              "options": [
+                "Sürekli eleştirmek",
+                "Sadece hatalı olduğunda konuşmak",
+                "Davranışa odaklı, yapıcı geri bildirim vermek",
+                "Hiç konuşmamak"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SB3-SC1",
+              "title": "İlk Gününde Zorlanan Stajyer",
+              "description": "Stajyer siparişleri karıştırıyor ve gözle görülür şekilde strese giriyor.",
+              "expected_actions": [
+                "Önce sakinleştirmek ve yalnız olmadığını hissettirmek.",
+                "Basit bir istasyonda, adım adım tekrar pratik yaptırmak.",
+                "Başardığı noktaları vurgulayıp motivasyonunu artırmak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor Buddy sabırlı ve yapılandırılmış koçluk yapıyor mu?",
+            "Geri bildirimleri ekip tarafından olumlu algılanıyor mu?"
+          ],
+          "tags": [
+            "koçluk",
+            "eğitim",
+            "stajyer"
+          ]
+        },
+        {
+          "code": "SB4",
+          "title": "Hijyen ve HACCP Uygulamaları",
+          "estimated_duration_min": 12,
+          "description": "Isı, saklama, temizlik ve alerjen yönetimi gibi konularda denetim ve liderlik rolü.",
+          "learning_objectives": [
+            "Kritik kontrol noktalarını (soğuk zincir, sıcaklık, temizlik) denetler.",
+            "Alerjen bilgi yönetimini uygular.",
+            "HACCP temel prensiplerini ekibe aktarır."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Kritik Kontrol Noktaları",
+              "content": "Soğuk dolap sıcaklıkları, sıcak ürün bekletme süreleri, temizlik kimyasalları gibi alanların kontrol edilmesi gerektiği anlatılır.",
+              "media_suggestions": [
+                "termometre okuma görseli"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Alerjen Yönetimi",
+              "content": "Gluten, süt ürünleri, fındık vb. alerjenlere sahip misafirlere bilgi verme sorumluluğu, çapraz bulaşma riskini azaltma yöntemleri açıklanır.",
+              "media_suggestions": [
+                "alerjen ikon seti"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Kontrol Turları",
+              "content": "Gün içinde belli saatlerde küçük bir hijyen turu yaparak alanları gözle kontrol etmek ve bulguları not altına almak anlatılır.",
+              "media_suggestions": [
+                "kontrol formu örneği"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SB4-Q1",
+              "question_type": "mcq",
+              "question_text": "Soğuk dolap sıcaklığı hangi durumda acil kontrol gerektirir?",
+              "options": [
+                "Her zaman 0°C olmalı",
+                "4–8°C aralığı dışına çıkarsa",
+                "20°C’ye ulaşınca",
+                "Sıcaklık önemli değil"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SB4-SC1",
+              "title": "Alerjisi Olan Misafir",
+              "description": "Misafir, fındık alerjisi olduğunu söylüyor ve donut soruyor.",
+              "expected_actions": [
+                "İçerik hakkında net ve dürüst bilgi vermek.",
+                "Risk varsa önermek yerine güvenli alternatif sunmak.",
+                "Alerjenle temas riskini minimize etmek için hazırlama alanını kontrol etmek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor Buddy düzenli sıcaklık/al alerjen kontrolü yapıyor mu?",
+            "HACCP ile ilgili formları dolduruyor mu?"
+          ],
+          "tags": [
+            "hijyen",
+            "haccp",
+            "alerjen"
+          ]
+        },
+        {
+          "code": "SB5",
+          "title": "Performans Gözlemi ve Geri Bildirim",
+          "estimated_duration_min": 10,
+          "description": "Ekip üyelerinin performansını izleme, not alma ve doğru şekilde geri bildirim verme becerisi.",
+          "learning_objectives": [
+            "Gözlemlerini objektif şekilde not eder.",
+            "Zamanında ve yapıcı geri bildirim verir.",
+            "Gelişim planı oluşturmayı öğrenir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Ne Gözlemlenir?",
+              "content": "Sadece sonuç değil; süreç, davranış, ekip içi iletişim, hijyen ve müşteri ilişkileri de gözlemlenir.",
+              "media_suggestions": [
+                "gözlem alanları listesi"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Not Alma ve Örneklerle Konuşma",
+              "content": "Genel ifadeler yerine spesifik örnekler vermek; ‘Her zaman geç kalıyorsun’ yerine ‘Son 2 haftada 3 vardiyaya geç kaldın’ demek anlatılır.",
+              "media_suggestions": [
+                "iyi/kötü geri bildirim cümleleri tablosu"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Gelişim Planı",
+              "content": "Zayıf alanlar için ölçülebilir hedefler belirleme ve takip etme (örnek: latte hazırlama süresini 3 dakikanın altına çekmek) açıklanır.",
+              "media_suggestions": [
+                "hedef belirleme formu"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SB5-Q1",
+              "question_type": "mcq",
+              "question_text": "İyi bir geri bildirim cümlesi hangisidir?",
+              "options": [
+                "Sen zaten hep dağınıksın.",
+                "Hiçbir şeyi doğru yapamıyorsun.",
+                "Son iki gündür kapanışta barı eksik temizledin, bunu birlikte toparlayalım.",
+                "Seninle uğraşamam."
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SB5-SC1",
+              "title": "Defalarca Aynı Hata",
+              "description": "Bir barista, birkaç uyarıya rağmen hala aynı reçete hatasını yapıyor.",
+              "expected_actions": [
+                "Önce sakin bir ortamda bire bir konuşmak.",
+                "Somut örneklerle durumu anlatmak.",
+                "Birlikte mini bir eğitim/tekrar planlamak.",
+                "Gelişimi yazılı olarak takip etmek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor Buddy geri bildirim verirken saygılı ve net mi?",
+            "Gözlemlerini sistematik olarak not ediyor mu?"
+          ],
+          "tags": [
+            "performans",
+            "geri_bildirim",
+            "liderlik"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "supervisor",
+      "name": "Supervisor",
+      "level": 5,
+      "modules": [
+        {
+          "code": "SP1",
+          "title": "Operasyon Yönetimi ve KPI’lar",
+          "estimated_duration_min": 15,
+          "description": "Günlük operasyon akışını, satış hedeflerini, maliyet ve personel planlamasını KPI’lar üzerinden yönetme.",
+          "learning_objectives": [
+            "Satış, COGS, fire, müşteri memnuniyeti gibi temel KPI’ları takip eder.",
+            "Günlük operasyonu bu göstergelere göre planlar.",
+            "Şube performansını raporlayabilir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "KPI Nedir?",
+              "content": "Ana performans göstergeleri (ciro, ticket size, COGS%, fire oranı, eğitim tamamlama oranı vb.) tanımlanır.",
+              "media_suggestions": [
+                "KPI dashboard örneği"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Günlük Operasyon Planı",
+              "content": "Hava durumu, gün, kampanya ve geçmiş satış verilerine göre kadro ve üretim planlaması nasıl yapılacağı anlatılır.",
+              "media_suggestions": [
+                "gün planlama şablonu"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Raporlama",
+              "content": "Gün sonu raporlarında hangi bilgilerin yer alacağı, bölge ve HQ ile hangi formatta paylaşılacağı açıklanır.",
+              "media_suggestions": [
+                "rapor formatı örneği"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SP1-Q1",
+              "question_type": "mcq",
+              "question_text": "Aşağıdakilerden hangisi bir KPI örneğidir?",
+              "options": [
+                "Personelin sevdiği müzik türü",
+                "Gün sonu ciro",
+                "Duvarın rengi",
+                "Kasadaki bozuk para sayısı"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SP1-SC1",
+              "title": "Hedef Altı Gün",
+              "description": "Hafta içi hedeflenen ciro ciddi oranda altında kaldı.",
+              "expected_actions": [
+                "Verileri analiz ederek hangi saatlerde düşüş olduğunu görmek.",
+                "Ekip ile kısa bir toplantı yaparak olası sebepleri konuşmak.",
+                "Sonraki günler için aksiyon planı (promosyon, ekip yerleşimi vb.) hazırlamak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor KPI’ları okuyup yorumlayabiliyor mu?",
+            "KPI sonuçlarına göre aksiyon üretip ekibi bilgilendiriyor mu?"
+          ],
+          "tags": [
+            "kpi",
+            "operasyon",
+            "yönetim"
+          ]
+        },
+        {
+          "code": "SP2",
+          "title": "İş Güvenliği ve Disiplin Uygulamaları",
+          "estimated_duration_min": 15,
+          "description": "İş sağlığı güvenliği, çalışan güvenliği, disiplin süreçleri ve İK ile iletişim.",
+          "learning_objectives": [
+            "Temel iş güvenliği risklerini tanır.",
+            "Disiplin prosedürlerini adil ve tutarlı uygular.",
+            "İK ile hangi durumlarda nasıl iletişime geçeceğini bilir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "İş Güvenliği Temelleri",
+              "content": "Islak zemin, elektrik, sıcak ekipman, kesici aletler ve ergonomi riskleri açıklanır.",
+              "media_suggestions": [
+                "güvenlik uyarı ikonları"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Disiplin Basamakları",
+              "content": "Sözlü uyarı, yazılı uyarı, son uyarı ve feshe kadar giden sürecin mantığı ve kuralları anlatılır.",
+              "media_suggestions": [
+                "disiplin süreç akış şeması"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "İK ile İşbirliği",
+              "content": "Hangi konuların mutlaka İK ile paylaşılması gerektiği (hakaret, şiddet, taciz, hırsızlık vb.) ve dokümantasyon önemi açıklanır.",
+              "media_suggestions": [
+                "olay raporu form örneği"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SP2-Q1",
+              "question_type": "mcq",
+              "question_text": "Aşağıdakilerden hangisi ciddi bir İK bildirimi gerektirir?",
+              "options": [
+                "Vardiyaya 5 dakika geç gelmek",
+                "Bir defalık kasada yanlış para üstü vermek",
+                "Fiziksel şiddet veya ağır hakaret",
+                "Mola süresini 2 dakika aşmak"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SP2-SC1",
+              "title": "Islak Zemin Kazası",
+              "description": "Silecek unutulduğu için ıslak zeminde misafir kayıp düşüyor.",
+              "expected_actions": [
+                "Önce misafirin sağlık durumunu kontrol etmek, gerekirse acil yardım çağırmak.",
+                "Olayı derhal raporlamak.",
+                "Daha sonra ekip ile süreç iyileştirmesi için toplantı yapmak (u-yan tabelaları, rutin kontrol vb.)."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor iş güvenliği uyarılarını düzenli hatırlatıyor mu?",
+            "Disiplin prosedürlerini adil ve yazılı kurallara uygun yürütüyor mu?"
+          ],
+          "tags": [
+            "iş_güvenliği",
+            "disiplin",
+            "ik"
+          ]
+        },
+        {
+          "code": "SP3",
+          "title": "Marka Bütünlüğü ve Audit Yönetimi",
+          "estimated_duration_min": 12,
+          "description": "Marka standartlarına uygunluk, iç denetim (audit) hazırlığı ve aksiyon planlama.",
+          "learning_objectives": [
+            "Marka standart checklist’lerini uygular.",
+            "Audit öncesi şubeyi hazırlayabilir.",
+            "Audit sonrası aksiyon planı oluşturur."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Marka Standartları",
+              "content": "Görsel, hijyen, davranış ve ürün standartları; misafir gözünden marka algısı anlatılır.",
+              "media_suggestions": [
+                "marka guideline görselleri"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Audit Süreci",
+              "content": "Düzenli veya habersiz denetimlerde hangi alanların kontrol edildiği, supervisor rolü ve ekip bilgilendirmesi açıklanır.",
+              "media_suggestions": [
+                "audit checklist örneği"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Aksiyon Planı",
+              "content": "Audit bulgularına göre düzeltici ve önleyici faaliyetlerin (CAPA) planlanması ve takibi anlatılır.",
+              "media_suggestions": [
+                "CAPA formu"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SP3-Q1",
+              "question_type": "mcq",
+              "question_text": "Marka bütünlüğü neden kritiktir?",
+              "options": [
+                "Sadece fotoğraflar güzel görünsün diye",
+                "Her şubenin farklı görünmesini sağlamak için",
+                "Misafire her şubede aynı kalite ve deneyimi sunmak için",
+                "Sadece denetçiler için"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SP3-SC1",
+              "title": "Düşük Audit Skoru",
+              "description": "Son audit sonucunda şube %70 skor aldı, hedef %85.",
+              "expected_actions": [
+                "Audit raporundaki kritik noktaları ekiple paylaşmak.",
+                "Her başlık için sorumlu ve tarih içeren aksiyon planı oluşturmak.",
+                "Belirli aralıklarla ilerlemeyi kontrol etmek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor audit öncesi şubeyi aktif olarak hazırlıyor mu?",
+            "Audit bulgularını ekip ile şeffaf paylaşıyor mu?"
+          ],
+          "tags": [
+            "audit",
+            "marka_standardı"
+          ]
+        },
+        {
+          "code": "SP4",
+          "title": "Satış Artırma ve Kampanya Yönetimi",
+          "estimated_duration_min": 12,
+          "description": "Upsell, cross-sell, kampanya uygulama ve sonuç takibi.",
+          "learning_objectives": [
+            "Satış artırıcı davranışları ekibe uygulatır.",
+            "Kampanyaları doğru uygular ve raporlar.",
+            "Ticket size ve ürün karmasını optimize eder."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Upsell & Cross-sell Mantığı",
+              "content": "Yan ürün önerme, set menü, boy yükseltme vb. taktiklerin, misafiri rahatsız etmeden nasıl kullanılacağı anlatılır.",
+              "media_suggestions": [
+                "upsell diyalog örnekleri"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Kampanya Uygulama",
+              "content": "Merkezin belirlediği kampanyaların POS, görsel ve ekip eğitim tarafında nasıl hayata geçirileceği açıklanır.",
+              "media_suggestions": [
+                "kampanya afiş örnekleri"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Sonuç Takibi",
+              "content": "Kampanya öncesi ve sonrası satışlara bakarak etkiyi ölçmek ve gerektiğinde geri bildirim vermek anlatılır.",
+              "media_suggestions": [
+                "kampanya satış grafiği"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SP4-Q1",
+              "question_type": "mcq",
+              "question_text": "Aşağıdaki cümlelerden hangisi daha doğru bir upsell örneğidir?",
+              "options": [
+                "Bunu da alın.",
+                "İsterseniz yanına bugün indirimde olan donutlarımızdan önerebilirim.",
+                "Sadece bunu mu alıyorsunuz?",
+                "Başka bir şey istemezsiniz."
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SP4-SC1",
+              "title": "Başarısız Kampanya",
+              "description": "Yeni içecek kampanyası beklenen satış artışını getirmedi.",
+              "expected_actions": [
+                "Ekibin kampanyayı misafire nasıl anlattığını gözlemlemek.",
+                "Gerekirse kısa eğitim ve rol-play yapmak.",
+                "Merkeze geri bildirim vererek görsel veya mesaj iyileştirmesi önermek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor kampanyaları ekibe net aktarıyor mu?",
+            "Satış artışını verilerle takip ediyor mu?"
+          ],
+          "tags": [
+            "satış",
+            "kampanya",
+            "upsell"
+          ]
+        },
+        {
+          "code": "SP5",
+          "title": "Kriz ve Teknik Arıza Yönetimi",
+          "estimated_duration_min": 12,
+          "description": "Makine arızası, su kesintisi, personel eksikliği gibi krizlerde operasyonu güvenle sürdürme.",
+          "learning_objectives": [
+            "Kritik teknik arızalarda doğru adımları izler.",
+            "Servis ile iletişim kurarken gerekli bilgileri eksiksiz verir.",
+            "Kriz anında ekibi sakin ve organize tutar."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Kritik Arızalar ve Öncelik",
+              "content": "Espresso makinesi, grinder, buz makinesi, su kesintisi gibi durumlarda ilk kontrol edilecek noktalar ve geçici çözümler anlatılır.",
+              "media_suggestions": [
+                "arıza türleri tablosu"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Servis İletişimi",
+              "content": "Model, seri numarası, sorun tarifi, fotoğraf/video ile dosya gönderimi ve şube iletişim bilgilerinin eksiksiz iletilmesi gerekliliği anlatılır.",
+              "media_suggestions": [
+                "servis mail şablonu"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "Krizde Ekip ve Misafir Yönetimi",
+              "content": "Ürün yelpazesini geçici olarak sadeleştirme, misafire doğru bilgilendirme ve ekip stresini yönetme teknikleri açıklanır.",
+              "media_suggestions": [
+                "kriz iletişimi örnekleri"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SP5-Q1",
+              "question_type": "mcq",
+              "question_text": "Teknik servise mail atarken aşağıdakilerden hangisi mutlaka eklenmelidir?",
+              "options": [
+                "Sadece şube adı",
+                "Sadece arıza başlığı",
+                "Cihaz model/seri no, arıza açıklaması, foto/video ve iletişim bilgileri",
+                "Sadece fotoğraf"
+              ],
+              "correct_option_index": 2
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SP5-SC1",
+              "title": "Espresso Makinesi Çalışmıyor",
+              "description": "Yoğun bir anda espresso makinesi tamamen durdu.",
+              "expected_actions": [
+                "Ön kontrolleri yapmak (su, elektrik, hata kodu vb.).",
+                "Servise doğru ve eksiksiz bilgi ile ulaşmak.",
+                "Menüyü geçici olarak filtre kahve, Freshess vb. ürünlere kaydırmak.",
+                "Ekip ve misafirleri sakin ve şeffaf biçimde bilgilendirmek."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor arıza anında panik olmadan süreci yönetiyor mu?",
+            "Servis iletişiminde bilgi eksikliği yaşanıyor mu?"
+          ],
+          "tags": [
+            "kriz",
+            "teknik_ariza",
+            "servis"
+          ]
+        },
+        {
+          "code": "SP6",
+          "title": "Bölge ve HQ ile Raporlama",
+          "estimated_duration_min": 10,
+          "description": "Bölge sorumlusu ve merkez (HQ) ile doğru, zamanında ve şeffaf raporlama yapmak.",
+          "learning_objectives": [
+            "Günlük/haftalık rapor türlerini bilir.",
+            "Verileri anlaşılır şekilde sunar.",
+            "Geri bildirim ve aksiyonları merkeze iletir."
+          ],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Rapor Türleri",
+              "content": "Satış, fire, eğitim, audit, teknik servis ve müşteri şikayet raporları tanıtılır.",
+              "media_suggestions": [
+                "rapor tipleri tablo"
+              ]
+            },
+            {
+              "step_number": 2,
+              "title": "Doğru Veri, Doğru Karar",
+              "content": "Hatalı veya eksik verilerin yanlış kararlara yol açacağı örneklerle anlatılır.",
+              "media_suggestions": [
+                "veri kalitesi infografiği"
+              ]
+            },
+            {
+              "step_number": 3,
+              "title": "İletişim Dili",
+              "content": "Mail ve yazılı raporlarda profesyonel, net ve çözüm odaklı dil kullanımı açıklanır.",
+              "media_suggestions": [
+                "iyi/kötü mail örnekleri"
+              ]
+            }
+          ],
+          "quiz": [
+            {
+              "question_id": "SP6-Q1",
+              "question_type": "mcq",
+              "question_text": "Raporlardaki verilerin doğru olması neden önemlidir?",
+              "options": [
+                "Sadece güzel görünmesi için",
+                "Karar vericilerin doğru aksiyon alabilmesi için",
+                "Kimse okumadığı için önemli değil",
+                "Sadece formalite olduğu için"
+              ],
+              "correct_option_index": 1
+            }
+          ],
+          "scenario_tasks": [
+            {
+              "scenario_id": "SP6-SC1",
+              "title": "Eksik Fire Raporu",
+              "description": "Fire raporunda bazı ürünlerin işlenmediği sonradan fark edildi.",
+              "expected_actions": [
+                "Durumu bölge/HQ ile şeffaf şekilde paylaşmak.",
+                "Raporu düzeltip eksikleri tamamlamak.",
+                "İleride aynı hatanın tekrarlanmaması için ekipte farkındalık yaratmak."
+              ]
+            }
+          ],
+          "supervisor_checklist": [
+            "Supervisor raporları zamanında iletiyor mu?",
+            "Veriler mantıklı ve tutarlı mı?"
+          ],
+          "tags": [
+            "raporlama",
+            "hq_iletişim",
+            "bölge"
+          ]
+        }
+      ]
+    }
+  ]
+}
