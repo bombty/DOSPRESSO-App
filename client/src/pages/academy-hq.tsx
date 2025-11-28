@@ -9,18 +9,48 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, CheckCircle, XCircle, Clock } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const quizSchema = z.object({
+  title: z.string().min(3, "Başlık en az 3 karakter olmalı"),
+  description: z.string().optional(),
+  difficulty: z.enum(["easy", "medium", "hard"]),
+});
+
+const assignmentSchema = z.object({
+  quizId: z.string().min(1, "Quiz seçin"),
+  assignTo: z.enum(["user", "branch", "role"]),
+  targetId: z.string().min(1, "Hedef seçin"),
+});
 
 export default function AcademyHQ() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
+  const [isCreateQuizOpen, setIsCreateQuizOpen] = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
 
   // Check HQ access
   if (!user || !isHQRole(user.role as any)) {
     return <div className="p-6 text-center text-destructive">Erişim Reddedildi</div>;
   }
+
+  // Form hooks
+  const quizForm = useForm({
+    resolver: zodResolver(quizSchema),
+    defaultValues: { title: "", description: "", difficulty: "medium" as const },
+  });
+
+  const assignForm = useForm({
+    resolver: zodResolver(assignmentSchema),
+    defaultValues: { quizId: "", assignTo: "user" as const, targetId: "" },
+  });
 
   // Get pending exam requests
   const { data: pendingExams = [] } = useQuery({
@@ -65,6 +95,45 @@ export default function AcademyHQ() {
     },
   });
 
+  const createQuizMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof quizSchema>) => {
+      return apiRequest("POST", "/api/academy/quiz/create", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Quiz oluşturuldu" });
+      setIsCreateQuizOpen(false);
+      quizForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/academy/quizzes"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const assignQuizMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof assignmentSchema>) => {
+      return apiRequest("POST", "/api/academy/assignment/create", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Quiz atandı" });
+      setIsAssignOpen(false);
+      assignForm.reset();
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Get quizzes list
+  const { data: quizzes = [] } = useQuery({
+    queryKey: ["/api/academy/quizzes"],
+    queryFn: async () => {
+      const res = await fetch(`/api/academy/quizzes`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -84,7 +153,7 @@ export default function AcademyHQ() {
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="pending">
             <Clock className="w-4 h-4 mr-2" />
             Beklemede ({pendingExams.length})
@@ -92,6 +161,14 @@ export default function AcademyHQ() {
           <TabsTrigger value="approved">
             <CheckCircle className="w-4 h-4 mr-2" />
             Onaylı ({approvedExams.length})
+          </TabsTrigger>
+          <TabsTrigger value="quizzes">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Quizler
+          </TabsTrigger>
+          <TabsTrigger value="assignments">
+            <Users className="w-4 h-4 mr-2" />
+            Atamalar
           </TabsTrigger>
         </TabsList>
 
@@ -214,6 +291,165 @@ export default function AcademyHQ() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="quizzes" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Quiz Yönetimi</h3>
+            <Dialog open={isCreateQuizOpen} onOpenChange={setIsCreateQuizOpen}>
+              <DialogTrigger asChild>
+                <Button>Yeni Quiz Oluştur</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Yeni Quiz Oluştur</DialogTitle>
+                </DialogHeader>
+                <Form {...quizForm}>
+                  <form onSubmit={quizForm.handleSubmit((data) => createQuizMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={quizForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Başlık</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Quiz başlığı" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={quizForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Açıklama</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Quiz açıklaması" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={quizForm.control}
+                      name="difficulty"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Zorluk</FormLabel>
+                          <FormControl>
+                            <select {...field} className="border rounded px-2 py-1">
+                              <option value="easy">Kolay</option>
+                              <option value="medium">Orta</option>
+                              <option value="hard">Zor</option>
+                            </select>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={createQuizMutation.isPending}>
+                      Oluştur
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardContent className="pt-6">
+              {quizzes.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">Hiç quiz yok</div>
+              ) : (
+                <div className="space-y-2">
+                  {quizzes.map((quiz: any) => (
+                    <div key={quiz.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{quiz.title}</p>
+                        <p className="text-sm text-muted-foreground">{quiz.description}</p>
+                      </div>
+                      <Badge variant="outline">{quiz.difficulty}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="assignments" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Quiz Atama</h3>
+            <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+              <DialogTrigger asChild>
+                <Button>Quiz Ata</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Quiz Ata</DialogTitle>
+                </DialogHeader>
+                <Form {...assignForm}>
+                  <form onSubmit={assignForm.handleSubmit((data) => assignQuizMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={assignForm.control}
+                      name="quizId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quiz</FormLabel>
+                          <FormControl>
+                            <select {...field} className="border rounded px-2 py-1">
+                              <option value="">Quiz seçin</option>
+                              {quizzes.map((q: any) => (
+                                <option key={q.id} value={q.id}>{q.title}</option>
+                              ))}
+                            </select>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={assignForm.control}
+                      name="assignTo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kime Ata</FormLabel>
+                          <FormControl>
+                            <select {...field} className="border rounded px-2 py-1">
+                              <option value="user">Kullanıcı</option>
+                              <option value="branch">Şube</option>
+                              <option value="role">Rol</option>
+                            </select>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={assignForm.control}
+                      name="targetId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Hedef</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Kullanıcı/Şube/Rol ID'si" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={assignQuizMutation.isPending}>
+                      Ata
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8 text-muted-foreground">
+                Sağ üstteki "Quiz Ata" butonuyla başla
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
