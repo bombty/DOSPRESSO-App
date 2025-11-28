@@ -11288,10 +11288,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
-}
-
   // GET /api/academy/streak-tracker/:userId - Get user learning streak data
   app.get('/api/academy/streak-tracker/:userId', isAuthenticated, async (req: any, res) => {
     try {
@@ -11316,8 +11312,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalDaysActive: 0,
       });
     }
-
-  const httpServer = createServer(app);
   });
 
   const httpServer = createServer(app);
