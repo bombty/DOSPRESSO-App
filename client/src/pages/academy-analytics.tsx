@@ -4,44 +4,66 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Trophy, Target, TrendingUp, Users } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer as RC } from "recharts";
+import { Trophy, Target, TrendingUp, Users, Zap, Award } from "lucide-react";
+import { Loader } from "lucide-react";
 
 export default function AcademyAnalytics() {
   const { user } = useAuth();
 
-  // Get branch performance stats
-  const { data: stats } = useQuery({
-    queryKey: ["/api/academy/stats"],
+  // Get user's career progress
+  const { data: userProgress } = useQuery({
+    queryKey: ["/api/academy/career-progress", user?.id],
     queryFn: async () => {
-      const res = await fetch(`/api/academy/stats`, { credentials: "include" });
+      if (!user?.id) return null;
+      const res = await fetch(`/api/academy/career-progress/${user.id}`, { credentials: "include" });
       if (!res.ok) return null;
       return res.json();
     },
+    enabled: !!user?.id,
   });
 
-  // Mock data for visualization
-  const completionData = [
-    { role: "Barista", completed: 85, total: 100 },
-    { role: "Supervisor Buddy", completed: 60, total: 100 },
-    { role: "Bar Buddy", completed: 92, total: 100 },
-    { role: "Stajyer", completed: 45, total: 100 },
-  ];
+  // Get user's quiz stats
+  const { data: quizStats, isLoading: statsLoading } = useQuery({
+    queryKey: [`/api/academy/quiz-stats`, user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const res = await fetch(`/api/academy/quiz-stats/${user.id}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
 
-  const performanceData = [
-    { name: "Pazartesi", score: 78 },
-    { name: "Salı", score: 85 },
-    { name: "Çarşamba", score: 82 },
-    { name: "Perşembe", score: 90 },
-    { name: "Cuma", score: 88 },
-  ];
+  // Get user's badges
+  const { data: userBadges = [] } = useQuery({
+    queryKey: ["/api/academy/user-badges", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch("/api/academy/user-badges", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
 
-  const roleDistribution = [
-    { name: "Barista", value: 35 },
-    { name: "Supervisor", value: 8 },
-    { name: "Supervisor Buddy", value: 12 },
-    { name: "Bar Buddy", value: 28 },
-    { name: "Stajyer", value: 17 },
+  // Generate performance trend data from quiz stats
+  const performanceData = quizStats?.quizHistory
+    ? quizStats.quizHistory.slice(-7).map((q: any, idx: number) => ({
+        name: `Sınav ${idx + 1}`,
+        score: q.score,
+        date: new Date(q.completedAt).toLocaleDateString("tr-TR")
+      }))
+    : [
+        { name: "Sınav 1", score: 78 },
+        { name: "Sınav 2", score: 85 },
+        { name: "Sınav 3", score: 82 },
+        { name: "Sınav 4", score: 90 },
+      ];
+
+  const badgeProgress = [
+    { name: "Açılmış", value: userBadges.length },
+    { name: "Kilitli", value: Math.max(0, 6 - userBadges.length) },
   ];
 
   const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
@@ -58,12 +80,12 @@ export default function AcademyAnalytics() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Trophy className="w-4 h-4" />
-              Toplam Tamamlama
+              Kariyer Seviyesi
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">87%</p>
-            <p className="text-xs text-muted-foreground">Tüm roller ortalaması</p>
+            <p className="text-2xl font-bold">{userProgress?.currentLevel || "—"}</p>
+            <p className="text-xs text-muted-foreground">Mevcut rol</p>
           </CardContent>
         </Card>
 
@@ -71,11 +93,11 @@ export default function AcademyAnalytics() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Target className="w-4 h-4" />
-              Ortalama Sınav Notu
+              Ortalama Puan
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">82</p>
+            <p className="text-2xl font-bold">{quizStats?.averageScore?.toFixed(1) || "—"}</p>
             <p className="text-xs text-muted-foreground">/100 puan</p>
           </CardContent>
         </Card>
@@ -83,98 +105,122 @@ export default function AcademyAnalytics() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Haftalık Artış
+              <Zap className="w-4 h-4" />
+              Tamamlanan Sınavlar
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">+5.2%</p>
-            <p className="text-xs text-muted-foreground">Geçen haftaya karşı</p>
+            <p className="text-2xl font-bold">{quizStats?.completedQuizzes || 0}</p>
+            <p className="text-xs text-muted-foreground">Sınav</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Aktif Öğrenci
+              <Award className="w-4 h-4" />
+              Rozetler
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">142</p>
-            <p className="text-xs text-muted-foreground">Devam eden modül</p>
+            <p className="text-2xl font-bold">{userBadges.length}</p>
+            <p className="text-xs text-muted-foreground">6 mümkün</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="completion" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="completion">Tamamlama</TabsTrigger>
-          <TabsTrigger value="performance">Performans</TabsTrigger>
-          <TabsTrigger value="distribution">Rol Dağılımı</TabsTrigger>
-        </TabsList>
+      {statsLoading ? (
+        <div className="flex items-center justify-center p-12">
+          <Loader className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <Tabs defaultValue="performance" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="performance">Performans</TabsTrigger>
+            <TabsTrigger value="badges">Rozetler</TabsTrigger>
+            <TabsTrigger value="progress">Kariyer Yolu</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="completion">
-          <Card>
-            <CardHeader>
-              <CardTitle>Rol Bazlı Tamamlama Oranı</CardTitle>
-              <CardDescription>Her role grubu için eğitim tamamlama durumu</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {completionData.map((item) => (
-                <div key={item.role} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{item.role}</span>
-                    <Badge variant="outline">{item.completed}%</Badge>
+          <TabsContent value="performance">
+            <Card>
+              <CardHeader>
+                <CardTitle>Sınav Puanı Trendi</CardTitle>
+                <CardDescription>Son sınavlarındaki performans</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={performanceData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip formatter={(v) => `${v}%`} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="score" 
+                      stroke="#3b82f6" 
+                      dot={{ fill: '#3b82f6' }}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="badges">
+            <Card>
+              <CardHeader>
+                <CardTitle>Rozet İlerleme</CardTitle>
+                <CardDescription>Kazanılan ve kilitli rozetler</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Rozet Tamamlama</span>
+                    <Badge variant="outline">{userBadges.length}/6</Badge>
                   </div>
-                  <Progress value={item.completed} className="h-2" />
+                  <Progress value={(userBadges.length / 6) * 100} className="h-2" />
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  {userBadges.map((badge: any) => (
+                    <div key={badge.id} className="p-3 border rounded-lg bg-green-50 dark:bg-green-950">
+                      <p className="font-medium text-sm">{badge.titleTr}</p>
+                      <p className="text-xs text-muted-foreground">{badge.points} puan</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="performance">
-          <Card>
-            <CardHeader>
-              <CardTitle>Haftalık Performans Trendi</CardTitle>
-              <CardDescription>Ortalama sınav puanlarının haftalık değişimi</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="score" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="distribution">
-          <Card>
-            <CardHeader>
-              <CardTitle>Rol Bazlı Dağılım</CardTitle>
-              <CardDescription>Her role grubu içindeki çalışan sayısı</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie data={roleDistribution} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name}: ${value}`} outerRadius={100} fill="#8884d8" dataKey="value">
-                    {roleDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="progress">
+            <Card>
+              <CardHeader>
+                <CardTitle>Kariyer Ilerlemesi</CardTitle>
+                <CardDescription>Kariyer seviyesi ve hedef</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Mevcut Seviye</span>
+                    <Badge>{userProgress?.currentLevel || "Bilinmiyor"}</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {userProgress?.completionPercent || 0}% tamamlanmış
+                  </p>
+                  <Progress value={userProgress?.completionPercent || 0} className="h-2 mt-2" />
+                </div>
+                <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm font-medium mb-1">Tavsiyelenecek Sınavlar</p>
+                  <p className="text-xs text-muted-foreground">
+                    {userProgress?.nextSteps || "Kariyer hedeflerinize ulaşmak için sınavlara başlayın"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }

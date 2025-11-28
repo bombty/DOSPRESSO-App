@@ -10876,6 +10876,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/quiz-stats/:userId - Get user's quiz performance stats
+  app.get('/api/academy/quiz-stats/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const stats = await storage.getUserQuizStats(userId);
+      const quizHistory = await storage.getExamRequests({ userId });
+      
+      res.json({
+        ...stats,
+        quizHistory: quizHistory.map(r => ({
+          score: r.examScore || 0,
+          completedAt: r.examCompletedAt || r.createdAt,
+          targetRole: r.targetRoleId
+        }))
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
