@@ -483,7 +483,12 @@ export function AppSidebar() {
     rules: MenuVisibilityRule[];
     _meta?: { userId: string; role: string; timestamp: number };
   }>({
-    queryKey: ["/api/me/menu", user?.id], // Per-user cache key for isolation
+    queryKey: ["user-menu", user?.id], // Per-user cache key for isolation
+    queryFn: async () => {
+      const res = await fetch("/api/me/menu", { credentials: "include" });
+      if (!res.ok) throw new Error("Menu fetch failed");
+      return res.json();
+    },
     staleTime: 0, // Always fetch fresh data
     gcTime: 0, // Don't cache across sessions
     retry: 2,
