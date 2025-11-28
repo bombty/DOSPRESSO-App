@@ -5520,6 +5520,32 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db.update(examRequests).set({...updates, updatedAt: new Date()}).where(eq(examRequests.id, id)).returning();
     return result;
   }
+
+  async addQuizResult(result: InsertQuizResult): Promise<QuizResult> {
+    const [created] = await db.insert(quizResults).values(result).returning();
+    return created;
+  }
+
+  async getLeaderboard(limit: number = 5): Promise<QuizResult[]> {
+    return db.select().from(quizResults).orderBy(desc(quizResults.score)).limit(limit);
+  }
+
+  async getUserQuizStats(userId: string): Promise<{ totalScore: number; completedQuizzes: number; averageScore: number }> {
+    const [stats] = await db
+      .select({
+        totalScore: sql<number>`COALESCE(SUM(${quizResults.score}), 0)`,
+        completedQuizzes: sql<number>`COUNT(${quizResults.id})`,
+        averageScore: sql<number>`COALESCE(AVG(${quizResults.score}), 0)`,
+      })
+      .from(quizResults)
+      .where(eq(quizResults.userId, userId));
+
+    return {
+      totalScore: Number(stats?.totalScore || 0),
+      completedQuizzes: Number(stats?.completedQuizzes || 0),
+      averageScore: Number(stats?.averageScore || 0),
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();

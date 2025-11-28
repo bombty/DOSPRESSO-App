@@ -3544,3 +3544,24 @@ export const insertUserCareerProgressSchema = createInsertSchema(userCareerProgr
 
 export type InsertUserCareerProgress = z.infer<typeof insertUserCareerProgressSchema>;
 export type UserCareerProgress = typeof userCareerProgress.$inferSelect;
+
+// Quiz Results - Sınav sonuçları ve leaderboard verileri
+export const quizResults = pgTable("quiz_results", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  quizId: varchar("quiz_id", { length: 100 }).notNull(),
+  score: integer("score").notNull(),
+  answers: jsonb("answers"),
+  completedAt: timestamp("completed_at").defaultNow(),
+}, (table) => [
+  index("quiz_results_user_idx").on(table.userId),
+  index("quiz_results_score_idx").on(table.score),
+]);
+
+export const insertQuizResultSchema = createInsertSchema(quizResults).omit({
+  id: true,
+  completedAt: true,
+});
+
+export type InsertQuizResult = z.infer<typeof insertQuizResultSchema>;
+export type QuizResult = typeof quizResults.$inferSelect;
