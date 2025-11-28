@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame, Trophy, Bookmark, Brain, Shield } from "lucide-react";
+import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame, Trophy, Bookmark, Brain, Shield, Users, TrendingUp as Analytics } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -449,6 +449,78 @@ export default function Academy() {
                 Başarılar
               </CardTitle>
               <CardDescription>Mileleri açarak başarı kazan</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-progress-overview">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                İlerleme Özeti
+              </CardTitle>
+              <CardDescription>Genel ilerlemeni izle</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-streak-tracker">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Flame className="w-5 h-5" />
+                Öğrenme Serisi
+              </CardTitle>
+              <CardDescription>Günlük tutarlılık rozetleri</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-ai-assistant">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Lightbulb className="w-5 h-5" />
+                AI Asistan
+              </CardTitle>
+              <CardDescription>Yapay zeka tutor yardımı</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-adaptive-engine">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Brain className="w-5 h-5" />
+                Uyarlanabilir Motor
+              </CardTitle>
+              <CardDescription>AI önerilen yollar</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-social-groups">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Sosyal İşbirliği
+              </CardTitle>
+              <CardDescription>Çalışma grupları ve mentörlük</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-advanced-analytics">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Analytics className="w-5 h-5" />
+                İleri Analitikler
+              </CardTitle>
+              <CardDescription>Detaylı performans analizi</CardDescription>
             </CardHeader>
           </Card>
         </Link>
