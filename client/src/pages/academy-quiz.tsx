@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, XCircle, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader } from "lucide-react";
 
 export default function AcademyQuiz() {
   const { toast } = useToast();
@@ -23,33 +23,25 @@ export default function AcademyQuiz() {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
 
-  // Mock quiz data
+  // Fetch quiz questions from database
+  const { data: questions = [], isLoading } = useQuery({
+    queryKey: [`/api/academy/quiz/${quizId}/questions`],
+    queryFn: async () => {
+      const res = await fetch(`/api/academy/quiz/${quizId}/questions`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!quizId,
+  });
+
+  // Quiz metadata
   const quiz = {
     id: quizId,
     title: "Espresso Hazırlama Teknikleri",
     description: "Profesyonel espresso hazırlamayı öğrenin",
     timeLimit: 1800, // 30 minutes in seconds
     passingScore: 70,
-    questions: [
-      {
-        id: 1,
-        question: "Ideal espresso çekim süresi kaç saniyedir?",
-        options: ["15-20 saniye", "25-30 saniye", "35-40 saniye", "45+ saniye"],
-        correctAnswer: 1,
-      },
-      {
-        id: 2,
-        question: "Espresso makinesi basıncı kaç bar olmalıdır?",
-        options: ["5 bar", "7 bar", "9 bar", "12 bar"],
-        correctAnswer: 2,
-      },
-      {
-        id: 3,
-        question: "Su sıcaklığı kaç derece olmalıdır?",
-        options: ["85°C", "90°C", "92-96°C", "100°C"],
-        correctAnswer: 2,
-      },
-    ],
+    questions: questions,
   };
 
   const submitMutation = useMutation({
@@ -65,8 +57,8 @@ export default function AcademyQuiz() {
   const handleSubmit = () => {
     // Calculate score
     let correctCount = 0;
-    quiz.questions.forEach((q, idx) => {
-      if (parseInt(answers[idx]) === q.correctAnswer) {
+    quiz.questions.forEach((q: any, idx: number) => {
+      if (parseInt(answers[idx]) === q.correctAnswerIndex) {
         correctCount++;
       }
     });
@@ -81,6 +73,33 @@ export default function AcademyQuiz() {
       answers,
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-6 min-h-screen">
+        <div className="flex flex-col items-center gap-3">
+          <Loader className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Soru yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (quiz.questions.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-6 min-h-screen">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Soru Bulunamadı</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">Bu sınav için henüz soru eklenmemiş.</p>
+            <Button onClick={() => window.history.back()}>Geri Dön</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -138,7 +157,7 @@ export default function AcademyQuiz() {
 
         <CardContent className="space-y-6">
           <div>
-            <p className="text-lg font-medium mb-4">{question.question}</p>
+            <p className="text-lg font-medium mb-4">{question.questionText}</p>
 
             <RadioGroup value={answers[currentQuestion] || ""} onValueChange={(value) => setAnswers({ ...answers, [currentQuestion]: value })}>
               {question.options.map((option, idx) => (
