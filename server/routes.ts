@@ -87,6 +87,7 @@ import {
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault } from "./ai";
+import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
 import { sendNotificationEmail } from "./email";
 import { startReminderSystem } from "./reminders";
