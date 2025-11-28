@@ -1,32 +1,5 @@
 import * as LucideIcons from "lucide-react";
-import {
-  LayoutDashboard,
-  CheckSquare,
-  ClipboardList,
-  Settings,
-  Wrench,
-  BookOpen,
-  GraduationCap,
-  Bot,
-  BarChart3,
-  Building2,
-  Users,
-  MessageSquare,
-  Bell,
-  Megaphone,
-  Wallet,
-  Clock,
-  Calendar,
-  CalendarDays,
-  ChevronRight,
-  QrCode,
-  Circle,
-  FileSearch,
-  Store,
-  Star,
-  AlertTriangle,
-  Zap,
-} from "lucide-react";
+import { ChevronRight, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -45,15 +18,15 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
-import { canAccessModule, isHQRole, isBranchRole, type PermissionModule, type MenuSection, type MenuItem as DBMenuItem, type MenuVisibilityRule } from "@shared/schema";
+import { type SidebarMenuResponse, type SidebarMenuSection, type SidebarMenuItem as SidebarMenuItemType } from "@shared/schema";
 import dospressoLogo from "@assets/IMG_5044_1762707935781.png";
 import { useQuery } from "@tanstack/react-query";
-import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
-import { useEffect } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// PHASE 1: Icon mapping dictionary
+// Icon mapping dictionary
 const lucideIconMap: Record<string, any> = {
   "Home": LucideIcons.Home,
   "Users": LucideIcons.Users,
@@ -91,6 +64,7 @@ const lucideIconMap: Record<string, any> = {
   "Star": LucideIcons.Star,
   "Award": LucideIcons.Award,
   "Circle": LucideIcons.Circle,
+  "AlertTriangle": LucideIcons.AlertTriangle,
 };
 
 const getIconComponent = (iconName: string | null | undefined) => {
@@ -98,345 +72,8 @@ const getIconComponent = (iconName: string | null | undefined) => {
   return lucideIconMap[iconName] || LucideIcons.Circle;
 };
 
-type MenuItem = {
-  title: string;
-  titleTr: string;
-  url: string;
-  icon: any;
-  module: PermissionModule;
-  scope?: 'branch' | 'hq' | 'both';
-};
-
-type MenuGroup = {
-  groupTr: string;
-  icon: any;
-  scope?: 'branch' | 'hq' | 'both';
-  items: MenuItem[];
-};
-
-// Minimal standalone items for quick access (notifications/messages)
-// All other menu items come from dynamic menu loaded from database
-const standaloneItems: MenuItem[] = [
-  {
-    title: "Bildirimler",
-    titleTr: "Bildirimler",
-    url: "/bildirimler",
-    icon: Bell,
-    module: "dashboard",
-    scope: "both",
-  },
-  {
-    title: "Mesajlar",
-    titleTr: "Mesajlar",
-    url: "/mesajlar",
-    icon: MessageSquare,
-    module: "dashboard",
-    scope: "both",
-  },
-];
-
-// Fallback hardcoded menu groups (used only if dynamic menu fails to load)
-// In normal operation, dynamic menu from database takes precedence
-// IMPORTANT: Scopes must match database menu_sections for proper RBAC filtering
-const menuGroups: MenuGroup[] = [
-  {
-    groupTr: "Kontrol Paneli",
-    icon: LayoutDashboard,
-    scope: "hq",
-    items: [
-      {
-        title: "Dashboard HQ",
-        titleTr: "Kontrol Paneli",
-        url: "/",
-        icon: LayoutDashboard,
-        module: "dashboard",
-        scope: "hq",
-      },
-    ],
-  },
-  {
-    groupTr: "Şubeler",
-    icon: Building2,
-    scope: "hq",
-    items: [
-      {
-        title: "Şubeler",
-        titleTr: "Şubeler",
-        url: "/subeler",
-        icon: Building2,
-        module: "branches",
-        scope: "hq",
-      },
-    ],
-  },
-  {
-    groupTr: "Operasyon",
-    icon: Wrench,
-    scope: "both",
-    items: [
-      {
-        title: "Ekipman",
-        titleTr: "Ekipman",
-        url: "/ekipman",
-        icon: Wrench,
-        module: "equipment",
-        scope: "both",
-      },
-      {
-        title: "Arıza Yönetimi",
-        titleTr: "Arıza Yönetimi",
-        url: "/ariza",
-        icon: AlertTriangle,
-        module: "equipment_faults",
-        scope: "both",
-      },
-      {
-        title: "QR Tara",
-        titleTr: "QR Tara",
-        url: "/qr-tara",
-        icon: QrCode,
-        module: "equipment",
-        scope: "both",
-      },
-    ],
-  },
-  {
-    groupTr: "Görevler",
-    icon: CheckSquare,
-    scope: "both",
-    items: [
-      {
-        title: "Görevler",
-        titleTr: "Görevler",
-        url: "/gorevler",
-        icon: CheckSquare,
-        module: "tasks",
-        scope: "both",
-      },
-      {
-        title: "Checklistler",
-        titleTr: "Checklistler",
-        url: "/checklistler",
-        icon: ClipboardList,
-        module: "checklists",
-        scope: "both",
-      },
-    ],
-  },
-  {
-    groupTr: "Eğitim & Bilgi",
-    icon: GraduationCap,
-    scope: "both",
-    items: [
-      {
-        title: "Eğitim Akademisi",
-        titleTr: "Eğitim Akademisi",
-        url: "/egitim",
-        icon: GraduationCap,
-        module: "training",
-        scope: "both",
-      },
-      {
-        title: "Bilgi Bankası",
-        titleTr: "Bilgi Bankası",
-        url: "/bilgi-bankasi",
-        icon: BookOpen,
-        module: "knowledge_base",
-        scope: "both",
-      },
-    ],
-  },
-  {
-    groupTr: "İK & Vardiya",
-    icon: Users,
-    scope: "both",
-    items: [
-      {
-        title: "İK Yönetimi",
-        titleTr: "İK Yönetimi",
-        url: "/ik",
-        icon: Users,
-        module: "hr",
-        scope: "both",
-      },
-      {
-        title: "Vardiyalar",
-        titleTr: "Vardiyalar",
-        url: "/vardiyalar",
-        icon: Calendar,
-        module: "schedules",
-        scope: "both",
-      },
-    ],
-  },
-  {
-    groupTr: "Performans",
-    icon: BarChart3,
-    scope: "both",
-    items: [
-      {
-        title: "Performans",
-        titleTr: "Performans",
-        url: "/performans",
-        icon: BarChart3,
-        module: "performance",
-        scope: "both",
-      },
-    ],
-  },
-  {
-    groupTr: "Kalite & Gelişim",
-    icon: Star,
-    scope: "hq",
-    items: [
-      {
-        title: "Kalite Kontrol",
-        titleTr: "Kalite Kontrol",
-        url: "/kalite",
-        icon: Star,
-        module: "dashboard",
-        scope: "hq",
-      },
-    ],
-  },
-  {
-    groupTr: "Yönetim / Ayarlar",
-    icon: Settings,
-    scope: "hq",
-    items: [
-      {
-        title: "Kullanıcılar",
-        titleTr: "Kullanıcılar",
-        url: "/yonetim/kullanicilar",
-        icon: Users,
-        module: "users",
-        scope: "hq",
-      },
-      {
-        title: "Menü Yönetimi",
-        titleTr: "Menü Yönetimi",
-        url: "/yonetim/menu",
-        icon: Settings,
-        module: "dashboard",
-        scope: "hq",
-      },
-      {
-        title: "Ayarlar",
-        titleTr: "Ayarlar",
-        url: "/yonetim/ayarlar",
-        icon: Settings,
-        module: "dashboard",
-        scope: "hq",
-      },
-    ],
-  },
-];
-
-// PHASE 4: Visibility Rules Logic
-const checkVisibilityRules = (
-  menuItemId: number,
-  rules: MenuVisibilityRule[],
-  user: any
-): boolean => {
-  const itemRules = rules.filter(r => r.menuItemId === menuItemId);
-  if (itemRules.length === 0) return true; // Default: allow if no rules
-
-  // Priority 1: User-specific rules (with branch scoping)
-  const userRules = itemRules.filter(r => r.ruleType === 'user' && r.userId === user.id);
-  if (userRules.length > 0) {
-    // Check for matching branch scope
-    const matchingUserRule = userRules.find(r => r.branchId === null || r.branchId === user.branchId);
-    if (matchingUserRule) {
-      return matchingUserRule.allow;
-    }
-    // No matching user rule - continue to next priority
-  }
-
-  // Priority 2: Role-based rules (with branch scoping)
-  const roleRules = itemRules.filter(r => r.ruleType === 'role' && r.role === user.role);
-  if (roleRules.length > 0) {
-    // Check branch-scoped role rules first
-    const branchScopedRule = roleRules.find(r => r.branchId === user.branchId);
-    if (branchScopedRule) return branchScopedRule.allow;
-    
-    // Then check global role rules (branchId = null)
-    const globalRoleRule = roleRules.find(r => r.branchId === null);
-    if (globalRoleRule) return globalRoleRule.allow;
-  }
-
-  // Priority 3: Branch-level rules (NEW)
-  const branchRules = itemRules.filter(r => r.ruleType === 'branch' && r.branchId === user.branchId);
-  if (branchRules.length > 0) {
-    // If multiple branch rules exist, use first one (or could use most restrictive)
-    return branchRules[0].allow;
-  }
-
-  // Default: allow
-  return true;
-};
-
-// PHASE 3: Data Transformation
-const transformDynamicMenu = (
-  sections: MenuSection[],
-  items: DBMenuItem[],
-  rules: MenuVisibilityRule[],
-  user: any
-): { groups: MenuGroup[], standalone: MenuItem[] } => {
-  const sectionItemsMap = new Map<number, DBMenuItem[]>();
-  items.forEach(item => {
-    if (!item.isActive) return;
-    
-    // Explicit scope filtering (before visibility rules)
-    // Admin can see all scopes
-    if (user.role !== 'admin') {
-      if (item.scope === 'hq' && !isHQRole(user.role as any)) return;
-      if (item.scope === 'branch' && !isBranchRole(user.role as any)) return;
-    }
-    
-    if (item.moduleKey && !canAccessModule(user.role as any, item.moduleKey as PermissionModule)) return;
-    
-    if (!checkVisibilityRules(item.id, rules, user)) return;
-    
-    const sectionItems = sectionItemsMap.get(item.sectionId) || [];
-    sectionItems.push(item);
-    sectionItemsMap.set(item.sectionId, sectionItems);
-  });
-
-  const groups: MenuGroup[] = sections
-    .filter(section => {
-      // Explicit section scope filtering (before checking items)
-      if (user.role !== 'admin') {
-        if (section.scope === 'hq' && !isHQRole(user.role as any)) return false;
-        if (section.scope === 'branch' && !isBranchRole(user.role as any)) return false;
-      }
-      
-      const sectionItems = sectionItemsMap.get(section.id) || [];
-      return sectionItems.length > 0;
-    })
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map(section => ({
-      groupTr: section.titleTr,
-      icon: getIconComponent(section.icon),
-      scope: section.scope as 'hq' | 'branch' | 'both' | undefined,
-      items: (sectionItemsMap.get(section.id) || [])
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map(item => ({
-          title: item.titleTr,
-          titleTr: item.titleTr,
-          url: item.path,
-          icon: getIconComponent(item.icon),
-          module: (item.moduleKey || 'dashboard') as PermissionModule,
-          scope: item.scope as 'hq' | 'branch' | 'both' | undefined,
-        })),
-    }));
-
-  return { groups, standalone: [] };
-};
-
 const roleLabels: Record<string, string> = {
-  // System
   admin: "Admin",
-  // HQ
   muhasebe: "Muhasebe",
   satinalma: "Satınalma",
   coach: "Coach",
@@ -444,7 +81,6 @@ const roleLabels: Record<string, string> = {
   destek: "Destek",
   fabrika: "Fabrika",
   yatirimci_hq: "Yatırımcı (HQ)",
-  // Branch
   stajyer: "Stajyer",
   bar_buddy: "Bar Buddy",
   barista: "Barista",
@@ -457,154 +93,23 @@ export function AppSidebar() {
   const [location, navigate] = useLocation();
   const { user } = useAuth();
 
-  // Fetch unread notification count with adaptive polling
-  const pollingInterval = useAdaptivePolling();
-  const { data: unreadData } = useQuery<{ count: number }>({
-    queryKey: ['/api/notifications/unread-count'],
-    enabled: !!user,
-    refetchInterval: pollingInterval,
-  });
-  const unreadCount = unreadData?.count || 0;
-
-  // Fetch unread message count
-  const { data: unreadMessagesData } = useQuery<{ count: number }>({
-    queryKey: ['/api/messages/unread-count'],
-    enabled: !!user,
-    refetchInterval: pollingInterval,
-  });
-  const unreadMessagesCount = unreadMessagesData?.count || 0;
-
-  // PHASE 2: API Query - Fetch user-specific menu data from /api/me/menu
-  // CRITICAL: queryKey includes user.id to ensure per-user cache isolation
-  // This prevents RBAC bypass when switching between users in same browser
-  const { data: dynamicMenuData, isLoading: isMenuLoading, isError } = useQuery<{
-    sections: MenuSection[];
-    items: DBMenuItem[];
-    rules: MenuVisibilityRule[];
-    _meta?: { userId: string; role: string; timestamp: number };
-  }>({
-    queryKey: ["user-menu", user?.id], // Per-user cache key for isolation
+  // Fetch menu from server (v2 API - pre-filtered by role)
+  const { data: menuData, isLoading: isMenuLoading, isError } = useQuery<SidebarMenuResponse>({
+    queryKey: ["sidebar-menu", user?.id],
     queryFn: async () => {
       const res = await fetch("/api/me/menu", { credentials: "include" });
       if (!res.ok) throw new Error("Menu fetch failed");
       return res.json();
     },
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 0, // Don't cache across sessions
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
     refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
     enabled: !!user,
   });
 
-  // Transform dynamic menu data - NO FALLBACK, API is the single source of truth
-  const { groups: dynamicGroups, standalone: dynamicStandalone } = dynamicMenuData?.sections && user
-    ? transformDynamicMenu(dynamicMenuData.sections, dynamicMenuData.items, dynamicMenuData.rules, user)
-    : { groups: [], standalone: [] };
-
-  // FINAL CLIENT-SIDE GUARD: Double-check scope filtering as fail-safe
-  // This is a security layer - even if backend somehow sends wrong data, frontend blocks it
-  const scopeFilteredGroups = dynamicGroups.filter((group) => {
-    if (user?.role === 'admin') return true;
-    // STRICT: Branch users NEVER see HQ-scoped items
-    if (isBranchRole(user?.role as any) && group.scope === 'hq') {
-      console.warn(`[Sidebar GUARD] Blocking HQ group for branch user: ${group.groupTr}`);
-      return false;
-    }
-    // STRICT: HQ users NEVER see branch-only scoped items
-    if (isHQRole(user?.role as any) && group.scope === 'branch') {
-      console.warn(`[Sidebar GUARD] Blocking branch group for HQ user: ${group.groupTr}`);
-      return false;
-    }
-    return true;
-  }).map((group) => ({
-    ...group,
-    // Also filter items within each group
-    items: group.items.filter((item) => {
-      if (user?.role === 'admin') return true;
-      if (isBranchRole(user?.role as any) && item.scope === 'hq') return false;
-      if (isHQRole(user?.role as any) && item.scope === 'branch') return false;
-      return true;
-    }),
-  })).filter((group) => group.items.length > 0); // Remove empty groups
-
-  // Use scope-filtered groups as active menu
-  const activeMenuGroups = scopeFilteredGroups;
-  const activeStandaloneItems = dynamicStandalone.length > 0 ? dynamicStandalone : standaloneItems;
-
-  useEffect(() => {
-    if (isError && user) {
-      console.log("[Sidebar] Menu API error - showing empty menu");
-    } else if (dynamicMenuData?.sections && user) {
-      console.log(`[Sidebar] Using menu from API - user: ${user.username}, role: ${user.role}, sections: ${dynamicMenuData.sections.length}, filtered groups: ${scopeFilteredGroups.length}`);
-    }
-  }, [isError, dynamicMenuData?.sections?.length, user, scopeFilteredGroups.length]);
-
-  // Helper to check if user can see item based on scope
-  const canSeeScope = (scope?: 'branch' | 'hq' | 'both') => {
-    if (!scope || scope === 'both' || user?.role === 'admin') return true;
-    if (scope === 'branch') return isBranchRole(user?.role as any);
-    if (scope === 'hq') return isHQRole(user?.role as any);
-    return false;
-  };
-
-  // Filter standalone items based on scope and permissions
-  const visibleStandaloneItems = activeStandaloneItems.filter((item) => {
-    if (!user?.role) return false;
-    return canSeeScope(item.scope) && canAccessModule(user.role as any, item.module);
-  });
-
-  // Filter menu groups based on scope and permissions
-  // Admin users see ALL menu groups regardless of scope
-  const filterMenuGroups = (targetScope: 'branch' | 'hq' | 'both') => {
-    return activeMenuGroups
-      .filter((group) => {
-        // Admin sees all scopes
-        if (user?.role === 'admin') {
-          return group.scope === targetScope || (!group.scope && targetScope === 'both');
-        }
-        // Branch users should NEVER see HQ-scoped items
-        if (isBranchRole(user?.role as any) && group.scope === 'hq') return false;
-        // HQ users should NEVER see branch-scoped items
-        if (isHQRole(user?.role as any) && group.scope === 'branch') return false;
-        // For non-admins: check visibility and match scope
-        // 'both' scope items should be visible in both 'branch' and 'hq' views
-        if (!canSeeScope(group.scope)) return false;
-        return group.scope === 'both' || group.scope === targetScope;
-      })
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) => {
-          if (!user?.role) return false;
-          // Admin can access all modules
-          if (user.role === 'admin') return true;
-          // Branch users should NEVER see HQ-scoped items
-          if (isBranchRole(user?.role as any) && item.scope === 'hq') return false;
-          // HQ users should NEVER see branch-scoped items
-          if (isHQRole(user?.role as any) && item.scope === 'branch') return false;
-          // Check item scope visibility first
-          if (!canSeeScope(item.scope)) return false;
-          // Then check module access
-          return canAccessModule(user.role as any, item.module);
-        }),
-      }))
-      .filter((group) => group.items.length > 0);
-  };
-
-  // For admin users, show all menu groups in a unified view
-  const isAdmin = user?.role === 'admin';
-  
-  const branchMenuGroups = filterMenuGroups('branch');
-  const hqMenuGroups = filterMenuGroups('hq');
-  const bothMenuGroups = filterMenuGroups('both');
-  
-  // Combined menu for admin - shows all groups when dynamic menu fails
-  const allMenuGroups = isAdmin && dynamicGroups.length === 0 
-    ? activeMenuGroups.map(group => ({
-        ...group,
-        items: group.items.filter(() => true) // Admin sees all
-      })).filter(g => g.items.length > 0)
-    : [];
+  const sections = menuData?.sections || [];
+  const badges = menuData?.badges || {};
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -622,18 +127,83 @@ export function AppSidebar() {
         method: 'POST',
         credentials: 'include',
       });
-      
-      // Clear all client-side caches
       queryClient.clear();
-      
-      // Hard redirect to login (clears all React state and session)
       window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
-      // Even on error, redirect to login
       window.location.href = '/login';
     }
   };
+
+  // Group sections by scope for visual organization
+  const branchSections = sections.filter(s => s.scope === 'branch');
+  const hqSections = sections.filter(s => s.scope === 'hq');
+  const bothSections = sections.filter(s => s.scope === 'both');
+
+  const renderMenuSection = (section: SidebarMenuSection) => {
+    const IconComponent = getIconComponent(section.icon);
+    
+    return (
+      <Collapsible key={section.id} defaultOpen className="group/collapsible">
+        <SidebarMenuItem>
+          <CollapsibleTrigger asChild>
+            <SidebarMenuButton data-testid={`button-section-${section.id}`}>
+              <IconComponent className="h-4 w-4" />
+              <span>{section.titleTr}</span>
+              <ChevronRight className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+            </SidebarMenuButton>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <SidebarMenuSub>
+              {section.items.map((item) => renderMenuItem(item))}
+            </SidebarMenuSub>
+          </CollapsibleContent>
+        </SidebarMenuItem>
+      </Collapsible>
+    );
+  };
+
+  const renderMenuItem = (item: SidebarMenuItemType) => {
+    const badgeCount = item.badge ? badges[item.badge] : 0;
+    
+    return (
+      <SidebarMenuSubItem key={item.id}>
+        <SidebarMenuSubButton asChild isActive={location === item.path}>
+          <Link href={item.path} data-testid={`link-${item.id}`}>
+            <span>{item.titleTr}</span>
+            {badgeCount > 0 && (
+              <Badge variant="destructive" className="ml-auto" data-testid={`badge-${item.id}`}>
+                {badgeCount}
+              </Badge>
+            )}
+          </Link>
+        </SidebarMenuSubButton>
+      </SidebarMenuSubItem>
+    );
+  };
+
+  // Loading state
+  if (isMenuLoading) {
+    return (
+      <Sidebar>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel className="px-2 py-4">
+              <img src={dospressoLogo} alt="DOSPRESSO" className="h-12 w-auto" />
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="space-y-2 p-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-3/4" />
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
 
   return (
     <Sidebar>
@@ -649,173 +219,81 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleStandaloneItems.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={location === item.url}>
-                    <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <item.icon />
-                      <span>{item.titleTr}</span>
-                      {item.url === '/bildirimler' && unreadCount > 0 && (
-                        <Badge variant="destructive" className="ml-auto" data-testid="badge-unread-count">
-                          {unreadCount}
-                        </Badge>
-                      )}
-                      {item.url === '/mesajlar' && unreadMessagesCount > 0 && (
-                        <Badge variant="destructive" className="ml-auto" data-testid="badge-unread-messages">
-                          {unreadMessagesCount}
-                        </Badge>
-                      )}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              
-              <div className="my-3 border-t" />
-              
-              {branchMenuGroups.length > 0 && (
+              {/* Branch-scoped sections */}
+              {branchSections.length > 0 && (
                 <>
-                  <div className="mt-4 mb-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground border-t">
-                    Şube Operasyonları
+                  <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    Şube İşlemleri
                   </div>
-                  {branchMenuGroups.map((group) => (
-                    <Collapsible key={group.groupTr} defaultOpen className="group/collapsible">
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton data-testid={`button-${group.groupTr.toLowerCase().replace(/\s+/g, '-')}`}>
-                            <group.icon />
-                            <span>{group.groupTr}</span>
-                            <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {group.items.map((item) => (
-                              <SidebarMenuSubItem key={item.url}>
-                                <SidebarMenuSubButton asChild isActive={location === item.url}>
-                                  <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                                    <span>{item.titleTr}</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
-                  ))}
+                  {branchSections.map(renderMenuSection)}
                 </>
               )}
               
-              {branchMenuGroups.length > 0 && hqMenuGroups.length > 0 && (
-                <div className="my-2" />
-              )}
-              
-              {hqMenuGroups.length > 0 && (
+              {/* HQ-scoped sections */}
+              {hqSections.length > 0 && (
                 <>
-                  <div className="mt-4 mb-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground border-t">
+                  {branchSections.length > 0 && <div className="my-2 border-t" />}
+                  <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
                     Merkez (HQ)
                   </div>
-                  {hqMenuGroups.map((group) => (
-                    <Collapsible key={group.groupTr} defaultOpen className="group/collapsible">
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton data-testid={`button-${group.groupTr.toLowerCase().replace(/\s+/g, '-')}`}>
-                            <group.icon />
-                            <span>{group.groupTr}</span>
-                            <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {group.items.map((item) => (
-                              <SidebarMenuSubItem key={item.url}>
-                                <SidebarMenuSubButton asChild isActive={location === item.url}>
-                                  <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                                    <span>{item.titleTr}</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
-                  ))}
+                  {hqSections.map(renderMenuSection)}
                 </>
               )}
               
-              {(branchMenuGroups.length > 0 || hqMenuGroups.length > 0) && bothMenuGroups.length > 0 && (
-                <div className="my-2 border-t" />
+              {/* Both-scoped sections (shared) */}
+              {bothSections.length > 0 && (
+                <>
+                  {(branchSections.length > 0 || hqSections.length > 0) && <div className="my-2 border-t" />}
+                  <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    Genel İşlemler
+                  </div>
+                  {bothSections.map(renderMenuSection)}
+                </>
               )}
               
-              {bothMenuGroups.length > 0 && (
-                <div className="mb-2 px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Genel İşlemler
+              {/* Error state */}
+              {isError && sections.length === 0 && (
+                <div className="p-4 text-sm text-muted-foreground text-center">
+                  Menü yüklenemedi
                 </div>
               )}
-              
-              {bothMenuGroups.map((group) => (
-                <Collapsible key={group.groupTr} defaultOpen className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton data-testid={`button-${group.groupTr.toLowerCase().replace(/\s+/g, '-')}`}>
-                        <group.icon />
-                        <span>{group.groupTr}</span>
-                        <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {group.items.map((item) => (
-                          <SidebarMenuSubItem key={item.url}>
-                            <SidebarMenuSubButton asChild isActive={location === item.url}>
-                              <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                                <item.icon />
-                                <span>{item.titleTr}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      
-      <SidebarFooter className="p-4">
+
+      <SidebarFooter className="border-t p-4">
         <div className="flex items-center gap-3">
-          <Avatar>
+          <Avatar className="h-10 w-10">
             <AvatarImage src={user?.profileImageUrl || undefined} />
-            <AvatarFallback>{getUserInitials()}</AvatarFallback>
+            <AvatarFallback data-testid="avatar-fallback">{getUserInitials()}</AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate" data-testid="text-user-name">
-              {user?.firstName && user?.lastName
+          <div className="flex-1 overflow-hidden">
+            <p className="truncate text-sm font-medium" data-testid="text-user-name">
+              {user?.firstName && user?.lastName 
                 ? `${user.firstName} ${user.lastName}`
-                : user?.email || "Kullanıcı"}
+                : user?.username || 'Kullanıcı'}
             </p>
-            <Badge variant="secondary" className="mt-1" data-testid="badge-user-role">
-              {roleLabels[user?.role as string] || "Kullanıcı"}
-            </Badge>
+            <p className="truncate text-xs text-muted-foreground" data-testid="text-user-role">
+              {user?.role ? roleLabels[user.role] || user.role : ''}
+            </p>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            data-testid="button-logout"
+            title="Çıkış Yap"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
-        <button
-          onClick={handleLogout}
-          className="mt-2 text-sm text-muted-foreground hover:text-foreground text-left"
-          data-testid="button-logout"
-        >
-          Çıkış Yap
-        </button>
       </SidebarFooter>
     </Sidebar>
   );
 }
 
-// PHASE 6: Cache Invalidation Export
-export const invalidateMenuCache = () => {
-  queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
-};
+// Export for cache invalidation from other components
+export function invalidateMenuCache() {
+  queryClient.invalidateQueries({ queryKey: ["sidebar-menu"] });
+}
