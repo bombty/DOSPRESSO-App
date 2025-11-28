@@ -144,19 +144,19 @@ export default function AcademyLearningPathDetail() {
                       {/* Action */}
                       <div className="flex gap-2">
                         {quiz.status === "completed" && (
-                          <Button size="sm" variant="outline" onClick={() => navigate(`/akademi/quiz/${quiz.id}`)}>
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/akademi-quiz/${quiz.id}`)}>
                             <CheckCircle2 className="w-3 h-3 mr-1" />
                             Tekrar Al
                           </Button>
                         )}
                         {quiz.status === "recommended" && (
-                          <Button size="sm" onClick={() => navigate(`/akademi/quiz/${quiz.id}`)}>
+                          <Button size="sm" onClick={() => navigate(`/akademi-quiz/${quiz.id}`)}>
                             <BookOpen className="w-3 h-3 mr-1" />
                             Şimdi Başla
                           </Button>
                         )}
                         {quiz.status === "available" && (
-                          <Button size="sm" variant="outline" onClick={() => navigate(`/akademi/quiz/${quiz.id}`)}>
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/akademi-quiz/${quiz.id}`)}>
                             <BookOpen className="w-3 h-3 mr-1" />
                             Başla
                           </Button>
