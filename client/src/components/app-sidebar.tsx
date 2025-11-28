@@ -489,12 +489,15 @@ export function AppSidebar() {
     enabled: !!user,
   });
 
-  // PHASE 5: Fallback Mechanism
-  const { groups: dynamicGroups, standalone: dynamicStandalone } = dynamicMenuData && !isError && user
+  // PHASE 5: Fallback Mechanism - ONLY use fallback on actual API error, NOT on empty data
+  // Empty sections is valid for branch users (they have fewer menu items)
+  const hasDynamicData = dynamicMenuData && dynamicMenuData.sections && !isError;
+  
+  const { groups: dynamicGroups, standalone: dynamicStandalone } = hasDynamicData && user
     ? transformDynamicMenu(dynamicMenuData.sections, dynamicMenuData.items, dynamicMenuData.rules, user)
     : { groups: [], standalone: [] };
 
-  // Apply scope filtering to fallback menu too
+  // Apply scope filtering to fallback menu - ONLY used when API fails completely
   const filteredFallbackMenuGroups = menuGroups.filter((group) => {
     if (user?.role === 'admin') return true;
     // Branch users should NEVER see HQ-scoped items
@@ -507,14 +510,19 @@ export function AppSidebar() {
     return false;
   });
 
-  const activeMenuGroups = dynamicGroups.length > 0 ? dynamicGroups : filteredFallbackMenuGroups;
-  const activeStandaloneItems = dynamicStandalone.length > 0 ? dynamicStandalone : standaloneItems;
+  // CRITICAL: Only use fallback when API actually fails (isError=true), NOT when dynamic data is empty
+  // Empty dynamicGroups is VALID for branch users who have fewer menu items after scope filtering
+  const shouldUseFallback = isError && !hasDynamicData;
+  const activeMenuGroups = shouldUseFallback ? filteredFallbackMenuGroups : dynamicGroups;
+  const activeStandaloneItems = shouldUseFallback ? standaloneItems : (dynamicStandalone.length > 0 ? dynamicStandalone : standaloneItems);
 
   useEffect(() => {
-    if (dynamicGroups.length === 0 && !isError && user) {
-      console.log("[Sidebar] Using hardcoded menu (dynamic menu empty)");
+    if (shouldUseFallback && user) {
+      console.log("[Sidebar] Using fallback menu (API error)");
+    } else if (hasDynamicData && user) {
+      console.log("[Sidebar] Using dynamic menu from API, sections:", dynamicMenuData?.sections?.length || 0);
     }
-  }, [dynamicGroups.length, isError, user]);
+  }, [shouldUseFallback, hasDynamicData, user, dynamicMenuData?.sections?.length]);
 
   // Helper to check if user can see item based on scope
   const canSeeScope = (scope?: 'branch' | 'hq' | 'both') => {

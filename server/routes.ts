@@ -6763,8 +6763,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== MENU MANAGEMENT ENDPOINTS (HQ Admin Only) =====
   
   // GET /api/menu - List menu data filtered by user role and branch
+  // IMPORTANT: Disable caching to ensure fresh role-filtered data on every request
   app.get('/api/menu', isAuthenticated, async (req: any, res) => {
     try {
+      // Disable caching - must return fresh data for RBAC to work correctly
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      res.set('Surrogate-Control', 'no-store');
+      
       const user = req.user!;
       const menu = await storage.listMenu();
       
