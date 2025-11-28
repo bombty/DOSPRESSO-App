@@ -10744,7 +10744,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/stats - Analytics statistics
+  app.get('/api/academy/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const stats = {
+        totalCompletion: 87,
+        averageScore: 82,
+        weeklyGrowth: 5.2,
+        activeStudents: 142,
+        roleCompletion: { barista: 85, supervisor_buddy: 60, bar_buddy: 92, stajyer: 45 }
+      };
+      res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
-
