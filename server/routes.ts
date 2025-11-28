@@ -10561,11 +10561,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/academy/exam-requests - Sınav talepleri listesi
   app.get('/api/academy/exam-requests', isAuthenticated, async (req: any, res) => {
     try {
-      const { status } = req.query;
-      const requests = await storage.getExamRequests({ status: status as string });
+      const { status, supervisorId } = req.query;
+      const requests = await storage.getExamRequests({ 
+        status: status as string,
+        userId: supervisorId as string 
+      });
       res.json(requests);
     } catch (error: any) {
       console.error("Exam requests error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/academy/team-members - Supervisor'un ekip üyeleri
+  app.get('/api/academy/team-members', isAuthenticated, async (req: any, res) => {
+    try {
+      const supervisorId = req.user.id;
+      const branchId = req.user.branchId;
+      
+      if (!branchId) {
+        return res.json([]);
+      }
+
+      // Get all branch employees except supervisor
+      const employees = await storage.getAllEmployees(branchId);
+      const teamMembers = employees
+        .filter(e => e.id !== supervisorId)
+        .map(e => ({
+          id: e.id,
+          firstName: e.firstName,
+          lastName: e.lastName,
+          currentRole: e.role,
+          progressPercent: 50, // Placeholder
+        }));
+
+      res.json(teamMembers);
+    } catch (error: any) {
+      console.error("Team members error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/academy/exam-request/:id/approve - Sınav onayı (HQ only)
+  app.patch('/api/academy/exam-request/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!isHQRole(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { id } = req.params;
+      const request = await storage.updateExamRequest(Number(id), {
+        status: 'approved',
+        approvedById: req.user.id,
+        approvedAt: new Date(),
+      });
+
+      res.json(request);
+    } catch (error: any) {
+      console.error("Exam approval error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/academy/exam-request/:id/reject - Sınav reddi
+  app.patch('/api/academy/exam-request/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { rejectionReason } = req.body;
+      
+      const request = await storage.updateExamRequest(Number(id), {
+        status: 'rejected',
+        rejectionReason,
+      });
+
+      res.json(request);
+    } catch (error: any) {
+      console.error("Exam rejection error:", error);
       res.status(500).json({ message: error.message });
     }
   });

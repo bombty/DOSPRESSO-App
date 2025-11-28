@@ -31,6 +31,8 @@ import Training from "@/pages/training";
 import TrainingDetail from "@/pages/training-detail";
 import TrainingAssign from "@/pages/training-assign";
 import Academy from "@/pages/academy";
+import AcademySupervisor from "@/pages/academy-supervisor";
+import AcademyHQ from "@/pages/academy-hq";
 import GorevDetay from "@/pages/gorev-detay";
 import IK from "@/pages/ik";
 import PersonelOnboarding from "@/pages/personel-onboarding";
@@ -117,6 +119,8 @@ function Router() {
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
           <Route path="/akademi" component={Academy} />
+          <Route path="/akademi-supervisor" component={AcademySupervisor} />
+          <Route path="/akademi-hq" component={AcademyHQ} />
           <Route path="/egitim/:id" component={TrainingDetail} />
           <Route path="/egitim" component={Training} />
           <Route path="/egitim-ata" component={TrainingAssign} />
