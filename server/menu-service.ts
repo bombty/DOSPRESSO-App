@@ -41,7 +41,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     items: [
       {
         id: "branch-dashboard",
-        titleTr: "Şube Paneli",
+        titleTr: "Ana Sayfa",
         path: "/sube-dashboard",
         icon: "Home",
         moduleKey: "dashboard",
