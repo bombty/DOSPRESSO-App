@@ -10915,6 +10915,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/academy/question - Create new question
+  app.post('/api/academy/question', isAuthenticated, async (req: any, res) => {
+    try {
+      const roleStr = Array.isArray(req.user.role) ? req.user.role[0] : req.user.role;
+      if (!isHQRole(roleStr as any)) return res.status(403).json({ message: "Yalnızca HQ erişebilir" });
+      const question = await storage.createQuizQuestion(req.body);
+      res.json(question);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE /api/academy/question/:id - Delete question
+  app.delete('/api/academy/question/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const roleStr = Array.isArray(req.user.role) ? req.user.role[0] : req.user.role;
+      if (!isHQRole(roleStr as any)) return res.status(403).json({ message: "Yalnızca HQ erişebilir" });
+      const { id } = req.params;
+      await db.delete(quizQuestions).where(eq(quizQuestions.id, parseInt(id)));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // GET /api/academy/recommended-quizzes - Get quizzes for user's career level
   app.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any, res) => {
     try {

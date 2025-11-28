@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,12 +29,21 @@ const assignmentSchema = z.object({
   targetId: z.string().min(1, "Hedef seçin"),
 });
 
+const questionSchema = z.object({
+  quizId: z.number().min(1, "Quiz seçin"),
+  question: z.string().min(5, "Soru en az 5 karakter olmalı"),
+  options: z.array(z.string()).min(2, "En az 2 seçenek gerekli"),
+  correctAnswerIndex: z.number().min(0),
+});
+
 export default function AcademyHQ() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
   const [isCreateQuizOpen, setIsCreateQuizOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
+  const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
 
   // Check HQ access
   if (!user || !isHQRole(user.role as any)) {
@@ -50,6 +59,11 @@ export default function AcademyHQ() {
   const assignForm = useForm({
     resolver: zodResolver(assignmentSchema),
     defaultValues: { quizId: "", assignTo: "user" as const, targetId: "" },
+  });
+
+  const questionForm = useForm({
+    resolver: zodResolver(questionSchema),
+    defaultValues: { quizId: 1, question: "", options: ["", ""], correctAnswerIndex: 0 },
   });
 
   // Get pending exam requests
@@ -134,6 +148,50 @@ export default function AcademyHQ() {
     },
   });
 
+  // Get quiz questions
+  const { data: quizQuestions = [] } = useQuery({
+    queryKey: [`/api/academy/quiz/${selectedQuizId}/questions`],
+    queryFn: async () => {
+      if (!selectedQuizId) return [];
+      const res = await fetch(`/api/academy/quiz/${selectedQuizId}/questions`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!selectedQuizId,
+  });
+
+  // Get all users
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const deleteQuestionMutation = useMutation({
+    mutationFn: async (questionId: number) => {
+      return apiRequest("DELETE", `/api/academy/question/${questionId}`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Soru silindi" });
+      queryClient.invalidateQueries({ queryKey: [`/api/academy/quiz/${selectedQuizId}/questions`] });
+    },
+  });
+
+  const createQuestionMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof questionSchema>) => {
+      return apiRequest("POST", "/api/academy/question", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Soru eklendi" });
+      setIsAddQuestionOpen(false);
+      questionForm.reset();
+      queryClient.invalidateQueries({ queryKey: [`/api/academy/quiz/${selectedQuizId}/questions`] });
+    },
+  });
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -153,7 +211,7 @@ export default function AcademyHQ() {
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="pending">
             <Clock className="w-4 h-4 mr-2" />
             Beklemede ({pendingExams.length})
@@ -166,9 +224,17 @@ export default function AcademyHQ() {
             <BookOpen className="w-4 h-4 mr-2" />
             Quizler
           </TabsTrigger>
+          <TabsTrigger value="questions">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Sorular
+          </TabsTrigger>
           <TabsTrigger value="assignments">
             <Users className="w-4 h-4 mr-2" />
             Atamalar
+          </TabsTrigger>
+          <TabsTrigger value="users">
+            <Users className="w-4 h-4 mr-2" />
+            Kullanıcılar
           </TabsTrigger>
         </TabsList>
 
@@ -378,6 +444,94 @@ export default function AcademyHQ() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="questions" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <select 
+                value={selectedQuizId || ""} 
+                onChange={(e) => setSelectedQuizId(e.target.value ? parseInt(e.target.value) : null)}
+                className="border rounded px-2 py-1"
+              >
+                <option value="">Quiz Seçin</option>
+                {quizzes.map((q: any) => (
+                  <option key={q.id} value={q.id}>{q.title}</option>
+                ))}
+              </select>
+            </div>
+            {selectedQuizId && (
+              <Dialog open={isAddQuestionOpen} onOpenChange={setIsAddQuestionOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Soru Ekle
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Yeni Soru Ekle</DialogTitle>
+                  </DialogHeader>
+                  <Form {...questionForm}>
+                    <form onSubmit={questionForm.handleSubmit((data) => createQuestionMutation.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={questionForm.control}
+                        name="question"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Soru</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Soru yazın..." {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={questionForm.control}
+                        name="correctAnswerIndex"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Doğru Cevap Index</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" disabled={createQuestionMutation.isPending}>Ekle</Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+
+          <Card>
+            <CardContent className="pt-6">
+              {!selectedQuizId ? (
+                <div className="text-center py-8 text-muted-foreground">Quiz seçin</div>
+              ) : quizQuestions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">Henüz soru yok</div>
+              ) : (
+                <div className="space-y-2">
+                  {quizQuestions.map((q: any) => (
+                    <div key={q.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{q.question}</p>
+                      </div>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        onClick={() => deleteQuestionMutation.mutate(q.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="assignments" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Quiz Atama</h3>
@@ -450,6 +604,41 @@ export default function AcademyHQ() {
               <div className="text-center py-8 text-muted-foreground">
                 Sağ üstteki "Quiz Ata" butonuyla başla
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="users" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Akademi Kullanıcıları</CardTitle>
+              <CardDescription>Toplam {allUsers.length} kullanıcı</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {allUsers.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">Kullanıcı yok</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b">
+                      <tr>
+                        <th className="text-left py-2 px-2">İsim</th>
+                        <th className="text-left py-2 px-2">Email</th>
+                        <th className="text-left py-2 px-2">Rol</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {allUsers.slice(0, 10).map((u: any) => (
+                        <tr key={u.id}>
+                          <td className="py-2 px-2">{u.fullName || u.name || "—"}</td>
+                          <td className="py-2 px-2 text-xs text-muted-foreground">{u.email}</td>
+                          <td className="py-2 px-2"><Badge variant="outline">{Array.isArray(u.role) ? u.role[0] : u.role}</Badge></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
