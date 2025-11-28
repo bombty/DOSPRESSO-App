@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame, Trophy, Bookmark, Brain } from "lucide-react";
+import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame, Trophy, Bookmark, Brain, Shield } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -437,6 +437,18 @@ export default function Academy() {
                 Kohort Analizi
               </CardTitle>
               <CardDescription>HQ leadership insights</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-achievements">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Başarılar
+              </CardTitle>
+              <CardDescription>Mileleri açarak başarı kazan</CardDescription>
             </CardHeader>
           </Card>
         </Link>

@@ -44,6 +44,7 @@ import AcademyCertificates from "@/pages/academy-certificates";
 import AcademyCohortAnalytics from "@/pages/academy-cohort-analytics";
 import AcademyLearningPaths from "@/pages/academy-learning-paths";
 import AcademyLearningPathDetail from "@/pages/academy-learning-path-detail";
+import AcademyAchievements from "@/pages/academy-achievements";
 import GorevDetay from "@/pages/gorev-detay";
 import IK from "@/pages/ik";
 import PersonelOnboarding from "@/pages/personel-onboarding";
@@ -142,6 +143,7 @@ function Router() {
           <Route path="/akademi-cohort-analytics" component={AcademyCohortAnalytics} />
           <Route path="/akademi-learning-paths" component={AcademyLearningPaths} />
           <Route path="/akademi-learning-path/:pathId" component={AcademyLearningPathDetail} />
+          <Route path="/akademi-achievements" component={AcademyAchievements} />
           <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
           <Route path="/egitim/:id" component={TrainingDetail} />
           <Route path="/egitim" component={Training} />
