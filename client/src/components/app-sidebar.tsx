@@ -265,6 +265,20 @@ export function AppSidebar() {
                 </>
               )}
               
+              {/* Academy Link */}
+              {(branchSections.length > 0 || hqSections.length > 0 || bothSections.length > 0) && <div className="my-2 border-t" />}
+              <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Eğitim
+              </div>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/akademi"} data-testid="link-academy">
+                  <Link href="/akademi">
+                    <LucideIcons.Trophy className="h-4 w-4" />
+                    <span>Akademi</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
               {/* Error state */}
               {isError && sections.length === 0 && (
                 <div className="p-4 text-sm text-muted-foreground text-center">
