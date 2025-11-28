@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame, Trophy } from "lucide-react";
+import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame, Trophy, Bookmark } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -401,6 +401,18 @@ export default function Academy() {
                 Takım Yarışmaları
               </CardTitle>
               <CardDescription>Şubeler arası rekabet</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-certificates">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Bookmark className="w-5 h-5" />
+                Sertifikalar
+              </CardTitle>
+              <CardDescription>Kazanılan belgeler</CardDescription>
             </CardHeader>
           </Card>
         </Link>
