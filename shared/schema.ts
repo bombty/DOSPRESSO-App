@@ -3367,3 +3367,95 @@ export const insertBackupRecordSchema = createInsertSchema(backupRecords).omit({
 
 export type InsertBackupRecord = z.infer<typeof insertBackupRecordSchema>;
 export type BackupRecord = typeof backupRecords.$inferSelect;
+
+// ========================================
+// TRAINING MATERIALS - AI Eğitim Materyalleri
+// ========================================
+
+// Training Materials - Knowledge Base makalesinden AI tarafından oluşturulan eğitim içeriği
+export const trainingMaterials = pgTable("training_materials", {
+  id: serial("id").primaryKey(),
+  articleId: integer("article_id").notNull().references(() => knowledgeBaseArticles.id, { onDelete: "cascade" }),
+  materialType: varchar("material_type", { length: 50 }).notNull(), // flashcard_set, quiz, multi_step_guide, mindmap
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  content: jsonb("content").notNull(), // { flashcards: [], quizzes: [], steps: [], mindmap: {} }
+  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, published, archived
+  targetRoles: text("target_roles").array(), // Hedef roller
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("training_materials_article_idx").on(table.articleId),
+  index("training_materials_status_idx").on(table.status),
+  index("training_materials_type_idx").on(table.materialType),
+]);
+
+export const insertTrainingMaterialSchema = createInsertSchema(trainingMaterials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTrainingMaterial = z.infer<typeof insertTrainingMaterialSchema>;
+export type TrainingMaterial = typeof trainingMaterials.$inferSelect;
+
+// Training Assignments - Eğitim atamaları (kullanıcı/rol gruplarına)
+export const trainingAssignments = pgTable("training_assignments", {
+  id: serial("id").primaryKey(),
+  materialId: integer("material_id").notNull().references(() => trainingMaterials.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  targetRole: varchar("target_role", { length: 50 }), // Rol grubuna atama
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+  assignedById: varchar("assigned_by_id").notNull().references(() => users.id),
+  dueDate: date("due_date"),
+  isRequired: boolean("is_required").default(true),
+  status: varchar("status", { length: 20 }).notNull().default("assigned"), // assigned, in_progress, completed, overdue, expired
+  remindersSent: integer("reminders_sent").default(0),
+  lastReminderAt: timestamp("last_reminder_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("training_assignments_material_idx").on(table.materialId),
+  index("training_assignments_user_idx").on(table.userId),
+  index("training_assignments_status_idx").on(table.status),
+  index("training_assignments_due_date_idx").on(table.dueDate),
+]);
+
+export const insertTrainingAssignmentSchema = createInsertSchema(trainingAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTrainingAssignment = z.infer<typeof insertTrainingAssignmentSchema>;
+export type TrainingAssignment = typeof trainingAssignments.$inferSelect;
+
+// Training Completions - Tamamlama kayıtları (skor, süre, durumlar)
+export const trainingCompletions = pgTable("training_completions", {
+  id: serial("id").primaryKey(),
+  assignmentId: integer("assignment_id").notNull().references(() => trainingAssignments.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  materialId: integer("material_id").notNull().references(() => trainingMaterials.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull().default("in_progress"), // in_progress, passed, failed, abandoned
+  score: integer("score"), // 0-100
+  timeSpentSeconds: integer("time_spent_seconds").default(0),
+  completedAt: timestamp("completed_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("training_completions_user_idx").on(table.userId),
+  index("training_completions_material_idx").on(table.materialId),
+  index("training_completions_status_idx").on(table.status),
+  index("training_completions_completed_idx").on(table.completedAt),
+]);
+
+export const insertTrainingCompletionSchema = createInsertSchema(trainingCompletions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTrainingCompletion = z.infer<typeof insertTrainingCompletionSchema>;
+export type TrainingCompletion = typeof trainingCompletions.$inferSelect;

@@ -4,15 +4,36 @@
 DOSPRESSO is a web-based platform designed to centralize and streamline coffee shop franchise operations for Headquarter (HQ) staff. Its core purpose is to monitor branches, assign and AI-verify tasks, track equipment health, manage training, and provide comprehensive support. The platform aims to enhance efficiency, ensure brand consistency across all DOSPRESSO branches, and provides robust role-based access control specifically tailored for the Turkish market. Key capabilities include unified fault management with QR integration, SLA monitoring, and an AI-powered knowledge base.
 
 ## Recent Changes (Session: Nov 28, 2025)
-- **Sidebar Menu Architecture Overhaul**: Completely redesigned sidebar menu system with server-authoritative RBAC
-  - New static menu blueprint in `server/menu-service.ts` with role/scope-based filtering
-  - Simplified `app-sidebar.tsx` to be render-only component (removed all client-side RBAC logic)
-  - New `/api/me/menu` v2 endpoint returns pre-filtered menu sections based on user role
-  - Frontend groups sections by scope (Şube İşlemleri, Merkez HQ, Genel İşlemler)
-- **Badge Count Fix**: Fixed `storage.countUnreadNotifications is not a function` error by using existing `getUserNotifications` and `getUnreadMessageCount` methods
+
+### COMPLETED: Training System Infrastructure (Nov 28)
+- **Database Schema**: Added 3 new tables to support AI-powered education system
+  - `training_materials`: AI-generated content from knowledge base articles (flashcard_set, quiz, multi_step_guide, mindmap)
+  - `training_assignments`: Track training assignments to users/roles with due dates and required flags
+  - `training_completions`: Store completion records with scores, time spent, and status tracking
+  - Database migration applied successfully via `npm run db:push`
+- **Storage Interface**: Implemented training CRUD operations in `server/storage.ts`
+  - `getTrainingMaterials()`, `createTrainingMaterial()`, `updateTrainingMaterial()`
+  - `getTrainingAssignments()`, `createTrainingAssignment()`, `updateTrainingAssignmentStatus()`
+  - `getTrainingCompletions()`, `getUserTrainingProgress()` with summary stats
+- **Schema Validation**: Added Zod schemas for type safety
+  - `insertTrainingMaterialSchema`, `insertTrainingAssignmentSchema`, `insertTrainingCompletionSchema`
+
+### TODO: Training System Frontend & API (next phase)
+- **Routes API Endpoints**: POST/GET endpoints for training material CRUD and assignment management
+- **AI Integration**: Hook knowledge base article publishing to auto-generate training materials
+- **Frontend Pages**: 
+  - HQ: Training Material Management, Bulk Assignment UI (assign by role groups)
+  - Personel Kartı: New "Eğitim Durumu" tab showing assigned/completed/overdue trainings
+  - Dashboard: Training statistics by branch and role
+- **Score Integration**: Wire training completion to performance score calculation
+- **Auto Reminders**: Background job for daily overdue training notifications
+- **Sidebar Menu Fix**: Dashboard item rendering (empty title with single item)
+
+### Previous Session
+- **Sidebar Menu Architecture Overhaul**: Server-authoritative RBAC with static menu blueprint
+- **Badge Count Fix**: Fixed `storage.countUnreadNotifications is not a function` error
 - **RBAC Menu Fix**: Fixed sidebar showing HQ menu items to supervisor/branch roles
-- **UI Cleanup**: Removed redundant CardDescriptions and titles from `vardiyalar.tsx` CheckInContent component
-- **Critical API Fix**: Fixed `/api/shifts/my` endpoint returning NaN error
+- **UI Cleanup**: Removed redundant CardDescriptions
 - **System Status**: All critical systems stable - database, backup, QR scanning, notifications working
 
 ## User Preferences

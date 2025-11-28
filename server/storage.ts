@@ -5392,6 +5392,76 @@ export class DatabaseStorage implements IStorage {
     
     return modules;
   }
+
+  // ========================================
+  // TRAINING MATERIALS OPERATIONS
+  // ========================================
+  
+  async getTrainingMaterials(status?: string): Promise<typeof trainingMaterials.$inferSelect[]> {
+    const where = status ? eq(trainingMaterials.status, status) : undefined;
+    return db.select().from(trainingMaterials).where(where || sql`1=1`).orderBy(desc(trainingMaterials.createdAt));
+  }
+
+  async getTrainingMaterial(id: number): Promise<typeof trainingMaterials.$inferSelect | undefined> {
+    const [result] = await db.select().from(trainingMaterials).where(eq(trainingMaterials.id, id));
+    return result;
+  }
+
+  async createTrainingMaterial(material: typeof trainingMaterials.$inferInsert): Promise<typeof trainingMaterials.$inferSelect> {
+    const [result] = await db.insert(trainingMaterials).values(material).returning();
+    return result;
+  }
+
+  async updateTrainingMaterial(id: number, updates: Partial<typeof trainingMaterials.$inferInsert>): Promise<typeof trainingMaterials.$inferSelect | undefined> {
+    const [result] = await db.update(trainingMaterials).set({...updates, updatedAt: new Date()}).where(eq(trainingMaterials.id, id)).returning();
+    return result;
+  }
+
+  // Training Assignments
+  async getTrainingAssignments(filters?: { materialId?: number; userId?: string; status?: string }): Promise<typeof trainingAssignments.$inferSelect[]> {
+    let query = db.select().from(trainingAssignments);
+    const conditions: SQL[] = [];
+    if (filters?.materialId) conditions.push(eq(trainingAssignments.materialId, filters.materialId));
+    if (filters?.userId) conditions.push(eq(trainingAssignments.userId, filters.userId));
+    if (filters?.status) conditions.push(eq(trainingAssignments.status, filters.status));
+    if (conditions.length) query = query.where(and(...conditions));
+    return query.orderBy(desc(trainingAssignments.createdAt));
+  }
+
+  async createTrainingAssignment(assignment: typeof trainingAssignments.$inferInsert): Promise<typeof trainingAssignments.$inferSelect> {
+    const [result] = await db.insert(trainingAssignments).values(assignment).returning();
+    return result;
+  }
+
+  async updateTrainingAssignmentStatus(id: number, status: string): Promise<typeof trainingAssignments.$inferSelect | undefined> {
+    const [result] = await db.update(trainingAssignments).set({status, updatedAt: new Date()}).where(eq(trainingAssignments.id, id)).returning();
+    return result;
+  }
+
+  // Training Completions
+  async createTrainingCompletion(completion: typeof trainingCompletions.$inferInsert): Promise<typeof trainingCompletions.$inferSelect> {
+    const [result] = await db.insert(trainingCompletions).values(completion).returning();
+    return result;
+  }
+
+  async getTrainingCompletions(filters?: { userId?: string; materialId?: number; status?: string }): Promise<typeof trainingCompletions.$inferSelect[]> {
+    let query = db.select().from(trainingCompletions);
+    const conditions: SQL[] = [];
+    if (filters?.userId) conditions.push(eq(trainingCompletions.userId, filters.userId));
+    if (filters?.materialId) conditions.push(eq(trainingCompletions.materialId, filters.materialId));
+    if (filters?.status) conditions.push(eq(trainingCompletions.status, filters.status));
+    if (conditions.length) query = query.where(and(...conditions));
+    return query.orderBy(desc(trainingCompletions.completedAt));
+  }
+
+  async getUserTrainingProgress(userId: string): Promise<{ total: number; completed: number; inProgress: number; overdue: number }> {
+    const assignments = await db.select().from(trainingAssignments).where(eq(trainingAssignments.userId, userId));
+    const completions = await db.select().from(trainingCompletions).where(eq(trainingCompletions.userId, userId));
+    const completed = completions.filter(c => c.status === 'passed').length;
+    const inProgress = assignments.filter(a => a.status === 'in_progress').length;
+    const overdue = assignments.filter(a => a.status === 'overdue').length;
+    return { total: assignments.length, completed, inProgress, overdue };
+  }
 }
 
 export const storage = new DatabaseStorage();
