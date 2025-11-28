@@ -4,9 +4,13 @@
 DOSPRESSO is a web-based platform designed to centralize and streamline coffee shop franchise operations for Headquarter (HQ) staff. Its core purpose is to monitor branches, assign and AI-verify tasks, track equipment health, manage training, and provide comprehensive support. The platform aims to enhance efficiency, ensure brand consistency across all DOSPRESSO branches, and provides robust role-based access control specifically tailored for the Turkish market. Key capabilities include unified fault management with QR integration, SLA monitoring, and an AI-powered knowledge base.
 
 ## Recent Changes (Session: Nov 28, 2025)
+- **RBAC Menu Fix**: Fixed sidebar showing HQ menu items to supervisor/branch roles - implemented aggressive frontend filtering to strip HQ-scoped items from branch users and vice versa
+- **Frontend Scope Filtering**: Enhanced `app-sidebar.tsx` with role-based scope checking - branch users never see HQ menu items, HQ users never see branch menu items
+- **Fallback Menu Protection**: Applied same scope filtering to hardcoded fallback menu to prevent scope leakage
+- **Backend Verification**: Confirmed `/api/menu` endpoint correctly filters menu sections by role - supervisor receives only 'branch' and 'both' scoped sections
+- **Database Confirmed**: Menu sections properly seeded with scope attributes (hq/branch/both) for accurate role-based filtering
 - **UI Cleanup**: Removed redundant CardDescriptions and titles from `vardiyalar.tsx` CheckInContent component - streamlined shift check-in UI
 - **Critical API Fix**: Fixed `/api/shifts/my` endpoint returning NaN error - moved route before `/api/shifts/:id` wildcard route to prevent incorrect matching
-- **Route Ordering**: Ensured specific routes (`/api/shifts/my`) are defined before wildcard routes (`/api/shifts/:id`) in Express
 - **Shift Check-in System**: Fully functional QR-based shift check-in with location verification
 - **System Status**: All critical systems stable - database, backup, QR scanning, notifications working
 
