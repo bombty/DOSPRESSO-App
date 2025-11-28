@@ -35,7 +35,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   // Branch-Only: Dashboard
   {
     id: "dashboard-branch",
-    titleTr: "Şube Paneli",
+    titleTr: "Ana Sayfa",
     icon: "Home",
     scope: "branch",
     items: [
