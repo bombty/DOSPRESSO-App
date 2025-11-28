@@ -22,7 +22,6 @@ export default function AcademyQuiz() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
-  const [adaptiveRec, setAdaptiveRec] = useState<any>(null);
 
   // Fetch quiz questions from database
   const { data: questions = [], isLoading } = useQuery({
@@ -205,8 +204,8 @@ export default function AcademyQuiz() {
             <p className="text-lg font-medium mb-4">{question.questionText}</p>
 
             <RadioGroup value={answers[currentQuestion] || ""} onValueChange={(value) => setAnswers({ ...answers, [currentQuestion]: value })}>
-              {question.options.map((option, idx) => (
-                <div key={idx} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted">
+              {question.options.map((option: string, idx: number) => (
+                <div key={idx} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted" data-testid={`option-${idx}`}>
                   <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
                   <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer">
                     {option}
