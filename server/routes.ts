@@ -6776,11 +6776,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const userRole = user.role as UserRoleType;
       
-      // Fetch badge counts
-      const [notificationCount, messageCount] = await Promise.all([
-        storage.countUnreadNotifications(user.id),
-        storage.countUnreadMessages(user.id),
-      ]);
+      // Fetch badge counts using existing storage methods
+      let notificationCount = 0;
+      let messageCount = 0;
+      
+      try {
+        const notifications = await storage.getUserNotifications(user.id);
+        notificationCount = notifications.filter(n => !n.readAt).length;
+      } catch (e) {
+        // Ignore notification count errors
+      }
+      
+      try {
+        const unreadResult = await storage.getUnreadMessageCount(user.id);
+        messageCount = unreadResult?.count || 0;
+      } catch (e) {
+        // Ignore message count errors
+      }
       
       const badges: Record<string, number> = {
         notifications: notificationCount,
