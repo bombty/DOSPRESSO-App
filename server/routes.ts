@@ -10922,6 +10922,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/academy/generate-quiz - AI Motor: Generate quiz from article content
+  app.post('/api/academy/generate-quiz', isAuthenticated, async (req: any, res) => {
+    try {
+      const { articleContent, articleTitle, quizId } = req.body;
+      
+      if (!articleContent || !quizId) {
+        return res.status(400).json({ message: 'İçerik ve quiz ID gereklidir' });
+      }
+
+      // Call AI Motor to generate questions
+      const generatedQuestions = await generateQuizQuestionsFromLesson(articleContent, 5);
+      
+      // Save each generated question to database
+      const savedQuestions = await Promise.all(
+        generatedQuestions.map(async (q: any) => {
+          return storage.createQuizQuestion({
+            quizId: quizId.toString(),
+            questionText: q.question,
+            options: q.options || [],
+            correctAnswerIndex: (q.options || []).indexOf(q.correctAnswer),
+            explanation: q.explanation || '',
+          });
+        })
+      );
+
+      res.json({
+        success: true,
+        generatedCount: savedQuestions.length,
+        message: `${savedQuestions.length} soru başarıyla oluşturuldu`,
+        questions: savedQuestions,
+      });
+    } catch (error: any) {
+      console.error('Quiz generation error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
