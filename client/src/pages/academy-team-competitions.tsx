@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Flame, Trophy, Target, Users, Zap, Lock } from "lucide-react";
-import { Loader } from "lucide-react";
+import { ArrowLeft, Flame, Trophy, Target, Users, Zap, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Loader } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function AcademyTeamCompetitions() {
   const { user } = useAuth();
@@ -38,7 +40,18 @@ export default function AcademyTeamCompetitions() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
+      $3div>
         <h1 className="text-3xl font-bold tracking-tight">Takım Yarışmaları</h1>
         <p className="text-muted-foreground mt-2">Şubeler arası rekabetçi eğitim yarışmaları</p>
       </div>

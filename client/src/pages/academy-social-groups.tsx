@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, MessageSquare, BookOpen, UserPlus } from "lucide-react";
+import { ArrowLeft, Users, MessageSquare, BookOpen, UserPlus } from "lucide-react";
 
 export default function AcademySocialGroups() {
   const { user } = useAuth();
@@ -23,7 +23,18 @@ export default function AcademySocialGroups() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
+      $3div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Users className="w-8 h-8 text-blue-500" />
           Sosyal İşbirliği

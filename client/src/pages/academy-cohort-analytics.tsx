@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, Users, Target, Zap, Loader } from "lucide-react";
+import { ArrowLeft, TrendingUp, Users, Target, Zap, Loader } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -72,7 +73,18 @@ export default function AcademyCohortAnalytics() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
+      $3div>
         <h1 className="text-3xl font-bold tracking-tight">Kohort Analitikleri</h1>
         <p className="text-muted-foreground mt-2">Kullanıcı gruplarının Akademi içinde ilerleme analizi</p>
       </div>

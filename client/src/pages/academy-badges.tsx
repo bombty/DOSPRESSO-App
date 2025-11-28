@@ -3,7 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Award, Star, Zap, Flame, Trophy, Coffee, Users, Lock } from "lucide-react";
+import { ArrowLeft, Award, Star, Zap, Flame, Trophy, Coffee, Users, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
 const BADGE_ICONS: Record<string, any> = {
@@ -51,7 +52,18 @@ export default function AcademyBadges() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
+      $3div>
         <h1 className="text-3xl font-bold tracking-tight">Başarılar ve Rozetler</h1>
         <p className="text-muted-foreground mt-2">Eğitim yolculuğunda elde ettiğiniz başarılar</p>
       </div>

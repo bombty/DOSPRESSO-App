@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap } from "lucide-react";
 
 export default function AcademyQuiz() {
   const { toast } = useToast();

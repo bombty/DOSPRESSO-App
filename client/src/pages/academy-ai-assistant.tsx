@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader, Send, Sparkles, BookOpen } from "lucide-react";
+import { ArrowLeft, Loader, Send, Sparkles, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Message {
@@ -83,6 +83,17 @@ export default function AcademyAIAssistant() {
 
   return (
     <div className="space-y-6 p-6 max-w-4xl mx-auto">
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Sparkles className="w-8 h-8 text-blue-500" />

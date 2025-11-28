@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Target, Zap, Calendar, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, TrendingUp, Target, Zap, Calendar, CheckCircle2, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 
 export default function AcademyProgressOverview() {
@@ -42,7 +42,18 @@ export default function AcademyProgressOverview() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
+      $3div>
         <h1 className="text-3xl font-bold tracking-tight">İlerleme Özeti</h1>
         <p className="text-muted-foreground mt-2">Tüm başarılarınızı ve hedeflerinizi bir yerde görün</p>
       </div>

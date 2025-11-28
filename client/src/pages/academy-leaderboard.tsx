@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, TrendingUp, Award, Flame } from "lucide-react";
+import { ArrowLeft, Trophy, TrendingUp, Award, Flame } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function AcademyLeaderboard() {
   const { user } = useAuth();
@@ -46,7 +47,18 @@ export default function AcademyLeaderboard() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
+      $3div>
         <h1 className="text-3xl font-bold tracking-tight">Academy Liderliği</h1>
         <p className="text-muted-foreground mt-2">En yüksek performans gösteren çalışanlar ve şubeler</p>
       </div>

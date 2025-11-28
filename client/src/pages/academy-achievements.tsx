@@ -3,8 +3,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Trophy, Flame, Target, Zap, Star, Lock } from "lucide-react";
-import { Loader } from "lucide-react";
+import { ArrowLeft, Trophy, Flame, Target, Zap, Star, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Loader } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const ACHIEVEMENTS = [
   {
@@ -100,7 +102,18 @@ export default function AcademyAchievements() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
+      $3div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Trophy className="w-8 h-8 text-amber-500" />
           Başarılar

@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame, Trophy, Bookmark, Brain, Shield, Users, TrendingUp as Analytics } from "lucide-react";
+import { ArrowLeft, Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame, Trophy, Bookmark, Brain, Shield, Users, TrendingUp as Analytics } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -110,6 +110,17 @@ export default function Academy() {
 
   return (
     <div className="space-y-6 p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">DOSPRESSO Academy</h1>

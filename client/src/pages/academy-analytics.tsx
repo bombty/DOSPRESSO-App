@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer as RC } from "recharts";
-import { Trophy, Target, TrendingUp, Users, Zap, Award } from "lucide-react";
-import { Loader } from "lucide-react";
+import { ArrowLeft, Trophy, Target, TrendingUp, Users, Zap, Award } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Loader } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function AcademyAnalytics() {
   const { user } = useAuth();
@@ -70,7 +72,18 @@ export default function AcademyAnalytics() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          size="icon"
+          data-testid="button-back"
+          title="Geri Dön"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      </div>
+      $3div>
         <h1 className="text-3xl font-bold tracking-tight">Akademi Analitikleri</h1>
         <p className="text-muted-foreground mt-2">Şube-çapı eğitim performansı ve ilerleme</p>
       </div>
