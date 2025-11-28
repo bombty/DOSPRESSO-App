@@ -143,6 +143,20 @@ export function AppSidebar() {
   const renderMenuSection = (section: SidebarMenuSection) => {
     const IconComponent = getIconComponent(section.icon);
     
+    // If section title is empty and there's only one item, render as direct link
+    if (!section.titleTr && section.items.length === 1) {
+      const item = section.items[0];
+      return (
+        <SidebarMenuItem key={section.id}>
+          <SidebarMenuButton asChild isActive={location === item.path} data-testid={`link-${item.id}`}>
+            <Link href={item.path}>
+              <span>{item.titleTr}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
+    }
+    
     return (
       <Collapsible key={section.id} defaultOpen className="group/collapsible">
         <SidebarMenuItem>
