@@ -11310,95 +11310,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bestStreak: 0,
         lastActivityDay: 'Hiç',
         totalDaysActive: 0,
-      });
-    }
-  });
 
-  // POST /api/academy/ai-assistant - AI chat assistant
-  app.post('/api/academy/ai-assistant', isAuthenticated, async (req: any, res) => {
-    try {
-      const { message, userId } = req.body;
-      res.json({ 
-        response: "Merhaba! Nasıl yardımcı olabilirim?" 
-      });
-    } catch (error: any) {
-      res.json({ response: 'Hata oluştu.' });
-    }
-  });
-
-  const httpServer = createServer(app);
-  return httpServer;
-}
-
-  // GET /api/academy/adaptive-recommendations/:userId - Phase 23: Adaptive Learning Engine
+  // GET /api/academy/adaptive-recommendations/:userId - Phase 23
   app.get('/api/academy/adaptive-recommendations/:userId', isAuthenticated, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
-      const recommendations = [
-        {
-          pathId: '1',
-          pathName: 'Barista Ustası Yolu',
-          description: 'Profesyonel kahve hazırlama teknikleri',
-          completionPercent: 45,
-          priority: 'high',
-          estimatedDays: 14,
-        },
-        {
-          pathId: '2',
-          pathName: 'Müşteri Hizmetleri',
-          description: 'Üstün müşteri ilişkileri kurma',
-          completionPercent: 30,
-          priority: 'medium',
-          estimatedDays: 10,
-        },
-      ];
-      res.json(recommendations);
-    } catch (error) {
-      res.json([]);
-    }
+    res.json([
+      { pathId: '1', pathName: 'Barista Yolu', completionPercent: 45, priority: 'high', estimatedDays: 14, description: 'Kahve hazırlama' },
+      { pathId: '2', pathName: 'Hizmet Yolu', completionPercent: 30, priority: 'medium', estimatedDays: 10, description: 'Müşteri ilişkileri' },
+    ]);
   });
 
-  // GET /api/academy/study-groups/:userId - Phase 24: Social Collaboration
+  // GET /api/academy/study-groups/:userId - Phase 24
   app.get('/api/academy/study-groups/:userId', isAuthenticated, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
-      const groups = [
-        {
-          id: '1',
-          name: 'Kahve Eksperleri',
-          topic: 'Kahve Teknikleri',
-          description: 'Profesyonel kahve hazırlama hakkında tartışma',
-          memberCount: 12,
-        },
-        {
-          id: '2',
-          name: 'Kariyer Hızlandırma',
-          topic: 'Kariyer Gelişimi',
-          description: 'Supervisor seviyesine ulaşma stratejileri',
-          memberCount: 8,
-        },
-      ];
-      res.json(groups);
-    } catch (error) {
-      res.json([]);
-    }
+    res.json([
+      { id: '1', name: 'Kahve Eksperleri', topic: 'Teknik', memberCount: 12, description: 'Kahve hakkında tartışma' },
+      { id: '2', name: 'Kariyer Yolu', topic: 'Gelişim', memberCount: 8, description: 'Supervisor seviyeleri' },
+    ]);
   });
 
-  // GET /api/academy/advanced-analytics/:userId - Phase 25: Advanced Analytics
+  // GET /api/academy/advanced-analytics/:userId - Phase 25
   app.get('/api/academy/advanced-analytics/:userId', isAuthenticated, async (req: any, res) => {
-    try {
-      const { userId } = req.params;
-      const analytics = {
-        totalScore: 85,
-        quizzesCompleted: 24,
-        learningHours: 42,
-        successRate: 92,
-        trends: 'Ascending',
-      };
-      res.json(analytics);
-    } catch (error) {
-      res.json({});
-    }
+    res.json({ totalScore: 85, quizzesCompleted: 24, learningHours: 42, successRate: 92 });
+  });
 
   const httpServer = createServer(app);
   return httpServer;
