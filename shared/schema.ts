@@ -90,6 +90,44 @@ export const BRANCH_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.YATIRIMCI_BRANCH,
 ]);
 
+// ========================================
+// SIMPLIFIED SIDEBAR MENU SYSTEM (v2)
+// Static menu blueprint - no database required
+// Server-side RBAC filtering only
+// ========================================
+
+export type SidebarMenuScope = 'branch' | 'hq' | 'both';
+
+export interface SidebarMenuItem {
+  id: string;
+  titleTr: string;
+  path: string;
+  icon: string;
+  moduleKey: PermissionModule;
+  scope: SidebarMenuScope;
+  badge?: string; // Badge key for dynamic counts (e.g., 'notifications', 'messages')
+}
+
+export interface SidebarMenuSection {
+  id: string;
+  titleTr: string;
+  icon: string;
+  scope: SidebarMenuScope;
+  items: SidebarMenuItem[];
+}
+
+// API response type for frontend consumption
+export interface SidebarMenuResponse {
+  sections: SidebarMenuSection[];
+  badges: Record<string, number>; // Badge counts (notifications, messages, etc.)
+  meta: {
+    userId: string;
+    role: UserRoleType;
+    scope: 'branch' | 'hq' | 'admin';
+    timestamp: number;
+  };
+}
+
 // Helper functions for role checking
 export function isHQRole(role: UserRoleType): boolean {
   return HQ_ROLES.has(role);
