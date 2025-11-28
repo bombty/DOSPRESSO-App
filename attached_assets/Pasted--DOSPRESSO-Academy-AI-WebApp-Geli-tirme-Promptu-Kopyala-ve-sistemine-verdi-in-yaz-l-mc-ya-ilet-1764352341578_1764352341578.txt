@@ -1,0 +1,185 @@
+
+DOSPRESSO Academy – AI & WebApp Geliştirme Promptu
+
+(Kopyala ve sistemine/verdiğin yazılımcıya ilet)
+
+Amaç:
+DOSPRESSO için rol bazlı, kariyer ilerlemeli, eğitim ve sınav yönetimli bir online eğitim (LMS) platformu geliştirilmesi. Sistem tüm eğitim modüllerini, quizleri, pratik değerlendirmeleri, supervisor talep mekanizmasını ve HQ onay sürecini içermelidir. Eğitim içeriklerinin üretimi AI tarafından desteklenecek, HQ tarafından kontrol edilecektir.
+
+⸻
+
+1. Kullanıcı Rollerinin Tanımları ve Yetkileri
+
+1) Stajyer (Entry)
+	•	Eğitim modüllerini görüntüler ve tamamlar
+	•	Quizlere girer
+	•	Kariyer ilerleme ekranını görmekle sınırlı
+
+2) Bar Buddy
+	•	Operasyon eğitimleri alır
+	•	Barista sınavına aday olabilir
+
+3) Barista
+	•	İleri eğitimler alır
+	•	Supervisor Buddy’ye aday olabilir
+
+4) Supervisor Buddy
+	•	Liderlik ve vardiya yönetimi eğitimleri
+
+5) Supervisor
+	•	Eğitim denetimi ve pratik kontrol yapar
+	•	Çalışan için Sınav Talebi başlatabilir
+	•	Supervisor paneline erişir
+
+6) HQ Training
+	•	Sınav taleplerini onaylar
+	•	Modülleri yayınlar
+	•	Tüm analitiği görür
+	•	Kariyer terfi onayını verir
+
+⸻
+
+2. Kariyer İlerleme Akışı
+
+Unvan ilerleme sırası:
+Stajyer → Bar Buddy → Barista → Supervisor Buddy → Supervisor
+
+Her ilerleme için mandatory şartlar:
+
+Stajyer → Bar Buddy
+	•	Tüm Oryantasyon modülleri %100
+	•	Quiz başarı ortalaması ≥ %80
+
+Bar Buddy → Barista
+	•	Ürün ve Müşteri Deneyimi modülleri %100
+	•	Supervisor sınav talebi
+	•	HQ onay
+	•	Teorik sınav + Pratik değerlendirme başarılı
+
+Barista → Supervisor Buddy
+	•	En az 3 ay tecrübe
+	•	Liderlik modülleri %100
+	•	Bölge/HQ önerisi
+
+Supervisor Buddy → Supervisor
+	•	Yönetim ve HR modülleri %100
+	•	HQ sınavı + mülakat
+
+Başarılı olunduğunda sistem otomatik olarak rolü günceller.
+
+⸻
+
+3. Eğitim Modül Yapısı
+
+Her modül AI tarafından şu parçalara dönüştürülür:
+	•	1 kısa öğrenme özeti (bullet format)
+	•	Görsel/video içerik desteği
+	•	3–5 soru teorik quiz
+	•	1–2 “senaryo bazlı” soru
+	•	Supervisor için pratik değerlendirme checklist’i (varsa)
+
+Modüller çok kısa tutulmalıdır (8–12 dakika).
+
+Modül durumları: Taslak / Yayında / Revizyonda
+
+⸻
+
+4. Sınav Yönetimi
+
+Talep Süreci
+	•	Supervisor ekrandan “Sınav Talebi” gönderir
+	•	HQ Training onayı olmadan sınav görünmez
+
+Sınav Özellikleri:
+	•	Zaman sınırlı (24–72 saat arası ayarlanabilir)
+	•	Tek giriş veya 2 giriş hakkı seçilebilir
+	•	Quiz + Senaryo + Pratik değerlendirme kombinasyonu
+
+Pratik Değerlendirme
+	•	Supervisor checklist doldurur
+	•	HQ son onayı verir
+
+⸻
+
+5. Paneller & Arayüz Gereksinimleri
+
+Çalışan Dashboard
+	•	“Benim Yolum” ilerleme çubuğu
+	•	Yaklaşan sınavlar (geri sayım)
+	•	Tamamlanan modüller & rozetler
+
+Supervisor Dashboard
+	•	Ekibim: isim / seviye / tamamlanma yüzdesi
+	•	“Sınav Talep Et” butonu
+	•	Şube eğitim performansı uyarıları
+	•	Ör: “X çalışanı 10 gündür eğitim açmadı”
+
+HQ Training Dashboard
+	•	Sınav talepleri listesi
+	•	Modül performans analitiği
+	•	Şube bazlı eğitim raporları
+	•	Terfi onay ekranı
+
+⸻
+
+6. AI İçerik Üretim Motoru
+
+Girdi: HQ tarafından yazılmış prosedür / makale
+Çıktılar:
+	•	Eğitim özeti slayt metinleri
+	•	Quiz soruları ve cevap anahtarları
+	•	Senaryo bazlı sorular
+	•	Supervisor checklist maddeleri
+	•	Modül kapak adı, seviye, rol eşleşmesi
+
+HQ içerikleri onayladıktan sonra yayınlanır.
+
+AI ayrıca:
+	•	Quiz yanlışlarında otomatik geri bildirim
+	•	Öğrenme yoluna uygun öneri yönlendirmeleri yapar
+“Bir sonraki adımın şu eğitim…”
+
+⸻
+
+7. Gamification
+	•	Rozet sistemi
+Ör: “100% Quiz Master”, “10 Mükemmel Müşteri Geri Bildirimi”
+	•	Seviye arttıkça profil çerçevesi değişir
+	•	Şubeler arası eğitim ligi
+
+⸻
+
+8. Veri & Raporlama
+	•	Tamamlama oranı
+	•	Quiz başarı ortalaması
+	•	Hangi modüller zorlayıcı?
+	•	Terfi süresi analizleri
+	•	Şube bazlı karşılaştırmalar
+
+⸻
+
+9. MVP Faz Planı
+
+V1 – 2 Ay
+	•	Rol bazlı eğitim yolu
+	•	Quizli modüller
+	•	Supervisor sınav talep sistemi
+	•	Zaman kısıtlı sınav
+
+V2 – 3–4 Ay
+	•	Pratik değerlendirme entegrasyonu
+	•	Gamification
+	•	AI adaptif asistan
+
+⸻
+
+UI prensipleri:
+	•	Çok sade
+	•	“Bugün ne öğrenmeliyim?” sorusunun cevabı tek ekranda
+	•	En fazla 2-3 tıklama ile sınava, eğitime ulaşma
+
+⸻
+
+Başarı kriteri:
+Tüm DOSPRESSO çalışanlarının sistem üzerinden
+eğitim → sınav → terfi sürecini tamamen dijital ve ölçülebilir şekilde yaşayabilmesi.

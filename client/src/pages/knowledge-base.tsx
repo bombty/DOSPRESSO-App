@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -23,9 +24,16 @@ import { BookOpen, Eye, Plus, CheckCircle, XCircle } from "lucide-react";
 export default function KnowledgeBase() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const isHQ = user?.role && isHQRole(user.role as any);
+
+  // Redirect non-HQ users away
+  if (user && !isHQ) {
+    setLocation("/");
+    return null;
+  }
 
   const { data: articles, isLoading } = useQuery<KnowledgeBaseArticle[]>({
     queryKey: ["/api/knowledge-base"],
