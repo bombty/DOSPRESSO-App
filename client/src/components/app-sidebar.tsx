@@ -137,27 +137,35 @@ const standaloneItems: MenuItem[] = [
 
 // Fallback hardcoded menu groups (used only if dynamic menu fails to load)
 // In normal operation, dynamic menu from database takes precedence
+// IMPORTANT: Scopes must match database menu_sections for proper RBAC filtering
 const menuGroups: MenuGroup[] = [
   {
-    groupTr: "Ana Menü",
+    groupTr: "Kontrol Paneli",
     icon: LayoutDashboard,
-    scope: "both",
+    scope: "hq",
     items: [
       {
-        title: "Dashboard",
-        titleTr: "Dashboard",
+        title: "Dashboard HQ",
+        titleTr: "Kontrol Paneli",
         url: "/",
         icon: LayoutDashboard,
         module: "dashboard",
-        scope: "both",
+        scope: "hq",
       },
+    ],
+  },
+  {
+    groupTr: "Şubeler",
+    icon: Building2,
+    scope: "hq",
+    items: [
       {
         title: "Şubeler",
         titleTr: "Şubeler",
         url: "/subeler",
         icon: Building2,
         module: "branches",
-        scope: "both",
+        scope: "hq",
       },
     ],
   },
@@ -277,7 +285,22 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    groupTr: "Yönetim",
+    groupTr: "Kalite & Gelişim",
+    icon: Star,
+    scope: "hq",
+    items: [
+      {
+        title: "Kalite Kontrol",
+        titleTr: "Kalite Kontrol",
+        url: "/kalite",
+        icon: Star,
+        module: "dashboard",
+        scope: "hq",
+      },
+    ],
+  },
+  {
+    groupTr: "Yönetim / Ayarlar",
     icon: Settings,
     scope: "hq",
     items: [
