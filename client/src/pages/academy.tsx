@@ -322,7 +322,7 @@ export default function Academy() {
                     : quiz.difficulty === 'hard' ? 'Zor' : 'Orta';
 
                   return (
-                    <Link key={quiz.id} href={`/akademi-quiz/${quiz.quizId}`}>
+                    <Link key={quiz.id} to={`/akademi-quiz/${quiz.quizId}`}>
                       <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer" data-testid={`quiz-card-${quiz.quizId}`}>
                         <div className="flex items-start justify-between mb-2">
                           <p className="font-medium text-sm flex-1">{quiz.titleTr}</p>
@@ -345,7 +345,7 @@ export default function Academy() {
 
       {/* Quick Links to Analytics & Badges */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link href="/akademi-analytics">
+        <Link to="/akademi-analytics">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -357,7 +357,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-badges">
+        <Link to="/akademi-badges">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -369,7 +369,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-leaderboard">
+        <Link to="/akademi-leaderboard">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -381,7 +381,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-branch-analytics">
+        <Link to="/akademi-branch-analytics">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -393,7 +393,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-team-competitions">
+        <Link to="/akademi-team-competitions">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -405,7 +405,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-certificates">
+        <Link to="/akademi-certificates">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -417,7 +417,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-learning-paths">
+        <Link to="/akademi-learning-paths">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -429,7 +429,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-cohort-analytics">
+        <Link to="/akademi-cohort-analytics">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -441,7 +441,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-achievements">
+        <Link to="/akademi-achievements">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -453,7 +453,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-progress-overview">
+        <Link to="/akademi-progress-overview">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -465,7 +465,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-streak-tracker">
+        <Link to="/akademi-streak-tracker">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -477,7 +477,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-ai-assistant">
+        <Link to="/akademi-ai-assistant">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -489,7 +489,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-adaptive-engine">
+        <Link to="/akademi-adaptive-engine">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -501,7 +501,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-social-groups">
+        <Link to="/akademi-social-groups">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -513,7 +513,7 @@ export default function Academy() {
           </Card>
         </Link>
 
-        <Link href="/akademi-advanced-analytics">
+        <Link to="/akademi-advanced-analytics">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">

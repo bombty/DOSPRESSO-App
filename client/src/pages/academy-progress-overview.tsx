@@ -96,7 +96,7 @@ export default function AcademyProgressOverview() {
                   <h3 className="font-semibold">{rec.title}</h3>
                   <p className="text-sm text-muted-foreground">{rec.description}</p>
                 </div>
-                <Link href="/akademi-learning-paths">
+                <Link to="/akademi-learning-paths">
                   <Button size="sm" variant="outline">{rec.action}</Button>
                 </Link>
               </div>
@@ -148,7 +148,7 @@ export default function AcademyProgressOverview() {
               <h3 className="font-semibold mb-1">Sıradaki Adım: Supervisor Buddy Sınavı</h3>
               <p className="text-sm text-muted-foreground">Takım yönetimi ve özür verme tekniklerini öğren</p>
             </div>
-            <Link href="/akademi-learning-paths">
+            <Link to="/akademi-learning-paths">
               <Button>
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Devam Et

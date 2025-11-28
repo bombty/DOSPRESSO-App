@@ -10919,9 +10919,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any, res) => {
     try {
       const quizzes = await storage.getRecommendedQuizzes(req.user.id);
-      res.json(quizzes);
+      res.json(quizzes || []);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      // Return empty array if quizzes table doesn't exist yet
+      if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
+        res.json([]);
+      } else {
+        res.status(500).json({ message: error.message });
+      }
     }
   });
 
