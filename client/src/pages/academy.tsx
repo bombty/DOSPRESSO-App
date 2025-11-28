@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb } from "lucide-react";
+import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -284,7 +284,7 @@ export default function Academy() {
         </Card>
       )}
 
-      {/* Recommended Quizzes */}
+      {/* Recommended Quizzes with Difficulty Progression */}
       {recommendedQuizzes.length > 0 && (
         <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
           <CardHeader>
@@ -292,22 +292,52 @@ export default function Academy() {
               <Lightbulb className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               Senin İçin Önerilen Sınavlar
             </CardTitle>
-            <CardDescription>Kariyer seviyene uygun sınavları başla</CardDescription>
+            <CardDescription>Kolaydan zora doğru ilerle: Kolay → Orta → Zor</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {recommendedQuizzes.map((quiz: any) => (
-                <Link key={quiz.id} href={`/akademi-quiz/${quiz.quizId}`}>
-                  <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer">
-                    <p className="font-medium text-sm">{quiz.titleTr}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{quiz.descriptionTr}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <Badge variant="outline" className="text-xs">{quiz.estimatedMinutes} dk</Badge>
-                      <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Başla →</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+            <div className="space-y-3">
+              {/* Difficulty Progression Indicator */}
+              <div className="flex items-center justify-between text-xs mb-3">
+                <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                  <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></span>
+                  Kolay
+                </span>
+                <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                  <span className="w-2 h-2 bg-yellow-600 dark:bg-yellow-400 rounded-full"></span>
+                  Orta
+                </span>
+                <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                  <span className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full"></span>
+                  Zor
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {recommendedQuizzes.map((quiz: any) => {
+                  const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200' 
+                    : quiz.difficulty === 'hard' ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200'
+                    : 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200';
+                  
+                  const diffLabel = quiz.difficulty === 'easy' ? 'Kolay' 
+                    : quiz.difficulty === 'hard' ? 'Zor' : 'Orta';
+
+                  return (
+                    <Link key={quiz.id} href={`/akademi-quiz/${quiz.quizId}`}>
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer" data-testid={`quiz-card-${quiz.quizId}`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="font-medium text-sm flex-1">{quiz.titleTr}</p>
+                          <Badge className={`text-xs ml-2 ${diffColor}`}>{diffLabel}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{quiz.descriptionTr}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <Badge variant="outline" className="text-xs">{quiz.estimatedMinutes} dk</Badge>
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Başla →</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </CardContent>
         </Card>
