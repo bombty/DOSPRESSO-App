@@ -11237,6 +11237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ completedQuizzes: 0, maxScore: 0, currentLevel: 1, currentStreak: 0, leaderboardRank: 0 });
     }
   });
+  });
 
   const httpServer = createServer(app);
   return httpServer;
