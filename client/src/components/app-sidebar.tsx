@@ -474,6 +474,10 @@ export function AppSidebar() {
   // Apply scope filtering to fallback menu too
   const filteredFallbackMenuGroups = menuGroups.filter((group) => {
     if (user?.role === 'admin') return true;
+    // Branch users should NEVER see HQ-scoped items
+    if (isBranchRole(user?.role as any) && group.scope === 'hq') return false;
+    // HQ users should NEVER see branch-scoped items
+    if (isHQRole(user?.role as any) && group.scope === 'branch') return false;
     if (!group.scope || group.scope === 'both') return true;
     if (group.scope === 'branch' && isBranchRole(user?.role as any)) return true;
     if (group.scope === 'hq' && isHQRole(user?.role as any)) return true;
@@ -512,6 +516,10 @@ export function AppSidebar() {
         if (user?.role === 'admin') {
           return group.scope === targetScope || (!group.scope && targetScope === 'both');
         }
+        // Branch users should NEVER see HQ-scoped items
+        if (isBranchRole(user?.role as any) && group.scope === 'hq') return false;
+        // HQ users should NEVER see branch-scoped items
+        if (isHQRole(user?.role as any) && group.scope === 'branch') return false;
         // For non-admins: check visibility and match scope
         // 'both' scope items should be visible in both 'branch' and 'hq' views
         if (!canSeeScope(group.scope)) return false;
@@ -523,6 +531,10 @@ export function AppSidebar() {
           if (!user?.role) return false;
           // Admin can access all modules
           if (user.role === 'admin') return true;
+          // Branch users should NEVER see HQ-scoped items
+          if (isBranchRole(user?.role as any) && item.scope === 'hq') return false;
+          // HQ users should NEVER see branch-scoped items
+          if (isHQRole(user?.role as any) && item.scope === 'branch') return false;
           // Check item scope visibility first
           if (!canSeeScope(item.scope)) return false;
           // Then check module access
