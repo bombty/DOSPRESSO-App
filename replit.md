@@ -5,29 +5,54 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 
 ## Recent Changes (Session: Nov 28, 2025)
 
-### COMPLETED: Training System Infrastructure (Nov 28)
-- **Database Schema**: Added 3 new tables to support AI-powered education system
-  - `training_materials`: AI-generated content from knowledge base articles (flashcard_set, quiz, multi_step_guide, mindmap)
-  - `training_assignments`: Track training assignments to users/roles with due dates and required flags
-  - `training_completions`: Store completion records with scores, time spent, and status tracking
-  - Database migration applied successfully via `npm run db:push`
-- **Storage Interface**: Implemented training CRUD operations in `server/storage.ts`
-  - `getTrainingMaterials()`, `createTrainingMaterial()`, `updateTrainingMaterial()`
-  - `getTrainingAssignments()`, `createTrainingAssignment()`, `updateTrainingAssignmentStatus()`
-  - `getTrainingCompletions()`, `getUserTrainingProgress()` with summary stats
-- **Schema Validation**: Added Zod schemas for type safety
-  - `insertTrainingMaterialSchema`, `insertTrainingAssignmentSchema`, `insertTrainingCompletionSchema`
+### COMPLETED: AI-Powered Training System - Full Implementation (Nov 28)
 
-### TODO: Training System Frontend & API (next phase)
-- **Routes API Endpoints**: POST/GET endpoints for training material CRUD and assignment management
-- **AI Integration**: Hook knowledge base article publishing to auto-generate training materials
-- **Frontend Pages**: 
-  - HQ: Training Material Management, Bulk Assignment UI (assign by role groups)
-  - Personel Kartı: New "Eğitim Durumu" tab showing assigned/completed/overdue trainings
-  - Dashboard: Training statistics by branch and role
-- **Score Integration**: Wire training completion to performance score calculation
-- **Auto Reminders**: Background job for daily overdue training notifications
-- **Sidebar Menu Fix**: Dashboard item rendering (empty title with single item)
+#### 1. Database & Storage (✅ COMPLETE)
+- **Three-table architecture**: training_materials, training_assignments, training_completions
+- **Storage layer**: All CRUD operations implemented with type safety
+- **Zod schemas**: Validation for inserts and updates
+
+#### 2. Frontend (✅ COMPLETE)
+- **Personel Kartı Integration**: New "Eğitim Durması" tab in `/personel-detay/:id`
+  - Summary stats: Total/Completed/In Progress/Overdue counts
+  - Average success rate progress bar
+  - List of assigned trainings with status badges
+  - Loading states and empty states
+- **HQ Training Assignment Page**: `/egitim-ata` page for bulk role-based assignments
+  - Material selection dropdown (published materials only)
+  - Target role selector (Barista, Supervisor, Coach, Teknik, etc.)
+  - Due date picker for assignment deadlines
+  - Permission-based access (HQ-only)
+- **App.tsx Registration**: New route `/egitim-ata` → `TrainingAssign` component
+
+#### 3. Backend API Endpoints (✅ COMPLETE)
+- **POST `/api/training/materials/generate`** - AI-powered material creation from KB articles
+- **GET `/api/training/materials`** - List published materials with status filtering
+- **POST `/api/training/assignments`** - Bulk assign trainings to role groups
+- **GET `/api/training/assignments`** - Fetch user/role-specific assignments
+- **POST `/api/training/assignments/:id/complete`** - Mark completion with score
+- **GET `/api/training/progress/:userId`** - User progress summary + stats
+- **GET `/api/training/stats`** - HQ dashboard statistics (by role, completion rates, avg scores)
+
+#### 4. Score Integration (✅ COMPLETE)
+- Training completion (score ≥70%) triggers performance score recording
+- Score calculation: `score / 100 * 20` (20-point training module contribution)
+- Automatic recording to `recordPerformanceScore()` on completion
+
+#### 5. Auto Reminders System (✅ COMPLETE)
+- **Background Job**: Runs every 6 hours via `startTrainingReminderJob()`
+- **Overdue Detection**: Marks assignments past due date + sends notification
+- **Reminder Tracking**: 
+  - Sends reminder when due within 24 hours
+  - Tracks reminder count (max 3 reminders per assignment)
+  - Records `lastReminderAt` timestamp
+- **Notifications**: Creates in-app notifications for training_overdue and training_reminder events
+
+### Architecture Highlights
+- **AI Integration Ready**: Hook in `/api/training/materials/generate` calls `generateFlashcardsFromLesson()` and `generateQuizQuestionsFromLesson()`
+- **Permission-Based**: All endpoints check HQ role for sensitive operations
+- **Scalable Design**: Supports multiple material types (flashcard_set, quiz, multi_step_guide, mindmap)
+- **User-Centric**: Progress tracking visible on employee cards, completion affects branch performance
 
 ### Previous Session
 - **Sidebar Menu Architecture Overhaul**: Server-authoritative RBAC with static menu blueprint

@@ -10430,6 +10430,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/training/stats - Training statistics for HQ/Supervisor
+  app.get('/api/training/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!hasPermission(req.user.role, 'training', 'view')) {
+        return res.status(403).json({ message: "İzniniz yok" });
+      }
+
+      const allAssignments = await storage.getTrainingAssignments();
+      const allCompletions = await storage.getTrainingCompletions();
+
+      const stats = {
+        totalAssigned: allAssignments.length,
+        completed: allCompletions.filter((c: any) => c.status === 'passed').length,
+        inProgress: allAssignments.filter((a: any) => a.status === 'in_progress').length,
+        overdue: allAssignments.filter((a: any) => a.status === 'overdue').length,
+        averageScore: allCompletions.length > 0
+          ? Math.round(allCompletions.reduce((sum: number, c: any) => sum + (c.score || 0), 0) / allCompletions.length)
+          : 0,
+        byRole: {} as any,
+      };
+
+      // Group by role
+      const roleStats = new Map<string, any>();
+      allAssignments.forEach((a: any) => {
+        const key = a.targetRole || 'unassigned';
+        if (!roleStats.has(key)) {
+          roleStats.set(key, { assigned: 0, completed: 0 });
+        }
+        roleStats.get(key).assigned++;
+        const completed = allCompletions.filter((c: any) => c.assignmentId === a.id && c.status === 'passed').length;
+        if (completed) roleStats.get(key).completed += completed;
+      });
+      stats.byRole = Object.fromEntries(roleStats);
+
+      res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "İstatistik yüklenemedi" });
+    }
+  });
+
+  // Background job: Daily overdue training reminders
+  const startTrainingReminderJob = () => {
+    // Check every 6 hours
+    setInterval(async () => {
+      try {
+        const assignments = await storage.getTrainingAssignments();
+        const today = new Date();
+
+        for (const assignment of assignments) {
+          if (assignment.status === 'assigned' || assignment.status === 'in_progress') {
+            const dueDate = new Date(assignment.dueDate || '');
+            
+            // Check if overdue or due soon
+            if (dueDate < today && assignment.status !== 'overdue') {
+              await storage.updateTrainingAssignmentStatus(assignment.id, 'overdue');
+              
+              // Send notification
+              if (assignment.userId) {
+                try {
+                  await storage.createNotification({
+                    userId: assignment.userId,
+                    type: 'training_overdue',
+                    title: 'Geciken Eğitim',
+                    message: `Bir eğitim atlaması son tarihini geçti`,
+                    relatedId: assignment.id.toString(),
+                  });
+                } catch (e) {
+                  console.error("Notification error:", e);
+                }
+              }
+            } else if (dueDate.getTime() - today.getTime() < 86400000 && assignment.remindersSent < 3) {
+              // Due within 24 hours
+              if (assignment.userId) {
+                try {
+                  await storage.createNotification({
+                    userId: assignment.userId,
+                    type: 'training_reminder',
+                    title: 'Yaklaşan Eğitim',
+                    message: `Bir eğitim ataması 24 saat içinde bitecek`,
+                    relatedId: assignment.id.toString(),
+                  });
+                  
+                  // Update reminder count
+                  await db
+                    .update(trainingAssignments)
+                    .set({
+                      remindersSent: assignment.remindersSent + 1,
+                      lastReminderAt: new Date(),
+                    })
+                    .where(eq(trainingAssignments.id, assignment.id));
+                } catch (e) {
+                  console.error("Reminder error:", e);
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Training reminder job error:", error);
+      }
+    }, 6 * 60 * 60 * 1000); // Every 6 hours
+  };
+
+  // Start the reminder job
+  startTrainingReminderJob();
+
   // ========================================
   // RAG KNOWLEDGE BASE - Vector Search
   // ========================================
