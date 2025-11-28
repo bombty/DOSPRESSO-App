@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "./security";
+import { buildMenuForUser } from "./menu-service";
 import { 
   insertTaskSchema,
   updateTaskSchema,
@@ -6760,105 +6761,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== MENU MANAGEMENT ENDPOINTS (HQ Admin Only) =====
+  // ===== MENU MANAGEMENT ENDPOINTS =====
   
-  // GET /api/me/menu - User-scoped menu endpoint with strict RBAC enforcement
-  // This is the PRIMARY endpoint for sidebar menu - per-user filtered data
-  // NO CACHING, NO ETAG - fresh data every request to prevent RBAC bypass
+  // GET /api/me/menu - User-scoped menu endpoint (v2 - static blueprint based)
+  // Primary endpoint for sidebar menu - uses static blueprint with RBAC filtering
+  // NO CACHING - fresh data every request to prevent RBAC bypass
   app.get('/api/me/menu', isAuthenticated, async (req: any, res) => {
     try {
-      // CRITICAL: Disable ALL caching mechanisms to prevent RBAC bypass
-      res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+      // Disable caching
+      res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
       res.set('Pragma', 'no-cache');
       res.set('Expires', '0');
-      res.set('Surrogate-Control', 'no-store');
-      res.set('ETag', ''); // Disable ETag
-      res.set('Last-Modified', new Date().toUTCString()); // Always fresh
-      res.set('Vary', 'Authorization, Cookie'); // Vary by auth
       
       const user = req.user!;
       const userRole = user.role as UserRoleType;
-      const menu = await storage.listMenu();
       
-      console.log(`[/api/me/menu] User: ${user.username}, Role: ${userRole}, isBranch: ${isBranchRole(userRole)}, isHQ: ${isHQRole(userRole)}`);
+      // Fetch badge counts
+      const [notificationCount, messageCount] = await Promise.all([
+        storage.countUnreadNotifications(user.id),
+        storage.countUnreadMessages(user.id),
+      ]);
       
-      // STRICT RBAC filtering based on user role
-      let filteredSections: any[] = [];
-      let filteredItems: any[] = [];
+      const badges: Record<string, number> = {
+        notifications: notificationCount,
+        messages: messageCount,
+      };
       
-      if (userRole === 'admin') {
-        // Admin sees ALL sections and items
-        filteredSections = menu.sections;
-        filteredItems = menu.items;
-      } else if (isBranchRole(userRole)) {
-        // Branch users: ONLY 'branch' and 'both' scoped sections
-        // NEVER show 'hq' scoped sections to branch users
-        filteredSections = menu.sections.filter((section: any) => {
-          const allowed = section.scope === 'branch' || section.scope === 'both';
-          if (!allowed) {
-            console.log(`[/api/me/menu] BLOCKED HQ section for branch user: ${section.titleTr} (scope: ${section.scope})`);
-          }
-          return allowed;
-        });
-        const allowedSectionIds = new Set(filteredSections.map((s: any) => s.id));
-        filteredItems = menu.items.filter((item: any) => allowedSectionIds.has(item.sectionId));
-      } else if (isHQRole(userRole)) {
-        // HQ users: ONLY 'hq' and 'both' scoped sections
-        // NEVER show 'branch' only scoped sections to HQ users
-        filteredSections = menu.sections.filter((section: any) => {
-          const allowed = section.scope === 'hq' || section.scope === 'both';
-          return allowed;
-        });
-        const allowedSectionIds = new Set(filteredSections.map((s: any) => s.id));
-        filteredItems = menu.items.filter((item: any) => allowedSectionIds.has(item.sectionId));
-      } else {
-        // Unknown role - show nothing for safety
-        console.log(`[/api/me/menu] Unknown role: ${userRole} - showing empty menu`);
-        filteredSections = [];
-        filteredItems = [];
-      }
+      // Build menu using the new service
+      const menuResponse = buildMenuForUser(
+        { id: user.id, role: userRole },
+        badges
+      );
       
-      console.log(`[/api/me/menu] Returning ${filteredSections.length} sections, ${filteredItems.length} items for ${userRole}`);
+      console.log(`[/api/me/menu v2] User: ${user.username}, Role: ${userRole}, Scope: ${menuResponse.meta.scope}, Sections: ${menuResponse.sections.length}`);
       
-      return res.status(200).json({
-        sections: filteredSections,
-        items: filteredItems,
-        rules: menu.rules || [],
-        _meta: { userId: user.id, role: userRole, timestamp: Date.now() }
-      });
+      return res.status(200).json(menuResponse);
     } catch (error) {
       console.error("Error fetching user menu:", error);
       res.status(500).json({ message: "Failed to fetch menu" });
     }
   });
   
-  // GET /api/menu - DEPRECATED: Legacy endpoint, redirects to /api/me/menu
-  // Kept for backwards compatibility but should not be used
+  // GET /api/menu - Legacy endpoint (deprecated, redirects to static blueprint)
   app.get('/api/menu', isAuthenticated, async (req: any, res) => {
     try {
       res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
       res.set('Pragma', 'no-cache');
       
       const user = req.user!;
-      const menu = await storage.listMenu();
+      const userRole = user.role as UserRoleType;
       
-      // Filter menu based on user role and branch
-      if (user.role && isBranchRole(user.role as UserRoleType)) {
-        const filteredSections = menu.sections.filter((section: any) => 
-          section.scope === 'branch' || section.scope === 'both'
-        );
-        const filteredItemIds = filteredSections.map((s: any) => s.id);
-        const filteredItems = menu.items.filter((item: any) => 
-          filteredItemIds.includes(item.sectionId)
-        );
-        return res.json({
-          sections: filteredSections,
-          items: filteredItems,
-          rules: menu.rules || []
-        });
-      }
+      // Use new menu service
+      const menuResponse = buildMenuForUser({ id: user.id, role: userRole }, {});
       
-      res.json(menu);
+      // Convert to legacy format for backwards compatibility
+      res.json({
+        sections: menuResponse.sections.map((s, idx) => ({
+          id: idx + 1,
+          slug: s.id,
+          titleTr: s.titleTr,
+          scope: s.scope,
+          icon: s.icon,
+          sortOrder: idx,
+        })),
+        items: menuResponse.sections.flatMap((section, sIdx) => 
+          section.items.map((item, iIdx) => ({
+            id: sIdx * 100 + iIdx + 1,
+            sectionId: sIdx + 1,
+            titleTr: item.titleTr,
+            path: item.path,
+            icon: item.icon,
+            moduleKey: item.moduleKey,
+            scope: item.scope,
+            sortOrder: iIdx,
+            isActive: true,
+          }))
+        ),
+        rules: [],
+      });
     } catch (error) {
       console.error("Error fetching menu:", error);
       res.status(500).json({ message: "Failed to fetch menu" });
