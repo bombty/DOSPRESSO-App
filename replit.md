@@ -5,6 +5,60 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 
 ## Recent Changes (Session: Nov 28, 2025)
 
+### COMPLETED: DOSPRESSO Academy MVP V1 - Career Progression System (Nov 28, Turns 1-3)
+
+#### 1. Database Schema (✅ COMPLETE)
+- **Three-table architecture**: `careerLevels`, `examRequests`, `userCareerProgress`
+- **Career levels**: Stajyer → Bar Buddy → Barista → Supervisor Buddy → Supervisor (5 levels)
+- **Exam requests**: Track supervisor exam proposals to HQ with approval workflow
+- **User progress**: Track per-employee progression, completion rates, quiz scores
+
+#### 2. Storage Layer (✅ COMPLETE)
+- **CRUD operations**: getCareerLevels(), getExamRequests(), getUserCareerProgress(), updateExamRequest()
+- **Type safety**: Full Zod schema integration for validation
+- **In-memory storage**: Efficient caching with persistence support
+
+#### 3. Frontend - Employee Dashboard (✅ COMPLETE)
+- **Route `/akademi`**: Employee career path view
+  - Current level badge with progress bar to next level
+  - Career path visualization (5-step progression)
+  - Sınav Talep button for supervisors
+  - Next module preview
+  - Loading + empty states
+
+#### 4. Frontend - Supervisor Dashboard (✅ COMPLETE)
+- **Route `/akademi-supervisor`**: Team management + exam request tracking
+  - Ekip üyeleri tab with progress % display
+  - Beklemede sınav talepleri tab with HQ status
+  - Edit/Cancel buttons for pending requests
+  - Real-time request status sync
+
+#### 5. Frontend - HQ Dashboard (✅ COMPLETE)
+- **Route `/akademi-hq`**: Exam approval panel (HQ-only, role-gated)
+  - Beklemede tab: All pending exams with supervisor notes
+  - Onaylı tab: Approved exams tracking
+  - Onayla/Reddet dialogs with confirmation flow
+  - Rejection reason tracking
+  - Real-time sync with queue
+
+#### 6. Backend API Endpoints (✅ COMPLETE)
+- **GET `/api/academy/career-levels`** - All 5 career levels
+- **GET `/api/academy/career-progress/:userId`** - User progression data
+- **GET `/api/academy/exam-requests`** - List by status (pending/approved/rejected)
+- **GET `/api/academy/team-members`** - Supervisor's branch team
+- **POST `/api/academy/exam-request`** - Supervisor exam proposal
+- **PATCH `/api/academy/exam-request/:id/approve`** - HQ approval
+- **PATCH `/api/academy/exam-request/:id/reject`** - HQ rejection with reason
+
+#### 7. Permission Model (✅ COMPLETE)
+- **Server-side role checks**: isHQRole() guards on HQ endpoints
+- **Frontend UI gates**: Permission-based button visibility
+- **Role hierarchy**: Supervisor > Employee; HQ > All
+
+### MVP Status
+**Foundation Complete**: 3 database tables, 7 API endpoints, 3 dashboard pages (Employee/Supervisor/HQ)
+**Next Phase (V2)**: Module content structure (multi-step, quiz, scenario), AI Motor integration, Gamification system
+
 ### COMPLETED: AI-Powered Training System - Full Implementation (Nov 28)
 
 #### 1. Database & Storage (✅ COMPLETE)
