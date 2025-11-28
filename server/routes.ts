@@ -10760,6 +10760,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/academy/quiz-result - Submit quiz result
+  app.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) => {
+    try {
+      const { quizId, score, answers } = req.body;
+      if (!quizId || score === undefined) {
+        return res.status(400).json({ message: "quizId ve score gerekli" });
+      }
+      const result = await storage.addQuizResult({
+        userId: req.user.id,
+        quizId,
+        score: Number(score),
+        answers,
+      });
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error("Quiz result error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

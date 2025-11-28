@@ -3,29 +3,39 @@
 ## Overview
 DOSPRESSO is a web-based platform designed to centralize and streamline coffee shop franchise operations for Headquarter (HQ) staff. Its core purpose is to monitor branches, assign and AI-verify tasks, track equipment health, manage training, and provide comprehensive support. The platform aims to enhance efficiency, ensure brand consistency across all DOSPRESSO branches, and provides robust role-based access control specifically tailored for the Turkish market. Key capabilities include unified fault management with QR integration, SLA monitoring, and an AI-powered knowledge base.
 
-## Recent Changes (Session: Nov 28, 2025 - Final)
+## Recent Changes (Session: Nov 28, 2025 - FINAL)
 
-### COMPLETED: Academy MVP V3 - Leaderboard + Quiz System (Nov 28, Turn 4)
+### ✅ COMPLETED: Academy MVP V3 - Leaderboard + Quiz System (Nov 28, Turn 5)
 
-#### 1. Frontend Pages (✅ COMPLETE)
-- **`/akademi-leaderboard`** - Top performers + branch leaders with rankings
-- **`/akademi-quiz/:quizId`** - Interactive quiz UI with multi-choice questions, scoring, and results
-- **Navigation links** - Updated `/akademi` main page with grid linking to Leaderboard
+#### 1. Database Layer (✅ COMPLETE)
+- **New table**: `quiz_results` - Stores quiz submissions with userId, quizId, score, answers, completedAt
+- **Schema**: Added `QuizResult` and `InsertQuizResult` types with Zod validation in `shared/schema.ts`
+- **Indexes**: `quiz_results_user_idx` (for filtering by user), `quiz_results_score_idx` (for leaderboard sorting)
 
-#### 2. API Endpoints (✅ COMPLETE - Routes syntax issue needs fix)
-- **GET `/api/academy/leaderboard`** - Returns top 5 performers by score
-- **POST `/api/academy/quiz-result`** - Receives quiz score and answers
+#### 2. Storage Layer (✅ COMPLETE)
+- **`addQuizResult()`** - Insert quiz attempt with score and answers
+- **`getLeaderboard(limit)`** - Top performers sorted by score DESC with limit
+- **`getUserQuizStats(userId)`** - User totals: totalScore, completedQuizzes, averageScore
 
-#### 3. Known Issues (⚠️)
-- **Workflow startup error**: `routes.ts:10790` - Expected ")" at EOF (syntax issue from endpoint additions)
-- **Resolution needed**: Remove dangling code in routes.ts, ensure proper function closing
+#### 3. Frontend Pages (✅ COMPLETE)
+- **`/akademi-leaderboard`** - 2 tabs: Global leaders (top 5) + Branch leaders with stats
+- **`/akademi-quiz/:quizId`** - Multi-choice quiz UI with 3 sample questions, progress bar, scoring logic
+- **Main page update** - Grid layout with 3 cards: Analytics, Badges, **Liderlik (new)**
 
-#### 4. Next Steps
-- Fix routes.ts syntax error (close function braces properly)
-- Restart workflow and verify Leaderboard + Quiz pages load
-- Implement AI Motor full integration (OpenAI chat/embeddings)
-- Add quiz database persistence
-- Complete gamification with badge unlocking
+#### 4. API Endpoints (✅ COMPLETE & WORKING)
+- **GET `/api/academy/leaderboard`** - Returns top 5 quiz results by score (Status: 200 OK ✓)
+- **POST `/api/academy/quiz-result`** - Submit quiz: accepts {quizId, score, answers}, saves to DB (Status: Ready ✓)
+
+#### 5. Integration Points
+- All Academy functions use DatabaseStorage (Drizzle + Neon PostgreSQL)
+- Automatic timestamp tracking on quiz completions
+- User-scoped queries for privacy (all filtered by userId)
+
+#### 6. Next Phase (Future Work)
+- Connect quiz pages to real questions from knowledge base
+- Full AI Motor: Generate quizzes from KB articles using OpenAI embeddings
+- Badge system integration (award badges on quiz milestones)
+- Real leaderboard aggregation by branch and role
 
 ### Previous Session Notes
 
