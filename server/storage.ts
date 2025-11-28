@@ -197,6 +197,9 @@ import {
   RoleModulePermission,
   InsertRoleModulePermission,
   permissionModules,
+  trainingMaterials,
+  trainingAssignments,
+  trainingCompletions,
 } from "@shared/schema";
 
 export interface IStorage {
