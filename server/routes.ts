@@ -11310,6 +11310,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bestStreak: 0,
         lastActivityDay: 'Hiç',
         totalDaysActive: 0,
+      });
+    }
+  });
 
   // Phase 23-25 APIs (code ready for next session)
   app.get('/api/academy/adaptive-recommendations/:userId', isAuthenticated, async (req: any, res) => {
