@@ -375,8 +375,7 @@ export function AdminDashboard({
       )}
 
       {/* Akademi Section - Personalized */}
-      {(academyData || academyLoading) && (
-        <Card 
+      <Card 
           className="cursor-pointer hover-elevate transition-all" 
           onClick={() => setLocation("/akademi")}
           data-testid="card-akademi-admin"
@@ -465,8 +464,7 @@ export function AdminDashboard({
               </div>
             )}
           </CardContent>
-        </Card>
-      )}
+      </Card>
 
       {isLoading && <Skeleton className="h-64 w-full" />}
     </div>
