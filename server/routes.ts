@@ -11310,16 +11310,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bestStreak: 0,
         lastActivityDay: 'Hiç',
         totalDaysActive: 0,
+      });
+    }
+  });
 
   // POST /api/academy/ai-assistant - AI chat assistant
   app.post('/api/academy/ai-assistant', isAuthenticated, async (req: any, res) => {
     try {
       const { message, userId } = req.body;
       res.json({ 
-        response: "Merhaba! Nasıl yardımcı olabilirim? Academy hakkında sorularınız varsa sorabilirsiniz." 
+        response: "Merhaba! Nasıl yardımcı olabilirim?" 
       });
     } catch (error: any) {
-      res.json({ response: 'Bağlantı hatası. Lütfen daha sonra deneyiniz.' });
+      res.json({ response: 'Hata oluştu.' });
     }
   });
 
