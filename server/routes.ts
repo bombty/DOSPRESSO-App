@@ -4837,6 +4837,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/shifts/my - Get shifts assigned to current user (MUST be before :id route)
+  app.get('/api/shifts/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const allShifts = await storage.getShifts();
+      const myShifts = allShifts.filter(s => s.assignedToId === user.id);
+      
+      res.json(myShifts);
+    } catch (error) {
+      console.error("Error fetching my shifts:", error);
+      res.status(500).json({ message: "Vardiyalar alınamadı" });
+    }
+  });
+
   // Get single shift by ID
   app.get('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
     try {
@@ -6391,20 +6405,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== CHECK-IN/CHECK-OUT ENDPOINTS =====
-
-  // GET /api/shifts/my - Get shifts assigned to current user
-  app.get('/api/shifts/my', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const allShifts = await storage.getShifts();
-      const myShifts = allShifts.filter(s => s.assignedToId === user.id);
-      
-      res.json(myShifts);
-    } catch (error) {
-      console.error("Error fetching my shifts:", error);
-      res.status(500).json({ message: "Vardiyalar alınamadı" });
-    }
-  });
 
   // Haversine formula - iki nokta arasındaki mesafeyi metre cinsinden hesapla
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
