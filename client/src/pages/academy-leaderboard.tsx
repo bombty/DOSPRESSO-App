@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, TrendingUp, Award } from "lucide-react";
+import { Trophy, TrendingUp, Award, Flame } from "lucide-react";
 
 export default function AcademyLeaderboard() {
   const { user } = useAuth();
@@ -13,6 +13,15 @@ export default function AcademyLeaderboard() {
     queryKey: ["/api/academy/leaderboard"],
     queryFn: async () => {
       const res = await fetch(`/api/academy/leaderboard`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const { data: examLeaderboard = [] } = useQuery({
+    queryKey: ["/api/academy/exam-leaderboard"],
+    queryFn: async () => {
+      const res = await fetch(`/api/academy/exam-leaderboard`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -64,7 +73,7 @@ export default function AcademyLeaderboard() {
       )}
 
       <Tabs defaultValue="global" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="global">
             <Trophy className="w-4 h-4 mr-2" />
             Genel Liderlik
@@ -72,6 +81,10 @@ export default function AcademyLeaderboard() {
           <TabsTrigger value="branches">
             <TrendingUp className="w-4 h-4 mr-2" />
             Şube Liderleri
+          </TabsTrigger>
+          <TabsTrigger value="exams">
+            <Flame className="w-4 h-4 mr-2" />
+            Sınav Liderleri
           </TabsTrigger>
         </TabsList>
 
@@ -131,6 +144,42 @@ export default function AcademyLeaderboard() {
                   </div>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="exams" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sınav Performans Liderleri</CardTitle>
+              <CardDescription>En yüksek notla sınav geçen çalışanlar</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {examLeaderboard.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">Henüz sınav sonucu bulunmuyor</p>
+              ) : (
+                examLeaderboard.map((performer: any, idx: number) => (
+                  <div key={performer.userId} className="flex items-center justify-between p-3 border rounded-lg hover-elevate">
+                    <div className="flex items-center gap-3">
+                      <div className="text-center">
+                        <Flame className={`w-5 h-5 mx-auto ${idx === 0 ? "text-red-500" : idx === 1 ? "text-orange-500" : idx === 2 ? "text-yellow-500" : "text-gray-500"}`} />
+                        <p className="text-xs font-bold mt-1">#{idx + 1}</p>
+                      </div>
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback>{performer.userInitials || "??"}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm">{performer.userName || "Kullanıcı"}</p>
+                        <p className="text-xs text-muted-foreground">{performer.targetRole} → {performer.promotionTarget}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg">{performer.score}%</p>
+                      <Badge variant="outline" className="text-xs">Geçti</Badge>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </TabsContent>

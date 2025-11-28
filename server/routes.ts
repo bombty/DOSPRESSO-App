@@ -10896,6 +10896,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/exam-leaderboard - Top exam performers
+  app.get('/api/academy/exam-leaderboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const approvedExams = await storage.getExamRequests({ status: 'approved' });
+      
+      // Sort by exam score descending, limit to top 5
+      const topPerformers = approvedExams
+        .filter(e => e.examScore !== null && e.examScore !== undefined)
+        .sort((a, b) => (b.examScore || 0) - (a.examScore || 0))
+        .slice(0, 5)
+        .map((exam, idx) => ({
+          userId: exam.userId,
+          userName: exam.userId,
+          userInitials: exam.userId.substring(0, 2).toUpperCase(),
+          score: exam.examScore || 0,
+          targetRole: exam.targetRoleId,
+          promotionTarget: exam.targetRoleId,
+          approvedAt: exam.approvedAt
+        }));
+
+      res.json(topPerformers);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
