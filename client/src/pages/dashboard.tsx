@@ -142,9 +142,15 @@ export default function Dashboard() {
   });
 
   // Fetch user training progress
-  const { data: userProgress, isLoading: progressLoading } = useQuery<UserTrainingProgress[]>({
-    queryKey: ["/api/training/progress"],
-    enabled: !!user,
+  const { data: userProgress, isLoading: progressLoading } = useQuery<any>({
+    queryKey: ["/api/training/progress", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const response = await fetch(`/api/training/progress/${user.id}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!user?.id,
   });
 
   // Calculate weekly performance score from daily scores (not double-averaging)
@@ -162,45 +168,17 @@ export default function Dashboard() {
     return Math.round(totalScore / last7Days.length);
   }, [userPerformanceScores]);
 
-  // Calculate training statistics - matches "Benim Eğitimlerim" tab logic
+  // Calculate training statistics from training progress summary
   const trainingStats = useMemo(() => {
-    if (!trainingModules || !user) return { mandatory: 0, inProgress: 0, completed: 0 };
+    if (!userProgress) return { mandatory: 0, inProgress: 0, completed: 0 };
     
-    // Filter mandatory trainings for user's role
-    const mandatoryModules = trainingModules.filter(m => 
-      m.isPublished && m.requiredForRole && m.requiredForRole.includes(user.role)
-    );
-    
-    // Get user's progress
-    const progressMap = new Map(userProgress?.map(p => [p.moduleId, p]) || []);
-    
-    // Calculate "My Trainings" - mandatory + optional with progress
-    const progressModuleIds = new Set(userProgress?.map(p => p.moduleId) || []);
-    const optionalWithProgress = trainingModules.filter(m =>
-      m.isPublished && 
-      !mandatoryModules.find(mm => mm.id === m.id) && // Not already in mandatory
-      progressModuleIds.has(m.id) // Has user progress
-    );
-    
-    const myTrainings = [...mandatoryModules, ...optionalWithProgress];
-    
-    // Count in-progress and completed across all myTrainings
-    const inProgress = myTrainings.filter(m => {
-      const progress = progressMap.get(m.id);
-      return progress?.status === 'in_progress';
-    }).length;
-    
-    const completed = myTrainings.filter(m => {
-      const progress = progressMap.get(m.id);
-      return progress?.status === 'completed';
-    }).length;
-    
+    // userProgress is now an object with summary stats
     return {
-      mandatory: mandatoryModules.length,
-      inProgress,
-      completed,
+      mandatory: userProgress.summary?.total || 0,
+      inProgress: userProgress.summary?.inProgress || 0,
+      completed: userProgress.summary?.completed || 0,
     };
-  }, [trainingModules, userProgress, user]);
+  }, [userProgress]);
 
   const completedTasks = tasks?.filter(t => t.status === "tamamlandi").length || 0;
   const pendingTasks = tasks?.filter(t => t.status === "beklemede").length || 0;
