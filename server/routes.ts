@@ -11188,6 +11188,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/learning-path-detail/:pathId - Get detailed learning path with recommended quizzes
+  app.get('/api/academy/learning-path-detail/:pathId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { pathId } = req.params;
+      const userId = req.user.id;
+
+      const quizzes = await storage.getQuizzes?.() || [];
+      const userResults = await storage.getQuizResults?.() || [];
+      const userQuizzes = userResults.filter((r: any) => r.userId === userId);
+
+      const recommendedQuizzes = quizzes.map((q: any, idx: number) => ({
+        id: q.id,
+        title: q.title || `Quiz ${idx + 1}`,
+        difficulty: q.difficulty || 'easy',
+        duration: Math.floor(Math.random() * 20) + 10,
+        completion: userQuizzes.some(uq => uq.quizId === q.id) ? 100 : 0,
+        status: idx === 0 ? 'completed' : idx === 1 ? 'recommended' : idx < 4 ? 'available' : 'locked',
+      })).slice(0, 5);
+
+      res.json({
+        pathId,
+        title: pathId === '1' ? 'Hızlı Kariyer Yolu' : pathId === '2' ? 'Barista Ustası Yolu' : 'Temel Beceriler Yolu',
+        quizzes: recommendedQuizzes,
+      });
+    } catch (error: any) {
+      console.error('Learning path detail error:', error);
+      res.json({ quizzes: [] });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Brain, Zap, Target } from "lucide-react";
 import { Loader } from "lucide-react";
+import { Link } from "wouter";
 
 export default function AcademyLearningPaths() {
   const { user } = useAuth();
@@ -107,13 +108,17 @@ export default function AcademyLearningPaths() {
                 </div>
 
                 <div className="flex gap-2 pt-2">
-                  <Button size="sm" className="flex-1" variant="outline">
-                    Devam Et
-                  </Button>
-                  <Button size="sm" className="flex-1" variant="ghost">
-                    <Zap className="w-3 h-3 mr-1" />
-                    Başla
-                  </Button>
+                  <Link href={`/akademi-learning-path/${path.id}`} className="flex-1">
+                    <Button size="sm" className="w-full" variant="outline">
+                      Ayrıntıları Gör
+                    </Button>
+                  </Link>
+                  <Link href={`/akademi-learning-path/${path.id}`} className="flex-1">
+                    <Button size="sm" className="w-full">
+                      <Zap className="w-3 h-3 mr-1" />
+                      Başla
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
