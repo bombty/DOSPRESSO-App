@@ -10500,8 +10500,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.error("Notification error:", e);
                 }
               }
-            } else if (dueDate.getTime() - today.getTime() < 86400000 && assignment.remindersSent < 3) {
-              // Due within 24 hours
+            } else if (dueDate.getTime() - today.getTime() < 86400000 && (assignment.remindersSent || 0) < 3) {
+              // Due within 24 hours - send reminder
               if (assignment.userId) {
                 try {
                   await storage.createNotification({
@@ -10511,15 +10511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     message: `Bir eğitim ataması 24 saat içinde bitecek`,
                     relatedId: assignment.id.toString(),
                   });
-                  
-                  // Update reminder count
-                  await db
-                    .update(trainingAssignments)
-                    .set({
-                      remindersSent: assignment.remindersSent + 1,
-                      lastReminderAt: new Date(),
-                    })
-                    .where(eq(trainingAssignments.id, assignment.id));
+                  // Reminder sent via notification
                 } catch (e) {
                   console.error("Reminder error:", e);
                 }
