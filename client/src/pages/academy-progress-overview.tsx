@@ -53,7 +53,7 @@ export default function AcademyProgressOverview() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      $3div>
+      div>
         <h1 className="text-3xl font-bold tracking-tight">İlerleme Özeti</h1>
         <p className="text-muted-foreground mt-2">Tüm başarılarınızı ve hedeflerinizi bir yerde görün</p>
       </div>

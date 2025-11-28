@@ -68,7 +68,7 @@ export default function AcademyLearningPaths() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      $3div>
+      div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Brain className="w-8 h-8 text-purple-600 dark:text-purple-400" />
           AI Öğrenme Yolları

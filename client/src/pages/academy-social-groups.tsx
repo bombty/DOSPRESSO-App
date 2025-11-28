@@ -34,7 +34,7 @@ export default function AcademySocialGroups() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      $3div>
+      div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Users className="w-8 h-8 text-blue-500" />
           Sosyal İşbirliği

@@ -63,7 +63,7 @@ export default function AcademyBadges() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      $3div>
+      div>
         <h1 className="text-3xl font-bold tracking-tight">Başarılar ve Rozetler</h1>
         <p className="text-muted-foreground mt-2">Eğitim yolculuğunda elde ettiğiniz başarılar</p>
       </div>

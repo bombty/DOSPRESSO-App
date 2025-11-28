@@ -58,7 +58,7 @@ export default function AcademyLeaderboard() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      $3div>
+      div>
         <h1 className="text-3xl font-bold tracking-tight">Academy Liderliği</h1>
         <p className="text-muted-foreground mt-2">En yüksek performans gösteren çalışanlar ve şubeler</p>
       </div>

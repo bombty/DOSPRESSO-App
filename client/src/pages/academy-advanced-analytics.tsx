@@ -48,7 +48,7 @@ export default function AcademyAdvancedAnalytics() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      $3div>
+      div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <TrendingUp className="w-8 h-8 text-green-500" />
           İleri Analitikler

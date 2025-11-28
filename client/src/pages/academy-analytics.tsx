@@ -83,7 +83,7 @@ export default function AcademyAnalytics() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      $3div>
+      div>
         <h1 className="text-3xl font-bold tracking-tight">Akademi Analitikleri</h1>
         <p className="text-muted-foreground mt-2">Şube-çapı eğitim performansı ve ilerleme</p>
       </div>
