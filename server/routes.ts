@@ -10578,11 +10578,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userBadges = await storage.getUserBadges(userId);
       
       // Get recent quiz performance
-      const recentQuizzes = await storage.getQuizResultsByUser(userId);
+      const quizAttempts = await storage.getUserQuizAttempts(userId);
       const quizStats = {
-        totalAttempts: recentQuizzes?.length || 0,
+        totalAttempts: quizAttempts?.length || 0,
         averageScore: careerProgress?.averageQuizScore || 0,
-        recentScores: recentQuizzes?.slice(0, 5).map((q: any) => q.score) || []
+        recentScores: quizAttempts?.slice(0, 5).map((q: any) => q.score || 0) || []
       };
       
       res.json({
