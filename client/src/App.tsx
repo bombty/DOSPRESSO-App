@@ -30,6 +30,7 @@ import KnowledgeBase from "@/pages/knowledge-base";
 import Training from "@/pages/training";
 import TrainingDetail from "@/pages/training-detail";
 import TrainingAssign from "@/pages/training-assign";
+import Academy from "@/pages/academy";
 import GorevDetay from "@/pages/gorev-detay";
 import IK from "@/pages/ik";
 import PersonelOnboarding from "@/pages/personel-onboarding";
@@ -115,6 +116,7 @@ function Router() {
           {/* Bilgi & İletişim */}
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
+          <Route path="/akademi" component={Academy} />
           <Route path="/egitim/:id" component={TrainingDetail} />
           <Route path="/egitim" component={Training} />
           <Route path="/egitim-ata" component={TrainingAssign} />

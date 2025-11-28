@@ -10543,6 +10543,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/career-progress/:userId - Kullanıcı kariyer durumu
+  app.get('/api/academy/career-progress/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const progress = await storage.getUserCareerProgress(userId);
+      if (!progress) {
+        return res.json({ averageQuizScore: 0, completedModuleIds: [] });
+      }
+      res.json(progress);
+    } catch (error: any) {
+      console.error("Career progress error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/academy/exam-requests - Sınav talepleri listesi
+  app.get('/api/academy/exam-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      const requests = await storage.getExamRequests({ status: status as string });
+      res.json(requests);
+    } catch (error: any) {
+      console.error("Exam requests error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // POST /api/academy/exam-request - Sınav talep et (Supervisor)
   app.post('/api/academy/exam-request', isAuthenticated, async (req: any, res) => {
     try {
