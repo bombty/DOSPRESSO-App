@@ -200,6 +200,15 @@ import {
   trainingMaterials,
   trainingAssignments,
   trainingCompletions,
+  careerLevels,
+  examRequests,
+  userCareerProgress,
+  CareerLevel,
+  InsertCareerLevel,
+  ExamRequest,
+  InsertExamRequest,
+  UserCareerProgress,
+  InsertUserCareerProgress,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -646,6 +655,14 @@ export interface IStorage {
   
   // Permission Modules operations
   getPermissionModules(): Promise<Array<{ moduleKey: string; moduleName: string; description: string | null; category: string | null; isActive: boolean }>>;
+
+  // Career operations
+  getCareerLevels(): Promise<CareerLevel[]>;
+  getCareerLevel(id: number): Promise<CareerLevel | undefined>;
+  getUserCareerProgress(userId: string): Promise<UserCareerProgress | undefined>;
+  createExamRequest(request: InsertExamRequest): Promise<ExamRequest>;
+  getExamRequests(filters?: { userId?: string; status?: string; targetRoleId?: string }): Promise<ExamRequest[]>;
+  updateExamRequest(id: number, updates: Partial<InsertExamRequest>): Promise<ExamRequest | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5464,6 +5481,44 @@ export class DatabaseStorage implements IStorage {
     const inProgress = assignments.filter(a => a.status === 'in_progress').length;
     const overdue = assignments.filter(a => a.status === 'overdue').length;
     return { total: assignments.length, completed, inProgress, overdue };
+  }
+
+  // ========================================
+  // CAREER PROGRESSION OPERATIONS
+  // ========================================
+  
+  async getCareerLevels(): Promise<CareerLevel[]> {
+    return db.select().from(careerLevels).orderBy(asc(careerLevels.levelNumber));
+  }
+
+  async getCareerLevel(id: number): Promise<CareerLevel | undefined> {
+    const [result] = await db.select().from(careerLevels).where(eq(careerLevels.id, id));
+    return result;
+  }
+
+  async getUserCareerProgress(userId: string): Promise<UserCareerProgress | undefined> {
+    const [result] = await db.select().from(userCareerProgress).where(eq(userCareerProgress.userId, userId));
+    return result;
+  }
+
+  async createExamRequest(request: InsertExamRequest): Promise<ExamRequest> {
+    const [result] = await db.insert(examRequests).values(request).returning();
+    return result;
+  }
+
+  async getExamRequests(filters?: { userId?: string; status?: string; targetRoleId?: string }): Promise<ExamRequest[]> {
+    let query = db.select().from(examRequests);
+    const conditions: SQL[] = [];
+    if (filters?.userId) conditions.push(eq(examRequests.userId, filters.userId));
+    if (filters?.status) conditions.push(eq(examRequests.status, filters.status));
+    if (filters?.targetRoleId) conditions.push(eq(examRequests.targetRoleId, filters.targetRoleId));
+    if (conditions.length) query = query.where(and(...conditions));
+    return query.orderBy(desc(examRequests.createdAt));
+  }
+
+  async updateExamRequest(id: number, updates: Partial<InsertExamRequest>): Promise<ExamRequest | undefined> {
+    const [result] = await db.update(examRequests).set({...updates, updatedAt: new Date()}).where(eq(examRequests.id, id)).returning();
+    return result;
   }
 }
 

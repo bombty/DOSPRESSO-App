@@ -10529,6 +10529,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   startTrainingReminderJob();
 
   // ========================================
+  // CAREER PROGRESSION - Kariyer İlerleme
+  // ========================================
+  
+  // GET /api/academy/career-levels - Tüm kariyer seviyeleri
+  app.get('/api/academy/career-levels', isAuthenticated, async (req: any, res) => {
+    try {
+      const levels = await storage.getCareerLevels();
+      res.json(levels);
+    } catch (error: any) {
+      console.error("Career levels error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/academy/exam-request - Sınav talep et (Supervisor)
+  app.post('/api/academy/exam-request', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId, targetRoleId, supervisorNotes } = req.body;
+      const supervisorId = req.user.id;
+
+      // Supervisor veya HQ check
+      if (req.user.role !== 'supervisor' && !isHQRole(req.user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const request = await storage.createExamRequest({
+        userId,
+        targetRoleId,
+        supervisorId,
+        supervisorNotes,
+        status: 'pending',
+      });
+
+      res.json(request);
+    } catch (error: any) {
+      console.error("Exam request error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ========================================
   // RAG KNOWLEDGE BASE - Vector Search
   // ========================================
   
