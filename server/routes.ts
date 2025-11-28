@@ -10565,7 +10565,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       
       // Get career progress
-      const careerProgress = await storage.getUserCareerProgress(userId);
+      let careerProgress = await storage.getUserCareerProgress(userId);
+      
+      // Auto-initialize if not exists
+      if (!careerProgress) {
+        const levels = await storage.getCareerLevels();
+        const stajyerLevel = levels.find((l: any) => l.levelNumber === 1);
+        if (stajyerLevel) {
+          careerProgress = await storage.createUserCareerProgress(userId, stajyerLevel.id);
+        }
+      }
       
       // Get user's career level
       let careerLevel = null;
