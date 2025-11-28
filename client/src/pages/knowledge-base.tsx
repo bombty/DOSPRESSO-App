@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertKnowledgeBaseArticleSchema, type KnowledgeBaseArticle, type InsertKnowledgeBaseArticle } from "@shared/schema";
+import { insertKnowledgeBaseArticleSchema, type KnowledgeBaseArticle, type InsertKnowledgeBaseArticle, isHQRole } from "@shared/schema";
 import { BookOpen, Eye, Plus, CheckCircle, XCircle } from "lucide-react";
 
 export default function KnowledgeBase() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const isHQ = user?.role && isHQRole(user.role as any);
 
   const { data: articles, isLoading } = useQuery<KnowledgeBaseArticle[]>({
     queryKey: ["/api/knowledge-base"],
@@ -104,13 +107,14 @@ export default function KnowledgeBase() {
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Bilgi Bankası</h1>
           <p className="text-muted-foreground mt-1">SOP'lar, tarifler ve bakım dokümanları</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-article">
-              <Plus className="mr-2 h-4 w-4" />
-              Yeni Makale
-            </Button>
-          </DialogTrigger>
+        {isHQ && (
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-article">
+                <Plus className="mr-2 h-4 w-4" />
+                Yeni Makale
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Yeni Bilgi Bankası Makalesi</DialogTitle>
@@ -199,7 +203,8 @@ export default function KnowledgeBase() {
               </form>
             </Form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        )}
       </div>
 
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -257,7 +262,7 @@ export default function KnowledgeBase() {
                         <Badge variant={article.isPublished ? "default" : "outline"}>
                           {article.isPublished ? "Yayında" : "Taslak"}
                         </Badge>
-                        {article.isPublished ? (
+                        {isHQ && (article.isPublished ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -278,7 +283,7 @@ export default function KnowledgeBase() {
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Yayınla
                           </Button>
-                        )}
+                        ))}
                       </div>
                     </div>
                   </CardContent>
