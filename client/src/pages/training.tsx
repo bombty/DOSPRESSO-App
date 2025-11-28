@@ -38,9 +38,15 @@ export default function Training() {
     queryKey: ["/api/training/modules"],
   });
 
-  const { data: userProgress, isLoading: progressLoading } = useQuery<UserTrainingProgress[]>({
-    queryKey: ["/api/training/progress"],
-    enabled: !!user,
+  const { data: userProgress, isLoading: progressLoading } = useQuery<any>({
+    queryKey: ["/api/training/progress", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const response = await fetch(`/api/training/progress/${user.id}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!user?.id,
   });
 
   // Calculate mandatory trainings for user's role
@@ -61,7 +67,7 @@ export default function Training() {
     );
     
     // Get optional modules where user has progress
-    const progressModuleIds = new Set(userProgress?.map(p => p.moduleId) || []);
+    const progressModuleIds = new Set(userProgress?.assignments?.map(p => p.moduleId) || []);
     const optionalWithProgress = modules.filter(m =>
       m.isPublished && 
       !mandatory.find(mm => mm.id === m.id) && // Not already in mandatory
@@ -73,7 +79,7 @@ export default function Training() {
 
   // Create progress map for easy lookup
   const progressMap = useMemo(() => {
-    return new Map(userProgress?.map(p => [p.moduleId, p]) || []);
+    return new Map(userProgress?.assignments?.map(p => [p.moduleId, p]) || []);
   }, [userProgress]);
 
   const form = useForm<InsertTrainingModule>({
