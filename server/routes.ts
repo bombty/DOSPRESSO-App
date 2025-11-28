@@ -6762,22 +6762,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== MENU MANAGEMENT ENDPOINTS (HQ Admin Only) =====
   
-  // GET /api/menu - List menu data filtered by user role and branch
-  // IMPORTANT: Disable caching to ensure fresh role-filtered data on every request
-  app.get('/api/menu', isAuthenticated, async (req: any, res) => {
+  // GET /api/me/menu - User-scoped menu endpoint with strict RBAC enforcement
+  // This is the PRIMARY endpoint for sidebar menu - per-user filtered data
+  // NO CACHING, NO ETAG - fresh data every request to prevent RBAC bypass
+  app.get('/api/me/menu', isAuthenticated, async (req: any, res) => {
     try {
-      // Disable caching - must return fresh data for RBAC to work correctly
-      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      // CRITICAL: Disable ALL caching mechanisms to prevent RBAC bypass
+      res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
       res.set('Pragma', 'no-cache');
       res.set('Expires', '0');
       res.set('Surrogate-Control', 'no-store');
+      res.set('ETag', ''); // Disable ETag
+      res.set('Last-Modified', new Date().toUTCString()); // Always fresh
+      res.set('Vary', 'Authorization, Cookie'); // Vary by auth
+      
+      const user = req.user!;
+      const userRole = user.role as UserRoleType;
+      const menu = await storage.listMenu();
+      
+      console.log(`[/api/me/menu] User: ${user.username}, Role: ${userRole}, isBranch: ${isBranchRole(userRole)}, isHQ: ${isHQRole(userRole)}`);
+      
+      // STRICT RBAC filtering based on user role
+      let filteredSections: any[] = [];
+      let filteredItems: any[] = [];
+      
+      if (userRole === 'admin') {
+        // Admin sees ALL sections and items
+        filteredSections = menu.sections;
+        filteredItems = menu.items;
+      } else if (isBranchRole(userRole)) {
+        // Branch users: ONLY 'branch' and 'both' scoped sections
+        // NEVER show 'hq' scoped sections to branch users
+        filteredSections = menu.sections.filter((section: any) => {
+          const allowed = section.scope === 'branch' || section.scope === 'both';
+          if (!allowed) {
+            console.log(`[/api/me/menu] BLOCKED HQ section for branch user: ${section.titleTr} (scope: ${section.scope})`);
+          }
+          return allowed;
+        });
+        const allowedSectionIds = new Set(filteredSections.map((s: any) => s.id));
+        filteredItems = menu.items.filter((item: any) => allowedSectionIds.has(item.sectionId));
+      } else if (isHQRole(userRole)) {
+        // HQ users: ONLY 'hq' and 'both' scoped sections
+        // NEVER show 'branch' only scoped sections to HQ users
+        filteredSections = menu.sections.filter((section: any) => {
+          const allowed = section.scope === 'hq' || section.scope === 'both';
+          return allowed;
+        });
+        const allowedSectionIds = new Set(filteredSections.map((s: any) => s.id));
+        filteredItems = menu.items.filter((item: any) => allowedSectionIds.has(item.sectionId));
+      } else {
+        // Unknown role - show nothing for safety
+        console.log(`[/api/me/menu] Unknown role: ${userRole} - showing empty menu`);
+        filteredSections = [];
+        filteredItems = [];
+      }
+      
+      console.log(`[/api/me/menu] Returning ${filteredSections.length} sections, ${filteredItems.length} items for ${userRole}`);
+      
+      return res.status(200).json({
+        sections: filteredSections,
+        items: filteredItems,
+        rules: menu.rules || [],
+        _meta: { userId: user.id, role: userRole, timestamp: Date.now() }
+      });
+    } catch (error) {
+      console.error("Error fetching user menu:", error);
+      res.status(500).json({ message: "Failed to fetch menu" });
+    }
+  });
+  
+  // GET /api/menu - DEPRECATED: Legacy endpoint, redirects to /api/me/menu
+  // Kept for backwards compatibility but should not be used
+  app.get('/api/menu', isAuthenticated, async (req: any, res) => {
+    try {
+      res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+      res.set('Pragma', 'no-cache');
       
       const user = req.user!;
       const menu = await storage.listMenu();
       
       // Filter menu based on user role and branch
       if (user.role && isBranchRole(user.role as UserRoleType)) {
-        // Branch users see only branch-scoped sections and items
         const filteredSections = menu.sections.filter((section: any) => 
           section.scope === 'branch' || section.scope === 'both'
         );
@@ -6792,7 +6858,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // HQ users see all menu items (no filtering)
       res.json(menu);
     } catch (error) {
       console.error("Error fetching menu:", error);
