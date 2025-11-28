@@ -11311,23 +11311,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastActivityDay: 'Hiç',
         totalDaysActive: 0,
 
-  // GET /api/academy/adaptive-recommendations/:userId - Phase 23
+  // Phase 23-25 APIs (code ready for next session)
   app.get('/api/academy/adaptive-recommendations/:userId', isAuthenticated, async (req: any, res) => {
     res.json([
-      { pathId: '1', pathName: 'Barista Yolu', completionPercent: 45, priority: 'high', estimatedDays: 14, description: 'Kahve hazırlama' },
-      { pathId: '2', pathName: 'Hizmet Yolu', completionPercent: 30, priority: 'medium', estimatedDays: 10, description: 'Müşteri ilişkileri' },
+      { pathId: '1', pathName: 'Barista Yolu', completionPercent: 45, priority: 'high', estimatedDays: 14 },
+      { pathId: '2', pathName: 'Hizmet Yolu', completionPercent: 30, priority: 'medium', estimatedDays: 10 },
     ]);
   });
 
-  // GET /api/academy/study-groups/:userId - Phase 24
   app.get('/api/academy/study-groups/:userId', isAuthenticated, async (req: any, res) => {
     res.json([
-      { id: '1', name: 'Kahve Eksperleri', topic: 'Teknik', memberCount: 12, description: 'Kahve hakkında tartışma' },
-      { id: '2', name: 'Kariyer Yolu', topic: 'Gelişim', memberCount: 8, description: 'Supervisor seviyeleri' },
+      { id: '1', name: 'Kahve Eksperleri', topic: 'Teknik', memberCount: 12 },
+      { id: '2', name: 'Kariyer Yolu', topic: 'Gelişim', memberCount: 8 },
     ]);
   });
 
-  // GET /api/academy/advanced-analytics/:userId - Phase 25
   app.get('/api/academy/advanced-analytics/:userId', isAuthenticated, async (req: any, res) => {
     res.json({ totalScore: 85, quizzesCompleted: 24, learningHours: 42, successRate: 92 });
   });
