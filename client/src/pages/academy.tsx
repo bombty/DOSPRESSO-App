@@ -344,7 +344,7 @@ export default function Academy() {
       )}
 
       {/* Quick Links to Analytics & Badges */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link href="/akademi-analytics">
           <Card className="cursor-pointer hover-elevate">
             <CardHeader>
@@ -377,6 +377,18 @@ export default function Academy() {
                 Liderlik
               </CardTitle>
               <CardDescription>En iyi performanslar</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/akademi-branch-analytics">
+          <Card className="cursor-pointer hover-elevate">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Şube Analizi
+              </CardTitle>
+              <CardDescription>Şubeler arası karşılaştırma</CardDescription>
             </CardHeader>
           </Card>
         </Link>

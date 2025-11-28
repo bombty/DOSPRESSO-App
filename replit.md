@@ -60,3 +60,12 @@ The frontend utilizes React 18+ with TypeScript and Vite. It employs Shadcn/ui (
 - **QR**: `html5-qrcode`, `qrcode.react`.
 - **Upload**: `@uppy/core`, `@uppy/react`, `@uppy/aws-s3`.
 - **Build**: `vite`, `esbuild`, `tsx`.
+#### **Phase 12: Branch-Level Analytics** (✅ COMPLETE)
+- `/akademi-branch-analytics` page with branch performance metrics
+- API endpoint: `GET /api/academy/branch-analytics` - Get metrics for all branches
+- 3 Tabs: Comparison (bar charts), Rankings (top branches), Details (table view)
+- Metrics: Active students, completion rates, average scores, completed quizzes
+- Visual comparisons with Recharts bar charts
+- Branch rankings sorted by performance
+- Quick link in Academy hub pointing to branch analytics
+

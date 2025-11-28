@@ -10959,6 +10959,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/branch-analytics - Branch-level training metrics
+  app.get('/api/academy/branch-analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      // Get all branches with user count
+      const branches = await storage.getBranches();
+      
+      // For each branch, calculate academy metrics
+      const branchMetrics = await Promise.all(
+        branches.map(async (branch: any) => {
+          // Get users in this branch
+          const branchUsers = await storage.getUsersByBranch?.(branch.id) || [];
+          
+          // Calculate stats for branch users
+          const userStats = await Promise.all(
+            branchUsers.map(async (user: any) => {
+              const stats = await storage.getUserQuizStats?.(user.id) || {};
+              return stats;
+            })
+          );
+
+          const totalQuizzes = userStats.reduce((sum: number, s: any) => sum + (s.completedQuizzes || 0), 0);
+          const avgScore = userStats.length > 0 
+            ? userStats.reduce((sum: number, s: any) => sum + (s.averageScore || 0), 0) / userStats.length
+            : 0;
+          
+          const completionRate = branchUsers.length > 0
+            ? Math.round((userStats.filter((s: any) => s.completedQuizzes > 0).length / branchUsers.length) * 100)
+            : 0;
+
+          return {
+            branchId: branch.id,
+            branchName: branch.name,
+            activeStudents: branchUsers.length,
+            completedQuizzes: totalQuizzes,
+            avgScore: avgScore.toFixed(1),
+            completionRate: completionRate,
+          };
+        })
+      );
+
+      res.json(branchMetrics);
+    } catch (error: any) {
+      console.error('Branch analytics error:', error);
+      res.json([]);
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
