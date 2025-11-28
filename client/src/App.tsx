@@ -33,6 +33,7 @@ import TrainingAssign from "@/pages/training-assign";
 import Academy from "@/pages/academy";
 import AcademySupervisor from "@/pages/academy-supervisor";
 import AcademyHQ from "@/pages/academy-hq";
+import ModuleDetail from "@/pages/module-detail";
 import GorevDetay from "@/pages/gorev-detay";
 import IK from "@/pages/ik";
 import PersonelOnboarding from "@/pages/personel-onboarding";
@@ -121,6 +122,7 @@ function Router() {
           <Route path="/akademi" component={Academy} />
           <Route path="/akademi-supervisor" component={AcademySupervisor} />
           <Route path="/akademi-hq" component={AcademyHQ} />
+          <Route path="/akademi-modul/:id" component={ModuleDetail} />
           <Route path="/egitim/:id" component={TrainingDetail} />
           <Route path="/egitim" component={Training} />
           <Route path="/egitim-ata" component={TrainingAssign} />

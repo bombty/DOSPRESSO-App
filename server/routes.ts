@@ -10733,6 +10733,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Motor: Module content endpoint
+  app.get('/api/academy/module-content/:materialId', isAuthenticated, async (req: any, res) => {
+    try {
+      const material = await storage.getTrainingMaterial(Number(req.params.materialId));
+      if (!material) return res.status(404).json({ message: "Bulunamadı" });
+      res.json(material);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
+
