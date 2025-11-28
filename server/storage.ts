@@ -5496,8 +5496,23 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async getCareerLevelByRoleId(roleId: string): Promise<CareerLevel | undefined> {
+    const [result] = await db.select().from(careerLevels).where(eq(careerLevels.roleId, roleId));
+    return result;
+  }
+
   async getUserCareerProgress(userId: string): Promise<UserCareerProgress | undefined> {
     const [result] = await db.select().from(userCareerProgress).where(eq(userCareerProgress.userId, userId));
+    return result;
+  }
+
+  async updateUserCareerProgress(userId: string, updates: Partial<typeof userCareerProgress.$inferInsert>): Promise<UserCareerProgress | undefined> {
+    const [result] = await db.update(userCareerProgress).set({...updates, lastUpdatedAt: new Date()}).where(eq(userCareerProgress.userId, userId)).returning();
+    return result;
+  }
+
+  async createUserCareerProgress(userId: string, currentCareerLevelId: number): Promise<UserCareerProgress> {
+    const [result] = await db.insert(userCareerProgress).values({ userId, currentCareerLevelId }).returning();
     return result;
   }
 

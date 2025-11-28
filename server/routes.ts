@@ -10611,13 +10611,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
-      const request = await storage.updateExamRequest(Number(id), {
+      
+      // Get exam request details
+      const examRequests = await storage.getExamRequests({ });
+      const examRequest = examRequests.find(e => e.id === Number(id));
+      
+      if (!examRequest) {
+        return res.status(404).json({ message: "Sınav talebı bulunamadı" });
+      }
+
+      // Update exam request status
+      const updatedRequest = await storage.updateExamRequest(Number(id), {
         status: 'approved',
         approvedById: req.user.id,
         approvedAt: new Date(),
       });
 
-      res.json(request);
+      // AUTO-PROMOTION: Get target career level and advance user
+      try {
+        const targetCareerLevel = await storage.getCareerLevelByRoleId(examRequest.targetRoleId);
+        
+        if (targetCareerLevel) {
+          // Check if user has career progress record
+          let userProgress = await storage.getUserCareerProgress(examRequest.userId);
+          
+          if (userProgress) {
+            // Update existing career progress
+            await storage.updateUserCareerProgress(examRequest.userId, {
+              currentCareerLevelId: targetCareerLevel.id,
+            });
+          } else {
+            // Create new career progress
+            await storage.createUserCareerProgress(examRequest.userId, targetCareerLevel.id);
+          }
+          
+          console.log(`✅ Auto-promotion: User ${examRequest.userId} advanced to ${examRequest.targetRoleId}`);
+        }
+      } catch (promotionError: any) {
+        console.error("Auto-promotion error:", promotionError);
+        // Don't fail the approval if promotion fails - just log it
+      }
+
+      res.json(updatedRequest);
     } catch (error: any) {
       console.error("Exam approval error:", error);
       res.status(500).json({ message: error.message });
