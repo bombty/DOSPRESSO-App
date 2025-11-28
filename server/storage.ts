@@ -5572,6 +5572,28 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result;
   }
+
+  // ========================================
+  // QUIZ RECOMMENDATIONS
+  // ========================================
+
+  async getQuizzesByCareerLevel(careerLevelId: number): Promise<typeof quizzes.$inferSelect[]> {
+    return db.select().from(quizzes).where(eq(quizzes.careerLevelId, careerLevelId)).orderBy(asc(quizzes.difficulty));
+  }
+
+  async getRecommendedQuizzes(userId: string): Promise<typeof quizzes.$inferSelect[]> {
+    const userProgress = await this.getUserCareerProgress(userId);
+    if (!userProgress) return [];
+    
+    const recommendedQuizzes = await db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.careerLevelId, userProgress.currentCareerLevelId))
+      .orderBy(asc(quizzes.difficulty))
+      .limit(3);
+    
+    return recommendedQuizzes;
+  }
 }
 
 export const storage = new DatabaseStorage();

@@ -10831,6 +10831,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/recommended-quizzes - Get quizzes for user's career level
+  app.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any, res) => {
+    try {
+      const quizzes = await storage.getRecommendedQuizzes(req.user.id);
+      res.json(quizzes);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

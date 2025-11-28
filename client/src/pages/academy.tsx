@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard } from "lucide-react";
+import { Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -62,6 +62,18 @@ export default function Academy() {
       return res.json();
     },
     enabled: user?.role === "supervisor",
+  });
+
+  // Get recommended quizzes for user
+  const { data: recommendedQuizzes = [] } = useQuery({
+    queryKey: ["/api/academy/recommended-quizzes", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch("/api/academy/recommended-quizzes", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user?.id,
   });
 
   // Exam request form
@@ -266,6 +278,35 @@ export default function Academy() {
                   </div>
                   <Badge variant="outline">{req.status}</Badge>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recommended Quizzes */}
+      {recommendedQuizzes.length > 0 && (
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              Senin İçin Önerilen Sınavlar
+            </CardTitle>
+            <CardDescription>Kariyer seviyene uygun sınavları başla</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {recommendedQuizzes.map((quiz: any) => (
+                <Link key={quiz.id} href={`/akademi-quiz/${quiz.quizId}`}>
+                  <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer">
+                    <p className="font-medium text-sm">{quiz.titleTr}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{quiz.descriptionTr}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <Badge variant="outline" className="text-xs">{quiz.estimatedMinutes} dk</Badge>
+                      <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Başla →</span>
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </CardContent>

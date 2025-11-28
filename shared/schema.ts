@@ -3567,6 +3567,33 @@ export type InsertQuizResult = z.infer<typeof insertQuizResultSchema>;
 export type QuizResult = typeof quizResults.$inferSelect;
 
 // ========================================
+// QUIZ METADATA - Sınav Metaveri
+// ========================================
+
+export const quizzes = pgTable("quizzes", {
+  id: serial("id").primaryKey(),
+  quizId: varchar("quiz_id", { length: 100 }).notNull().unique(), // e.g., "espresso-101"
+  titleTr: varchar("title_tr", { length: 200 }).notNull(),
+  descriptionTr: text("description_tr"),
+  careerLevelId: integer("career_level_id").notNull().references(() => careerLevels.id),
+  difficulty: varchar("difficulty", { length: 20 }).default("medium"), // easy, medium, hard
+  estimatedMinutes: integer("estimated_minutes").default(30),
+  passingScore: integer("passing_score").default(70),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("quizzes_career_level_idx").on(table.careerLevelId),
+  index("quizzes_difficulty_idx").on(table.difficulty),
+]);
+
+export const insertQuizSchema = createInsertSchema(quizzes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertQuiz = z.infer<typeof insertQuizSchema>;
+export type Quiz = typeof quizzes.$inferSelect;
+
+// ========================================
 // BADGE SYSTEM - Başarı ve Rozetler
 // ========================================
 
