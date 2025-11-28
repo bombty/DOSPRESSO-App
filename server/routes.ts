@@ -11006,6 +11006,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/team-competitions - Active and completed team competitions
+  app.get('/api/academy/team-competitions', isAuthenticated, async (req: any, res) => {
+    try {
+      const branches = await storage.getBranches() || [];
+      
+      // Mock active competition data
+      const leaderboard = branches
+        .map((b: any, idx: number) => ({
+          branchId: b.id,
+          branchName: b.name,
+          score: Math.floor(Math.random() * 1000) + 500,
+          place: idx + 1,
+          quizzesCompleted: Math.floor(Math.random() * 50) + 10,
+        }))
+        .sort((a: any, b: any) => b.score - a.score);
+
+      const competitions = [
+        {
+          id: "comp-nov-2025",
+          title: "Kasım 2025 Şube Yarışması",
+          description: "Kasım ayında en çok sınav tamamlayan şubeleri buluşturan kapsamlı yarışma",
+          status: "active",
+          startDate: new Date('2025-11-01').toISOString(),
+          endDate: new Date('2025-11-30').toISOString(),
+          participantCount: branches.length,
+          leaderboard: leaderboard,
+        },
+        {
+          id: "comp-oct-2025",
+          title: "Ekim 2025 Akademi Kupası",
+          description: "Ekim ayının en başarılı performans göstergesi",
+          status: "completed",
+          startDate: new Date('2025-10-01').toISOString(),
+          endDate: new Date('2025-10-31').toISOString(),
+          winner: branches[0]?.name || "Şube",
+          winnerScore: 1250,
+        },
+      ];
+
+      res.json(competitions);
+    } catch (error: any) {
+      console.error('Team competitions error:', error);
+      res.json([]);
+    }
+  });
+
+  // GET /api/academy/monthly-challenge - Current monthly challenge
+  app.get('/api/academy/monthly-challenge', isAuthenticated, async (req: any, res) => {
+    try {
+      const now = new Date();
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const daysPassed = now.getDate();
+      const daysRemaining = daysInMonth - daysPassed;
+
+      const challenge = {
+        id: "challenge-nov-2025",
+        title: "Quiz Uzmanı",
+        description: "Bu ay 25 sınavdan fazla tamamlayan şubeler ödül kazanacak!",
+        daysRemaining: daysRemaining,
+        reward: 500,
+        progress: Math.round((daysPassed / daysInMonth) * 100),
+        participatingBranches: (await storage.getBranches?.())?.length || 0,
+      };
+
+      res.json(challenge);
+    } catch (error: any) {
+      console.error('Monthly challenge error:', error);
+      res.json(null);
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

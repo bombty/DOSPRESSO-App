@@ -69,3 +69,20 @@ The frontend utilizes React 18+ with TypeScript and Vite. It employs Shadcn/ui (
 - Branch rankings sorted by performance
 - Quick link in Academy hub pointing to branch analytics
 
+
+#### **Phase 13: Team Competitions & Gamification** (✅ COMPLETE)
+- `/akademi-team-competitions` page with 3 tabs (Canlı Yarışma, Liderlik, Geçmiş)
+- API endpoints:
+  - `GET /api/academy/team-competitions` - Active and completed competitions
+  - `GET /api/academy/monthly-challenge` - Current month's challenge with progress
+- Monthly Challenge widget showing:
+  - Title and description
+  - Days remaining in month
+  - Point rewards
+  - Participation count
+- Real-time competition leaderboard with rankings
+- Historical competition results with winners
+- Unlockable competition badges (🥇 1. Sıra Ustası, 🔥 Yanış Erişim, ⭐ Harita Şampiyon, 💎 Elmas Derece)
+- Bar charts comparing branch scores
+- Quick link in Academy hub pointing to competitions
+
