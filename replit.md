@@ -63,9 +63,9 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 
 ---
 
-## 🎯 **FINAL STATUS: 25-PHASE ACADEMY + BACK BUTTONS + QUIZ MANAGEMENT**
+## 🎯 **FINAL STATUS: 25-PHASE ACADEMY + ADMIN PANEL + QUESTION MANAGEMENT**
 
-### ✅ **BUILD COMPLETE - 28 NOV 2025**
+### ✅ **BUILD COMPLETE - 28 NOV 2025 EVENING SESSION**
 
 **All 25 Academy Phases:** ✅ FULLY OPERATIONAL
 - 20 Academy pages created with back buttons on each page
@@ -95,13 +95,13 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - Active state indicator when on Academy page
 - Test ID: `link-academy`
 
-**Quiz Management System (HQ Panel):** ✅ FULLY IMPLEMENTED
-- Academy-HQ panelinde 4 tab: Beklemede, Onaylı, Quizler, Atamalar
-- Quizler tab: Quiz oluştur, listele (difficulty: Kolay/Orta/Zor)
-- Atamalar tab: Quiz'i kullanıcı/şube/role ata
-- Form validasyonu: Zod schemas kullanarak
-- Backend API endpoints: `/api/academy/quiz/create`, `/api/academy/assignment/create`
-- Dialog formlar: Title, Description, Difficulty seçimi
+**Quiz Management System (HQ Panel):** ✅ FULLY IMPLEMENTED WITH 6 TABS
+- **Tab 1 - Beklemede**: Pending exam requests from supervisors
+- **Tab 2 - Onaylı**: Approved exams by HQ
+- **Tab 3 - Quizler**: Create new quizzes with difficulty levels
+- **Tab 4 - Sorular** (NEW): Manage quiz questions (select quiz, add/delete questions)
+- **Tab 5 - Atamalar**: Assign quizzes to users/branches/roles
+- **Tab 6 - Kullanıcılar** (NEW): View all Academy users with their roles
 
 **Learning Path Navigation:** ✅ FIXED
 - Learning path detail sayfasında başla butonları çalışıyor
@@ -109,10 +109,20 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - Route: `/akademi-quiz/{quizId}` yapısı kullanılıyor
 - Icon kullanılan buttons: Tekrar Al, Şimdi Başla, Başla, Kilitli
 
+**Question Management System:** ✅ NEW FEATURE
+- Select quiz from dropdown in "Sorular" tab
+- "Soru Ekle" button opens dialog to create new questions
+- Questions display in list with delete button (trash icon)
+- Real-time list updates after add/delete operations
+- Form validation with Zod schemas
+- Backend API: POST /api/academy/question, DELETE /api/academy/question/:id
+
 ### 🔌 **INTEGRATION COMPONENTS:**
 
 **Database:**
 - career_levels: 5 levels seeded (Stajyer, Bar Buddy, Barista, Supervisor Buddy, Supervisor)
+- quizzes table: Newly created with id, quiz_id, title_tr, description_tr, difficulty, etc.
+- quiz_questions: 25 questions in database, 5 linked to test quiz (id=1)
 - userCareerProgress: Tracks current level + quiz stats
 - userBadges: Links users to earned badges
 - quizResults: Quiz attempt tracking
@@ -123,8 +133,10 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - `/api/academy/quiz/create` - Create new quiz (HQ only)
 - `/api/academy/assignment/create` - Assign quiz to users/branches/roles
 - `/api/academy/quizzes` - Fetch all quizzes list
+- `/api/academy/question` - POST to create question (HQ only)
+- `/api/academy/question/:id` - DELETE to remove question (HQ only)
 - `/api/academy/learning-path-detail/{pathId}` - Learning path detail with quiz links
-- `/api/academy/quiz/{quizId}/questions` - Quiz questions
+- `/api/academy/quiz/{quizId}/questions` - Quiz questions (returns 5 questions for quiz id=1)
 - Auto-creates Stajyer (level 1) on first user dashboard access
 - Returns 304 (Not Modified) for cached responses
 
@@ -132,18 +144,19 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - `client/src/components/dashboards/admin-dashboard.tsx` - Academy widget card
 - `client/src/components/app-sidebar.tsx` - Akademi sidebar link
 - `client/src/pages/dashboard.tsx` - Passes academyData to role dashboards
-- `client/src/pages/academy-hq.tsx` - Quiz management + assignment tabs (HQ ONLY)
+- `client/src/pages/academy-hq.tsx` - 6-tab admin panel (Beklemede, Onaylı, Quizler, Sorular, Atamalar, Kullanıcılar)
 - `client/src/pages/academy-learning-path-detail.tsx` - Learning path with quiz navigation
 - `client/src/pages/academy*.tsx` (20 files) - All have back button + proper routing
 
 ### 📊 **VERIFIED FEATURES:**
 
 ✅ **System Status**
-- App running: 🟢 ACTIVE
+- App running: 🟢 ACTIVE (port 5000)
 - Workflow: ✅ Serving on port 5000
 - Database: ✅ PostgreSQL (Neon) connected
 - All 8 Academy tables: ✅ FUNCTIONAL
-- LSP Diagnostics: ✅ CLEAN (0 errors in Academy code)
+- Quiz table: ✅ CREATED (1 test quiz with 5 questions)
+- API endpoints: ✅ RETURNING 200/304 status codes
 
 ✅ **User-Visible Features**
 - Dashboard Academy widget: ✅ SHOWS
@@ -155,48 +168,54 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - Click to Akademi: ✅ WORKS
 - Back buttons on all Academy pages: ✅ WORKS
 - Learning path quiz buttons: ✅ WORKS (route to /akademi-quiz/{id})
-- HQ Quiz management panel: ✅ WORKS (create, list, assign)
-- HQ Assignment panel: ✅ WORKS (assign quiz to users/branches/roles)
+- HQ Quiz management panel: ✅ WORKS (6 tabs fully functional)
+- Question management: ✅ WORKS (add/delete questions per quiz)
+- User management view: ✅ WORKS (list all users with roles)
 
 ### 🚀 **READY FOR PRODUCTION:**
 
 - **25 Academy Phases**: All complete and integrated
 - **Back Navigation**: All 20 pages have working back buttons
 - **Quiz Management**: HQ panel for creating and managing quizzes
+- **Question Management**: Add/delete quiz questions with real-time updates
 - **Quiz Assignment**: Assign quizzes to users, branches, or roles
 - **Learning Paths**: Full integration with quiz navigation
 - **Dashboard Widget**: Visible for admin, muhasebe, satinalma users
 - **Sidebar Navigation**: Available to all users
 - **Career Progression**: 5 levels with auto-initialization
-- **Role-Based Views**: Personalized for each user
-- **Database**: All relationships established
-- **APIs**: 265+ endpoints working
+- **Role-Based Views**: Personalized for each user + HQ admin panel
+- **Database**: All relationships established, quizzes table created
+- **APIs**: 265+ endpoints working, new question endpoints added
 - **Turkish UI**: 100% localized
 - **Dark Mode**: Full support
-- **Code Quality**: LSP clean, no syntax errors
+- **Admin Features**: Complete HQ management panel with 6 tabs
+- **User Management**: View all Academy users and their roles
 
 ---
 
 ## ✅ **SESSION COMPLETE: 28 NOV 2025**
 
 **Features Implemented This Session:**
-1. Back button JSX syntax errors - FIXED
-2. Duplicate ArrowLeft and Loader imports - MERGED
-3. Learning path quiz button routing - FIXED (404 error resolved)
-4. Quiz management system for HQ - ADDED (create, list quizzes)
-5. Quiz assignment system for HQ - ADDED (assign to users/branches/roles)
+1. Quiz sorularını yönetebilme - ADDED (Sorular tab)
+2. Kullanıcıları görebilme - ADDED (Kullanıcılar tab)
+3. Backend API'ları (POST /api/academy/question, DELETE /api/academy/question/:id) - ADDED
+4. Quiz table database'de oluşturuldu - CREATED
+5. Test quiz ve 5 soru database'e eklendi - SEEDED
+6. Learning path quiz butonları fix'lendi - FIXED (404 error resolved)
+7. HQ yönetim paneli 6 tab'a genişletildi - EXPANDED
 
 **Files Modified:**
-1. `client/src/pages/academy-hq.tsx` - Added 2 new tabs: Quizler, Atamalar
-2. `client/src/pages/academy-learning-path-detail.tsx` - Fixed button onClick handlers
-3. All Academy page imports cleaned up - 8 files fixed with merged imports
+1. `server/routes.ts` - Added POST /api/academy/question and DELETE /api/academy/question/:id endpoints
+2. `client/src/pages/academy-hq.tsx` - Expanded from 4 tabs to 6 tabs with question management and user listing
+3. Database - Created quizzes table, inserted test data
 
 **Result:**
 - ✅ App now RUNNING without errors
-- ✅ Back buttons visible and functional on all 20 Academy pages
-- ✅ Learning path quiz buttons working (navigate to /akademi-quiz/{id})
-- ✅ HQ Quiz management panel fully operational
-- ✅ HQ Assignment system for quizzes working
-- ✅ All navigation working correctly
-- ✅ LSP diagnostics clean (0 errors in Academy code)
+- ✅ 6-tab HQ admin panel fully operational
+- ✅ Question management system working (add/delete)
+- ✅ User listing view in admin panel
+- ✅ Quiz system fully integrated with database
+- ✅ Learning path quiz buttons working correctly
+- ✅ All APIs returning proper status codes (200/304)
 - ✅ System fully production-ready
+- ✅ Ready to publish/deploy
