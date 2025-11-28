@@ -10780,6 +10780,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/academy/badges - Get all available badges
+  app.get('/api/academy/badges', isAuthenticated, async (req: any, res) => {
+    try {
+      const badges = await storage.getBadges();
+      res.json(badges);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/academy/user-badges - Get user's unlocked badges
+  app.get('/api/academy/user-badges', isAuthenticated, async (req: any, res) => {
+    try {
+      const userBadges = await storage.getUserBadges(req.user.id);
+      res.json(userBadges);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

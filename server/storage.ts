@@ -5546,6 +5546,32 @@ export class DatabaseStorage implements IStorage {
       averageScore: Number(stats?.averageScore || 0),
     };
   }
+
+  // ========================================
+  // BADGE OPERATIONS
+  // ========================================
+
+  async getBadges(): Promise<typeof badges.$inferSelect[]> {
+    return db.select().from(badges).orderBy(asc(badges.points));
+  }
+
+  async getUserBadges(userId: string): Promise<(typeof userBadges.$inferSelect & { badge: typeof badges.$inferSelect })[]> {
+    const results = await db
+      .select({ badge: badges, userBadge: userBadges })
+      .from(userBadges)
+      .innerJoin(badges, eq(userBadges.badgeId, badges.id))
+      .where(eq(userBadges.userId, userId));
+    return results.map(r => ({ ...r.badge, ...r.userBadge })) as any;
+  }
+
+  async unlockBadge(userId: string, badgeId: number): Promise<typeof userBadges.$inferSelect> {
+    const [result] = await db
+      .insert(userBadges)
+      .values({ userId, badgeId })
+      .onConflictDoNothing()
+      .returning();
+    return result;
+  }
 }
 
 export const storage = new DatabaseStorage();

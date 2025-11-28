@@ -3565,3 +3565,51 @@ export const insertQuizResultSchema = createInsertSchema(quizResults).omit({
 
 export type InsertQuizResult = z.infer<typeof insertQuizResultSchema>;
 export type QuizResult = typeof quizResults.$inferSelect;
+
+// ========================================
+// BADGE SYSTEM - Başarı ve Rozetler
+// ========================================
+
+// Available Badges
+export const badges = pgTable("badges", {
+  id: serial("id").primaryKey(),
+  badgeKey: varchar("badge_key", { length: 50 }).notNull().unique(), // first_quiz, top_10, expert_barista, etc
+  titleTr: varchar("title_tr", { length: 100 }).notNull(),
+  descriptionTr: text("description_tr"),
+  iconName: varchar("icon_name", { length: 50 }), // lucide-react icon name
+  category: varchar("category", { length: 20 }).notNull(), // achievement, skill, milestone, leadership
+  condition: jsonb("condition"), // {type: "quiz_score", minScore: 90, count: 3}
+  points: integer("points").default(10), // Gamification points
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("badges_category_idx").on(table.category),
+]);
+
+export const insertBadgeSchema = createInsertSchema(badges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type Badge = typeof badges.$inferSelect;
+
+// User Badge Progress
+export const userBadges = pgTable("user_badges", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  badgeId: integer("badge_id").notNull().references(() => badges.id, { onDelete: "cascade" }),
+  unlockedAt: timestamp("unlocked_at").defaultNow(),
+  progress: integer("progress").default(0), // 0-100% toward badge
+}, (table) => [
+  index("user_badges_user_idx").on(table.userId),
+  index("user_badges_badge_idx").on(table.badgeId),
+  unique("user_badges_unique").on(table.userId, table.badgeId),
+]);
+
+export const insertUserBadgeSchema = createInsertSchema(userBadges).omit({
+  id: true,
+  unlockedAt: true,
+});
+
+export type InsertUserBadge = z.infer<typeof insertUserBadgeSchema>;
+export type UserBadge = typeof userBadges.$inferSelect;
