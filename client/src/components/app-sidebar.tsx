@@ -278,6 +278,16 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {user?.role === "admin" && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location === "/akademi-hq"} data-testid="link-academy-hq">
+                    <Link href="/akademi-hq">
+                      <LucideIcons.Settings className="h-4 w-4" />
+                      <span>Akademi Yönetimi</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               
               {/* Error state */}
               {isError && sections.length === 0 && (
