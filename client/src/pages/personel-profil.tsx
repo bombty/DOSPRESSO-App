@@ -219,11 +219,12 @@ export default function PersonelProfilPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="bilgiler" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="bilgiler" data-testid="tab-info">Kişisel Bilgiler</TabsTrigger>
-          <TabsTrigger value="performans" data-testid="tab-performance">Performans Detayları</TabsTrigger>
-          <TabsTrigger value="denetimler" data-testid="tab-audits">Denetimler</TabsTrigger>
-          <TabsTrigger value="vardiyalar" data-testid="tab-shifts">Vardiya Geçmişi</TabsTrigger>
+        <TabsList className="flex flex-wrap gap-1">
+          <TabsTrigger value="bilgiler" data-testid="tab-info" className="flex-1 min-w-fit">Kişisel Bilgiler</TabsTrigger>
+          <TabsTrigger value="performans" data-testid="tab-performance" className="flex-1 min-w-fit">Performans</TabsTrigger>
+          <TabsTrigger value="denetimler" data-testid="tab-audits" className="flex-1 min-w-fit">Denetimler</TabsTrigger>
+          <TabsTrigger value="vardiyalar" data-testid="tab-shifts" className="flex-1 min-w-fit">Vardiyalar</TabsTrigger>
+          <TabsTrigger value="akademi" data-testid="tab-academy" className="flex-1 min-w-fit">Akademi</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bilgiler" className="space-y-4">
@@ -318,6 +319,55 @@ export default function PersonelProfilPage() {
               <p className="text-muted-foreground">
                 Vardiya detayları ve katılım bilgileri yakında eklenecek.
               </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="akademi" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Akademi Modülleri</CardTitle>
+              <CardDescription>Tüm akademi eğitim ve gelişim programlarına erişim</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <Link href="/akademi">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi">Akademi</Button>
+                </Link>
+                <Link href="/akademi-hq">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-hq">Yönetim</Button>
+                </Link>
+                <Link href="/akademi-supervisor">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-supervisor">Supervisor</Button>
+                </Link>
+                <Link href="/akademi-analytics">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-analytics">Analitik</Button>
+                </Link>
+                <Link href="/akademi-badges">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-badges">Rozetler</Button>
+                </Link>
+                <Link href="/akademi-leaderboard">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-leaderboard">Sıralama</Button>
+                </Link>
+                <Link href="/akademi-learning-paths">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-paths">Yollar</Button>
+                </Link>
+                <Link href="/akademi-certificates">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-certificates">Sertifikalar</Button>
+                </Link>
+                <Link href="/akademi-achievements">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-achievements">Başarılar</Button>
+                </Link>
+                <Link href="/akademi-progress-overview">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-progress">İlerleme</Button>
+                </Link>
+                <Link href="/akademi-streak-tracker">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-streak">Seri</Button>
+                </Link>
+                <Link href="/akademi-ai-assistant">
+                  <Button variant="outline" className="w-full" data-testid="link-akademi-ai">AI Asistan</Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
