@@ -236,6 +236,10 @@ export default function AcademyHQ() {
             <Users className="w-4 h-4 mr-2" />
             Kullanıcılar
           </TabsTrigger>
+          <TabsTrigger value="modules" className="flex-1 min-w-fit">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Modüller
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="space-y-4">
@@ -639,6 +643,135 @@ export default function AcademyHQ() {
                   </table>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="modules" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Akademi Modülleri</h3>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Tüm Modüller</CardTitle>
+              <CardDescription>12 Akademi modülünün yönetimi ve atama işlemleri</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[
+                  { id: 1, name: "Akademi", path: "/akademi", status: "active" },
+                  { id: 2, name: "Yönetim", path: "/akademi-hq", status: "active" },
+                  { id: 3, name: "Supervisor", path: "/akademi-supervisor", status: "active" },
+                  { id: 4, name: "Analitik", path: "/akademi-analytics", status: "active" },
+                  { id: 5, name: "Rozetler", path: "/akademi-badges", status: "active" },
+                  { id: 6, name: "Sıralama", path: "/akademi-leaderboard", status: "active" },
+                  { id: 7, name: "Yollar", path: "/akademi-learning-paths", status: "active" },
+                  { id: 8, name: "Sertifikalar", path: "/akademi-certificates", status: "active" },
+                  { id: 9, name: "Başarılar", path: "/akademi-achievements", status: "active" },
+                  { id: 10, name: "İlerleme", path: "/akademi-progress-overview", status: "active" },
+                  { id: 11, name: "Seri", path: "/akademi-streak-tracker", status: "active" },
+                  { id: 12, name: "AI Asistan", path: "/akademi-ai-assistant", status: "active" },
+                ].map((module: any) => (
+                  <div key={module.id} className="flex items-center justify-between p-4 border rounded-lg hover-elevate">
+                    <div className="flex-1">
+                      <p className="font-medium">{module.name}</p>
+                      <p className="text-xs text-muted-foreground">{module.path}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={module.status === "active" ? "default" : "secondary"}>
+                        {module.status === "active" ? "Aktif" : "Pasif"}
+                      </Badge>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" data-testid={`assign-module-${module.id}`}>
+                            Ata
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>{module.name} - Atama</DialogTitle>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Bu modülü kullanıcı, şube veya role göre atayın
+                            </p>
+                          </DialogHeader>
+                          <Form {...assignForm}>
+                            <form onSubmit={assignForm.handleSubmit((data) => {
+                              assignQuizMutation.mutate({
+                                ...data,
+                                quizId: module.id.toString(),
+                              });
+                            })} className="space-y-4">
+                              <FormField
+                                control={assignForm.control}
+                                name="assignTo"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Atama Türü</FormLabel>
+                                    <FormControl>
+                                      <select {...field} className="border rounded px-2 py-1 w-full">
+                                        <option value="user">Kullanıcı</option>
+                                        <option value="branch">Şube</option>
+                                        <option value="role">Rol</option>
+                                      </select>
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={assignForm.control}
+                                name="targetId"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Hedef ID</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        placeholder={
+                                          assignForm.getValues("assignTo") as string === "user" 
+                                            ? "Kullanıcı ID'si"
+                                            : (assignForm.getValues("assignTo") as string) === "branch"
+                                            ? "Şube ID'si"
+                                            : "Rol Adı"
+                                        }
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <Button type="submit" disabled={assignQuizMutation.isPending} className="w-full">
+                                Ata
+                              </Button>
+                            </form>
+                          </Form>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Modül İstatistikleri</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="p-3 bg-muted rounded text-center">
+                  <p className="text-2xl font-bold">12</p>
+                  <p className="text-xs text-muted-foreground">Toplam Modül</p>
+                </div>
+                <div className="p-3 bg-muted rounded text-center">
+                  <p className="text-2xl font-bold">12</p>
+                  <p className="text-xs text-muted-foreground">Aktif Modül</p>
+                </div>
+                <div className="p-3 bg-muted rounded text-center">
+                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-xs text-muted-foreground">Pasif Modül</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
