@@ -211,28 +211,28 @@ export default function AcademyHQ() {
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="pending">
+        <TabsList className="w-full flex flex-wrap gap-1">
+          <TabsTrigger value="pending" className="flex-1 min-w-fit">
             <Clock className="w-4 h-4 mr-2" />
             Beklemede ({pendingExams.length})
           </TabsTrigger>
-          <TabsTrigger value="approved">
+          <TabsTrigger value="approved" className="flex-1 min-w-fit">
             <CheckCircle className="w-4 h-4 mr-2" />
             Onaylı ({approvedExams.length})
           </TabsTrigger>
-          <TabsTrigger value="quizzes">
+          <TabsTrigger value="quizzes" className="flex-1 min-w-fit">
             <BookOpen className="w-4 h-4 mr-2" />
             Quizler
           </TabsTrigger>
-          <TabsTrigger value="questions">
+          <TabsTrigger value="questions" className="flex-1 min-w-fit">
             <BookOpen className="w-4 h-4 mr-2" />
             Sorular
           </TabsTrigger>
-          <TabsTrigger value="assignments">
+          <TabsTrigger value="assignments" className="flex-1 min-w-fit">
             <Users className="w-4 h-4 mr-2" />
             Atamalar
           </TabsTrigger>
-          <TabsTrigger value="users">
+          <TabsTrigger value="users" className="flex-1 min-w-fit">
             <Users className="w-4 h-4 mr-2" />
             Kullanıcılar
           </TabsTrigger>
