@@ -45,8 +45,8 @@ export default function AcademyHQ() {
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
 
-  // Check HQ access
-  if (!user || !isHQRole(user.role as any)) {
+  // Check HQ access - admin or isHQRole
+  if (!user || (user.role !== "admin" && !isHQRole(user.role as any))) {
     return <div className="p-6 text-center text-destructive">Erişim Reddedildi</div>;
   }
 
