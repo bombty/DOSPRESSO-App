@@ -18,7 +18,7 @@ import ResetPassword from "@/pages/reset-password";
 import Dashboard from "@/pages/dashboard";
 import Subeler from "@/pages/subeler";
 import SubeDetay from "@/pages/sube-detay";
-import PersonelProfil from "@/pages/personel-profil.tsx";
+import PersonelProfil from "@/pages/personel-profil";
 import PersonelDetay from "@/pages/personel-detay";
 import Tasks from "@/pages/tasks";
 import Checklists from "@/pages/checklists";
