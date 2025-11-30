@@ -78,6 +78,7 @@ const createTicketSchema = z.object({
   description: z.string().min(1, "Açıklama zorunludur"),
   category: z.string().min(1, "Kategori seçiniz"),
   priority: z.string().default("normal"),
+  branchId: z.string().optional(),
 });
 
 type CreateTicketFormData = z.infer<typeof createTicketSchema>;
@@ -138,12 +139,10 @@ export default function HQSupport() {
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">HQ Destek</h1>
           <p className="text-muted-foreground">Merkez ile iletişim taleplerinizi yönetin</p>
         </div>
-        {!isHQ && (
-          <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-ticket">
-            <Plus className="w-4 h-4 mr-2" />
-            Yeni Talep Oluştur
-          </Button>
-        )}
+        <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-ticket">
+          <Plus className="w-4 h-4 mr-2" />
+          Yeni Talep Oluştur
+        </Button>
       </div>
 
       <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as any)}>
@@ -198,6 +197,7 @@ export default function HQSupport() {
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         branchId={user?.branchId || 0}
+        isHQ={isHQ}
       />
 
       {/* Ticket Detail Dialog */}
@@ -323,13 +323,21 @@ function TicketCard({
 function CreateTicketDialog({ 
   open, 
   onClose, 
-  branchId 
+  branchId,
+  isHQ
 }: { 
   open: boolean; 
   onClose: () => void;
   branchId: number;
+  isHQ: boolean;
 }) {
   const { toast } = useToast();
+  
+  // Fetch branches for HQ users
+  const { data: branches = [] } = useQuery<any[]>({
+    queryKey: ['/api/branches'],
+    enabled: open && isHQ,
+  });
   
   const form = useForm<CreateTicketFormData>({
     resolver: zodResolver(createTicketSchema),
@@ -338,14 +346,19 @@ function CreateTicketDialog({
       description: "",
       category: "",
       priority: "normal",
+      branchId: isHQ ? "" : branchId.toString(),
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateTicketFormData) => {
+      const finalBranchId = isHQ ? parseInt(data.branchId || "0") : branchId;
       const response = await apiRequest("POST", "/api/hq-support/tickets", {
-        ...data,
-        branchId,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        priority: data.priority,
+        branchId: finalBranchId,
       });
       return response.json();
     },
@@ -380,6 +393,34 @@ function CreateTicketDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* HQ Branch Selection */}
+            {isHQ && (
+              <FormField
+                control={form.control}
+                name="branchId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Şube Seçin *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-branch-ticket">
+                          <SelectValue placeholder="Şube seçiniz" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {branches.map((branch: any) => (
+                          <SelectItem key={branch.id} value={branch.id.toString()} data-testid={`option-branch-${branch.id}`}>
+                            {branch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               control={form.control}
               name="title"
