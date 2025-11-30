@@ -158,9 +158,13 @@ function Router() {
           <Route path="/akademi-social-groups" component={AcademySocialGroups} />
           <Route path="/akademi-advanced-analytics" component={AcademyAdvancedAnalytics} />
           <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
-          <Route path="/egitim/:id" component={TrainingDetail} />
-          <Route path="/egitim" component={Training} />
+          {/* DEPRECATED: Training moved to /akademi-hq - these routes redirect */}
+          <Route path="/egitim/:id" component={ModuleDetail} />
           <Route path="/egitim-ata" component={TrainingAssign} />
+          <Route path="/egitim" component={() => {
+            if (typeof window !== 'undefined') window.location.href = '/akademi-hq';
+            return null;
+          }} />
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular" component={Announcements} />
           <Route path="/mesajlar" component={Mesajlar} />

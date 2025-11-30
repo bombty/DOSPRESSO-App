@@ -66,6 +66,27 @@ const ACADEMY_MODULES = [
 export default function AcademyHQ() {
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  // HQ-only access check
+  const isHQ = user && isHQRole(user.role as any);
+  if (user && !isHQ) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Yetkisiz Erişim</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">Bu sayfaya sadece HQ personeli erişebilir.</p>
+            <Button onClick={() => window.location.href = "/"} className="mt-4 w-full">
+              Ana Sayfaya Dön
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
   const [isCreateQuizOpen, setIsCreateQuizOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
