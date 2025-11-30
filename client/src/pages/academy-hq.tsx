@@ -822,7 +822,7 @@ export default function AcademyHQ() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Seviye</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={editingModule.level}>
+                            <Select onValueChange={field.onChange} defaultValue={editingModule?.level || "beginner"}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue />
@@ -879,7 +879,15 @@ export default function AcademyHQ() {
                             e.preventDefault();
                             e.stopPropagation();
                             setEditingModule(module);
-                            editTrainingForm.reset(module);
+                            editTrainingForm.reset({
+                              title: module.title,
+                              description: module.description || undefined,
+                              category: module.category || undefined,
+                              level: module.level || "beginner",
+                              estimatedDuration: module.estimatedDuration,
+                              isPublished: module.isPublished ?? false,
+                              requiredForRole: module.requiredForRole || [],
+                            });
                             setIsEditTrainingOpen(true);
                           }}
                           data-testid={`button-edit-module-${module.id}`}
