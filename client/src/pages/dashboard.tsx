@@ -536,8 +536,6 @@ export default function Dashboard() {
           openFaults={openFaults}
           branchScoresTimeRange={branchScoresTimeRange}
           onTimeRangeChange={setBranchScoresTimeRange}
-          academyData={academyData}
-          academyLoading={academyLoading}
         />
       );
     } else if (role === 'supervisor' || role === 'supervisor_buddy' || role === 'coach') {
@@ -558,6 +556,8 @@ export default function Dashboard() {
           pendingTasks={pendingTasks}
           tasks={tasks}
           isLoading={tasksLoading}
+          academyData={academyData}
+          academyLoading={academyLoading}
         />
       );
     } else if (role === 'teknik') {

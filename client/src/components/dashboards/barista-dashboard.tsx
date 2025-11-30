@@ -1,14 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, Clock, Coffee, ListTodo, TrendingUp, Zap } from "lucide-react";
+import { CheckCircle, Clock, Coffee, ListTodo, TrendingUp, Zap, Trophy, Award } from "lucide-react";
 import { GaugeCard, KPICard } from "./shared-dashboard-components";
+import { useLocation } from "wouter";
 
 interface BaristaDashboardProps {
   completedTasks: number;
   pendingTasks: number;
   tasks?: any[];
   isLoading: boolean;
+  academyData?: any;
+  academyLoading?: boolean;
 }
 
 export function BaristaDashboard({
@@ -16,7 +20,10 @@ export function BaristaDashboard({
   pendingTasks,
   tasks,
   isLoading,
+  academyData,
+  academyLoading,
 }: BaristaDashboardProps) {
+  const [, setLocation] = useLocation();
   const todaysTasks = tasks?.filter(t => {
     const taskDate = new Date(t.dueDate).toDateString();
     const today = new Date().toDateString();
@@ -76,6 +83,98 @@ export function BaristaDashboard({
           </CardContent>
         </Card>
       )}
+
+      {/* Akademi Widget */}
+      <Card 
+        className="cursor-pointer hover-elevate transition-all" 
+        onClick={() => setLocation("/akademi")}
+        data-testid="card-akademi-barista"
+      >
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Trophy className="h-4 w-4" />
+            Akademi
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {academyLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ) : academyData?.careerLevel ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm font-medium">{academyData.careerLevel.titleTr}</span>
+                </div>
+                <Badge variant="secondary" data-testid="badge-career-level-barista">
+                  Seviye {academyData.careerLevel.levelNumber}
+                </Badge>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Quiz Başarı</span>
+                  <span className="font-medium" data-testid="text-quiz-average-barista">
+                    {Math.round(academyData.quizStats?.averageScore || 0)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Rozetler</span>
+                  <span className="font-medium text-amber-600" data-testid="text-badges-count-barista">
+                    {academyData.totalBadgesEarned || 0}
+                  </span>
+                </div>
+              </div>
+
+              {academyData.userBadges && academyData.userBadges.length > 0 && (
+                <div className="mt-2 pt-2 border-t">
+                  <p className="text-xs text-muted-foreground mb-2">Son Rozetler</p>
+                  <div className="flex gap-1 flex-wrap">
+                    {academyData.userBadges.slice(0, 3).map((ub: any, idx: number) => (
+                      <Badge key={idx} variant="outline" className="text-xs" data-testid={`badge-barista-${ub.badge?.nameEn || idx}`}>
+                        {ub.badge?.nameEn}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button 
+                variant="outline" 
+                className="w-full mt-4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/akademi");
+                }}
+                data-testid="button-view-academy-barista"
+              >
+                Akademiye Git
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-sm">Akademi henüz başlamamış</p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="mt-4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/akademi");
+                }}
+                data-testid="button-start-academy-barista"
+              >
+                Akademiye Başla
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card className="bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200">
