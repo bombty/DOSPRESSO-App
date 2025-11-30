@@ -214,6 +214,9 @@ import {
   InsertExamRequest,
   UserCareerProgress,
   InsertUserCareerProgress,
+  BranchFeedback,
+  InsertBranchFeedback,
+  branchFeedbacks,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -5613,6 +5616,30 @@ export class DatabaseStorage implements IStorage {
       .limit(3);
     
     return recommendedQuizzes;
+  }
+
+  // ========================================
+  // BRANCH FEEDBACK SYSTEM
+  // ========================================
+
+  async createBranchFeedback(feedback: InsertBranchFeedback): Promise<BranchFeedback> {
+    const [result] = await db.insert(branchFeedbacks).values(feedback).returning();
+    return result;
+  }
+
+  async getBranchFeedbacks(filters?: { branchId?: number; status?: string; type?: string }): Promise<BranchFeedback[]> {
+    let query = db.select().from(branchFeedbacks);
+    const conditions: SQL[] = [];
+    if (filters?.branchId) conditions.push(eq(branchFeedbacks.branchId, filters.branchId));
+    if (filters?.status) conditions.push(eq(branchFeedbacks.status, filters.status));
+    if (filters?.type) conditions.push(eq(branchFeedbacks.type, filters.type));
+    if (conditions.length) query = query.where(and(...conditions));
+    return query.orderBy(desc(branchFeedbacks.createdAt));
+  }
+
+  async updateBranchFeedback(id: number, updates: any): Promise<BranchFeedback | undefined> {
+    const [result] = await db.update(branchFeedbacks).set(updates).where(eq(branchFeedbacks.id, id)).returning();
+    return result;
   }
 }
 

@@ -89,6 +89,7 @@ import FranchiseAcilis from "@/pages/franchise-acilis";
 import DenetimSablonlari from "@/pages/denetim-sablonlari";
 import DenetimYurutme from "@/pages/denetim-yurutme";
 import Denetimler from "@/pages/denetimler";
+import BranchFeedback from "@/pages/branch-feedback";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -198,6 +199,9 @@ function Router() {
           <Route path="/yonetim/servis-talepleri" component={ServiceRequestsManagement} />
           <Route path="/yonetim/ekipman-yonetimi" component={EquipmentManagement} />
           <Route path="/yonetim/rol-yetkileri" component={RolYetkileri} />
+          
+          {/* Branch Feedback System */}
+          <Route path="/muhasebe-geribildirimi" component={BranchFeedback} />
         </>
       )}
       <Route component={NotFound} />

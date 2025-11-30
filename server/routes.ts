@@ -11412,6 +11412,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ totalScore: 85, quizzesCompleted: 24, learningHours: 42, successRate: 92 });
   });
 
+  // ========================================
+  // BRANCH FEEDBACK SYSTEM
+  // ========================================
+
+  // POST /api/feedback - Şubeler geribildirimi gönder
+  app.post("/api/feedback", isAuthenticated, async (req: any, res) => {
+    try {
+      const { branchId, type, subject, message } = req.body;
+      const feedback = await storage.createBranchFeedback({
+        branchId,
+        submittedById: req.user.id,
+        type,
+        subject,
+        message,
+      });
+      res.json(feedback);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // GET /api/feedback - Muhasebe tüm geribildirimleri görmesi
+  app.get("/api/feedback", isAuthenticated, async (req: any, res) => {
+    try {
+      const { status, type, branchId } = req.query;
+      const feedbacks = await storage.getBranchFeedbacks({ status, type, branchId: branchId ? parseInt(branchId) : undefined });
+      res.json(feedbacks);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/feedback/:id - Muhasebe geri cevap ver
+  app.patch("/api/feedback/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { response, status } = req.body;
+      const feedback = await storage.updateBranchFeedback(parseInt(req.params.id), {
+        response,
+        status: status || "yanıtlandı",
+        respondedById: req.user.id,
+        respondedAt: new Date(),
+      });
+      res.json(feedback);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

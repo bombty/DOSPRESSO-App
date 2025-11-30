@@ -3640,3 +3640,35 @@ export const insertUserBadgeSchema = createInsertSchema(userBadges).omit({
 
 export type InsertUserBadge = z.infer<typeof insertUserBadgeSchema>;
 export type UserBadge = typeof userBadges.$inferSelect;
+
+// ========================================
+// BRANCH FEEDBACK SYSTEM - Şubelerden Geribildirim
+// ========================================
+
+export const branchFeedbacks = pgTable("branch_feedbacks", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  submittedById: varchar("submitted_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 50 }).notNull(), // "order", "invoice", "logistics", "other"
+  subject: varchar("subject", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  status: varchar("status", { length: 20 }).default("yeni"), // yeni, okundu, yanıtlandı
+  response: text("response"),
+  respondedById: varchar("responded_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  respondedAt: timestamp("responded_at"),
+}, (table) => [
+  index("branch_feedbacks_branch_idx").on(table.branchId),
+  index("branch_feedbacks_status_idx").on(table.status),
+  index("branch_feedbacks_created_idx").on(table.createdAt),
+]);
+
+export const insertBranchFeedbackSchema = createInsertSchema(branchFeedbacks).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+  respondedAt: true,
+});
+
+export type InsertBranchFeedback = z.infer<typeof insertBranchFeedbackSchema>;
+export type BranchFeedback = typeof branchFeedbacks.$inferSelect;
