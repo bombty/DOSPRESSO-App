@@ -67,7 +67,7 @@ export default function Training() {
     );
     
     // Get optional modules where user has progress
-    const progressModuleIds = new Set(userProgress?.assignments?.map(p => p.moduleId) || []);
+    const progressModuleIds = new Set(userProgress?.assignments?.map((p: any) => p.moduleId) || []);
     const optionalWithProgress = modules.filter(m =>
       m.isPublished && 
       !mandatory.find(mm => mm.id === m.id) && // Not already in mandatory
@@ -79,7 +79,7 @@ export default function Training() {
 
   // Create progress map for easy lookup
   const progressMap = useMemo(() => {
-    return new Map(userProgress?.assignments?.map(p => [p.moduleId, p]) || []);
+    return new Map(userProgress?.assignments?.map((p: any) => [p.moduleId, p]) || []);
   }, [userProgress]);
 
   const form = useForm<InsertTrainingModule>({
@@ -173,9 +173,9 @@ export default function Training() {
 
   // Get progress status for a module
   const getProgressStatus = (moduleId: number) => {
-    const progress = progressMap.get(moduleId);
+    const progress = progressMap.get(moduleId) as any;
     if (!progress) return { status: 'not_started', label: 'Başla', icon: Play };
-    if (progress.status === 'completed') return { status: 'completed', label: 'Tamamlandı', icon: CheckCircle };
+    if (progress?.status === 'completed') return { status: 'completed', label: 'Tamamlandı', icon: CheckCircle };
     return { status: 'in_progress', label: 'Devam Et', icon: Clock };
   };
 

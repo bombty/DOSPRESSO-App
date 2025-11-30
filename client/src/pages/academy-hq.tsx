@@ -850,19 +850,35 @@ export default function AcademyHQ() {
                           Seviye: {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
                         </CardDescription>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          deleteTrainingMutation.mutate(module.id);
-                        }}
-                        disabled={deleteTrainingMutation.isPending}
-                        data-testid={`button-delete-module-${module.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditingModule(module);
+                            editTrainingForm.reset(module);
+                            setIsEditTrainingOpen(true);
+                          }}
+                          data-testid={`button-edit-module-${module.id}`}
+                        >
+                          ✎ Düzenle
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            deleteTrainingMutation.mutate(module.id);
+                          }}
+                          disabled={deleteTrainingMutation.isPending}
+                          data-testid={`button-delete-module-${module.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
