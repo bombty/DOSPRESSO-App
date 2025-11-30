@@ -1126,15 +1126,38 @@ export const trainingModules = pgTable("training_modules", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
+  code: varchar("code", { length: 50 }), // e.g., "S1", "BB2", for JSON mapping
+  slug: varchar("slug", { length: 100 }), // URL-friendly slug
   category: varchar("category", { length: 100 }), // "barista", "supervisor", "hygiene", etc.
   level: varchar("level", { length: 50 }).default("beginner"), // beginner, intermediate, advanced
   estimatedDuration: integer("estimated_duration").default(30), // minutes
   isPublished: boolean("is_published").default(false),
   requiredForRole: varchar("required_for_role", { length: 100 }).array(), // ["barista", "supervisor"]
   prerequisiteModuleIds: integer("prerequisite_module_ids").array(), // Must complete these first
+  heroImageUrl: text("hero_image_url"), // Module banner image
+  learningObjectives: jsonb("learning_objectives").$type<string[]>().default([]), // ["Objective 1", "Objective 2"]
+  steps: jsonb("steps").$type<Array<{stepNumber: number; title: string; content: string; mediaSuggestions?: string[]}>>().default([]),
+  scenarioTasks: jsonb("scenario_tasks").$type<Array<{scenarioId: string; title: string; description: string; expectedActions: string[]}>>().default([]),
+  supervisorChecklist: jsonb("supervisor_checklist").$type<string[]>().default([]), // Supervisor review items
+  tags: varchar("tags", { length: 100 }).array(), // ["kültür", "disiplin", "stajyer"]
+  generatedByAi: boolean("generated_by_ai").default(false), // AI generation metadata
   createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Module Media (Images, videos, documents)
+export const moduleMedia = pgTable("module_media", {
+  id: serial("id").primaryKey(),
+  moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }),
+  mediaType: varchar("media_type", { length: 50 }).notNull(), // "image", "video", "pdf", "document"
+  objectKey: text("object_key").notNull(), // Cloud storage object key
+  url: text("url").notNull(), // Public/signed URL
+  mimeType: varchar("mime_type", { length: 100 }),
+  fileSize: integer("file_size"), // bytes
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Module Videos
@@ -1238,6 +1261,11 @@ export const userQuizAttempts = pgTable("user_quiz_attempts", {
   completedAt: timestamp("completed_at"),
 });
 
+export const insertModuleMediaSchema = createInsertSchema(moduleMedia).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertTrainingModuleSchema = createInsertSchema(trainingModules).omit({
   id: true,
   createdAt: true,
@@ -1283,6 +1311,8 @@ export const insertUserQuizAttemptSchema = createInsertSchema(userQuizAttempts).
 
 export type InsertTrainingModule = z.infer<typeof insertTrainingModuleSchema>;
 export type TrainingModule = typeof trainingModules.$inferSelect;
+export type InsertModuleMedia = z.infer<typeof insertModuleMediaSchema>;
+export type ModuleMedia = typeof moduleMedia.$inferSelect;
 export type InsertModuleVideo = z.infer<typeof insertModuleVideoSchema>;
 export type ModuleVideo = typeof moduleVideos.$inferSelect;
 export type InsertModuleLesson = z.infer<typeof insertModuleLessonSchema>;
