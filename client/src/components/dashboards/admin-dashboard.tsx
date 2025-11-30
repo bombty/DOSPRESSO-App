@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock, Zap, AlertTriangle, Flame, Trophy, Award } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLocation } from "wouter";
+import { GaugeCard, KPICard } from "./shared-dashboard-components";
+import { getHeatColor, calculateAverageScore } from "./dashboard-utils";
 
 interface AdminDashboardProps {
   compositeBranchScores: any[];
@@ -33,18 +34,10 @@ export function AdminDashboard({
 }: AdminDashboardProps) {
   const [, setLocation] = useLocation();
   // Calculate overall system metrics
-  const avgEmployeePerf = compositeBranchScores.length > 0 
-    ? Math.round(compositeBranchScores.reduce((sum, s) => sum + s.employeePerformanceScore, 0) / compositeBranchScores.length)
-    : 0;
-  const avgEquipmentScore = compositeBranchScores.length > 0 
-    ? Math.round(compositeBranchScores.reduce((sum, s) => sum + s.equipmentScore, 0) / compositeBranchScores.length)
-    : 0;
-  const avgQualityScore = compositeBranchScores.length > 0 
-    ? Math.round(compositeBranchScores.reduce((sum, s) => sum + s.qualityAuditScore, 0) / compositeBranchScores.length)
-    : 0;
-  const avgCustomerScore = compositeBranchScores.length > 0 
-    ? Math.round(compositeBranchScores.reduce((sum, s) => sum + s.customerSatisfactionScore, 0) / compositeBranchScores.length)
-    : 0;
+  const avgEmployeePerf = calculateAverageScore(compositeBranchScores.map(s => s.employeePerformanceScore));
+  const avgEquipmentScore = calculateAverageScore(compositeBranchScores.map(s => s.equipmentScore));
+  const avgQualityScore = calculateAverageScore(compositeBranchScores.map(s => s.qualityAuditScore));
+  const avgCustomerScore = calculateAverageScore(compositeBranchScores.map(s => s.customerSatisfactionScore));
   const slaScore = totalFaults > 0 ? Math.round(((totalFaults - openFaults) / totalFaults) * 100) : 100;
 
   // Radial chart data
@@ -55,28 +48,6 @@ export function AdminDashboard({
     { name: 'Müşteri', value: avgCustomerScore, fullMark: 100 },
     { name: 'SLA', value: slaScore, fullMark: 100 },
   ];
-
-  // Get gauge color based on score
-  const getGaugeColor = (score: number) => {
-    if (score >= 85) return 'bg-green-500';
-    if (score >= 70) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
-
-  const getGaugeTextColor = (score: number) => {
-    if (score >= 85) return 'text-green-700';
-    if (score >= 70) return 'text-yellow-700';
-    return 'text-red-700';
-  };
-
-  // Get color for heat map based on score
-  const getHeatColor = (score: number) => {
-    if (score >= 85) return 'bg-green-500 hover:bg-green-600';
-    if (score >= 75) return 'bg-lime-500 hover:bg-lime-600';
-    if (score >= 65) return 'bg-yellow-500 hover:bg-yellow-600';
-    if (score >= 50) return 'bg-orange-500 hover:bg-orange-600';
-    return 'bg-red-600 hover:bg-red-700';
-  };
 
   // Get critical alerts
   const criticalBranches = compositeBranchScores
@@ -112,47 +83,20 @@ export function AdminDashboard({
       {/* Gauge Cards - Real-time KPI Monitoring */}
       {!isLoading && (
         <div className="grid gap-0.5 grid-cols-2 md:grid-cols-5">
-          {[
-            { label: 'Personel', value: avgEmployeePerf },
-            { label: 'Ekipman', value: avgEquipmentScore },
-            { label: 'Kalite', value: avgQualityScore },
-            { label: 'Müşteri', value: avgCustomerScore },
-            { label: 'SLA', value: slaScore }
-          ].map((gauge) => (
-            <Card key={gauge.label}>
-              <CardContent className="pt-1.5 pb-1.5">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs font-semibold">{gauge.label}</span>
-                  <Zap className={`h-2.5 w-2.5 ${getGaugeTextColor(gauge.value)}`} />
-                </div>
-                <div className={`text-base font-bold ${getGaugeTextColor(gauge.value)}`}>
-                  {gauge.value}%
-                </div>
-                <Progress value={gauge.value} className="h-1" />
-              </CardContent>
-            </Card>
-          ))}
+          <GaugeCard label="Personel" value={avgEmployeePerf} icon={Zap} />
+          <GaugeCard label="Ekipman" value={avgEquipmentScore} icon={Zap} />
+          <GaugeCard label="Kalite" value={avgQualityScore} icon={Zap} />
+          <GaugeCard label="Müşteri" value={avgCustomerScore} icon={Zap} />
+          <GaugeCard label="SLA" value={slaScore} icon={Zap} />
         </div>
       )}
 
       {/* KPI Cards Row */}
       <div className="grid gap-0.5 grid-cols-2 md:grid-cols-4">
-        {[
-          { icon: Building2, label: 'Toplam Şubeler', value: totalBranches, color: 'blue' },
-          { icon: AlertCircle, label: 'Açık Arızalar', value: openFaults, color: 'red' },
-          { icon: CheckCircle, label: 'Kapanan', value: totalFaults - openFaults, color: 'green' },
-          { icon: TrendingUp, label: 'Kapanış Oranı', value: totalFaults > 0 ? Math.round(((totalFaults - openFaults) / totalFaults) * 100) : 0, suffix: '%', color: 'amber' }
-        ].map((item) => (
-          <Card key={item.label} className={`border-l-4 border-l-${item.color}-600`}>
-            <CardContent className="pt-1.5 pb-1.5 text-center">
-              <div className="flex justify-center mb-0.5">
-                <item.icon className={`h-3.5 w-3.5 text-${item.color}-600`} />
-              </div>
-              <div className={`text-sm font-bold text-${item.color}-700`}>{item.value}{item.suffix || ''}</div>
-              <p className="text-xs text-muted-foreground">{item.label}</p>
-            </CardContent>
-          </Card>
-        ))}
+        <KPICard icon={Building2} label="Toplam Şubeler" value={totalBranches} color="blue" />
+        <KPICard icon={AlertCircle} label="Açık Arızalar" value={openFaults} color="red" />
+        <KPICard icon={CheckCircle} label="Kapanan" value={totalFaults - openFaults} color="green" />
+        <KPICard icon={TrendingUp} label="Kapanış Oranı" value={totalFaults > 0 ? Math.round(((totalFaults - openFaults) / totalFaults) * 100) : 0} suffix="%" color="amber" />
       </div>
 
       {/* Branch Performance Table - Desktop Only */}

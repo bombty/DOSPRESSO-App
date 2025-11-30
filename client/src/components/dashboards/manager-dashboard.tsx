@@ -2,9 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle, Clock, AlertTriangle, TrendingUp, Users, Wrench, Zap } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts";
 import { useLocation } from "wouter";
+import { GaugeCard, KPICard, PerformanceRow } from "./shared-dashboard-components";
+import { calculateAverageScore } from "./dashboard-utils";
 
 interface ManagerDashboardProps {
   completedTasks: number;
@@ -26,9 +27,8 @@ export function ManagerDashboard({
   const [, navigate] = useLocation();
   // Calculate metrics
   const totalTasks = completedTasks + pendingTasks;
-  const avgTeamPerf = teamPerformance?.length ? 
-    Math.round(teamPerformance.reduce((sum, m) => sum + m.averageScore, 0) / teamPerformance.length) : 0;
-  const healthScore = Math.max(0, 100 - (openFaults * 10)); // Fault-based health
+  const avgTeamPerf = calculateAverageScore(teamPerformance?.map(m => m.averageScore) || []);
+  const healthScore = Math.max(0, 100 - (openFaults * 10));
 
   // Chart data for team distribution - ALL members
   const chartData = teamPerformance?.map(m => ({
@@ -41,66 +41,18 @@ export function ManagerDashboard({
       {/* Performance Gauges */}
       {!isLoading && (
         <div className="grid gap-0.5 grid-cols-3">
-          {[
-            { label: 'Görev', value: completionRate, icon: CheckCircle, color: 'green' },
-            { label: 'Takım', value: avgTeamPerf, icon: Users, color: 'blue' },
-            { label: 'Sağlık', value: healthScore, icon: Zap, color: healthScore >= 70 ? 'green' : healthScore >= 50 ? 'yellow' : 'red' }
-          ].map((gauge) => (
-            <Card key={gauge.label}>
-              <CardContent className="pt-1.5 pb-1.5">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs font-semibold">{gauge.label}</span>
-                  <gauge.icon className={`h-2.5 w-2.5 text-${gauge.color}-600`} />
-                </div>
-                <div className={`text-base font-bold text-${gauge.color}-700`}>{gauge.value}%</div>
-                <Progress value={gauge.value} className="h-1" />
-              </CardContent>
-            </Card>
-          ))}
+          <GaugeCard label="Görev" value={completionRate} icon={CheckCircle} />
+          <GaugeCard label="Takım" value={avgTeamPerf} icon={Users} />
+          <GaugeCard label="Sağlık" value={healthScore} icon={Zap} />
         </div>
       )}
 
       {/* KPI Cards - Manager View */}
       <div className="grid gap-0.5 grid-cols-4">
-        <Card className="border-l-4 border-l-green-600 cursor-pointer hover-elevate" onClick={() => navigate('/gorevler')} data-testid="card-completed-tasks">
-          <CardContent className="pt-1.5 pb-1.5 text-center">
-            <div className="flex justify-center mb-0.5">
-              <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-            </div>
-            <div className="text-sm font-bold text-green-700">{completedTasks}/{totalTasks}</div>
-            <p className="text-xs text-muted-foreground">Tamamlanan</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-blue-600 cursor-pointer hover-elevate" onClick={() => navigate('/gorevler')} data-testid="card-pending-tasks">
-          <CardContent className="pt-1.5 pb-1.5 text-center">
-            <div className="flex justify-center mb-0.5">
-              <Clock className="h-3.5 w-3.5 text-blue-600" />
-            </div>
-            <div className="text-sm font-bold text-blue-700">{pendingTasks}/{totalTasks}</div>
-            <p className="text-xs text-muted-foreground">Beklemede</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-red-600 cursor-pointer hover-elevate" onClick={() => navigate('/ariza')} data-testid="card-faults">
-          <CardContent className="pt-1.5 pb-1.5 text-center">
-            <div className="flex justify-center mb-0.5">
-              <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
-            </div>
-            <div className="text-sm font-bold text-red-700">{openFaults}</div>
-            <p className="text-xs text-muted-foreground">Arızalar</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-amber-600 cursor-pointer hover-elevate" onClick={() => navigate('/gorevler')} data-testid="card-completion-rate">
-          <CardContent className="pt-1.5 pb-1.5 text-center">
-            <div className="flex justify-center mb-0.5">
-              <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
-            </div>
-            <div className="text-sm font-bold text-amber-700">{completionRate}%</div>
-            <p className="text-xs text-muted-foreground">Oran</p>
-          </CardContent>
-        </Card>
+        <KPICard icon={CheckCircle} label="Tamamlanan" value={`${completedTasks}/${totalTasks}`} color="green" onClick={() => navigate('/gorevler')} testId="card-completed-tasks" />
+        <KPICard icon={Clock} label="Beklemede" value={`${pendingTasks}/${totalTasks}`} color="blue" onClick={() => navigate('/gorevler')} testId="card-pending-tasks" />
+        <KPICard icon={AlertTriangle} label="Arızalar" value={openFaults} color="red" onClick={() => navigate('/ariza')} testId="card-faults" />
+        <KPICard icon={TrendingUp} label="Oran" value={completionRate} suffix="%" color="amber" onClick={() => navigate('/gorevler')} testId="card-completion-rate" />
       </div>
 
       {/* Team Performance Chart - ALL Members */}
@@ -142,22 +94,13 @@ export function ManagerDashboard({
           <CardContent>
             <div className="space-y-2">
               {teamPerformance.slice(0, 5).map((member) => (
-                <div key={member.userId} className="flex items-center justify-between p-2 bg-muted/50 rounded gap-2 cursor-pointer hover-elevate" onClick={() => navigate(`/personel-detay/${member.userId}`)} data-testid={`row-employee-${member.userId}`}>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-blue-600 hover:underline">{member.firstName} {member.lastName?.charAt(0)}.</p>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                      <div
-                        className={`h-1.5 rounded-full ${
-                          member.averageScore >= 80 ? 'bg-green-600' : member.averageScore >= 70 ? 'bg-yellow-600' : 'bg-red-600'
-                        }`}
-                        style={{ width: `${member.averageScore}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <Badge variant={member.averageScore >= 80 ? "default" : "secondary"} className="flex-shrink-0">
-                    {member.averageScore.toFixed(0)}
-                  </Badge>
-                </div>
+                <PerformanceRow 
+                  key={member.userId}
+                  name={`${member.firstName} ${member.lastName?.charAt(0) || ''}.`}
+                  score={member.averageScore}
+                  onClick={() => navigate(`/personel-detay/${member.userId}`)}
+                  testId={`row-employee-${member.userId}`}
+                />
               ))}
             </div>
           </CardContent>
