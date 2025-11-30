@@ -275,6 +275,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "both",
         badge: "messages",
       },
+      {
+        id: "hq-support",
+        titleTr: "HQ Destek",
+        path: "/hq-destek",
+        icon: "Wrench",
+        moduleKey: "dashboard",
+        scope: "both",
+      },
     ],
   },
 ];
