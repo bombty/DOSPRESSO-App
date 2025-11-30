@@ -3,15 +3,16 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { isHQRole } from "@shared/schema";
+import { isHQRole, type TrainingModule } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,6 +35,16 @@ const questionSchema = z.object({
   question: z.string().min(5, "Soru en az 5 karakter olmalı"),
   options: z.array(z.string()).min(2, "En az 2 seçenek gerekli"),
   correctAnswerIndex: z.number().min(0),
+});
+
+const trainingModuleSchema = z.object({
+  title: z.string().min(3, "Başlık en az 3 karakter olmalı"),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  level: z.enum(["beginner", "intermediate", "advanced"]),
+  estimatedDuration: z.number().min(1),
+  isPublished: z.boolean().default(false),
+  requiredForRole: z.array(z.string()).default([]),
 });
 
 const ACADEMY_MODULES = [
@@ -60,6 +71,7 @@ export default function AcademyHQ() {
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(1);
+  const [isAddTrainingOpen, setIsAddTrainingOpen] = useState(false);
 
   if (!user || (user.role !== "admin" && !isHQRole(user.role as any))) {
     return <div className="p-6 text-center text-destructive">Erişim Reddedildi</div>;
@@ -68,6 +80,11 @@ export default function AcademyHQ() {
   const quizForm = useForm({
     resolver: zodResolver(quizSchema),
     defaultValues: { title: "", description: "", difficulty: "medium" as const },
+  });
+
+  const trainingForm = useForm<z.infer<typeof trainingModuleSchema>>({
+    resolver: zodResolver(trainingModuleSchema),
+    defaultValues: { title: "", description: "", category: "", level: "beginner" as const, estimatedDuration: 30, isPublished: false, requiredForRole: [] },
   });
 
   const assignForm = useForm({
@@ -170,6 +187,43 @@ export default function AcademyHQ() {
     enabled: !!selectedQuizId,
   });
 
+  const { data: trainingModules = [] } = useQuery<TrainingModule[]>({
+    queryKey: ["/api/training/modules"],
+    queryFn: async () => {
+      const res = await fetch(`/api/training/modules`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const createTrainingMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof trainingModuleSchema>) => {
+      return apiRequest("POST", "/api/training/modules", { ...data, createdBy: user?.id });
+    },
+    onSuccess: () => {
+      toast({ title: "Eğitim modülü oluşturuldu" });
+      setIsAddTrainingOpen(false);
+      trainingForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteTrainingMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/training/modules/${id}`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Eğitim modülü silindi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users"],
     queryFn: async () => {
@@ -229,6 +283,10 @@ export default function AcademyHQ() {
           <TabsTrigger value="exams" className="flex-1 min-w-fit">
             <Clock className="w-4 h-4 mr-2" />
             Sınav Talepleri
+          </TabsTrigger>
+          <TabsTrigger value="training" className="flex-1 min-w-fit">
+            <GraduationCap className="w-4 h-4 mr-2" />
+            Eğitim Modülleri ({trainingModules.length})
           </TabsTrigger>
         </TabsList>
 
@@ -545,6 +603,143 @@ export default function AcademyHQ() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* EĞİTİM MODÜLLERI TAB */}
+        <TabsContent value="training" className="space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Eğitim Modülleri Yönetimi</h2>
+            <Dialog open={isAddTrainingOpen} onOpenChange={setIsAddTrainingOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-training">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Yeni Modül
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Yeni Eğitim Modülü</DialogTitle>
+                </DialogHeader>
+                <Form {...trainingForm}>
+                  <form onSubmit={trainingForm.handleSubmit((data) => createTrainingMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={trainingForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Başlık</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Modül başlığı" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={trainingForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Açıklama</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Modül açıklaması" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={trainingForm.control}
+                        name="level"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Seviye</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue="beginner">
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="beginner">Başlangıç</SelectItem>
+                                <SelectItem value="intermediate">Orta</SelectItem>
+                                <SelectItem value="advanced">İleri</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={trainingForm.control}
+                        name="estimatedDuration"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tahmini Süre (dk)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="submit" disabled={createTrainingMutation.isPending} className="w-full">
+                      {createTrainingMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {trainingModules.map((module: TrainingModule) => (
+              <Card key={module.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1">
+                      <CardTitle className="text-base">{module.title}</CardTitle>
+                      <CardDescription className="text-xs mt-1">
+                        Seviye: {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => deleteTrainingMutation.mutate(module.id)}
+                      disabled={deleteTrainingMutation.isPending}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {module.description && <p className="text-muted-foreground line-clamp-2">{module.description}</p>}
+                  <div className="flex gap-2 flex-wrap">
+                    {module.isPublished && <Badge variant="default">Yayında</Badge>}
+                    {!module.isPublished && <Badge variant="secondary">Taslak</Badge>}
+                    <Badge variant="outline">{module.estimatedDuration} dk</Badge>
+                  </div>
+                  {module.requiredForRole && module.requiredForRole.length > 0 && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Zorunlu Roller:</p>
+                      <div className="flex gap-1 flex-wrap">
+                        {module.requiredForRole.map((role: string) => (
+                          <Badge key={role} variant="outline" className="text-xs">{role}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {trainingModules.length === 0 && (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <GraduationCap className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-muted-foreground">Henüz eğitim modülü eklenmedi</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
