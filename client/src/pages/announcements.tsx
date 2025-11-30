@@ -82,6 +82,11 @@ export default function Announcements() {
   });
 
   // Helper function to check if user is targeted by an announcement
+  // Targeting logic:
+  // - No targeting (empty/null for both) = everyone targeted
+  // - Role-only targeting = user role must match (branchId not required)
+  // - Branch-only targeting = user branchId must match  
+  // - Combined targeting = BOTH role AND branch must match
   const isUserTargeted = (announcement: AnnouncementWithUser, currentUser: typeof user): boolean => {
     if (!currentUser) return false;
     
@@ -94,20 +99,19 @@ export default function Announcements() {
       return true;
     }
     
-    let roleMatch = !hasRoleTargeting; // If no role targeting, consider it matched
-    let branchMatch = !hasBranchTargeting; // If no branch targeting, consider it matched
-    
-    // Check role targeting (if specified)
-    if (hasRoleTargeting) {
-      roleMatch = announcement.targetRoles!.includes(currentUser.role as string);
+    // Role-only targeting: just check role match (HQ users without branchId are included)
+    if (hasRoleTargeting && !hasBranchTargeting) {
+      return announcement.targetRoles!.includes(currentUser.role as string);
     }
     
-    // Check branch targeting (if specified)
-    if (hasBranchTargeting) {
-      branchMatch = currentUser.branchId ? announcement.targetBranches!.includes(currentUser.branchId) : false;
+    // Branch-only targeting: just check branch match
+    if (!hasRoleTargeting && hasBranchTargeting) {
+      return currentUser.branchId ? announcement.targetBranches!.includes(currentUser.branchId) : false;
     }
     
-    // Both must match (AND logic for combined targeting)
+    // Combined targeting: both must match
+    const roleMatch = announcement.targetRoles!.includes(currentUser.role as string);
+    const branchMatch = currentUser.branchId ? announcement.targetBranches!.includes(currentUser.branchId) : false;
     return roleMatch && branchMatch;
   };
 

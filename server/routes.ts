@@ -4431,8 +4431,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Alıcı ID veya rol belirtilmeli" });
       }
       
-      // Define HQ roles for broadcast validation
-      const HQ_ROLES = ['admin', 'coach', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq', 'egitim', 'kalite', 'pazarlama', 'ik'];
+      // Define HQ roles for broadcast validation (non-branch roles only)
+      const HQ_BROADCAST_TARGETS = ['admin', 'coach', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq', 'egitim', 'kalite', 'pazarlama', 'ik'];
       
       // Role-based messaging permission checks for role broadcasts (recipientRole)
       // Must check this FIRST to enforce restrictions before direct message checks
@@ -4443,12 +4443,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isHQRole(senderRole as UserRoleType)) {
           // OK - HQ can broadcast to all roles
         }
-        // Non-HQ roles (supervisors and branch employees) can only broadcast to HQ roles
+        // Non-HQ roles (supervisors and branch employees) can ONLY broadcast to HQ roles
         else {
-          if (!HQ_ROLES.includes(targetRole)) {
+          // Ensure target role is a valid HQ role (NOT supervisor or branch roles)
+          if (!HQ_BROADCAST_TARGETS.includes(targetRole)) {
             return res.status(403).json({ message: "Bu role mesaj gönderme yetkiniz yok. Sadece merkez rollerine (admin, coach, muhasebe, teknik vb.) broadcast yapabilirsiniz." });
           }
-          // OK - Non-HQ can broadcast to HQ roles
+          // OK - Non-HQ can broadcast to HQ roles only
         }
       }
       
