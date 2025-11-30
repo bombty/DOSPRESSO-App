@@ -63,6 +63,12 @@ export default function Mesajlar() {
     enabled: isNewMessageOpen,
   });
 
+  // Fetch branches for HQ cascading selection
+  const { data: allBranches = [] } = useQuery({
+    queryKey: ['/api/branches'],
+    enabled: isNewMessageOpen && isHQRole(user?.role as UserRoleType),
+  });
+
   // Mark thread as read mutation
   const markReadMutation = useMutation({
     mutationFn: (threadId: string) => 
@@ -219,6 +225,7 @@ export default function Mesajlar() {
                 </DialogHeader>
                 <NewMessageForm
                   users={allUsers}
+                  branches={allBranches}
                   onSubmit={(data) => createMessageMutation.mutate(data)}
                   isLoading={createMessageMutation.isPending}
                   currentUser={user as User | null}
@@ -449,46 +456,58 @@ export default function Mesajlar() {
 
 function NewMessageForm({
   users,
+  branches,
   onSubmit,
   isLoading,
   currentUser,
 }: {
   users: User[];
+  branches: any[];
   onSubmit: (data: any) => void;
   isLoading: boolean;
   currentUser: User | null;
 }) {
+  const [selectedBranchId, setSelectedBranchId] = useState("");
   const [recipientId, setRecipientId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [type, setType] = useState("direct");
 
+  const isHQ = currentUser && isHQRole(currentUser.role as UserRoleType);
+
+  // Get personel from selected branch (for HQ cascading selection)
+  const branchPersonel = selectedBranchId
+    ? users.filter((u) => u.branchId === parseInt(selectedBranchId) && u.id !== currentUser?.id)
+    : [];
+
   // Filter users based on messaging permissions
-  const filteredUsers = users.filter((u) => {
-    if (!currentUser || u.id === currentUser.id) return false;
-    
-    const senderRole = currentUser.role as UserRoleType;
-    const recipientRole = u.role as UserRoleType;
-    
-    // HQ roles can message anyone
-    if (isHQRole(senderRole)) return true;
-    
-    // Supervisors can message HQ or team members in same branch
-    if (senderRole === 'supervisor') {
-      if (isHQRole(recipientRole)) return true;
-      if (u.branchId === currentUser.branchId) return true;
-      return false;
-    }
-    
-    // Branch employees can only message supervisor or HQ
-    if (isBranchRole(senderRole)) {
-      if (isHQRole(recipientRole)) return true;
-      if (recipientRole === 'supervisor' && u.branchId === currentUser.branchId) return true;
-      return false;
-    }
-    
-    return false;
-  });
+  const filteredUsers = isHQ && selectedBranchId 
+    ? branchPersonel  // If HQ selected a branch, show only that branch's personnel
+    : users.filter((u) => {
+        if (!currentUser || u.id === currentUser.id) return false;
+        
+        const senderRole = currentUser.role as UserRoleType;
+        const recipientRole = u.role as UserRoleType;
+        
+        // HQ roles can message anyone
+        if (isHQRole(senderRole)) return true;
+        
+        // Supervisors can message HQ or team members in same branch
+        if (senderRole === 'supervisor') {
+          if (isHQRole(recipientRole)) return true;
+          if (u.branchId === currentUser.branchId) return true;
+          return false;
+        }
+        
+        // Branch employees can only message supervisor or HQ
+        if (isBranchRole(senderRole)) {
+          if (isHQRole(recipientRole)) return true;
+          if (recipientRole === 'supervisor' && u.branchId === currentUser.branchId) return true;
+          return false;
+        }
+        
+        return false;
+      });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -523,25 +542,78 @@ function NewMessageForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" data-testid="form-new-message">
-      <div className="space-y-2">
-        <Label htmlFor="recipient">Alıcı</Label>
-        <Select value={recipientId} onValueChange={setRecipientId}>
-          <SelectTrigger id="recipient" data-testid="select-recipient">
-            <SelectValue placeholder="Kullanıcı seçin" />
-          </SelectTrigger>
-          <SelectContent>
-            {filteredUsers.length === 0 ? (
-              <div className="p-2 text-sm text-muted-foreground">Mesaj gönderilebilecek kullanıcı yok</div>
-            ) : (
-              filteredUsers.map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName} ({roleLabels[user.role || ''] || user.role})
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* HQ cascading selection: Branch → Personnel */}
+      {isHQ && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="branch">Şube Seçin</Label>
+            <Select value={selectedBranchId} onValueChange={(val) => {
+              setSelectedBranchId(val);
+              setRecipientId(""); // Reset personnel selection
+            }}>
+              <SelectTrigger id="branch" data-testid="select-branch">
+                <SelectValue placeholder="Şube seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground">Şube bulunamadı</div>
+                ) : (
+                  branches.map((branch: any) => (
+                    <SelectItem key={branch.id} value={branch.id.toString()}>
+                      {branch.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="personnel">Personel Seçin</Label>
+            <Select value={recipientId} onValueChange={setRecipientId} disabled={!selectedBranchId}>
+              <SelectTrigger id="personnel" data-testid="select-personnel">
+                <SelectValue placeholder={selectedBranchId ? "Personel seçin" : "Önce şube seçin"} />
+              </SelectTrigger>
+              <SelectContent>
+                {branchPersonel.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground">
+                    {selectedBranchId ? "Bu şubede personel bulunamadı" : "Şube seçin"}
+                  </div>
+                ) : (
+                  branchPersonel.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.firstName} {user.lastName} ({roleLabels[user.role || ''] || user.role})
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+
+      {/* Standard recipient selection for non-HQ users */}
+      {!isHQ && (
+        <div className="space-y-2">
+          <Label htmlFor="recipient">Alıcı</Label>
+          <Select value={recipientId} onValueChange={setRecipientId}>
+            <SelectTrigger id="recipient" data-testid="select-recipient">
+              <SelectValue placeholder="Kullanıcı seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredUsers.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground">Mesaj gönderilebilecek kullanıcı yok</div>
+              ) : (
+                filteredUsers.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName} ({roleLabels[user.role || ''] || user.role})
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="subject">Konu</Label>
