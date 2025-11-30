@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle, Clock, Coffee, ListTodo, TrendingUp, Zap } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { GaugeCard, KPICard } from "./shared-dashboard-components";
 
 interface BaristaDashboardProps {
   completedTasks: number;
@@ -37,58 +37,17 @@ export function BaristaDashboard({
       {/* Personal Performance Gauges */}
       {!isLoading && (
         <div className="grid gap-0.5 grid-cols-3">
-          {[
-            { label: 'Günlük', value: dailyRate, icon: TrendingUp, color: dailyRate >= 70 ? 'green' : 'yellow' },
-            { label: 'Genel', value: overallRate, icon: Zap, color: overallRate >= 75 ? 'green' : 'blue' },
-            { label: 'Kalan', value: Math.max(0, 100 - (pendingTasks * 20)), icon: Clock, color: 'blue' }
-          ].map((gauge) => (
-            <Card key={gauge.label}>
-              <CardContent className="pt-1.5 pb-1.5">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs font-semibold">{gauge.label}</span>
-                  <gauge.icon className={`h-2.5 w-2.5 text-${gauge.color}-600`} />
-                </div>
-                <div className={`text-base font-bold text-${gauge.color}-700`}>{gauge.value}%</div>
-                <Progress value={gauge.value} className="h-1" />
-              </CardContent>
-            </Card>
-          ))}
+          <GaugeCard label="Günlük" value={dailyRate} icon={TrendingUp} />
+          <GaugeCard label="Genel" value={overallRate} icon={Zap} />
+          <GaugeCard label="Kalan" value={Math.max(0, 100 - (pendingTasks * 20))} icon={Clock} />
         </div>
       )}
 
       {/* Quick Stats */}
       <div className="grid gap-0.5 grid-cols-3">
-        <Card className="border-l-4 border-l-green-600">
-          <CardContent className="pt-1.5 pb-1.5 text-center">
-            <div className="flex justify-center mb-0.5">
-              <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-            </div>
-            <div className="text-sm font-bold text-green-700">{completedTasks}</div>
-            <p className="text-xs text-muted-foreground">Yapıldı</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-blue-600">
-          <CardContent className="pt-1.5 pb-1.5 text-center">
-            <div className="flex justify-center mb-0.5">
-              <Clock className="h-3.5 w-3.5 text-blue-600" />
-            </div>
-            <div className="text-sm font-bold text-blue-700">{pendingTasks}</div>
-            <p className="text-xs text-muted-foreground">Yapılacak</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-purple-600">
-          <CardContent className="pt-1.5 pb-1.5 text-center">
-            <div className="flex justify-center mb-0.5">
-              <ListTodo className="h-3.5 w-3.5 text-purple-600" />
-            </div>
-            <div className="text-sm font-bold text-purple-700">
-              {todaysTasks.length}
-            </div>
-            <p className="text-xs text-muted-foreground">Bugün</p>
-          </CardContent>
-        </Card>
+        <KPICard icon={CheckCircle} label="Yapıldı" value={completedTasks} color="green" />
+        <KPICard icon={Clock} label="Yapılacak" value={pendingTasks} color="blue" />
+        <KPICard icon={ListTodo} label="Bugün" value={todaysTasks.length} color="purple" />
       </div>
 
       {/* Today's Tasks */}

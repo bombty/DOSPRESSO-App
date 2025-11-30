@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, DollarSign, Building2, AlertCircle } from "lucide-react";
+import { KPICard } from "./shared-dashboard-components";
 
 interface MuhasebeDashboardProps {
   compositeBranchScores: any[];
@@ -41,51 +42,10 @@ export function MuhasebeDashboard({
 
       {/* Financial KPIs */}
       <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
-        <Card className="border-l-4 border-l-blue-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <Building2 className="h-5 w-5 text-blue-600" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-blue-700">{totalBranches}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Şubeler</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-green-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-green-700">
-              {avgScoreBranches.toFixed(0)}
-            </div>
-            <p className="text-xs md:text-sm text-muted-foreground">Ort. Skor</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-orange-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <AlertCircle className="h-5 w-5 text-orange-600" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-orange-700">
-              ₺{(totalRepairCost / 1000).toFixed(1)}K
-            </div>
-            <p className="text-xs md:text-sm text-muted-foreground">Onarım Malı</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-purple-600">
-          <CardContent className="pt-3 pb-3 text-center">
-            <div className="flex justify-center mb-1">
-              <DollarSign className="h-5 w-5 text-purple-600" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-purple-700">
-              {(totalRepairCost > 0 ? totalRepairCost / totalBranches : 0).toFixed(0)}₺
-            </div>
-            <p className="text-xs md:text-sm text-muted-foreground">Ort. Maliyet</p>
-          </CardContent>
-        </Card>
+        <KPICard icon={Building2} label="Şubeler" value={totalBranches} color="blue" />
+        <KPICard icon={TrendingUp} label="Ort. Skor" value={avgScoreBranches.toFixed(0)} color="green" />
+        <KPICard icon={AlertCircle} label="Onarım Malı" value={`₺${(totalRepairCost / 1000).toFixed(1)}K`} color="orange" />
+        <KPICard icon={DollarSign} label="Ort. Maliyet" value={`${(totalRepairCost > 0 ? totalRepairCost / totalBranches : 0).toFixed(0)}₺`} color="purple" />
       </div>
 
       {/* Branch Performance Overview */}
