@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock, Zap, AlertTriangle, Flame, Trophy, Award } from "lucide-react";
+import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock, Zap, AlertTriangle, Flame } from "lucide-react";
 import { useLocation } from "wouter";
 import { GaugeCard, KPICard } from "./shared-dashboard-components";
 import { calculateAverageScore } from "./dashboard-utils";
@@ -16,8 +16,6 @@ interface AdminDashboardProps {
   openFaults: number;
   branchScoresTimeRange?: string;
   onTimeRangeChange?: (range: any) => void;
-  academyData?: any;
-  academyLoading?: boolean;
 }
 
 export function AdminDashboard({
@@ -28,8 +26,6 @@ export function AdminDashboard({
   openFaults,
   branchScoresTimeRange,
   onTimeRangeChange,
-  academyData,
-  academyLoading,
 }: AdminDashboardProps) {
   const [, setLocation] = useLocation();
   // Calculate overall system metrics
@@ -114,99 +110,6 @@ export function AdminDashboard({
           </CardContent>
         </Card>
       )}
-
-
-      {/* Akademi Section - Personalized */}
-      <Card 
-        className="cursor-pointer hover-elevate transition-all" 
-        onClick={() => setLocation("/akademi")}
-        data-testid="card-akademi-admin"
-      >
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Trophy className="h-4 w-4" />
-            Akademi
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {academyLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-            </div>
-          ) : academyData?.careerLevel ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-amber-600" />
-                  <span className="text-sm font-medium">{academyData.careerLevel.titleTr}</span>
-                </div>
-                <Badge variant="secondary" data-testid="badge-career-level-admin">
-                  Seviye {academyData.careerLevel.levelNumber}
-                </Badge>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Quiz Başarı</span>
-                  <span className="font-medium" data-testid="text-quiz-average-admin">
-                    {Math.round(academyData.quizStats?.averageScore || 0)}%
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Rozetler</span>
-                  <span className="font-medium text-amber-600" data-testid="text-badges-count-admin">
-                    {academyData.totalBadgesEarned || 0}
-                  </span>
-                </div>
-              </div>
-
-              {academyData.userBadges && academyData.userBadges.length > 0 && (
-                <div className="mt-2 pt-2 border-t">
-                  <p className="text-xs text-muted-foreground mb-2">Son Rozetler</p>
-                  <div className="flex gap-1">
-                    {academyData.userBadges.slice(0, 3).map((ub: any, idx: number) => (
-                      <Badge key={idx} variant="outline" className="text-xs" data-testid={`badge-admin-${ub.badge?.nameEn || idx}`}>
-                        {ub.badge?.nameEn}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <Button 
-                variant="outline" 
-                className="w-full mt-4"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLocation("/akademi");
-                }}
-                data-testid="button-view-academy-admin"
-              >
-                Akademiye Git
-              </Button>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">Akademi henüz başlamamış</p>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="mt-4"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLocation("/akademi");
-                }}
-                data-testid="button-start-academy-admin"
-              >
-                Akademiye Başla
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {isLoading && <Skeleton className="h-64 w-full" />}
     </div>
