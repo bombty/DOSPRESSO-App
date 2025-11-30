@@ -109,7 +109,7 @@ const roleLabels: Record<string, string> = {
   [UserRole.BARISTA]: "Barista",
   [UserRole.SUPERVISOR_BUDDY]: "Supervisor Buddy",
   [UserRole.SUPERVISOR]: "Supervisor",
-  [UserRole.YATIRIMCI]: "Yatırımcı (Şube)",
+  [UserRole.YATIRIMCI_BRANCH]: "Yatırımcı (Şube)",
 };
 
 // Sortable Section Component
@@ -1125,8 +1125,8 @@ export default function AdminMenuManagement() {
                           <FormItem>
                             <FormLabel>Şube (Opsiyonel)</FormLabel>
                             <Select
-                              onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}
-                              value={field.value?.toString() || ""}
+                              onValueChange={(value) => field.onChange(value === "all" ? undefined : parseInt(value))}
+                              value={field.value?.toString() || "all"}
                             >
                               <FormControl>
                                 <SelectTrigger data-testid="select-branch">
@@ -1134,7 +1134,7 @@ export default function AdminMenuManagement() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">Tüm Şubeler</SelectItem>
+                                <SelectItem value="all">Tüm Şubeler</SelectItem>
                                 {branches?.map(branch => (
                                   <SelectItem key={branch.id} value={branch.id.toString()}>
                                     {branch.name}
@@ -1196,8 +1196,8 @@ export default function AdminMenuManagement() {
                           <FormItem>
                             <FormLabel>Şube (Opsiyonel)</FormLabel>
                             <Select
-                              onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}
-                              value={field.value?.toString() || ""}
+                              onValueChange={(value) => field.onChange(value === "all" ? undefined : parseInt(value))}
+                              value={field.value?.toString() || "all"}
                             >
                               <FormControl>
                                 <SelectTrigger data-testid="select-branch">
@@ -1205,7 +1205,7 @@ export default function AdminMenuManagement() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">Tüm Şubeler</SelectItem>
+                                <SelectItem value="all">Tüm Şubeler</SelectItem>
                                 {branches?.map(branch => (
                                   <SelectItem key={branch.id} value={branch.id.toString()}>
                                     {branch.name}
