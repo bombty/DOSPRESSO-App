@@ -1566,31 +1566,52 @@ export type HQSupportStatusType = typeof HQ_SUPPORT_STATUS[keyof typeof HQ_SUPPO
 
 // HQ Support Category (which HQ department)
 export const HQ_SUPPORT_CATEGORY = {
-  MUHASEBE: 'muhasebe',
-  SATINALMA: 'satinalma',
-  COACH: 'coach',
-  TEKNIK: 'teknik',
-  DESTEK: 'destek',
-  FABRIKA: 'fabrika',
-  GENEL: 'genel',
+  ARIZA: 'ariza',           // Equipment/machine issues
+  TEKNIK: 'teknik',         // Technical support
+  MUHASEBE: 'muhasebe',     // Accounting/finance
+  LOJISTIK: 'lojistik',     // Logistics/supply chain
+  FABRIKA: 'fabrika',       // Factory/production
+  URUN_URETIM: 'urun_uretim', // Product/production
+  SATINALMA: 'satinalma',   // Purchasing
+  COACH: 'coach',           // Training/coaching
+  DESTEK: 'destek',         // General support
+  GENEL: 'genel',           // General inquiries
 } as const;
 
 export type HQSupportCategoryType = typeof HQ_SUPPORT_CATEGORY[keyof typeof HQ_SUPPORT_CATEGORY];
+
+// Support ticket priority
+export const TICKET_PRIORITY = {
+  DUSUK: 'dusuk',
+  NORMAL: 'normal',
+  YUKSEK: 'yuksek',
+  ACIL: 'acil',
+} as const;
+
+export type TicketPriorityType = typeof TICKET_PRIORITY[keyof typeof TICKET_PRIORITY];
 
 // HQ Support Tickets table
 export const hqSupportTickets = pgTable("hq_support_tickets", {
   id: serial("id").primaryKey(),
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
-  category: varchar("category", { length: 50 }).notNull(), // muhasebe, satinalma, coach, teknik, destek, fabrika, genel
+  category: varchar("category", { length: 50 }).notNull(),
+  priority: varchar("priority", { length: 20 }).notNull().default(TICKET_PRIORITY.NORMAL),
   status: varchar("status", { length: 20 }).notNull().default(HQ_SUPPORT_STATUS.AKTIF),
   closedAt: timestamp("closed_at"),
   closedBy: varchar("closed_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("hq_support_tickets_branch_idx").on(table.branchId),
+  index("hq_support_tickets_category_idx").on(table.category),
+  index("hq_support_tickets_status_idx").on(table.status),
+  index("hq_support_tickets_priority_idx").on(table.priority),
+  index("hq_support_tickets_assigned_idx").on(table.assignedToId),
+]);
 
 export const insertHQSupportTicketSchema = createInsertSchema(hqSupportTickets).omit({
   id: true,
@@ -1601,12 +1622,14 @@ export const insertHQSupportTicketSchema = createInsertSchema(hqSupportTickets).
 export type InsertHQSupportTicket = z.infer<typeof insertHQSupportTicketSchema>;
 export type HQSupportTicket = typeof hqSupportTickets.$inferSelect;
 
-// HQ Support Messages table
+// HQ Support Messages table (with attachments support)
 export const hqSupportMessages = pgTable("hq_support_messages", {
   id: serial("id").primaryKey(),
   ticketId: integer("ticket_id").notNull().references(() => hqSupportTickets.id, { onDelete: "cascade" }),
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   message: text("message").notNull(),
+  attachments: jsonb("attachments").$type<{id: string, url: string, type: string, name: string, size: number}[]>().default([]),
+  isInternal: boolean("is_internal").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   ticketCreatedIdx: index("hq_support_messages_ticket_created_idx").on(table.ticketId, table.createdAt),
@@ -1619,6 +1642,28 @@ export const insertHQSupportMessageSchema = createInsertSchema(hqSupportMessages
 
 export type InsertHQSupportMessage = z.infer<typeof insertHQSupportMessageSchema>;
 export type HQSupportMessage = typeof hqSupportMessages.$inferSelect;
+
+// Ticket activity log for timeline tracking
+export const ticketActivityLogs = pgTable("ticket_activity_logs", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull().references(() => hqSupportTickets.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 50 }).notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ticket_activity_logs_ticket_idx").on(table.ticketId),
+  index("ticket_activity_logs_created_idx").on(table.createdAt),
+]);
+
+export const insertTicketActivityLogSchema = createInsertSchema(ticketActivityLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTicketActivityLog = z.infer<typeof insertTicketActivityLogSchema>;
+export type TicketActivityLog = typeof ticketActivityLogs.$inferSelect;
 
 // Notification types enum
 export const NotificationType = {
@@ -1692,6 +1737,26 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
 
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type Announcement = typeof announcements.$inferSelect;
+
+// Announcement Read Status table - Track who has read each announcement
+export const announcementReadStatus = pgTable("announcement_read_status", {
+  id: serial("id").primaryKey(),
+  announcementId: integer("announcement_id").notNull().references(() => announcements.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  readAt: timestamp("read_at").defaultNow(),
+}, (table) => [
+  index("announcement_read_user_idx").on(table.userId),
+  index("announcement_read_announcement_idx").on(table.announcementId),
+  unique("unique_announcement_read").on(table.announcementId, table.userId),
+]);
+
+export const insertAnnouncementReadStatusSchema = createInsertSchema(announcementReadStatus).omit({
+  id: true,
+  readAt: true,
+});
+
+export type InsertAnnouncementReadStatus = z.infer<typeof insertAnnouncementReadStatusSchema>;
+export type AnnouncementReadStatus = typeof announcementReadStatus.$inferSelect;
 
 // Daily Cash Reports table - Supervisor daily cash summary for accounting
 export const dailyCashReports = pgTable("daily_cash_reports", {

@@ -10,6 +10,8 @@ import {
   HQ_SUPPORT_CATEGORY, 
   HQ_SUPPORT_STATUS,
   HQSupportCategoryType,
+  TICKET_PRIORITY,
+  TicketPriorityType,
   isHQRole,
   type Branch,
   type User
@@ -26,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Plus, MessageSquare, X, Send } from "lucide-react";
+import { Plus, MessageSquare, X, Send, Paperclip, Download, AlertCircle, CheckCircle, Clock, User as UserIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,13 +37,31 @@ import { tr } from "date-fns/locale";
 
 // Category translations
 const CATEGORY_LABELS: Record<HQSupportCategoryType, string> = {
+  ariza: "Arıza",
+  teknik: "Teknik",
   muhasebe: "Muhasebe",
+  lojistik: "Lojistik",
+  fabrika: "Fabrika",
+  urun_uretim: "Ürün/Üretim",
   satinalma: "Satın Alma",
   coach: "Coach",
-  teknik: "Teknik",
   destek: "Destek",
-  fabrika: "Fabrika",
   genel: "Genel",
+};
+
+// Priority translations and colors
+const PRIORITY_LABELS: Record<TicketPriorityType, string> = {
+  dusuk: "Düşük",
+  normal: "Normal",
+  yuksek: "Yüksek",
+  acil: "Acil",
+};
+
+const PRIORITY_COLORS: Record<TicketPriorityType, string> = {
+  dusuk: "bg-gray-500",
+  normal: "bg-blue-500",
+  yuksek: "bg-orange-500",
+  acil: "bg-red-500",
 };
 
 // Extended ticket type with relations
@@ -57,6 +77,7 @@ const createTicketSchema = z.object({
   title: z.string().min(1, "Başlık zorunludur"),
   description: z.string().min(1, "Açıklama zorunludur"),
   category: z.string().min(1, "Kategori seçiniz"),
+  priority: z.string().default("normal"),
 });
 
 type CreateTicketFormData = z.infer<typeof createTicketSchema>;
@@ -258,13 +279,21 @@ function TicketCard({
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h4 className="font-medium truncate" data-testid={`text-ticket-title-${ticket.id}`}>
                 {ticket.title}
               </h4>
               <Badge variant="secondary" data-testid={`badge-category-${ticket.id}`}>
                 {CATEGORY_LABELS[ticket.category as HQSupportCategoryType]}
               </Badge>
+              {ticket.priority && (
+                <Badge 
+                  className={`${PRIORITY_COLORS[ticket.priority as TicketPriorityType]} text-white`}
+                  data-testid={`badge-priority-${ticket.id}`}
+                >
+                  {PRIORITY_LABELS[ticket.priority as TicketPriorityType]}
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span data-testid={`text-branch-${ticket.id}`}>{ticket.branch?.name}</span>
@@ -308,6 +337,7 @@ function CreateTicketDialog({
       title: "",
       description: "",
       category: "",
+      priority: "normal",
     },
   });
 
@@ -379,6 +409,31 @@ function CreateTicketDialog({
                     <SelectContent>
                       {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                         <SelectItem key={value} value={value} data-testid={`option-category-${value}`}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Öncelik</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-priority">
+                        <SelectValue placeholder="Öncelik seçiniz" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value} data-testid={`option-priority-${value}`}>
                           {label}
                         </SelectItem>
                       ))}
@@ -541,10 +596,18 @@ function TicketDetailDialog({
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <DialogTitle data-testid="text-detail-title">{ticket.title}</DialogTitle>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge variant="secondary" data-testid="badge-detail-category">
                   {CATEGORY_LABELS[ticket.category as HQSupportCategoryType]}
                 </Badge>
+                {ticket.priority && (
+                  <Badge 
+                    className={`${PRIORITY_COLORS[ticket.priority as TicketPriorityType]} text-white`}
+                    data-testid="badge-detail-priority"
+                  >
+                    {PRIORITY_LABELS[ticket.priority as TicketPriorityType]}
+                  </Badge>
+                )}
                 <Badge 
                   variant={isTicketActive ? "default" : "secondary"}
                   className={isTicketActive ? "bg-yellow-500" : ""}
@@ -552,6 +615,12 @@ function TicketDetailDialog({
                 >
                   {isTicketActive ? "Aktif" : "Kapatıldı"}
                 </Badge>
+                {ticket.assignedToId && (
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <UserIcon className="w-3 h-3" />
+                    Atandı
+                  </Badge>
+                )}
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-detail">

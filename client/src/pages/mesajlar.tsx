@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Send, Paperclip, MoreVertical, Search, Plus, FileIcon, Download, CheckCheck, Check } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { Message, ThreadParticipant, User } from "@shared/schema";
+import { isHQRole, isBranchRole, type UserRoleType } from "@shared/schema";
 
 type ThreadSummary = {
   threadId: string;
@@ -88,13 +89,16 @@ export default function Mesajlar() {
 
   // Create new message mutation
   const createMessageMutation = useMutation({
-    mutationFn: (data: {
+    mutationFn: async (data: {
       recipientId: string;
       subject: string;
       body: string;
       type: string;
       attachments: any[];
-    }) => apiRequest('POST', '/api/messages', data),
+    }) => {
+      const response = await apiRequest('POST', '/api/messages', data);
+      return response.json();
+    },
     onSuccess: (newMessage: Message) => {
       setIsNewMessageOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
@@ -217,6 +221,7 @@ export default function Mesajlar() {
                   users={allUsers}
                   onSubmit={(data) => createMessageMutation.mutate(data)}
                   isLoading={createMessageMutation.isPending}
+                  currentUser={user as User | null}
                 />
               </DialogContent>
             </Dialog>
@@ -446,15 +451,44 @@ function NewMessageForm({
   users,
   onSubmit,
   isLoading,
+  currentUser,
 }: {
   users: User[];
   onSubmit: (data: any) => void;
   isLoading: boolean;
+  currentUser: User | null;
 }) {
   const [recipientId, setRecipientId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [type, setType] = useState("direct");
+
+  // Filter users based on messaging permissions
+  const filteredUsers = users.filter((u) => {
+    if (!currentUser || u.id === currentUser.id) return false;
+    
+    const senderRole = currentUser.role as UserRoleType;
+    const recipientRole = u.role as UserRoleType;
+    
+    // HQ roles can message anyone
+    if (isHQRole(senderRole)) return true;
+    
+    // Supervisors can message HQ or team members in same branch
+    if (senderRole === 'supervisor') {
+      if (isHQRole(recipientRole)) return true;
+      if (u.branchId === currentUser.branchId) return true;
+      return false;
+    }
+    
+    // Branch employees can only message supervisor or HQ
+    if (isBranchRole(senderRole)) {
+      if (isHQRole(recipientRole)) return true;
+      if (recipientRole === 'supervisor' && u.branchId === currentUser.branchId) return true;
+      return false;
+    }
+    
+    return false;
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -469,6 +503,24 @@ function NewMessageForm({
     });
   };
 
+  // Role labels for Turkish UI
+  const roleLabels: Record<string, string> = {
+    admin: 'Admin',
+    supervisor: 'Supervisor',
+    barista: 'Barista',
+    stajyer: 'Stajyer',
+    destek: 'Destek',
+    teknik: 'Teknik',
+    muhasebe: 'Muhasebe',
+    satinalma: 'Satın Alma',
+    coach: 'Coach',
+    egitim: 'Eğitim',
+    kalite: 'Kalite',
+    pazarlama: 'Pazarlama',
+    ik: 'İK',
+    fabrika: 'Fabrika',
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4" data-testid="form-new-message">
       <div className="space-y-2">
@@ -478,11 +530,15 @@ function NewMessageForm({
             <SelectValue placeholder="Kullanıcı seçin" />
           </SelectTrigger>
           <SelectContent>
-            {users.map((user) => (
-              <SelectItem key={user.id} value={user.id}>
-                {user.firstName} {user.lastName} ({user.role})
-              </SelectItem>
-            ))}
+            {filteredUsers.length === 0 ? (
+              <div className="p-2 text-sm text-muted-foreground">Mesaj gönderilebilecek kullanıcı yok</div>
+            ) : (
+              filteredUsers.map((user) => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.firstName} {user.lastName} ({roleLabels[user.role || ''] || user.role})
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>

@@ -3958,77 +3958,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send a message
-  app.post('/api/messages', isAuthenticated, async (req, res) => {
-    try {
-      const user = req.user!;
-      const { id: senderId, role, branchId } = user;
-
-      // Permission check
-      if (!hasPermission(role as UserRoleType, 'messages', 'create')) {
-        return res.status(403).json({ message: "Mesaj gönderme yetkiniz yok" });
-      }
-
-      const { recipientId, recipientRole, subject, body, type } = req.body;
-
-      // Validation
-      if (!subject || !body || !type) {
-        return res.status(400).json({ message: "Konu, içerik ve tip gerekli" });
-      }
-
-      if (!recipientId && !recipientRole) {
-        return res.status(400).json({ message: "Alıcı ID veya rol belirtilmeli" });
-      }
-
-      // Enforce XOR: exactly one of recipientId or recipientRole must be set
-      if (recipientId && recipientRole) {
-        return res.status(400).json({ message: "recipientId ve recipientRole birlikte kullanılamaz" });
-      }
-
-      // Authorization check for Supervisor
-      if (role === 'supervisor') {
-        // Supervisor can only message their own branch staff + HQ roles
-        if (recipientId) {
-          const recipient = await storage.getUserById(recipientId);
-          if (!recipient) {
-            return res.status(404).json({ message: "Alıcı bulunamadı" });
-          }
-
-          // Check if recipient is in same branch OR is HQ role
-          const isHQRole = !recipient.branchId;
-          const isSameBranch = recipient.branchId === branchId;
-
-          if (!isHQRole && !isSameBranch) {
-            return res.status(403).json({ message: "Bu kullanıcıya mesaj gönderme yetkiniz yok" });
-          }
-        }
-
-        if (recipientRole) {
-          // Supervisor can only broadcast to HQ roles
-          const hqRoles = ['admin', 'coach', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
-          if (!hqRoles.includes(recipientRole)) {
-            return res.status(403).json({ message: "Bu role mesaj gönderme yetkiniz yok" });
-          }
-        }
-      }
-
-      const newMessage = await storage.createMessage({
-        senderId,
-        recipientId: recipientId || null,
-        recipientRole: recipientRole || null,
-        subject,
-        body,
-        type,
-        isRead: false,
-      });
-
-      res.status(201).json(newMessage);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      res.status(500).json({ message: "Mesaj gönderilirken hata oluştu" });
-    }
-  });
-
   // Mark message as read
   app.patch('/api/messages/:id/read', isAuthenticated, async (req, res) => {
     try {
@@ -4057,12 +3986,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // HQ SUPPORT TICKET ROUTES
   // ========================================
 
-  // Get HQ support tickets (list with filtering)
+  // Get HQ support tickets (list with filtering by branch, status, category)
   app.get('/api/hq-support/tickets', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const requestedBranchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       const status = req.query.status as string | undefined;
+      const category = req.query.category as string | undefined;
 
       // Authorization: Branch users can only see their own branch tickets
       if (user.role && isBranchRole(user.role as UserRoleType)) {
@@ -4073,12 +4003,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
         }
         // Force branch users to see only their branch
-        const tickets = await storage.getHQSupportTickets(user.branchId, status);
+        const tickets = await storage.getHQSupportTickets(user.branchId, status, category);
         return res.json(tickets);
       }
 
-      // HQ users can access all or filter by branch
-      const tickets = await storage.getHQSupportTickets(requestedBranchId, status);
+      // HQ users can access all or filter by branch/status/category
+      const tickets = await storage.getHQSupportTickets(requestedBranchId, status, category);
       res.json(tickets);
     } catch (error) {
       console.error("Error fetching HQ support tickets:", error);
@@ -4118,8 +4048,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       const userId = req.user.id;
-      const { insertHQSupportTicketSchema } = await import('@shared/schema');
+      const { insertHQSupportTicketSchema, TICKET_PRIORITY } = await import('@shared/schema');
       const validatedData = insertHQSupportTicketSchema.parse(req.body);
+
+      // Normalize and validate priority
+      const validPriorities = Object.values(TICKET_PRIORITY) as string[];
+      const normalizedPriority = validatedData.priority && validPriorities.includes(validatedData.priority) 
+        ? validatedData.priority 
+        : TICKET_PRIORITY.NORMAL;
+      
+      if (validatedData.priority && !validPriorities.includes(validatedData.priority)) {
+        return res.status(400).json({ 
+          message: `Geçersiz öncelik değeri. İzin verilen değerler: ${validPriorities.join(', ')}`
+        });
+      }
 
       // Authorization: Branch users can only create tickets for their own branch
       let ticketBranchId = validatedData.branchId;
@@ -4130,6 +4072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const ticket = await storage.createHQSupportTicket({
         ...validatedData,
+        priority: normalizedPriority,
         branchId: ticketBranchId,
         createdById: userId,
       });
@@ -4211,6 +4154,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid message data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+  
+  // Assign HQ support ticket (HQ only)
+  app.patch('/api/hq-support/tickets/:id/assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const id = parseInt(req.params.id);
+      const { assignedToId } = req.body;
+
+      // Only HQ users can assign tickets
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Destek talebi atama yetkiniz yok" });
+      }
+
+      const existingTicket = await storage.getHQSupportTicket(id);
+      if (!existingTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      const ticket = await storage.assignHQSupportTicket(id, assignedToId);
+      
+      // Log activity
+      await storage.createTicketActivityLog({
+        ticketId: id,
+        userId,
+        action: 'assigned',
+        oldValue: existingTicket.assignedToId || null,
+        newValue: assignedToId,
+      });
+      
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error assigning HQ support ticket:", error);
+      res.status(500).json({ message: "Failed to assign ticket" });
+    }
+  });
+  
+  // Update HQ support ticket (general update - HQ only)
+  app.patch('/api/hq-support/tickets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = req.user.id;
+      const id = parseInt(req.params.id);
+
+      // Only HQ users can update tickets
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Destek talebi güncelleme yetkiniz yok" });
+      }
+
+      const existingTicket = await storage.getHQSupportTicket(id);
+      if (!existingTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      const { title, description, category, priority, status } = req.body;
+      const updates: any = {};
+      
+      if (title) updates.title = title;
+      if (description) updates.description = description;
+      if (category) updates.category = category;
+      if (priority) updates.priority = priority;
+      if (status) updates.status = status;
+
+      const ticket = await storage.updateHQSupportTicket(id, updates);
+      
+      // Log activity for significant changes
+      if (priority && priority !== existingTicket.priority) {
+        await storage.createTicketActivityLog({
+          ticketId: id,
+          userId,
+          action: 'priority_changed',
+          oldValue: existingTicket.priority || null,
+          newValue: priority,
+        });
+      }
+      if (category && category !== existingTicket.category) {
+        await storage.createTicketActivityLog({
+          ticketId: id,
+          userId,
+          action: 'category_changed',
+          oldValue: existingTicket.category,
+          newValue: category,
+        });
+      }
+      
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error updating HQ support ticket:", error);
+      res.status(500).json({ message: "Failed to update ticket" });
+    }
+  });
+  
+  // Get ticket activity logs
+  app.get('/api/hq-support/tickets/:id/activity', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+
+      const existingTicket = await storage.getHQSupportTicket(id);
+      if (!existingTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Authorization: Branch users can only see their own branch ticket activity
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (!user.branchId || existingTicket.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu destek talebine erişim yetkiniz yok" });
+        }
+      }
+
+      const logs = await storage.getTicketActivityLogs(id);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching ticket activity logs:", error);
+      res.status(500).json({ message: "Failed to fetch activity logs" });
     }
   });
 
@@ -4354,9 +4414,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/messages', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
+      const senderRole = user.role as string;
       ensurePermission(user, 'messages', 'create');
       
       const validatedData = insertMessageSchema.parse(req.body);
+      
+      // Enforce XOR: exactly one of recipientId or recipientRole must be set
+      const hasRecipientId = !!validatedData.recipientId;
+      const hasRecipientRole = !!validatedData.recipientRole;
+      
+      if (hasRecipientId && hasRecipientRole) {
+        return res.status(400).json({ message: "recipientId ve recipientRole birlikte kullanılamaz" });
+      }
+      
+      if (!hasRecipientId && !hasRecipientRole) {
+        return res.status(400).json({ message: "Alıcı ID veya rol belirtilmeli" });
+      }
+      
+      // Define HQ roles for broadcast validation
+      const HQ_ROLES = ['admin', 'coach', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq', 'egitim', 'kalite', 'pazarlama', 'ik'];
+      
+      // Role-based messaging permission checks for role broadcasts (recipientRole)
+      // Must check this FIRST to enforce restrictions before direct message checks
+      if (hasRecipientRole) {
+        const targetRole = validatedData.recipientRole as string;
+        
+        // HQ roles can broadcast to any role
+        if (isHQRole(senderRole as UserRoleType)) {
+          // OK - HQ can broadcast to all roles
+        }
+        // Non-HQ roles (supervisors and branch employees) can only broadcast to HQ roles
+        else {
+          if (!HQ_ROLES.includes(targetRole)) {
+            return res.status(403).json({ message: "Bu role mesaj gönderme yetkiniz yok. Sadece merkez rollerine (admin, coach, muhasebe, teknik vb.) broadcast yapabilirsiniz." });
+          }
+          // OK - Non-HQ can broadcast to HQ roles
+        }
+      }
+      
+      // Role-based messaging permission checks for direct messages (recipientId)
+      if (hasRecipientId) {
+        const recipient = await storage.getUser(validatedData.recipientId as string);
+        if (!recipient) {
+          return res.status(404).json({ message: "Alıcı bulunamadı" });
+        }
+        
+        const recipientRole = recipient.role as string;
+        
+        // HQ roles can message anyone
+        if (isHQRole(senderRole as UserRoleType)) {
+          // OK - HQ can message all users
+        } 
+        // Supervisors can message HQ or their own team members
+        else if (senderRole === 'supervisor') {
+          if (isHQRole(recipientRole as UserRoleType)) {
+            // OK - Supervisor can message HQ
+          } else if (recipient.branchId === user.branchId) {
+            // OK - Supervisor can message team members in same branch
+          } else {
+            return res.status(403).json({ message: "Bu kullanıcıya mesaj gönderme yetkiniz yok" });
+          }
+        }
+        // Branch employees can only message supervisor or HQ
+        else if (isBranchRole(senderRole as UserRoleType)) {
+          if (isHQRole(recipientRole as UserRoleType)) {
+            // OK - Branch users can message HQ
+          } else if (recipientRole === 'supervisor' && recipient.branchId === user.branchId) {
+            // OK - Branch users can message their supervisor
+          } else {
+            return res.status(403).json({ message: "Bu kullanıcıya mesaj gönderme yetkiniz yok. Sadece şube supervisorünüze veya merkeze mesaj gönderebilirsiniz." });
+          }
+        }
+      }
       
       // Generate threadId if not provided
       const threadId = validatedData.threadId || `thread_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -4609,6 +4738,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error adding announcement attachments:", error);
       res.status(500).json({ message: "Ekler yüklenemedi" });
+    }
+  });
+  
+  // Mark announcement as read
+  app.post('/api/announcements/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const announcementId = parseInt(req.params.id);
+      
+      await storage.markAnnouncementAsRead(announcementId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking announcement as read:", error);
+      res.status(500).json({ message: "Okundu işaretlenemedi" });
+    }
+  });
+  
+  // Get announcement read status (HQ only - for tracking)
+  app.get('/api/announcements/:id/read-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ users can see read status
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Okunma durumu görüntüleme yetkiniz yok" });
+      }
+      
+      const announcementId = parseInt(req.params.id);
+      const readStatus = await storage.getAnnouncementReadStatus(announcementId);
+      res.json(readStatus);
+    } catch (error) {
+      console.error("Error fetching announcement read status:", error);
+      res.status(500).json({ message: "Okunma durumu getirilemedi" });
+    }
+  });
+  
+  // Get unread announcement count
+  app.get('/api/announcements/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = user.id;
+      const branchId = user.branchId;
+      const role = user.role as string;
+      
+      const count = await storage.getUnreadAnnouncementCount(userId, branchId, role);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread announcement count:", error);
+      res.status(500).json({ message: "Okunmamış sayısı getirilemedi" });
     }
   });
 

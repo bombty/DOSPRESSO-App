@@ -217,6 +217,14 @@ import {
   BranchFeedback,
   InsertBranchFeedback,
   branchFeedbacks,
+  TicketActivityLog,
+  InsertTicketActivityLog,
+  ticketActivityLogs,
+  AnnouncementReadStatus,
+  InsertAnnouncementReadStatus,
+  announcementReadStatus,
+  HQ_SUPPORT_CATEGORY,
+  TICKET_PRIORITY,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -430,12 +438,18 @@ export interface IStorage {
   updateServiceRequestStatus(id: number, newStatus: ServiceRequestStatusType, actorId: string, notes?: string): Promise<EquipmentServiceRequest | undefined>;
 
   // HQ Support Ticket operations
-  getHQSupportTickets(branchId?: number, status?: string): Promise<HQSupportTicket[]>;
+  getHQSupportTickets(branchId?: number, status?: string, category?: string): Promise<HQSupportTicket[]>;
   getHQSupportTicket(id: number): Promise<HQSupportTicket | undefined>;
   createHQSupportTicket(ticket: InsertHQSupportTicket): Promise<HQSupportTicket>;
+  updateHQSupportTicket(id: number, updates: Partial<InsertHQSupportTicket>): Promise<HQSupportTicket | undefined>;
   updateHQSupportTicketStatus(id: number, status: string, closedBy?: string): Promise<HQSupportTicket | undefined>;
+  assignHQSupportTicket(id: number, assignedToId: string): Promise<HQSupportTicket | undefined>;
   getHQSupportMessages(ticketId: number): Promise<HQSupportMessage[]>;
   createHQSupportMessage(message: InsertHQSupportMessage): Promise<HQSupportMessage>;
+  
+  // Ticket Activity Log operations
+  getTicketActivityLogs(ticketId: number): Promise<TicketActivityLog[]>;
+  createTicketActivityLog(log: InsertTicketActivityLog): Promise<TicketActivityLog>;
 
   // Notification operations
   getNotifications(userId: string, isRead?: boolean): Promise<Notification[]>;
@@ -451,6 +465,12 @@ export interface IStorage {
   addAnnouncementAttachments(id: number, attachments: string[]): Promise<Announcement | undefined>;
   removeAnnouncementAttachment(id: number, attachmentUrl: string): Promise<Announcement | undefined>;
   deleteAnnouncement(id: number): Promise<void>;
+  
+  // Announcement Read Status operations
+  markAnnouncementAsRead(announcementId: number, userId: string): Promise<void>;
+  getAnnouncementReadStatus(announcementId: number): Promise<AnnouncementReadStatus[]>;
+  getUserAnnouncementReadStatus(userId: string): Promise<AnnouncementReadStatus[]>;
+  getUnreadAnnouncementCount(userId: string, branchId: number | null, role: string): Promise<number>;
   
   // Daily Cash Report operations
   getDailyCashReports(branchId?: number, dateFrom?: string, dateTo?: string): Promise<DailyCashReport[]>;
@@ -2242,13 +2262,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   // HQ Support Ticket operations
-  async getHQSupportTickets(branchId?: number, status?: string): Promise<HQSupportTicket[]> {
+  async getHQSupportTickets(branchId?: number, status?: string, category?: string): Promise<HQSupportTicket[]> {
     const conditions = [];
     if (branchId !== undefined) {
       conditions.push(eq(hqSupportTickets.branchId, branchId));
     }
     if (status !== undefined) {
       conditions.push(eq(hqSupportTickets.status, status));
+    }
+    if (category !== undefined) {
+      conditions.push(eq(hqSupportTickets.category, category));
     }
     
     if (conditions.length > 0) {
@@ -2268,16 +2291,34 @@ export class DatabaseStorage implements IStorage {
     const [newTicket] = await db.insert(hqSupportTickets).values(ticket).returning();
     return newTicket;
   }
+  
+  async updateHQSupportTicket(id: number, updates: Partial<InsertHQSupportTicket>): Promise<HQSupportTicket | undefined> {
+    const [updated] = await db
+      .update(hqSupportTickets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(hqSupportTickets.id, id))
+      .returning();
+    return updated;
+  }
 
   async updateHQSupportTicketStatus(id: number, status: string, closedBy?: string): Promise<HQSupportTicket | undefined> {
-    const updates: any = { status };
-    if (status === 'closed' && closedBy) {
+    const updates: any = { status, updatedAt: new Date() };
+    if (status === 'kapatildi' && closedBy) {
       updates.closedAt = new Date();
       updates.closedBy = closedBy;
     }
     const [updated] = await db
       .update(hqSupportTickets)
       .set(updates)
+      .where(eq(hqSupportTickets.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async assignHQSupportTicket(id: number, assignedToId: string): Promise<HQSupportTicket | undefined> {
+    const [updated] = await db
+      .update(hqSupportTickets)
+      .set({ assignedToId, updatedAt: new Date() })
       .where(eq(hqSupportTickets.id, id))
       .returning();
     return updated;
@@ -2292,6 +2333,18 @@ export class DatabaseStorage implements IStorage {
   async createHQSupportMessage(message: InsertHQSupportMessage): Promise<HQSupportMessage> {
     const [newMessage] = await db.insert(hqSupportMessages).values(message).returning();
     return newMessage;
+  }
+  
+  // Ticket Activity Log operations
+  async getTicketActivityLogs(ticketId: number): Promise<TicketActivityLog[]> {
+    return db.select().from(ticketActivityLogs)
+      .where(eq(ticketActivityLogs.ticketId, ticketId))
+      .orderBy(desc(ticketActivityLogs.createdAt));
+  }
+  
+  async createTicketActivityLog(log: InsertTicketActivityLog): Promise<TicketActivityLog> {
+    const [newLog] = await db.insert(ticketActivityLogs).values(log).returning();
+    return newLog;
   }
 
   // Notification operations
@@ -2398,6 +2451,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAnnouncement(id: number): Promise<void> {
     await db.delete(announcements).where(eq(announcements.id, id));
+  }
+  
+  // Announcement Read Status operations
+  async markAnnouncementAsRead(announcementId: number, userId: string): Promise<void> {
+    await db.insert(announcementReadStatus)
+      .values({ announcementId, userId })
+      .onConflictDoNothing();
+  }
+  
+  async getAnnouncementReadStatus(announcementId: number): Promise<AnnouncementReadStatus[]> {
+    return db.select().from(announcementReadStatus)
+      .where(eq(announcementReadStatus.announcementId, announcementId));
+  }
+  
+  async getUserAnnouncementReadStatus(userId: string): Promise<AnnouncementReadStatus[]> {
+    return db.select().from(announcementReadStatus)
+      .where(eq(announcementReadStatus.userId, userId));
+  }
+  
+  async getUnreadAnnouncementCount(userId: string, branchId: number | null, role: string): Promise<number> {
+    const allAnnouncements = await this.getAnnouncements(userId, branchId, role);
+    const readStatuses = await this.getUserAnnouncementReadStatus(userId);
+    const readIds = new Set(readStatuses.map(rs => rs.announcementId));
+    
+    return allAnnouncements.filter(a => !readIds.has(a.id)).length;
   }
 
   // Daily Cash Report operations

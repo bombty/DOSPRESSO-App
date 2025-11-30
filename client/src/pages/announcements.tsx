@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Megaphone, Plus, AlertCircle, Calendar, User, Paperclip } from "lucide-react";
+import { Megaphone, Plus, AlertCircle, Calendar, User, Paperclip, Eye, EyeOff, CheckCircle, Users } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -32,11 +32,20 @@ type AnnouncementWithUser = Announcement & {
   };
 };
 
+type ReadStatus = {
+  readCount: number;
+  totalTargetUsers: number;
+  readers: { userId: number; username: string; readAt: string }[];
+};
+
 export default function Announcements() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [readStatusDialogOpen, setReadStatusDialogOpen] = useState(false);
+  const [selectedAnnouncementId, setSelectedAnnouncementId] = useState<number | null>(null);
+  const [markedAsRead, setMarkedAsRead] = useState<Set<number>>(new Set());
 
   const isHQ = user?.role && isHQRole(user.role as any);
 
@@ -47,6 +56,81 @@ export default function Announcements() {
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
   });
+
+  const { data: unreadCount } = useQuery<{ count: number }>({
+    queryKey: ['/api/announcements/unread-count'],
+    enabled: !!user,
+  });
+
+  const { data: readStatus } = useQuery<ReadStatus>({
+    queryKey: ['/api/announcements', selectedAnnouncementId, 'read-status'],
+    enabled: readStatusDialogOpen && isHQ && !!selectedAnnouncementId,
+  });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (announcementId: number) => {
+      await apiRequest('POST', `/api/announcements/${announcementId}/read`, {});
+    },
+    onSuccess: (_, announcementId) => {
+      setMarkedAsRead(prev => {
+        const newSet = new Set(prev);
+        newSet.add(announcementId);
+        return newSet;
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/announcements/unread-count'] });
+    },
+  });
+
+  // Helper function to check if user is targeted by an announcement
+  const isUserTargeted = (announcement: AnnouncementWithUser, currentUser: typeof user): boolean => {
+    if (!currentUser) return false;
+    
+    // Treat null/undefined/empty arrays as "no targeting"
+    const hasRoleTargeting = announcement.targetRoles && announcement.targetRoles.length > 0;
+    const hasBranchTargeting = announcement.targetBranches && announcement.targetBranches.length > 0;
+    
+    // If no targeting at all, everyone is targeted
+    if (!hasRoleTargeting && !hasBranchTargeting) {
+      return true;
+    }
+    
+    let roleMatch = !hasRoleTargeting; // If no role targeting, consider it matched
+    let branchMatch = !hasBranchTargeting; // If no branch targeting, consider it matched
+    
+    // Check role targeting (if specified)
+    if (hasRoleTargeting) {
+      roleMatch = announcement.targetRoles!.includes(currentUser.role as string);
+    }
+    
+    // Check branch targeting (if specified)
+    if (hasBranchTargeting) {
+      branchMatch = currentUser.branchId ? announcement.targetBranches!.includes(currentUser.branchId) : false;
+    }
+    
+    // Both must match (AND logic for combined targeting)
+    return roleMatch && branchMatch;
+  };
+
+  useEffect(() => {
+    if (!announcements || !user) return;
+    
+    // Find announcements to mark as read (not already marked, user is targeted)
+    const toMark = announcements.filter(a => 
+      !markedAsRead.has(a.id) && isUserTargeted(a, user)
+    );
+    
+    // Only proceed if there are announcements to mark and no mutation is pending
+    if (toMark.length > 0 && !markAsReadMutation.isPending) {
+      // Mark the first unread announcement (batch one at a time to avoid concurrent calls)
+      const first = toMark[0];
+      markAsReadMutation.mutate(first.id);
+    }
+  }, [announcements, user, markedAsRead, markAsReadMutation.isPending]);
+
+  const handleViewReadStatus = (announcementId: number) => {
+    setSelectedAnnouncementId(announcementId);
+    setReadStatusDialogOpen(true);
+  };
 
   const form = useForm<InsertAnnouncement>({
     resolver: zodResolver(insertAnnouncementSchema),
@@ -449,6 +533,19 @@ export default function Announcements() {
                         </span>
                       </div>
                     )}
+
+                    {isHQ && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto"
+                        onClick={() => handleViewReadStatus(announcement.id)}
+                        data-testid={`button-read-status-${announcement.id}`}
+                      >
+                        <Users className="w-3 h-3 mr-1" />
+                        Okunma Durumu
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -465,6 +562,63 @@ export default function Announcements() {
           </CardContent>
         </Card>
       )}
+
+      {/* Read Status Dialog */}
+      <Dialog open={readStatusDialogOpen} onOpenChange={setReadStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Duyuru Okunma Durumu
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {readStatus ? (
+              <>
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <span className="font-medium">Okuyan: {readStatus.readCount}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-muted-foreground" />
+                    <span>Toplam: {readStatus.totalTargetUsers}</span>
+                  </div>
+                </div>
+
+                {readStatus.readers && readStatus.readers.length > 0 ? (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <p className="text-sm font-medium text-muted-foreground">Okuyanlar:</p>
+                    {readStatus.readers.map((reader, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 border rounded text-sm">
+                        <span>{reader.username}</span>
+                        <span className="text-muted-foreground">
+                          {format(new Date(reader.readAt), "d MMM yyyy HH:mm", { locale: tr })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-4">
+                    Henüz okuyan yok
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReadStatusDialogOpen(false)}>
+              Kapat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
