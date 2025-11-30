@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock, Zap, AlertTriangle, Flame, Trophy, Award } from "lucide-react";
 import { useLocation } from "wouter";
 import { GaugeCard, KPICard } from "./shared-dashboard-components";
@@ -40,15 +39,6 @@ export function AdminDashboard({
   const avgCustomerScore = calculateAverageScore(compositeBranchScores.map(s => s.customerSatisfactionScore));
   const slaScore = totalFaults > 0 ? Math.round(((totalFaults - openFaults) / totalFaults) * 100) : 100;
 
-  // Radial chart data
-  const radarData = [
-    { name: 'Personel', value: avgEmployeePerf, fullMark: 100 },
-    { name: 'Ekipman', value: avgEquipmentScore, fullMark: 100 },
-    { name: 'Kalite', value: avgQualityScore, fullMark: 100 },
-    { name: 'Müşteri', value: avgCustomerScore, fullMark: 100 },
-    { name: 'SLA', value: slaScore, fullMark: 100 },
-  ];
-
   // Get critical alerts
   const criticalBranches = compositeBranchScores
     .filter(s => s.compositeScore < 70)
@@ -57,29 +47,6 @@ export function AdminDashboard({
 
   return (
     <div className="space-y-3 md:space-y-6">
-      {/* System Performance Overview - Radial Chart */}
-      {!isLoading && compositeBranchScores.length > 0 && (
-        <Card className="hidden md:block">
-          <CardHeader>
-            <CardTitle className="text-sm">Sistem Performans Göstergesi</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
-                <PolarGrid stroke="#e5e7eb" />
-                <PolarAngleAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10 }} />
-                <Radar name="Skor" dataKey="value" stroke="#1F3A93" fill="#1F3A93" fillOpacity={0.6} />
-                <RechartsTooltip 
-                  formatter={(value) => `${value}%`}
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd' }}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Gauge Cards - Real-time KPI Monitoring */}
       {!isLoading && (
         <div className="grid gap-0.5 grid-cols-2 md:grid-cols-5">
