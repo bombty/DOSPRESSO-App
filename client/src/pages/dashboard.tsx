@@ -159,6 +159,12 @@ export default function Dashboard() {
     enabled: !!user?.id,
   });
 
+  // Fetch HQ Support tickets (for Admin dashboard)
+  const { data: hqSupportTickets = [], isLoading: hqTicketsLoading } = useQuery<any[]>({
+    queryKey: ["/api/hq-support/tickets"],
+    enabled: !!user && isHQRole(user.role as any),
+  });
+
   // Calculate weekly performance score from daily scores (not double-averaging)
   const weeklyPerformanceScore = useMemo(() => {
     if (!userPerformanceScores || userPerformanceScores.length === 0) return null;
@@ -536,6 +542,8 @@ export default function Dashboard() {
           openFaults={openFaults}
           branchScoresTimeRange={branchScoresTimeRange}
           onTimeRangeChange={setBranchScoresTimeRange}
+          hqSupportTickets={hqSupportTickets}
+          hqTicketsLoading={hqTicketsLoading}
         />
       );
     } else if (role === 'supervisor' || role === 'supervisor_buddy' || role === 'coach') {

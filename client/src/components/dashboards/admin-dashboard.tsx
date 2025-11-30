@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock, Zap, AlertTriangle, Flame } from "lucide-react";
+import { Building2, Users, TrendingUp, AlertCircle, CheckCircle, Clock, Zap, AlertTriangle, Flame, MessageCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { GaugeCard, KPICard } from "./shared-dashboard-components";
 import { calculateAverageScore } from "./dashboard-utils";
@@ -16,6 +16,8 @@ interface AdminDashboardProps {
   openFaults: number;
   branchScoresTimeRange?: string;
   onTimeRangeChange?: (range: any) => void;
+  hqSupportTickets?: any[];
+  hqTicketsLoading?: boolean;
 }
 
 export function AdminDashboard({
@@ -26,6 +28,8 @@ export function AdminDashboard({
   openFaults,
   branchScoresTimeRange,
   onTimeRangeChange,
+  hqSupportTickets = [],
+  hqTicketsLoading = false,
 }: AdminDashboardProps) {
   const [, setLocation] = useLocation();
   // Calculate overall system metrics
@@ -34,6 +38,10 @@ export function AdminDashboard({
   const avgQualityScore = calculateAverageScore(compositeBranchScores.map(s => s.qualityAuditScore));
   const avgCustomerScore = calculateAverageScore(compositeBranchScores.map(s => s.customerSatisfactionScore));
   const slaScore = totalFaults > 0 ? Math.round(((totalFaults - openFaults) / totalFaults) * 100) : 100;
+
+  // Calculate HQ Support statistics
+  const openTickets = hqSupportTickets?.filter((t: any) => t.status !== 'kapatildi').length || 0;
+  const unreadMessages = hqSupportTickets?.reduce((sum: number, t: any) => sum + (t.messageCount || 0), 0) || 0;
 
   // Get critical alerts
   const criticalBranches = compositeBranchScores
@@ -55,11 +63,12 @@ export function AdminDashboard({
       )}
 
       {/* KPI Cards Row */}
-      <div className="grid gap-0.5 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-0.5 grid-cols-2 md:grid-cols-5">
         <KPICard icon={Building2} label="Toplam Şubeler" value={totalBranches} color="blue" />
         <KPICard icon={AlertCircle} label="Açık Arızalar" value={openFaults} color="red" />
         <KPICard icon={CheckCircle} label="Kapanan" value={totalFaults - openFaults} color="green" />
         <KPICard icon={TrendingUp} label="Kapanış Oranı" value={totalFaults > 0 ? Math.round(((totalFaults - openFaults) / totalFaults) * 100) : 0} suffix="%" color="amber" />
+        <KPICard icon={MessageCircle} label="HQ Destek" value={openTickets} color="purple" onClick={() => setLocation('/hq-destek')} testId="card-hq-tickets" />
       </div>
 
       {/* Branch Performance Heatmap - Unified */}
