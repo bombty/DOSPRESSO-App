@@ -245,7 +245,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         titleTr: "Ayarlar",
         path: "/yonetim/ayarlar",
         icon: "Settings",
-        moduleKey: "dashboard",
+        moduleKey: "admin_settings",
         scope: "hq",
       },
     ],

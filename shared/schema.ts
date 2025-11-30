@@ -159,7 +159,8 @@ export type PermissionModule =
   | 'announcements'
   | 'complaints'
   | 'leave_requests'
-  | 'overtime_requests';
+  | 'overtime_requests'
+  | 'admin_settings';
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -185,6 +186,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: ['view', 'create', 'edit', 'delete', 'approve'],
     leave_requests: ['view', 'create', 'edit', 'approve'],
     overtime_requests: ['view', 'create', 'edit', 'approve'],
+    admin_settings: ['view'],
   },
   // HQ ROLES
   muhasebe: {
@@ -208,6 +210,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: ['view'],
     leave_requests: ['view'],
     overtime_requests: ['view'],
+    admin_settings: [],
   },
   satinalma: {
     dashboard: ['view'],
@@ -230,6 +233,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: [],
     overtime_requests: [],
+    admin_settings: [],
   },
   coach: {
     dashboard: ['view'],
@@ -252,6 +256,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: ['view', 'edit'],
     leave_requests: ['view', 'approve'],
     overtime_requests: ['view', 'approve'],
+    admin_settings: [],
   },
   teknik: {
     dashboard: ['view'],
@@ -274,6 +279,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: [],
     overtime_requests: [],
+    admin_settings: [],
   },
   destek: {
     dashboard: ['view'],
@@ -296,6 +302,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: [],
     overtime_requests: [],
+    admin_settings: [],
   },
   fabrika: {
     dashboard: ['view'],
@@ -318,6 +325,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: [],
     overtime_requests: [],
+    admin_settings: [],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -340,6 +348,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: [],
     overtime_requests: [],
+    admin_settings: [],
   },
   // BRANCH ROLES
   supervisor: {
@@ -363,6 +372,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: ['view', 'create', 'edit'],
     leave_requests: ['view', 'create', 'approve'],
     overtime_requests: ['view', 'create', 'approve'],
+    admin_settings: [],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -385,6 +395,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
+    admin_settings: [],
   },
   barista: {
     dashboard: ['view'],
@@ -407,6 +418,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
+    admin_settings: [],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -429,6 +441,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
+    admin_settings: [],
   },
   stajyer: {
     dashboard: ['view'],
@@ -451,6 +464,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
+    admin_settings: [],
   },
   yatirimci_branch: {
     dashboard: ['view'],
@@ -473,6 +487,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     complaints: [],
     leave_requests: [],
     overtime_requests: [],
+    admin_settings: [],
   },
 };
 
