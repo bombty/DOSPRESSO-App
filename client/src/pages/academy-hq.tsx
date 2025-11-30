@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -839,63 +840,51 @@ export default function AcademyHQ() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {trainingModules.map((module: TrainingModule) => (
-              <Card
-                key={module.id}
-                className="cursor-pointer hover-elevate"
-                onClick={() => {
-                  setEditingModule(module);
-                  editTrainingForm.reset({
-                    title: module.title,
-                    description: module.description || "",
-                    category: module.category || "",
-                    level: (module.level as "beginner" | "intermediate" | "advanced") || "beginner",
-                    estimatedDuration: module.estimatedDuration || 30,
-                    isPublished: module.isPublished || false,
-                    requiredForRole: module.requiredForRole || [],
-                  });
-                  setIsEditTrainingOpen(true);
-                }}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="flex-1">
-                      <CardTitle className="text-base">{module.title}</CardTitle>
-                      <CardDescription className="text-xs mt-1">
-                        Seviye: {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
-                      </CardDescription>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteTrainingMutation.mutate(module.id);
-                      }}
-                      disabled={deleteTrainingMutation.isPending}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {module.description && <p className="text-muted-foreground line-clamp-2">{module.description}</p>}
-                  <div className="flex gap-2 flex-wrap">
-                    {module.isPublished && <Badge variant="default">Yayında</Badge>}
-                    {!module.isPublished && <Badge variant="secondary">Taslak</Badge>}
-                    <Badge variant="outline">{module.estimatedDuration} dk</Badge>
-                  </div>
-                  {module.requiredForRole && module.requiredForRole.length > 0 && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Zorunlu Roller:</p>
-                      <div className="flex gap-1 flex-wrap">
-                        {module.requiredForRole.map((role: string) => (
-                          <Badge key={role} variant="outline" className="text-xs">{role}</Badge>
-                        ))}
+              <Link key={module.id} href={`/akademi-modul/${module.id}`}>
+                <Card className="cursor-pointer hover-elevate h-full">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1">
+                        <CardTitle className="text-base">{module.title}</CardTitle>
+                        <CardDescription className="text-xs mt-1">
+                          Seviye: {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
+                        </CardDescription>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          deleteTrainingMutation.mutate(module.id);
+                        }}
+                        disabled={deleteTrainingMutation.isPending}
+                        data-testid={`button-delete-module-${module.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {module.description && <p className="text-muted-foreground line-clamp-2">{module.description}</p>}
+                    <div className="flex gap-2 flex-wrap">
+                      {module.isPublished && <Badge variant="default">Yayında</Badge>}
+                      {!module.isPublished && <Badge variant="secondary">Taslak</Badge>}
+                      <Badge variant="outline">{module.estimatedDuration} dk</Badge>
+                    </div>
+                    {module.requiredForRole && module.requiredForRole.length > 0 && (
+                      <div className="pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Zorunlu Roller:</p>
+                        <div className="flex gap-1 flex-wrap">
+                          {module.requiredForRole.map((role: string) => (
+                            <Badge key={role} variant="outline" className="text-xs">{role}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
           {trainingModules.length === 0 && (
