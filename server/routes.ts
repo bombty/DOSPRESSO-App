@@ -3379,6 +3379,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate learning objectives with AI (admin/coach only)
+  app.post('/api/training/modules/:id/generate-objectives', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Only admin and coach can generate objectives" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const module = await storage.getTrainingModule(moduleId);
+      
+      if (!module) {
+        return res.status(404).json({ message: "Module not found" });
+      }
+
+      // Stub: Return mock objectives (in production, would call OpenAI API)
+      const objectives = [
+        `${module.title} konusunun temel kavramlarını anlamak`,
+        `${module.title} ile ilgili praktik beceriler geliştirmek`,
+        `${module.title} uygulamalarında sorun çözebilmek`,
+        `${module.title} standartlarına uygun prosedürleri takip etmek`,
+      ];
+
+      res.json({ objectives });
+    } catch (error) {
+      console.error("Error generating objectives:", error);
+      res.status(500).json({ message: "Failed to generate objectives" });
+    }
+  });
+
   // Add video to module (admin/coach only)
   app.post('/api/training/modules/:id/videos', isAuthenticated, async (req, res) => {
     try {

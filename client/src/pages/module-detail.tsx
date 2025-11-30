@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -71,6 +71,25 @@ export default function ModuleDetail() {
     onSuccess: () => {
       toast({ title: "Öğrenme hedefleri güncellendi" });
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const generateObjectivesMutation = useMutation({
+    mutationFn: async () => {
+      if (!moduleId) throw new Error("Module not found");
+      const res = await fetch(`/api/training/modules/${moduleId}/generate-objectives`, { 
+        method: "POST", 
+        credentials: "include" 
+      });
+      if (!res.ok) throw new Error("Failed to generate");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      objectivesForm.setValue("objectives", data.objectives);
+      toast({ title: "Hedefler oluşturuldu", description: "AI ile öğrenme hedefleri oluşturuldu" });
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -220,18 +239,28 @@ export default function ModuleDetail() {
         <TabsContent value="objectives" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <div>
                   <CardTitle>Öğrenme Hedefleri</CardTitle>
                   <CardDescription>Modülün öğrenme çıktıları</CardDescription>
                 </div>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Düzenle
-                    </Button>
-                  </DialogTrigger>
+                <div className="flex gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => generateObjectivesMutation.mutate()}
+                    disabled={generateObjectivesMutation.isPending}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    AI Oluştur
+                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Düzenle
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>Öğrenme Hedeflerini Düzenle</DialogTitle>
@@ -267,6 +296,7 @@ export default function ModuleDetail() {
                     </Form>
                   </DialogContent>
                 </Dialog>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
