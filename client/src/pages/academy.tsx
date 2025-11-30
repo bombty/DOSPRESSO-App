@@ -120,6 +120,14 @@ export default function Academy() {
         >
           <ArrowLeft className="w-4 h-4" />
         </Button>
+        {user?.role === 'admin' && (
+          <Link href="/akademi-hq">
+            <Button variant="outline" size="sm" data-testid="button-admin-panel">
+              <BookOpen className="w-4 h-4 mr-2" />
+              Yönetim Paneli
+            </Button>
+          </Link>
+        )}
       </div>
       {/* Page Header */}
       <div>
