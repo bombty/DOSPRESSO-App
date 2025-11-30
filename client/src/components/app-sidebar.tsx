@@ -265,28 +265,32 @@ export function AppSidebar() {
                 </>
               )}
               
-              {/* Academy Link */}
-              {(branchSections.length > 0 || hqSections.length > 0 || bothSections.length > 0) && <div className="my-2 border-t" />}
-              <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Eğitim
-              </div>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/akademi"} data-testid="link-academy">
-                  <Link href="/akademi">
-                    <LucideIcons.Trophy className="h-4 w-4" />
-                    <span>Akademi</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {user?.role === "admin" && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/akademi-hq"} data-testid="link-academy-hq">
-                    <Link href="/akademi-hq">
-                      <LucideIcons.Settings className="h-4 w-4" />
-                      <span>Akademi Yönetimi</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+              {/* Academy Link - Hidden for muhasebe, satinalma */}
+              {user?.role !== "muhasebe" && user?.role !== "satinalma" && (
+                <>
+                  {(branchSections.length > 0 || hqSections.length > 0 || bothSections.length > 0) && <div className="my-2 border-t" />}
+                  <div className="mt-2 mb-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    Eğitim
+                  </div>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={location === "/akademi"} data-testid="link-academy">
+                      <Link href="/akademi">
+                        <LucideIcons.Trophy className="h-4 w-4" />
+                        <span>Akademi</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  {user?.role === "admin" && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild isActive={location === "/akademi-hq"} data-testid="link-academy-hq">
+                        <Link href="/akademi-hq">
+                          <LucideIcons.Settings className="h-4 w-4" />
+                          <span>Akademi Yönetimi</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                </>
               )}
               
               {/* Error state */}
