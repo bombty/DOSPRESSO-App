@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, DollarSign, Building2, AlertCircle } from "lucide-react";
 import { KPICard } from "./shared-dashboard-components";
+import { BranchPerformanceHeatmap } from "./branch-performance-heatmap";
 
 interface MuhasebeDashboardProps {
   compositeBranchScores: any[];
@@ -48,37 +49,12 @@ export function MuhasebeDashboard({
         <KPICard icon={DollarSign} label="Ort. Maliyet" value={`${(totalRepairCost > 0 ? totalRepairCost / totalBranches : 0).toFixed(0)}₺`} color="purple" />
       </div>
 
-      {/* Branch Performance Overview */}
-      {compositeBranchScores.length > 0 && (
-        <Card className="hidden md:block">
-          <CardHeader>
-            <CardTitle className="text-base md:text-lg">Şube Performans Özeti</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {compositeBranchScores.slice(0, 5).map((score) => (
-                <div key={score.branchId} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                  <div className="flex-1">
-                    <p className="font-semibold text-sm">{score.branchName}</p>
-                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">
-                      <div 
-                        className={`h-full ${
-                          score.compositeScore >= 80 ? 'bg-green-600' : 
-                          score.compositeScore >= 60 ? 'bg-yellow-600' : 'bg-red-600'
-                        }`}
-                        style={{ width: `${score.compositeScore}%` }}
-                      />
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="ml-2">
-                    {score.compositeScore.toFixed(0)}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Branch Performance - Using Shared Heatmap */}
+      <BranchPerformanceHeatmap 
+        compositeBranchScores={compositeBranchScores}
+        isLoading={isLoading}
+        title="Şube Performans Özeti"
+      />
 
       {isLoading && <Skeleton className="h-64 w-full" />}
     </div>
