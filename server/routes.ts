@@ -3314,6 +3314,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk import training modules from JSON (admin/coach only)
+  app.post('/api/training/import', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Only admin and coach can import modules" });
+      }
+
+      const { roles } = req.body; // Array of role objects from JSON
+      if (!roles || !Array.isArray(roles)) {
+        return res.status(400).json({ message: "Invalid JSON format - missing roles array" });
+      }
+
+      const createdModules = [];
+      
+      for (const role of roles) {
+        if (!role.modules || !Array.isArray(role.modules)) continue;
+        
+        for (const moduleData of role.modules) {
+          try {
+            const module = await storage.createTrainingModule({
+              title: moduleData.title,
+              description: moduleData.description,
+              code: moduleData.code,
+              slug: moduleData.code?.toLowerCase(),
+              category: role.name?.toLowerCase(),
+              level: "beginner",
+              estimatedDuration: moduleData.estimated_duration_min || 30,
+              isPublished: false,
+              requiredForRole: [role.name],
+              learningObjectives: moduleData.learning_objectives || [],
+              steps: (moduleData.steps || []).map((s: any) => ({
+                stepNumber: s.step_number,
+                title: s.title,
+                content: s.content,
+                mediaSuggestions: s.media_suggestions,
+              })),
+              scenarioTasks: (moduleData.scenario_tasks || []).map((sc: any) => ({
+                scenarioId: sc.scenario_id,
+                title: sc.title,
+                description: sc.description,
+                expectedActions: sc.expected_actions,
+              })),
+              supervisorChecklist: moduleData.supervisor_checklist || [],
+              tags: moduleData.tags || [],
+              createdBy: user.id,
+            });
+            createdModules.push(module);
+          } catch (err: any) {
+            console.error(`Error importing module ${moduleData.code}:`, err);
+          }
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        imported: createdModules.length, 
+        modules: createdModules 
+      });
+    } catch (error: any) {
+      console.error("Error importing training modules:", error);
+      res.status(500).json({ message: "Failed to import training modules" });
+    }
+  });
+
   // Add video to module (admin/coach only)
   app.post('/api/training/modules/:id/videos', isAuthenticated, async (req, res) => {
     try {

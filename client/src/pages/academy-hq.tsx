@@ -72,6 +72,10 @@ export default function AcademyHQ() {
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(1);
   const [isAddTrainingOpen, setIsAddTrainingOpen] = useState(false);
+  const [isEditTrainingOpen, setIsEditTrainingOpen] = useState(false);
+  const [editingModule, setEditingModule] = useState<TrainingModule | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importJson, setImportJson] = useState("");
 
   if (!user || (user.role !== "admin" && !isHQRole(user.role as any))) {
     return <div className="p-6 text-center text-destructive">Erişim Reddedildi</div>;
@@ -83,6 +87,11 @@ export default function AcademyHQ() {
   });
 
   const trainingForm = useForm<z.infer<typeof trainingModuleSchema>>({
+    resolver: zodResolver(trainingModuleSchema),
+    defaultValues: { title: "", description: "", category: "", level: "beginner" as const, estimatedDuration: 30, isPublished: false, requiredForRole: [] },
+  });
+
+  const editTrainingForm = useForm<z.infer<typeof trainingModuleSchema>>({
     resolver: zodResolver(trainingModuleSchema),
     defaultValues: { title: "", description: "", category: "", level: "beginner" as const, estimatedDuration: 30, isPublished: false, requiredForRole: [] },
   });
@@ -217,6 +226,39 @@ export default function AcademyHQ() {
     },
     onSuccess: () => {
       toast({ title: "Eğitim modülü silindi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateTrainingMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof trainingModuleSchema>) => {
+      if (!editingModule) throw new Error("Module not selected");
+      return apiRequest("PUT", `/api/training/modules/${editingModule.id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Eğitim modülü güncellendi" });
+      setIsEditTrainingOpen(false);
+      setEditingModule(null);
+      editTrainingForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async (json: string) => {
+      const data = JSON.parse(json);
+      return apiRequest("POST", "/api/training/import", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Modüller başarıyla içe aktarıldı" });
+      setIsImportOpen(false);
+      setImportJson("");
       queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
     },
     onError: (error: any) => {
@@ -609,7 +651,34 @@ export default function AcademyHQ() {
         <TabsContent value="training" className="space-y-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Eğitim Modülleri Yönetimi</h2>
-            <Dialog open={isAddTrainingOpen} onOpenChange={setIsAddTrainingOpen}>
+            <div className="flex gap-2">
+              <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-import-json">
+                    <Plus className="w-4 h-4 mr-2" />
+                    JSON İçe Aktar
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>JSON Müfredatını İçe Aktar</DialogTitle>
+                  </DialogHeader>
+                  <Textarea
+                    placeholder="DOSPRESSO Academy JSON'ını yapıştırın..."
+                    value={importJson}
+                    onChange={(e) => setImportJson(e.target.value)}
+                    className="h-96"
+                  />
+                  <Button
+                    onClick={() => importMutation.mutate(importJson)}
+                    disabled={importMutation.isPending || !importJson}
+                    className="w-full"
+                  >
+                    {importMutation.isPending ? "İçe Aktarılıyor..." : "İçe Aktar"}
+                  </Button>
+                </DialogContent>
+              </Dialog>
+              <Dialog open={isAddTrainingOpen} onOpenChange={setIsAddTrainingOpen}>
               <DialogTrigger asChild>
                 <Button data-testid="button-add-training">
                   <Plus className="w-4 h-4 mr-2" />
@@ -618,7 +687,7 @@ export default function AcademyHQ() {
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Yeni Eğitim Modülü</DialogTitle>
+                  <DialogTitle>Yeni Eğitim Modülü Oluştur</DialogTitle>
                 </DialogHeader>
                 <Form {...trainingForm}>
                   <form onSubmit={trainingForm.handleSubmit((data) => createTrainingMutation.mutate(data))} className="space-y-4">
@@ -688,11 +757,105 @@ export default function AcademyHQ() {
                 </Form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditTrainingOpen} onOpenChange={setIsEditTrainingOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Eğitim Modülünü Düzenle</DialogTitle>
+              </DialogHeader>
+              {editingModule && (
+                <Form {...editTrainingForm}>
+                  <form onSubmit={editTrainingForm.handleSubmit((data) => updateTrainingMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={editTrainingForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Başlık</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Modül başlığı" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editTrainingForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Açıklama</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Modül açıklaması" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={editTrainingForm.control}
+                        name="level"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Seviye</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={editingModule.level}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="beginner">Başlangıç</SelectItem>
+                                <SelectItem value="intermediate">Orta</SelectItem>
+                                <SelectItem value="advanced">İleri</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editTrainingForm.control}
+                        name="estimatedDuration"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tahmini Süre (dk)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="submit" disabled={updateTrainingMutation.isPending} className="w-full">
+                      {updateTrainingMutation.isPending ? "Güncelleniyor..." : "Güncelle"}
+                    </Button>
+                  </form>
+                </Form>
+              )}
+            </DialogContent>
+          </Dialog>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {trainingModules.map((module: TrainingModule) => (
-              <Card key={module.id}>
+              <Card
+                key={module.id}
+                className="cursor-pointer hover-elevate"
+                onClick={() => {
+                  setEditingModule(module);
+                  editTrainingForm.reset({
+                    title: module.title,
+                    description: module.description || "",
+                    category: module.category || "",
+                    level: (module.level as "beginner" | "intermediate" | "advanced") || "beginner",
+                    estimatedDuration: module.estimatedDuration || 30,
+                    isPublished: module.isPublished || false,
+                    requiredForRole: module.requiredForRole || [],
+                  });
+                  setIsEditTrainingOpen(true);
+                }}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start gap-2">
                     <div className="flex-1">
@@ -704,7 +867,10 @@ export default function AcademyHQ() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => deleteTrainingMutation.mutate(module.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteTrainingMutation.mutate(module.id);
+                      }}
                       disabled={deleteTrainingMutation.isPending}
                     >
                       <Trash2 className="w-4 h-4" />
