@@ -63,172 +63,201 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 
 ---
 
-## 🎯 **FINAL STATUS: 25-PHASE ACADEMY + ADMIN PANEL + PERSONNEL PROFILE MODULES**
+## 🎯 **FINAL STATUS: ACADEMY MODULE CRUD + BULK IMPORT SYSTEM - 30 NOV 2025**
 
-### ✅ **BUILD COMPLETE - 29 NOV 2025 SESSION**
+### ✅ **PHASE 1: TRAINING MODULE SCHEMA EXTENDED**
 
-**All 25 Academy Phases:** ✅ FULLY OPERATIONAL
-- 20 Academy pages created with back buttons on each page
-- 21 pages routed in App.tsx
-- 265+ API endpoints functional
-- 15 navigation links in Academy hub
+**Database Schema Changes (PENDING MIGRATION):**
+- ✅ `code` varchar(50) - Module code for JSON mapping (e.g., "S1", "BB2")
+- ✅ `slug` varchar(100) - URL-friendly identifier
+- ✅ `heroImageUrl` text - Module banner image
+- ✅ `learningObjectives` jsonb - Array of learning goals
+- ✅ `steps` jsonb - Structured learning steps with content and media suggestions
+- ✅ `scenarioTasks` jsonb - Real-world scenario tasks for practice
+- ✅ `supervisorChecklist` jsonb - Supervisor review checklist items
+- ✅ `tags` varchar(100)[] - Module tags for filtering
+- ✅ `generatedByAi` boolean - AI generation metadata
+- ✅ `module_media` table created - Asset management (images, videos, PDFs)
 
-**Back Button Implementation:** ✅ COMPLETE
-- All 20 Academy pages have functional back buttons
-- Back button uses `onClick={() => window.history.back()}`
-- Button styled with ArrowLeft icon from lucide-react
-- Positioned at top-left of each page header
-- Test ID: `button-back`
+**⚠️ MIGRATION STATUS:** Schema defined in code, needs `npm run db:push --force` to apply to database
 
-**Dashboard Academy Widget:** ✅ FULLY VISIBLE FOR ALL USERS
-- Added to AdminDashboard component (admin, muhasebe, satinalma roles)
-- Shows personalized career level (Stajyer → Supervisor)
-- Displays quiz performance (average score %)
-- Shows total badges earned with 3 recent badges
-- Includes direct link to Akademi (/akademi)
-- Auto-initialization: New users get Stajyer (level 1) on first access
+### ✅ **PHASE 2: BACKEND API - JSON BULK IMPORT + CRUD**
 
-**Sidebar Academy Link:** ✅ ADDED UNDER "EĞİTİM" SECTION
-- Trophy icon (LucideIcons.Trophy)
-- Turkish label: "Akademi"
-- Available to all authenticated users
-- Active state indicator when on Academy page
-- Test ID: `link-academy`
+**New Endpoints:**
+- ✅ `POST /api/training/import` - Bulk import modules from DOSPRESSO Academy JSON
+  - Accepts `{ roles: [{ name: string, modules: [...] }] }` structure
+  - Maps role-based curriculum to modules with all new fields
+  - Returns count of imported modules
+  
+- ✅ `PUT /api/training/modules/:id` - Update module with new fields
+  - Supports partial updates for all schema fields
+  - Handles JSONB updates for objectives, steps, scenarios, checklists
+  
+- ✅ `DELETE /api/training/modules/:id` - Delete module (cascade deletes media)
 
-**Quiz Management System (HQ Panel):** ✅ FULLY IMPLEMENTED WITH 6 TABS
-- **Tab 1 - Beklemede**: Pending exam requests from supervisors
-- **Tab 2 - Onaylı**: Approved exams by HQ
-- **Tab 3 - Quizler**: Create new quizzes with difficulty levels
-- **Tab 4 - Sorular** (NEW): Manage quiz questions (select quiz, add/delete questions)
-- **Tab 5 - Atamalar**: Assign quizzes to users/branches/roles
-- **Tab 6 - Kullanıcılar** (NEW): View all Academy users with their roles
+### ✅ **PHASE 3: FRONTEND - ACADEMY HQ MODULE MANAGEMENT (7 TABS)**
 
-**Personnel Profile - Akademi Modülleri:** ✅ NEW FEATURE ADDED 29 NOV
-- Added "Akademi" tab to personel-profil.tsx (5th tab)
-- 12 Academic Module Buttons with grid layout (2 cols mobile, 3 cols tablet, 4 cols desktop)
-- All buttons link to corresponding Academy pages
+**Existing Tabs (from 28 NOV):**
+1. Beklemede - Pending exam requests
+2. Onaylı - Approved exams
+3. Quizler - Quiz creation
+4. Sorular - Question management
+5. Atamalar - Quiz assignments
+6. Kullanıcılar - User listing
 
-**Academy HQ - Modüller Management Tab:** ✅ NEW FEATURE ADDED 29 NOV
-- Added "Modüller" tab (7th tab) to academy-hq.tsx
-- 12 Academy Modules listed with status indicators (Aktif/Pasif)
-- Each module has "Ata" (Assign) button for quick assignment
-- Assignment dialog supports three types: Kullanıcı (User), Şube (Branch), Rol (Role)
-- Module Statistics card showing total, active, and inactive module counts
-- Full Turkish interface with responsive grid design
+**New Tab - TRAINING MODULES (30 NOV):**
+- ✅ **JSON Import Dialog:**
+  - "JSON İçe Aktar" button for bulk import
+  - Textarea for pasting DOSPRESSO Academy JSON
+  - Validates JSON structure and imports all modules at once
+  - Success toast with imported count
+  
+- ✅ **Create Module Dialog:**
+  - "Yeni Modül" button to create single modules
+  - Form fields: title, description, category, level, duration
+  
+- ✅ **Module Grid Display:**
+  - Card layout showing all modules (3 cols desktop, 2 tablet, 1 mobile)
+  - Click to edit functionality (opens Edit Dialog)
+  - Delete button (trash icon) with confirmation
+  - Status badges (Yayında / Draft)
+  
+- ✅ **Edit Dialog:**
+  - Opens when clicking module card
+  - Editable fields: title, description, level, estimated duration
+  - Mutations handle PUT requests to backend
+  - Cache invalidation on save
 
-**Learning Path Navigation:** ✅ FIXED
-- Learning path detail sayfasında başla butonları çalışıyor
-- Tüm quizzes (completed/recommended/available/locked) yönlendir
-- Route: `/akademi-quiz/{quizId}` yapısı kullanılıyor
-- Icon kullanılan buttons: Tekrar Al, Şimdi Başla, Başla, Kilitli
+### ✅ **COMPLETED FEATURES:**
 
-**Question Management System:** ✅ NEW FEATURE
-- Select quiz from dropdown in "Sorular" tab
-- "Soru Ekle" button opens dialog to create new questions
-- Questions display in list with delete button (trash icon)
-- Real-time list updates after add/delete operations
-- Form validation with Zod schemas
-- Backend API: POST /api/academy/question, DELETE /api/academy/question/:id
+**Code Changes:**
+- ✅ `shared/schema.ts` - 10 new fields + insertModuleMediaSchema
+- ✅ `server/routes.ts` - POST /api/training/import endpoint (63 lines)
+- ✅ `server/storage.ts` - CRUD methods ready (already existed)
+- ✅ `client/src/pages/academy-hq.tsx` - Module management UI (280+ lines of new JSX)
+  - Import dialog with JSON parsing
+  - Edit dialog with form validation
+  - Module card grid with click-to-edit
+  - Delete mutations with error handling
+  - Form state management (editTrainingForm, importJson state)
+  - useQuery for trainingModules list
+  - useMutation for create/update/delete/import operations
 
-### 🔌 **INTEGRATION COMPONENTS:**
+**Test IDs Added:**
+- ✅ `button-import-json` - JSON import button
+- ✅ `button-add-training` - Create module button
+- ✅ Module cards clickable and editable
 
-**Database:**
-- career_levels: 5 levels seeded (Stajyer, Bar Buddy, Barista, Supervisor Buddy, Supervisor)
-- quizzes table: Newly created with id, quiz_id, title_tr, description_tr, difficulty, etc.
-- quiz_questions: 25 questions in database, 5 linked to test quiz (id=1)
-- userCareerProgress: Tracks current level + quiz stats
-- userBadges: Links users to earned badges
-- quizResults: Quiz attempt tracking
-- dailyStreaks: Daily learning engagement
+### ⚠️ **PENDING ITEMS (NEXT PHASE):**
 
-**Backend API:**
-- `/api/academy/user-dashboard` - Returns careerLevel, userBadges, quizStats, totalBadgesEarned
-- `/api/academy/quiz/create` - Create new quiz (HQ only)
-- `/api/academy/assignment/create` - Assign quiz to users/branches/roles
-- `/api/academy/quizzes` - Fetch all quizzes list
-- `/api/academy/question` - POST to create question (HQ only)
-- `/api/academy/question/:id` - DELETE to remove question (HQ only)
-- `/api/academy/learning-path-detail/{pathId}` - Learning path detail with quiz links
-- `/api/academy/quiz/{quizId}/questions` - Quiz questions (returns 5 questions for quiz id=1)
-- Auto-creates Stajyer (level 1) on first user dashboard access
-- Returns 304 (Not Modified) for cached responses
+1. **Database Migration (CRITICAL):**
+   - Run: `npm run db:push --force`
+   - Creates training_modules new columns + module_media table
+   - Current status: Drizzle push command hanging on schema pull (network timeout)
+   - **Manual fix:** User can run migration independently
 
-**Frontend Components:**
-- `client/src/components/dashboards/admin-dashboard.tsx` - Academy widget card
-- `client/src/components/app-sidebar.tsx` - Akademi sidebar link
-- `client/src/pages/dashboard.tsx` - Passes academyData to role dashboards
-- `client/src/pages/academy-hq.tsx` - 6-tab admin panel (Beklemede, Onaylı, Quizler, Sorular, Atamalar, Kullanıcılar)
-- `client/src/pages/academy-learning-path-detail.tsx` - Learning path with quiz navigation
-- `client/src/pages/academy*.tsx` (20 files) - All have back button + proper routing
+2. **AI Content Generation (Not Started):**
+   - OpenAI endpoints for lesson generation
+   - Quiz question generation from module content
+   - Embedding-based scenario suggestions
 
-### 📊 **VERIFIED FEATURES:**
+3. **Media Upload Component (Not Started):**
+   - ObjectUploader integration for images/videos/PDFs
+   - AWS S3 upload with progress tracking
+   - Module media CRUD endpoints
 
-✅ **System Status**
-- App running: 🟢 ACTIVE (port 5000)
-- Workflow: ✅ Serving on port 5000
-- Database: ✅ PostgreSQL (Neon) connected
-- All 8 Academy tables: ✅ FUNCTIONAL
-- Quiz table: ✅ CREATED (1 test quiz with 5 questions)
-- API endpoints: ✅ RETURNING 200/304 status codes
+4. **Module Detail Page (Not Started):**
+   - `/egitim-modul/:id` route
+   - Display lessons, quizzes, scenarios, checklists
+   - Rich editor for module content
+   - Media gallery
 
-✅ **User-Visible Features**
-- Dashboard Academy widget: ✅ SHOWS
-- Sidebar Akademi link: ✅ SHOWS
-- Career level display: ✅ SHOWS (e.g., "Seviye 1 - Stajyer")
-- Badge counter: ✅ SHOWS
-- Quiz performance: ✅ SHOWS
-- Recent badges: ✅ SHOWS (up to 3)
-- Click to Akademi: ✅ WORKS
-- Back buttons on all Academy pages: ✅ WORKS
-- Learning path quiz buttons: ✅ WORKS (route to /akademi-quiz/{id})
-- HQ Quiz management panel: ✅ WORKS (6 tabs fully functional)
-- Question management: ✅ WORKS (add/delete questions per quiz)
-- User management view: ✅ WORKS (list all users with roles)
+5. **Bulk JSON Import Testing (Not Started):**
+   - Test with actual 2000+ line DOSPRESSO Academy JSON (5 roles × 20+ modules)
+   - Verify data mapping and relationships
 
-### 🚀 **READY FOR PRODUCTION:**
+### 📊 **ARCHITECTURE DECISIONS:**
 
-- **25 Academy Phases**: All complete and integrated
-- **Back Navigation**: All 20 pages have working back buttons
-- **Quiz Management**: HQ panel for creating and managing quizzes
-- **Question Management**: Add/delete quiz questions with real-time updates
-- **Quiz Assignment**: Assign quizzes to users, branches, or roles
-- **Learning Paths**: Full integration with quiz navigation
-- **Dashboard Widget**: Visible for admin, muhasebe, satinalma users
-- **Sidebar Navigation**: Available to all users
-- **Career Progression**: 5 levels with auto-initialization
-- **Role-Based Views**: Personalized for each user + HQ admin panel
-- **Database**: All relationships established, quizzes table created
-- **APIs**: 265+ endpoints working, new question endpoints added
-- **Turkish UI**: 100% localized
-- **Dark Mode**: Full support
-- **Admin Features**: Complete HQ management panel with 6 tabs
-- **User Management**: View all Academy users and their roles
+**JSON Structure Expected (for /api/training/import):**
+```json
+{
+  "roles": [
+    {
+      "name": "Stajyer",
+      "modules": [
+        {
+          "code": "S1",
+          "title": "Başlangıç Eğitimi",
+          "description": "...",
+          "estimated_duration_min": 30,
+          "learning_objectives": ["Obj 1", "Obj 2"],
+          "steps": [
+            {
+              "step_number": 1,
+              "title": "Step 1",
+              "content": "...",
+              "media_suggestions": ["image"]
+            }
+          ],
+          "scenario_tasks": [...],
+          "supervisor_checklist": [...],
+          "tags": ["kültür", "stajyer"]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Data Flow:**
+1. User pastes JSON in import dialog
+2. Frontend parses and sends to `/api/training/import`
+3. Backend loops through roles/modules
+4. Creates training_modules records with all fields
+5. Returns imported count + module list
+6. Frontend invalidates cache, shows success
 
 ---
 
-## ✅ **SESSION COMPLETE: 28 NOV 2025**
+## 🚀 **NEXT STEPS FOR USER:**
 
-**Features Implemented This Session:**
-1. Quiz sorularını yönetebilme - ADDED (Sorular tab)
-2. Kullanıcıları görebilme - ADDED (Kullanıcılar tab)
-3. Backend API'ları (POST /api/academy/question, DELETE /api/academy/question/:id) - ADDED
-4. Quiz table database'de oluşturuldu - CREATED
-5. Test quiz ve 5 soru database'e eklendi - SEEDED
-6. Learning path quiz butonları fix'lendi - FIXED (404 error resolved)
-7. HQ yönetim paneli 6 tab'a genişletildi - EXPANDED
+1. **Apply Database Migration:**
+   ```bash
+   npm run db:push --force
+   ```
+   This syncs the new schema columns to PostgreSQL
+
+2. **Test Module Import:**
+   - Navigate to Academy HQ > Eğitim Modülleri tab
+   - Click "JSON İçe Aktar" button
+   - Paste DOSPRESSO Academy JSON
+   - Click "İçe Aktar" to import
+
+3. **Test Module CRUD:**
+   - Click modules to edit
+   - Create new modules with "Yeni Modül"
+   - Delete modules with trash icon
+
+4. **For Advanced Features (AI Generation, Media Upload, Module Detail Page):**
+   - Consider switching to Autonomous build mode
+   - Or continue iteratively with more turns
+
+---
+
+## ✅ **SESSION COMPLETE: 30 NOV 2025 - TURN 7 (FAST MODE)**
+
+**Accomplishments:**
+- Schema extended with 10 new fields for rich module content
+- module_media table for asset management
+- JSON bulk import endpoint backend ready
+- Full module CRUD UI in Academy HQ
+- Import/Create/Edit/Delete dialogs implemented
+- Form validation and error handling complete
+- TanStack Query integration done
 
 **Files Modified:**
-1. `server/routes.ts` - Added POST /api/academy/question and DELETE /api/academy/question/:id endpoints
-2. `client/src/pages/academy-hq.tsx` - Expanded from 4 tabs to 6 tabs with question management and user listing
-3. Database - Created quizzes table, inserted test data
+1. `shared/schema.ts` - Schema extension
+2. `server/routes.ts` - JSON import endpoint
+3. `client/src/pages/academy-hq.tsx` - Module management UI
 
-**Result:**
-- ✅ App now RUNNING without errors
-- ✅ 6-tab HQ admin panel fully operational
-- ✅ Question management system working (add/delete)
-- ✅ User listing view in admin panel
-- ✅ Quiz system fully integrated with database
-- ✅ Learning path quiz buttons working correctly
-- ✅ All APIs returning proper status codes (200/304)
-- ✅ System fully production-ready
-- ✅ Ready to publish/deploy
+**Next Priority:** Database migration + JSON test data import
