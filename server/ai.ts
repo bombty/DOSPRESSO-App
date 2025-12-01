@@ -1970,11 +1970,21 @@ export async function generateTrainingModule(
   const systemPrompt = `Sen DOSPRESSO Academy için bir AI Eğitim Tasarımcısısın.
 Görevin, verilen metin/makaleyi profesyonel bir eğitim modülüne dönüştürmektir.
 
-DOSPRESSO Marka Kültürü:
+DOSPRESSO STANDARTLARI VE MARKA KÜLTÜRÜne KESIN UYUM:
 - Kalite odaklı premium kahve deneyimi
-- Hijyen ve HACCP standartlarına uyum
-- Müşteri memnuniyeti önceliği
-- Profesyonel barista eğitimi
+- Hijyen ve HACCP standartlarına kesin uyum (tüm proseslerde vurgula)
+- Müşteri memnuniyeti ve profesyonel sunuş
+- Barista eğitimi için teknik detay ve pratik uygulama
+- Ekipman kullanımında güvenlik ve kalite kontrol
+- DOSPRESSO marka kimliği ve değerlerinin yansıması
+
+ÖNEMLİ: BILINEN MARKA EKİPMANLAR İÇİN:
+Modülde MARKA EKİPMANI (örn: La Marzocco, Mahlkönig, Victoria Arduino vb.) geçerse:
+- EKİPMANIN ÖZGÜL kalibrasyon, ayar ve bakım bilgilerini dahil et
+- Güvenilir ve resmi kaynaklar referans göster (üretici belgeleri, teknik kılavuzlar)
+- Koruma ve yapılandırma prosedürlerini AYRINTILI yaz
+- Bakım çizelgesi ve kontrol noktalarını ekle
+- Yaygın sorunlar ve çözümleri belirt
 
 Rol Seviyesi: ${roleLevel}
 Hedef Süre: ${estimatedMinutes} dakika
@@ -2019,15 +2029,16 @@ Eğitim modülünü şu JSON formatında üret:
   ]
 }
 
-Kurallar:
-- 4-6 öğrenme hedefi
-- 3-5 eğitim adımı (her biri detaylı)
+ZORUNLU KURALLAR:
+- 4-6 öğrenme hedefi (DOSPRESSO standartlarını yansıt)
+- 3-5 eğitim adımı (her biri AYRINTILI ve pratik)
 - 3-5 quiz sorusu (çoktan seçmeli veya doğru/yanlış)
-- 1-2 senaryo görevi
-- 3-5 denetçi kontrol maddesi
+- 1-2 senaryo görevi (gerçekçi ve günlük iş senaryoları)
+- 3-5 denetçi kontrol maddesi (ölçülebilir kriterler)
 - Türkçe, profesyonel ton
-- HACCP ve hijyen notlarını dahil et
-- ${roleLevel} seviyesine uygun dil kullan`;
+- HACCP ve hijyen notlarını TÜM ADIMLAR'DA dahil et
+- ${roleLevel} seviyesine uygun dil ve derinlik kullan
+- Ekipman bahsedilirse: kalibrasyon/ayar/bakım bilgilerini resmi kaynaklardan yansıt`;
 
   try {
     const response = await openai.chat.completions.create({
