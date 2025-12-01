@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,10 +22,29 @@ const objectivesEditSchema = z.object({
 
 const stepsEditSchema = z.object({
   steps: z.array(z.object({
-    step_number: z.number(),
+    step_number: z.number().optional(),
     title: z.string(),
     content: z.string(),
     media_suggestions: z.array(z.string()).optional(),
+  })).default([]),
+});
+
+const quizEditSchema = z.object({
+  quiz: z.array(z.object({
+    question_id: z.string(),
+    question_type: z.enum(["mcq", "true_false"]),
+    question_text: z.string(),
+    options: z.array(z.string()),
+    correct_option_index: z.number(),
+  })).default([]),
+});
+
+const scenariosEditSchema = z.object({
+  scenarioTasks: z.array(z.object({
+    scenario_id: z.string().optional(),
+    title: z.string(),
+    description: z.string(),
+    tasks: z.array(z.string()).optional(),
   })).default([]),
 });
 
@@ -55,6 +74,16 @@ export default function ModuleDetail() {
   const stepsForm = useForm<z.infer<typeof stepsEditSchema>>({
     resolver: zodResolver(stepsEditSchema),
     defaultValues: { steps: module?.steps || [] },
+  });
+
+  const quizForm = useForm<z.infer<typeof quizEditSchema>>({
+    resolver: zodResolver(quizEditSchema),
+    defaultValues: { quiz: module?.quiz || [] },
+  });
+
+  const scenariosForm = useForm<z.infer<typeof scenariosEditSchema>>({
+    resolver: zodResolver(scenariosEditSchema),
+    defaultValues: { scenarioTasks: module?.scenarioTasks || [] },
   });
 
   const updateObjectivesMutation = useMutation({
@@ -90,6 +119,66 @@ export default function ModuleDetail() {
     onSuccess: (data) => {
       objectivesForm.setValue("objectives", data.objectives);
       toast({ title: "Hedefler oluşturuldu", description: "AI ile öğrenme hedefleri oluşturuldu" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateStepsMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof stepsEditSchema>) => {
+      if (!moduleId) throw new Error("Module not found");
+      return apiRequest("PUT", `/api/training/modules/${moduleId}`, {
+        title: module?.title,
+        description: module?.description,
+        level: module?.level,
+        estimatedDuration: module?.estimatedDuration,
+        steps: data.steps,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Adımlar güncellendi" });
+      queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateQuizMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof quizEditSchema>) => {
+      if (!moduleId) throw new Error("Module not found");
+      return apiRequest("PUT", `/api/training/modules/${moduleId}`, {
+        title: module?.title,
+        description: module?.description,
+        level: module?.level,
+        estimatedDuration: module?.estimatedDuration,
+        quiz: data.quiz,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Quiz güncellendi" });
+      queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateScenariosMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof scenariosEditSchema>) => {
+      if (!moduleId) throw new Error("Module not found");
+      return apiRequest("PUT", `/api/training/modules/${moduleId}`, {
+        title: module?.title,
+        description: module?.description,
+        level: module?.level,
+        estimatedDuration: module?.estimatedDuration,
+        scenarioTasks: data.scenarioTasks,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Senaryolar güncellendi" });
+      queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -166,7 +255,7 @@ export default function ModuleDetail() {
 
       {/* Content Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">
             <BookOpen className="w-4 h-4 mr-2" />
             Genel
@@ -178,6 +267,10 @@ export default function ModuleDetail() {
           <TabsTrigger value="steps">
             <CheckCircle className="w-4 h-4 mr-2" />
             Adımlar ({steps.length})
+          </TabsTrigger>
+          <TabsTrigger value="quiz">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Quiz ({module?.quiz?.length || 0})
           </TabsTrigger>
           <TabsTrigger value="scenarios">
             <Clock className="w-4 h-4 mr-2" />
@@ -320,8 +413,77 @@ export default function ModuleDetail() {
         <TabsContent value="steps" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Öğrenme Adımları</CardTitle>
-              <CardDescription>Modülün yapılandırılmış öğrenme içeriği</CardDescription>
+              <div className="flex justify-between items-center gap-2">
+                <div>
+                  <CardTitle>Öğrenme Adımları</CardTitle>
+                  <CardDescription>Modülün yapılandırılmış öğrenme içeriği</CardDescription>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Adım Ekle
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Adımları Düzenle</DialogTitle>
+                    </DialogHeader>
+                    <Form {...stepsForm}>
+                      <form
+                        onSubmit={stepsForm.handleSubmit((data) =>
+                          updateStepsMutation.mutate(data)
+                        )}
+                        className="space-y-4 max-h-96 overflow-y-auto"
+                      >
+                        {stepsForm.watch("steps").map((_, index) => (
+                          <div key={index} className="border p-3 rounded space-y-2">
+                            <FormField
+                              control={stepsForm.control}
+                              name={`steps.${index}.title`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Başlık</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Adım başlığı..." {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={stepsForm.control}
+                              name={`steps.${index}.content`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>İçerik</FormLabel>
+                                  <FormControl>
+                                    <Textarea placeholder="Adım içeriği..." {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const current = stepsForm.watch("steps");
+                            stepsForm.setValue("steps", [...current, { title: "", content: "" }]);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Yeni Adım
+                        </Button>
+                        <Button type="submit" disabled={updateStepsMutation.isPending} className="w-full">
+                          Kaydet
+                        </Button>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               {steps.length === 0 ? (
@@ -361,12 +523,168 @@ export default function ModuleDetail() {
           </Card>
         </TabsContent>
 
+        {/* Quiz */}
+        <TabsContent value="quiz" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center gap-2">
+                <div>
+                  <CardTitle>Quiz Soruları</CardTitle>
+                  <CardDescription>Modülün bilgi ölçümü soruları</CardDescription>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Soru Ekle
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Quiz Sorularını Düzenle</DialogTitle>
+                    </DialogHeader>
+                    <Form {...quizForm}>
+                      <form
+                        onSubmit={quizForm.handleSubmit((data) => updateQuizMutation.mutate(data))}
+                        className="space-y-4 max-h-96 overflow-y-auto"
+                      >
+                        {quizForm.watch("quiz").map((_, index) => (
+                          <div key={index} className="border p-3 rounded space-y-2">
+                            <FormField
+                              control={quizForm.control}
+                              name={`quiz.${index}.question_text`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Soru</FormLabel>
+                                  <FormControl>
+                                    <Textarea placeholder="Soruyu yazın..." {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const current = quizForm.watch("quiz");
+                            quizForm.setValue("quiz", [...current, { question_id: `q${current.length}`, question_type: "mcq", question_text: "", options: [""], correct_option_index: 0 }]);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Yeni Soru
+                        </Button>
+                        <Button type="submit" disabled={updateQuizMutation.isPending} className="w-full">
+                          Kaydet
+                        </Button>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!module?.quiz || module.quiz.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Quiz sorusu tanımlanmamış</p>
+              ) : (
+                <div className="space-y-3">
+                  {module.quiz.map((q: any, idx: number) => (
+                    <Card key={idx} className="border-l-4 border-l-green-500">
+                      <CardContent className="pt-4">
+                        <p className="font-medium text-sm">{q.question_text || `Soru ${idx + 1}`}</p>
+                        {q.options && (
+                          <ul className="text-sm space-y-1 mt-2 ml-4">
+                            {q.options.map((opt: string, oidx: number) => (
+                              <li key={oidx} className={`list-disc ${oidx === q.correct_option_index ? "text-green-600 font-medium" : "text-muted-foreground"}`}>
+                                {opt}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Scenarios */}
         <TabsContent value="scenarios" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Senaryo Görevleri</CardTitle>
-              <CardDescription>Gerçek dünya uygulaması için senaryo tabanlı görevler</CardDescription>
+              <div className="flex justify-between items-center gap-2">
+                <div>
+                  <CardTitle>Senaryo Görevleri</CardTitle>
+                  <CardDescription>Gerçek dünya uygulaması için senaryo tabanlı görevler</CardDescription>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Senaryo Ekle
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Senaryoları Düzenle</DialogTitle>
+                    </DialogHeader>
+                    <Form {...scenariosForm}>
+                      <form
+                        onSubmit={scenariosForm.handleSubmit((data) => updateScenariosMutation.mutate(data))}
+                        className="space-y-4 max-h-96 overflow-y-auto"
+                      >
+                        {scenariosForm.watch("scenarioTasks").map((_, index) => (
+                          <div key={index} className="border p-3 rounded space-y-2">
+                            <FormField
+                              control={scenariosForm.control}
+                              name={`scenarioTasks.${index}.title`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Senaryo Başlığı</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Senaryo adı..." {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={scenariosForm.control}
+                              name={`scenarioTasks.${index}.description`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Açıklama</FormLabel>
+                                  <FormControl>
+                                    <Textarea placeholder="Senaryo açıklaması..." {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const current = scenariosForm.watch("scenarioTasks");
+                            scenariosForm.setValue("scenarioTasks", [...current, { scenario_id: `s${current.length}`, title: "", description: "" }]);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Yeni Senaryo
+                        </Button>
+                        <Button type="submit" disabled={updateScenariosMutation.isPending} className="w-full">
+                          Kaydet
+                        </Button>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               {scenarioTasks.length === 0 ? (
