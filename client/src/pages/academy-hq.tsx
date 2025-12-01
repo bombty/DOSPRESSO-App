@@ -109,6 +109,7 @@ export default function AcademyHQ() {
   const [aiInputMode, setAiInputMode] = useState<"text" | "file">("text");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isExtractingText, setIsExtractingText] = useState(false);
+  const [editingGalleryImages, setEditingGalleryImages] = useState<any[]>([]);
 
   if (!user || (user.role !== "admin" && !isHQRole(user.role as any))) {
     return <div className="p-6 text-center text-destructive">Erişim Reddedildi</div>;
@@ -1212,6 +1213,14 @@ export default function AcademyHQ() {
                         )}
                       />
                     </div>
+                    {editingModule.id && (
+                      <ModuleGallery
+                        moduleId={editingModule.id}
+                        images={editingGalleryImages}
+                        onImagesChange={setEditingGalleryImages}
+                        disabled={updateTrainingMutation.isPending}
+                      />
+                    )}
                     <Button type="submit" disabled={updateTrainingMutation.isPending} className="w-full">
                       {updateTrainingMutation.isPending ? "Güncelleniyor..." : "Güncelle"}
                     </Button>
@@ -1244,6 +1253,7 @@ export default function AcademyHQ() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingModule(module);
+                            setEditingGalleryImages(module.galleryImages || []);
                             editTrainingForm.reset({
                               title: module.title,
                               description: module.description || undefined,
