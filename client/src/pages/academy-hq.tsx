@@ -861,8 +861,12 @@ export default function AcademyHQ() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {trainingModules.map((module: TrainingModule) => (
-              <Link key={module.id} to={`/akademi-modul/${module.id}`}>
-                <Card className="cursor-pointer hover-elevate h-full">
+              <div 
+                key={module.id}
+                onClick={() => setLocation(`/akademi-modul/${module.id}`)}
+                className="cursor-pointer"
+              >
+                <Card className="hover-elevate h-full">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex-1">
@@ -876,7 +880,6 @@ export default function AcademyHQ() {
                           size="sm"
                           variant="outline"
                           onClick={(e) => {
-                            e.preventDefault();
                             e.stopPropagation();
                             setEditingModule(module);
                             editTrainingForm.reset({
@@ -898,7 +901,6 @@ export default function AcademyHQ() {
                           size="sm"
                           variant="ghost"
                           onClick={(e) => {
-                            e.preventDefault();
                             e.stopPropagation();
                             deleteTrainingMutation.mutate(module.id);
                           }}
@@ -929,7 +931,7 @@ export default function AcademyHQ() {
                     )}
                   </CardContent>
                 </Card>
-              </Link>
+              </div>
             ))}
           </div>
           {trainingModules.length === 0 && (
