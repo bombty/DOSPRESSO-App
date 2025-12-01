@@ -757,23 +757,24 @@ export default function ModuleDetail() {
                   <CardTitle>Öğrenme Hedefleri</CardTitle>
                   <CardDescription>Modülün öğrenme çıktıları</CardDescription>
                 </div>
-                <div className="flex gap-1">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => generateObjectivesMutation.mutate()}
-                    disabled={generateObjectivesMutation.isPending}
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    AI Oluştur
-                  </Button>
-                  <Dialog open={objectivesOpen} onOpenChange={setObjectivesOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline">
-                        <Edit2 className="w-4 h-4 mr-2" />
-                        Düzenle
-                      </Button>
-                    </DialogTrigger>
+                {isEditor && (
+                  <div className="flex gap-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => generateObjectivesMutation.mutate()}
+                      disabled={generateObjectivesMutation.isPending}
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      AI Oluştur
+                    </Button>
+                    <Dialog open={objectivesOpen} onOpenChange={setObjectivesOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <Edit2 className="w-4 h-4 mr-2" />
+                          Düzenle
+                        </Button>
+                      </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>Öğrenme Hedeflerini Düzenle</DialogTitle>
@@ -808,8 +809,9 @@ export default function ModuleDetail() {
                       </form>
                     </Form>
                   </DialogContent>
-                </Dialog>
-                </div>
+                    </Dialog>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -838,10 +840,11 @@ export default function ModuleDetail() {
                   <CardTitle>Öğrenme Adımları</CardTitle>
                   <CardDescription>Modülün yapılandırılmış öğrenme içeriği</CardDescription>
                 </div>
-                <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Edit2 className="w-4 h-4 mr-2" />
+                {isEditor && (
+                  <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Edit2 className="w-4 h-4 mr-2" />
                       Adım Ekle
                     </Button>
                   </DialogTrigger>
@@ -968,13 +971,14 @@ export default function ModuleDetail() {
                   <CardTitle>Quiz Soruları</CardTitle>
                   <CardDescription>Modülün bilgi ölçümü soruları</CardDescription>
                 </div>
-                <Dialog open={quizOpen} onOpenChange={setQuizOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Soru Ekle
-                    </Button>
-                  </DialogTrigger>
+                {isEditor && (
+                  <Dialog open={quizOpen} onOpenChange={setQuizOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Soru Ekle
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>Quiz Sorularını Düzenle</DialogTitle>
@@ -1101,7 +1105,8 @@ export default function ModuleDetail() {
                       </form>
                     </Form>
                   </DialogContent>
-                </Dialog>
+                  </Dialog>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -1140,13 +1145,14 @@ export default function ModuleDetail() {
                   <CardTitle>Senaryo Görevleri</CardTitle>
                   <CardDescription>Gerçek dünya uygulaması için senaryo tabanlı görevler</CardDescription>
                 </div>
-                <Dialog open={scenariosOpen} onOpenChange={setScenariosOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Senaryo Ekle
-                    </Button>
-                  </DialogTrigger>
+                {isEditor && (
+                  <Dialog open={scenariosOpen} onOpenChange={setScenariosOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Senaryo Ekle
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>Senaryoları Düzenle</DialogTitle>
@@ -1202,7 +1208,8 @@ export default function ModuleDetail() {
                       </form>
                     </Form>
                   </DialogContent>
-                </Dialog>
+                  </Dialog>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -1244,13 +1251,14 @@ export default function ModuleDetail() {
                   <CardTitle>Denetçi Kontrol Listesi</CardTitle>
                   <CardDescription>Modül tamamlanması kontrol noktaları</CardDescription>
                 </div>
-                <Dialog open={checklistOpen} onOpenChange={setChecklistOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Madde Ekle
-                    </Button>
-                  </DialogTrigger>
+                {isEditor && (
+                  <Dialog open={checklistOpen} onOpenChange={setChecklistOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Madde Ekle
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>Kontrol Listesini Düzenle</DialogTitle>
