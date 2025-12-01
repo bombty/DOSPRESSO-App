@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import QRCode from "qrcode";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import { cache, generateCacheKey, aiRateLimiter } from "./cache";
 import { storage } from "./storage";
 import type { SummaryCategoryType, AISummaryResponse, Task, EquipmentFault } from "@shared/schema";
@@ -2103,15 +2103,20 @@ ZORUNLU KURALLAR:
 // Extract text from PDF file buffer
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    const data = await pdfParse(buffer);
-    const text = data.text?.trim();
+    // Create PDFParse instance with buffer data
+    const pdfParser = new PDFParse({ data: buffer });
+    await pdfParser.init();
     
-    if (!text || text.length < 20) {
+    // Extract text from all pages
+    const textResults = await pdfParser.text({});
+    const allText = textResults.map((t: any) => t.text || t).join('\n').trim();
+    
+    if (!allText || allText.length < 20) {
       throw new Error("PDF dosyasından yeterli metin çıkarılamadı");
     }
     
-    console.log(`📄 PDF parsed: ${text.length} characters extracted`);
-    return text;
+    console.log(`📄 PDF parsed: ${allText.length} characters extracted`);
+    return allText;
   } catch (error: any) {
     console.error("PDF parsing error:", error);
     throw new Error("PDF dosyası okunamadı: " + (error.message || "Bilinmeyen hata"));

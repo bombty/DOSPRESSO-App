@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap, Upload, FileText, Image } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -105,6 +105,9 @@ export default function AcademyHQ() {
   const [aiRoleLevel, setAiRoleLevel] = useState("Stajyer");
   const [aiEstimatedMinutes, setAiEstimatedMinutes] = useState(15);
   const [generatedModule, setGeneratedModule] = useState<any>(null);
+  const [aiInputMode, setAiInputMode] = useState<"text" | "file">("text");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isExtractingText, setIsExtractingText] = useState(false);
 
   if (!user || (user.role !== "admin" && !isHQRole(user.role as any))) {
     return <div className="p-6 text-center text-destructive">Erişim Reddedildi</div>;
@@ -332,6 +335,43 @@ export default function AcademyHQ() {
     setAiRoleLevel("Stajyer");
     setAiEstimatedMinutes(15);
     setGeneratedModule(null);
+    setAiInputMode("text");
+    setSelectedFile(null);
+    setIsExtractingText(false);
+  };
+
+  const handleFileUpload = async (file: File) => {
+    setSelectedFile(file);
+    setIsExtractingText(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/training/generate/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Dosya işlenemedi');
+      }
+      
+      const result = await response.json();
+      setAiInputText(result.extractedText);
+      toast({ title: `Metin çıkarıldı: ${result.fileName}` });
+    } catch (error: any) {
+      toast({
+        title: "Dosya İşleme Hatası",
+        description: error.message || "Dosyadan metin çıkarılamadı",
+        variant: "destructive"
+      });
+      setSelectedFile(null);
+    } finally {
+      setIsExtractingText(false);
+    }
   };
 
   const { data: allUsers = [] } = useQuery({
@@ -750,12 +790,36 @@ export default function AcademyHQ() {
                     </div>
                   </DialogHeader>
                   
-                  {/* Step 1: Input Text */}
+                  {/* Step 1: Input Text or File */}
                   {aiWizardStep === 1 && (
                     <div className="space-y-4">
                       <div className="bg-muted/50 p-3 rounded-lg text-sm">
                         <p className="font-medium mb-1">Nasıl Çalışır?</p>
-                        <p className="text-muted-foreground">Herhangi bir makale, prosedür veya eğitim içeriğini yapıştırın. AI, metni otomatik olarak yapılandırılmış bir eğitim modülüne dönüştürecek.</p>
+                        <p className="text-muted-foreground">Metin yapıştırın veya PDF/fotoğraf yükleyin. AI, içeriği otomatik olarak yapılandırılmış bir eğitim modülüne dönüştürecek.</p>
+                      </div>
+                      
+                      {/* Input Mode Toggle */}
+                      <div className="flex gap-2 p-1 bg-muted rounded-lg">
+                        <Button
+                          type="button"
+                          variant={aiInputMode === "text" ? "default" : "ghost"}
+                          className="flex-1"
+                          onClick={() => setAiInputMode("text")}
+                          data-testid="button-text-mode"
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Metin Gir
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={aiInputMode === "file" ? "default" : "ghost"}
+                          className="flex-1"
+                          onClick={() => setAiInputMode("file")}
+                          data-testid="button-file-mode"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Dosya Yükle
+                        </Button>
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
@@ -787,23 +851,100 @@ export default function AcademyHQ() {
                         </div>
                       </div>
                       
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Eğitim İçeriği Metni</label>
-                        <Textarea
-                          placeholder="Eğitim konusu hakkında bir makale, prosedür veya herhangi bir metin yapıştırın... (en az 50 karakter)"
-                          value={aiInputText}
-                          onChange={(e) => setAiInputText(e.target.value)}
-                          className="h-64"
-                          data-testid="textarea-input-text"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {aiInputText.length} karakter {aiInputText.length < 50 && "(min. 50 karakter gerekli)"}
-                        </p>
-                      </div>
+                      {/* File Upload Mode */}
+                      {aiInputMode === "file" && (
+                        <div className="space-y-3">
+                          <label className="text-sm font-medium mb-1 block">PDF veya Fotoğraf Yükle</label>
+                          <div 
+                            className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
+                            onClick={() => document.getElementById('file-upload-input')?.click()}
+                          >
+                            <input
+                              id="file-upload-input"
+                              type="file"
+                              accept=".pdf,image/jpeg,image/png,image/webp,image/heic"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFileUpload(file);
+                              }}
+                              data-testid="input-file-upload"
+                            />
+                            {isExtractingText ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <Clock className="w-8 h-8 animate-spin text-primary" />
+                                <p className="text-sm font-medium">Metin çıkarılıyor...</p>
+                                <p className="text-xs text-muted-foreground">PDF veya görsel işleniyor</p>
+                              </div>
+                            ) : selectedFile ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <CheckCircle className="w-8 h-8 text-green-500" />
+                                <p className="text-sm font-medium">{selectedFile.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {(selectedFile.size / 1024).toFixed(1)} KB - Metin çıkarıldı
+                                </p>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedFile(null);
+                                    setAiInputText("");
+                                  }}
+                                >
+                                  Dosyayı Kaldır
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="flex gap-2">
+                                  <FileText className="w-8 h-8 text-muted-foreground" />
+                                  <Image className="w-8 h-8 text-muted-foreground" />
+                                </div>
+                                <p className="text-sm font-medium">PDF veya fotoğraf yüklemek için tıklayın</p>
+                                <p className="text-xs text-muted-foreground">Maksimum 10 MB - PDF, JPEG, PNG desteklenir</p>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {aiInputText && (
+                            <div>
+                              <label className="text-sm font-medium mb-1 block">Çıkarılan Metin (düzenleyebilirsiniz)</label>
+                              <Textarea
+                                value={aiInputText}
+                                onChange={(e) => setAiInputText(e.target.value)}
+                                className="h-40"
+                                data-testid="textarea-extracted-text"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {aiInputText.length} karakter
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Text Input Mode */}
+                      {aiInputMode === "text" && (
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Eğitim İçeriği Metni</label>
+                          <Textarea
+                            placeholder="Eğitim konusu hakkında bir makale, prosedür veya herhangi bir metin yapıştırın... (en az 50 karakter)"
+                            value={aiInputText}
+                            onChange={(e) => setAiInputText(e.target.value)}
+                            className="h-64"
+                            data-testid="textarea-input-text"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {aiInputText.length} karakter {aiInputText.length < 50 && "(min. 50 karakter gerekli)"}
+                          </p>
+                        </div>
+                      )}
                       
                       <Button
                         onClick={() => generateModuleMutation.mutate()}
-                        disabled={generateModuleMutation.isPending || aiInputText.length < 50}
+                        disabled={generateModuleMutation.isPending || aiInputText.length < 50 || isExtractingText}
                         className="w-full"
                         data-testid="button-generate-module"
                       >

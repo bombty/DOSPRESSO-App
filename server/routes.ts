@@ -3522,6 +3522,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user.id
       );
 
+      // Validate extracted text has minimum content
+      if (!extractedText || extractedText.length < 50) {
+        return res.status(400).json({ 
+          message: "Dosyadan yeterli metin çıkarılamadı. Lütfen daha fazla içerik içeren bir dosya yükleyin." 
+        });
+      }
+
       res.json({
         success: true,
         extractedText,
