@@ -129,7 +129,7 @@ export default function AcademyAdvancedAnalytics() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie data={performanceData} cx="50%" cy="50%" labelLine={false} label>
+                <Pie data={performanceData} cx="50%" cy="50%" labelLine={false} label dataKey="value">
                   {performanceData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
