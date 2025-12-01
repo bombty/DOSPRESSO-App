@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Users, CheckCircle, Clock, AlertCircle, Check, X } from "lucide-react";
+import { ArrowLeft, Users, CheckCircle, Clock, AlertCircle, Check, X, BookOpen } from "lucide-react";
+import { Link } from "wouter";
 
 export default function AcademySupervisor() {
   const { toast } = useToast();
@@ -39,6 +40,16 @@ export default function AcademySupervisor() {
       return res.json();
     },
     enabled: !!user?.id,
+  });
+
+  // Get training modules
+  const { data: modules = [], isLoading: modulesLoading } = useQuery({
+    queryKey: ["/api/training/modules"],
+    queryFn: async () => {
+      const res = await fetch("/api/training/modules", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
   });
 
   const approveMutation = useMutation({
@@ -88,14 +99,18 @@ export default function AcademySupervisor() {
       </div>
 
       <Tabs defaultValue="team" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="team">
             <Users className="w-4 h-4 mr-2" />
             Ekibim
           </TabsTrigger>
+          <TabsTrigger value="modules">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Modüller ({modules.length})
+          </TabsTrigger>
           <TabsTrigger value="exams">
             <Clock className="w-4 h-4 mr-2" />
-            Sınav Talepleri ({pendingExams.length})
+            Sınavlar ({pendingExams.length})
           </TabsTrigger>
         </TabsList>
 
@@ -125,6 +140,43 @@ export default function AcademySupervisor() {
                         <Button size="sm" variant="ghost">Detay</Button>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="modules" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Eğitim Modülleri</CardTitle>
+              <CardDescription>Ekibinize atayabileceğiniz tüm modüller</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {modulesLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+              ) : modules.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">Modül bulunamadı</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {modules.map((module: any) => (
+                    <Link key={module.id} to={`/akademi-modul/${module.id}`}>
+                      <Card className="cursor-pointer hover-elevate h-full">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base line-clamp-2">{module.title}</CardTitle>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="outline" className="text-xs">
+                              {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{module.estimatedDuration} dk</span>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground line-clamp-3">{module.description}</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
                   ))}
                 </div>
               )}
