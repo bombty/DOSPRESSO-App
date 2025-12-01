@@ -101,6 +101,16 @@ export default function Academy() {
     enabled: !!user?.id,
   });
 
+  // Get all training modules
+  const { data: modules = [] } = useQuery({
+    queryKey: ["/api/training/modules"],
+    queryFn: async () => {
+      const res = await fetch("/api/training/modules", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   // Exam request form
   const form = useForm({
     resolver: zodResolver(insertExamRequestSchema),
@@ -409,6 +419,40 @@ export default function Academy() {
       {/* Learning Hub */}
       {activeHub === "learning" && (
         <div className="space-y-6">
+          {modules.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  Tüm Eğitim Modülleri
+                </CardTitle>
+                <CardDescription>Kariyerini ilerletmek için modülleri tamamla</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {modules.map((module: any) => (
+                    <Link key={module.id} to={`/akademi-modul/${module.id}`}>
+                      <Card className="cursor-pointer hover-elevate h-full">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base line-clamp-2">{module.title}</CardTitle>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="outline" className="text-xs">
+                              {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{module.estimatedDuration} dk</span>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground line-clamp-3">{module.description}</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {recommendedQuizzes.length > 0 && (
             <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
               <CardHeader>
