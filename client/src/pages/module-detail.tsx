@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -61,6 +62,13 @@ export default function ModuleDetail() {
   const [, setLocation] = useLocation();
   const moduleId = params?.id ? parseInt(params.id) : null;
   const { toast } = useToast();
+  
+  // Dialog states
+  const [objectivesOpen, setObjectivesOpen] = useState(false);
+  const [stepsOpen, setStepsOpen] = useState(false);
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [scenariosOpen, setScenariosOpen] = useState(false);
+  const [checklistOpen, setChecklistOpen] = useState(false);
 
   const { data: module, isLoading } = useQuery({
     queryKey: [`/api/training/modules/${moduleId}`],
@@ -112,6 +120,7 @@ export default function ModuleDetail() {
     },
     onSuccess: () => {
       toast({ title: "Öğrenme hedefleri güncellendi" });
+      setObjectivesOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
     onError: (error: any) => {
@@ -151,6 +160,7 @@ export default function ModuleDetail() {
     },
     onSuccess: () => {
       toast({ title: "Adımlar güncellendi" });
+      setStepsOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
     onError: (error: any) => {
@@ -171,6 +181,7 @@ export default function ModuleDetail() {
     },
     onSuccess: () => {
       toast({ title: "Quiz güncellendi" });
+      setQuizOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
     onError: (error: any) => {
@@ -191,6 +202,7 @@ export default function ModuleDetail() {
     },
     onSuccess: () => {
       toast({ title: "Senaryolar güncellendi" });
+      setScenariosOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
     onError: (error: any) => {
@@ -211,12 +223,24 @@ export default function ModuleDetail() {
     },
     onSuccess: () => {
       toast({ title: "Kontrol Listesi güncellendi" });
+      setChecklistOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
+
+  // Sync form values when module loads
+  useEffect(() => {
+    if (module) {
+      objectivesForm.reset({ objectives: module.learningObjectives || [] });
+      stepsForm.reset({ steps: module.steps || [] });
+      quizForm.reset({ quiz: module.quiz || [] });
+      scenariosForm.reset({ scenarioTasks: module.scenarioTasks || [] });
+      checklistForm.reset({ supervisorChecklist: module.supervisorChecklist || [] });
+    }
+  }, [module, objectivesForm, stepsForm, quizForm, scenariosForm, checklistForm]);
 
   if (isLoading) {
     return <div className="p-6 text-center text-muted-foreground">Yükleniyor...</div>;
@@ -384,7 +408,7 @@ export default function ModuleDetail() {
                     <Sparkles className="w-4 h-4 mr-2" />
                     AI Oluştur
                   </Button>
-                  <Dialog>
+                  <Dialog open={objectivesOpen} onOpenChange={setObjectivesOpen}>
                     <DialogTrigger asChild>
                       <Button size="sm" variant="outline">
                         <Edit2 className="w-4 h-4 mr-2" />
@@ -455,7 +479,7 @@ export default function ModuleDetail() {
                   <CardTitle>Öğrenme Adımları</CardTitle>
                   <CardDescription>Modülün yapılandırılmış öğrenme içeriği</CardDescription>
                 </div>
-                <Dialog>
+                <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline">
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -569,7 +593,7 @@ export default function ModuleDetail() {
                   <CardTitle>Quiz Soruları</CardTitle>
                   <CardDescription>Modülün bilgi ölçümü soruları</CardDescription>
                 </div>
-                <Dialog>
+                <Dialog open={quizOpen} onOpenChange={setQuizOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline">
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -658,7 +682,7 @@ export default function ModuleDetail() {
                   <CardTitle>Senaryo Görevleri</CardTitle>
                   <CardDescription>Gerçek dünya uygulaması için senaryo tabanlı görevler</CardDescription>
                 </div>
-                <Dialog>
+                <Dialog open={scenariosOpen} onOpenChange={setScenariosOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline">
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -762,7 +786,7 @@ export default function ModuleDetail() {
                   <CardTitle>Denetçi Kontrol Listesi</CardTitle>
                   <CardDescription>Modül tamamlanması kontrol noktaları</CardDescription>
                 </div>
-                <Dialog>
+                <Dialog open={checklistOpen} onOpenChange={setChecklistOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline">
                       <Edit2 className="w-4 h-4 mr-2" />
