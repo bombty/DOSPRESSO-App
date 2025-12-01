@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, CheckCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, CheckCircle, Flame } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -554,8 +554,23 @@ export default function Academy() {
       {/* Achievements Hub */}
       {activeHub === "achievements" && (
         <div className="space-y-6">
-          <Link to="/akademi-rozet-koleksiyonum">
-            <Card className="cursor-pointer hover-elevate">
+          <Link to="/akademi-streak-tracker" data-testid="link-streak-tracker">
+            <Card className="cursor-pointer hover-elevate" data-testid="card-streak-tracker">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                  Öğrenme Serisi
+                </CardTitle>
+                <CardDescription>Günlük öğrenme rutini ve tutarlılık</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Ardışık gün takibi ve başarı mileleri</p>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          <Link to="/akademi-rozet-koleksiyonum" data-testid="link-badges">
+            <Card className="cursor-pointer hover-elevate" data-testid="card-badges">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Trophy className="w-5 h-5" />
