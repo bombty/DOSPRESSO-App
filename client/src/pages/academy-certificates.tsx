@@ -88,7 +88,7 @@ export default function AcademyCertificates() {
 
                 <div className="space-y-2">
                   <p className="text-sm text-gray-700">
-                    <span className="font-semibold">{user?.name || "Kullanıcı"}</span> tarafından başarıyla tamamlanmış
+                    <span className="font-semibold">{user?.firstName ? `${user.firstName} ${user.lastName || ""}` : "Kullanıcı"}</span> tarafından başarıyla tamamlanmış
                   </p>
                   <p className="text-xs text-gray-600">{today}</p>
                   <p className="text-xs text-gray-600 mt-3">Sertifika No: CERT-{user?.id?.substring(0, 8).toUpperCase()}</p>
