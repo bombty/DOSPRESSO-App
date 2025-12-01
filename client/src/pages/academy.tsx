@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, CheckCircle, Flame } from "lucide-react";
+import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, CheckCircle, Flame, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -589,6 +589,21 @@ export default function Academy() {
       {/* Analytics Hub */}
       {activeHub === "analytics" && (
         <div className="space-y-6">
+          <Link to="/akademi-ai-assistant" data-testid="link-ai-assistant">
+            <Card className="cursor-pointer hover-elevate" data-testid="card-ai-assistant">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-500" />
+                  AI Asistan
+                </CardTitle>
+                <CardDescription>Yapay zeka destekli öğrenme yardımcısı</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Kariyerin, sınavların ve sertifikasyonun hakkında soru sor</p>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Link to="/akademi-progress-overview" data-testid="link-progress-overview">
             <Card className="cursor-pointer hover-elevate" data-testid="card-progress-overview">
               <CardHeader>
