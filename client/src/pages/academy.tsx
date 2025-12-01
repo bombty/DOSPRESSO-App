@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target } from "lucide-react";
+import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -110,6 +110,23 @@ export default function Academy() {
       return res.json();
     },
   });
+
+  // Get user module completion status
+  const { data: completedModules = [] } = useQuery({
+    queryKey: ["/api/training/user-progress", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch("/api/training/progress/" + user.id, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+
+  // Helper: check if module is completed
+  const isModuleCompleted = (moduleId: number) => {
+    return completedModules.some((m: any) => m.moduleId === moduleId && m.completedAt);
+  };
 
   // Exam request form
   const form = useForm({
@@ -430,24 +447,37 @@ export default function Academy() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {modules.map((module: any) => (
-                    <Link key={module.id} to={`/akademi-modul/${module.id}`}>
-                      <Card className="cursor-pointer hover-elevate h-full">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base line-clamp-2">{module.title}</CardTitle>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="outline" className="text-xs">
-                              {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">{module.estimatedDuration} dk</span>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground line-clamp-3">{module.description}</p>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
+                  {modules.map((module: any) => {
+                    const completed = isModuleCompleted(module.id);
+                    return (
+                      <Link key={module.id} to={`/akademi-modul/${module.id}`}>
+                        <Card className={`cursor-pointer hover-elevate h-full ${completed ? 'border-green-500 dark:border-green-600' : ''}`}>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <CardTitle className="text-base line-clamp-2">{module.title}</CardTitle>
+                              {completed && (
+                                <div className="flex-shrink-0">
+                                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                                    <CheckCircle className="w-4 h-4 text-white" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="outline" className="text-xs">
+                                {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">{module.estimatedDuration} dk</span>
+                              {completed && <Badge className="text-xs bg-green-600">Tamamlandı</Badge>}
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-sm text-muted-foreground line-clamp-3">{module.description}</p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

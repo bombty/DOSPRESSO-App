@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,10 @@ export default function ModuleDetail() {
   const [, setLocation] = useLocation();
   const moduleId = params?.id ? parseInt(params.id) : null;
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Determine if user is HQ/admin who can edit (only admin, hq, hq_support can edit)
+  const isEditor = user?.role === 'admin' || user?.role === 'hq' || user?.role === 'hq_support';
   
   // Dialog states
   const [objectivesOpen, setObjectivesOpen] = useState(false);
