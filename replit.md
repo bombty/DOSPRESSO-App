@@ -6,6 +6,15 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. User requests Turkish language communication.
 
+## Recent Changes (December 1, 2025)
+- ✅ **Academy LMS - PRODUCTION READY**: Completed 3-hub navigation (Öğrenme/Learning, Başarılar/Achievements, Analitik/Analytics)
+- ✅ **Quick Stats Dashboard**: Displays earned badges, completed modules, career progress percentage
+- ✅ **Badge System**: English names (Coffee Cherry → Green Bean → Bean Expert → Roast Master → Coffee Pro) with auto-award on module completion
+- ✅ **Learning Hub**: Shows all available training modules with difficulty levels and estimated duration
+- ✅ **Supervisor Features**: New "Modüller" (Modules) tab displays all training modules; team overview; exam request management
+- ✅ **Endpoints Implemented**: `/api/training/user-modules-stats`, `/api/training/modules`, `/api/academy/user-badges`
+- ✅ **Status**: All Academy core features tested and verified working via server logs
+
 ## System Architecture
 ### UI/UX Decisions
 The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (New York variant, Radix UI-based) and Material Design 3 principles. Styling is managed with Tailwind CSS, including dark mode and Turkish localization. Typography is set to Inter for UI elements and Roboto for numeric data. The design prioritizes a mobile-first, responsive approach, featuring a unified page architecture where each major entity is presented on a single, comprehensive detail page.
