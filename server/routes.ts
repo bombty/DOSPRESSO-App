@@ -3318,7 +3318,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { roles } = req.body; // Array of role objects from JSON
       if (!roles || !Array.isArray(roles)) {
-        return res.status(400).json({ message: "Invalid JSON format - missing roles array" });
+        const exampleFormat = {
+          "roles": [
+            {
+              "name": "Stajyer",
+              "modules": [
+                {
+                  "title": "Modül Başlığı",
+                  "code": "MOD-001",
+                  "description": "Modül açıklaması",
+                  "estimated_duration_min": 30,
+                  "learning_objectives": ["Hedef 1", "Hedef 2"],
+                  "steps": [{ "step_number": 1, "title": "Adım", "content": "İçerik", "media_suggestions": [] }],
+                  "quiz": [{ "question_id": "q1", "question_type": "mcq", "question_text": "Soru?", "options": ["A", "B"], "correct_option_index": 0 }],
+                  "scenario_tasks": [{ "title": "Senaryo", "description": "Açıklama" }],
+                  "supervisor_checklist": [{ "title": "Kontrol", "description": "Açıklama" }]
+                }
+              ]
+            }
+          ]
+        };
+        return res.status(400).json({ 
+          message: "Geçersiz JSON format - 'roles' array'ı eksik. Lütfen şu formatı kullanın:",
+          exampleFormat 
+        });
       }
 
       const createdModules = [];

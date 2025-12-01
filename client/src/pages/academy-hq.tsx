@@ -686,11 +686,15 @@ export default function AcademyHQ() {
                   <DialogHeader>
                     <DialogTitle>JSON Müfredatını İçe Aktar</DialogTitle>
                   </DialogHeader>
+                  <div className="text-xs text-muted-foreground mb-2 p-2 bg-muted rounded">
+                    <p className="font-medium mb-1">Gerekli Format:</p>
+                    <code className="text-xs">{`{"roles": [{"name": "Rol", "modules": [{...}]}]}`}</code>
+                  </div>
                   <Textarea
-                    placeholder="DOSPRESSO Academy JSON'ını yapıştırın..."
+                    placeholder='Örnek: {"roles": [{"name": "Stajyer", "modules": [{"title": "Modül", "code": "M1", "description": "Açıklama", "estimated_duration_min": 30, "learning_objectives": [], "steps": [], "quiz": [], "scenario_tasks": [], "supervisor_checklist": []}]}]}'
                     value={importJson}
                     onChange={(e) => setImportJson(e.target.value)}
-                    className="h-96"
+                    className="h-96 text-xs"
                   />
                   <Button
                     onClick={() => importMutation.mutate(importJson)}
