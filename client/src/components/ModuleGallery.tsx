@@ -122,28 +122,14 @@ export function ModuleGallery({
         </div>
       </div>
 
-      {/* AI Generate Section */}
-      <div className="space-y-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-        <label className="text-sm font-medium">Yapay Zeka ile Resim Oluştur</label>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Örn: Espresso makinesinin detayı, profesyonel kahve tasarımı"
-            value={generatePrompt}
-            onChange={(e) => setGeneratePrompt(e.target.value)}
-            disabled={disabled || generatingImage}
-            data-testid="input-image-prompt"
-          />
-          <Button
-            onClick={handleGenerateImage}
-            disabled={disabled || generatingImage || !generatePrompt.trim()}
-            size="sm"
-            variant="outline"
-            data-testid="button-generate-image"
-          >
-            <Sparkles className="w-4 h-4 mr-1" />
-            {generatingImage ? "Üretiliyor..." : "Oluştur"}
-          </Button>
-        </div>
+      {/* AI Generate Section - Disabled */}
+      <div className="space-y-2 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+        <label className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
+          Yapay Zeka ile Resim Oluştur (Bakım Altında)
+        </label>
+        <p className="text-xs text-yellow-800 dark:text-yellow-300">
+          AI resim oluşturma şu an bakım altında. Lütfen üst tarafta manual yükleme yapın.
+        </p>
       </div>
 
       {/* Gallery Grid */}

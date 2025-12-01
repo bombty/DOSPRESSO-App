@@ -3550,44 +3550,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate image with AI for module (admin/coach only)
+  // Generate image with AI for module (admin/coach only) - CURRENTLY DISABLED
   app.post('/api/training/modules/:id/generate-image', isAuthenticated, async (req, res) => {
-    try {
-      const user = req.user!;
-      if (user.role !== 'admin' && user.role !== 'coach') {
-        return res.status(403).json({ message: "Sadece admin ve eğitmenler resim üretebilir" });
-      }
-
-      const { prompt } = req.body;
-      if (!prompt || prompt.length < 10) {
-        return res.status(400).json({ message: "Prompt en az 10 karakter olmalı" });
-      }
-
-      const { generateImageWithAI } = await import('./ai');
-      const imageUrl = await generateImageWithAI(prompt, user.id);
-
-      const moduleId = parseInt(req.params.id);
-      const module = await storage.getTrainingModule(moduleId);
-      if (!module) {
-        return res.status(404).json({ message: "Modül bulunamadı" });
-      }
-
-      const updatedGallery = [
-        ...(module.galleryImages || []),
-        { url: imageUrl, alt: prompt, uploadedAt: Date.now() }
-      ];
-
-      await storage.updateTrainingModule(moduleId, { galleryImages: updatedGallery });
-
-      res.json({
-        success: true,
-        url: imageUrl,
-        prompt
-      });
-    } catch (error: any) {
-      console.error("Image generation error:", error);
-      res.status(500).json({ message: error.message || "Resim üretilemedi" });
-    }
+    // AI image generation temporarily disabled due to API configuration
+    res.status(503).json({ 
+      message: "AI resim oluşturma şu an bakım altında. Lütfen manuel yükleme yapın." 
+    });
   });
 
   // Delete image from module gallery (admin/coach only)
