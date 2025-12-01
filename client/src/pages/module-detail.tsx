@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2, Image, X } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2, Image, X, Eye, ChevronRight, ChevronLeft } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -69,6 +69,9 @@ export default function ModuleDetail() {
   const [quizOpen, setQuizOpen] = useState(false);
   const [scenariosOpen, setScenariosOpen] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [previewQuizAnswers, setPreviewQuizAnswers] = useState<Record<number, number>>({});
 
   const { data: module, isLoading } = useQuery({
     queryKey: [`/api/training/modules/${moduleId}`],
@@ -307,6 +310,179 @@ export default function ModuleDetail() {
               )}
             </div>
           </div>
+          <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  setCurrentStepIndex(0);
+                  setPreviewQuizAnswers({});
+                }}
+                data-testid="button-preview-module"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Ön İzleme
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Modül Ön İzlemesi - Öğrenci Görünümü</DialogTitle>
+              </DialogHeader>
+
+              <Tabs defaultValue="steps" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="steps">Adımlar ({steps.length})</TabsTrigger>
+                  <TabsTrigger value="quiz">Quiz ({module?.quiz?.length || 0})</TabsTrigger>
+                  <TabsTrigger value="objectives">Hedefler ({learningObjectives.length})</TabsTrigger>
+                  <TabsTrigger value="scenarios">Senaryolar ({scenarioTasks.length})</TabsTrigger>
+                </TabsList>
+
+                {/* Steps Preview */}
+                <TabsContent value="steps" className="space-y-4 mt-4">
+                  {steps.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">Adım tanımlanmamış</p>
+                  ) : (
+                    <>
+                      <Card>
+                        <CardHeader>
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg">Adım {currentStepIndex + 1}: {steps[currentStepIndex]?.title}</CardTitle>
+                            </div>
+                            <Badge variant="outline">{currentStepIndex + 1}/{steps.length}</Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <p className="text-sm whitespace-pre-wrap">{steps[currentStepIndex]?.content}</p>
+                          {steps[currentStepIndex]?.media_suggestions && steps[currentStepIndex].media_suggestions.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-2">Önerilen Medya:</p>
+                              <div className="flex gap-1 flex-wrap">
+                                {steps[currentStepIndex].media_suggestions.map((media: string, idx: number) => (
+                                  <Badge key={idx} variant="secondary" className="text-xs">
+                                    {media}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex gap-2 justify-between pt-4">
+                            <Button
+                              variant="outline"
+                              onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
+                              disabled={currentStepIndex === 0}
+                              data-testid="button-prev-step"
+                            >
+                              <ChevronLeft className="w-4 h-4 mr-2" />
+                              Önceki
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1))}
+                              disabled={currentStepIndex === steps.length - 1}
+                              data-testid="button-next-step"
+                            >
+                              Sonraki
+                              <ChevronRight className="w-4 h-4 ml-2" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+                </TabsContent>
+
+                {/* Quiz Preview */}
+                <TabsContent value="quiz" className="space-y-4 mt-4">
+                  {!module?.quiz || module.quiz.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">Quiz sorusu tanımlanmamış</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {module.quiz.map((q: any, idx: number) => (
+                        <Card key={idx} className="border-l-4 border-l-green-500">
+                          <CardContent className="pt-4">
+                            <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
+                            <div className="space-y-2">
+                              {q.options?.map((opt: string, optIdx: number) => (
+                                <button
+                                  key={optIdx}
+                                  onClick={() => setPreviewQuizAnswers({ ...previewQuizAnswers, [idx]: optIdx })}
+                                  className={`w-full text-left p-3 rounded border-2 transition-colors ${
+                                    previewQuizAnswers[idx] === optIdx
+                                      ? optIdx === q.correct_option_index
+                                        ? "border-green-500 bg-green-50 dark:bg-green-950/20"
+                                        : "border-red-500 bg-red-50 dark:bg-red-950/20"
+                                      : "border-muted hover:border-primary"
+                                  }`}
+                                  data-testid={`button-quiz-option-${idx}-${optIdx}`}
+                                >
+                                  <span className="text-sm">{opt}</span>
+                                  {previewQuizAnswers[idx] === optIdx && (
+                                    <span className="ml-2">
+                                      {optIdx === q.correct_option_index ? "✓" : "✗"}
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded text-sm">
+                        <p className="text-muted-foreground">Cevapları seçerek test edebilirsiniz. Doğru cevaplar yeşil, yanlış cevaplar kırmızı gösterilir.</p>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Objectives Preview */}
+                <TabsContent value="objectives" className="space-y-4 mt-4">
+                  {learningObjectives.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">Hedef tanımlanmamış</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {learningObjectives.map((objective: string, idx: number) => (
+                        <li key={idx} className="flex gap-2 text-sm">
+                          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          <span>{objective}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </TabsContent>
+
+                {/* Scenarios Preview */}
+                <TabsContent value="scenarios" className="space-y-4 mt-4">
+                  {scenarioTasks.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">Senaryo tanımlanmamış</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {scenarioTasks.map((scenario: any, idx: number) => (
+                        <Card key={idx} className="border-l-4 border-l-purple-500">
+                          <CardContent className="pt-4">
+                            <div className="space-y-2">
+                              <p className="font-medium text-sm">{scenario.title || `Senaryo ${idx + 1}`}</p>
+                              <p className="text-sm text-muted-foreground">{scenario.description}</p>
+                              {scenario.tasks && (
+                                <ul className="text-sm space-y-1 ml-4 mt-2">
+                                  {scenario.tasks.map((task: string, tidx: number) => (
+                                    <li key={tidx} className="list-disc text-muted-foreground">
+                                      {task}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
