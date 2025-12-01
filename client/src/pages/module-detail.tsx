@@ -48,6 +48,14 @@ const scenariosEditSchema = z.object({
   })).default([]),
 });
 
+const checklistEditSchema = z.object({
+  supervisorChecklist: z.array(z.object({
+    item_id: z.string().optional(),
+    title: z.string(),
+    description: z.string(),
+  })).default([]),
+});
+
 export default function ModuleDetail() {
   const [, params] = useRoute("/akademi-modul/:id");
   const [, setLocation] = useLocation();
@@ -84,6 +92,11 @@ export default function ModuleDetail() {
   const scenariosForm = useForm<z.infer<typeof scenariosEditSchema>>({
     resolver: zodResolver(scenariosEditSchema),
     defaultValues: { scenarioTasks: module?.scenarioTasks || [] },
+  });
+
+  const checklistForm = useForm<z.infer<typeof checklistEditSchema>>({
+    resolver: zodResolver(checklistEditSchema),
+    defaultValues: { supervisorChecklist: module?.supervisorChecklist || [] },
   });
 
   const updateObjectivesMutation = useMutation({
@@ -185,6 +198,26 @@ export default function ModuleDetail() {
     },
   });
 
+  const updateChecklistMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof checklistEditSchema>) => {
+      if (!moduleId) throw new Error("Module not found");
+      return apiRequest("PUT", `/api/training/modules/${moduleId}`, {
+        title: module?.title,
+        description: module?.description,
+        level: module?.level,
+        estimatedDuration: module?.estimatedDuration,
+        supervisorChecklist: data.supervisorChecklist,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Kontrol Listesi güncellendi" });
+      queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
   if (isLoading) {
     return <div className="p-6 text-center text-muted-foreground">Yükleniyor...</div>;
   }
@@ -255,7 +288,7 @@ export default function ModuleDetail() {
 
       {/* Content Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">
             <BookOpen className="w-4 h-4 mr-2" />
             Genel
@@ -275,6 +308,10 @@ export default function ModuleDetail() {
           <TabsTrigger value="scenarios">
             <Clock className="w-4 h-4 mr-2" />
             Senaryolar ({scenarioTasks.length})
+          </TabsTrigger>
+          <TabsTrigger value="checklist">
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Kontrol
           </TabsTrigger>
         </TabsList>
 
@@ -714,30 +751,101 @@ export default function ModuleDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {supervisorChecklist.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Denetçi Kontrol Listesi</CardTitle>
-                <CardDescription>Denetçi onayı için gerekli kontrol noktaları</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {supervisorChecklist.map((item: any, idx: number) => (
-                    <div key={idx} className="flex gap-2 p-2 rounded border text-sm">
-                      <CheckCircle className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium">{item.title || `Kontrol ${idx + 1}`}</p>
-                        {item.description && (
-                          <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                        )}
-                      </div>
-                    </div>
+        {/* Supervisor Checklist */}
+        <TabsContent value="checklist" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center gap-2">
+                <div>
+                  <CardTitle>Denetçi Kontrol Listesi</CardTitle>
+                  <CardDescription>Modül tamamlanması kontrol noktaları</CardDescription>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Madde Ekle
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Kontrol Listesini Düzenle</DialogTitle>
+                    </DialogHeader>
+                    <Form {...checklistForm}>
+                      <form
+                        onSubmit={checklistForm.handleSubmit((data) => updateChecklistMutation.mutate(data))}
+                        className="space-y-4 max-h-96 overflow-y-auto"
+                      >
+                        {checklistForm.watch("supervisorChecklist").map((_, index) => (
+                          <div key={index} className="border p-3 rounded space-y-2">
+                            <FormField
+                              control={checklistForm.control}
+                              name={`supervisorChecklist.${index}.title`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Başlık</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Kontrol noktası..." {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={checklistForm.control}
+                              name={`supervisorChecklist.${index}.description`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Açıklama</FormLabel>
+                                  <FormControl>
+                                    <Textarea placeholder="Kontrol açıklaması..." {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const current = checklistForm.watch("supervisorChecklist");
+                            checklistForm.setValue("supervisorChecklist", [...current, { item_id: `c${current.length}`, title: "", description: "" }]);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Yeni Madde
+                        </Button>
+                        <Button type="submit" disabled={updateChecklistMutation.isPending} className="w-full">
+                          Kaydet
+                        </Button>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!module?.supervisorChecklist || module.supervisorChecklist.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Kontrol listesi maddesi tanımlanmamış</p>
+              ) : (
+                <div className="space-y-3">
+                  {module.supervisorChecklist.map((item: any, idx: number) => (
+                    <Card key={idx} className="border-l-4 border-l-orange-500">
+                      <CardContent className="pt-4">
+                        <div className="space-y-1">
+                          <p className="font-medium text-sm">{item.title}</p>
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
