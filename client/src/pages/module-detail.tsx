@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2, Image } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2, Image, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -527,19 +527,35 @@ export default function ModuleDetail() {
                         className="space-y-4 max-h-96 overflow-y-auto"
                       >
                         {stepsForm.watch("steps").map((_, index) => (
-                          <div key={index} className="border p-3 rounded space-y-2">
-                            <FormField
-                              control={stepsForm.control}
-                              name={`steps.${index}.title`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Başlık</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Adım başlığı..." {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
+                          <div key={index} className="border p-3 rounded space-y-2 bg-muted/30">
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex-1">
+                                <FormField
+                                  control={stepsForm.control}
+                                  name={`steps.${index}.title`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Adım {index + 1} - Başlık</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="Adım başlığı..." {...field} className="text-sm" />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  const current = stepsForm.watch("steps");
+                                  stepsForm.setValue("steps", current.filter((_: any, i: number) => i !== index));
+                                }}
+                                data-testid={`button-delete-step-${index}`}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
                             <FormField
                               control={stepsForm.control}
                               name={`steps.${index}.content`}
@@ -547,7 +563,7 @@ export default function ModuleDetail() {
                                 <FormItem>
                                   <FormLabel>İçerik</FormLabel>
                                   <FormControl>
-                                    <Textarea placeholder="Adım içeriği..." {...field} />
+                                    <Textarea placeholder="Adım içeriği..." {...field} className="text-sm h-20" />
                                   </FormControl>
                                 </FormItem>
                               )}
@@ -639,19 +655,102 @@ export default function ModuleDetail() {
                         className="space-y-4 max-h-96 overflow-y-auto"
                       >
                         {quizForm.watch("quiz").map((_, index) => (
-                          <div key={index} className="border p-3 rounded space-y-2">
-                            <FormField
-                              control={quizForm.control}
-                              name={`quiz.${index}.question_text`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Soru</FormLabel>
-                                  <FormControl>
-                                    <Textarea placeholder="Soruyu yazın..." {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
+                          <div key={index} className="border p-3 rounded space-y-3 bg-muted/30">
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex-1">
+                                <FormField
+                                  control={quizForm.control}
+                                  name={`quiz.${index}.question_text`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Soru {index + 1}</FormLabel>
+                                      <FormControl>
+                                        <Textarea placeholder="Soruyu yazın..." {...field} className="text-sm" />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  const current = quizForm.watch("quiz");
+                                  quizForm.setValue("quiz", current.filter((_: any, i: number) => i !== index));
+                                }}
+                                data-testid={`button-delete-quiz-${index}`}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+
+                            {/* Options */}
+                            <div className="space-y-2 pl-2 border-l-2 border-muted-foreground/30">
+                              <FormLabel className="text-xs">Cevap Seçenekleri</FormLabel>
+                              {quizForm.watch(`quiz.${index}.options`)?.map((_, optIndex) => (
+                                <div key={optIndex} className="flex gap-2 items-center">
+                                  <FormField
+                                    control={quizForm.control}
+                                    name={`quiz.${index}.options.${optIndex}`}
+                                    render={({ field }) => (
+                                      <FormControl>
+                                        <Input 
+                                          placeholder={`Seçenek ${optIndex + 1}`}
+                                          {...field}
+                                          className="text-sm"
+                                        />
+                                      </FormControl>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={quizForm.control}
+                                    name={`quiz.${index}.correct_option_index`}
+                                    render={({ field }) => (
+                                      <FormControl>
+                                        <Button
+                                          type="button"
+                                          variant={field.value === optIndex ? "default" : "outline"}
+                                          size="sm"
+                                          onClick={() => field.onChange(optIndex)}
+                                          className="w-12"
+                                          data-testid={`button-set-correct-${index}-${optIndex}`}
+                                        >
+                                          ✓
+                                        </Button>
+                                      </FormControl>
+                                    )}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const current = quizForm.watch(`quiz.${index}.options`) || [];
+                                      if (current.length > 1) {
+                                        quizForm.setValue(`quiz.${index}.options`, current.filter((_: any, i: number) => i !== optIndex));
+                                      }
+                                    }}
+                                    data-testid={`button-delete-option-${index}-${optIndex}`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const current = quizForm.watch(`quiz.${index}.options`) || [];
+                                  quizForm.setValue(`quiz.${index}.options`, [...current, ""]);
+                                }}
+                                className="w-full text-xs"
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Seçenek Ekle
+                              </Button>
+                            </div>
                           </div>
                         ))}
                         <Button
