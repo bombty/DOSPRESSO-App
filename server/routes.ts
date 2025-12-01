@@ -3501,6 +3501,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload image for module gallery and get optimized URL (admin/coach only)
+  app.post('/api/training/modules/:id/upload-image', isAuthenticated, trainingFileUpload.single('file'), async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler resim yükleyebilir" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "Dosya yüklenmedi" });
+      }
+
+      const { optimizeImageForGallery } = await import('./ai');
+      const optimized = await optimizeImageForGallery(file.buffer, file.mimetype);
+      
+      // Generate object key for storage
+      const timestamp = Date.now();
+      const objectKey = `modules/${moduleId}/gallery/${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      
+      // Upload to object storage
+      const url = await storage.uploadFile(objectKey, optimized, 'image/webp');
+      
+      // Add to module gallery
+      const module = await storage.getTrainingModule(moduleId);
+      if (!module) {
+        return res.status(404).json({ message: "Modül bulunamadı" });
+      }
+
+      const updatedGallery = [
+        ...(module.galleryImages || []),
+        { url, alt: file.originalname, uploadedAt: timestamp }
+      ];
+
+      await storage.updateTrainingModule(moduleId, { galleryImages: updatedGallery });
+
+      res.json({
+        success: true,
+        url,
+        fileName: file.originalname,
+        size: optimized.length
+      });
+    } catch (error: any) {
+      console.error("Image upload error:", error);
+      res.status(500).json({ message: error.message || "Resim yüklenemedi" });
+    }
+  });
+
+  // Generate image with AI for module (admin/coach only)
+  app.post('/api/training/modules/:id/generate-image', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler resim üretebilir" });
+      }
+
+      const { prompt } = req.body;
+      if (!prompt || prompt.length < 10) {
+        return res.status(400).json({ message: "Prompt en az 10 karakter olmalı" });
+      }
+
+      const { generateImageWithAI } = await import('./ai');
+      const imageUrl = await generateImageWithAI(prompt, user.id);
+
+      const moduleId = parseInt(req.params.id);
+      const module = await storage.getTrainingModule(moduleId);
+      if (!module) {
+        return res.status(404).json({ message: "Modül bulunamadı" });
+      }
+
+      const updatedGallery = [
+        ...(module.galleryImages || []),
+        { url: imageUrl, alt: prompt, uploadedAt: Date.now() }
+      ];
+
+      await storage.updateTrainingModule(moduleId, { galleryImages: updatedGallery });
+
+      res.json({
+        success: true,
+        url: imageUrl,
+        prompt
+      });
+    } catch (error: any) {
+      console.error("Image generation error:", error);
+      res.status(500).json({ message: error.message || "Resim üretilemedi" });
+    }
+  });
+
+  // Delete image from module gallery (admin/coach only)
+  app.delete('/api/training/modules/:id/gallery/:imageIndex', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler resim silebilir" });
+      }
+
+      const moduleId = parseInt(req.params.id);
+      const imageIndex = parseInt(req.params.imageIndex);
+
+      const module = await storage.getTrainingModule(moduleId);
+      if (!module) {
+        return res.status(404).json({ message: "Modül bulunamadı" });
+      }
+
+      const updatedGallery = (module.galleryImages || []).filter((_, idx) => idx !== imageIndex);
+      await storage.updateTrainingModule(moduleId, { galleryImages: updatedGallery });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Resim silinemedi" });
+    }
+  });
+
   // Upload file (PDF/image) and extract text for module generation (admin/coach only)
   app.post('/api/training/generate/upload', isAuthenticated, trainingFileUpload.single('file'), async (req, res) => {
     try {

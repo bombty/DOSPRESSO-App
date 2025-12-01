@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import QRCode from "qrcode";
 import { PDFParse } from "pdf-parse";
+import { optimizeGalleryImage } from "./imageProcessor";
 import { cache, generateCacheKey, aiRateLimiter } from "./cache";
 import { storage } from "./storage";
 import type { SummaryCategoryType, AISummaryResponse, Task, EquipmentFault } from "@shared/schema";
@@ -2216,5 +2217,47 @@ export async function processUploadedFile(
   } else {
     const base64 = buffer.toString('base64');
     return extractTextFromImage(base64, mimeType, userId);
+  }
+}
+
+// Optimize image for module gallery
+export async function optimizeImageForGallery(buffer: Buffer, mimeType: string): Promise<Buffer> {
+  return optimizeGalleryImage(buffer, mimeType);
+}
+
+// Generate image with DALL-E
+export async function generateImageWithAI(
+  prompt: string,
+  userId?: string
+): Promise<string> {
+  const effectiveUserId = userId || 'system';
+  const IMAGE_GEN_LIMIT = 5; // 5 images per day
+  
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'image_generation', IMAGE_GEN_LIMIT)) {
+    throw new Error("Günlük görüntü üretme limitiniz doldu. Yarın tekrar deneyin.");
+  }
+
+  try {
+    const response = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt: `DOSPRESSO kahvesine uygun, profesyonel görünümlü banner-style fotoğraf: ${prompt}. Fotoğraf 600x400 piksel için optimize edilmiş, profesyonel, yüksek kaliteli ve eğitim materyali için uygun.`,
+      n: 1,
+      size: "1024x1024",
+      quality: "standard",
+      response_format: "url"
+    });
+
+    const imageUrl = response.data[0]?.url;
+    if (!imageUrl) {
+      throw new Error("Görüntü URL'si alınamadı");
+    }
+
+    aiRateLimiter.incrementRequest(effectiveUserId, 'image_generation');
+    console.log(`🎨 AI image generated: ${prompt.substring(0, 50)}...`);
+    
+    return imageUrl;
+  } catch (error: any) {
+    console.error("Image generation error:", error);
+    throw new Error("Görüntü üretilmesi başarısız oldu: " + (error.message || "Bilinmeyen hata"));
   }
 }

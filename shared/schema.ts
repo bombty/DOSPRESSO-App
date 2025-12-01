@@ -1135,6 +1135,7 @@ export const trainingModules = pgTable("training_modules", {
   requiredForRole: varchar("required_for_role", { length: 100 }).array(), // ["barista", "supervisor"]
   prerequisiteModuleIds: integer("prerequisite_module_ids").array(), // Must complete these first
   heroImageUrl: text("hero_image_url"), // Module banner image
+  galleryImages: jsonb("gallery_images").$type<Array<{url: string; alt?: string; uploadedAt: number}>>().default([]), // Module gallery images (optimized)
   learningObjectives: jsonb("learning_objectives").$type<string[]>().default([]), // ["Objective 1", "Objective 2"]
   steps: jsonb("steps").$type<Array<{stepNumber: number; title: string; content: string; mediaSuggestions?: string[]}>>().default([]),
   scenarioTasks: jsonb("scenario_tasks").$type<Array<{scenarioId: string; title: string; description: string; expectedActions: string[]}>>().default([]),

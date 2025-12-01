@@ -44,6 +44,39 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 
 ## Recent Changes (Dec 1, 2025)
 
+### Module Photo Management System - IN PROGRESS ✅
+**Feature:** Add, optimize, and AI-generate images for training modules with consistent gallery layout
+**Implementation:**
+
+1. **Backend Image Processing** (server/imageProcessor.ts):
+   - `optimizeGalleryImage()`: Auto-resize to 600x400px with object-fit:cover (no distortion)
+   - Sharp library: compress with quality optimization, convert to WebP format
+   - `generateThumbnail()`: Quick preview generation
+
+2. **Backend API Endpoints** (server/routes.ts):
+   - POST `/api/training/modules/:id/upload-image` - Upload, optimize, store in S3
+   - POST `/api/training/modules/:id/generate-image` - Create images with DALL-E
+   - DELETE `/api/training/modules/:id/gallery/:imageIndex` - Remove images
+   - Rate limiting: 5 AI images/day per user
+
+3. **Schema Update** (shared/schema.ts):
+   - Added `galleryImages` JSONB array to trainingModules table
+   - Structure: `{ url, alt, uploadedAt }`
+
+4. **Frontend Gallery Component** (client/src/components/ModuleGallery.tsx):
+   - Image upload with drag-drop support
+   - AI image generation with text prompt
+   - Banner-style gallery grid (600x400 aspect ratio)
+   - Consistent sizing with object-fit:cover
+   - Delete functionality with hover reveal
+
+5. **Module Editor Integration** (academy-hq.tsx):
+   - ModuleGallery component in module editing dialog
+   - Real-time gallery updates
+   - Support for both upload and AI generation
+
+## Recent Changes (Dec 1, 2025)
+
 ### AI-Powered Module Generator with File Upload - COMPLETED ✅
 **Feature:** Convert text/articles, PDFs, and photos into structured training modules using AI
 **Implementation:**
