@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import QRCode from "qrcode";
+import pdfParse from "pdf-parse";
 import { cache, generateCacheKey, aiRateLimiter } from "./cache";
 import { storage } from "./storage";
 import type { SummaryCategoryType, AISummaryResponse, Task, EquipmentFault } from "@shared/schema";
@@ -2096,5 +2097,119 @@ ZORUNLU KURALLAR:
   } catch (error: any) {
     console.error("Module generation error:", error);
     throw new Error("Modül oluşturulamadı: " + (error.message || "Bilinmeyen hata"));
+  }
+}
+
+// Extract text from PDF file buffer
+export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  try {
+    const data = await pdfParse(buffer);
+    const text = data.text?.trim();
+    
+    if (!text || text.length < 20) {
+      throw new Error("PDF dosyasından yeterli metin çıkarılamadı");
+    }
+    
+    console.log(`📄 PDF parsed: ${text.length} characters extracted`);
+    return text;
+  } catch (error: any) {
+    console.error("PDF parsing error:", error);
+    throw new Error("PDF dosyası okunamadı: " + (error.message || "Bilinmeyen hata"));
+  }
+}
+
+// Extract text from image using Vision API
+export async function extractTextFromImage(
+  base64Image: string,
+  mimeType: string,
+  userId?: string
+): Promise<string> {
+  const effectiveUserId = userId || 'system';
+  const VISION_LIMIT = 30;
+  
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'image_extraction', VISION_LIMIT)) {
+    throw new Error("Günlük görüntü işleme limitiniz doldu. Yarın tekrar deneyin.");
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: VISION_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: `Sen bir OCR ve içerik çıkarma asistanısın. Görevin görüntüdeki tüm metni, prosedürleri, talimatları ve önemli bilgileri Türkçe olarak ayıklamaktır.
+
+DOSPRESSO Academy için eğitim modülü oluşturmak amacıyla içerik çıkarıyorsun.
+
+Çıkarılacak bilgiler:
+- Başlıklar ve alt başlıklar
+- Prosedürler ve adım adım talimatlar
+- Ekipman kalibrasyon ve bakım bilgileri
+- Güvenlik ve hijyen uyarıları
+- Teknik parametreler ve ayarlar
+
+Görüntüdeki metni düzenli, okunabilir bir formatta yaz. Eğer tablo veya liste varsa, bunları koruyarak yaz.`
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType};base64,${base64Image}`,
+                detail: "high"
+              }
+            },
+            {
+              type: "text",
+              text: "Bu görseldeki tüm metni ve içeriği çıkar. Eğitim modülü oluşturmak için kullanılacak."
+            }
+          ]
+        }
+      ],
+      max_tokens: 4096,
+      temperature: 0.3
+    });
+
+    const extractedText = response.choices[0]?.message?.content?.trim();
+    
+    if (!extractedText || extractedText.length < 20) {
+      throw new Error("Görüntüden yeterli metin çıkarılamadı");
+    }
+
+    aiRateLimiter.incrementRequest(effectiveUserId, 'image_extraction');
+    console.log(`📷 Image text extracted: ${extractedText.length} characters`);
+    
+    return extractedText;
+  } catch (error: any) {
+    console.error("Image extraction error:", error);
+    throw new Error("Görüntü işlenemedi: " + (error.message || "Bilinmeyen hata"));
+  }
+}
+
+// Process uploaded file (PDF or image) and extract text
+export async function processUploadedFile(
+  buffer: Buffer,
+  mimeType: string,
+  userId?: string
+): Promise<string> {
+  const allowedTypes = [
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/heic'
+  ];
+
+  if (!allowedTypes.includes(mimeType)) {
+    throw new Error("Desteklenmeyen dosya türü. PDF, JPEG, PNG veya HEIC yükleyin.");
+  }
+
+  if (mimeType === 'application/pdf') {
+    return extractTextFromPDF(buffer);
+  } else {
+    const base64 = buffer.toString('base64');
+    return extractTextFromImage(base64, mimeType, userId);
   }
 }

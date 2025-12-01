@@ -86,13 +86,29 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile } from "./ai";
+import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
 import { sendNotificationEmail } from "./email";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+
+// Multer configuration for file uploads (memory storage)
+const uploadStorage = multer.memoryStorage();
+const trainingFileUpload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Desteklenmeyen dosya türü. PDF, JPEG, PNG veya HEIC yükleyin.'));
+    }
+  }
+});
 
 // Performance: Simple in-memory cache with TTL
 const responseCache = new Map<string, { data: any; expiresAt: number }>();
@@ -3482,6 +3498,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error saving AI-generated module:", error);
       res.status(500).json({ message: "Modül kaydedilemedi" });
+    }
+  });
+
+  // Upload file (PDF/image) and extract text for module generation (admin/coach only)
+  app.post('/api/training/generate/upload', isAuthenticated, trainingFileUpload.single('file'), async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler dosya yükleyebilir" });
+      }
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "Dosya yüklenmedi" });
+      }
+
+      console.log(`📤 File upload received: ${file.originalname} (${file.mimetype}, ${file.size} bytes)`);
+
+      const extractedText = await processUploadedFile(
+        file.buffer,
+        file.mimetype,
+        user.id
+      );
+
+      res.json({
+        success: true,
+        extractedText,
+        fileName: file.originalname,
+        fileType: file.mimetype,
+        fileSize: file.size
+      });
+    } catch (error: any) {
+      console.error("File upload/processing error:", error);
+      res.status(500).json({ 
+        message: error.message || "Dosya işlenemedi" 
+      });
     }
   });
 
