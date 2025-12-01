@@ -87,6 +87,7 @@ export default function ModuleDetail() {
   const [previewPhase, setPreviewPhase] = useState<'objectives' | 'steps' | 'quiz' | 'scenarios' | 'completed'>('objectives');
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [previewQuizAnswers, setPreviewQuizAnswers] = useState<Record<number, number>>({});
+  const [isMarkingComplete, setIsMarkingComplete] = useState(false);
 
   const { data: module, isLoading } = useQuery({
     queryKey: [`/api/training/modules/${moduleId}`],
@@ -399,8 +400,29 @@ export default function ModuleDetail() {
                     <CardDescription>Öğrendiklerini pekiştir</CardDescription>
                   </CardHeader>
                 </Card>
-                <Button onClick={() => setPreviewPhase('completed')} className="w-full bg-green-600 hover:bg-green-700">
-                  Sınavı Tamamla <CheckCircle className="w-4 h-4 ml-2" />
+                <Button 
+                  onClick={async () => {
+                    setIsMarkingComplete(true);
+                    try {
+                      await fetch(`/api/training/modules/${moduleId}/complete`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
+                      });
+                      toast({ title: "Modül Tamamlandı!", description: "Başarıyla tamamlandı" });
+                      setPreviewPhase('completed');
+                      queryClient.invalidateQueries({ queryKey: ["/api/training/user-modules-stats"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/academy/career-progress"] });
+                    } catch (err: any) {
+                      toast({ title: "Hata", description: err.message, variant: "destructive" });
+                    } finally {
+                      setIsMarkingComplete(false);
+                    }
+                  }}
+                  disabled={isMarkingComplete}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {isMarkingComplete ? "Kaydediliyor..." : "Sınavı Tamamla"} <CheckCircle className="w-4 h-4 ml-2" />
                 </Button>
               </>
             ) : (
