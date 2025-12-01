@@ -189,6 +189,37 @@ export default function Academy() {
         <p className="text-muted-foreground mt-2">Kariyer yolunuzu takip edin ve ilerleyin</p>
       </div>
 
+      {/* 3-Hub Navigation - MOVED TO TOP */}
+      <div className="flex gap-2 mb-6 sticky top-0 bg-background z-10 pb-2 border-b">
+        <Button
+          onClick={() => setActiveHub("learning")}
+          variant={activeHub === "learning" ? "default" : "outline"}
+          className="flex-1"
+          data-testid="button-hub-learning"
+        >
+          <BookOpen className="w-4 h-4 mr-2" />
+          Öğrenme
+        </Button>
+        <Button
+          onClick={() => setActiveHub("achievements")}
+          variant={activeHub === "achievements" ? "default" : "outline"}
+          className="flex-1"
+          data-testid="button-hub-achievements"
+        >
+          <Trophy className="w-4 h-4 mr-2" />
+          Başarılar
+        </Button>
+        <Button
+          onClick={() => setActiveHub("analytics")}
+          variant={activeHub === "analytics" ? "default" : "outline"}
+          className="flex-1"
+          data-testid="button-hub-analytics"
+        >
+          <BarChart3 className="w-4 h-4 mr-2" />
+          Analitik
+        </Button>
+      </div>
+
       {/* Quick Stats Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -402,37 +433,6 @@ export default function Academy() {
           </CardContent>
         </Card>
       )}
-
-      {/* 3-Hub Navigation */}
-      <div className="flex gap-2 mb-6">
-        <Button
-          onClick={() => setActiveHub("learning")}
-          variant={activeHub === "learning" ? "default" : "outline"}
-          className="flex-1"
-          data-testid="button-hub-learning"
-        >
-          <BookOpen className="w-4 h-4 mr-2" />
-          Öğrenme
-        </Button>
-        <Button
-          onClick={() => setActiveHub("achievements")}
-          variant={activeHub === "achievements" ? "default" : "outline"}
-          className="flex-1"
-          data-testid="button-hub-achievements"
-        >
-          <Trophy className="w-4 h-4 mr-2" />
-          Başarılar
-        </Button>
-        <Button
-          onClick={() => setActiveHub("analytics")}
-          variant={activeHub === "analytics" ? "default" : "outline"}
-          className="flex-1"
-          data-testid="button-hub-analytics"
-        >
-          <BarChart3 className="w-4 h-4 mr-2" />
-          Analitik
-        </Button>
-      </div>
 
       {/* Learning Hub */}
       {activeHub === "learning" && (
