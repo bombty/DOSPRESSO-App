@@ -861,7 +861,7 @@ export default function AcademyHQ() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {trainingModules.map((module: TrainingModule) => (
-              <Link key={module.id} href={`/akademi-modul/${module.id}`}>
+              <Link key={module.id} to={`/akademi-modul/${module.id}`}>
                 <Card className="cursor-pointer hover-elevate h-full">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start gap-2">
