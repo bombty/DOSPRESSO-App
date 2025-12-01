@@ -589,6 +589,21 @@ export default function Academy() {
       {/* Analytics Hub */}
       {activeHub === "analytics" && (
         <div className="space-y-6">
+          <Link to="/akademi-adaptive-engine" data-testid="link-adaptive-engine">
+            <Card className="cursor-pointer hover-elevate" data-testid="card-adaptive-engine">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-red-600" />
+                  Adaptif Motor
+                </CardTitle>
+                <CardDescription>AI performansınıza uygun modül önerileri</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Zayıf alanlarınızı tespit et ve iyileştir</p>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Link to="/akademi-ai-assistant" data-testid="link-ai-assistant">
             <Card className="cursor-pointer hover-elevate" data-testid="card-ai-assistant">
               <CardHeader>
