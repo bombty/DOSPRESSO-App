@@ -2238,11 +2238,13 @@ export async function generateImageWithAI(
   }
 
   try {
+    console.log(`🎨 Generating image with prompt: ${prompt.substring(0, 50)}...`);
     const response = await openai.images.generate({
-      model: "gpt-image-1",
+      model: "dall-e-3",
       prompt: `DOSPRESSO kahvesine uygun, profesyonel görünümlü banner-style fotoğraf: ${prompt}. Fotoğraf 600x400 piksel için optimize edilmiş, profesyonel, yüksek kaliteli ve eğitim materyali için uygun.`,
       n: 1,
-      size: "1024x1024"
+      size: "1024x1024",
+      quality: "standard"
     });
 
     const imageUrl = response.data[0]?.url;
@@ -2251,11 +2253,11 @@ export async function generateImageWithAI(
     }
 
     aiRateLimiter.incrementRequest(effectiveUserId, 'image_generation');
-    console.log(`🎨 AI image generated: ${prompt.substring(0, 50)}...`);
+    console.log(`✅ AI image generated successfully: ${imageUrl.substring(0, 50)}...`);
     
     return imageUrl;
   } catch (error: any) {
-    console.error("Image generation error:", error);
+    console.error("❌ Image generation error:", error.message || error);
     throw new Error("Görüntü üretilmesi başarısız oldu: " + (error.message || "Bilinmeyen hata"));
   }
 }
