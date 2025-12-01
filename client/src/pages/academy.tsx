@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp } from "lucide-react";
+import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -72,6 +72,30 @@ export default function Academy() {
       if (!user?.id) return [];
       const res = await fetch("/api/academy/recommended-quizzes", { credentials: "include" });
       if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+
+  // Get user badges
+  const { data: userBadges = [] } = useQuery({
+    queryKey: ["/api/academy/user-badges", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch("/api/academy/user-badges", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+
+  // Get completed modules count
+  const { data: completedStats } = useQuery({
+    queryKey: ["/api/training/user-modules-stats", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return { completedCount: 0, totalCount: 0 };
+      const res = await fetch("/api/training/user-modules-stats", { credentials: "include" });
+      if (!res.ok) return { completedCount: 0, totalCount: 0 };
       return res.json();
     },
     enabled: !!user?.id,
@@ -135,6 +159,52 @@ export default function Academy() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">DOSPRESSO Academy</h1>
         <p className="text-muted-foreground mt-2">Kariyer yolunuzu takip edin ve ilerleyin</p>
+      </div>
+
+      {/* Quick Stats Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-yellow-600" />
+              Kazanılan Rozetler
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{userBadges.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Coffee Cherry → Coffee Pro</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-blue-600" />
+              Tamamlanan Modüller
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{completedStats?.completedCount || 0}/{completedStats?.totalCount || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {completedStats?.totalCount ? Math.round((completedStats.completedCount / completedStats.totalCount) * 100) : 0}% tamamlandı
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Target className="w-4 h-4 text-green-600" />
+              Seviyeye İlerleme
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{Math.round(progressPercent)}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {nextLevel ? `Hedef: ${nextLevel.titleTr}` : "Maksimum seviyeye ulaştın"}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* My Path Section */}

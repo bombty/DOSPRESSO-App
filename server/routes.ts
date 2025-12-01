@@ -12084,6 +12084,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/training/user-modules-stats - Get user's completed modules count
+  app.get('/api/training/user-modules-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const allModules = await storage.getTrainingModules();
+      const userProgress = await storage.getUserTrainingProgress(userId);
+      
+      const completedCount = userProgress.filter((p: any) => p.status === 'completed').length;
+      const totalCount = allModules.length;
+      
+      res.json({
+        completedCount,
+        totalCount,
+        percentage: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
+      });
+    } catch (error: any) {
+      res.json({ completedCount: 0, totalCount: 0, percentage: 0 });
+    }
+  });
+
   // GET /api/training/modules/:id/completion-status - Get module completion status and earned badges
   app.get('/api/training/modules/:id/completion-status', isAuthenticated, async (req: any, res) => {
     try {
