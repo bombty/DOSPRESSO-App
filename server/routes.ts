@@ -3352,6 +3352,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 expectedActions: sc.expected_actions,
               })),
               supervisorChecklist: moduleData.supervisor_checklist || [],
+              quiz: (moduleData.quiz || []).map((q: any) => ({
+                questionId: q.question_id,
+                questionType: q.question_type,
+                questionText: q.question_text,
+                options: q.options,
+                correctOptionIndex: q.correct_option_index,
+              })),
               tags: moduleData.tags || [],
               createdBy: user.id,
             });

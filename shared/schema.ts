@@ -1139,6 +1139,7 @@ export const trainingModules = pgTable("training_modules", {
   steps: jsonb("steps").$type<Array<{stepNumber: number; title: string; content: string; mediaSuggestions?: string[]}>>().default([]),
   scenarioTasks: jsonb("scenario_tasks").$type<Array<{scenarioId: string; title: string; description: string; expectedActions: string[]}>>().default([]),
   supervisorChecklist: jsonb("supervisor_checklist").$type<string[]>().default([]), // Supervisor review items
+  quiz: jsonb("quiz").$type<Array<{questionId: string; questionType: string; questionText: string; options: string[]; correctOptionIndex: number}>>().default([]), // Quiz questions
   tags: varchar("tags", { length: 100 }).array(), // ["kültür", "disiplin", "stajyer"]
   generatedByAi: boolean("generated_by_ai").default(false), // AI generation metadata
   createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
