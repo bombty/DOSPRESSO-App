@@ -48,19 +48,19 @@ export default function BadgeCollection() {
         >
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <h1 className="text-3xl font-bold">Rozet Koleksiyonum</h1>
+        <h1 className="text-3xl font-bold">Badge Collection</h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Kariyer Rozetleri</CardTitle>
-          <CardDescription>Tamamlanan modüller sonunda kazanılan rozetler - Kahve Kirazı'dan Kahve Pro'ya uzanan yolculuk</CardDescription>
+          <CardTitle>Career Badges</CardTitle>
+          <CardDescription>Earn badges by completing modules - Journey from Coffee Cherry to Coffee Pro</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-muted-foreground">Rozetler yükleniyor...</p>
+            <p className="text-muted-foreground">Loading badges...</p>
           ) : userBadges.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Henüz rozet kazanmadınız. Modüller tamamlayarak rozetler kazanın!</p>
+            <p className="text-muted-foreground text-center py-8">No badges yet. Complete modules to earn badges!</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userBadges.map((userBadge: any) => {
@@ -90,8 +90,8 @@ export default function BadgeCollection() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tüm Mevcut Rozetler</CardTitle>
-          <CardDescription>Sistemde mevcut olan tüm rozetler ve bunları kazanma yolları</CardDescription>
+          <CardTitle>All Available Badges</CardTitle>
+          <CardDescription>All badges in the system and how to earn them</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -104,7 +104,7 @@ export default function BadgeCollection() {
                       <h3 className="font-semibold">{badge.name}</h3>
                       <p className="text-sm text-muted-foreground">{badge.description}</p>
                     </div>
-                    {isEarned && <Badge className="bg-green-600">✓ Kazanıldı</Badge>}
+                    {isEarned && <Badge className="bg-green-600">✓ Earned</Badge>}
                   </div>
                 </div>
               );

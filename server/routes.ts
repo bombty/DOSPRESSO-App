@@ -11991,11 +11991,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const seedBadges = async () => {
     try {
       const badgesList = [
-        { badgeKey: 'coffee_cherry', titleTr: 'Coffee Cherry', descriptionTr: 'Stajyer seviyesi - Başlangıcın', category: 'career', points: 50 },
-        { badgeKey: 'green_bean', titleTr: 'Green Bean', descriptionTr: 'Bar Buddy seviyesi - Temel beceriler', category: 'career', points: 75 },
-        { badgeKey: 'bean_expert', titleTr: 'Bean Expert', descriptionTr: 'Barista seviyesi - Uzman bilgi', category: 'career', points: 100 },
-        { badgeKey: 'roast_master', titleTr: 'Roast Master', descriptionTr: 'Supervisor Buddy seviyesi - Liderlik', category: 'career', points: 125 },
-        { badgeKey: 'coffee_pro', titleTr: 'Coffee Pro', descriptionTr: 'Supervisor seviyesi - Profesyonel', category: 'career', points: 150 },
+        { badgeKey: 'coffee_cherry', titleTr: 'Coffee Cherry', descriptionTr: 'Stajyer Level - Your Journey Begins', category: 'career', points: 50 },
+        { badgeKey: 'green_bean', titleTr: 'Green Bean', descriptionTr: 'Bar Buddy Level - Master the Basics', category: 'career', points: 75 },
+        { badgeKey: 'bean_expert', titleTr: 'Bean Expert', descriptionTr: 'Barista Level - Expert Knowledge', category: 'career', points: 100 },
+        { badgeKey: 'roast_master', titleTr: 'Roast Master', descriptionTr: 'Supervisor Buddy Level - Leadership Skills', category: 'career', points: 125 },
+        { badgeKey: 'coffee_pro', titleTr: 'Coffee Pro', descriptionTr: 'Supervisor Level - Professional Excellence', category: 'career', points: 150 },
       ];
       
       for (const badge of badgesList) {
