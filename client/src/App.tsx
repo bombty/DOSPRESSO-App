@@ -51,6 +51,7 @@ import AcademyAIAssistant from "@/pages/academy-ai-assistant";
 import AcademyAdaptiveEngine from "@/pages/academy-adaptive-engine";
 import AcademySocialGroups from "@/pages/academy-social-groups";
 import AcademyAdvancedAnalytics from "@/pages/academy-advanced-analytics";
+import BadgeCollection from "@/pages/badge-collection";
 import GorevDetay from "@/pages/gorev-detay";
 import IK from "@/pages/ik";
 import PersonelOnboarding from "@/pages/personel-onboarding";
@@ -143,6 +144,7 @@ function Router() {
           <Route path="/akademi-modul/:id" component={ModuleDetail} />
           <Route path="/akademi-analytics" component={AcademyAnalytics} />
           <Route path="/akademi-badges" component={AcademyBadges} />
+          <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />
           <Route path="/akademi-leaderboard" component={AcademyLeaderboard} />
           <Route path="/akademi-branch-analytics" component={AcademyBranchAnalytics} />
           <Route path="/akademi-team-competitions" component={AcademyTeamCompetitions} />

@@ -74,11 +74,14 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
    - Prevents duplicate badges for same user
    - Tracks progress and unlock timestamp
 
-5. **Frontend Integration** (module-detail.tsx):
-   - Module completion screen displays earned badge with Award icon
+5. **Frontend Integration**:
+   - Module completion screen displays earned badge with Award icon (module-detail.tsx)
    - "Tamamla ve Kapat" (Complete & Close) button records completion and awards badge
-   - Badge display: yellow background with award icon and module title
+   - Badge display: colored background with award icon and module title
    - Smooth 300ms delay before closing to confirm badge save
+   - **New:** Badge Collection page (badge-collection.tsx) at `/akademi-rozet-koleksiyonum`
+   - Badge Collection displays earned badges with unlock dates
+   - Shows all available badges with earned status indicator
 
 6. **Storage Layer** (server/storage.ts):
    - `getBadges()` - Fetch all badges ordered by points
@@ -91,6 +94,8 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
    - ✅ All endpoints functional and tested
    - ✅ Turkish language support throughout
    - ✅ Database migrations applied
+   - ✅ Badge Collection page implemented and integrated
+   - ✅ Route added to App.tsx
 
 ### Module Photo Management System - IN PROGRESS ✅
 **Feature:** Add, optimize, and AI-generate images for training modules with consistent gallery layout
