@@ -76,61 +76,40 @@ export async function seedTrainingModules(adminUserId: string) {
   const existingTitles = new Set(modules.map(m => m.title));
   
   const baselineModules = [
-    {
-      title: "DOSPRESSO'ya Hoş Geldiniz",
-      description: "DOSPRESSO kültürü, değerler ve temel bilgiler",
-      category: "onboarding",
-      level: "beginner",
-      estimatedDuration: 30,
-      isPublished: true,
-      requiredForRole: ["barista", "stajyer", "supervisor"],
-      prerequisiteModuleIds: [],
-      createdBy: adminUserId,
-    },
-    {
-      title: "Barista Temel Eğitimi",
-      description: "Espresso hazırlama, süt köpürtme ve kahve sunumu",
-      category: "barista",
-      level: "beginner",
-      estimatedDuration: 120,
-      isPublished: true,
-      requiredForRole: ["barista", "stajyer"],
-      prerequisiteModuleIds: [],
-      createdBy: adminUserId,
-    },
-    {
-      title: "Hijyen ve Gıda Güvenliği",
-      description: "Temizlik standartları, gıda güvenliği ve kişisel hijyen",
-      category: "hygiene",
-      level: "beginner",
-      estimatedDuration: 45,
-      isPublished: true,
-      requiredForRole: ["barista", "stajyer", "supervisor"],
-      prerequisiteModuleIds: [],
-      createdBy: adminUserId,
-    },
-    {
-      title: "Müşteri İlişkileri ve İletişim",
-      description: "Müşteri memnuniyeti, iletişim becerileri ve sorun çözme",
-      category: "customer_service",
-      level: "beginner",
-      estimatedDuration: 60,
-      isPublished: true,
-      requiredForRole: ["barista", "supervisor"],
-      prerequisiteModuleIds: [],
-      createdBy: adminUserId,
-    },
-    {
-      title: "Supervisor Liderlik Eğitimi",
-      description: "Ekip yönetimi, performans takibi ve liderlik becerileri",
-      category: "management",
-      level: "intermediate",
-      estimatedDuration: 90,
-      isPublished: true,
-      requiredForRole: ["supervisor"],
-      prerequisiteModuleIds: [],
-      createdBy: adminUserId,
-    },
+    // Stajyer (S1-S6)
+    { moduleId: "S1", title: "DOSPRESSO Kültürü ve Disiplin Code", roleId: "stajyer", roleLevel: 1, estimatedDuration: 10, category: "culture", level: "beginner", isPublished: true },
+    { moduleId: "S2", title: "Dress Code ve Kişisel Bakım", roleId: "stajyer", roleLevel: 1, estimatedDuration: 10, category: "hygiene", level: "beginner", isPublished: true },
+    { moduleId: "S3", title: "Vardiya, Mola ve İzin Prosedürü", roleId: "stajyer", roleLevel: 1, estimatedDuration: 10, category: "hr", level: "beginner", isPublished: true },
+    { moduleId: "S4", title: "Misafir Karşılama Temelleri", roleId: "stajyer", roleLevel: 1, estimatedDuration: 10, category: "customer", level: "beginner", isPublished: true },
+    { moduleId: "S5", title: "Güvenlik ve Soygun Protokolü", roleId: "stajyer", roleLevel: 1, estimatedDuration: 10, category: "security", level: "beginner", isPublished: true },
+    { moduleId: "S6", title: "Şube Alanları ve Sorumluluk Zonları", roleId: "stajyer", roleLevel: 1, estimatedDuration: 10, category: "operations", level: "beginner", isPublished: true },
+    // Bar Buddy (BB1-BB6)
+    { moduleId: "BB1", title: "Coffee Station Temelleri", roleId: "bar_buddy", roleLevel: 2, estimatedDuration: 12, category: "coffee", level: "beginner", isPublished: true },
+    { moduleId: "BB2", title: "POS ve Sipariş Yönetimi", roleId: "bar_buddy", roleLevel: 2, estimatedDuration: 10, category: "operations", level: "beginner", isPublished: true },
+    { moduleId: "BB3", title: "Bar Temizliği ve HACCP Giriş", roleId: "bar_buddy", roleLevel: 2, estimatedDuration: 10, category: "hygiene", level: "beginner", isPublished: true },
+    { moduleId: "BB4", title: "Donut Sunum ve Tazelik Kontrol", roleId: "bar_buddy", roleLevel: 2, estimatedDuration: 10, category: "food", level: "beginner", isPublished: true },
+    { moduleId: "BB5", title: "Freshess Station Şurup ve Bardak Çizgisi Kalibrasyonu", roleId: "bar_buddy", roleLevel: 2, estimatedDuration: 10, category: "beverages", level: "beginner", isPublished: true },
+    { moduleId: "BB6", title: "Müşteri Memnuniyeti Temelleri", roleId: "bar_buddy", roleLevel: 2, estimatedDuration: 10, category: "customer", level: "beginner", isPublished: true },
+    // Barista (B1-B6)
+    { moduleId: "B1", title: "Espresso Makinesi Kalibrasyon Master", roleId: "barista", roleLevel: 3, estimatedDuration: 15, category: "coffee", level: "intermediate", isPublished: true },
+    { moduleId: "B2", title: "Süt Buhar Çubuğu ve Latte Milk Tekstürü", roleId: "barista", roleLevel: 3, estimatedDuration: 12, category: "coffee", level: "intermediate", isPublished: true },
+    { moduleId: "B3", title: "Makine Gün Sonu Temizliği ve Kimyasal Kullanımı", roleId: "barista", roleLevel: 3, estimatedDuration: 12, category: "maintenance", level: "intermediate", isPublished: true },
+    { moduleId: "B4", title: "Filter Coffee Pro – BUNN ICBA", roleId: "barista", roleLevel: 3, estimatedDuration: 10, category: "coffee", level: "intermediate", isPublished: true },
+    { moduleId: "B5", title: "Donut Production Standard – Glaze & Dekor", roleId: "barista", roleLevel: 3, estimatedDuration: 12, category: "food", level: "intermediate", isPublished: true },
+    { moduleId: "B6", title: "Speed & Workflow Optimization", roleId: "barista", roleLevel: 3, estimatedDuration: 12, category: "operations", level: "intermediate", isPublished: true },
+    // Supervisor Buddy (SB1-SB5)
+    { moduleId: "SB1", title: "Opening & Closing Yönetimi", roleId: "supervisor_buddy", roleLevel: 4, estimatedDuration: 12, category: "management", level: "advanced", isPublished: true },
+    { moduleId: "SB2", title: "Envanter – Fire – COGS Temelleri", roleId: "supervisor_buddy", roleLevel: 4, estimatedDuration: 12, category: "finance", level: "advanced", isPublished: true },
+    { moduleId: "SB3", title: "Eğitim Koçluğu – Stajyer & Bar Buddy Gelişimi", roleId: "supervisor_buddy", roleLevel: 4, estimatedDuration: 12, category: "coaching", level: "advanced", isPublished: true },
+    { moduleId: "SB4", title: "Hijyen ve HACCP Uygulamaları", roleId: "supervisor_buddy", roleLevel: 4, estimatedDuration: 12, category: "hygiene", level: "advanced", isPublished: true },
+    { moduleId: "SB5", title: "Performans Gözlemi ve Geri Bildirim", roleId: "supervisor_buddy", roleLevel: 4, estimatedDuration: 10, category: "management", level: "advanced", isPublished: true },
+    // Supervisor (SP1-SP6)
+    { moduleId: "SP1", title: "Operasyon Yönetimi ve KPI'lar", roleId: "supervisor", roleLevel: 5, estimatedDuration: 15, category: "management", level: "advanced", isPublished: true },
+    { moduleId: "SP2", title: "İş Güvenliği ve Disiplin Uygulamaları", roleId: "supervisor", roleLevel: 5, estimatedDuration: 15, category: "security", level: "advanced", isPublished: true },
+    { moduleId: "SP3", title: "Marka Bütünlüğü ve Audit Yönetimi", roleId: "supervisor", roleLevel: 5, estimatedDuration: 12, category: "compliance", level: "advanced", isPublished: true },
+    { moduleId: "SP4", title: "Satış Artırma ve Kampanya Yönetimi", roleId: "supervisor", roleLevel: 5, estimatedDuration: 12, category: "sales", level: "advanced", isPublished: true },
+    { moduleId: "SP5", title: "Kriz ve Teknik Arıza Yönetimi", roleId: "supervisor", roleLevel: 5, estimatedDuration: 12, category: "crisis", level: "advanced", isPublished: true },
+    { moduleId: "SP6", title: "Bölge ve HQ ile Raporlama", roleId: "supervisor", roleLevel: 5, estimatedDuration: 10, category: "reporting", level: "advanced", isPublished: true },
   ];
   
   let created = 0;
@@ -142,7 +121,19 @@ export async function seedTrainingModules(adminUserId: string) {
       continue;
     }
     
-    await storage.createTrainingModule(moduleData);
+    const fullModule = {
+      ...moduleData,
+      description: moduleData.title,
+      prerequisiteModuleIds: [],
+      createdBy: adminUserId,
+      steps: [],
+      scenarioTasks: [],
+      supervisorChecklist: [],
+      quiz: [],
+      learningObjectives: [],
+    };
+    
+    await storage.createTrainingModule(fullModule);
     created++;
   }
   
