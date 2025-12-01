@@ -275,8 +275,12 @@ export default function AcademyHQ() {
 
   const importMutation = useMutation({
     mutationFn: async (json: string) => {
-      const data = JSON.parse(json);
-      return apiRequest("POST", "/api/training/import", data);
+      try {
+        const data = JSON.parse(json);
+        return apiRequest("POST", "/api/training/import", data);
+      } catch (err: any) {
+        throw new Error("JSON parsing error: " + err.message);
+      }
     },
     onSuccess: () => {
       toast({ title: "Modüller başarıyla içe aktarıldı" });
@@ -285,9 +289,67 @@ export default function AcademyHQ() {
       queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
     },
     onError: (error: any) => {
-      toast({ title: "Hata", description: error.message, variant: "destructive" });
+      const msg = error.response?.data?.message || error.message || "Import hatası";
+      toast({ 
+        title: "Hata", 
+        description: msg.substring(0, 200), 
+        variant: "destructive" 
+      });
     },
   });
+
+  const loadExampleJson = () => {
+    const example = {
+      "roles": [
+        {
+          "name": "Stajyer",
+          "modules": [
+            {
+              "title": "Espresso Kahve Hazırlama",
+              "code": "MOD-ESP-001",
+              "description": "Profesyonel espresso hazırlama teknikleri",
+              "estimated_duration_min": 15,
+              "learning_objectives": [
+                "Espresso makinesi işletimini öğrenme",
+                "Çekirdek öğütme tekniklerini ustalaşma",
+                "Kaliteli kahve ekstraktı başarı kriterlerini anlama"
+              ],
+              "steps": [
+                {
+                  "step_number": 1,
+                  "title": "Makineyi Hazırlama",
+                  "content": "Makineyi açın ve ısıtmaya başlayın",
+                  "media_suggestions": ["video: espresso makinesi başlangıç"]
+                }
+              ],
+              "quiz": [
+                {
+                  "question_id": "q1",
+                  "question_type": "mcq",
+                  "question_text": "Espresso çekim süresi kaç saniye olmalı?",
+                  "options": ["15-20 saniye", "25-30 saniye", "40-50 saniye"],
+                  "correct_option_index": 1
+                }
+              ],
+              "scenario_tasks": [
+                {
+                  "title": "Kahve Hazırlama Senaryosu",
+                  "description": "Müşteriye espresso hazırlayın"
+                }
+              ],
+              "supervisor_checklist": [
+                {
+                  "title": "Makine Kalibrasyonu Kontrol",
+                  "description": "Espresso makinesi doğru şekilde kalibre edilmiş mi?"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+    setImportJson(JSON.stringify(example, null, 2));
+  };
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ["/api/users"],
@@ -686,23 +748,35 @@ export default function AcademyHQ() {
                   <DialogHeader>
                     <DialogTitle>JSON Müfredatını İçe Aktar</DialogTitle>
                   </DialogHeader>
-                  <div className="text-xs text-muted-foreground mb-2 p-2 bg-muted rounded">
-                    <p className="font-medium mb-1">Gerekli Format:</p>
-                    <code className="text-xs">{`{"roles": [{"name": "Rol", "modules": [{...}]}]}`}</code>
+                  <div className="text-xs text-muted-foreground mb-2 p-2 bg-muted rounded space-y-1">
+                    <p className="font-medium">Gerekli Format:</p>
+                    <code className="text-xs block">{`{"roles": [{"name": "RolAdı", "modules": [{...}]}]}`}</code>
+                    <p className="text-xs mt-2">Modül alanları: title, code, description, estimated_duration_min, learning_objectives[], steps[], quiz[], scenario_tasks[], supervisor_checklist[]</p>
                   </div>
                   <Textarea
-                    placeholder='Örnek: {"roles": [{"name": "Stajyer", "modules": [{"title": "Modül", "code": "M1", "description": "Açıklama", "estimated_duration_min": 30, "learning_objectives": [], "steps": [], "quiz": [], "scenario_tasks": [], "supervisor_checklist": []}]}]}'
+                    placeholder='JSON yapıştırın...'
                     value={importJson}
                     onChange={(e) => setImportJson(e.target.value)}
-                    className="h-96 text-xs"
+                    className="h-96 text-xs font-mono"
                   />
-                  <Button
-                    onClick={() => importMutation.mutate(importJson)}
-                    disabled={importMutation.isPending || !importJson}
-                    className="w-full"
-                  >
-                    {importMutation.isPending ? "İçe Aktarılıyor..." : "İçe Aktar"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={loadExampleJson}
+                      className="flex-1"
+                      data-testid="button-load-example"
+                    >
+                      Örnek Yükle
+                    </Button>
+                    <Button
+                      onClick={() => importMutation.mutate(importJson)}
+                      disabled={importMutation.isPending || !importJson}
+                      className="flex-1"
+                    >
+                      {importMutation.isPending ? "İçe Aktarılıyor..." : "İçe Aktar"}
+                    </Button>
+                  </div>
                 </DialogContent>
               </Dialog>
               <Dialog open={isAddTrainingOpen} onOpenChange={setIsAddTrainingOpen}>
