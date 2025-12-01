@@ -82,10 +82,14 @@ import {
   type UserRoleType,
   type InsertAuditTemplateItem,
   type ServiceRequestStatusType,
-  equipmentServiceRequests
+  equipmentServiceRequests,
+  badges,
+  userBadges,
+  insertBadgeSchema,
+  insertUserBadgeSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";

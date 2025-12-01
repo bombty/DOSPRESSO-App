@@ -207,7 +207,6 @@ import {
   userBadges,
   quizzes,
   quizResults,
-  dailyStreaks,
   CareerLevel,
   InsertCareerLevel,
   ExamRequest,
@@ -1557,6 +1556,14 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return result;
+  }
+
+  async createOrUpdateUserTrainingProgress(data: { userId: string; moduleId: number; status: string; completedAt?: Date; score?: number }): Promise<UserTrainingProgress | undefined> {
+    return this.updateUserProgress(data.userId, data.moduleId, {
+      status: data.status as any,
+      completedAt: data.completedAt,
+      score: data.score,
+    });
   }
 
   async getAllTrainingProgressSummary(): Promise<Array<{ userId: string; totalModules: number; completedModules: number }>> {
