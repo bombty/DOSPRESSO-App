@@ -921,7 +921,8 @@ export default function ModuleDetail() {
                       </form>
                     </Form>
                   </DialogContent>
-                </Dialog>
+                    </Dialog>
+                  )}
               </div>
             </CardHeader>
             <CardContent>
@@ -1314,7 +1315,8 @@ export default function ModuleDetail() {
                       </form>
                     </Form>
                   </DialogContent>
-                </Dialog>
+                  </Dialog>
+                )}
               </div>
             </CardHeader>
             <CardContent>

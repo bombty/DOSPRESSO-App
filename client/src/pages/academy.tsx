@@ -125,6 +125,7 @@ export default function Academy() {
 
   // Helper: check if module is completed
   const isModuleCompleted = (moduleId: number) => {
+    if (!Array.isArray(completedModules)) return false;
     return completedModules.some((m: any) => m.moduleId === moduleId && m.completedAt);
   };
 
