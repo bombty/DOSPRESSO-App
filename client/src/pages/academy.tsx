@@ -618,6 +618,51 @@ export default function Academy() {
               </CardContent>
             </Card>
           </Link>
+
+          <Link to="/akademi-advanced-analytics" data-testid="link-advanced-analytics">
+            <Card className="cursor-pointer hover-elevate" data-testid="card-advanced-analytics">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                  İleri Analitikler
+                </CardTitle>
+                <CardDescription>Detaylı performans analizi ve içgörüler</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Haftalık puanlar, zorluk seviyeleri, başarı oranları</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/akademi-branch-analytics" data-testid="link-branch-analytics">
+            <Card className="cursor-pointer hover-elevate" data-testid="card-branch-analytics">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-600" />
+                  Şube Analitikleri
+                </CardTitle>
+                <CardDescription>Şubenizin eğitim performansı</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Şube ortalaması, top öğrenciler, tamamlanma oranları</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/akademi-cohort-analytics" data-testid="link-cohort-analytics">
+            <Card className="cursor-pointer hover-elevate" data-testid="card-cohort-analytics">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-yellow-600" />
+                  Kohort Analitikleri
+                </CardTitle>
+                <CardDescription>Grubunuzun kolektif performansı</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Grup tamamlanma, karşılaştırma, takım istatistikleri</p>
+              </CardContent>
+            </Card>
+          </Link>
           
           <Card>
             <CardHeader>
