@@ -228,6 +228,9 @@ import {
 } from "@shared/schema";
 
 export interface IStorage {
+  // File operations
+  uploadFile(objectKey: string, data: Buffer, contentType: string): Promise<string>;
+  
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserById(id: string): Promise<User | undefined>;
@@ -747,6 +750,19 @@ export class DatabaseStorage implements IStorage {
   async markPasswordResetTokenUsed(tokenId: number): Promise<void> {
     const { passwordResetTokens } = await import("@shared/schema");
     await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, tokenId));
+  }
+
+  async uploadFile(objectKey: string, data: Buffer, contentType: string): Promise<string> {
+    const { objectStorageClient } = await import('./objectStorage');
+    const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+    if (!bucketId) throw new Error("Object storage not configured");
+    
+    const bucket = objectStorageClient.bucket(bucketId);
+    const file = bucket.file(objectKey);
+    await file.save(data, { metadata: { contentType } });
+    
+    // Return public URL
+    return `https://storage.googleapis.com/${bucketId}/${objectKey}`;
   }
 
   async getEmployeeForBranch(employeeId: string, allowedBranchId: number | null): Promise<User | undefined> {

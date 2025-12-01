@@ -2242,9 +2242,7 @@ export async function generateImageWithAI(
       model: "gpt-image-1",
       prompt: `DOSPRESSO kahvesine uygun, profesyonel görünümlü banner-style fotoğraf: ${prompt}. Fotoğraf 600x400 piksel için optimize edilmiş, profesyonel, yüksek kaliteli ve eğitim materyali için uygun.`,
       n: 1,
-      size: "1024x1024",
-      quality: "standard",
-      response_format: "url"
+      size: "1024x1024"
     });
 
     const imageUrl = response.data[0]?.url;
