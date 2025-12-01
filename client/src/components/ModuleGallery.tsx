@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Upload, Trash2, Sparkles } from "lucide-react";
+import { Upload, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
 interface ModuleGalleryProps {
@@ -18,8 +17,6 @@ export function ModuleGallery({
   disabled
 }: ModuleGalleryProps) {
   const [uploading, setUploading] = useState(false);
-  const [generatingImage, setGeneratingImage] = useState(false);
-  const [generatePrompt, setGeneratePrompt] = useState("");
   const { toast } = useToast();
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,33 +45,6 @@ export function ModuleGallery({
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     } finally {
       setUploading(false);
-    }
-  };
-
-  const handleGenerateImage = async () => {
-    if (!generatePrompt.trim()) return;
-
-    setGeneratingImage(true);
-    try {
-      const response = await fetch(`/api/training/modules/${moduleId}/generate-image`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: generatePrompt }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Resim üretilemedi");
-      }
-
-      const data = await response.json();
-      onImagesChange([...images, { url: data.url, alt: generatePrompt, uploadedAt: Date.now() }]);
-      setGeneratePrompt("");
-      toast({ title: "✓ Resim üretildi", description: "AI tarafından üretilen resim eklendi" });
-    } catch (error: any) {
-      toast({ title: "Hata", description: error.message, variant: "destructive" });
-    } finally {
-      setGeneratingImage(false);
     }
   };
 
@@ -120,16 +90,6 @@ export function ModuleGallery({
             {uploading ? "Yükleniyor..." : "Yükle"}
           </Button>
         </div>
-      </div>
-
-      {/* AI Generate Section - Disabled */}
-      <div className="space-y-2 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-        <label className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
-          Yapay Zeka ile Resim Oluştur (Bakım Altında)
-        </label>
-        <p className="text-xs text-yellow-800 dark:text-yellow-300">
-          AI resim oluşturma şu an bakım altında. Lütfen üst tarafta manual yükleme yapın.
-        </p>
       </div>
 
       {/* Gallery Grid */}
