@@ -11981,6 +11981,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // BADGE SEEDING - Initialize career level badges
+  // ========================================
+  const seedBadges = async () => {
+    try {
+      const badgesList = [
+        { badgeKey: 'coffee_cherry', titleTr: 'Coffee Cherry', descriptionTr: 'Stajyer seviyesi - Başlangıcın', category: 'career', points: 50 },
+        { badgeKey: 'green_bean', titleTr: 'Green Bean', descriptionTr: 'Bar Buddy seviyesi - Temel beceriler', category: 'career', points: 75 },
+        { badgeKey: 'bean_expert', titleTr: 'Bean Expert', descriptionTr: 'Barista seviyesi - Uzman bilgi', category: 'career', points: 100 },
+        { badgeKey: 'roast_master', titleTr: 'Roast Master', descriptionTr: 'Supervisor Buddy seviyesi - Liderlik', category: 'career', points: 125 },
+        { badgeKey: 'coffee_pro', titleTr: 'Coffee Pro', descriptionTr: 'Supervisor seviyesi - Profesyonel', category: 'career', points: 150 },
+      ];
+      
+      for (const badge of badgesList) {
+        try {
+          const existing = await db.select().from(badges).where(eq(badges.badgeKey, badge.badgeKey));
+          if (!existing || existing.length === 0) {
+            await db.insert(badges).values(badge);
+          }
+        } catch {
+          // Badge already exists, skip
+        }
+      }
+      console.log('✅ Badge seeding complete');
+    } catch (error) {
+      console.error('Badge seeding error:', error);
+    }
+  };
+  
+  await seedBadges();
+
+  // ========================================
+  // TRAINING MODULE COMPLETION
+  // ========================================
+  
+  // POST /api/training/modules/:id/complete - Mark module as completed
+  app.post('/api/training/modules/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const moduleId = parseInt(id);
+      const userId = req.user.id;
+
+      if (!moduleId) return res.status(400).json({ message: "Modül ID gerekli" });
+
+      // Record training progress
+      try {
+        await storage.createOrUpdateUserTrainingProgress({
+          userId,
+          moduleId,
+          status: 'completed',
+          completedAt: new Date(),
+          score: 100,
+        });
+      } catch {
+        // Continue even if progress recording fails
+      }
+
+      // Get module details for badge assignment
+      const modules = await storage.getTrainingModules();
+      const module = modules.find(m => m.id === moduleId);
+      
+      let awardedBadge = null;
+      if (module) {
+        // Award career badge based on module level
+        const badgeMap: Record<string, string> = {
+          'beginner': 'coffee_cherry',
+          'intermediate': 'green_bean',
+          'advanced': 'bean_expert',
+        };
+        
+        const badgeKey = badgeMap[module.level] || 'coffee_cherry';
+        const allBadges = await db.select().from(badges).where(eq(badges.badgeKey, badgeKey));
+        
+        if (allBadges.length > 0) {
+          const badge = allBadges[0];
+          const existingUserBadgeList = await db.select().from(userBadges).where(and(eq(userBadges.userId, userId), eq(userBadges.badgeId, badge.id)));
+          
+          if (!existingUserBadgeList || existingUserBadgeList.length === 0) {
+            const newUserBadge = await db.insert(userBadges).values({
+              userId,
+              badgeId: badge.id,
+              progress: 100,
+            }).returning();
+            awardedBadge = newUserBadge[0];
+          }
+        }
+      }
+
+      res.json({ 
+        message: "Modül tamamlandı",
+        badge: awardedBadge,
+        module 
+      });
+    } catch (error: any) {
+      console.error('Module completion error:', error);
+      res.status(400).json({ message: error.message || "Modül tamamlanamadı" });
+    }
+  });
+
+  // GET /api/training/modules/:id/completion-status - Get module completion status and earned badges
+  app.get('/api/training/modules/:id/completion-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const moduleId = parseInt(id);
+      const userId = req.user.id;
+
+      const progress = await storage.getUserTrainingProgress(userId, moduleId);
+      const userBadgeList = await storage.getUserBadges(userId);
+
+      res.json({
+        completed: progress && progress.status === 'completed',
+        completedAt: progress?.completedAt,
+        badges: userBadgeList,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

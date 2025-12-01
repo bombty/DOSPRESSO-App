@@ -605,13 +605,18 @@ export default function ModuleDetail() {
                   </div>
                   <div className="flex gap-2 justify-center">
                     <Button 
-                      variant="outline"
-                      onClick={() => setPreviewOpen(false)}
-                      data-testid="button-exit-completed"
+                      onClick={() => {
+                        if (moduleId) {
+                          apiRequest("POST", `/api/training/modules/${moduleId}/complete`).catch(console.error);
+                          setTimeout(() => setPreviewOpen(false), 300);
+                        }
+                      }}
+                      data-testid="button-complete-and-close"
                     >
-                      Kapat
+                      Tamamla ve Kapat
                     </Button>
                     <Button 
+                      variant="outline"
                       onClick={() => {
                         setPreviewPhase('objectives');
                         setCurrentStepIndex(0);
