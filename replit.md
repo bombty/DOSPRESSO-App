@@ -44,6 +44,30 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 
 ## Recent Changes (Dec 1, 2025)
 
+### Academy Navigation Simplification - COMPLETED ✅
+**Feature:** Consolidate Academy into 3 main working hubs, hide 12+ placeholder pages
+**Implementation:**
+1. **3-Hub Structure** (academy.tsx):
+   - 📚 Öğrenme (Learning) - Recommended quizzes with difficulty progression
+   - 🏆 Başarılar (Achievements) - Rozet Koleksiyonu (Badge Collection)
+   - 📊 Analitik (Analytics) - Career progress overview
+2. **Removed Placeholder Pages From View**:
+   - Hidden: Analitikler, İlerleme Özeti, Sertifikalar, Başarılar, Streak Takibi
+   - Hidden: Öğrenme Yolları, Uyarlanabilir Motor, Sosyal Gruplar, Takım Yarışmaları
+   - Hidden: Kohort Analizi, Liderlik Tablosu, İleri Analitikler
+3. **User Experience**:
+   - Tab-based navigation between 3 working hubs
+   - Only displaying functional features to avoid confusion
+   - Clean, focused interface that builds user trust
+   - Recommended quizzes still visible in Learning hub
+   - Exam requests for supervisors still functional
+4. **Production Status**:
+   - ✅ Placeholder pages removed from main view
+   - ✅ 3 working hubs implemented and functional
+   - ✅ Zero TypeScript errors
+   - ✅ Turkish language throughout
+   - ✅ Sidebar already clean with only Academy and Akademi Yönetimi links
+
 ### Coffee-Themed Gamification Badge System - COMPLETED ✅
 **Feature:** Career progression badges following "bean-to-cup" coffee journey metaphor
 **Implementation:**

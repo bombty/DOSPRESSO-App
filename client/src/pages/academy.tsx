@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
-import { ArrowLeft, Award, TrendingUp, BookOpen, Plus, Zap, BarChart3, Target, Zap as Leaderboard, Lightbulb, Flame, Trophy, Bookmark, Brain, Shield, Users, TrendingUp as Analytics } from "lucide-react";
+import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 
 const CAREER_LEVELS = [
@@ -29,6 +29,7 @@ export default function Academy() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isExamDialogOpen, setIsExamDialogOpen] = useState(false);
+  const [activeHub, setActiveHub] = useState<"learning" | "achievements" | "analytics">("learning");
 
   // Get career levels
   const { data: careerLevels = [] } = useQuery({
@@ -129,6 +130,7 @@ export default function Academy() {
           </Link>
         )}
       </div>
+
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">DOSPRESSO Academy</h1>
@@ -283,7 +285,7 @@ export default function Academy() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5" />
+              <Plus className="w-5 h-5" />
               Beklemede Olan Sınav Talepleri
             </CardTitle>
           </CardHeader>
@@ -303,247 +305,163 @@ export default function Academy() {
         </Card>
       )}
 
-      {/* Recommended Quizzes with Difficulty Progression */}
-      {recommendedQuizzes.length > 0 && (
-        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              Senin İçin Önerilen Sınavlar
-            </CardTitle>
-            <CardDescription>Kolaydan zora doğru ilerle: Kolay → Orta → Zor</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {/* Difficulty Progression Indicator */}
-              <div className="flex items-center justify-between text-xs mb-3">
-                <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                  <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></span>
-                  Kolay
-                </span>
-                <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
-                  <span className="w-2 h-2 bg-yellow-600 dark:bg-yellow-400 rounded-full"></span>
-                  Orta
-                </span>
-                <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
-                  <span className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full"></span>
-                  Zor
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {recommendedQuizzes.map((quiz: any) => {
-                  const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200' 
-                    : quiz.difficulty === 'hard' ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200'
-                    : 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200';
-                  
-                  const diffLabel = quiz.difficulty === 'easy' ? 'Kolay' 
-                    : quiz.difficulty === 'hard' ? 'Zor' : 'Orta';
+      {/* 3-Hub Navigation */}
+      <div className="flex gap-2 mb-6">
+        <Button
+          onClick={() => setActiveHub("learning")}
+          variant={activeHub === "learning" ? "default" : "outline"}
+          className="flex-1"
+          data-testid="button-hub-learning"
+        >
+          <BookOpen className="w-4 h-4 mr-2" />
+          Öğrenme
+        </Button>
+        <Button
+          onClick={() => setActiveHub("achievements")}
+          variant={activeHub === "achievements" ? "default" : "outline"}
+          className="flex-1"
+          data-testid="button-hub-achievements"
+        >
+          <Trophy className="w-4 h-4 mr-2" />
+          Başarılar
+        </Button>
+        <Button
+          onClick={() => setActiveHub("analytics")}
+          variant={activeHub === "analytics" ? "default" : "outline"}
+          className="flex-1"
+          data-testid="button-hub-analytics"
+        >
+          <BarChart3 className="w-4 h-4 mr-2" />
+          Analitik
+        </Button>
+      </div>
 
-                  return (
-                    <Link key={quiz.id} to={`/akademi-quiz/${quiz.quizId}`}>
-                      <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer" data-testid={`quiz-card-${quiz.quizId}`}>
-                        <div className="flex items-start justify-between mb-2">
-                          <p className="font-medium text-sm flex-1">{quiz.titleTr}</p>
-                          <Badge className={`text-xs ml-2 ${diffColor}`}>{diffLabel}</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{quiz.descriptionTr}</p>
-                        <div className="flex items-center justify-between mt-2">
-                          <Badge variant="outline" className="text-xs">{quiz.estimatedMinutes} dk</Badge>
-                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Başla →</span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Learning Hub */}
+      {activeHub === "learning" && (
+        <div className="space-y-6">
+          {recommendedQuizzes.length > 0 && (
+            <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  Senin İçin Önerilen Sınavlar
+                </CardTitle>
+                <CardDescription>Kolaydan zora doğru ilerle: Kolay → Orta → Zor</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {/* Difficulty Progression Indicator */}
+                  <div className="flex items-center justify-between text-xs mb-3">
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                      <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></span>
+                      Kolay
+                    </span>
+                    <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                      <span className="w-2 h-2 bg-yellow-600 dark:bg-yellow-400 rounded-full"></span>
+                      Orta
+                    </span>
+                    <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                      <span className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full"></span>
+                      Zor
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {recommendedQuizzes.map((quiz: any) => {
+                      const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200' 
+                        : quiz.difficulty === 'hard' ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200'
+                        : 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200';
+                      
+                      const diffLabel = quiz.difficulty === 'easy' ? 'Kolay' 
+                        : quiz.difficulty === 'hard' ? 'Zor' : 'Orta';
+
+                      return (
+                        <Link key={quiz.id} to={`/akademi-quiz/${quiz.quizId}`}>
+                          <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer" data-testid={`quiz-card-${quiz.quizId}`}>
+                            <div className="flex items-start justify-between mb-2">
+                              <p className="font-medium text-sm flex-1">{quiz.titleTr}</p>
+                              <Badge className={`text-xs ml-2 ${diffColor}`}>{diffLabel}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{quiz.descriptionTr}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <Badge variant="outline" className="text-xs">{quiz.estimatedMinutes} dk</Badge>
+                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Başla →</span>
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {recommendedQuizzes.length === 0 && (
+            <Card>
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                Şu anda önerilecek sınav bulunmuyor. Daha sonra tekrar deneyin.
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
-      {/* Quick Links to Analytics & Badges */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link to="/akademi-analytics">
-          <Card className="cursor-pointer hover-elevate">
+      {/* Achievements Hub */}
+      {activeHub === "achievements" && (
+        <div className="space-y-6">
+          <Link to="/akademi-rozet-koleksiyonum">
+            <Card className="cursor-pointer hover-elevate">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5" />
+                  Rozet Koleksiyonum
+                </CardTitle>
+                <CardDescription>Tamamlanan modüllerle kazanılan rozetler</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Kahve Kirazı → Yeşil Çekirdek → Çekirdek Uzmanı → Kavurma Ustası → Kahve Pro</p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
+
+      {/* Analytics Hub */}
+      {activeHub === "analytics" && (
+        <div className="space-y-6">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
-                Analitikler
+                Kariyer İlerlemesi
               </CardTitle>
-              <CardDescription>Performans istatistikleri</CardDescription>
+              <CardDescription>Mevcut seviyen ve ilerlemene genel bakış</CardDescription>
             </CardHeader>
+            <CardContent className="space-y-4">
+              {currentLevel && (
+                <>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Mevcut Seviye</span>
+                      <Badge>{currentLevel.titleTr}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Seviye {currentLevel.levelNumber}/5</p>
+                  </div>
+                  {nextLevel && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Sonraki Seviyeye İlerleme</span>
+                        <span className="text-sm text-muted-foreground">{Math.round(progressPercent)}%</span>
+                      </div>
+                      <Progress value={progressPercent} className="h-2" />
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
           </Card>
-        </Link>
-
-        <Link to="/akademi-badges">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Target className="w-5 h-5" />
-                Rozetler
-              </CardTitle>
-              <CardDescription>Kazanılan başarılar</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-leaderboard">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Award className="w-5 h-5" />
-                Liderlik
-              </CardTitle>
-              <CardDescription>En iyi performanslar</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-branch-analytics">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                Şube Analizi
-              </CardTitle>
-              <CardDescription>Şubeler arası karşılaştırma</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-team-competitions">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Trophy className="w-5 h-5" />
-                Takım Yarışmaları
-              </CardTitle>
-              <CardDescription>Şubeler arası rekabet</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-certificates">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Bookmark className="w-5 h-5" />
-                Sertifikalar
-              </CardTitle>
-              <CardDescription>Kazanılan belgeler</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-learning-paths">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="w-5 h-5" />
-                AI Öğrenme Yolları
-              </CardTitle>
-              <CardDescription>Kişiselleştirilmiş rotalar</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-cohort-analytics">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Kohort Analizi
-              </CardTitle>
-              <CardDescription>HQ leadership insights</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-achievements">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                Başarılar
-              </CardTitle>
-              <CardDescription>Mileleri açarak başarı kazan</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-progress-overview">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                İlerleme Özeti
-              </CardTitle>
-              <CardDescription>Genel ilerlemeni izle</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-streak-tracker">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Flame className="w-5 h-5" />
-                Öğrenme Serisi
-              </CardTitle>
-              <CardDescription>Günlük tutarlılık rozetleri</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-ai-assistant">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Lightbulb className="w-5 h-5" />
-                AI Asistan
-              </CardTitle>
-              <CardDescription>Yapay zeka tutor yardımı</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-adaptive-engine">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="w-5 h-5" />
-                Uyarlanabilir Motor
-              </CardTitle>
-              <CardDescription>AI önerilen yollar</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-social-groups">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Sosyal İşbirliği
-              </CardTitle>
-              <CardDescription>Çalışma grupları ve mentörlük</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link to="/akademi-advanced-analytics">
-          <Card className="cursor-pointer hover-elevate">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Analytics className="w-5 h-5" />
-                İleri Analitikler
-              </CardTitle>
-              <CardDescription>Detaylı performans analizi</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
