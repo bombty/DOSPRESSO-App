@@ -338,7 +338,7 @@ export default function AcademyHQ() {
         <p className="text-muted-foreground mt-2">Modül yönetimi, sınav talepleri ve atamalar</p>
       </div>
 
-      <Tabs defaultValue="modules" className="w-full">
+      <Tabs defaultValue="training" className="w-full">
         <TabsList className="w-full flex flex-wrap gap-1">
           <TabsTrigger value="modules" className="flex-1 min-w-fit">
             <BookOpen className="w-4 h-4 mr-2" />
@@ -883,8 +883,8 @@ export default function AcademyHQ() {
                               title: module.title,
                               description: module.description || undefined,
                               category: module.category || undefined,
-                              level: module.level || "beginner",
-                              estimatedDuration: module.estimatedDuration,
+                              level: (module.level as "beginner" | "intermediate" | "advanced") || "beginner",
+                              estimatedDuration: module.estimatedDuration ?? 30,
                               isPublished: module.isPublished ?? false,
                               requiredForRole: module.requiredForRole || [],
                             });
