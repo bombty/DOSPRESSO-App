@@ -42,6 +42,33 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
 - **Gamification**: Integrated badges (6 types), career progression (5 levels), leaderboards (global, branch, exam), team competitions, adaptive difficulty, certificates, and daily learning streak tracker.
 
+## Recent Changes (Dec 1, 2025)
+
+### Academy LMS Module Management - COMPLETED ✅
+**Problem:** Users (admin) could not see training modules and couldn't easily edit them.
+**Solution Implemented:**
+1. **Fixed TypeScript Errors** (academy-hq.tsx):
+   - Line 825: Fixed nullable `level` value in Select component with fallback to "beginner"
+   - Line 882: Proper form reset with explicit type-safe object mapping for all fields
+   - Eliminated implicit null-to-undefined type mismatches
+
+2. **Added Admin Navigation** (academy.tsx):
+   - Conditional "Yönetim Paneli" button in Academy page header
+   - Only visible to admin users (role === 'admin')
+   - Routes to `/akademi-hq` management panel
+
+3. **Module Management Panel** (academy-hq.tsx):
+   - Training modules displayed in grid view with card layout
+   - Edit button (✎ Düzenle) for inline module editing
+   - Delete button for removing modules
+   - Module details: title, level, duration, status (published/draft)
+   - Role-based access control: HQ-only access with error message for unauthorized users
+
+4. **Type Safety Improvements**:
+   - Proper handling of nullable database fields
+   - Form schema alignment with database model
+   - Correct field mappings in form reset logic
+
 ## External Dependencies
 
 ### Third-Party Services
