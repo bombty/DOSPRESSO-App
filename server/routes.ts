@@ -3232,14 +3232,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to unpublished module" });
       }
 
-      const [videos, lessons, quizzes, flashcards] = await Promise.all([
-        storage.getModuleVideos(moduleId),
-        storage.getModuleLessons(moduleId),
-        storage.getModuleQuizzes(moduleId),
-        storage.getFlashcards(moduleId),
-      ]);
-
-      res.json({ ...module, videos, lessons, quizzes, flashcards });
+      // Module already contains all JSONB fields (steps, scenarioTasks, supervisorChecklist, learningObjectives)
+      res.json(module);
     } catch (error) {
       console.error("Error fetching training module:", error);
       res.status(500).json({ message: "Failed to fetch training module" });
