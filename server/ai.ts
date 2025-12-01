@@ -1921,3 +1921,169 @@ JSON formatında yanıt ver: {
     throw new Error("Arıza analiz edilemedi");
   }
 }
+
+// AI Training Module Generator
+export interface GeneratedTrainingModule {
+  title: string;
+  description: string;
+  estimatedDuration: number;
+  learningObjectives: string[];
+  steps: {
+    stepNumber: number;
+    title: string;
+    content: string;
+    mediaSuggestions: string[];
+  }[];
+  quiz: {
+    questionId: string;
+    questionType: 'mcq' | 'true_false';
+    questionText: string;
+    options: string[];
+    correctOptionIndex: number;
+  }[];
+  scenarioTasks: {
+    scenarioId: string;
+    title: string;
+    description: string;
+    tasks: string[];
+  }[];
+  supervisorChecklist: {
+    itemId: string;
+    title: string;
+    description: string;
+  }[];
+}
+
+export async function generateTrainingModule(
+  inputText: string,
+  roleLevel: string,
+  estimatedMinutes: number,
+  userId?: string
+): Promise<GeneratedTrainingModule> {
+  const MODULE_GEN_LIMIT = 20;
+  const effectiveUserId = userId || 'system';
+  
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'module_generation', MODULE_GEN_LIMIT)) {
+    throw new Error("Günlük modül oluşturma limitiniz doldu. Yarın tekrar deneyin.");
+  }
+
+  const systemPrompt = `Sen DOSPRESSO Academy için bir AI Eğitim Tasarımcısısın.
+Görevin, verilen metin/makaleyi profesyonel bir eğitim modülüne dönüştürmektir.
+
+DOSPRESSO Marka Kültürü:
+- Kalite odaklı premium kahve deneyimi
+- Hijyen ve HACCP standartlarına uyum
+- Müşteri memnuniyeti önceliği
+- Profesyonel barista eğitimi
+
+Rol Seviyesi: ${roleLevel}
+Hedef Süre: ${estimatedMinutes} dakika
+
+Eğitim modülünü şu JSON formatında üret:
+{
+  "title": "Modül başlığı (kısa, net)",
+  "description": "Modül açıklaması (2-3 cümle)",
+  "estimatedDuration": ${estimatedMinutes},
+  "learningObjectives": ["Hedef 1", "Hedef 2", "Hedef 3", "Hedef 4"],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "title": "Adım başlığı",
+      "content": "Detaylı açıklama (2-4 paragraf)",
+      "mediaSuggestions": ["video: konu", "resim: görsel açıklama"]
+    }
+  ],
+  "quiz": [
+    {
+      "questionId": "q1",
+      "questionType": "mcq",
+      "questionText": "Soru metni?",
+      "options": ["Seçenek A", "Seçenek B", "Seçenek C", "Seçenek D"],
+      "correctOptionIndex": 0
+    }
+  ],
+  "scenarioTasks": [
+    {
+      "scenarioId": "s1",
+      "title": "Senaryo başlığı",
+      "description": "Senaryo açıklaması",
+      "tasks": ["Görev 1", "Görev 2"]
+    }
+  ],
+  "supervisorChecklist": [
+    {
+      "itemId": "c1",
+      "title": "Kontrol noktası",
+      "description": "Değerlendirme açıklaması"
+    }
+  ]
+}
+
+Kurallar:
+- 4-6 öğrenme hedefi
+- 3-5 eğitim adımı (her biri detaylı)
+- 3-5 quiz sorusu (çoktan seçmeli veya doğru/yanlış)
+- 1-2 senaryo görevi
+- 3-5 denetçi kontrol maddesi
+- Türkçe, profesyonel ton
+- HACCP ve hijyen notlarını dahil et
+- ${roleLevel} seviyesine uygun dil kullan`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: CHAT_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Bu metni eğitim modülüne dönüştür:\n\n${inputText}` }
+      ],
+      max_completion_tokens: 4096,
+      temperature: 0.7,
+      response_format: { type: "json_object" }
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("OpenAI yanıt içeriği boş");
+
+    const result = JSON.parse(content);
+    
+    const module: GeneratedTrainingModule = {
+      title: result.title || "Başlıksız Modül",
+      description: result.description || "",
+      estimatedDuration: result.estimatedDuration || estimatedMinutes,
+      learningObjectives: result.learningObjectives || [],
+      steps: (result.steps || []).map((s: any, idx: number) => ({
+        stepNumber: s.stepNumber || idx + 1,
+        title: s.title || `Adım ${idx + 1}`,
+        content: s.content || "",
+        mediaSuggestions: s.mediaSuggestions || [],
+      })),
+      quiz: (result.quiz || []).map((q: any, idx: number) => ({
+        questionId: q.questionId || `q${idx + 1}`,
+        questionType: q.questionType === 'true_false' ? 'true_false' : 'mcq',
+        questionText: q.questionText || "",
+        options: q.options || [],
+        correctOptionIndex: q.correctOptionIndex || 0,
+      })),
+      scenarioTasks: (result.scenarioTasks || []).map((s: any, idx: number) => ({
+        scenarioId: s.scenarioId || `s${idx + 1}`,
+        title: s.title || `Senaryo ${idx + 1}`,
+        description: s.description || "",
+        tasks: s.tasks || [],
+      })),
+      supervisorChecklist: (result.supervisorChecklist || []).map((c: any, idx: number) => ({
+        itemId: c.itemId || `c${idx + 1}`,
+        title: c.title || `Kontrol ${idx + 1}`,
+        description: c.description || "",
+      })),
+    };
+
+    aiRateLimiter.incrementRequest(effectiveUserId, 'module_generation');
+    const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'module_generation', MODULE_GEN_LIMIT);
+    console.log(`🎓 AI Module Generation (${remaining}/${MODULE_GEN_LIMIT} remaining)`);
+
+    return module;
+  } catch (error: any) {
+    console.error("Module generation error:", error);
+    throw new Error("Modül oluşturulamadı: " + (error.message || "Bilinmeyen hata"));
+  }
+}

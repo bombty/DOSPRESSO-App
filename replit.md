@@ -44,6 +44,36 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 
 ## Recent Changes (Dec 1, 2025)
 
+### AI-Powered Module Generator - COMPLETED ✅
+**Feature:** Convert any text/article into structured training modules using AI
+**Implementation:**
+
+1. **Backend AI Integration** (server/ai.ts):
+   - New `generateTrainingModule()` function with DOSPRESSO brand voice
+   - OpenAI GPT-4o integration with JSON structured output
+   - Generates: learning objectives, content steps, quiz questions, scenarios, supervisor checklist
+   - Rate limiting: 20 AI generations per user per day
+   - Turkish language support throughout
+
+2. **API Endpoints** (server/routes.ts):
+   - POST `/api/training/generate` - AI generates module from text input
+   - POST `/api/training/generate/save` - Saves generated module to database
+   - Admin/coach role restriction with proper error handling
+
+3. **Frontend 3-Step Wizard** (academy-hq.tsx):
+   - Step 1: Text input with role selection (5 levels) and duration
+   - Step 2: AI preview showing generated content with all sections
+   - Step 3: Save to database with instant feedback
+   - Replaced JSON import with user-friendly text-to-module conversion
+
+4. **Generated Module Structure**:
+   - Title & description
+   - 4-6 learning objectives
+   - 3-5 training steps with media suggestions
+   - 3-5 quiz questions (MCQ/True-False)
+   - 1-2 scenario tasks
+   - 3-5 supervisor checklist items
+
 ### Academy LMS Module Management - COMPLETED ✅
 **Problem:** Users (admin) could not see training modules and couldn't easily edit them.
 **Solution Implemented:**

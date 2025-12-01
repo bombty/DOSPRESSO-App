@@ -86,7 +86,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule } from "./ai";
 import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
 import { sendNotificationEmail } from "./email";
@@ -3400,6 +3400,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error importing training modules:", error);
       res.status(500).json({ message: "Failed to import training modules" });
+    }
+  });
+
+  // AI-powered training module generation (admin/coach only)
+  app.post('/api/training/generate', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler modül oluşturabilir" });
+      }
+
+      const { inputText, roleLevel, estimatedMinutes } = req.body;
+      
+      if (!inputText || typeof inputText !== 'string' || inputText.trim().length < 50) {
+        return res.status(400).json({ 
+          message: "Lütfen en az 50 karakter içeren bir metin girin" 
+        });
+      }
+
+      if (!roleLevel) {
+        return res.status(400).json({ message: "Rol seviyesi seçilmedi" });
+      }
+
+      const duration = estimatedMinutes || 15;
+      
+      console.log(`🎓 AI Module Generation requested for role: ${roleLevel}, duration: ${duration}min`);
+      
+      const generatedModule = await generateTrainingModule(
+        inputText.trim(),
+        roleLevel,
+        duration,
+        user.id
+      );
+
+      res.json({
+        success: true,
+        module: generatedModule
+      });
+    } catch (error: any) {
+      console.error("AI Module generation error:", error);
+      res.status(500).json({ 
+        message: error.message || "Modül oluşturma başarısız" 
+      });
+    }
+  });
+
+  // Save AI-generated module to database (admin/coach only)
+  app.post('/api/training/generate/save', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'coach') {
+        return res.status(403).json({ message: "Sadece admin ve eğitmenler modül kaydedebilir" });
+      }
+
+      const { module, roleLevel } = req.body;
+      
+      if (!module || !module.title) {
+        return res.status(400).json({ message: "Geçersiz modül verisi" });
+      }
+
+      const savedModule = await storage.createTrainingModule({
+        title: module.title,
+        description: module.description,
+        level: "beginner",
+        estimatedDuration: module.estimatedDuration || 15,
+        isPublished: false,
+        requiredForRole: roleLevel ? [roleLevel] : [],
+        learningObjectives: module.learningObjectives || [],
+        steps: module.steps || [],
+        quiz: module.quiz || [],
+        scenarioTasks: module.scenarioTasks || [],
+        supervisorChecklist: module.supervisorChecklist || [],
+        createdBy: user.id,
+      });
+
+      res.status(201).json({
+        success: true,
+        module: savedModule
+      });
+    } catch (error: any) {
+      console.error("Error saving AI-generated module:", error);
+      res.status(500).json({ message: "Modül kaydedilemedi" });
     }
   });
 

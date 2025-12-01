@@ -97,8 +97,14 @@ export default function AcademyHQ() {
   const [isAddTrainingOpen, setIsAddTrainingOpen] = useState(false);
   const [isEditTrainingOpen, setIsEditTrainingOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<TrainingModule | null>(null);
-  const [isImportOpen, setIsImportOpen] = useState(false);
-  const [importJson, setImportJson] = useState("");
+  
+  // AI Module Generator States
+  const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
+  const [aiWizardStep, setAiWizardStep] = useState<1 | 2 | 3>(1);
+  const [aiInputText, setAiInputText] = useState("");
+  const [aiRoleLevel, setAiRoleLevel] = useState("Stajyer");
+  const [aiEstimatedMinutes, setAiEstimatedMinutes] = useState(15);
+  const [generatedModule, setGeneratedModule] = useState<any>(null);
 
   if (!user || (user.role !== "admin" && !isHQRole(user.role as any))) {
     return <div className="p-6 text-center text-destructive">Erişim Reddedildi</div>;
@@ -273,82 +279,59 @@ export default function AcademyHQ() {
     },
   });
 
-  const importMutation = useMutation({
-    mutationFn: async (json: string) => {
-      try {
-        const data = JSON.parse(json);
-        return apiRequest("POST", "/api/training/import", data);
-      } catch (err: any) {
-        throw new Error("JSON parsing error: " + err.message);
-      }
+  // AI Module Generator Mutations
+  const generateModuleMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/training/generate", {
+        inputText: aiInputText,
+        roleLevel: aiRoleLevel,
+        estimatedMinutes: aiEstimatedMinutes,
+      });
+      return await response.json() as { success: boolean; module: any };
     },
-    onSuccess: () => {
-      toast({ title: "Modüller başarıyla içe aktarıldı" });
-      setIsImportOpen(false);
-      setImportJson("");
-      queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
+    onSuccess: (data) => {
+      setGeneratedModule(data.module);
+      setAiWizardStep(2);
+      toast({ title: "Modül başarıyla oluşturuldu! Önizlemeye geçiliyor..." });
     },
     onError: (error: any) => {
-      const msg = error.response?.data?.message || error.message || "Import hatası";
-      toast({ 
-        title: "Hata", 
-        description: msg.substring(0, 200), 
-        variant: "destructive" 
+      toast({
+        title: "Hata",
+        description: error.message || "AI modül oluşturma başarısız",
+        variant: "destructive"
       });
     },
   });
 
-  const loadExampleJson = () => {
-    const example = {
-      "roles": [
-        {
-          "name": "Stajyer",
-          "modules": [
-            {
-              "title": "Espresso Kahve Hazırlama",
-              "code": "MOD-ESP-001",
-              "description": "Profesyonel espresso hazırlama teknikleri",
-              "estimated_duration_min": 15,
-              "learning_objectives": [
-                "Espresso makinesi işletimini öğrenme",
-                "Çekirdek öğütme tekniklerini ustalaşma",
-                "Kaliteli kahve ekstraktı başarı kriterlerini anlama"
-              ],
-              "steps": [
-                {
-                  "step_number": 1,
-                  "title": "Makineyi Hazırlama",
-                  "content": "Makineyi açın ve ısıtmaya başlayın",
-                  "media_suggestions": ["video: espresso makinesi başlangıç"]
-                }
-              ],
-              "quiz": [
-                {
-                  "question_id": "q1",
-                  "question_type": "mcq",
-                  "question_text": "Espresso çekim süresi kaç saniye olmalı?",
-                  "options": ["15-20 saniye", "25-30 saniye", "40-50 saniye"],
-                  "correct_option_index": 1
-                }
-              ],
-              "scenario_tasks": [
-                {
-                  "title": "Kahve Hazırlama Senaryosu",
-                  "description": "Müşteriye espresso hazırlayın"
-                }
-              ],
-              "supervisor_checklist": [
-                {
-                  "title": "Makine Kalibrasyonu Kontrol",
-                  "description": "Espresso makinesi doğru şekilde kalibre edilmiş mi?"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    };
-    setImportJson(JSON.stringify(example, null, 2));
+  const saveGeneratedModuleMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/training/generate/save", {
+        module: generatedModule,
+        roleLevel: aiRoleLevel,
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Modül veritabanına kaydedildi!" });
+      setIsAiGeneratorOpen(false);
+      resetAiWizard();
+      queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Kaydetme Hatası",
+        description: error.message || "Modül kaydedilemedi",
+        variant: "destructive"
+      });
+    },
+  });
+
+  const resetAiWizard = () => {
+    setAiWizardStep(1);
+    setAiInputText("");
+    setAiRoleLevel("Stajyer");
+    setAiEstimatedMinutes(15);
+    setGeneratedModule(null);
   };
 
   const { data: allUsers = [] } = useQuery({
@@ -737,46 +720,204 @@ export default function AcademyHQ() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Eğitim Modülleri Yönetimi</h2>
             <div className="flex gap-2">
-              <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+              <Dialog open={isAiGeneratorOpen} onOpenChange={(open) => {
+                setIsAiGeneratorOpen(open);
+                if (!open) resetAiWizard();
+              }}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" data-testid="button-import-json">
-                    <Plus className="w-4 h-4 mr-2" />
-                    JSON İçe Aktar
+                  <Button variant="outline" data-testid="button-ai-generator">
+                    <GraduationCap className="w-4 h-4 mr-2" />
+                    AI ile Modül Oluştur
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>JSON Müfredatını İçe Aktar</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                      <GraduationCap className="w-5 h-5" />
+                      AI Modül Oluşturucu
+                    </DialogTitle>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${aiWizardStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>1</div>
+                      <div className={`flex-1 h-1 ${aiWizardStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${aiWizardStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>2</div>
+                      <div className={`flex-1 h-1 ${aiWizardStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${aiWizardStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>3</div>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>Metin Gir</span>
+                      <span>AI Önizleme</span>
+                      <span>Kaydet</span>
+                    </div>
                   </DialogHeader>
-                  <div className="text-xs text-muted-foreground mb-2 p-2 bg-muted rounded space-y-1">
-                    <p className="font-medium">Gerekli Format:</p>
-                    <code className="text-xs block">{`{"roles": [{"name": "RolAdı", "modules": [{...}]}]}`}</code>
-                    <p className="text-xs mt-2">Modül alanları: title, code, description, estimated_duration_min, learning_objectives[], steps[], quiz[], scenario_tasks[], supervisor_checklist[]</p>
-                  </div>
-                  <Textarea
-                    placeholder='JSON yapıştırın...'
-                    value={importJson}
-                    onChange={(e) => setImportJson(e.target.value)}
-                    className="h-96 text-xs font-mono"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={loadExampleJson}
-                      className="flex-1"
-                      data-testid="button-load-example"
-                    >
-                      Örnek Yükle
-                    </Button>
-                    <Button
-                      onClick={() => importMutation.mutate(importJson)}
-                      disabled={importMutation.isPending || !importJson}
-                      className="flex-1"
-                    >
-                      {importMutation.isPending ? "İçe Aktarılıyor..." : "İçe Aktar"}
-                    </Button>
-                  </div>
+                  
+                  {/* Step 1: Input Text */}
+                  {aiWizardStep === 1 && (
+                    <div className="space-y-4">
+                      <div className="bg-muted/50 p-3 rounded-lg text-sm">
+                        <p className="font-medium mb-1">Nasıl Çalışır?</p>
+                        <p className="text-muted-foreground">Herhangi bir makale, prosedür veya eğitim içeriğini yapıştırın. AI, metni otomatik olarak yapılandırılmış bir eğitim modülüne dönüştürecek.</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Hedef Rol</label>
+                          <Select value={aiRoleLevel} onValueChange={setAiRoleLevel}>
+                            <SelectTrigger data-testid="select-role-level">
+                              <SelectValue placeholder="Rol seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Stajyer">Stajyer</SelectItem>
+                              <SelectItem value="Bar Buddy">Bar Buddy</SelectItem>
+                              <SelectItem value="Barista">Barista</SelectItem>
+                              <SelectItem value="Supervisor Buddy">Supervisor Buddy</SelectItem>
+                              <SelectItem value="Supervisor">Supervisor</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Tahmini Süre (dk)</label>
+                          <Input 
+                            type="number" 
+                            value={aiEstimatedMinutes}
+                            onChange={(e) => setAiEstimatedMinutes(Number(e.target.value) || 15)}
+                            min={5}
+                            max={120}
+                            data-testid="input-duration"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Eğitim İçeriği Metni</label>
+                        <Textarea
+                          placeholder="Eğitim konusu hakkında bir makale, prosedür veya herhangi bir metin yapıştırın... (en az 50 karakter)"
+                          value={aiInputText}
+                          onChange={(e) => setAiInputText(e.target.value)}
+                          className="h-64"
+                          data-testid="textarea-input-text"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {aiInputText.length} karakter {aiInputText.length < 50 && "(min. 50 karakter gerekli)"}
+                        </p>
+                      </div>
+                      
+                      <Button
+                        onClick={() => generateModuleMutation.mutate()}
+                        disabled={generateModuleMutation.isPending || aiInputText.length < 50}
+                        className="w-full"
+                        data-testid="button-generate-module"
+                      >
+                        {generateModuleMutation.isPending ? (
+                          <>
+                            <Clock className="w-4 h-4 mr-2 animate-spin" />
+                            AI Modül Oluşturuyor... (10-20 saniye)
+                          </>
+                        ) : (
+                          <>
+                            <GraduationCap className="w-4 h-4 mr-2" />
+                            AI ile Modül Oluştur
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Step 2: Preview Generated Module */}
+                  {aiWizardStep === 2 && generatedModule && (
+                    <div className="space-y-4">
+                      <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                        <p className="text-sm font-medium text-green-700 dark:text-green-300">Modül başarıyla oluşturuldu!</p>
+                      </div>
+                      
+                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                        <div>
+                          <h4 className="font-semibold text-lg">{generatedModule.title}</h4>
+                          <p className="text-sm text-muted-foreground">{generatedModule.description}</p>
+                          <div className="flex gap-2 mt-2">
+                            <Badge variant="outline">{aiRoleLevel}</Badge>
+                            <Badge variant="outline">{generatedModule.estimatedDuration} dk</Badge>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h5 className="font-medium text-sm mb-2">Öğrenme Hedefleri ({generatedModule.learningObjectives?.length || 0})</h5>
+                          <ul className="list-disc list-inside text-sm space-y-1">
+                            {generatedModule.learningObjectives?.map((obj: string, i: number) => (
+                              <li key={i} className="text-muted-foreground">{obj}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        <div>
+                          <h5 className="font-medium text-sm mb-2">Eğitim Adımları ({generatedModule.steps?.length || 0})</h5>
+                          <div className="space-y-2">
+                            {generatedModule.steps?.map((step: any, i: number) => (
+                              <div key={i} className="bg-muted/50 p-2 rounded text-sm">
+                                <p className="font-medium">{step.stepNumber}. {step.title}</p>
+                                <p className="text-muted-foreground text-xs mt-1 line-clamp-2">{step.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h5 className="font-medium text-sm mb-2">Quiz Soruları ({generatedModule.quiz?.length || 0})</h5>
+                          <div className="space-y-2">
+                            {generatedModule.quiz?.map((q: any, i: number) => (
+                              <div key={i} className="bg-muted/50 p-2 rounded text-sm">
+                                <p className="font-medium">{q.questionText}</p>
+                                <div className="flex gap-1 mt-1 flex-wrap">
+                                  {q.options?.map((opt: string, j: number) => (
+                                    <Badge key={j} variant={j === q.correctOptionIndex ? "default" : "outline"} className="text-xs">
+                                      {opt}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h5 className="font-medium text-sm mb-2">Senaryolar ({generatedModule.scenarioTasks?.length || 0})</h5>
+                          <div className="space-y-2">
+                            {generatedModule.scenarioTasks?.map((s: any, i: number) => (
+                              <div key={i} className="bg-muted/50 p-2 rounded text-sm">
+                                <p className="font-medium">{s.title}</p>
+                                <p className="text-muted-foreground text-xs">{s.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h5 className="font-medium text-sm mb-2">Denetçi Kontrol Listesi ({generatedModule.supervisorChecklist?.length || 0})</h5>
+                          <div className="space-y-2">
+                            {generatedModule.supervisorChecklist?.map((c: any, i: number) => (
+                              <div key={i} className="bg-muted/50 p-2 rounded text-sm">
+                                <p className="font-medium">{c.title}</p>
+                                <p className="text-muted-foreground text-xs">{c.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setAiWizardStep(1)} className="flex-1" data-testid="button-back">
+                          Geri Dön
+                        </Button>
+                        <Button 
+                          onClick={() => saveGeneratedModuleMutation.mutate()}
+                          disabled={saveGeneratedModuleMutation.isPending}
+                          className="flex-1"
+                          data-testid="button-save-module"
+                        >
+                          {saveGeneratedModuleMutation.isPending ? "Kaydediliyor..." : "Modülü Kaydet"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </DialogContent>
               </Dialog>
               <Dialog open={isAddTrainingOpen} onOpenChange={setIsAddTrainingOpen}>
