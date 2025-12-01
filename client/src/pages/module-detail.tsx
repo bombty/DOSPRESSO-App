@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2 } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2, Image } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -387,6 +387,35 @@ export default function ModuleDetail() {
               )}
             </CardContent>
           </Card>
+
+          {/* Gallery Section */}
+          {module.galleryImages && module.galleryImages.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Image className="w-5 h-5" />
+                  <div>
+                    <CardTitle>Modül Galerisi</CardTitle>
+                    <CardDescription>{module.galleryImages.length} fotoğraf</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {module.galleryImages.map((img: any, idx: number) => (
+                    <div key={idx} className="overflow-hidden rounded-lg bg-muted aspect-[6/4]">
+                      <img
+                        src={img.url}
+                        alt={img.alt || `Fotoğraf ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        data-testid={`image-gallery-${idx}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Learning Objectives */}
