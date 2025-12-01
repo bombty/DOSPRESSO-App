@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2, Image, X, Eye, ChevronRight, ChevronLeft } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, Lightbulb, ArrowLeft, Edit2, Save, Sparkles, Plus, Trash2, Image, X, Eye, ChevronRight, ChevronLeft, Award, RotateCcw } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -70,6 +70,7 @@ export default function ModuleDetail() {
   const [scenariosOpen, setScenariosOpen] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewPhase, setPreviewPhase] = useState<'objectives' | 'steps' | 'quiz' | 'scenarios' | 'completed'>('objectives');
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [previewQuizAnswers, setPreviewQuizAnswers] = useState<Record<number, number>>({});
 
@@ -316,6 +317,7 @@ export default function ModuleDetail() {
                 variant="default"
                 size="sm"
                 onClick={() => {
+                  setPreviewPhase('objectives');
                   setCurrentStepIndex(0);
                   setPreviewQuizAnswers({});
                 }}
@@ -326,20 +328,83 @@ export default function ModuleDetail() {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
+              <DialogHeader className="space-y-3">
                 <DialogTitle>Modül Ön İzlemesi - Öğrenci Görünümü</DialogTitle>
+                
+                {/* Progress Bar */}
+                {previewPhase !== 'completed' && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                      <span>İlerleme</span>
+                      <span>
+                        {previewPhase === 'objectives' && '1/4'}
+                        {previewPhase === 'steps' && '2/4'}
+                        {previewPhase === 'quiz' && '3/4'}
+                        {previewPhase === 'scenarios' && '4/4'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="bg-primary h-full transition-all duration-300"
+                        style={{
+                          width: previewPhase === 'objectives' ? '25%' 
+                            : previewPhase === 'steps' ? '50%'
+                            : previewPhase === 'quiz' ? '75%'
+                            : previewPhase === 'scenarios' ? '100%' : '0%'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </DialogHeader>
 
-              <Tabs defaultValue="steps" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="steps">Adımlar ({steps.length})</TabsTrigger>
-                  <TabsTrigger value="quiz">Quiz ({module?.quiz?.length || 0})</TabsTrigger>
-                  <TabsTrigger value="objectives">Hedefler ({learningObjectives.length})</TabsTrigger>
-                  <TabsTrigger value="scenarios">Senaryolar ({scenarioTasks.length})</TabsTrigger>
-                </TabsList>
+              {/* Objectives Phase */}
+              {previewPhase === 'objectives' && (
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Öğrenme Hedefleri</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {learningObjectives.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">Hedef tanımlanmamış</p>
+                      ) : (
+                        <ul className="space-y-3">
+                          {learningObjectives.map((objective: string, idx: number) => (
+                            <li key={idx} className="flex gap-3 text-sm">
+                              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                              <span>{objective}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <div className="flex gap-2 justify-between">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setPreviewOpen(false)}
+                      data-testid="button-exit-preview"
+                    >
+                      Çık
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setCurrentStepIndex(0);
+                        setPreviewPhase('steps');
+                      }}
+                      data-testid="button-next-phase-objectives"
+                    >
+                      Devam Et
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-                {/* Steps Preview */}
-                <TabsContent value="steps" className="space-y-4 mt-4">
+              {/* Steps Phase */}
+              {previewPhase === 'steps' && (
+                <div className="space-y-4">
                   {steps.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Adım tanımlanmamış</p>
                   ) : (
@@ -367,120 +432,199 @@ export default function ModuleDetail() {
                               </div>
                             </div>
                           )}
-                          <div className="flex gap-2 justify-between pt-4">
-                            <Button
-                              variant="outline"
-                              onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
-                              disabled={currentStepIndex === 0}
-                              data-testid="button-prev-step"
-                            >
-                              <ChevronLeft className="w-4 h-4 mr-2" />
-                              Önceki
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1))}
-                              disabled={currentStepIndex === steps.length - 1}
-                              data-testid="button-next-step"
-                            >
-                              Sonraki
-                              <ChevronRight className="w-4 h-4 ml-2" />
-                            </Button>
-                          </div>
                         </CardContent>
                       </Card>
+                      <div className="flex gap-2 justify-between">
+                        <Button
+                          variant="outline"
+                          onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
+                          disabled={currentStepIndex === 0}
+                          data-testid="button-prev-step"
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-2" />
+                          Önceki
+                        </Button>
+                        {currentStepIndex === steps.length - 1 ? (
+                          <Button 
+                            onClick={() => {
+                              setCurrentStepIndex(0);
+                              setPreviewPhase('quiz');
+                              setPreviewQuizAnswers({});
+                            }}
+                            data-testid="button-next-phase-steps"
+                          >
+                            Quiz'e Geç
+                            <ChevronRight className="w-4 h-4 ml-2" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            onClick={() => setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1))}
+                            data-testid="button-next-step"
+                          >
+                            Sonraki
+                            <ChevronRight className="w-4 h-4 ml-2" />
+                          </Button>
+                        )}
+                      </div>
                     </>
                   )}
-                </TabsContent>
+                </div>
+              )}
 
-                {/* Quiz Preview */}
-                <TabsContent value="quiz" className="space-y-4 mt-4">
+              {/* Quiz Phase */}
+              {previewPhase === 'quiz' && (
+                <div className="space-y-4">
                   {!module?.quiz || module.quiz.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Quiz sorusu tanımlanmamış</p>
                   ) : (
-                    <div className="space-y-4">
-                      {module.quiz.map((q: any, idx: number) => (
-                        <Card key={idx} className="border-l-4 border-l-green-500">
-                          <CardContent className="pt-4">
-                            <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
-                            <div className="space-y-2">
-                              {q.options?.map((opt: string, optIdx: number) => (
-                                <button
-                                  key={optIdx}
-                                  onClick={() => setPreviewQuizAnswers({ ...previewQuizAnswers, [idx]: optIdx })}
-                                  className={`w-full text-left p-3 rounded border-2 transition-colors ${
-                                    previewQuizAnswers[idx] === optIdx
-                                      ? optIdx === q.correct_option_index
-                                        ? "border-green-500 bg-green-50 dark:bg-green-950/20"
-                                        : "border-red-500 bg-red-50 dark:bg-red-950/20"
-                                      : "border-muted hover:border-primary"
-                                  }`}
-                                  data-testid={`button-quiz-option-${idx}-${optIdx}`}
-                                >
-                                  <span className="text-sm">{opt}</span>
-                                  {previewQuizAnswers[idx] === optIdx && (
-                                    <span className="ml-2">
-                                      {optIdx === q.correct_option_index ? "✓" : "✗"}
-                                    </span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                      <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded text-sm">
-                        <p className="text-muted-foreground">Cevapları seçerek test edebilirsiniz. Doğru cevaplar yeşil, yanlış cevaplar kırmızı gösterilir.</p>
+                    <>
+                      <div className="space-y-4">
+                        {module.quiz.map((q: any, idx: number) => (
+                          <Card key={idx} className="border-l-4 border-l-green-500">
+                            <CardContent className="pt-4">
+                              <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
+                              <div className="space-y-2">
+                                {q.options?.map((opt: string, optIdx: number) => (
+                                  <button
+                                    key={optIdx}
+                                    onClick={() => setPreviewQuizAnswers({ ...previewQuizAnswers, [idx]: optIdx })}
+                                    className={`w-full text-left p-3 rounded border-2 transition-colors ${
+                                      previewQuizAnswers[idx] === optIdx
+                                        ? optIdx === q.correct_option_index
+                                          ? "border-green-500 bg-green-50 dark:bg-green-950/20"
+                                          : "border-red-500 bg-red-50 dark:bg-red-950/20"
+                                        : "border-muted hover:border-primary"
+                                    }`}
+                                    data-testid={`button-quiz-option-${idx}-${optIdx}`}
+                                  >
+                                    <span className="text-sm">{opt}</span>
+                                    {previewQuizAnswers[idx] === optIdx && (
+                                      <span className="ml-2">
+                                        {optIdx === q.correct_option_index ? "✓" : "✗"}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
-                    </div>
+                      <div className="flex gap-2 justify-between pt-4">
+                        <Button 
+                          variant="outline"
+                          onClick={() => setPreviewPhase('steps')}
+                          data-testid="button-back-to-steps"
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-2" />
+                          Adımlara Dön
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            setCurrentStepIndex(0);
+                            setPreviewPhase('scenarios');
+                          }}
+                          data-testid="button-next-phase-quiz"
+                        >
+                          Senaryolara Geç
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </>
                   )}
-                </TabsContent>
+                </div>
+              )}
 
-                {/* Objectives Preview */}
-                <TabsContent value="objectives" className="space-y-4 mt-4">
-                  {learningObjectives.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Hedef tanımlanmamış</p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {learningObjectives.map((objective: string, idx: number) => (
-                        <li key={idx} className="flex gap-2 text-sm">
-                          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                          <span>{objective}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </TabsContent>
-
-                {/* Scenarios Preview */}
-                <TabsContent value="scenarios" className="space-y-4 mt-4">
+              {/* Scenarios Phase */}
+              {previewPhase === 'scenarios' && (
+                <div className="space-y-4">
                   {scenarioTasks.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Senaryo tanımlanmamış</p>
                   ) : (
-                    <div className="space-y-3">
-                      {scenarioTasks.map((scenario: any, idx: number) => (
-                        <Card key={idx} className="border-l-4 border-l-purple-500">
-                          <CardContent className="pt-4">
-                            <div className="space-y-2">
-                              <p className="font-medium text-sm">{scenario.title || `Senaryo ${idx + 1}`}</p>
-                              <p className="text-sm text-muted-foreground">{scenario.description}</p>
-                              {scenario.tasks && (
-                                <ul className="text-sm space-y-1 ml-4 mt-2">
-                                  {scenario.tasks.map((task: string, tidx: number) => (
-                                    <li key={tidx} className="list-disc text-muted-foreground">
-                                      {task}
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                    <>
+                      <div className="space-y-3">
+                        {scenarioTasks.map((scenario: any, idx: number) => (
+                          <Card key={idx} className="border-l-4 border-l-purple-500">
+                            <CardContent className="pt-4">
+                              <div className="space-y-2">
+                                <p className="font-medium text-sm">{scenario.title || `Senaryo ${idx + 1}`}</p>
+                                <p className="text-sm text-muted-foreground">{scenario.description}</p>
+                                {scenario.tasks && (
+                                  <ul className="text-sm space-y-1 ml-4 mt-2">
+                                    {scenario.tasks.map((task: string, tidx: number) => (
+                                      <li key={tidx} className="list-disc text-muted-foreground">
+                                        {task}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                      <div className="flex gap-2 justify-between pt-4">
+                        <Button 
+                          variant="outline"
+                          onClick={() => setPreviewPhase('quiz')}
+                          data-testid="button-back-to-quiz"
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-2" />
+                          Quiz'e Dön
+                        </Button>
+                        <Button 
+                          onClick={() => setPreviewPhase('completed')}
+                          data-testid="button-complete-module"
+                        >
+                          Tamamla
+                          <CheckCircle className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </>
                   )}
-                </TabsContent>
-              </Tabs>
+                </div>
+              )}
+
+              {/* Completed Phase */}
+              {previewPhase === 'completed' && (
+                <div className="space-y-6 text-center py-8">
+                  <div className="flex justify-center">
+                    <div className="relative">
+                      <Award className="w-24 h-24 text-yellow-500" />
+                      <CheckCircle className="w-8 h-8 text-green-600 absolute bottom-0 right-0" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold mb-2">Tebrikler!</h3>
+                    <p className="text-muted-foreground mb-1">Modülü başarıyla tamamladınız</p>
+                    <Badge className="mt-3 bg-yellow-100 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-200">
+                      <Award className="w-3 h-3 mr-1" />
+                      Rozet Kazandı: {module.title}
+                    </Badge>
+                  </div>
+                  <div className="flex gap-2 justify-center">
+                    <Button 
+                      variant="outline"
+                      onClick={() => setPreviewOpen(false)}
+                      data-testid="button-exit-completed"
+                    >
+                      Kapat
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setPreviewPhase('objectives');
+                        setCurrentStepIndex(0);
+                        setPreviewQuizAnswers({});
+                      }}
+                      data-testid="button-restart-module"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Baştan Başla
+                    </Button>
+                  </div>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         </div>
