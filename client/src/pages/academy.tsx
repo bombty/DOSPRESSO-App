@@ -589,6 +589,21 @@ export default function Academy() {
       {/* Analytics Hub */}
       {activeHub === "analytics" && (
         <div className="space-y-6">
+          <Link to="/akademi-progress-overview" data-testid="link-progress-overview">
+            <Card className="cursor-pointer hover-elevate" data-testid="card-progress-overview">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  İlerleme Özeti
+                </CardTitle>
+                <CardDescription>Tüm başarı ve hedeflerinizi bir yerde görün</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Kariyer seviyesi, tamamlanan sınavlar, ortalama puan ve daha fazlası</p>
+              </CardContent>
+            </Card>
+          </Link>
+          
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
