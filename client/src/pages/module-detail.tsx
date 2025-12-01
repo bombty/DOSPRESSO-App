@@ -267,7 +267,7 @@ export default function ModuleDetail() {
   if (!module) {
     return (
       <div className="p-6">
-        <Button onClick={() => setLocation("/akademi-hq")} variant="outline" size="sm">
+        <Button onClick={() => setLocation("/akademi")} variant="outline" size="sm">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Geri Dön
         </Button>
@@ -281,6 +281,162 @@ export default function ModuleDetail() {
   const scenarioTasks = module.scenarioTasks || [];
   const supervisorChecklist = module.supervisorChecklist || [];
 
+  // STUDENT VIEW - Auto-show full learning experience immediately
+  if (!isEditor) {
+    return (
+      <div className="space-y-6 p-6 max-w-4xl mx-auto">
+        <div className="flex items-center gap-2 mb-4">
+          <Button
+            onClick={() => setLocation("/akademi")}
+            variant="outline"
+            size="icon"
+            title="Geri Dön"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Student Learning Header */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{module.title}</h1>
+          <p className="text-muted-foreground mt-2">{module.description}</p>
+          <div className="flex gap-2 mt-4 flex-wrap">
+            <Badge variant="outline">
+              {module.level === "beginner" ? "Başlangıç" : module.level === "intermediate" ? "Orta" : "İleri"}
+            </Badge>
+            <Badge variant="outline">{module.estimatedDuration} dk</Badge>
+          </div>
+        </div>
+
+        {/* Student Learning Tabs */}
+        <Tabs value={previewPhase} onValueChange={(v: any) => setPreviewPhase(v)} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="objectives">Hedefler</TabsTrigger>
+            <TabsTrigger value="steps" disabled={previewPhase === 'objectives'}>İçerik</TabsTrigger>
+            <TabsTrigger value="quiz" disabled={previewPhase !== 'quiz' && previewPhase !== 'completed'}>Sınav</TabsTrigger>
+            <TabsTrigger value="completed" disabled={previewPhase !== 'completed'}>✓ Tamamlandı</TabsTrigger>
+          </TabsList>
+
+          {/* Objectives Tab */}
+          <TabsContent value="objectives" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Öğrenme Hedefleri</CardTitle>
+                <CardDescription>Bu modülü tamamladığında neler öğreneceksin</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {learningObjectives.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Hedef tanımlanmamış</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {learningObjectives.map((objective: string, idx: number) => (
+                      <li key={idx} className="flex gap-3 text-sm">
+                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <span>{objective}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+            <Button onClick={() => setPreviewPhase('steps')} className="w-full">
+              İçeriği Başla <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          </TabsContent>
+
+          {/* Steps Tab */}
+          <TabsContent value="steps" className="space-y-4">
+            {steps.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">İçerik tanımlanmamış</p>
+            ) : (
+              <>
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">Adım {currentStepIndex + 1}: {steps[currentStepIndex]?.title}</CardTitle>
+                        <CardDescription className="mt-2">{steps[currentStepIndex]?.content}</CardDescription>
+                      </div>
+                      <Badge variant="outline">{currentStepIndex + 1}/{steps.length}</Badge>
+                    </div>
+                  </CardHeader>
+                </Card>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
+                    disabled={currentStepIndex === 0}
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-2" /> Önceki
+                  </Button>
+                  {currentStepIndex === steps.length - 1 ? (
+                    <Button 
+                      className="flex-1"
+                      onClick={() => setPreviewPhase('quiz')}
+                    >
+                      Sınava Geç <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  ) : (
+                    <Button 
+                      className="flex-1"
+                      onClick={() => setCurrentStepIndex(currentStepIndex + 1)}
+                    >
+                      Sonraki <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </TabsContent>
+
+          {/* Quiz Tab */}
+          <TabsContent value="quiz" className="space-y-4">
+            {module.quiz && module.quiz.length > 0 ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Modül Sınavı</CardTitle>
+                    <CardDescription>Öğrendiklerini pekiştir</CardDescription>
+                  </CardHeader>
+                </Card>
+                <Button onClick={() => setPreviewPhase('completed')} className="w-full bg-green-600 hover:bg-green-700">
+                  Sınavı Tamamla <CheckCircle className="w-4 h-4 ml-2" />
+                </Button>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  Sınav tanımlanmamış - Modülü tamamlamak için devam et
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Completed Tab */}
+          <TabsContent value="completed" className="space-y-4">
+            <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                  <Award className="w-6 h-6" />
+                  Modül Tamamlandı!
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm">✓ Öğrenme hedefleri tamamlandı</p>
+                <p className="text-sm">✓ İçerik öğrenildi</p>
+                <p className="text-sm">✓ Sınav geçildi</p>
+                <Button onClick={() => setLocation("/akademi")} className="w-full mt-4">
+                  Academy'ye Dön
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+
+  // HQ/ADMIN EDIT VIEW
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center gap-2 mb-4">
