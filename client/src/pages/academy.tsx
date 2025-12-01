@@ -451,8 +451,8 @@ export default function Academy() {
                   {modules.map((module: any) => {
                     const completed = isModuleCompleted(module.id);
                     return (
-                      <Link key={module.id} to={`/akademi-modul/${module.id}`}>
-                        <Card className={`cursor-pointer hover-elevate h-full ${completed ? 'border-green-500 dark:border-green-600' : ''}`}>
+                      <Link key={module.id} to={`/akademi-modul/${module.id}`} data-testid={`link-module-${module.id}`}>
+                        <Card className={`cursor-pointer hover-elevate h-full ${completed ? 'border-green-500 dark:border-green-600' : ''}`} data-testid={`card-module-${module.id}`}>
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-2">
                               <CardTitle className="text-base line-clamp-2">{module.title}</CardTitle>

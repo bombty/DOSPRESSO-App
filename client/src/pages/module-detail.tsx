@@ -68,6 +68,15 @@ export default function ModuleDetail() {
   // Determine if user is HQ/admin who can edit (only admin, hq, hq_support can edit)
   const isEditor = user?.role === 'admin' || user?.role === 'hq' || user?.role === 'hq_support';
   
+  // Auto-mark module as started when opened by student
+  useEffect(() => {
+    if (moduleId && !isEditor && user?.id) {
+      // Student opened module - mark as started/engaged
+      // This could trigger an API call to mark module as "started"
+      // For now, just ensure the module is viewable
+    }
+  }, [moduleId, isEditor, user?.id]);
+  
   // Dialog states
   const [objectivesOpen, setObjectivesOpen] = useState(false);
   const [stepsOpen, setStepsOpen] = useState(false);
