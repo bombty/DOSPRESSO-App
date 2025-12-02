@@ -106,7 +106,7 @@ async function checkMaintenanceReminders() {
           message: isOverdue 
             ? `${eq.equipmentType} ekipmanının bakımı ${daysUntil} gün gecikmiş. Lütfen en kısa sürede bakım yapın.`
             : `${eq.equipmentType} ekipmanının bakımı ${daysUntil} gün içinde yapılmalı.`,
-          link: `/equipment/${eq.id}`,
+          link: `/ekipman/${eq.id}`,
           isRead: false,
         });
 
