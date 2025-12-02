@@ -379,16 +379,16 @@ export default function Academy() {
                         data-testid={`link-module-${module.id}`}
                         onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
                       >
-                        <Card className={`cursor-pointer hover-elevate h-full ${completed ? 'border-green-500 dark:border-green-600' : ''}`} data-testid={`card-module-${module.id}`}>
-                          <CardHeader className="pb-2">
-                            <div className="flex items-start justify-between gap-1">
-                              <CardTitle className="text-xs line-clamp-2">{module.title}</CardTitle>
+                        <Card className={`cursor-pointer hover-elevate h-full flex flex-col ${completed ? 'border-green-500 dark:border-green-600' : ''}`} data-testid={`card-module-${module.id}`}>
+                          <CardHeader className="pb-2 pt-2 px-2 flex-1">
+                            <div className="flex items-start gap-1 mb-2">
+                              <CardTitle className="text-xs font-semibold line-clamp-2 flex-1 leading-tight">{module.title}</CardTitle>
                               {completed && (
-                                <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                                <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0 mt-0.5" />
                               )}
                             </div>
-                            <div className="flex items-center gap-1 mt-1 flex-wrap">
-                              <Badge variant="outline" className="text-xs px-1.5 py-0">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <Badge variant="outline" className="text-xs px-1 py-0">
                                 {module.level === 'beginner' ? 'B' : module.level === 'intermediate' ? 'O' : 'İ'}
                               </Badge>
                               <span className="text-xs text-muted-foreground">{module.estimatedDuration}dk</span>
