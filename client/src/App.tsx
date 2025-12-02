@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BottomNav } from "@/components/bottom-nav";
 import { InboxDialog } from "@/components/inbox-dialog";
+import { AppHeader } from "@/components/app-header";
 import { useAuth } from "@/hooks/useAuth";
 import logoPath from "@assets/IMG_5044_1764274022052.jpeg";
 import FaultHub from "@/pages/ariza";
@@ -222,6 +223,17 @@ function AppContent() {
     enabled: isAuthenticated && !!user,
   });
 
+  // Get unread notifications count
+  const { data: notificationData } = useQuery({
+    queryKey: ["/api/notifications/unread-count"],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications/unread-count", { credentials: "include" });
+      if (!res.ok) return { count: 0 };
+      return res.json();
+    },
+    enabled: isAuthenticated,
+  });
+
   if (isLoading || !isAuthenticated) {
     return <Router />;
   }
@@ -255,26 +267,8 @@ function AppContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Minimal Top Header - only on home */}
-      {isHomePage && (
-        <header className="flex items-center justify-between px-3 py-2 border-b bg-white dark:bg-slate-900 sticky top-0 z-50">
-          <div className="flex items-center gap-2">
-            <img 
-              src={logoPath} 
-              alt="DOSPRESSO" 
-              className="h-8 object-contain cursor-pointer" 
-              onClick={() => setLocation("/")}
-              data-testid="logo-header" 
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground hidden sm:block">
-              {user?.firstName} {user?.lastName?.charAt(0)}.
-            </span>
-            <InboxDialog />
-          </div>
-        </header>
-      )}
+      {/* Global Header */}
+      <AppHeader notificationCount={notificationData?.count || 0} />
       
       {/* Main Content */}
       <main className="flex-1 overflow-auto pb-20">

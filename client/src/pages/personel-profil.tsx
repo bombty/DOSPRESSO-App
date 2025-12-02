@@ -60,16 +60,6 @@ export default function PersonelProfilPage() {
   const { id } = useParams();
   const { user } = useAuth();
 
-  // Get unread notifications count
-  const { data: notificationData } = useQuery({
-    queryKey: ["/api/notifications/unread-count"],
-    queryFn: async () => {
-      const res = await fetch("/api/notifications/unread-count", { credentials: "include" });
-      if (!res.ok) return { count: 0 };
-      return res.json();
-    },
-  });
-
   // Fetch personnel profile
   const { data: profile, isLoading } = useQuery<PersonnelProfile>({
     queryKey: ['/api/personnel', id],
@@ -115,15 +105,13 @@ export default function PersonelProfilPage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <PageHeader 
-        title={profile.fullName}
-        subtitle={`${roleLabels[profile.role] || profile.role}${profile.branchName ? ` - ${profile.branchName}` : ''}`}
-        icon={User}
-        backPath="/"
-        notificationCount={notificationData?.count || 0}
-      />
-      
       <div className="p-3 space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold">{profile.fullName}</h1>
+            <p className="text-sm text-muted-foreground">{roleLabels[profile.role] || profile.role}{profile.branchName ? ` - ${profile.branchName}` : ''}</p>
+          </div>
+        </div>
         {/* Status badges */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">

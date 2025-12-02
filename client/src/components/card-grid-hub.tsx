@@ -2,7 +2,6 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { isHQRole, isBranchRole } from "@shared/schema";
-import { PageHeader } from "@/components/page-header";
 import { 
   GraduationCap, 
   Wrench, 
@@ -55,15 +54,6 @@ export function CardGridHub() {
 
   const { data: notifications = [] } = useQuery<any[]>({
     queryKey: ["/api/notifications"],
-  });
-
-  const { data: notificationData } = useQuery({
-    queryKey: ["/api/notifications/unread-count"],
-    queryFn: async () => {
-      const res = await fetch("/api/notifications/unread-count", { credentials: "include" });
-      if (!res.ok) return { count: 0 };
-      return res.json();
-    },
   });
 
   const openFaults = faults.filter((f: any) => f.currentStage !== "kapatildi").length;
@@ -202,14 +192,8 @@ export function CardGridHub() {
   };
 
   return (
-    <>
-      <PageHeader 
-        title="Ana Sayfa" 
-        showBack={false}
-        notificationCount={notificationData?.count || 0}
-      />
-      <div className="p-3 pb-24 space-y-4">
-        {/* Welcome Section */}
+    <div className="p-3 pb-24 space-y-4">
+      {/* Welcome Section */}
       <div className="text-center py-4">
         <p className="text-lg font-medium text-muted-foreground">{getGreeting()}</p>
         <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
@@ -280,7 +264,6 @@ export function CardGridHub() {
           </div>
         </div>
       )}
-      </div>
-    </>
+    </div>
   );
 }
