@@ -260,52 +260,39 @@ export default function Branches() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           {branches?.map((branch) => (
-            <Card key={branch.id} data-testid={`card-branch-${branch.id}`}>
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-                <CardTitle className="text-lg flex items-center gap-2 flex-1 min-w-0">
-                  <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
-                  <span className="truncate">{branch.name}</span>
-                </CardTitle>
-                <div className="flex gap-1 flex-shrink-0">
-                  <Button 
-                    size="icon" 
-                    variant="outline" 
-                    onClick={() => handleEdit(branch)}
-                    data-testid={`button-edit-branch-${branch.id}`}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    size="icon" 
-                    variant="outline" 
-                    onClick={() => handleDelete(branch.id)}
-                    data-testid={`button-delete-branch-${branch.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+            <Card key={branch.id} data-testid={`card-branch-${branch.id}`} className="hover-elevate">
+              <CardContent className="p-3">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium line-clamp-2">{branch.name}</h3>
+                      {branch.managerName && <p className="text-xs text-muted-foreground">{branch.managerName}</p>}
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => handleEdit(branch)}
+                        data-testid={`button-edit-branch-${branch.id}`}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => handleDelete(branch.id)}
+                        data-testid={`button-delete-branch-${branch.id}`}
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  {branch.phoneNumber && <p className="text-xs text-muted-foreground truncate">{branch.phoneNumber}</p>}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {branch.address && (
-                  <div className="flex items-start gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <span className="text-muted-foreground">{branch.address}</span>
-                  </div>
-                )}
-                {branch.phoneNumber && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{branch.phoneNumber}</span>
-                  </div>
-                )}
-                {branch.managerName && (
-                  <div className="text-sm">
-                    <span className="font-medium">Müdür:</span>{" "}
-                    <span className="text-muted-foreground">{branch.managerName}</span>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}
