@@ -619,6 +619,15 @@ export default function ModuleDetail() {
                         <CardContent className="grid grid-cols-1 gap-4">
                           <div className="space-y-3">
                             <p className="text-sm whitespace-pre-wrap leading-relaxed">{steps[currentStepIndex]?.content}</p>
+                            {steps[currentStepIndex]?.photos && steps[currentStepIndex].photos.length > 0 && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {steps[currentStepIndex].photos.map((photo: string, pidx: number) => (
+                                  <div key={pidx} className="overflow-hidden rounded-lg bg-muted aspect-video">
+                                    <img src={photo} alt={`Step photo ${pidx}`} className="w-full h-full object-cover" />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                             {steps[currentStepIndex]?.media_suggestions && steps[currentStepIndex].media_suggestions.length > 0 && (
                               <div>
                                 <p className="text-xs font-medium text-muted-foreground mb-2">Önerilen Medya:</p>
@@ -1234,8 +1243,17 @@ export default function ModuleDetail() {
                           <CardTitle className="text-base">{step.title}</CardTitle>
                         </div>
                       </CardHeader>
-                      <CardContent className="grid grid-cols-1 gap-2 text-sm">
-                        <p className="text-muted-foreground whitespace-pre-wrap">{step.content}</p>
+                      <CardContent className="grid grid-cols-1 gap-3 text-sm">
+                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{step.content}</p>
+                        {step.photos && step.photos.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2">
+                            {step.photos.map((photo: string, pidx: number) => (
+                              <div key={pidx} className="overflow-hidden rounded-md bg-muted aspect-video">
+                                <img src={photo} alt={`Step photo ${pidx}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {step.media_suggestions && step.media_suggestions.length > 0 && (
                           <div>
                             <p className="text-xs font-medium text-muted-foreground mb-1">Önerilen Medya:</p>
