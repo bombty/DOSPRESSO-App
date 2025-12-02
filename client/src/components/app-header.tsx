@@ -62,66 +62,72 @@ export function AppHeader({ notificationCount = 0, user, branchName }: AppHeader
   return (
     <div className="sticky top-0 z-50 bg-background border-b">
       {/* Header - User Left + Logo Center + Mailbox Right */}
-      <div className="px-3 py-2 border-b bg-white dark:bg-slate-950 flex items-center justify-between gap-3">
+      <div className="px-3 py-2 border-b bg-white dark:bg-slate-950 flex items-center gap-3 relative">
         
         {/* Left: User Info Dropdown */}
-        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-          <DropdownMenuTrigger asChild>
+        <div className="flex-shrink-0">
+          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="justify-start p-0 h-auto cursor-pointer hover:bg-transparent"
+                data-testid="button-profile-menu"
+              >
+                <div className="text-left min-w-0">
+                  <p className="text-xs font-medium" data-testid="text-user-name">
+                    <span className="truncate">{user?.firstName || user?.username || "Kullanıcı"}</span>
+                    <span className="text-muted-foreground mx-1">•</span>
+                    <span data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
+                  </p>
+                  {branchName && (
+                    <p className="text-[11px] text-muted-foreground truncate" data-testid="text-branch-name">
+                      {branchName}
+                    </p>
+                  )}
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuItem onClick={handleLogout} data-testid="button-logout">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Çıkış Yap</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Center: Logo - Absolutely centered */}
+        <div className="absolute left-1/2 transform -translate-x-1/2">
+          <img 
+            src={dospressoLogo} 
+            alt="DOSPRESSO" 
+            className="h-8 object-contain cursor-pointer"
+            onClick={() => setLocation("/")}
+            data-testid="img-dospresso-logo"
+          />
+        </div>
+
+        {/* Right: Mailbox - Grows to fill space */}
+        <div className="flex-1 flex justify-end">
+          <div className="relative flex justify-end">
             <Button
               variant="ghost"
-              className="justify-start p-0 h-auto cursor-pointer hover:bg-transparent"
-              data-testid="button-profile-menu"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleMailboxClick}
+              data-testid="button-mailbox"
             >
-              <div className="text-left min-w-0">
-                <p className="text-xs font-medium" data-testid="text-user-name">
-                  <span className="truncate">{user?.firstName || user?.username || "Kullanıcı"}</span>
-                  <span className="text-muted-foreground mx-1">•</span>
-                  <span data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
-                </p>
-                {branchName && (
-                  <p className="text-[11px] text-muted-foreground truncate" data-testid="text-branch-name">
-                    {branchName}
-                  </p>
-                )}
-              </div>
+              <Mail className="w-4 h-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-40">
-            <DropdownMenuItem onClick={handleLogout} data-testid="button-logout">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Çıkış Yap</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Center: Logo */}
-        <img 
-          src={dospressoLogo} 
-          alt="DOSPRESSO" 
-          className="h-8 object-contain cursor-pointer"
-          onClick={() => setLocation("/")}
-          data-testid="img-dospresso-logo"
-        />
-
-        {/* Right: Mailbox */}
-        <div className="relative flex justify-end">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleMailboxClick}
-            data-testid="button-mailbox"
-          >
-            <Mail className="w-4 h-4" />
-          </Button>
-          {notificationCount > 0 && (
-            <Badge 
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-red-600 hover:bg-red-700"
-              data-testid="badge-notification-count"
-            >
-              {notificationCount}
-            </Badge>
-          )}
+            {notificationCount > 0 && (
+              <Badge 
+                className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-red-600 hover:bg-red-700"
+                data-testid="badge-notification-count"
+              >
+                {notificationCount}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
     </div>
