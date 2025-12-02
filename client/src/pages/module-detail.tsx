@@ -65,6 +65,9 @@ export default function ModuleDetail() {
   const { toast } = useToast();
   const { user } = useAuth();
   
+  // Store referrer page for back navigation
+  const referrerPage = typeof window !== 'undefined' ? sessionStorage.getItem('academyReferrer') : null;
+  
   // Determine if user is HQ/admin who can edit (only admin, hq, hq_support can edit)
   const isEditor = user?.role === 'admin' || user?.role === 'hq' || user?.role === 'hq_support';
   
@@ -288,7 +291,7 @@ export default function ModuleDetail() {
       <div className="space-y-6 p-6 max-w-4xl mx-auto">
         <div className="flex items-center gap-2 mb-4">
           <Button
-            onClick={() => setLocation("/akademi")}
+            onClick={() => setLocation(referrerPage || "/akademi")}
             variant="outline"
             size="icon"
             title="Geri Dön"
@@ -447,7 +450,7 @@ export default function ModuleDetail() {
                 <p className="text-sm">✓ Öğrenme hedefleri tamamlandı</p>
                 <p className="text-sm">✓ İçerik öğrenildi</p>
                 <p className="text-sm">✓ Sınav geçildi</p>
-                <Button onClick={() => setLocation("/akademi")} className="w-full mt-4">
+                <Button onClick={() => setLocation(referrerPage || "/akademi")} className="w-full mt-4">
                   Academy'ye Dön
                 </Button>
               </CardContent>

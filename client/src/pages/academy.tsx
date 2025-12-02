@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertExamRequestSchema, type ExamRequest } from "@shared/schema";
+import { insertExamRequestSchema, type ExamRequest, isHQRole } from "@shared/schema";
 import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, CheckCircle, Flame, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 
@@ -173,7 +173,7 @@ export default function Academy() {
         >
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || isHQRole(user?.role as any)) && (
           <Link href="/akademi-hq">
             <Button variant="outline" size="sm" data-testid="button-admin-panel">
               <BookOpen className="w-4 h-4 mr-2" />
@@ -220,7 +220,8 @@ export default function Academy() {
         </Button>
       </div>
 
-      {/* Quick Stats Dashboard */}
+      {/* Quick Stats Dashboard - HQ kullancılarına gösterme */}
+      {!isHQRole(user?.role as any) && user?.role !== 'admin' && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-3">
@@ -265,8 +266,9 @@ export default function Academy() {
           </CardContent>
         </Card>
       </div>
+      )}
 
-      {/* My Path Section */}
+      {/* My Path Section - HQ kullancılarına gösterme */}
       {currentLevel && (
         <Card className="border-2 border-primary/20">
           <CardHeader className="pb-3">
@@ -451,7 +453,12 @@ export default function Academy() {
                   {modules.map((module: any) => {
                     const completed = isModuleCompleted(module.id);
                     return (
-                      <Link key={module.id} to={`/akademi-modul/${module.id}`} data-testid={`link-module-${module.id}`}>
+                      <Link 
+                        key={module.id} 
+                        to={`/akademi-modul/${module.id}`} 
+                        data-testid={`link-module-${module.id}`}
+                        onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
+                      >
                         <Card className={`cursor-pointer hover-elevate h-full ${completed ? 'border-green-500 dark:border-green-600' : ''}`} data-testid={`card-module-${module.id}`}>
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-2">

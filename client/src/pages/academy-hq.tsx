@@ -1234,7 +1234,10 @@ export default function AcademyHQ() {
             {trainingModules.map((module: TrainingModule) => (
               <div 
                 key={module.id}
-                onClick={() => setLocation(`/akademi-modul/${module.id}`)}
+                onClick={() => {
+                  sessionStorage.setItem('academyReferrer', '/akademi-hq');
+                  setLocation(`/akademi-modul/${module.id}`);
+                }}
                 className="cursor-pointer"
               >
                 <Card className="hover-elevate h-full">
