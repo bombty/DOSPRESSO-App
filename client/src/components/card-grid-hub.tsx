@@ -2,7 +2,6 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { isHQRole, isBranchRole } from "@shared/schema";
-import dospressoLogo from "@assets/IMG_5044_1764674613097.jpeg";
 import { PageHeader } from "@/components/page-header";
 import { 
   GraduationCap, 
