@@ -184,29 +184,8 @@ export function CardGridHub() {
 
   const modules = isHQ ? hqModules : branchModules;
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Günaydın";
-    if (hour < 18) return "İyi günler";
-    return "İyi akşamlar";
-  };
-
   return (
     <div className="p-3 pb-24 space-y-4">
-      {/* Welcome Section */}
-      <div className="text-center py-4">
-        <p className="text-lg font-medium text-muted-foreground">{getGreeting()}</p>
-        <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
-          {user?.firstName || user?.username}
-          <Coffee className="w-5 h-5 text-amber-600" />
-        </h1>
-        {user?.branchId && (
-          <p className="text-sm text-muted-foreground mt-1">
-            {isHQ ? "Merkez" : "Şube Personeli"}
-          </p>
-        )}
-      </div>
-
       {/* Card Grid */}
       <div className="grid grid-cols-2 gap-3">
         {modules.map((module) => {
