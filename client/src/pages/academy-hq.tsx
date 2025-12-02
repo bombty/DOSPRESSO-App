@@ -443,8 +443,8 @@ export default function AcademyHQ() {
         </TabsList>
 
         {/* MODULES TAB - ANA SAYFA */}
-        <TabsContent value="modules" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="modules" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 gap-3 col-span-2 md:col-span-1">
             {/* Modüller Listesi */}
             <Card>
               <CardHeader>
@@ -473,7 +473,7 @@ export default function AcademyHQ() {
             </Card>
 
             {/* Seçili Modül Detayı */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 col-span-2 md:col-span-2">
               {selectedModuleId && (
                 <>
                   <Card>
@@ -678,8 +678,8 @@ export default function AcademyHQ() {
         </TabsContent>
 
         {/* EXAM REQUESTS TAB */}
-        <TabsContent value="exams" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="grid md:grid-cols-2 gap-4">
+        <TabsContent value="exams" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 col-span-2 md:col-span-3">
             {/* Pending */}
             <Card>
               <CardHeader>
@@ -758,8 +758,8 @@ export default function AcademyHQ() {
         </TabsContent>
 
         {/* EĞİTİM MODÜLLERI TAB */}
-        <TabsContent value="training" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex justify-between items-center mb-4">
+        <TabsContent value="training" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="flex justify-between items-center mb-2 col-span-2 md:col-span-3 text-sm">
             <h2 className="text-xl font-semibold">Eğitim Modülleri Yönetimi</h2>
             <div className="flex gap-2">
               <Dialog open={isAiGeneratorOpen} onOpenChange={(open) => {
