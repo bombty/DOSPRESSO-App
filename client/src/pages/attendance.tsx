@@ -224,12 +224,12 @@ export default function AttendancePage() {
                 : "Vardiyaya giriş yapmadınız"}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="grid grid-cols-1 gap-4">
             {activeLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : activeShift ? (
               <>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Giriş Saati</span>
                     <span className="font-medium" data-testid="text-checkin-time">
@@ -331,9 +331,9 @@ export default function AttendancePage() {
                 </div>
               </>
             ) : (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
                 {uploadedPhotoUrl ? (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <div className="relative aspect-video rounded-lg overflow-hidden border">
                       <img 
                         src={uploadedPhotoUrl} 
@@ -353,7 +353,7 @@ export default function AttendancePage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <p className="text-sm text-muted-foreground text-center">
                       Giriş yapmak için fotoğraf yüklemesi zorunludur
                     </p>
@@ -419,7 +419,7 @@ export default function AttendancePage() {
             {historyLoading ? (
               <Skeleton className="h-20 w-full" />
             ) : (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Toplam Vardiya</span>
                   <span className="text-2xl font-bold" data-testid="text-total-shifts">
@@ -447,7 +447,7 @@ export default function AttendancePage() {
         </CardHeader>
         <CardContent>
           {historyLoading ? (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}

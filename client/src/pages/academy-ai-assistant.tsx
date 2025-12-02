@@ -106,7 +106,7 @@ export default function AcademyAIAssistant() {
       <Card className="h-[400px] flex flex-col">
         <CardContent className="flex-1 p-2 overflow-hidden">
           <ScrollArea className="h-full pr-4">
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}

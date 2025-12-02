@@ -75,7 +75,7 @@ export default function AIAssistant() {
             Sohbet
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="grid grid-cols-1 gap-6">
           {conversation.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -84,9 +84,9 @@ export default function AIAssistant() {
             </div>
           )}
 
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6">
             {conversation.map((item, index) => (
-              <div key={index} className="space-y-4">
+              <div key={index} className="grid grid-cols-1 gap-4">
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
                     S
@@ -115,7 +115,7 @@ export default function AIAssistant() {
                     {item.sources?.length > 0 && (
                       <div className="mt-4 pt-4 border-t">
                         <p className="text-sm font-medium text-muted-foreground mb-2">Kaynaklar:</p>
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-1 gap-2">
                           {item.sources.map((source, idx) => (
                             <div key={idx} className="text-sm">
                               <Badge variant="outline" className="mb-1">
@@ -137,7 +137,7 @@ export default function AIAssistant() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
             <Textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}

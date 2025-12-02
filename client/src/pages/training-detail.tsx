@@ -239,7 +239,7 @@ export default function TrainingDetail() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96" />
       </div>
@@ -263,7 +263,7 @@ export default function TrainingDetail() {
   const progressPercentage = progress?.progressPercentage || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
@@ -290,7 +290,7 @@ export default function TrainingDetail() {
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               <CardTitle className="text-3xl" data-testid="text-module-title">
                 {module.title}
               </CardTitle>
@@ -341,7 +341,7 @@ export default function TrainingDetail() {
         </CardHeader>
       </Card>
 
-      <Tabs defaultValue="videos" className="space-y-4">
+      <Tabs defaultValue="videos" className="grid grid-cols-1 gap-4">
         <TabsList className="grid w-full grid-cols-4" data-testid="tabs-list">
           <TabsTrigger value="videos" data-testid="tab-videos">
             <Video className="mr-2 h-4 w-4" />
@@ -361,7 +361,7 @@ export default function TrainingDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="videos" className="space-y-4" data-testid="tab-content-videos">
+        <TabsContent value=4 className="grid grid-cols-1 gap-4" data-testid="tab-content-videos">
           {module.videos && module.videos.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {module.videos.map((video, index) => (
@@ -414,7 +414,7 @@ export default function TrainingDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="lessons" className="space-y-4" data-testid="tab-content-lessons">
+        <TabsContent value=4 className="grid grid-cols-1 gap-4" data-testid="tab-content-lessons">
           {isAdminOrCoach && (
             <div className="flex justify-end mb-4">
               <Button 
@@ -433,12 +433,12 @@ export default function TrainingDetail() {
           )}
 
           {module.lessons && module.lessons.length > 0 ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               {module.lessons.map((lesson) => (
                 <Card key={lesson.id} data-testid={`lesson-card-${lesson.id}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div className="space-y-1">
+                      <div className="grid grid-cols-1 gap-1">
                         <CardTitle>{lesson.title}</CardTitle>
                         <CardDescription>
                           <Clock className="inline-block mr-1 h-3 w-3" />
@@ -471,7 +471,7 @@ export default function TrainingDetail() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="grid grid-cols-1 gap-4">
                     <div className="prose dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
                       {lesson.content}
                     </div>
@@ -521,7 +521,7 @@ export default function TrainingDetail() {
                 <CardHeader>
                   <CardTitle>{editingLesson ? "Dersi Düzenle" : "Yeni Ders Ekle"}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="text-sm font-medium">Başlık</label>
                     <Input
@@ -587,9 +587,9 @@ export default function TrainingDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="quiz" className="space-y-4" data-testid="tab-content-quiz">
+        <TabsContent value=4 className="grid grid-cols-1 gap-4" data-testid="tab-content-quiz">
           {module.quizzes && module.quizzes.length > 0 ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               {module.quizzes.map((quiz) => (
                 <Card key={quiz.id} data-testid={`quiz-card-${quiz.id}`}>
                   <CardHeader>
@@ -598,7 +598,7 @@ export default function TrainingDetail() {
                       <CardDescription>{quiz.description}</CardDescription>
                     )}
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="grid grid-cols-1 gap-2">
                     <div className="flex gap-4 text-sm text-muted-foreground">
                       {quiz.passingScore && (
                         <span>Geçme Puanı: {quiz.passingScore}%</span>
@@ -625,7 +625,7 @@ export default function TrainingDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="flashcards" className="space-y-4" data-testid="tab-content-flashcards">
+        <TabsContent value=4 className="grid grid-cols-1 gap-4" data-testid="tab-content-flashcards">
           {module.flashcards && module.flashcards.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {module.flashcards.map((card) => (

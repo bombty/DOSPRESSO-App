@@ -92,13 +92,13 @@ export default function TrainingAssign() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="assign" className="space-y-4">
+        <TabsContent value="assign" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Toplu Eğitim Ataması</CardTitle>
               <CardDescription>Rol grubuna eğitim materyali atayın</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="material">Eğitim Materyali *</Label>
                 <Select value={selectedMaterial} onValueChange={setSelectedMaterial}>

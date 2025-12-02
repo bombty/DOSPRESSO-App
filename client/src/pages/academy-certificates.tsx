@@ -72,7 +72,7 @@ export default function AcademyCertificates() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               {/* Certificate Preview */}
               <div className={`bg-gradient-to-br ${currentLevel.certificateColor} p-4 rounded-lg border-2 border-dashed border-gray-300 text-center min-h-40 flex flex-col justify-between text-xs`}>
                 <div>
@@ -85,7 +85,7 @@ export default function AcademyCertificates() {
                   <p className="text-sm text-gray-600">Seviye {currentLevel.levelNumber} / 5</p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <p className="text-sm text-gray-700">
                     <span className="font-semibold">{user?.firstName ? `${user.firstName} ${user.lastName || ""}` : "Kullanıcı"}</span> tarafından başarıyla tamamlanmış
                   </p>
@@ -140,7 +140,7 @@ export default function AcademyCertificates() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <Badge variant="default">Kazanıldı</Badge>
                     <p className="text-sm text-muted-foreground">Seviye {level.levelNumber} / 5</p>
                     <div className="flex gap-2 mt-4">
@@ -174,7 +174,7 @@ export default function AcademyCertificates() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-4">
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-2">
                       <Badge variant="secondary">Kilitli</Badge>
                       <p className="text-sm text-muted-foreground">Seviye {level.levelNumber} / 5</p>
                       <p className="text-xs text-muted-foreground mt-2">Sonraki kariyer seviyesini geçmek için sınavı tamamla</p>

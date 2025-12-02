@@ -322,7 +322,7 @@ export default function ModuleDetail() {
           </TabsList>
 
           {/* Objectives Tab */}
-          <TabsContent value="objectives" className="space-y-4">
+          <TabsContent value="objectives" className="grid grid-cols-1 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Öğrenme Hedefleri</CardTitle>
@@ -332,7 +332,7 @@ export default function ModuleDetail() {
                 {learningObjectives.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">Hedef tanımlanmamış</p>
                 ) : (
-                  <ul className="space-y-3">
+                  <ul className="grid grid-cols-1 gap-3">
                     {learningObjectives.map((objective: string, idx: number) => (
                       <li key={idx} className="flex gap-3 text-sm">
                         <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -349,7 +349,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Steps Tab */}
-          <TabsContent value="steps" className="space-y-4">
+          <TabsContent value="steps" className="grid grid-cols-1 gap-4">
             {steps.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">İçerik tanımlanmamış</p>
             ) : (
@@ -394,7 +394,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Quiz Tab */}
-          <TabsContent value="quiz" className="space-y-4">
+          <TabsContent value="quiz" className="grid grid-cols-1 gap-4">
             {module.quiz && module.quiz.length > 0 ? (
               <>
                 <Card>
@@ -438,7 +438,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Completed Tab */}
-          <TabsContent value="completed" className="space-y-4">
+          <TabsContent value="completed" className="grid grid-cols-1 gap-4">
             <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
@@ -446,7 +446,7 @@ export default function ModuleDetail() {
                   Modül Tamamlandı!
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="grid grid-cols-1 gap-3">
                 <p className="text-sm">✓ Öğrenme hedefleri tamamlandı</p>
                 <p className="text-sm">✓ İçerik öğrenildi</p>
                 <p className="text-sm">✓ Sınav geçildi</p>
@@ -463,7 +463,7 @@ export default function ModuleDetail() {
 
   // HQ/ADMIN EDIT VIEW
   return (
-    <div className="space-y-6 p-6">
+    <div className="grid grid-cols-1 gap-6 p-6">
       <div className="flex items-center gap-2 mb-4">
         <Button
           onClick={() => setLocation("/akademi-hq")}
@@ -523,12 +523,12 @@ export default function ModuleDetail() {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader className="space-y-3">
+              <DialogHeader className="grid grid-cols-1 gap-3">
                 <DialogTitle>Modül Ön İzlemesi - Öğrenci Görünümü</DialogTitle>
                 
                 {/* Progress Bar */}
                 {previewPhase !== 'completed' && (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <div className="flex justify-between text-xs text-muted-foreground mb-1">
                       <span>İlerleme</span>
                       <span>
@@ -555,7 +555,7 @@ export default function ModuleDetail() {
 
               {/* Objectives Phase */}
               {previewPhase === 'objectives' && (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-sm">Öğrenme Hedefleri</CardTitle>
@@ -564,7 +564,7 @@ export default function ModuleDetail() {
                       {learningObjectives.length === 0 ? (
                         <p className="text-center text-muted-foreground py-8">Hedef tanımlanmamış</p>
                       ) : (
-                        <ul className="space-y-3">
+                        <ul className="grid grid-cols-1 gap-3">
                           {learningObjectives.map((objective: string, idx: number) => (
                             <li key={idx} className="flex gap-3 text-sm">
                               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -599,7 +599,7 @@ export default function ModuleDetail() {
 
               {/* Steps Phase */}
               {previewPhase === 'steps' && (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {steps.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Adım tanımlanmamış</p>
                   ) : (
@@ -613,7 +613,7 @@ export default function ModuleDetail() {
                             <Badge variant="outline">{currentStepIndex + 1}/{steps.length}</Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="grid grid-cols-1 gap-4">
                           <p className="text-sm whitespace-pre-wrap">{steps[currentStepIndex]?.content}</p>
                           {steps[currentStepIndex]?.media_suggestions && steps[currentStepIndex].media_suggestions.length > 0 && (
                             <div>
@@ -669,17 +669,17 @@ export default function ModuleDetail() {
 
               {/* Quiz Phase */}
               {previewPhase === 'quiz' && (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {!module?.quiz || module.quiz.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Quiz sorusu tanımlanmamış</p>
                   ) : (
                     <>
-                      <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
                         {module.quiz.map((q: any, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-green-500">
                             <CardContent className="pt-4">
                               <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
-                              <div className="space-y-2">
+                              <div className="grid grid-cols-1 gap-2">
                                 {q.options?.map((opt: string, optIdx: number) => (
                                   <button
                                     key={optIdx}
@@ -733,16 +733,16 @@ export default function ModuleDetail() {
 
               {/* Scenarios Phase */}
               {previewPhase === 'scenarios' && (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {scenarioTasks.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Senaryo tanımlanmamış</p>
                   ) : (
                     <>
-                      <div className="space-y-3">
+                      <div className="grid grid-cols-1 gap-3">
                         {scenarioTasks.map((scenario: any, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-purple-500">
                             <CardContent className="pt-4">
-                              <div className="space-y-2">
+                              <div className="grid grid-cols-1 gap-2">
                                 <p className="font-medium text-sm">{scenario.title || `Senaryo ${idx + 1}`}</p>
                                 <p className="text-sm text-muted-foreground">{scenario.description}</p>
                                 {scenario.tasks && (
@@ -860,13 +860,13 @@ export default function ModuleDetail() {
         </TabsList>
 
         {/* Overview */}
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="overview" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Modül Bilgileri</CardTitle>
               <CardDescription>Temel modül özellikleri ve yapısı</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="grid grid-cols-1 gap-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Başlık</p>
@@ -939,7 +939,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Learning Objectives */}
-        <TabsContent value="objectives" className="space-y-4">
+        <TabsContent value="objectives" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -976,7 +976,7 @@ export default function ModuleDetail() {
                         )}
                         className="space-y-4"
                       >
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 gap-3">
                           {objectivesForm.watch("objectives").map((_, index) => (
                             <FormField
                               key={index}
@@ -1008,7 +1008,7 @@ export default function ModuleDetail() {
               {learningObjectives.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Hedef tanımlanmamış</p>
               ) : (
-                <ul className="space-y-2">
+                <ul className="grid grid-cols-1 gap-2">
                   {learningObjectives.map((objective: string, idx: number) => (
                     <li key={idx} className="flex gap-2 text-sm">
                       <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
@@ -1022,7 +1022,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Steps */}
-        <TabsContent value="steps" className="space-y-4">
+        <TabsContent value="steps" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1119,7 +1119,7 @@ export default function ModuleDetail() {
               {steps.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Adım tanımlanmamış</p>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {steps.map((step: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-blue-500">
                       <CardHeader className="pb-2">
@@ -1154,7 +1154,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Quiz */}
-        <TabsContent value="quiz" className="space-y-4">
+        <TabsContent value="quiz" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1304,7 +1304,7 @@ export default function ModuleDetail() {
               {!module?.quiz || module.quiz.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Quiz sorusu tanımlanmamış</p>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   {module.quiz.map((q: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-green-500">
                       <CardContent className="pt-4">
@@ -1328,7 +1328,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Scenarios */}
-        <TabsContent value="scenarios" className="space-y-4">
+        <TabsContent value="scenarios" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1407,11 +1407,11 @@ export default function ModuleDetail() {
               {scenarioTasks.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Senaryo görev tanımlanmamış</p>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   {scenarioTasks.map((scenario: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-purple-500">
                       <CardContent className="pt-4">
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-1 gap-2">
                           <p className="font-medium text-sm">{scenario.title || `Senaryo ${idx + 1}`}</p>
                           <p className="text-sm text-muted-foreground">{scenario.description}</p>
                           {scenario.tasks && (
@@ -1434,7 +1434,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Supervisor Checklist */}
-        <TabsContent value="checklist" className="space-y-4">
+        <TabsContent value="checklist" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1513,11 +1513,11 @@ export default function ModuleDetail() {
               {!module?.supervisorChecklist || module.supervisorChecklist.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Kontrol listesi maddesi tanımlanmamış</p>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   {module.supervisorChecklist.map((item: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-orange-500">
                       <CardContent className="pt-4">
-                        <div className="space-y-1">
+                        <div className="grid grid-cols-1 gap-1">
                           <p className="font-medium text-sm">{item.title}</p>
                           <p className="text-sm text-muted-foreground">{item.description}</p>
                         </div>

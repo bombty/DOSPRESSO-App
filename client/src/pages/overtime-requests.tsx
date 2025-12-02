@@ -214,7 +214,7 @@ export default function OvertimeRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16" />
               ))}
@@ -321,7 +321,7 @@ export default function OvertimeRequestsPage() {
             </DialogDescription>
           </DialogHeader>
           <Form {...createForm}>
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
+            <form onSubmit={handleCreateSubmit} className="grid grid-cols-1 gap-4">
               <FormField
                 control={createForm.control}
                 name="shiftAttendanceId"

@@ -261,7 +261,7 @@ export default function RolYetkileri() {
             Sistem rollerinin modül ve işlem yetkilerini yönetin
           </p>
         </div>
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
@@ -320,7 +320,7 @@ export default function RolYetkileri() {
         )}
       </div>
 
-      <Accordion type="multiple" defaultValue={["hq", "branch"]} className="space-y-4">
+      <Accordion type="multiple" defaultValue={["hq", "branch"]} className="grid grid-cols-1 gap-4">
         {Object.entries(ROLE_GROUPS).map(([groupKey, group]) => {
           const Icon = group.icon;
           return (
@@ -351,7 +351,7 @@ export default function RolYetkileri() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4">
                           {allModules.map(module => {
                             const modulePerms = permissions[role]?.[module] || [];
                             

@@ -143,7 +143,7 @@ export default function EgitimDetay() {
             Modül Bilgileri
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid grid-cols-1 gap-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Kategori</p>
@@ -196,7 +196,7 @@ export default function EgitimDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="participants" className="space-y-4">
+        <TabsContent value="participants" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Kayıtlı Personeller</CardTitle>
@@ -204,7 +204,7 @@ export default function EgitimDetay() {
             </CardHeader>
             <CardContent>
               {progress && progress.length > 0 ? (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   {progress.map((p: any) => {
                     const user = getUserById(p.userId);
                     return (
@@ -247,7 +247,7 @@ export default function EgitimDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="space-y-4">
+        <TabsContent value="content" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Eğitim İçeriği</CardTitle>
@@ -259,7 +259,7 @@ export default function EgitimDetay() {
                   <div dangerouslySetInnerHTML={{ __html: module.content }} />
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div className="flex items-center gap-3 p-3 rounded-lg border">
                     <Play className="h-5 w-5 text-primary" />
                     <div>
@@ -287,7 +287,7 @@ export default function EgitimDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="certificates" className="space-y-4">
+        <TabsContent value="certificates" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Verilen Sertifikalar</CardTitle>
@@ -295,7 +295,7 @@ export default function EgitimDetay() {
             </CardHeader>
             <CardContent>
               {progress?.filter((p) => p.status === "completed").length > 0 ? (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   {progress
                     .filter((p) => p.status === "completed")
                     .map((p: any) => {

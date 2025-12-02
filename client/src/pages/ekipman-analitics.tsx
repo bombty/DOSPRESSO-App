@@ -68,7 +68,7 @@ export default function EquipmentAnalytics() {
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <div>
         <h1 className="text-3xl font-semibold" data-testid="text-page-title">
           Ekipman Analitiği
@@ -221,7 +221,7 @@ export default function EquipmentAnalytics() {
           {equipmentFaultCounts.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Tüm ekipmanlar sağlıklı</p>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
               {equipmentFaultCounts.map((eq) => (
                 <div key={eq.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">

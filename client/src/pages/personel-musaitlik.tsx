@@ -203,7 +203,7 @@ export default function PersonelMusaitlik() {
               </DialogDescription>
             </DialogHeader>
             <Form {...availabilityForm}>
-              <form onSubmit={availabilityForm.handleSubmit(onSubmitCreate)} className="space-y-4">
+              <form onSubmit={availabilityForm.handleSubmit(onSubmitCreate)} className="grid grid-cols-1 gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={availabilityForm.control}
@@ -375,8 +375,8 @@ export default function PersonelMusaitlik() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Başlangıç:</span>
                   <span className="font-medium" data-testid={`text-start-${availability.id}`}>
@@ -442,7 +442,7 @@ export default function PersonelMusaitlik() {
             </DialogDescription>
           </DialogHeader>
           <Form {...availabilityForm}>
-            <form onSubmit={availabilityForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+            <form onSubmit={availabilityForm.handleSubmit(onSubmitEdit)} className="grid grid-cols-1 gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={availabilityForm.control}

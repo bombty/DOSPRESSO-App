@@ -387,7 +387,7 @@ export default function IKPage() {
       </div>
 
       {/* Accordion Sections */}
-      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="space-y-4">
+      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="grid grid-cols-1 gap-4">
         {/* Section 1: Personel Listesi */}
         <AccordionItem value="personel" data-testid="accordion-personel">
           <Card>
@@ -399,7 +399,7 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="space-y-4">
+              <CardContent className="grid grid-cols-1 gap-4">
                 {/* Filters */}
                 <Card>
                   <CardHeader>
@@ -481,7 +481,7 @@ export default function IKPage() {
 
                 {/* Employee Table */}
                 {isLoading ? (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {[...Array(5)].map((_, i) => (
                       <Skeleton key={i} className="h-12 w-full" />
                     ))}
@@ -657,7 +657,7 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="space-y-4">
+              <CardContent className="grid grid-cols-1 gap-4">
                 {/* Disciplinary Filter */}
                 <div className="flex justify-between items-center">
                   <div className="flex gap-4">
@@ -679,7 +679,7 @@ export default function IKPage() {
 
                 {/* Disciplinary Table */}
                 {isDisciplinaryLoading ? (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {[...Array(5)].map((_, i) => (
                       <Skeleton key={i} className="h-12 w-full" />
                     ))}
@@ -761,7 +761,7 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="space-y-4">
+              <CardContent className="grid grid-cols-1 gap-4">
                 {/* Onboarding Filter */}
                 <div className="flex gap-4">
                   <div className="w-[200px]">
@@ -782,7 +782,7 @@ export default function IKPage() {
 
                 {/* Onboarding Table */}
                 {isOnboardingLoading ? (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {[...Array(5)].map((_, i) => (
                       <Skeleton key={i} className="h-12 w-full" />
                     ))}
@@ -863,7 +863,7 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="space-y-4">
+              <CardContent className="grid grid-cols-1 gap-4">
                 {/* Documents Filter */}
                 <div className="flex gap-4">
                   <div className="w-[200px]">
@@ -885,7 +885,7 @@ export default function IKPage() {
 
                 {/* Documents Table */}
                 {isDocumentsLoading ? (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {[...Array(5)].map((_, i) => (
                       <Skeleton key={i} className="h-12 w-full" />
                     ))}
@@ -1081,7 +1081,7 @@ function AddEmployeeDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -1400,7 +1400,7 @@ function EditEmployeeDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
             {userRole === "admin" && (
               <>
                 <div className="grid grid-cols-2 gap-4">
@@ -1742,7 +1742,7 @@ function AddWarningDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
             <FormField
               control={form.control}
               name="warningType"
@@ -1889,8 +1889,8 @@ function ResetPasswordDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-2">
             <label className="text-sm font-medium">Yeni Şifre</label>
             <Input
               type="password"

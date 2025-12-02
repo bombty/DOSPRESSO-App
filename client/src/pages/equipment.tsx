@@ -288,7 +288,7 @@ export default function Equipment() {
   const missingQRCount = equipment?.filter(e => !e.qrCodeUrl).length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       {criticalEquipment && criticalEquipment.length > 0 && (
         <Card className="border-red-500 bg-red-50 dark:bg-red-950">
           <CardHeader>
@@ -362,7 +362,7 @@ export default function Equipment() {
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
                     name="equipmentType"
@@ -523,7 +523,7 @@ export default function Equipment() {
               if (editingEquipment) {
                 updateMutation.mutate({ id: editingEquipment.id, data });
               }
-            })} className="space-y-4">
+            })} className="grid grid-cols-1 gap-4">
               <FormField
                 control={editForm.control}
                 name="equipmentType"
@@ -866,7 +866,7 @@ export default function Equipment() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="grid grid-cols-1 gap-3">
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <span data-testid={`text-branch-${item.id}`}>{getBranchName(item.branchId)}</span>

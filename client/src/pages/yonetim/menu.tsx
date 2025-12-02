@@ -188,7 +188,7 @@ function SortableSection({
             onDragEnd={(e) => onDragItemEnd(e, section.id)}
           >
             <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 {items.map(item => (
                   <SortableItem 
                     key={item.id} 
@@ -663,7 +663,7 @@ export default function AdminMenuManagement() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -722,7 +722,7 @@ export default function AdminMenuManagement() {
             </DialogTitle>
           </DialogHeader>
           <Form {...sectionForm}>
-            <form onSubmit={sectionForm.handleSubmit(onSectionSubmit)} className="space-y-4">
+            <form onSubmit={sectionForm.handleSubmit(onSectionSubmit)} className="grid grid-cols-1 gap-4">
               <FormField
                 control={sectionForm.control}
                 name="slug"
@@ -838,7 +838,7 @@ export default function AdminMenuManagement() {
             </DialogTitle>
           </DialogHeader>
           <Form {...itemForm}>
-            <form onSubmit={itemForm.handleSubmit(onItemSubmit)} className="space-y-4">
+            <form onSubmit={itemForm.handleSubmit(onItemSubmit)} className="grid grid-cols-1 gap-4">
               <FormField
                 control={itemForm.control}
                 name="sectionId"
@@ -1015,14 +1015,14 @@ export default function AdminMenuManagement() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
             {/* Existing Rules */}
             <div>
               <h3 className="text-sm font-medium mb-2">Mevcut Kurallar</h3>
               {currentRules.length === 0 ? (
                 <div className="text-sm text-muted-foreground py-2" data-testid="text-no-rules">Henüz kural eklenmemiş</div>
               ) : (
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   {currentRules.map(rule => (
                     <div key={rule.id} className="flex items-center justify-between p-2 bg-muted/40 rounded-md" data-testid={`rule-${rule.id}`}>
                       <div className="flex items-center gap-2">
@@ -1053,7 +1053,7 @@ export default function AdminMenuManagement() {
             <div>
               <h3 className="text-sm font-medium mb-2">Yeni Kural Ekle</h3>
               <Form {...ruleForm}>
-                <form onSubmit={ruleForm.handleSubmit(onRuleSubmit)} className="space-y-4">
+                <form onSubmit={ruleForm.handleSubmit(onRuleSubmit)} className="grid grid-cols-1 gap-4">
                   <FormField
                     control={ruleForm.control}
                     name="ruleType"

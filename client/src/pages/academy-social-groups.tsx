@@ -53,7 +53,7 @@ export default function AcademySocialGroups() {
                   <Badge variant="outline" className="text-xs">{group.memberCount}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1">
+              <CardContent className="grid grid-cols-1 gap-1">
                 <p className="text-xs line-clamp-2">{group.description}</p>
                 <div className="flex gap-1">
                   <Button size="sm" variant="outline" className="flex-1 h-8">
@@ -91,7 +91,7 @@ export default function AcademySocialGroups() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-1">
+          <div className="grid grid-cols-1 gap-1">
             <Button variant="outline" className="w-full text-xs h-8">
               Mentör Bul
             </Button>

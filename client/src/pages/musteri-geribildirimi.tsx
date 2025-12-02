@@ -149,7 +149,7 @@ export default function MisafirGeriBildirim() {
               <CardTitle className="text-sm font-medium">Puan Dağılımı</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 {[5, 4, 3, 2, 1].map((rating) => {
                   const count = stats[`rating${rating}` as keyof FeedbackStats] as number;
                   const percentage = stats.totalCount > 0 ? (count / stats.totalCount) * 100 : 0;
@@ -174,7 +174,7 @@ export default function MisafirGeriBildirim() {
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4">
         {!feedbackList || feedbackList.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -187,7 +187,7 @@ export default function MisafirGeriBildirim() {
             <Card key={feedback.id} data-testid={`card-feedback-${feedback.id}`} className="hover-elevate">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <div className="flex items-center gap-3">
                       {renderStars(feedback.rating, "sm")}
                       <span className="text-sm text-muted-foreground" data-testid={`text-feedback-date-${feedback.id}`}>
@@ -236,9 +236,9 @@ export default function MisafirGeriBildirim() {
             <DialogTitle>Geri Bildirimi İncele</DialogTitle>
             <DialogDescription>Geri bildirim için inceleme notu ekleyin</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
             {reviewingFeedback && (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 {renderStars(reviewingFeedback.rating)}
                 {reviewingFeedback.comment && (
                   <p className="text-sm p-3 bg-muted rounded-md">{reviewingFeedback.comment}</p>

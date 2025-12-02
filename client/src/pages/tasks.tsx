@@ -472,7 +472,7 @@ export default function Tasks() {
           <CollapsibleContent>
             <CardContent className="grid grid-cols-1 gap-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <label className="text-sm font-medium">Arama</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -487,7 +487,7 @@ export default function Tasks() {
                 </div>
 
                 {isHQ && (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <label className="text-sm font-medium">Şube</label>
                     <Select
                       value={filterBranchId?.toString() || "all"}
@@ -508,7 +508,7 @@ export default function Tasks() {
                   </div>
                 )}
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <label className="text-sm font-medium">Atanan Kişi</label>
                   <Select
                     value={filterAssigneeId || "all"}
@@ -528,7 +528,7 @@ export default function Tasks() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <label className="text-sm font-medium">Durum</label>
                   <Select
                     value={filterStatus || "all"}
@@ -550,7 +550,7 @@ export default function Tasks() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <label className="text-sm font-medium">Öncelik</label>
                   <Select
                     value={filterPriority || "all"}
@@ -569,7 +569,7 @@ export default function Tasks() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <label className="text-sm font-medium">Başlangıç Tarihi</label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -593,7 +593,7 @@ export default function Tasks() {
                   </Popover>
                 </div>
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <label className="text-sm font-medium">Bitiş Tarihi</label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -640,7 +640,7 @@ export default function Tasks() {
               <DialogTitle>Yeni Görev Ekle</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
                 <FormField
                   control={form.control}
                   name="description"
@@ -763,15 +763,15 @@ export default function Tasks() {
         </div>
 
         {["all", "acilis", "kapanis", "gunluk"].map((tabValue) => (
-          <TabsContent key={tabValue} value={tabValue} className="space-y-4">
+          <TabsContent key={tabValue} value={tabValue} className="grid grid-cols-1 gap-4">
             {isLoading ? (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Skeleton key={i} className="h-24 w-full" />
                 ))}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 {/* Sortable Column Headers - Desktop only */}
                 <Card className="hidden lg:block">
                   <CardContent className="py-2 px-4">
@@ -1054,7 +1054,7 @@ export default function Tasks() {
 
                   {/* Photo Upload & Complete - For tasks in progress or waiting for photo */}
                   {(selectedTask.status === "devam_ediyor" || selectedTask.status === "foto_bekleniyor") && (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-2">
                       <ObjectUploader
                         maxNumberOfFiles={1}
                         maxFileSize={10485760}

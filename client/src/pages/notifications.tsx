@@ -161,7 +161,7 @@ export default function Notifications() {
 
         <TabsContent value={activeTab} className="mt-6 space-y-4">
           {isLoading ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               {[...Array(5)].map((_, i) => (
                 <Card key={i}>
                   <CardContent className="p-4">
@@ -172,7 +172,7 @@ export default function Notifications() {
               ))}
             </div>
           ) : filteredNotifications.length > 0 ? (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
               {filteredNotifications.map((notification) => {
                 const Icon = notificationTypeIcons[notification.type] || Bell;
                 const typeLabel = notificationTypeLabels[notification.type] || "Bildirim";

@@ -412,7 +412,7 @@ export default function EquipmentManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -487,7 +487,7 @@ export default function EquipmentManagement() {
         </TabsList>
 
         {/* TAB 1: Bekleyen Talepler */}
-        <TabsContent value="pending" className="space-y-4">
+        <TabsContent value="pending" className="grid grid-cols-1 gap-4">
           {/* Filters */}
           <div className="bg-muted p-4 rounded-lg space-y-3">
             <div className="flex gap-2 items-center">
@@ -578,7 +578,7 @@ export default function EquipmentManagement() {
               <Button onClick={() => setShowCreateDialog(true)}>Yeni Talep Oluştur</Button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               {pendingRequests.map(req => {
                 const eq = equipment.find(e => e.id === req.equipmentId);
                 const branch = branches.find(b => b.id === eq?.branchId);
@@ -626,11 +626,11 @@ export default function EquipmentManagement() {
         </TabsContent>
 
         {/* TAB 2: Devam Eden */}
-        <TabsContent value="inprogress" className="space-y-4">
+        <TabsContent value="inprogress" className="grid grid-cols-1 gap-4">
           {inProgressRequests.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">Devam eden talep yok</div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               {inProgressRequests.map(req => {
                 const eq = equipment.find(e => e.id === req.equipmentId);
                 const branch = branches.find(b => b.id === eq?.branchId);
@@ -657,11 +657,11 @@ export default function EquipmentManagement() {
         </TabsContent>
 
         {/* TAB 3: Tamamlanan */}
-        <TabsContent value="completed" className="space-y-4">
+        <TabsContent value="completed" className="grid grid-cols-1 gap-4">
           {completedRequests.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">Tamamlanan talep yok</div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               {completedRequests.map(req => {
                 const eq = equipment.find(e => e.id === req.equipmentId);
                 const branch = branches.find(b => b.id === eq?.branchId);
@@ -685,7 +685,7 @@ export default function EquipmentManagement() {
         </TabsContent>
 
         {/* TAB 4: Ekipman Durumu */}
-        <TabsContent value="equipment" className="space-y-4">
+        <TabsContent value="equipment" className="grid grid-cols-1 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {equipmentForDisplay.map(eq => {
               const health = getHealthStatus(eq);
@@ -756,7 +756,7 @@ export default function EquipmentManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6">
               {/* Equipment Details */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-muted p-4 rounded-lg space-y-2">
@@ -799,7 +799,7 @@ export default function EquipmentManagement() {
               </div>
 
               {/* Service History */}
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <History className="w-4 h-4" />
                   Servis Geçmişi ({serviceRequests.filter(r => r.equipmentId === selectedEquipmentDetail.id).length} talep)
@@ -875,7 +875,7 @@ export default function EquipmentManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6">
               {/* Equipment Info */}
               {equipment.find(e => e.id === selectedRequest.equipmentId) && (
                 <div className="bg-muted p-4 rounded-lg">
@@ -888,7 +888,7 @@ export default function EquipmentManagement() {
               )}
 
               {/* Status */}
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <label className="text-sm font-medium">Durum</label>
                 <div className="flex gap-2 flex-wrap">
                   {Object.entries(STATUS_LABELS).map(([key, label]) => (
@@ -906,7 +906,7 @@ export default function EquipmentManagement() {
               </div>
 
               {/* Notes */}
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <label className="text-sm font-medium">Notlar</label>
                 <Textarea
                   placeholder="Not ekleyin..."
@@ -921,7 +921,7 @@ export default function EquipmentManagement() {
               </div>
 
               {/* Timeline */}
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <History className="w-4 h-4" />
                   Zaman Çizelgesi
@@ -950,7 +950,7 @@ export default function EquipmentManagement() {
               Ekipman QR kodunu kameraya gösteriniz
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
             <div 
               id="qr-reader" 
               className="w-full rounded-lg overflow-hidden bg-black"
@@ -980,10 +980,10 @@ export default function EquipmentManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6">
             {/* Step 1: Branch */}
             {createStep === 1 && (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <label className="text-sm font-medium">Şube Seçiniz</label>
                 <Select value={selectedBranch} onValueChange={setSelectedBranch}>
                   <SelectTrigger data-testid="select-branch-create">
@@ -1002,7 +1002,7 @@ export default function EquipmentManagement() {
 
             {/* Step 2: Equipment */}
             {createStep === 2 && selectedBranch && (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <label className="text-sm font-medium">Ekipman Seçiniz</label>
                 <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
                   <SelectTrigger data-testid="select-equipment-create">
@@ -1021,8 +1021,8 @@ export default function EquipmentManagement() {
 
             {/* Step 3: Form */}
             {createStep === 3 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-2">
                   <label className="text-sm font-medium">Teknik / Sağlayıcı *</label>
                   <input
                     placeholder="Teknisyen adı"
@@ -1032,7 +1032,7 @@ export default function EquipmentManagement() {
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <label className="text-sm font-medium">Açıklama / Sorun</label>
                   <Textarea
                     placeholder="Sorun açıklaması..."
@@ -1041,7 +1041,7 @@ export default function EquipmentManagement() {
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <label className="text-sm font-medium">Hizmet Kararı</label>
                   <input
                     placeholder="Bakım / Tamir vb..."

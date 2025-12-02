@@ -157,7 +157,7 @@ export default function AcademyBranchAnalytics() {
                 <CardTitle>Şube Sıralaması</CardTitle>
                 <CardDescription>Tamamlama oranına göre sıralanmış</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="grid grid-cols-1 gap-3">
                 {topBranches.map((branch: any, idx: number) => (
                   <div key={branch.branchId} className="space-y-2 p-3 border rounded-lg" data-testid={`branch-card-${branch.branchId}`}>
                     <div className="flex items-center justify-between">

@@ -200,7 +200,7 @@ export default function Announcements() {
                 <DialogTitle>Yeni Duyuru Yayınla</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
                     name="title"
@@ -368,7 +368,7 @@ export default function Announcements() {
                     )}
                   />
 
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <FormLabel>Dosya Ekle (Opsiyonel)</FormLabel>
                       <div className="mt-2">
@@ -456,7 +456,7 @@ export default function Announcements() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4">
           {[...Array(3)].map((_, i) => (
             <Card key={i}>
               <CardContent className="p-4">
@@ -467,7 +467,7 @@ export default function Announcements() {
           ))}
         </div>
       ) : announcements && announcements.length > 0 ? (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4">
           {announcements.map((announcement) => {
             const isUrgent = announcement.priority === 'urgent';
             const isActive = announcement.publishedAt && (!announcement.expiresAt || new Date(announcement.expiresAt) > new Date());
@@ -508,7 +508,7 @@ export default function Announcements() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-3">
+                <CardContent className="grid grid-cols-1 gap-3">
                   <p className="text-sm" data-testid={`text-message-${announcement.id}`}>
                     {announcement.message}
                   </p>
@@ -577,7 +577,7 @@ export default function Announcements() {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
             {readStatus ? (
               <>
                 <div className="flex items-center justify-between p-4 bg-muted rounded-lg">

@@ -139,7 +139,7 @@ export default function LeaveRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
@@ -284,7 +284,7 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
             <FormField
               control={form.control}
               name="leaveType"

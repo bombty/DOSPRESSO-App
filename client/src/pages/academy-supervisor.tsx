@@ -114,7 +114,7 @@ export default function AcademySupervisor() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="team" className="space-y-2">
+        <TabsContent value="team" className="grid grid-cols-1 gap-2">
           <Card>
             <CardHeader>
               <CardTitle>Ekip Üyeleri Eğitim Durumu</CardTitle>
@@ -126,7 +126,7 @@ export default function AcademySupervisor() {
               ) : teamMembers.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">Ekip üyesi bulunamadı</div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   {teamMembers.map((member: any) => (
                     <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
@@ -147,7 +147,7 @@ export default function AcademySupervisor() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="modules" className="space-y-4">
+        <TabsContent value="modules" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Eğitim Modülleri</CardTitle>
@@ -184,7 +184,7 @@ export default function AcademySupervisor() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="exams" className="space-y-4">
+        <TabsContent value="exams" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Beklemede Olan Sınav Talepleri</CardTitle>
@@ -194,7 +194,7 @@ export default function AcademySupervisor() {
               {pendingExams.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">Beklemede talep yok</div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   {pendingExams.map((exam: any) => (
                     <div key={exam.id} className="p-4 border rounded-lg space-y-3">
                       <div className="flex items-center justify-between">
@@ -241,7 +241,7 @@ export default function AcademySupervisor() {
                             <DialogHeader>
                               <DialogTitle>Sınav Talebini Reddet</DialogTitle>
                             </DialogHeader>
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 gap-4">
                               <p className="text-sm text-muted-foreground">
                                 {exam.userId} kullanıcısının {exam.targetRoleId} pozisyonuna geçiş talebini reddetmek üzeresin.
                               </p>

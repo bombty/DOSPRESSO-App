@@ -631,7 +631,7 @@ export default function AcademyHQ() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
+                      <div className="grid grid-cols-1 gap-2">
                         {quizzes.slice(0, 3).map((quiz: any) => (
                           <div key={quiz.id} className="p-2 border rounded text-sm">
                             <p className="font-medium">{quiz.title_tr}</p>
@@ -678,7 +678,7 @@ export default function AcademyHQ() {
         </TabsContent>
 
         {/* EXAM REQUESTS TAB */}
-        <TabsContent value="exams" className="space-y-4">
+        <TabsContent value="exams" className="grid grid-cols-1 gap-4">
           <div className="grid md:grid-cols-2 gap-4">
             {/* Pending */}
             <Card>
@@ -758,7 +758,7 @@ export default function AcademyHQ() {
         </TabsContent>
 
         {/* EĞİTİM MODÜLLERI TAB */}
-        <TabsContent value="training" className="space-y-4">
+        <TabsContent value="training" className="grid grid-cols-1 gap-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Eğitim Modülleri Yönetimi</h2>
             <div className="flex gap-2">
@@ -794,7 +794,7 @@ export default function AcademyHQ() {
                   
                   {/* Step 1: Input Text or File */}
                   {aiWizardStep === 1 && (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="bg-muted/50 p-3 rounded-lg text-sm">
                         <p className="font-medium mb-1">Nasıl Çalışır?</p>
                         <p className="text-muted-foreground">Metin yapıştırın veya PDF/fotoğraf yükleyin. AI, içeriği otomatik olarak yapılandırılmış bir eğitim modülüne dönüştürecek.</p>
@@ -855,7 +855,7 @@ export default function AcademyHQ() {
                       
                       {/* File Upload Mode */}
                       {aiInputMode === "file" && (
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 gap-3">
                           <label className="text-sm font-medium mb-1 block">PDF veya Fotoğraf Yükle</label>
                           <div 
                             className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
@@ -967,7 +967,7 @@ export default function AcademyHQ() {
                   
                   {/* Step 2: Preview Generated Module */}
                   {aiWizardStep === 2 && generatedModule && (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
                         <p className="text-sm font-medium text-green-700 dark:text-green-300">Modül başarıyla oluşturuldu!</p>
                       </div>
@@ -993,7 +993,7 @@ export default function AcademyHQ() {
                         
                         <div>
                           <h5 className="font-medium text-sm mb-2">Eğitim Adımları ({generatedModule.steps?.length || 0})</h5>
-                          <div className="space-y-2">
+                          <div className="grid grid-cols-1 gap-2">
                             {generatedModule.steps?.map((step: any, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{step.stepNumber}. {step.title}</p>
@@ -1005,7 +1005,7 @@ export default function AcademyHQ() {
                         
                         <div>
                           <h5 className="font-medium text-sm mb-2">Quiz Soruları ({generatedModule.quiz?.length || 0})</h5>
-                          <div className="space-y-2">
+                          <div className="grid grid-cols-1 gap-2">
                             {generatedModule.quiz?.map((q: any, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{q.questionText}</p>
@@ -1023,7 +1023,7 @@ export default function AcademyHQ() {
                         
                         <div>
                           <h5 className="font-medium text-sm mb-2">Senaryolar ({generatedModule.scenarioTasks?.length || 0})</h5>
-                          <div className="space-y-2">
+                          <div className="grid grid-cols-1 gap-2">
                             {generatedModule.scenarioTasks?.map((s: any, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{s.title}</p>
@@ -1035,7 +1035,7 @@ export default function AcademyHQ() {
                         
                         <div>
                           <h5 className="font-medium text-sm mb-2">Denetçi Kontrol Listesi ({generatedModule.supervisorChecklist?.length || 0})</h5>
-                          <div className="space-y-2">
+                          <div className="grid grid-cols-1 gap-2">
                             {generatedModule.supervisorChecklist?.map((c: any, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{c.title}</p>
@@ -1075,7 +1075,7 @@ export default function AcademyHQ() {
                   <DialogTitle>Yeni Eğitim Modülü Oluştur</DialogTitle>
                 </DialogHeader>
                 <Form {...trainingForm}>
-                  <form onSubmit={trainingForm.handleSubmit((data) => createTrainingMutation.mutate(data))} className="space-y-4">
+                  <form onSubmit={trainingForm.handleSubmit((data) => createTrainingMutation.mutate(data))} className="grid grid-cols-1 gap-4">
                     <FormField
                       control={trainingForm.control}
                       name="title"
@@ -1153,7 +1153,7 @@ export default function AcademyHQ() {
               </DialogHeader>
               {editingModule && (
                 <Form {...editTrainingForm}>
-                  <form onSubmit={editTrainingForm.handleSubmit((data) => updateTrainingMutation.mutate(data))} className="space-y-4">
+                  <form onSubmit={editTrainingForm.handleSubmit((data) => updateTrainingMutation.mutate(data))} className="grid grid-cols-1 gap-4">
                     <FormField
                       control={editTrainingForm.control}
                       name="title"

@@ -242,7 +242,7 @@ export default function DenetimYurutmePage() {
             İlerleme ve Skor
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid grid-cols-1 gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Tamamlanan Maddeler</p>
@@ -258,7 +258,7 @@ export default function DenetimYurutmePage() {
       </Card>
 
       {/* Audit Items */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4">
         <h2 className="text-xl font-semibold">Denetim Maddeleri</h2>
         
         {audit.items.map((item, index) => {
@@ -279,7 +279,7 @@ export default function DenetimYurutmePage() {
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="grid grid-cols-1 gap-4">
                 {/* Response Input */}
                 {itemType === 'checkbox' && (
                   <RadioGroup
@@ -378,7 +378,7 @@ export default function DenetimYurutmePage() {
 
                 {/* Photo Upload */}
                 {requiresPhoto && !isCompleted && (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <Label>Fotoğraf {requiresPhoto && '*'}</Label>
                     <ObjectUploader
                       onGetUploadParameters={async () => {
@@ -448,7 +448,7 @@ export default function DenetimYurutmePage() {
           <CardTitle>Genel Değerlendirme</CardTitle>
           <CardDescription>Denetim sonucu genel notlar ve aksiyon öğeleri</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid grid-cols-1 gap-4">
           <div>
             <Label htmlFor="overall-notes">Genel Notlar</Label>
             <Textarea

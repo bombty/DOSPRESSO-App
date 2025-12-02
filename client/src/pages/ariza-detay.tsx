@@ -115,7 +115,7 @@ export default function FaultDetail() {
 
   if (faultLoading) {
     return (
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6">
         <Skeleton className="h-12 w-40" />
         <Skeleton className="h-40 w-full" />
       </div>
@@ -124,7 +124,7 @@ export default function FaultDetail() {
 
   if (!fault) {
     return (
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6">
         <Button variant="outline" onClick={() => setLocation("/ekipman-arizalar")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Geri Dön
@@ -139,7 +139,7 @@ export default function FaultDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <Button variant="outline" onClick={() => setLocation("/ekipman-arizalar")}>
         <ArrowLeft className="w-4 h-4 mr-2" />
         Geri Dön
@@ -218,7 +218,7 @@ export default function FaultDetail() {
         <CardHeader>
           <CardTitle>Detaylı Bilgiler</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid grid-cols-1 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Açıklama</p>
@@ -270,7 +270,7 @@ export default function FaultDetail() {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="space-y-4">
+            <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4">
               <FormField
                 control={form.control}
                 name="currentStage"

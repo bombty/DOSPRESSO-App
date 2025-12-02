@@ -569,7 +569,7 @@ export default function EquipmentDetail() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6">
         <Skeleton className="h-10 w-48" />
         <Card>
           <CardHeader>
@@ -586,7 +586,7 @@ export default function EquipmentDetail() {
 
   if (!equipment) {
     return (
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6">
         <Link href="/ekipman" asChild>
           <Button variant="outline" data-testid="button-back">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -606,7 +606,7 @@ export default function EquipmentDetail() {
   const metadata = EQUIPMENT_METADATA[equipment.equipmentType as keyof typeof EQUIPMENT_METADATA];
 
   return (
-    <div className="max-w-full overflow-x-hidden space-y-6">
+    <div className="max-w-full overflow-x-hidden grid grid-cols-1 gap-6">
       <div className="flex items-center gap-4">
         <Link href="/ekipman" asChild>
           <Button variant="outline" data-testid="button-back">
@@ -680,7 +680,7 @@ export default function EquipmentDetail() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid grid-cols-1 gap-4">
           <div className="grid gap-4 md:grid-cols-2">
             {equipment.purchaseDate && (
               <div className="flex items-center gap-2">
@@ -740,7 +740,7 @@ export default function EquipmentDetail() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="maintenance" className="space-y-4">
+      <Tabs defaultValue="maintenance" className="grid grid-cols-1 gap-4">
         <TabsList data-testid="tabs-equipment-detail">
           <TabsTrigger value="maintenance" data-testid="tab-maintenance">
             Bakım Geçmişi
@@ -765,7 +765,7 @@ export default function EquipmentDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="maintenance" className="space-y-4">
+        <TabsContent value="maintenance" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Bakım Geçmişi</CardTitle>
@@ -775,7 +775,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {equipment.maintenanceLogs.length > 0 ? (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {equipment.maintenanceLogs.map((log) => (
                     <div key={log.id} className="flex gap-4 pb-4 border-b last:border-0" data-testid={`maintenance-log-${log.id}`}>
                       <div className="flex-shrink-0 mt-1">
@@ -830,7 +830,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="faults" className="space-y-4">
+        <TabsContent value="faults" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Arıza Kayıtları</CardTitle>
@@ -840,7 +840,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {equipment.faults.length > 0 ? (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {equipment.faults.map((fault) => (
                     <div key={fault.id} className="flex gap-4 pb-4 border-b last:border-0" data-testid={`fault-${fault.id}`}>
                       <div className="flex-shrink-0 mt-1">
@@ -904,7 +904,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="service-requests" className="space-y-4">
+        <TabsContent value="service-requests" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
@@ -934,7 +934,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {serviceRequests && serviceRequests.length > 0 ? (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {serviceRequests.map((request) => (
                     <div key={request.id} className="rounded-lg border p-4 space-y-4" data-testid={`service-request-${request.id}`}>
                       <div className="flex items-start justify-between gap-4">
@@ -965,7 +965,7 @@ export default function EquipmentDetail() {
                             </div>
                           )}
                           {(request.estimatedCost || request.actualCost) && (
-                            <div className="space-y-1">
+                            <div className="grid grid-cols-1 gap-1">
                               {request.estimatedCost && (
                                 <div className="flex items-center gap-2">
                                   <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -1040,7 +1040,7 @@ export default function EquipmentDetail() {
                               Tümünü Gör
                             </Button>
                           </div>
-                          <div className="space-y-2">
+                          <div className="grid grid-cols-1 gap-2">
                             {request.timeline.slice(-3).reverse().map((entry: any) => (
                               <div key={entry.id} className="text-xs text-muted-foreground flex items-start gap-2">
                                 <Avatar className="h-6 w-6">
@@ -1077,7 +1077,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="comments" className="space-y-4">
+        <TabsContent value="comments" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Yorumlar</CardTitle>
@@ -1085,9 +1085,9 @@ export default function EquipmentDetail() {
                 Bu ekipman hakkında yorumlar
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="grid grid-cols-1 gap-4">
               {equipment.comments.length > 0 && (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {equipment.comments.map((comment) => (
                     <div key={comment.id} className="flex gap-4 pb-4 border-b" data-testid={`comment-${comment.id}`}>
                       <div className="flex-shrink-0 mt-1">
@@ -1116,7 +1116,7 @@ export default function EquipmentDetail() {
 
               <div className="pt-4 border-t">
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit((data) => createCommentMutation.mutate(data))} className="space-y-4">
+                  <form onSubmit={form.handleSubmit((data) => createCommentMutation.mutate(data))} className="grid grid-cols-1 gap-4">
                     <FormField
                       control={form.control}
                       name="comment"
@@ -1151,7 +1151,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="qr" className="space-y-4">
+        <TabsContent value="qr" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1207,7 +1207,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="maintenance-schedule" className="space-y-4">
+        <TabsContent value="maintenance-schedule" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Bakım Planı</CardTitle>
@@ -1323,7 +1323,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {troubleshootingSteps && troubleshootingSteps.length > 0 ? (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   {troubleshootingSteps.map((step) => (
                     <div 
                       key={step.id} 
@@ -1379,7 +1379,7 @@ export default function EquipmentDetail() {
             <DialogTitle>Sorun Giderme Adımı Düzenle</DialogTitle>
           </DialogHeader>
           {selectedTroubleshootingStep && (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="text-sm font-medium">Adım Açıklaması</label>
                 <Textarea 
@@ -1460,7 +1460,7 @@ export default function EquipmentDetail() {
             </DialogDescription>
           </DialogHeader>
           <Form {...serviceRequestForm}>
-            <form onSubmit={serviceRequestForm.handleSubmit((data) => createServiceRequestMutation.mutate(data))} className="space-y-4">
+            <form onSubmit={serviceRequestForm.handleSubmit((data) => createServiceRequestMutation.mutate(data))} className="grid grid-cols-1 gap-4">
               <FormField
                 control={serviceRequestForm.control}
                 name="serviceDecision"
@@ -1563,8 +1563,8 @@ export default function EquipmentDetail() {
           </DialogHeader>
           {selectedServiceRequest && (
             <Form {...statusUpdateForm}>
-              <form onSubmit={statusUpdateForm.handleSubmit((data) => updateStatusMutation.mutate({ ...data, requestId: selectedServiceRequest.id }))} className="space-y-4">
-                <div className="space-y-2">
+              <form onSubmit={statusUpdateForm.handleSubmit((data) => updateStatusMutation.mutate({ ...data, requestId: selectedServiceRequest.id }))} className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-2">
                   <p className="text-sm font-medium">Mevcut Durum</p>
                   <Badge variant="outline" data-testid="badge-current-status">
                     {statusLabels[selectedServiceRequest.status] || selectedServiceRequest.status}
@@ -1652,7 +1652,7 @@ export default function EquipmentDetail() {
             </DialogDescription>
           </DialogHeader>
           {selectedTimeline && selectedTimeline.timeline && selectedTimeline.timeline.length > 0 ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               {[...selectedTimeline.timeline].reverse().map((entry: any) => (
                 <div key={entry.id} className="flex items-start gap-3 pb-4 border-b last:border-0" data-testid={`timeline-entry-${entry.id}`}>
                   <Avatar className="h-10 w-10">
@@ -1709,7 +1709,7 @@ export default function EquipmentDetail() {
             </DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="space-y-4">
+            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4">
               <FormField
                 control={editForm.control}
                 name="equipmentType"
@@ -1896,7 +1896,7 @@ export default function EquipmentDetail() {
             </DialogDescription>
           </DialogHeader>
           <Form {...faultForm}>
-            <form onSubmit={faultForm.handleSubmit((data) => createFaultMutation.mutate(data))} className="space-y-4">
+            <form onSubmit={faultForm.handleSubmit((data) => createFaultMutation.mutate(data))} className="grid grid-cols-1 gap-4">
               <FormField
                 control={faultForm.control}
                 name="equipmentName"
@@ -1922,13 +1922,13 @@ export default function EquipmentDetail() {
                     Arıza raporu oluşturmadan önce aşağıdaki adımları tamamlayın:
                   </p>
                   {isLoadingSteps ? (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-2">
                       {[1, 2, 3].map((i) => (
                         <Skeleton key={i} className="h-12 w-full" />
                       ))}
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-3">
                       {troubleshootingSteps.map((step) => {
                         const isMissing = step.isRequired && !completedStepIds.has(step.id);
                         return (

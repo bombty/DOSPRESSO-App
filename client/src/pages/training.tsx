@@ -186,7 +186,7 @@ export default function Training() {
 
   if (isLoading || progressLoading) {
     return (
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6">
         <Skeleton className="h-12 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
@@ -198,7 +198,7 @@ export default function Training() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Eğitim Modülleri</h1>
@@ -217,7 +217,7 @@ export default function Training() {
                 <DialogTitle>Yeni Eğitim Modülü</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
                     name="title"
@@ -401,7 +401,7 @@ export default function Training() {
         )}
       </div>
 
-      <Tabs defaultValue={myTrainings.length > 0 ? "my-trainings" : "all"} className="space-y-4">
+      <Tabs defaultValue={myTrainings.length > 0 ? "my-trainings" : "all"} className="grid grid-cols-1 gap-4">
         <TabsList>
           {myTrainings.length > 0 && (
             <TabsTrigger value="my-trainings" data-testid="tab-my-trainings">
@@ -420,7 +420,7 @@ export default function Training() {
         </TabsList>
 
         {/* My Trainings Tab - Mandatory + optional modules with progress */}
-        <TabsContent value="my-trainings" className="space-y-4">
+        <TabsContent value="my-trainings" className="grid grid-cols-1 gap-4">
           {myTrainings.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -469,7 +469,7 @@ export default function Training() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="grid grid-cols-1 gap-4">
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {module.description || "Açıklama yok"}
                       </p>
@@ -507,7 +507,7 @@ export default function Training() {
           )}
         </TabsContent>
 
-        <TabsContent value="all" className="space-y-4">
+        <TabsContent value="all" className="grid grid-cols-1 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {modules?.map((module) => {
               const progressStatus = getProgressStatus(module.id);
@@ -560,7 +560,7 @@ export default function Training() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="grid grid-cols-1 gap-4">
                     <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
                     
                     <div className="flex flex-wrap gap-2">
@@ -595,14 +595,14 @@ export default function Training() {
           </div>
         </TabsContent>
 
-        <TabsContent value="published" className="space-y-4">
+        <TabsContent value="published" className="grid grid-cols-1 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {modules?.filter(m => m.isPublished).map((module) => (
               <Card key={module.id} className="hover-elevate" data-testid={`card-module-${module.id}`}>
                 <CardHeader>
                   <CardTitle className="text-lg">{module.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="grid grid-cols-1 gap-4">
                   <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
                   <Badge variant="outline">
                     {categoryLabels[module.category || "barista_basics"]}
@@ -613,14 +613,14 @@ export default function Training() {
           </div>
         </TabsContent>
 
-        <TabsContent value="draft" className="space-y-4">
+        <TabsContent value="draft" className="grid grid-cols-1 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {modules?.filter(m => !m.isPublished).map((module) => (
               <Card key={module.id} className="hover-elevate" data-testid={`card-module-${module.id}`}>
                 <CardHeader>
                   <CardTitle className="text-lg">{module.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="grid grid-cols-1 gap-4">
                   <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
                   <Badge variant="outline">
                     {categoryLabels[module.category || "barista_basics"]}

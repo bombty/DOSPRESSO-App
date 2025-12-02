@@ -160,7 +160,7 @@ export default function KampanyaYonetimi() {
                 <DialogDescription>Yeni bir pazarlama kampanyası başlatın</DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
                     name="name"

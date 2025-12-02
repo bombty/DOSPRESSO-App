@@ -141,7 +141,7 @@ export default function SubelerPage() {
   const isHQ = user?.role && isHQRole(user.role as any);
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">Şubeler</h1>
@@ -169,7 +169,7 @@ export default function SubelerPage() {
             <DialogTitle>{editingBranch ? "Şube Düzenle" : "Yeni Şube Ekle"}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-4">
               <FormField
                 control={form.control}
                 name="name"
@@ -273,7 +273,7 @@ export default function SubelerPage() {
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="grid grid-cols-1 gap-2">
                 <CardDescription>{branch.city}</CardDescription>
                 <div className="flex items-start gap-2 text-sm">
                   <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />

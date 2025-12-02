@@ -91,7 +91,7 @@ export default function AdminChecklistManagement() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 gap-4">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -149,7 +149,7 @@ export default function AdminChecklistManagement() {
           ) : filteredChecklists?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">Checklist bulunamadı</div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               {filteredChecklists?.map((checklist) => {
                 const tasks = getChecklistTasks(checklist.id);
                 const isExpanded = expandedChecklistId === checklist.id;
@@ -223,7 +223,7 @@ export default function AdminChecklistManagement() {
                       {isExpanded && tasks.length > 0 && (
                         <>
                           <Separator className="my-3" />
-                          <div className="space-y-1">
+                          <div className="grid grid-cols-1 gap-1">
                             <h4 className="font-medium text-sm mb-2">Görevler:</h4>
                             {tasks.map((task, index) => (
                               <div
@@ -392,7 +392,7 @@ function ChecklistFormDialog({
         <DialogTitle>{mode === "create" ? "Yeni Checklist" : "Checklist Düzenle"}</DialogTitle>
       </DialogHeader>
       <div className="space-y-4 py-4">
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2">
           <Label htmlFor="title">Başlık *</Label>
           <Input
             id="title"
@@ -403,7 +403,7 @@ function ChecklistFormDialog({
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2">
           <Label htmlFor="description">Açıklama</Label>
           <Textarea
             id="description"
@@ -416,7 +416,7 @@ function ChecklistFormDialog({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-2">
             <Label>Sıklık *</Label>
             <Select value={frequency} onValueChange={setFrequency}>
               <SelectTrigger data-testid="select-frequency">
@@ -430,7 +430,7 @@ function ChecklistFormDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-2">
             <Label>Kategori</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger data-testid="select-category">
@@ -448,7 +448,7 @@ function ChecklistFormDialog({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-2">
             <Label htmlFor="timeWindowStart">Başlangıç Saati</Label>
             <Input
               id="timeWindowStart"
@@ -459,7 +459,7 @@ function ChecklistFormDialog({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-2">
             <Label htmlFor="timeWindowEnd">Bitiş Saati</Label>
             <Input
               id="timeWindowEnd"
@@ -495,7 +495,7 @@ function ChecklistFormDialog({
 
         <Separator />
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3">
           <div className="flex items-center justify-between">
             <Label className="text-base font-semibold">Görevler</Label>
             <Button

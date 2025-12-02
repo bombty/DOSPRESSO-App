@@ -581,7 +581,7 @@ export default function ServiceRequestsManagement() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <div className="space-y-1">
+            <div className="grid grid-cols-1 gap-1">
               <Label className="text-xs">Şube</Label>
               <Select value={filterBranch} onValueChange={setFilterBranch}>
                 <SelectTrigger data-testid="select-filter-branch">
@@ -597,7 +597,7 @@ export default function ServiceRequestsManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
+            <div className="grid grid-cols-1 gap-1">
               <Label className="text-xs">Durum</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger data-testid="select-filter-status">
@@ -655,7 +655,7 @@ export default function ServiceRequestsManagement() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {/* Location and dates */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
@@ -735,22 +735,22 @@ export default function ServiceRequestsManagement() {
           </DialogHeader>
 
           {selectedRequest && (
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6">
               {/* Equipment Info */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
+                <div className="grid grid-cols-1 gap-1">
                   <p className="text-sm text-muted-foreground">Cihaz Adı</p>
                   <p className="font-medium">{selectedRequest.equipmentName}</p>
                 </div>
-                <div className="space-y-1">
+                <div className="grid grid-cols-1 gap-1">
                   <p className="text-sm text-muted-foreground">Cihaz Tipi</p>
                   <p className="font-medium">{selectedRequest.equipmentType}</p>
                 </div>
-                <div className="space-y-1">
+                <div className="grid grid-cols-1 gap-1">
                   <p className="text-sm text-muted-foreground">Şube</p>
                   <p className="font-medium">{selectedRequest.branchName || `Şube #${selectedRequest.branchId}`}</p>
                 </div>
-                <div className="space-y-1">
+                <div className="grid grid-cols-1 gap-1">
                   <p className="text-sm text-muted-foreground">Cihaz ID</p>
                   <p className="font-medium">{selectedRequest.equipmentId}</p>
                 </div>
@@ -760,13 +760,13 @@ export default function ServiceRequestsManagement() {
               <div className="border-t pt-4 space-y-4">
                 <h3 className="font-semibold">Servis Talebi Bilgileri</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
+                  <div className="grid grid-cols-1 gap-1">
                     <p className="text-sm text-muted-foreground">Durum</p>
                     <Badge className={STATUS_VARIANTS[selectedRequest.status]}>
                       {STATUS_LABELS[selectedRequest.status]}
                     </Badge>
                   </div>
-                  <div className="space-y-1">
+                  <div className="grid grid-cols-1 gap-1">
                     <p className="text-sm text-muted-foreground">Öncelik</p>
                     {selectedRequest.priority ? (
                       <Badge className={`${PRIORITY_COLORS[selectedRequest.priority]} border ${PRIORITY_VARIANTS[selectedRequest.priority]}`}>
@@ -776,11 +776,11 @@ export default function ServiceRequestsManagement() {
                       <span className="text-sm text-muted-foreground">-</span>
                     )}
                   </div>
-                  <div className="space-y-1">
+                  <div className="grid grid-cols-1 gap-1">
                     <p className="text-sm text-muted-foreground">Servis Sağlayıcı</p>
                     <p className="font-medium">{selectedRequest.serviceProvider}</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="grid grid-cols-1 gap-1">
                     <p className="text-sm text-muted-foreground">Talep Tarihi</p>
                     <p className="font-medium">{format(new Date(selectedRequest.createdAt), 'd MMM yyyy, HH:mm', { locale: tr })}</p>
                   </div>
@@ -793,13 +793,13 @@ export default function ServiceRequestsManagement() {
                   <h3 className="font-semibold">Tarihler</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {selectedRequest.scheduledDate && (
-                      <div className="space-y-1">
+                      <div className="grid grid-cols-1 gap-1">
                         <p className="text-sm text-muted-foreground">Planlanan Tarih</p>
                         <p className="font-medium">{format(new Date(selectedRequest.scheduledDate), 'd MMM yyyy', { locale: tr })}</p>
                       </div>
                     )}
                     {selectedRequest.completedDate && (
-                      <div className="space-y-1">
+                      <div className="grid grid-cols-1 gap-1">
                         <p className="text-sm text-muted-foreground">Tamamlanma Tarihi</p>
                         <p className="font-medium text-green-600">{format(new Date(selectedRequest.completedDate), 'd MMM yyyy', { locale: tr })}</p>
                       </div>
@@ -814,13 +814,13 @@ export default function ServiceRequestsManagement() {
                   <h3 className="font-semibold">Maliyetler</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {selectedRequest.estimatedCost && (
-                      <div className="space-y-1">
+                      <div className="grid grid-cols-1 gap-1">
                         <p className="text-sm text-muted-foreground">Tahmini Maliyet</p>
                         <p className="font-medium">₺{selectedRequest.estimatedCost}</p>
                       </div>
                     )}
                     {selectedRequest.actualCost && (
-                      <div className="space-y-1">
+                      <div className="grid grid-cols-1 gap-1">
                         <p className="text-sm text-muted-foreground">Gerçek Maliyet</p>
                         <p className="font-medium">₺{selectedRequest.actualCost}</p>
                       </div>
@@ -844,7 +844,7 @@ export default function ServiceRequestsManagement() {
                     <History className="w-4 h-4" />
                     Tarih
                   </h3>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-3">
                     {selectedRequest.timeline.map((entry, idx) => (
                       <div key={entry.id} className="flex gap-3">
                         <div className="flex flex-col items-center">
@@ -896,7 +896,7 @@ export default function ServiceRequestsManagement() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* Status */}
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               <Label>Yeni Durum *</Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger data-testid="select-new-status">
@@ -913,7 +913,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Last Contact Date */}
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               <Label>Son Görüşme Tarihi</Label>
               <Input 
                 type="datetime-local" 
@@ -925,7 +925,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Service Status Update */}
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               <Label>Servis Durumu / Güncellemeler</Label>
               <Textarea
                 placeholder="Teknikçinin çalışma durumu, bulduğu sorunlar, yapılan işlemler vs..."
@@ -939,7 +939,7 @@ export default function ServiceRequestsManagement() {
 
             {/* Estimated Completion */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <Label>Tahmini Bitiş Tarihi</Label>
                 <Input 
                   type="date" 
@@ -950,7 +950,7 @@ export default function ServiceRequestsManagement() {
               </div>
 
               {/* Actual Cost */}
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <Label>Gerçek Maliyet (₺)</Label>
                 <Input 
                   type="number" 
@@ -972,7 +972,7 @@ export default function ServiceRequestsManagement() {
               
               <div className="grid grid-cols-2 gap-4">
                 {/* Photo 1 */}
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <Label>Fotoğraf 1</Label>
                   {photo1Preview && (
                     <img src={photo1Preview} alt="Photo 1" className="w-full h-32 object-cover rounded-md border" />
@@ -1007,7 +1007,7 @@ export default function ServiceRequestsManagement() {
                 </div>
 
                 {/* Photo 2 */}
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <Label>Fotoğraf 2</Label>
                   {photo2Preview && (
                     <img src={photo2Preview} alt="Photo 2" className="w-full h-32 object-cover rounded-md border" />
@@ -1081,9 +1081,9 @@ export default function ServiceRequestsManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6">
             {/* Step 1: Branch Selection */}
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
               <Label htmlFor="create-branch" className="text-base font-semibold">Adım 1: Şube Seçimi *</Label>
               <Select value={createBranch} onValueChange={(val) => { setCreateBranch(val); setSelectedEquipment(null); }}>
                 <SelectTrigger id="create-branch" data-testid="select-create-branch">
@@ -1101,7 +1101,7 @@ export default function ServiceRequestsManagement() {
 
             {/* Step 2: Equipment Selection */}
             {createBranch && (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
                 <Label className="text-base font-semibold">Adım 2: Cihaz Seçimi *</Label>
                 {branchEquipment.length > 0 ? (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -1128,10 +1128,10 @@ export default function ServiceRequestsManagement() {
             )}
 
             {/* Form Fields */}
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="create-priority">Öncelik</Label>
                   <Select value={createPriority} onValueChange={setCreatePriority}>
                     <SelectTrigger id="create-priority" data-testid="select-create-priority">
@@ -1147,7 +1147,7 @@ export default function ServiceRequestsManagement() {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <Label htmlFor="create-provider">Servis Sağlayıcı *</Label>
                 <Input
                   id="create-provider"
@@ -1158,7 +1158,7 @@ export default function ServiceRequestsManagement() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <Label htmlFor="create-notes">Notlar</Label>
                 <Textarea
                   id="create-notes"
@@ -1173,7 +1173,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Photo Upload Section */}
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
               <Label className="text-base font-semibold">Fotoğraflar (İsteğe Bağlı)</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div>

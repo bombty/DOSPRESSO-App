@@ -99,7 +99,7 @@ function FaultSkeleton() {
 
 function FaultSkeletonList() {
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 gap-3">
       {Array.from({ length: 5 }).map((_, i) => (
         <FaultSkeleton key={i} />
       ))}
@@ -222,7 +222,7 @@ export default function FaultHub() {
         </TabsList>
 
         {/* TAB 1: Overview */}
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="grid grid-cols-1 gap-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             <Card>
               <CardContent className="p-3">
@@ -312,7 +312,7 @@ export default function FaultHub() {
         </TabsContent>
 
         {/* TAB 2: SLA Status */}
-        <TabsContent value="sla" className="space-y-6">
+        <TabsContent value="sla" className="grid grid-cols-1 gap-6">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Card className="border-red-500 bg-red-50 dark:bg-red-950">
               <CardContent className="p-3">
@@ -385,7 +385,7 @@ export default function FaultHub() {
         </TabsContent>
 
         {/* TAB 3: Manage Faults */}
-        <TabsContent value="manage" className="space-y-4">
+        <TabsContent value="manage" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -404,7 +404,7 @@ export default function FaultHub() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
                 {isFaultsLoading ? (
                   <FaultSkeletonList />
                 ) : paginatedManageFaults.length === 0 ? (
@@ -474,7 +474,7 @@ export default function FaultHub() {
                 <DialogTitle>Arıza Güncelleyin: {selectedFault?.equipmentName}</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="space-y-4">
+                <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
                     name="currentStage"
@@ -561,7 +561,7 @@ export default function FaultHub() {
 
         {/* TAB 4: My Faults (Technician) */}
         {user?.id && (
-          <TabsContent value="myFaults" className="space-y-6">
+          <TabsContent value="myFaults" className="grid grid-cols-1 gap-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="pb-3">
@@ -596,7 +596,7 @@ export default function FaultHub() {
                 <CardTitle>Benim Arızalarım</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3">
                   {metrics.myFaults.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">Size atanmış arıza yok</p>
                   ) : (

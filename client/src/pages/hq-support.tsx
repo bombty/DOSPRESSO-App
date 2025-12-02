@@ -133,7 +133,7 @@ export default function HQSupport() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">HQ Destek</h1>
@@ -155,7 +155,7 @@ export default function HQSupport() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="aktif" className="space-y-4">
+        <TabsContent value="aktif" className="grid grid-cols-1 gap-4">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">
@@ -173,7 +173,7 @@ export default function HQSupport() {
           )}
         </TabsContent>
 
-        <TabsContent value="kapatildi" className="space-y-4">
+        <TabsContent value="kapatildi" className="grid grid-cols-1 gap-4">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">
@@ -237,11 +237,11 @@ function TicketList({
     });
 
     return (
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6">
         {Object.entries(grouped).map(([category, categoryTickets]) => (
           <div key={category}>
             <h3 className="text-lg font-medium mb-3">{CATEGORY_LABELS[category as HQSupportCategoryType]}</h3>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
               {categoryTickets.map(ticket => (
                 <TicketCard key={ticket.id} ticket={ticket} onClick={onTicketClick} />
               ))}
@@ -254,7 +254,7 @@ function TicketList({
 
   // Simple list for branch users
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-1 gap-2">
       {tickets.map(ticket => (
         <TicketCard key={ticket.id} ticket={ticket} onClick={onTicketClick} />
       ))}
@@ -392,7 +392,7 @@ function CreateTicketDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
             {/* HQ Branch Selection */}
             {isHQ && (
               <FormField
@@ -672,7 +672,7 @@ function TicketDetailDialog({
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
           {/* Ticket Info */}
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-2">
             <p className="text-sm text-muted-foreground" data-testid="text-detail-description">
               {ticket.description}
             </p>

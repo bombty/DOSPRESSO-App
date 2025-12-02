@@ -171,7 +171,7 @@ export default function GorevDetay() {
               Görev Bilgileri
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Durum</p>
@@ -255,7 +255,7 @@ export default function GorevDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="checklist" className="space-y-4">
+        <TabsContent value="checklist" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Checklist Öğeleri</CardTitle>
@@ -265,7 +265,7 @@ export default function GorevDetay() {
             </CardHeader>
             <CardContent>
               {checklistTasks && checklistTasks.length > 0 ? (
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-2">
                   {checklistTasks.map((item: any) => (
                     <div
                       key={item.id}
@@ -295,14 +295,14 @@ export default function GorevDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="notes" className="space-y-4">
+        <TabsContent value="notes" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Görev Notları</CardTitle>
               <CardDescription>Bu göreve ait notlar ve yorumlar</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Textarea
                     placeholder="Not ekle..."
@@ -340,14 +340,14 @@ export default function GorevDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-4">
+        <TabsContent value="history" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Görev Geçmişi</CardTitle>
               <CardDescription>Görev durum değişiklikleri ve aktivite</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div className="flex items-start gap-3 p-3 rounded-lg border">
                   <Clock className="h-4 w-4 mt-1 text-muted-foreground" />
                   <div>

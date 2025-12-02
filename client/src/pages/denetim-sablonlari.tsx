@@ -355,7 +355,7 @@ export default function DenetimSablonlariPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
@@ -502,9 +502,9 @@ export default function DenetimSablonlariPage() {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
               {/* Template Info */}
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
                 <FormField
                   control={form.control}
                   name="title"
@@ -764,7 +764,7 @@ export default function DenetimSablonlariPage() {
 
                       {/* Multiple Choice Options */}
                       {item.itemType === 'multiple_choice' && (
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 gap-3">
                           <div>
                             <Label>Şıklar (En az 2 şık gerekli)</Label>
                             <div className="space-y-2 mt-2">

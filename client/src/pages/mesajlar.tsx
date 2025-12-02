@@ -333,7 +333,7 @@ export default function Mesajlar() {
 
             {/* Messages */}
             <ScrollArea className="flex-1 p-4" ref={scrollRef as any}>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
                 {threadData.messages.map((message, idx) => {
                   const isSent = message.senderId === user?.id;
                   const isLastInGroup = idx === threadData.messages.length - 1 || 
@@ -545,7 +545,7 @@ function NewMessageForm({
       {/* HQ cascading selection: Branch → Personnel */}
       {isHQ && (
         <>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-2">
             <Label htmlFor="branch">Şube Seçin</Label>
             <Select value={selectedBranchId} onValueChange={(val) => {
               setSelectedBranchId(val);
@@ -568,7 +568,7 @@ function NewMessageForm({
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-2">
             <Label htmlFor="personnel">Personel Seçin</Label>
             <Select value={recipientId} onValueChange={setRecipientId} disabled={!selectedBranchId}>
               <SelectTrigger id="personnel" data-testid="select-personnel">
@@ -594,7 +594,7 @@ function NewMessageForm({
 
       {/* Standard recipient selection for non-HQ users */}
       {!isHQ && (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2">
           <Label htmlFor="recipient">Alıcı</Label>
           <Select value={recipientId} onValueChange={setRecipientId}>
             <SelectTrigger id="recipient" data-testid="select-recipient">
@@ -615,7 +615,7 @@ function NewMessageForm({
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-2">
         <Label htmlFor="subject">Konu</Label>
         <Input
           id="subject"
@@ -626,7 +626,7 @@ function NewMessageForm({
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-2">
         <Label htmlFor="body">Mesaj</Label>
         <Textarea
           id="body"

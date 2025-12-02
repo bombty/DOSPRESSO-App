@@ -147,7 +147,7 @@ export default function Branches() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Şubeler</h1>
@@ -171,7 +171,7 @@ export default function Branches() {
               <DialogTitle>{editingBranch ? "Şube Düzenle" : "Yeni Şube Ekle"}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -252,7 +252,7 @@ export default function Branches() {
               <CardHeader>
                 <Skeleton className="h-6 w-3/4" />
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="grid grid-cols-1 gap-2">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-2/3" />
               </CardContent>

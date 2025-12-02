@@ -316,7 +316,7 @@ export default function Vardiyalar() {
                   <DialogTitle>Yeni Vardiya Oluştur</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+                  <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
                     <FormField
                       control={form.control}
                       name="shiftDate"
@@ -544,7 +544,7 @@ export default function Vardiyalar() {
                   <p className="text-muted-foreground text-center py-8">Bugün planlanmış vardiya yok</p>
                 ) : (
                   <ScrollArea className="h-[200px]">
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-3">
                       {todayShifts.map((shift) => {
                         const ShiftIcon = shiftTypeIcons[shift.shiftType];
                         return (
@@ -590,7 +590,7 @@ export default function Vardiyalar() {
                   </div>
                 ) : (
                   <ScrollArea className="h-[200px]">
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-3">
                       {tomorrowShifts.map((shift) => {
                         const ShiftIcon = shiftTypeIcons[shift.shiftType];
                         return (
@@ -650,7 +650,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="planning" className="space-y-6">
+        <TabsContent value="planning" className="grid grid-cols-1 gap-6">
           <Card data-testid="card-week-view">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -694,7 +694,7 @@ export default function Vardiyalar() {
                         <p className="text-xs text-muted-foreground">{format(day, "EEE", { locale: tr })}</p>
                         <p className="text-lg">{format(day, "d")}</p>
                       </div>
-                      <div className="space-y-1">
+                      <div className="grid grid-cols-1 gap-1">
                         {dayShifts.length === 0 ? (
                           <p className="text-xs text-muted-foreground text-center py-4">-</p>
                         ) : (
@@ -739,7 +739,7 @@ export default function Vardiyalar() {
                 </div>
               ) : (
                 <ScrollArea className="h-[400px]">
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {thisWeekShifts
                       .sort((a, b) => a.shiftDate.localeCompare(b.shiftDate) || a.startTime.localeCompare(b.startTime))
                       .map((shift) => {
@@ -805,7 +805,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="live" className="space-y-6">
+        <TabsContent value="live" className="grid grid-cols-1 gap-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card data-testid="card-live-active">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -857,7 +857,7 @@ export default function Vardiyalar() {
               </CardHeader>
               <CardContent>
                 {activeAttendances && activeAttendances.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-3">
                     {activeAttendances.map((attendance: any) => {
                       const user = users?.find(u => u.id === attendance.userId);
                       const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
@@ -906,13 +906,13 @@ export default function Vardiyalar() {
                   <p className="text-muted-foreground">Bugün için planlanmış vardiya yok</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
                   {['morning', 'evening', 'night'].map((type) => {
                     const typeShifts = todayShifts.filter(s => s.shiftType === type);
                     if (typeShifts.length === 0) return null;
                     const ShiftIcon = shiftTypeIcons[type];
                     return (
-                      <div key={type} className="space-y-2">
+                      <div key={type} className="grid grid-cols-1 gap-2">
                         <div className="flex items-center gap-2">
                           <div className={cn("p-1.5 rounded", shiftTypeColors[type])}>
                             <ShiftIcon className="h-4 w-4" />
@@ -966,7 +966,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="checkin" className="space-y-6">
+        <TabsContent value="checkin" className="grid grid-cols-1 gap-6">
           <CheckInContent user={user} toast={toast} />
         </TabsContent>
       </Tabs>
@@ -977,7 +977,7 @@ export default function Vardiyalar() {
             <DialogTitle>Vardiya Düzenle</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdateSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleUpdateSubmit)} className="grid grid-cols-1 gap-4">
               <FormField
                 control={form.control}
                 name="shiftDate"
@@ -1379,7 +1379,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   }, [isCheckedIn, todayAttendance?.checkInTime]);
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Vardiya Giriş/Çıkış</h2>
         {locationStatus === 'idle' && (
@@ -1418,7 +1418,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2">
                 <p className="text-sm text-muted-foreground">Çalışma Süresi</p>
                 <div className="font-mono text-3xl font-bold text-green-700 dark:text-green-300 tracking-wide">
                   {String(elapsedTime.hours).padStart(2, '0')}:{String(elapsedTime.minutes).padStart(2, '0')}:{String(elapsedTime.seconds).padStart(2, '0')}
@@ -1463,7 +1463,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       )}
 
       {!isCheckedIn && !hasCompletedShift && (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4">
           {/* Inline QR Scanner - Only show when active */}
           {scannerActive && (
             <Card className="border-primary/50 bg-card/80 backdrop-blur-sm" data-testid="card-qr-scan-inline">
@@ -1487,7 +1487,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
                 </Button>
               </CardHeader>
 
-              <CardContent className="space-y-4">
+              <CardContent className="grid grid-cols-1 gap-4">
                 {/* Scanner Container */}
                 <div className="border rounded-lg overflow-hidden bg-black/5">
                   <div id="qr-scanner-container" style={{ width: '100%' }} />
@@ -1535,7 +1535,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               <CardHeader>
                 <CardTitle>Bugünkü Vardiyaları Seç</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="grid grid-cols-1 gap-3">
                 {todayShifts.map((shift) => {
                   const ShiftIcon = shiftTypeIcons[shift.shiftType];
                   return (
@@ -1574,7 +1574,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               <CardHeader>
                 <CardTitle>Şube Seçerek Giriş Yap</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="grid grid-cols-1 gap-3">
                 <div className="grid grid-cols-1 gap-3">
                   <Button
                     onClick={() => {
