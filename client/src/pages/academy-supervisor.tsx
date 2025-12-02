@@ -114,7 +114,7 @@ export default function AcademySupervisor() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <TabsContent value="team" className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <Card>
             <CardHeader>
               <CardTitle>Ekip Üyeleri Eğitim Durumu</CardTitle>
@@ -147,7 +147,7 @@ export default function AcademySupervisor() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="modules" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Eğitim Modülleri</CardTitle>
@@ -184,7 +184,7 @@ export default function AcademySupervisor() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="exams" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Beklemede Olan Sınav Talepleri</CardTitle>

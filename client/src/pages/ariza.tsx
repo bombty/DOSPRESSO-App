@@ -308,7 +308,7 @@ export default function FaultHub() {
         </TabsContent>
 
         {/* TAB 2: Arıza Süreleri */}
-        <TabsContent value="sla-status" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="sla" className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Card className="border-red-500 bg-red-50 dark:bg-red-950">
               <CardContent className="p-3">

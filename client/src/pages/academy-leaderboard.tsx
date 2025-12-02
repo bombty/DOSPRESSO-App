@@ -100,7 +100,7 @@ export default function AcademyLeaderboard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="global" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Top 5 Performans</CardTitle>
@@ -132,7 +132,7 @@ export default function AcademyLeaderboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="branches" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Şube Performansı</CardTitle>
@@ -160,7 +160,7 @@ export default function AcademyLeaderboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="exams" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Sınav Performans Liderleri</CardTitle>
