@@ -61,8 +61,14 @@ export default function PersonelProfilPage() {
   const [, setLocation] = useLocation();
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { credentials: 'include' });
-    setLocation('/');
+    try {
+      await fetch('/api/auth/logout', { credentials: 'include' });
+      // Clear all queries and redirect
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+      window.location.href = '/';
+    }
   };
 
   // Fetch personnel profile
