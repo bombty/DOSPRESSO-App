@@ -207,7 +207,7 @@ export default function FaultHub() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="p-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="p-3">
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
@@ -400,7 +400,7 @@ export default function FaultHub() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {isFaultsLoading ? (
                   <FaultSkeletonList />
                 ) : paginatedManageFaults.length === 0 ? (
