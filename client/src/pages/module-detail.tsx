@@ -91,7 +91,7 @@ export default function ModuleDetail() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [previewQuizAnswers, setPreviewQuizAnswers] = useState<Record<number, number>>({});
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(module?.requiredForRole || []);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   const { data: module, isLoading } = useQuery({
     queryKey: [`/api/training/modules/${moduleId}`],
@@ -254,7 +254,7 @@ export default function ModuleDetail() {
     },
   });
 
-  // Sync form values when module loads
+  // Sync form values and selectedRoles when module loads
   useEffect(() => {
     if (module) {
       objectivesForm.reset({ objectives: module.learningObjectives || [] });
@@ -262,6 +262,7 @@ export default function ModuleDetail() {
       quizForm.reset({ quiz: module.quiz || [] });
       scenariosForm.reset({ scenarioTasks: module.scenarioTasks || [] });
       checklistForm.reset({ supervisorChecklist: module.supervisorChecklist || [] });
+      setSelectedRoles(module.requiredForRole || []);
     }
   }, [module, objectivesForm, stepsForm, quizForm, scenariosForm, checklistForm]);
 
