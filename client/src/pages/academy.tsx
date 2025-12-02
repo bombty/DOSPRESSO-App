@@ -162,8 +162,8 @@ export default function Academy() {
   const progressPercent = userProgress?.averageQuizScore || 0;
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-3 p-4">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -183,14 +183,14 @@ export default function Academy() {
         )}
       </div>
 
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">DOSPRESSO Academy</h1>
-        <p className="text-muted-foreground mt-2">Kariyer yolunuzu takip edin ve ilerleyin</p>
+      {/* Page Header - COMPACT */}
+      <div className="mb-2">
+        <h1 className="text-2xl font-bold tracking-tight">DOSPRESSO Academy</h1>
+        <p className="text-muted-foreground text-sm">Kariyer yolunuzu takip edin</p>
       </div>
 
       {/* 3-Hub Navigation - MOVED TO TOP */}
-      <div className="flex gap-2 mb-6 sticky top-0 bg-background z-10 pb-2 border-b">
+      <div className="flex gap-2 mb-3 sticky top-0 bg-background z-10 pb-1 border-b">
         <Button
           onClick={() => setActiveHub("learning")}
           variant={activeHub === "learning" ? "default" : "outline"}
@@ -220,218 +220,163 @@ export default function Academy() {
         </Button>
       </div>
 
-      {/* Quick Stats Dashboard - HQ kullancılarına gösterme */}
+      {/* Quick Stats Dashboard - COMPACT */}
       {!isHQRole(user?.role as any) && user?.role !== 'admin' && (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2">
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-yellow-600" />
-              Kazanılan Rozetler
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-xs font-medium flex items-center gap-1">
+              <Trophy className="w-3 h-3 text-yellow-600" />
+              <span className="truncate">Rozetler</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{userBadges.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Coffee Cherry → Coffee Pro</p>
+          <CardContent className="pb-3 px-3">
+            <div className="text-xl font-bold">{userBadges.length}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-blue-600" />
-              Tamamlanan Modüller
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-xs font-medium flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-blue-600" />
+              <span className="truncate">Modüller</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{completedStats?.completedCount || 0}/{completedStats?.totalCount || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {completedStats?.totalCount ? Math.round((completedStats.completedCount / completedStats.totalCount) * 100) : 0}% tamamlandı
-            </p>
+          <CardContent className="pb-3 px-3">
+            <div className="text-xl font-bold">{completedStats?.completedCount || 0}/{completedStats?.totalCount || 0}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Target className="w-4 h-4 text-green-600" />
-              Seviyeye İlerleme
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-xs font-medium flex items-center gap-1">
+              <Target className="w-3 h-3 text-green-600" />
+              <span className="truncate">İlerleme</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{Math.round(progressPercent)}%</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {nextLevel ? `Hedef: ${nextLevel.titleTr}` : "Maksimum seviyeye ulaştın"}
-            </p>
+          <CardContent className="pb-3 px-3">
+            <div className="text-xl font-bold">{Math.round(progressPercent)}%</div>
           </CardContent>
         </Card>
       </div>
       )}
 
-      {/* My Path Section - HQ kullancılarına gösterme */}
+      {/* My Path Section - COMPACT */}
       {currentLevel && (
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="pb-3">
+        <Card className="border-primary/20">
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="w-5 h-5" />
-                  Benim Yolum
-                </CardTitle>
-                <CardDescription>Kariyer ilerlemesi ve sonraki hedefler</CardDescription>
-              </div>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Award className="w-4 h-4" />
+                Benim Yolum
+              </CardTitle>
+              {nextLevel && user?.role === "supervisor" && (
+                <Dialog open={isExamDialogOpen} onOpenChange={setIsExamDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Sınav Talep Formu</DialogTitle>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit((data) => createExamMutation.mutate(data))} className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="userId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Çalışan ID</FormLabel>
+                              <FormControl>
+                                <input {...field} type="text" placeholder="user-id" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="targetRoleId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Hedef Rol</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {CAREER_LEVELS.slice(1).map(level => (
+                                    <SelectItem key={level.roleId} value={level.roleId}>
+                                      {level.titleTr}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="supervisorNotes"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Notlar</FormLabel>
+                              <FormControl>
+                                <Textarea {...field} placeholder="Sınav hakkında notlarınız..." />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button type="submit" disabled={createExamMutation.isPending} className="w-full">
+                          {createExamMutation.isPending ? "Gönderiliyor..." : "Talep Gönder"}
+                        </Button>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Current Level */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Mevcut Seviye</span>
-                <Badge variant="default">{currentLevel.titleTr}</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">Seviye {currentLevel.levelNumber}/5</p>
+          <CardContent className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">Mevcut: {currentLevel.titleTr}</span>
+              <span className="text-muted-foreground">Seviye {currentLevel.levelNumber}/5</span>
             </div>
-
-            {/* Progress to Next Level */}
             {nextLevel && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Sonraki Seviyeye İlerleme</span>
-                  <span className="text-sm text-muted-foreground">{Math.round(progressPercent)}%</span>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Sonraki: {nextLevel.titleTr}</span>
+                  <span className="font-medium">{Math.round(progressPercent)}%</span>
                 </div>
-                <Progress value={progressPercent} className="h-2" />
-                <p className="text-xs text-muted-foreground">Hedef: {nextLevel.titleTr}</p>
+                <Progress value={progressPercent} className="h-1.5" />
               </div>
             )}
-
-            {/* Career Path */}
-            <div className="pt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm font-medium">Kariyer Yolu</span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {CAREER_LEVELS.map((level, idx) => (
-                  <div key={level.id} className="flex items-center gap-2">
-                    <Badge 
-                      variant={level.levelNumber <= currentLevel.levelNumber ? "default" : "outline"}
-                      className="whitespace-nowrap"
-                    >
-                      {level.titleTr}
-                    </Badge>
-                    {idx < CAREER_LEVELS.length - 1 && <span className="text-muted-foreground">→</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Next Module */}
-            <div className="pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4" />
-                  <span className="text-sm font-medium">Sonraki Modül</span>
-                </div>
-                {nextLevel && user?.role === "supervisor" && (
-                  <Dialog open={isExamDialogOpen} onOpenChange={setIsExamDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline">
-                        <Plus className="w-3 h-3 mr-1" />
-                        Sınav Talep Et
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Sınav Talep Formu</DialogTitle>
-                      </DialogHeader>
-                      <Form {...form}>
-                        <form onSubmit={form.handleSubmit((data) => createExamMutation.mutate(data))} className="space-y-4">
-                          <FormField
-                            control={form.control}
-                            name="userId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Çalışan ID</FormLabel>
-                                <FormControl>
-                                  <input {...field} type="text" placeholder="user-id" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="targetRoleId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Hedef Rol</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {CAREER_LEVELS.slice(1).map(level => (
-                                      <SelectItem key={level.roleId} value={level.roleId}>
-                                        {level.titleTr}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="supervisorNotes"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Notlar</FormLabel>
-                                <FormControl>
-                                  <Textarea {...field} placeholder="Sınav hakkında notlarınız..." />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button type="submit" disabled={createExamMutation.isPending} className="w-full">
-                            {createExamMutation.isPending ? "Gönderiliyor..." : "Talep Gönder"}
-                          </Button>
-                        </form>
-                      </Form>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">Modül içeriği yakında yüklenecek</p>
-            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Pending Exam Requests for Supervisors */}
+      {/* Pending Exam Requests - COMPACT */}
       {user?.role === "supervisor" && examRequests.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              Beklemede Olan Sınav Talepleri
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Beklemede ({examRequests.length})
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {examRequests.map((req: ExamRequest) => (
-                <div key={req.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium text-sm">{req.userId}</p>
-                    <p className="text-xs text-muted-foreground">→ {req.targetRoleId}</p>
-                  </div>
-                  <Badge variant="outline">{req.status}</Badge>
-                </div>
-              ))}
-            </div>
+          <CardContent className="space-y-1">
+            {examRequests.map((req: ExamRequest) => (
+              <div key={req.id} className="flex items-center justify-between p-2 text-xs border-b last:border-0">
+                <span className="font-medium truncate">{req.userId}</span>
+                <Badge variant="outline" className="text-xs">{req.status}</Badge>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
@@ -449,7 +394,7 @@ export default function Academy() {
                 <CardDescription>Kariyerini ilerletmek için modülleri tamamla</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
                   {modules.map((module: any) => {
                     const completed = isModuleCompleted(module.id);
                     return (
@@ -460,28 +405,20 @@ export default function Academy() {
                         onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
                       >
                         <Card className={`cursor-pointer hover-elevate h-full ${completed ? 'border-green-500 dark:border-green-600' : ''}`} data-testid={`card-module-${module.id}`}>
-                          <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <CardTitle className="text-base line-clamp-2">{module.title}</CardTitle>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-start justify-between gap-1">
+                              <CardTitle className="text-xs line-clamp-2">{module.title}</CardTitle>
                               {completed && (
-                                <div className="flex-shrink-0">
-                                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                                    <CheckCircle className="w-4 h-4 text-white" />
-                                  </div>
-                                </div>
+                                <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-2">
-                              <Badge variant="outline" className="text-xs">
-                                {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
+                            <div className="flex items-center gap-1 mt-1 flex-wrap">
+                              <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                {module.level === 'beginner' ? 'B' : module.level === 'intermediate' ? 'O' : 'İ'}
                               </Badge>
-                              <span className="text-xs text-muted-foreground">{module.estimatedDuration} dk</span>
-                              {completed && <Badge className="text-xs bg-green-600">Tamamlandı</Badge>}
+                              <span className="text-xs text-muted-foreground">{module.estimatedDuration}dk</span>
                             </div>
                           </CardHeader>
-                          <CardContent>
-                            <p className="text-sm text-muted-foreground line-clamp-3">{module.description}</p>
-                          </CardContent>
                         </Card>
                       </Link>
                     );
@@ -518,7 +455,7 @@ export default function Academy() {
                     </span>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {recommendedQuizzes.map((quiz: any) => {
                       const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200' 
                         : quiz.difficulty === 'hard' ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200'
@@ -529,15 +466,15 @@ export default function Academy() {
 
                       return (
                         <Link key={quiz.id} to={`/akademi-quiz/${quiz.quizId}`}>
-                          <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer" data-testid={`quiz-card-${quiz.quizId}`}>
-                            <div className="flex items-start justify-between mb-2">
-                              <p className="font-medium text-sm flex-1">{quiz.titleTr}</p>
-                              <Badge className={`text-xs ml-2 ${diffColor}`}>{diffLabel}</Badge>
+                          <div className="p-2 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer" data-testid={`quiz-card-${quiz.quizId}`}>
+                            <div className="flex items-start justify-between mb-1">
+                              <p className="font-medium text-xs line-clamp-1 flex-1">{quiz.titleTr}</p>
+                              <Badge className={`text-xs ml-1 ${diffColor}`}>{diffLabel}</Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground">{quiz.descriptionTr}</p>
-                            <div className="flex items-center justify-between mt-2">
-                              <Badge variant="outline" className="text-xs">{quiz.estimatedMinutes} dk</Badge>
-                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Başla →</span>
+                            <p className="text-xs text-muted-foreground line-clamp-1">{quiz.descriptionTr}</p>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-xs">{quiz.estimatedMinutes}dk</span>
+                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">→</span>
                             </div>
                           </div>
                         </Link>
@@ -558,165 +495,113 @@ export default function Academy() {
         </div>
       )}
 
-      {/* Achievements Hub */}
+      {/* Achievements Hub - COMPACT */}
       {activeHub === "achievements" && (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Link to="/akademi-streak-tracker" data-testid="link-streak-tracker">
             <Card className="cursor-pointer hover-elevate" data-testid="card-streak-tracker">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-orange-500" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-500" />
                   Öğrenme Serisi
                 </CardTitle>
-                <CardDescription>Günlük öğrenme rutini ve tutarlılık</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Ardışık gün takibi ve başarı mileleri</p>
+              <CardContent className="text-xs">
+                <p className="text-muted-foreground">Ardışık gün takibi</p>
               </CardContent>
             </Card>
           </Link>
           
           <Link to="/akademi-rozet-koleksiyonum" data-testid="link-badges">
             <Card className="cursor-pointer hover-elevate" data-testid="card-badges">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="w-5 h-5" />
-                  Rozet Koleksiyonum
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Trophy className="w-4 h-4" />
+                  Rozetler
                 </CardTitle>
-                <CardDescription>Tamamlanan modüllerle kazanılan rozetler</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Kahve Kirazı → Yeşil Çekirdek → Çekirdek Uzmanı → Kavurma Ustası → Kahve Pro</p>
+              <CardContent className="text-xs">
+                <p className="text-muted-foreground">5 rozet seviyesi</p>
               </CardContent>
             </Card>
           </Link>
         </div>
       )}
 
-      {/* Analytics Hub */}
+      {/* Analytics Hub - COMPACT */}
       {activeHub === "analytics" && (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Link to="/akademi-adaptive-engine" data-testid="link-adaptive-engine">
             <Card className="cursor-pointer hover-elevate" data-testid="card-adaptive-engine">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-red-600" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Target className="w-4 h-4 text-red-600" />
                   Adaptif Motor
                 </CardTitle>
-                <CardDescription>AI performansınıza uygun modül önerileri</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Zayıf alanlarınızı tespit et ve iyileştir</p>
-              </CardContent>
+              <CardContent className="text-xs text-muted-foreground">AI önerileri</CardContent>
             </Card>
           </Link>
 
           <Link to="/akademi-ai-assistant" data-testid="link-ai-assistant">
             <Card className="cursor-pointer hover-elevate" data-testid="card-ai-assistant">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-blue-500" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-500" />
                   AI Asistan
                 </CardTitle>
-                <CardDescription>Yapay zeka destekli öğrenme yardımcısı</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Kariyerin, sınavların ve sertifikasyonun hakkında soru sor</p>
-              </CardContent>
+              <CardContent className="text-xs text-muted-foreground">Sorularınızı sor</CardContent>
             </Card>
           </Link>
 
           <Link to="/akademi-progress-overview" data-testid="link-progress-overview">
             <Card className="cursor-pointer hover-elevate" data-testid="card-progress-overview">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
                   İlerleme Özeti
                 </CardTitle>
-                <CardDescription>Tüm başarı ve hedeflerinizi bir yerde görün</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Kariyer seviyesi, tamamlanan sınavlar, ortalama puan ve daha fazlası</p>
-              </CardContent>
+              <CardContent className="text-xs text-muted-foreground">Tüm başarılar</CardContent>
             </Card>
           </Link>
 
           <Link to="/akademi-advanced-analytics" data-testid="link-advanced-analytics">
             <Card className="cursor-pointer hover-elevate" data-testid="card-advanced-analytics">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-purple-600" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-purple-600" />
                   İleri Analitikler
                 </CardTitle>
-                <CardDescription>Detaylı performans analizi ve içgörüler</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Haftalık puanlar, zorluk seviyeleri, başarı oranları</p>
-              </CardContent>
+              <CardContent className="text-xs text-muted-foreground">Detaylı analiz</CardContent>
             </Card>
           </Link>
 
           <Link to="/akademi-branch-analytics" data-testid="link-branch-analytics">
             <Card className="cursor-pointer hover-elevate" data-testid="card-branch-analytics">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-amber-600" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Award className="w-4 h-4 text-amber-600" />
                   Şube Analitikleri
                 </CardTitle>
-                <CardDescription>Şubenizin eğitim performansı</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Şube ortalaması, top öğrenciler, tamamlanma oranları</p>
-              </CardContent>
+              <CardContent className="text-xs text-muted-foreground">Şube performansı</CardContent>
             </Card>
           </Link>
 
           <Link to="/akademi-cohort-analytics" data-testid="link-cohort-analytics">
             <Card className="cursor-pointer hover-elevate" data-testid="card-cohort-analytics">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-yellow-600" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-yellow-600" />
                   Kohort Analitikleri
                 </CardTitle>
-                <CardDescription>Grubunuzun kolektif performansı</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Grup tamamlanma, karşılaştırma, takım istatistikleri</p>
-              </CardContent>
+              <CardContent className="text-xs text-muted-foreground">Takım performansı</CardContent>
             </Card>
           </Link>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Kariyer İlerlemesi
-              </CardTitle>
-              <CardDescription>Mevcut seviyen ve ilerlemene genel bakış</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {currentLevel && (
-                <>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Mevcut Seviye</span>
-                      <Badge>{currentLevel.titleTr}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Seviye {currentLevel.levelNumber}/5</p>
-                  </div>
-                  {nextLevel && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Sonraki Seviyeye İlerleme</span>
-                        <span className="text-sm text-muted-foreground">{Math.round(progressPercent)}%</span>
-                      </div>
-                      <Progress value={progressPercent} className="h-2" />
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
         </div>
       )}
     </div>
