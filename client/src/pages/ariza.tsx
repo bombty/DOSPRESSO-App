@@ -15,11 +15,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Loader2 } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Loader2, Plus } from "lucide-react";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useLocation } from "wouter";
 import type { EquipmentFault } from "@shared/schema";
+import { PageHeader } from "@/components/page-header";
 
 // Constants
 const SLA_CRITICAL_HOURS = 2.5;
@@ -210,14 +211,21 @@ export default function FaultHub() {
   }, [form]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold">Arıza Yönetimi</h1>
-          <p className="text-muted-foreground mt-1">Tüm ekipman arızalarını merkezi olarak yönetin</p>
-        </div>
-        <Button onClick={() => setLocation("/ariza-yeni")}>Yeni Arıza Bildir</Button>
-      </div>
+    <div className="min-h-screen pb-20">
+      <PageHeader 
+        title="Arıza Yönetimi" 
+        subtitle="Ekipman arızalarını yönetin"
+        icon={Wrench}
+        backPath="/"
+        actions={
+          <Button onClick={() => setLocation("/ariza-yeni")} size="sm">
+            <Plus className="w-4 h-4 mr-1" />
+            Yeni
+          </Button>
+        }
+      />
+      
+      <div className="p-3 space-y-4">
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
@@ -632,6 +640,7 @@ export default function FaultHub() {
           </TabsContent>
         )}
       </Tabs>
+      </div>
     </div>
   );
 }

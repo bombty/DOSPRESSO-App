@@ -14,8 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest, isHQRole } from "@shared/schema";
-import { ArrowLeft, BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, CheckCircle, Flame, Sparkles } from "lucide-react";
+import { BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, CheckCircle, Flame, Sparkles } from "lucide-react";
 import { Link } from "wouter";
+import { PageHeader } from "@/components/page-header";
 
 const CAREER_LEVELS = [
   { id: 1, roleId: "stajyer", titleTr: "Stajyer", levelNumber: 1 },
@@ -162,32 +163,24 @@ export default function Academy() {
   const progressPercent = userProgress?.averageQuizScore || 0;
 
   return (
-    <div className="space-y-2 p-3">
-      <div className="flex items-center gap-2 mb-1">
-        <Button
-          onClick={() => window.history.back()}
-          variant="outline"
-          size="icon"
-          data-testid="button-back"
-          title="Geri Dön"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        {(user?.role === 'admin' || isHQRole(user?.role as any)) && (
-          <Link href="/akademi-hq">
-            <Button variant="outline" size="sm" data-testid="button-admin-panel">
-              <BookOpen className="w-4 h-4 mr-2" />
-              Yönetim Paneli
-            </Button>
-          </Link>
-        )}
-      </div>
-
-      {/* Page Header - COMPACT */}
-      <div className="mb-1">
-        <h1 className="text-xl font-bold tracking-tight">DOSPRESSO Academy</h1>
-        <p className="text-muted-foreground text-xs">Kariyer yolunuzu takip edin</p>
-      </div>
+    <div className="min-h-screen pb-20">
+      <PageHeader 
+        title="DOSPRESSO Academy" 
+        subtitle="Kariyer yolunuzu takip edin"
+        icon={BookOpen}
+        backPath="/"
+        actions={
+          (user?.role === 'admin' || isHQRole(user?.role as any)) && (
+            <Link href="/akademi-hq">
+              <Button variant="outline" size="sm" data-testid="button-admin-panel">
+                Yönetim
+              </Button>
+            </Link>
+          )
+        }
+      />
+      
+      <div className="p-3 space-y-2">
 
       {/* 3-Hub Navigation - MOVED TO TOP */}
       <div className="flex gap-2 mb-2 sticky top-0 bg-background z-10 pb-1 border-b">
@@ -586,6 +579,7 @@ export default function Academy() {
           </Link>
         </div>
       )}
+      </div>
     </div>
   );
 }
