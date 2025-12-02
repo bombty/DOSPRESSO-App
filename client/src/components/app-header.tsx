@@ -1,6 +1,7 @@
 import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useLocation } from "wouter";
 import dospressoLogo from "@assets/IMG_5044_1764674613097.jpeg";
 
 interface AppHeaderProps {
@@ -8,6 +9,12 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ notificationCount = 0 }: AppHeaderProps) {
+  const [, setLocation] = useLocation();
+
+  const handleMailboxClick = () => {
+    setLocation("/bildirimler");
+  };
+
   return (
     <div className="sticky top-0 z-50 bg-background border-b">
       {/* Logo Bar - Centered */}
@@ -19,7 +26,8 @@ export function AppHeader({ notificationCount = 0 }: AppHeaderProps) {
         <img 
           src={dospressoLogo} 
           alt="DOSPRESSO" 
-          className="h-10 object-contain"
+          className="h-10 object-contain cursor-pointer"
+          onClick={() => setLocation("/")}
           data-testid="img-dospresso-logo"
         />
         
@@ -29,6 +37,7 @@ export function AppHeader({ notificationCount = 0 }: AppHeaderProps) {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
+            onClick={handleMailboxClick}
             data-testid="button-mailbox"
           >
             <Mail className="w-4 h-4" />
