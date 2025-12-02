@@ -120,7 +120,7 @@ export default function FaultHub() {
   const { data: faults = [], isLoading: isFaultsLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
     queryFn: async () => {
-      const response = await fetch("/api/faults");
+      const response = await fetch("/api/faults", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch faults");
       const data = await response.json();
       return Array.isArray(data) ? data : (data.data || []);
@@ -222,7 +222,7 @@ export default function FaultHub() {
         </TabsList>
 
         {/* TAB 1: Overview */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="overview" className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             <Card>
               <CardContent className="p-3">
@@ -312,7 +312,7 @@ export default function FaultHub() {
         </TabsContent>
 
         {/* TAB 2: SLA Status */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="sla-status" className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Card className="border-red-500 bg-red-50 dark:bg-red-950">
               <CardContent className="p-3">
@@ -385,7 +385,7 @@ export default function FaultHub() {
         </TabsContent>
 
         {/* TAB 3: Manage Faults */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="manage" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -561,7 +561,7 @@ export default function FaultHub() {
 
         {/* TAB 4: My Faults (Technician) */}
         {user?.id && (
-          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <TabsContent value="myFaults" className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="pb-3">
