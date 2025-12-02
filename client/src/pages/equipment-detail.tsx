@@ -765,7 +765,7 @@ export default function EquipmentDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="maintenance" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Bakım Geçmişi</CardTitle>
@@ -830,7 +830,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="faults" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Arıza Kayıtları</CardTitle>
@@ -904,7 +904,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="service-requests" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
@@ -1077,7 +1077,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="comments" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Yorumlar</CardTitle>
@@ -1151,7 +1151,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="qr" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1207,7 +1207,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="maintenance-schedule" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Bakım Planı</CardTitle>

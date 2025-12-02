@@ -210,7 +210,7 @@ export default function PersonelProfilPage() {
           <TabsTrigger value="akademi" data-testid="tab-academy" className="flex-1 min-w-fit">Akademi</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="bilgiler" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Personel Bilgileri</CardTitle>
@@ -264,7 +264,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="performans" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Performans Metrikleri</CardTitle>
@@ -278,7 +278,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="denetimler" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Personel Denetimleri</CardTitle>
@@ -292,7 +292,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="vardiyalar" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Vardiya Geçmişi</CardTitle>
@@ -306,7 +306,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="akademi" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Akademi Modülleri</CardTitle>

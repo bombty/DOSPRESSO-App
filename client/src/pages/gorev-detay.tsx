@@ -255,7 +255,7 @@ export default function GorevDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="checklist" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Checklist Öğeleri</CardTitle>
@@ -295,7 +295,7 @@ export default function GorevDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="notes" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Görev Notları</CardTitle>
@@ -340,7 +340,7 @@ export default function GorevDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="history" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Görev Geçmişi</CardTitle>

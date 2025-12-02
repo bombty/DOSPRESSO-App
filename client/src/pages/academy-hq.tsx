@@ -443,7 +443,7 @@ export default function AcademyHQ() {
         </TabsList>
 
         {/* MODULES TAB - ANA SAYFA */}
-        <TabsContent value="modules" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Modüller Listesi */}
             <Card>
@@ -678,7 +678,7 @@ export default function AcademyHQ() {
         </TabsContent>
 
         {/* EXAM REQUESTS TAB */}
-        <TabsContent value="exams" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="grid md:grid-cols-2 gap-4">
             {/* Pending */}
             <Card>
@@ -758,7 +758,7 @@ export default function AcademyHQ() {
         </TabsContent>
 
         {/* EĞİTİM MODÜLLERI TAB */}
-        <TabsContent value="training" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Eğitim Modülleri Yönetimi</h2>
             <div className="flex gap-2">

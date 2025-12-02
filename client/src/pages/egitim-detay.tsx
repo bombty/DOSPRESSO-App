@@ -196,7 +196,7 @@ export default function EgitimDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="participants" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Kayıtlı Personeller</CardTitle>
@@ -247,7 +247,7 @@ export default function EgitimDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Eğitim İçeriği</CardTitle>
@@ -287,7 +287,7 @@ export default function EgitimDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="certificates" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Verilen Sertifikalar</CardTitle>

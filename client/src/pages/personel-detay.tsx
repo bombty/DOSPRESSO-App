@@ -526,7 +526,7 @@ export default function PersonelDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="documents" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -712,7 +712,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="attendance" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -774,7 +774,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="performance" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -844,7 +844,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="training" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -899,7 +899,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="leave" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1220,7 +1220,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="training" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1297,7 +1297,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="tasks" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1374,7 +1374,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="messages" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

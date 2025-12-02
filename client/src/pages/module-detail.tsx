@@ -322,7 +322,7 @@ export default function ModuleDetail() {
           </TabsList>
 
           {/* Objectives Tab */}
-          <TabsContent value="objectives" className="grid grid-cols-1 gap-4">
+          <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Öğrenme Hedefleri</CardTitle>
@@ -349,7 +349,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Steps Tab */}
-          <TabsContent value="steps" className="grid grid-cols-1 gap-4">
+          <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {steps.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">İçerik tanımlanmamış</p>
             ) : (
@@ -394,7 +394,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Quiz Tab */}
-          <TabsContent value="quiz" className="grid grid-cols-1 gap-4">
+          <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {module.quiz && module.quiz.length > 0 ? (
               <>
                 <Card>
@@ -438,7 +438,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Completed Tab */}
-          <TabsContent value="completed" className="grid grid-cols-1 gap-4">
+          <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
@@ -860,7 +860,7 @@ export default function ModuleDetail() {
         </TabsList>
 
         {/* Overview */}
-        <TabsContent value="overview" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Modül Bilgileri</CardTitle>
@@ -939,7 +939,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Learning Objectives */}
-        <TabsContent value="objectives" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1022,7 +1022,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Steps */}
-        <TabsContent value="steps" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1154,7 +1154,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Quiz */}
-        <TabsContent value="quiz" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1328,7 +1328,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Scenarios */}
-        <TabsContent value="scenarios" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1434,7 +1434,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Supervisor Checklist */}
-        <TabsContent value="checklist" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">

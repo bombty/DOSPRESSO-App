@@ -92,7 +92,7 @@ export default function TrainingAssign() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="assign" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Toplu Eğitim Ataması</CardTitle>

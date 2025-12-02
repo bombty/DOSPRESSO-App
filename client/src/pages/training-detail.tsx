@@ -361,7 +361,7 @@ export default function TrainingDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value=4 className="grid grid-cols-1 gap-4" data-testid="tab-content-videos">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="tab-content-videos">
           {module.videos && module.videos.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {module.videos.map((video, index) => (
@@ -414,7 +414,7 @@ export default function TrainingDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value=4 className="grid grid-cols-1 gap-4" data-testid="tab-content-lessons">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="tab-content-lessons">
           {isAdminOrCoach && (
             <div className="flex justify-end mb-4">
               <Button 
@@ -587,7 +587,7 @@ export default function TrainingDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value=4 className="grid grid-cols-1 gap-4" data-testid="tab-content-quiz">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="tab-content-quiz">
           {module.quizzes && module.quizzes.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {module.quizzes.map((quiz) => (
@@ -625,7 +625,7 @@ export default function TrainingDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value=4 className="grid grid-cols-1 gap-4" data-testid="tab-content-flashcards">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="tab-content-flashcards">
           {module.flashcards && module.flashcards.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {module.flashcards.map((card) => (

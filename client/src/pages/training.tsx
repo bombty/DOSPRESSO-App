@@ -420,7 +420,7 @@ export default function Training() {
         </TabsList>
 
         {/* My Trainings Tab - Mandatory + optional modules with progress */}
-        <TabsContent value="my-trainings" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {myTrainings.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -507,7 +507,7 @@ export default function Training() {
           )}
         </TabsContent>
 
-        <TabsContent value="all" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {modules?.map((module) => {
               const progressStatus = getProgressStatus(module.id);
@@ -595,7 +595,7 @@ export default function Training() {
           </div>
         </TabsContent>
 
-        <TabsContent value="published" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {modules?.filter(m => m.isPublished).map((module) => (
               <Card key={module.id} className="hover-elevate" data-testid={`card-module-${module.id}`}>
@@ -613,7 +613,7 @@ export default function Training() {
           </div>
         </TabsContent>
 
-        <TabsContent value="draft" className="grid grid-cols-1 gap-4">
+        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {modules?.filter(m => !m.isPublished).map((module) => (
               <Card key={module.id} className="hover-elevate" data-testid={`card-module-${module.id}`}>
