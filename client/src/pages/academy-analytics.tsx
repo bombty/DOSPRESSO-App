@@ -69,8 +69,8 @@ export default function AcademyAnalytics() {
   const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
   return (
-    <div className="grid grid-cols-1 gap-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+      <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -81,12 +81,12 @@ export default function AcademyAnalytics() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Akademi Analitikleri</h1>
-        <p className="text-muted-foreground mt-2">Şube-çapı eğitim performansı ve ilerleme</p>
+      <div className="col-span-full">
+        <h1 className="text-lg font-bold tracking-tight">Akademi Analitikleri</h1>
+        <p className="text-xs text-muted-foreground mt-1">Şube-çapı eğitim performansı ve ilerleme</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="col-span-full grid grid-cols-2 md:grid-cols-4 gap-2">
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">

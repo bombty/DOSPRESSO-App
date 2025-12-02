@@ -51,8 +51,8 @@ export default function AcademyBadges() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-2 p-3">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+      <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -63,12 +63,12 @@ export default function AcademyBadges() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      <div>
+      <div className="col-span-full">
         <h1 className="text-lg font-bold tracking-tight">Rozetler</h1>
         <p className="text-xs text-muted-foreground mt-1">Eğitim yolculuğunda kazanılan başarılar</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+      <div className="col-span-full grid grid-cols-3 md:grid-cols-3 gap-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Puan</CardTitle>
@@ -101,12 +101,12 @@ export default function AcademyBadges() {
       </div>
 
       {unlockedBadges.length > 0 && (
-        <div>
+        <div className="col-span-full">
           <h2 className="text-sm font-semibold mb-2 flex items-center gap-1">
             <Trophy className="w-4 h-4 text-yellow-500" />
             Açılan ({unlockedBadges.length})
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {unlockedBadges.map((badge: any) => {
               const IconComponent = BADGE_ICONS[badge.iconName] || Star;
               return (
@@ -135,12 +135,12 @@ export default function AcademyBadges() {
       )}
 
       {lockedBadges.length > 0 && (
-        <div>
+        <div className="col-span-full">
           <h2 className="text-sm font-semibold mb-2 flex items-center gap-1">
             <Lock className="w-4 h-4 text-gray-400" />
             Kilitli ({lockedBadges.length})
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {lockedBadges.map((badge: any) => {
               const IconComponent = BADGE_ICONS[badge.iconName] || Star;
               return (

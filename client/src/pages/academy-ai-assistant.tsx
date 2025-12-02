@@ -82,8 +82,8 @@ export default function AcademyAIAssistant() {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-2 p-3 max-w-4xl mx-auto">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+      <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -94,7 +94,7 @@ export default function AcademyAIAssistant() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      <div>
+      <div className="col-span-full">
         <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-blue-500" />
           Academy AI Asistan
@@ -103,10 +103,10 @@ export default function AcademyAIAssistant() {
       </div>
 
       {/* Chat Container */}
-      <Card className="h-[400px] flex flex-col">
+      <Card className="col-span-full h-[400px] flex flex-col">
         <CardContent className="flex-1 p-2 overflow-hidden">
           <ScrollArea className="h-full pr-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -140,7 +140,7 @@ export default function AcademyAIAssistant() {
       </Card>
 
       {/* Input Area */}
-      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+      <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-1">
         <div className="flex gap-1">
           <Textarea
             placeholder="Sorunuzu yazın..."
