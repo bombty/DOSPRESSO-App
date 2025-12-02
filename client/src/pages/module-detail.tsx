@@ -91,6 +91,7 @@ export default function ModuleDetail() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [previewQuizAnswers, setPreviewQuizAnswers] = useState<Record<number, number>>({});
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(module?.requiredForRole || []);
 
   const { data: module, isLoading } = useQuery({
     queryKey: [`/api/training/modules/${moduleId}`],
@@ -322,10 +323,10 @@ export default function ModuleDetail() {
           </TabsList>
 
           {/* Objectives Tab */}
-          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TabsContent value="objectives" className="grid grid-cols-1 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Öğrenme Hedefleri</CardTitle>
+                <CardTitle className="text-base">Öğrenme Hedefleri</CardTitle>
                 <CardDescription>Bu modülü tamamladığında neler öğreneceksin</CardDescription>
               </CardHeader>
               <CardContent>
@@ -349,7 +350,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Steps Tab */}
-          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TabsContent value="steps" className="grid grid-cols-1 gap-4">
             {steps.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">İçerik tanımlanmamış</p>
             ) : (
@@ -394,7 +395,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Quiz Tab */}
-          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TabsContent value="quiz" className="grid grid-cols-1 gap-4">
             {module.quiz && module.quiz.length > 0 ? (
               <>
                 <Card>
@@ -438,7 +439,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Completed Tab */}
-          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TabsContent value="completed" className="grid grid-cols-1 gap-4">
             <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
@@ -860,10 +861,10 @@ export default function ModuleDetail() {
         </TabsList>
 
         {/* Overview */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="overview" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle>Modül Bilgileri</CardTitle>
+              <CardTitle>Modül Bilgileri & Atama</CardTitle>
               <CardDescription>Temel modül özellikleri ve yapısı</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -908,6 +909,58 @@ export default function ModuleDetail() {
             </CardContent>
           </Card>
 
+          {/* Role Assignment Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Rol Ataması</CardTitle>
+              <CardDescription>Bu modülü hangi rollere atanacak?</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3">
+              {["Stajyer", "Bar Buddy", "Barista", "Supervisor Buddy", "Supervisor"].map((role) => (
+                <label key={role} className="flex items-center gap-2 p-2 border rounded cursor-pointer hover-elevate">
+                  <input
+                    type="checkbox"
+                    checked={selectedRoles.includes(role)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedRoles([...selectedRoles, role]);
+                      } else {
+                        setSelectedRoles(selectedRoles.filter(r => r !== role));
+                      }
+                    }}
+                    data-testid={`checkbox-role-${role}`}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">{role}</span>
+                </label>
+              ))}
+            </CardContent>
+            <CardContent className="pt-0">
+              <Button 
+                size="sm" 
+                className="w-full"
+                onClick={async () => {
+                  try {
+                    await apiRequest("PUT", `/api/training/modules/${moduleId}`, {
+                      title: module?.title,
+                      description: module?.description,
+                      level: module?.level,
+                      estimatedDuration: module?.estimatedDuration,
+                      requiredForRole: selectedRoles,
+                    });
+                    toast({ title: "Atamalar kaydedildi" });
+                    queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
+                  } catch (err: any) {
+                    toast({ title: "Hata", description: err.message, variant: "destructive" });
+                  }
+                }}
+                data-testid="button-save-role-assignment"
+              >
+                Rol Atamasını Kaydet
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Gallery Section */}
           {module.galleryImages && module.galleryImages.length > 0 && (
             <Card>
@@ -939,12 +992,12 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Learning Objectives */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="objectives" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
                 <div>
-                  <CardTitle>Öğrenme Hedefleri</CardTitle>
+                  <CardTitle className="text-lg">Öğrenme Hedefleri</CardTitle>
                   <CardDescription>Modülün öğrenme çıktıları</CardDescription>
                 </div>
                 {isEditor && (
@@ -1022,7 +1075,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Steps */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="steps" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1154,7 +1207,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Quiz */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="quiz" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1328,7 +1381,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Scenarios */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="scenarios" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1434,7 +1487,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Supervisor Checklist */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="checklist" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
