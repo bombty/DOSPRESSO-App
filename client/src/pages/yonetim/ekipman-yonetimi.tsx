@@ -712,7 +712,7 @@ export default function EquipmentManagement() {
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
+                    <CardContent className="grid grid-cols-1 gap-2 text-sm">
                       {eq.serialNumber && <div><span className="text-muted-foreground">Seri: </span>{eq.serialNumber}</div>}
                       {eq.warrantyEndDate && (
                         <div className="flex items-center gap-2">

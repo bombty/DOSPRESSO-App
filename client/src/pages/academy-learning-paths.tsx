@@ -142,7 +142,7 @@ export default function AcademyLearningPaths() {
             AI Kişiselleştirmesi
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1 text-xs">
+        <CardContent className="grid grid-cols-1 gap-1 text-xs">
           <p>Yapay zeka quiz sonuçlarını analiz eder</p>
           <p>Zayıf alanları belirler ve quizler önerir</p>
           <p>En etkili sırayı dinamik olarak ayarlar</p>

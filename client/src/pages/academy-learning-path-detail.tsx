@@ -186,7 +186,7 @@ export default function AcademyLearningPathDetail() {
             <CardHeader>
               <CardTitle className="text-base">Bu Yolun Faydaları</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            <CardContent className="grid grid-cols-1 gap-2 text-sm">
               <p>✓ Sırayla öğrenilerek bilgi birikimi maksimize edilir</p>
               <p>✓ Zor konulara geçmeden önce temel bilgiler pekiştirilir</p>
               <p>✓ Her başarılı quiz seni bir sonraki seviyeye taşır</p>

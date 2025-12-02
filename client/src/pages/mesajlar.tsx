@@ -541,7 +541,7 @@ function NewMessageForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" data-testid="form-new-message">
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4" data-testid="form-new-message">
       {/* HQ cascading selection: Branch → Personnel */}
       {isHQ && (
         <>

@@ -974,7 +974,7 @@ export default function ModuleDetail() {
                         onSubmit={objectivesForm.handleSubmit((data) =>
                           updateObjectivesMutation.mutate(data)
                         )}
-                        className="space-y-4"
+                        className="grid grid-cols-1 gap-4"
                       >
                         <div className="grid grid-cols-1 gap-3">
                           {objectivesForm.watch("objectives").map((_, index) => (
@@ -1130,7 +1130,7 @@ export default function ModuleDetail() {
                           <CardTitle className="text-base">{step.title}</CardTitle>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
+                      <CardContent className="grid grid-cols-1 gap-2 text-sm">
                         <p className="text-muted-foreground whitespace-pre-wrap">{step.content}</p>
                         {step.media_suggestions && step.media_suggestions.length > 0 && (
                           <div>

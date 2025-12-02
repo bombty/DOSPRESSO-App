@@ -1287,7 +1287,7 @@ export default function AcademyHQ() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
+                  <CardContent className="grid grid-cols-1 gap-2 text-sm">
                     {module.description && <p className="text-muted-foreground line-clamp-2">{module.description}</p>}
                     <div className="flex gap-2 flex-wrap">
                       {module.isPublished && <Badge variant="default">Yayında</Badge>}

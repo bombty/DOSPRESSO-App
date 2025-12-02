@@ -1215,7 +1215,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {maintenanceSchedules.filter(s => String(s.equipmentId) === equipmentId).length > 0 ? (
-                <div className="space-y-3" data-testid="list-maintenance-schedules">
+                <div className="grid grid-cols-1 gap-3" data-testid="list-maintenance-schedules">
                   {maintenanceSchedules.filter(s => String(s.equipmentId) === equipmentId).map((schedule) => (
                     <Card key={schedule.id} data-testid={`card-maintenance-schedule-${String(schedule.id)}`}>
                       <CardHeader className="pb-3">
@@ -1226,7 +1226,7 @@ export default function EquipmentDetail() {
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
+                      <CardContent className="grid grid-cols-1 gap-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Periyod:</span>
                           <span data-testid={`text-interval-${String(schedule.id)}`}>{schedule.intervalDays} gün</span>
@@ -1268,13 +1268,13 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {proactiveMaintenanceLogs.filter(l => String(l.equipmentId) === equipmentId).length > 0 ? (
-                <div className="space-y-3" data-testid="list-maintenance-logs">
+                <div className="grid grid-cols-1 gap-3" data-testid="list-maintenance-logs">
                   {proactiveMaintenanceLogs.filter(l => String(l.equipmentId) === equipmentId).map((log) => (
                     <Card key={log.id} data-testid={`card-maintenance-log-${String(log.id)}`}>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base">{log.maintenanceType}</CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
+                      <CardContent className="grid grid-cols-1 gap-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Yapılma Tarihi:</span>
                           <span data-testid={`text-performed-date-${String(log.id)}`}>

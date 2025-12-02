@@ -405,7 +405,7 @@ export default function HRReportsPage() {
         <CardHeader>
           <CardTitle className="text-lg">Özet</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="grid grid-cols-1 gap-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Raporlanan Dönem:</span>
             <span className="font-medium">{format(new Date(dateFrom), 'dd MMM yyyy', { locale: tr })} - {format(new Date(dateTo), 'dd MMM yyyy', { locale: tr })}</span>

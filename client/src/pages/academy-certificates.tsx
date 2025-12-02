@@ -195,7 +195,7 @@ export default function AcademyCertificates() {
         <CardHeader>
           <CardTitle className="text-base">Sertifikalar Hakkında</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="grid grid-cols-1 gap-2 text-sm">
           <p>✅ Her kariyer seviyesinde resmi sertifika kazanın</p>
           <p>✅ Sertifikaları PDF olarak indirip paylaşın</p>
           <p>✅ LinkedIn ve diğer platformlarda gösterin</p>
