@@ -127,9 +127,9 @@ export default function AcademyCohortAnalytics() {
                 <CardDescription>Öğrencilerin her aşamada ne kadarı kaldığı</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {funnelData.map((stage, idx) => (
-                    <div key={idx} className="grid grid-cols-1 gap-1">
+                    <div key={idx} className="grid grid-cols-1 gap-1 md:grid-cols-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium">{stage.stage}</span>
                         <div className="flex gap-2">

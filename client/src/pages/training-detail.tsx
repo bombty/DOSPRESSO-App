@@ -239,7 +239,7 @@ export default function TrainingDetail() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96" />
       </div>
@@ -248,7 +248,7 @@ export default function TrainingDetail() {
 
   if (!module) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 grid grid-cols-1 gap-4">
+      <div className="flex flex-col items-center justify-center h-96 grid grid-cols-1 gap-4 md:grid-cols-2">
         <BookOpen className="h-16 w-16 text-muted-foreground" />
         <h2 className="text-2xl font-semibold">Modül bulunamadı</h2>
         <Button onClick={() => setLocation("/egitim")} data-testid="button-back">
@@ -263,7 +263,7 @@ export default function TrainingDetail() {
   const progressPercentage = progress?.progressPercentage || 0;
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
@@ -290,7 +290,7 @@ export default function TrainingDetail() {
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <CardTitle className="text-3xl" data-testid="text-module-title">
                 {module.title}
               </CardTitle>
@@ -328,7 +328,7 @@ export default function TrainingDetail() {
           </div>
 
           {progress && (
-            <div className="mt-4 grid grid-cols-1 gap-2">
+            <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">İlerleme</span>
                 <span className="font-medium" data-testid="text-progress-percentage">
@@ -341,7 +341,7 @@ export default function TrainingDetail() {
         </CardHeader>
       </Card>
 
-      <Tabs defaultValue="videos" className="grid grid-cols-1 gap-4">
+      <Tabs defaultValue="videos" className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <TabsList className="grid w-full grid-cols-4" data-testid="tabs-list">
           <TabsTrigger value="videos" data-testid="tab-videos">
             <Video className="mr-2 h-4 w-4" />
@@ -433,12 +433,12 @@ export default function TrainingDetail() {
           )}
 
           {module.lessons && module.lessons.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {module.lessons.map((lesson) => (
                 <Card key={lesson.id} data-testid={`lesson-card-${lesson.id}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div className="grid grid-cols-1 gap-1">
+                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <CardTitle>{lesson.title}</CardTitle>
                         <CardDescription>
                           <Clock className="inline-block mr-1 h-3 w-3" />
@@ -471,7 +471,7 @@ export default function TrainingDetail() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-4">
+                  <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="prose dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
                       {lesson.content}
                     </div>
@@ -521,7 +521,7 @@ export default function TrainingDetail() {
                 <CardHeader>
                   <CardTitle>{editingLesson ? "Dersi Düzenle" : "Yeni Ders Ekle"}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4">
+                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-medium">Başlık</label>
                     <Input
@@ -589,7 +589,7 @@ export default function TrainingDetail() {
 
         <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="tab-content-quiz">
           {module.quizzes && module.quizzes.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {module.quizzes.map((quiz) => (
                 <Card key={quiz.id} data-testid={`quiz-card-${quiz.id}`}>
                   <CardHeader>
@@ -598,7 +598,7 @@ export default function TrainingDetail() {
                       <CardDescription>{quiz.description}</CardDescription>
                     )}
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-2">
+                  <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     <div className="flex gap-4 text-sm text-muted-foreground">
                       {quiz.passingScore && (
                         <span>Geçme Puanı: {quiz.passingScore}%</span>
@@ -636,7 +636,7 @@ export default function TrainingDetail() {
                   data-testid={`flashcard-${card.id}`}
                 >
                   <CardContent className="pt-6 min-h-48 flex items-center justify-center">
-                    <div className="text-center grid grid-cols-1 gap-2">
+                    <div className="text-center grid grid-cols-1 gap-2 md:grid-cols-2">
                       <p className="text-sm text-muted-foreground uppercase tracking-wide">
                         {flippedCards.has(card.id) ? "Cevap" : "Soru"}
                       </p>

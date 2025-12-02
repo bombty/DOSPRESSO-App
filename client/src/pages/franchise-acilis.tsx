@@ -132,7 +132,7 @@ export default function FranchiseAcilis() {
 
   if (isLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 gap-4">
+      <div className="p-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -140,7 +140,7 @@ export default function FranchiseAcilis() {
   }
 
   return (
-    <div className="p-6 grid grid-cols-1 gap-6">
+    <div className="p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" data-testid="heading-franchise-acilis">Franchise Açılış Yönetimi</h1>
@@ -160,7 +160,7 @@ export default function FranchiseAcilis() {
                 <DialogDescription>Yeni bir franchise açılış süreci başlatın</DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="branchId"
@@ -322,7 +322,7 @@ export default function FranchiseAcilis() {
                     {getStatusBadge(process.status, process.id)}
                   </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4">
+                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground mb-1">Şube ID</p>

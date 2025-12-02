@@ -332,7 +332,7 @@ export default function ModuleDetail() {
                 {learningObjectives.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">Hedef tanımlanmamış</p>
                 ) : (
-                  <ul className="grid grid-cols-1 gap-3">
+                  <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {learningObjectives.map((objective: string, idx: number) => (
                       <li key={idx} className="flex gap-3 text-sm">
                         <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -446,7 +446,7 @@ export default function ModuleDetail() {
                   Modül Tamamlandı!
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-3">
+              <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <p className="text-sm">✓ Öğrenme hedefleri tamamlandı</p>
                 <p className="text-sm">✓ İçerik öğrenildi</p>
                 <p className="text-sm">✓ Sınav geçildi</p>
@@ -523,12 +523,12 @@ export default function ModuleDetail() {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader className="grid grid-cols-1 gap-3">
+              <DialogHeader className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <DialogTitle>Modül Ön İzlemesi - Öğrenci Görünümü</DialogTitle>
                 
                 {/* Progress Bar */}
                 {previewPhase !== 'completed' && (
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     <div className="flex justify-between text-xs text-muted-foreground mb-1">
                       <span>İlerleme</span>
                       <span>
@@ -555,7 +555,7 @@ export default function ModuleDetail() {
 
               {/* Objectives Phase */}
               {previewPhase === 'objectives' && (
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-sm">Öğrenme Hedefleri</CardTitle>
@@ -564,7 +564,7 @@ export default function ModuleDetail() {
                       {learningObjectives.length === 0 ? (
                         <p className="text-center text-muted-foreground py-8">Hedef tanımlanmamış</p>
                       ) : (
-                        <ul className="grid grid-cols-1 gap-3">
+                        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
                           {learningObjectives.map((objective: string, idx: number) => (
                             <li key={idx} className="flex gap-3 text-sm">
                               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -599,7 +599,7 @@ export default function ModuleDetail() {
 
               {/* Steps Phase */}
               {previewPhase === 'steps' && (
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {steps.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Adım tanımlanmamış</p>
                   ) : (
@@ -613,7 +613,7 @@ export default function ModuleDetail() {
                             <Badge variant="outline">{currentStepIndex + 1}/{steps.length}</Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 gap-4">
+                        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                           <p className="text-sm whitespace-pre-wrap">{steps[currentStepIndex]?.content}</p>
                           {steps[currentStepIndex]?.media_suggestions && steps[currentStepIndex].media_suggestions.length > 0 && (
                             <div>
@@ -669,17 +669,17 @@ export default function ModuleDetail() {
 
               {/* Quiz Phase */}
               {previewPhase === 'quiz' && (
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {!module?.quiz || module.quiz.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Quiz sorusu tanımlanmamış</p>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {module.quiz.map((q: any, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-green-500">
                             <CardContent className="pt-4">
                               <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
-                              <div className="grid grid-cols-1 gap-2">
+                              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                                 {q.options?.map((opt: string, optIdx: number) => (
                                   <button
                                     key={optIdx}
@@ -733,16 +733,16 @@ export default function ModuleDetail() {
 
               {/* Scenarios Phase */}
               {previewPhase === 'scenarios' && (
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {scenarioTasks.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Senaryo tanımlanmamış</p>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 gap-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         {scenarioTasks.map((scenario: any, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-purple-500">
                             <CardContent className="pt-4">
-                              <div className="grid grid-cols-1 gap-2">
+                              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                                 <p className="font-medium text-sm">{scenario.title || `Senaryo ${idx + 1}`}</p>
                                 <p className="text-sm text-muted-foreground">{scenario.description}</p>
                                 {scenario.tasks && (
@@ -866,7 +866,7 @@ export default function ModuleDetail() {
               <CardTitle>Modül Bilgileri</CardTitle>
               <CardDescription>Temel modül özellikleri ve yapısı</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Başlık</p>
@@ -976,7 +976,7 @@ export default function ModuleDetail() {
                         )}
                         className="grid grid-cols-1 gap-4"
                       >
-                        <div className="grid grid-cols-1 gap-3">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                           {objectivesForm.watch("objectives").map((_, index) => (
                             <FormField
                               key={index}
@@ -1008,7 +1008,7 @@ export default function ModuleDetail() {
               {learningObjectives.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Hedef tanımlanmamış</p>
               ) : (
-                <ul className="grid grid-cols-1 gap-2">
+                <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {learningObjectives.map((objective: string, idx: number) => (
                     <li key={idx} className="flex gap-2 text-sm">
                       <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
@@ -1119,7 +1119,7 @@ export default function ModuleDetail() {
               {steps.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Adım tanımlanmamış</p>
               ) : (
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {steps.map((step: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-blue-500">
                       <CardHeader className="pb-2">
@@ -1304,7 +1304,7 @@ export default function ModuleDetail() {
               {!module?.quiz || module.quiz.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Quiz sorusu tanımlanmamış</p>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {module.quiz.map((q: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-green-500">
                       <CardContent className="pt-4">
@@ -1354,7 +1354,7 @@ export default function ModuleDetail() {
                         className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
                       >
                         {scenariosForm.watch("scenarioTasks").map((_, index) => (
-                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2">
+                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2 md:grid-cols-2">
                             <FormField
                               control={scenariosForm.control}
                               name={`scenarioTasks.${index}.title`}
@@ -1407,11 +1407,11 @@ export default function ModuleDetail() {
               {scenarioTasks.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Senaryo görev tanımlanmamış</p>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {scenarioTasks.map((scenario: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-purple-500">
                       <CardContent className="pt-4">
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                           <p className="font-medium text-sm">{scenario.title || `Senaryo ${idx + 1}`}</p>
                           <p className="text-sm text-muted-foreground">{scenario.description}</p>
                           {scenario.tasks && (
@@ -1460,7 +1460,7 @@ export default function ModuleDetail() {
                         className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
                       >
                         {checklistForm.watch("supervisorChecklist").map((_, index) => (
-                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2">
+                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2 md:grid-cols-2">
                             <FormField
                               control={checklistForm.control}
                               name={`supervisorChecklist.${index}.title`}
@@ -1513,11 +1513,11 @@ export default function ModuleDetail() {
               {!module?.supervisorChecklist || module.supervisorChecklist.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Kontrol listesi maddesi tanımlanmamış</p>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {module.supervisorChecklist.map((item: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-orange-500">
                       <CardContent className="pt-4">
-                        <div className="grid grid-cols-1 gap-1">
+                        <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                           <p className="font-medium text-sm">{item.title}</p>
                           <p className="text-sm text-muted-foreground">{item.description}</p>
                         </div>

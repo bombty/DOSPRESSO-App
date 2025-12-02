@@ -480,7 +480,7 @@ export default function ServiceRequestsManagement() {
   };
 
   return (
-    <div className="container mx-auto p-4 lg:p-6 grid grid-cols-1 gap-4">
+    <div className="container mx-auto p-4 lg:p-6 grid grid-cols-1 gap-4 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold" data-testid="text-page-title">Servis Talepleri</h1>
@@ -581,7 +581,7 @@ export default function ServiceRequestsManagement() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
               <Label className="text-xs">Şube</Label>
               <Select value={filterBranch} onValueChange={setFilterBranch}>
                 <SelectTrigger data-testid="select-filter-branch">
@@ -597,7 +597,7 @@ export default function ServiceRequestsManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
               <Label className="text-xs">Durum</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger data-testid="select-filter-status">
@@ -629,7 +629,7 @@ export default function ServiceRequestsManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {filteredRequests.map(request => (
             <Card key={request.id} className="hover-elevate border-l-4" style={{ borderLeftColor: !request.priority ? '#3b82f6' : request.priority === 'kritik' ? '#ef4444' : request.priority === 'yüksek' ? '#f97316' : request.priority === 'orta' ? '#eab308' : '#3b82f6' }} data-testid={`card-service-request-${request.id}`}>
               <CardHeader>
@@ -655,7 +655,7 @@ export default function ServiceRequestsManagement() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {/* Location and dates */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
@@ -735,38 +735,38 @@ export default function ServiceRequestsManagement() {
           </DialogHeader>
 
           {selectedRequest && (
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* Equipment Info */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="grid grid-cols-1 gap-1">
+                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                   <p className="text-sm text-muted-foreground">Cihaz Adı</p>
                   <p className="font-medium">{selectedRequest.equipmentName}</p>
                 </div>
-                <div className="grid grid-cols-1 gap-1">
+                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                   <p className="text-sm text-muted-foreground">Cihaz Tipi</p>
                   <p className="font-medium">{selectedRequest.equipmentType}</p>
                 </div>
-                <div className="grid grid-cols-1 gap-1">
+                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                   <p className="text-sm text-muted-foreground">Şube</p>
                   <p className="font-medium">{selectedRequest.branchName || `Şube #${selectedRequest.branchId}`}</p>
                 </div>
-                <div className="grid grid-cols-1 gap-1">
+                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                   <p className="text-sm text-muted-foreground">Cihaz ID</p>
                   <p className="font-medium">{selectedRequest.equipmentId}</p>
                 </div>
               </div>
 
               {/* Service Request Info */}
-              <div className="border-t pt-4 grid grid-cols-1 gap-4">
+              <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <h3 className="font-semibold">Servis Talebi Bilgileri</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="grid grid-cols-1 gap-1">
+                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                     <p className="text-sm text-muted-foreground">Durum</p>
                     <Badge className={STATUS_VARIANTS[selectedRequest.status]}>
                       {STATUS_LABELS[selectedRequest.status]}
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-1 gap-1">
+                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                     <p className="text-sm text-muted-foreground">Öncelik</p>
                     {selectedRequest.priority ? (
                       <Badge className={`${PRIORITY_COLORS[selectedRequest.priority]} border ${PRIORITY_VARIANTS[selectedRequest.priority]}`}>
@@ -776,11 +776,11 @@ export default function ServiceRequestsManagement() {
                       <span className="text-sm text-muted-foreground">-</span>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 gap-1">
+                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                     <p className="text-sm text-muted-foreground">Servis Sağlayıcı</p>
                     <p className="font-medium">{selectedRequest.serviceProvider}</p>
                   </div>
-                  <div className="grid grid-cols-1 gap-1">
+                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                     <p className="text-sm text-muted-foreground">Talep Tarihi</p>
                     <p className="font-medium">{format(new Date(selectedRequest.createdAt), 'd MMM yyyy, HH:mm', { locale: tr })}</p>
                   </div>
@@ -789,17 +789,17 @@ export default function ServiceRequestsManagement() {
 
               {/* Dates */}
               {(selectedRequest.scheduledDate || selectedRequest.completedDate) && (
-                <div className="border-t pt-4 grid grid-cols-1 gap-4">
+                <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <h3 className="font-semibold">Tarihler</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {selectedRequest.scheduledDate && (
-                      <div className="grid grid-cols-1 gap-1">
+                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-sm text-muted-foreground">Planlanan Tarih</p>
                         <p className="font-medium">{format(new Date(selectedRequest.scheduledDate), 'd MMM yyyy', { locale: tr })}</p>
                       </div>
                     )}
                     {selectedRequest.completedDate && (
-                      <div className="grid grid-cols-1 gap-1">
+                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-sm text-muted-foreground">Tamamlanma Tarihi</p>
                         <p className="font-medium text-green-600">{format(new Date(selectedRequest.completedDate), 'd MMM yyyy', { locale: tr })}</p>
                       </div>
@@ -810,17 +810,17 @@ export default function ServiceRequestsManagement() {
 
               {/* Costs */}
               {(selectedRequest.estimatedCost || selectedRequest.actualCost) && (
-                <div className="border-t pt-4 grid grid-cols-1 gap-4">
+                <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <h3 className="font-semibold">Maliyetler</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {selectedRequest.estimatedCost && (
-                      <div className="grid grid-cols-1 gap-1">
+                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-sm text-muted-foreground">Tahmini Maliyet</p>
                         <p className="font-medium">₺{selectedRequest.estimatedCost}</p>
                       </div>
                     )}
                     {selectedRequest.actualCost && (
-                      <div className="grid grid-cols-1 gap-1">
+                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-sm text-muted-foreground">Gerçek Maliyet</p>
                         <p className="font-medium">₺{selectedRequest.actualCost}</p>
                       </div>
@@ -831,7 +831,7 @@ export default function ServiceRequestsManagement() {
 
               {/* Notes */}
               {selectedRequest.notes && (
-                <div className="border-t pt-4 grid grid-cols-1 gap-4">
+                <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <h3 className="font-semibold">Notlar</h3>
                   <p className="text-sm whitespace-pre-wrap">{selectedRequest.notes}</p>
                 </div>
@@ -839,12 +839,12 @@ export default function ServiceRequestsManagement() {
 
               {/* Timeline */}
               {selectedRequest.timeline && selectedRequest.timeline.length > 0 && (
-                <div className="border-t pt-4 grid grid-cols-1 gap-4">
+                <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <h3 className="font-semibold flex items-center gap-2">
                     <History className="w-4 h-4" />
                     Tarih
                   </h3>
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {selectedRequest.timeline.map((entry, idx) => (
                       <div key={entry.id} className="flex gap-3">
                         <div className="flex flex-col items-center">
@@ -896,7 +896,7 @@ export default function ServiceRequestsManagement() {
           </DialogHeader>
           <div className="grid grid-cols-1 gap-4 py-4">
             {/* Status */}
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <Label>Yeni Durum *</Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger data-testid="select-new-status">
@@ -913,7 +913,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Last Contact Date */}
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <Label>Son Görüşme Tarihi</Label>
               <Input 
                 type="datetime-local" 
@@ -925,7 +925,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Service Status Update */}
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <Label>Servis Durumu / Güncellemeler</Label>
               <Textarea
                 placeholder="Teknikçinin çalışma durumu, bulduğu sorunlar, yapılan işlemler vs..."
@@ -939,7 +939,7 @@ export default function ServiceRequestsManagement() {
 
             {/* Estimated Completion */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <Label>Tahmini Bitiş Tarihi</Label>
                 <Input 
                   type="date" 
@@ -950,7 +950,7 @@ export default function ServiceRequestsManagement() {
               </div>
 
               {/* Actual Cost */}
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <Label>Gerçek Maliyet (₺)</Label>
                 <Input 
                   type="number" 
@@ -972,7 +972,7 @@ export default function ServiceRequestsManagement() {
               
               <div className="grid grid-cols-2 gap-4">
                 {/* Photo 1 */}
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <Label>Fotoğraf 1</Label>
                   {photo1Preview && (
                     <img src={photo1Preview} alt="Photo 1" className="w-full h-32 object-cover rounded-md border" />
@@ -1007,7 +1007,7 @@ export default function ServiceRequestsManagement() {
                 </div>
 
                 {/* Photo 2 */}
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <Label>Fotoğraf 2</Label>
                   {photo2Preview && (
                     <img src={photo2Preview} alt="Photo 2" className="w-full h-32 object-cover rounded-md border" />
@@ -1081,9 +1081,9 @@ export default function ServiceRequestsManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {/* Step 1: Branch Selection */}
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Label htmlFor="create-branch" className="text-base font-semibold">Adım 1: Şube Seçimi *</Label>
               <Select value={createBranch} onValueChange={(val) => { setCreateBranch(val); setSelectedEquipment(null); }}>
                 <SelectTrigger id="create-branch" data-testid="select-create-branch">
@@ -1101,7 +1101,7 @@ export default function ServiceRequestsManagement() {
 
             {/* Step 2: Equipment Selection */}
             {createBranch && (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <Label className="text-base font-semibold">Adım 2: Cihaz Seçimi *</Label>
                 {branchEquipment.length > 0 ? (
                   <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
@@ -1128,10 +1128,10 @@ export default function ServiceRequestsManagement() {
             )}
 
             {/* Form Fields */}
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <Label htmlFor="create-priority">Öncelik</Label>
                   <Select value={createPriority} onValueChange={setCreatePriority}>
                     <SelectTrigger id="create-priority" data-testid="select-create-priority">
@@ -1147,7 +1147,7 @@ export default function ServiceRequestsManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <Label htmlFor="create-provider">Servis Sağlayıcı *</Label>
                 <Input
                   id="create-provider"
@@ -1158,7 +1158,7 @@ export default function ServiceRequestsManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <Label htmlFor="create-notes">Notlar</Label>
                 <Textarea
                   id="create-notes"
@@ -1173,7 +1173,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Photo Upload Section */}
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Label className="text-base font-semibold">Fotoğraflar (İsteğe Bağlı)</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div>

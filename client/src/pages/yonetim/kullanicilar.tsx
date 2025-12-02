@@ -238,7 +238,7 @@ export default function UserCRM() {
 
   return (
     <div className="flex-1 overflow-auto p-6">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-6">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-6 md:grid-cols-2">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold" data-testid="text-page-title">Kullanıcı Yönetimi</h1>
@@ -270,7 +270,7 @@ export default function UserCRM() {
                     Format: id,firstName,lastName,email,role,branchId
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <Label htmlFor="csv-text">CSV Verisi</Label>
                     <textarea
@@ -498,7 +498,7 @@ export default function UserCRM() {
                                 {user.firstName} {user.lastName} için rol ve şube değiştir
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                               <div>
                                 <Label htmlFor="edit-role">Rol</Label>
                                 <Select value={editRole ?? undefined} onValueChange={setEditRole}>

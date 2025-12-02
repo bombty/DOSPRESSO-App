@@ -66,7 +66,7 @@ export default function MusteriFeedbackPublic() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
         <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center py-12 grid grid-cols-1 gap-4">
+          <CardContent className="flex flex-col items-center justify-center py-12 grid grid-cols-1 gap-4 md:grid-cols-2">
             <CheckCircle className="w-16 h-16 text-green-600" data-testid="icon-success" />
             <h2 className="text-2xl font-bold" data-testid="heading-thank-you">Teşekkür Ederiz!</h2>
             <p className="text-center text-muted-foreground" data-testid="text-success-message">
@@ -104,8 +104,8 @@ export default function MusteriFeedbackPublic() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6">
-            <div className="grid grid-cols-1 gap-2">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <Label htmlFor="branchId">Şube ID *</Label>
               <Input
                 id="branchId"
@@ -121,7 +121,7 @@ export default function MusteriFeedbackPublic() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <Label>Puanınız *</Label>
               <div className="flex gap-2" data-testid="rating-stars">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -151,7 +151,7 @@ export default function MusteriFeedbackPublic() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <Label htmlFor="comment">Yorumunuz (İsteğe bağlı)</Label>
               <Textarea
                 id="comment"
@@ -177,7 +177,7 @@ export default function MusteriFeedbackPublic() {
 
             {!isAnonymous && (
               <div className="grid grid-cols-1 gap-4 p-4 bg-muted rounded-lg">
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <Label htmlFor="name">Adınız (İsteğe bağlı)</Label>
                   <Input
                     id="name"
@@ -187,7 +187,7 @@ export default function MusteriFeedbackPublic() {
                     data-testid="input-customer-name"
                   />
                 </div>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <Label htmlFor="email">E-posta (İsteğe bağlı)</Label>
                   <Input
                     id="email"

@@ -106,7 +106,7 @@ export default function AcademyAIAssistant() {
       <Card className="h-[400px] flex flex-col">
         <CardContent className="flex-1 p-2 overflow-hidden">
           <ScrollArea className="h-full pr-4">
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -140,7 +140,7 @@ export default function AcademyAIAssistant() {
       </Card>
 
       {/* Input Area */}
-      <div className="grid grid-cols-1 gap-1">
+      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
         <div className="flex gap-1">
           <Textarea
             placeholder="Sorunuzu yazın..."

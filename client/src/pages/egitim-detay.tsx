@@ -50,7 +50,7 @@ export default function EgitimDetay() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
+      <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -79,7 +79,7 @@ export default function EgitimDetay() {
   const getUserById = (userId: string) => users?.find((u) => u.id === userId);
 
   return (
-    <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
+    <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
@@ -143,7 +143,7 @@ export default function EgitimDetay() {
             Modül Bilgileri
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Kategori</p>
@@ -204,7 +204,7 @@ export default function EgitimDetay() {
             </CardHeader>
             <CardContent>
               {progress && progress.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {progress.map((p: any) => {
                     const user = getUserById(p.userId);
                     return (
@@ -259,7 +259,7 @@ export default function EgitimDetay() {
                   <div dangerouslySetInnerHTML={{ __html: module.content }} />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div className="flex items-center gap-3 p-3 rounded-lg border">
                     <Play className="h-5 w-5 text-primary" />
                     <div>
@@ -295,7 +295,7 @@ export default function EgitimDetay() {
             </CardHeader>
             <CardContent>
               {progress?.filter((p) => p.status === "completed").length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {progress
                     .filter((p) => p.status === "completed")
                     .map((p: any) => {

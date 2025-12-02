@@ -163,7 +163,7 @@ export default function AcademyAchievements() {
                 </div>
               )}
 
-              <CardContent className="p-2 grid grid-cols-1 gap-1">
+              <CardContent className="p-2 grid grid-cols-1 gap-1 md:grid-cols-2">
                 <div className="flex items-start justify-between gap-1">
                   <div>
                     <h3 className="font-semibold text-sm">{achievement.name}</h3>

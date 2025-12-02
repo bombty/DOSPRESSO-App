@@ -369,7 +369,7 @@ export default function Tasks() {
   }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig]);
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       <h1 className="text-2xl font-semibold" data-testid="text-page-title">Açılış Çizelgeleri</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
@@ -470,9 +470,9 @@ export default function Tasks() {
             </div>
           </CardHeader>
           <CollapsibleContent>
-            <CardContent className="grid grid-cols-1 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Arama</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -487,7 +487,7 @@ export default function Tasks() {
                 </div>
 
                 {isHQ && (
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     <label className="text-sm font-medium">Şube</label>
                     <Select
                       value={filterBranchId?.toString() || "all"}
@@ -508,7 +508,7 @@ export default function Tasks() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Atanan Kişi</label>
                   <Select
                     value={filterAssigneeId || "all"}
@@ -528,7 +528,7 @@ export default function Tasks() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Durum</label>
                   <Select
                     value={filterStatus || "all"}
@@ -550,7 +550,7 @@ export default function Tasks() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Öncelik</label>
                   <Select
                     value={filterPriority || "all"}
@@ -569,7 +569,7 @@ export default function Tasks() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Başlangıç Tarihi</label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -593,7 +593,7 @@ export default function Tasks() {
                   </Popover>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Bitiş Tarihi</label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -622,7 +622,7 @@ export default function Tasks() {
         </Card>
       </Collapsible>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <TabsList data-testid="tabs-task-filter">
             <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
@@ -640,7 +640,7 @@ export default function Tasks() {
               <DialogTitle>Yeni Görev Ekle</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="description"
@@ -765,13 +765,13 @@ export default function Tasks() {
         {["all", "acilis", "kapanis", "gunluk"].map((tabValue) => (
           <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {isLoading ? (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Skeleton key={i} className="h-24 w-full" />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 {/* Sortable Column Headers - Desktop only */}
                 <Card className="hidden lg:block">
                   <CardContent className="py-2 px-4">
@@ -940,7 +940,7 @@ export default function Tasks() {
             </DrawerHeader>
             
             {selectedTask && (
-              <div className="px-4 pb-4 grid grid-cols-1 gap-4">
+              <div className="px-4 pb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* Task Description */}
                 <div>
                   <h3 className="font-semibold text-lg mb-2">{selectedTask.description}</h3>
@@ -1019,7 +1019,7 @@ export default function Tasks() {
                     <Separator />
                     <div>
                       <p className="font-medium mb-2">AI Analizi</p>
-                      <div className="bg-muted p-4 rounded-md grid grid-cols-1 gap-2">
+                      <div className="bg-muted p-4 rounded-md grid grid-cols-1 gap-2 md:grid-cols-2">
                         {selectedTask.aiScore !== null && selectedTask.aiScore !== undefined && (
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium">Skor:</span>
@@ -1054,7 +1054,7 @@ export default function Tasks() {
 
                   {/* Photo Upload & Complete - For tasks in progress or waiting for photo */}
                   {(selectedTask.status === "devam_ediyor" || selectedTask.status === "foto_bekleniyor") && (
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                       <ObjectUploader
                         maxNumberOfFiles={1}
                         maxFileSize={10485760}

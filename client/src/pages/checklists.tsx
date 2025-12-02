@@ -249,7 +249,7 @@ export default function Checklists() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Checklistler</h1>
@@ -267,7 +267,7 @@ export default function Checklists() {
               <DialogTitle>Yeni Checklist Oluştur</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="title"
@@ -344,7 +344,7 @@ export default function Checklists() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-32 w-full" />
           ))}
@@ -386,12 +386,12 @@ export default function Checklists() {
                 </CardHeader>
                 <CardContent>
                   {tasks.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="border-b pb-2">
                         <h3 className="text-sm font-medium text-muted-foreground">Çizelge Maddeleri</h3>
                       </div>
                       
-                      <div className="grid grid-cols-1 gap-1">
+                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <h4 className="text-sm font-semibold">09:00</h4>
                         {tasks.map((task) => {
                           const isChecked = taskStates[task.id]?.checked || false;
@@ -427,7 +427,7 @@ export default function Checklists() {
                                       En son Ece tarafından tarihinde işlem yapılmıştır.
                                     </p>
                                     
-                                    <div className="grid grid-cols-1 gap-2">
+                                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                                       <h5 className="text-sm font-medium">Fotoğraf Kanıtı</h5>
                                       <Button
                                         variant="outline"
@@ -441,7 +441,7 @@ export default function Checklists() {
                                       </Button>
                                       
                                       {taskStates[task.id]?.photo && (
-                                        <div className="grid grid-cols-1 gap-2">
+                                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                                           <div className="aspect-video bg-muted rounded-md overflow-hidden">
                                             <img 
                                               src={taskStates[task.id].photo} 
@@ -496,7 +496,7 @@ export default function Checklists() {
             <DialogTitle>Checklist Düzenle</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4">
+            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {editingChecklist && !(editingChecklist.isEditable ?? true) && !isCoach && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 text-sm text-yellow-800 dark:text-yellow-200">
                   ⚠️ Bu checklist düzenlenemez olarak işaretlenmiş. Sadece HQ Coach yetkisi ile düzenlenebilir.
@@ -642,7 +642,7 @@ export default function Checklists() {
                 />
               </div>
 
-              <div className="border-t pt-4 grid grid-cols-1 gap-3">
+              <div className="border-t pt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium">Görevler</h3>
                   {(isCoach || (editingChecklist && editingChecklist.isEditable)) && (
@@ -659,9 +659,9 @@ export default function Checklists() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="border rounded-md p-3 grid grid-cols-1 gap-2">
+                    <div key={field.id} className="border rounded-md p-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                       <div className="flex gap-2">
                         <FormField
                           control={editForm.control}

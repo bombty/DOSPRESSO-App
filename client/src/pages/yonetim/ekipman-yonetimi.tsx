@@ -412,7 +412,7 @@ export default function EquipmentManagement() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -489,7 +489,7 @@ export default function EquipmentManagement() {
         {/* TAB 1: Bekleyen Talepler */}
         <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Filters */}
-          <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-3">
+          <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="flex gap-2 items-center">
               <Search className="w-4 h-4 text-muted-foreground" />
               <Input
@@ -578,7 +578,7 @@ export default function EquipmentManagement() {
               <Button onClick={() => setShowCreateDialog(true)}>Yeni Talep Oluştur</Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {pendingRequests.map(req => {
                 const eq = equipment.find(e => e.id === req.equipmentId);
                 const branch = branches.find(b => b.id === eq?.branchId);
@@ -630,7 +630,7 @@ export default function EquipmentManagement() {
           {inProgressRequests.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">Devam eden talep yok</div>
           ) : (
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {inProgressRequests.map(req => {
                 const eq = equipment.find(e => e.id === req.equipmentId);
                 const branch = branches.find(b => b.id === eq?.branchId);
@@ -661,7 +661,7 @@ export default function EquipmentManagement() {
           {completedRequests.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">Tamamlanan talep yok</div>
           ) : (
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {completedRequests.map(req => {
                 const eq = equipment.find(e => e.id === req.equipmentId);
                 const branch = branches.find(b => b.id === eq?.branchId);
@@ -756,14 +756,14 @@ export default function EquipmentManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* Equipment Details */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
+                <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2 md:grid-cols-2">
                   <div className="text-sm font-medium text-muted-foreground">Seri No</div>
                   <div className="font-semibold">{selectedEquipmentDetail.serialNumber || '-'}</div>
                 </div>
-                <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
+                <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2 md:grid-cols-2">
                   <div className="text-sm font-medium text-muted-foreground">Durum</div>
                   <div className="font-semibold">
                     <Badge className={getHealthStatus(selectedEquipmentDetail).color}>
@@ -773,25 +773,25 @@ export default function EquipmentManagement() {
                   </div>
                 </div>
                 {selectedEquipmentDetail.purchaseDate && (
-                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
+                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2 md:grid-cols-2">
                     <div className="text-sm font-medium text-muted-foreground">Satın Alma Tarihi</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.purchaseDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.warrantyEndDate && (
-                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
+                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2 md:grid-cols-2">
                     <div className="text-sm font-medium text-muted-foreground">Garanti Bitiş</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.warrantyEndDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.lastMaintenanceDate && (
-                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
+                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2 md:grid-cols-2">
                     <div className="text-sm font-medium text-muted-foreground">Son Bakım</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.lastMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.nextMaintenanceDate && (
-                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
+                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2 md:grid-cols-2">
                     <div className="text-sm font-medium text-muted-foreground">Sonraki Bakım</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
@@ -799,7 +799,7 @@ export default function EquipmentManagement() {
               </div>
 
               {/* Service History */}
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <History className="w-4 h-4" />
                   Servis Geçmişi ({serviceRequests.filter(r => r.equipmentId === selectedEquipmentDetail.id).length} talep)
@@ -875,7 +875,7 @@ export default function EquipmentManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* Equipment Info */}
               {equipment.find(e => e.id === selectedRequest.equipmentId) && (
                 <div className="bg-muted p-4 rounded-lg">
@@ -888,7 +888,7 @@ export default function EquipmentManagement() {
               )}
 
               {/* Status */}
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <label className="text-sm font-medium">Durum</label>
                 <div className="flex gap-2 flex-wrap">
                   {Object.entries(STATUS_LABELS).map(([key, label]) => (
@@ -906,7 +906,7 @@ export default function EquipmentManagement() {
               </div>
 
               {/* Notes */}
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <label className="text-sm font-medium">Notlar</label>
                 <Textarea
                   placeholder="Not ekleyin..."
@@ -921,7 +921,7 @@ export default function EquipmentManagement() {
               </div>
 
               {/* Timeline */}
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <History className="w-4 h-4" />
                   Zaman Çizelgesi
@@ -950,7 +950,7 @@ export default function EquipmentManagement() {
               Ekipman QR kodunu kameraya gösteriniz
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div 
               id="qr-reader" 
               className="w-full rounded-lg overflow-hidden bg-black"
@@ -980,10 +980,10 @@ export default function EquipmentManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {/* Step 1: Branch */}
             {createStep === 1 && (
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <label className="text-sm font-medium">Şube Seçiniz</label>
                 <Select value={selectedBranch} onValueChange={setSelectedBranch}>
                   <SelectTrigger data-testid="select-branch-create">
@@ -1002,7 +1002,7 @@ export default function EquipmentManagement() {
 
             {/* Step 2: Equipment */}
             {createStep === 2 && selectedBranch && (
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <label className="text-sm font-medium">Ekipman Seçiniz</label>
                 <Select value={selectedEquipment} onValueChange={setSelectedEquipment}>
                   <SelectTrigger data-testid="select-equipment-create">
@@ -1021,8 +1021,8 @@ export default function EquipmentManagement() {
 
             {/* Step 3: Form */}
             {createStep === 3 && (
-              <div className="grid grid-cols-1 gap-4">
-                <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Teknik / Sağlayıcı *</label>
                   <input
                     placeholder="Teknisyen adı"
@@ -1032,7 +1032,7 @@ export default function EquipmentManagement() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Açıklama / Sorun</label>
                   <Textarea
                     placeholder="Sorun açıklaması..."
@@ -1041,7 +1041,7 @@ export default function EquipmentManagement() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Hizmet Kararı</label>
                   <input
                     placeholder="Bakım / Tamir vb..."

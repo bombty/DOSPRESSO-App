@@ -180,7 +180,7 @@ export default function Sikayetler() {
 
   if (complaintsLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 gap-4">
+      <div className="p-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -188,7 +188,7 @@ export default function Sikayetler() {
   }
 
   return (
-    <div className="p-6 grid grid-cols-1 gap-6">
+    <div className="p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div>
         <h1 className="text-3xl font-bold" data-testid="heading-sikayetler">Misafir Şikayetleri</h1>
         <p className="text-muted-foreground mt-1">SLA takipli şikayet yönetim sistemi</p>
@@ -277,7 +277,7 @@ export default function Sikayetler() {
             <Card key={complaint.id} data-testid={`card-complaint-${complaint.id}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="grid grid-cols-1 gap-1">
+                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                     <CardTitle className="text-lg">
                       {complaint.customerName || "Anonim Misafir"}
                     </CardTitle>
@@ -293,7 +293,7 @@ export default function Sikayetler() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4">
+              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm font-medium">Misafir Memnuniyeti:</span>

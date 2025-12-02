@@ -180,7 +180,7 @@ export default function OvertimeRequestsPage() {
   });
 
   return (
-    <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
+    <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">Mesai Talepleri</h1>
@@ -214,7 +214,7 @@ export default function OvertimeRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16" />
               ))}
@@ -321,7 +321,7 @@ export default function OvertimeRequestsPage() {
             </DialogDescription>
           </DialogHeader>
           <Form {...createForm}>
-            <form onSubmit={handleCreateSubmit} className="grid grid-cols-1 gap-4">
+            <form onSubmit={handleCreateSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={createForm.control}
                 name="shiftAttendanceId"

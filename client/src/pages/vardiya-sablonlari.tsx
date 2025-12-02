@@ -232,7 +232,7 @@ export default function VardiyaSablonlari() {
   }
 
   return (
-    <div className="container mx-auto p-4 grid grid-cols-1 gap-6">
+    <div className="container mx-auto p-4 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calendar className="h-6 w-6" />
@@ -254,7 +254,7 @@ export default function VardiyaSablonlari() {
               </DialogDescription>
             </DialogHeader>
             <Form {...templateForm}>
-              <form onSubmit={templateForm.handleSubmit(onSubmitCreate)} className="grid grid-cols-1 gap-4">
+              <form onSubmit={templateForm.handleSubmit(onSubmitCreate)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={templateForm.control}
                   name="name"
@@ -424,8 +424,8 @@ export default function VardiyaSablonlari() {
                 <CardDescription>{template.description}</CardDescription>
               )}
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
-              <div className="grid grid-cols-1 gap-2">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Saat:</span>
                   <span className="font-medium" data-testid={`text-time-${template.id}`}>
@@ -492,7 +492,7 @@ export default function VardiyaSablonlari() {
             </DialogDescription>
           </DialogHeader>
           <Form {...templateForm}>
-            <form onSubmit={templateForm.handleSubmit(onSubmitEdit)} className="grid grid-cols-1 gap-4">
+            <form onSubmit={templateForm.handleSubmit(onSubmitEdit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={templateForm.control}
                 name="name"
@@ -643,7 +643,7 @@ export default function VardiyaSablonlari() {
             </DialogDescription>
           </DialogHeader>
           <Form {...generateForm}>
-            <form onSubmit={generateForm.handleSubmit(onSubmitGenerate)} className="grid grid-cols-1 gap-4">
+            <form onSubmit={generateForm.handleSubmit(onSubmitGenerate)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={generateForm.control}
                 name="startDate"

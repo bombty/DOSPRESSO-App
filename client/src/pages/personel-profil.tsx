@@ -76,7 +76,7 @@ export default function PersonelProfilPage() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <Skeleton className="h-12 w-full" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Skeleton className="h-32" />
@@ -90,7 +90,7 @@ export default function PersonelProfilPage() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4">
+      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4 md:grid-cols-2">
         <p className="text-lg text-muted-foreground">Personel bulunamadı</p>
         <Link href="/ik">
           <Button variant="default" data-testid="button-back-ik">İK Yönetimine Dön</Button>
@@ -104,7 +104,7 @@ export default function PersonelProfilPage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="p-3 grid grid-cols-1 gap-4">
+      <div className="p-3 grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Status badges */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
@@ -121,7 +121,7 @@ export default function PersonelProfilPage() {
           </CardTitle>
           <CardDescription>Son 30 günlük performans özeti</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -201,7 +201,7 @@ export default function PersonelProfilPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="bilgiler" className="grid grid-cols-1 gap-4">
+      <Tabs defaultValue="bilgiler" className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <TabsList className="flex flex-wrap gap-1">
           <TabsTrigger value="bilgiler" data-testid="tab-info" className="flex-1 min-w-fit">Kişisel Bilgiler</TabsTrigger>
           <TabsTrigger value="performans" data-testid="tab-performance" className="flex-1 min-w-fit">Performans</TabsTrigger>
@@ -215,7 +215,7 @@ export default function PersonelProfilPage() {
             <CardHeader>
               <CardTitle>Personel Bilgileri</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Kullanıcı Adı</p>

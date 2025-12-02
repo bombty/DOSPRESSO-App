@@ -133,7 +133,7 @@ export default function HQSupport() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">HQ Destek</h1>
@@ -237,11 +237,11 @@ function TicketList({
     });
 
     return (
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {Object.entries(grouped).map(([category, categoryTickets]) => (
           <div key={category}>
             <h3 className="text-lg font-medium mb-3">{CATEGORY_LABELS[category as HQSupportCategoryType]}</h3>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {categoryTickets.map(ticket => (
                 <TicketCard key={ticket.id} ticket={ticket} onClick={onTicketClick} />
               ))}
@@ -254,7 +254,7 @@ function TicketList({
 
   // Simple list for branch users
   return (
-    <div className="grid grid-cols-1 gap-2">
+    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
       {tickets.map(ticket => (
         <TicketCard key={ticket.id} ticket={ticket} onClick={onTicketClick} />
       ))}
@@ -392,7 +392,7 @@ function CreateTicketDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* HQ Branch Selection */}
             {isHQ && (
               <FormField
@@ -672,7 +672,7 @@ function TicketDetailDialog({
 
         <div className="grid grid-cols-1 gap-4 flex-1 overflow-hidden flex flex-col">
           {/* Ticket Info */}
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <p className="text-sm text-muted-foreground" data-testid="text-detail-description">
               {ticket.description}
             </p>

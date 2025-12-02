@@ -45,7 +45,7 @@ export default function AdminSeedPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       <div>
         <h1 className="text-3xl font-bold">Veri Ekle (Seed)</h1>
         <p className="text-muted-foreground mt-1">
@@ -64,7 +64,7 @@ export default function AdminSeedPage() {
             Her şubeye 1 supervisor, 2 barista ve 1 stajyer atanacak.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Button
             onClick={handleSeed}
             disabled={isSeeding}
@@ -82,7 +82,7 @@ export default function AdminSeedPage() {
           </Button>
 
           {result && (
-            <div className="p-4 rounded-lg bg-muted grid grid-cols-1 gap-2">
+            <div className="p-4 rounded-lg bg-muted grid grid-cols-1 gap-2 md:grid-cols-2">
               <p className="font-semibold text-green-600">✅ İşlem Başarılı</p>
               <div className="text-sm space-y-1">
                 <p>
@@ -107,7 +107,7 @@ export default function AdminSeedPage() {
         <CardHeader>
           <CardTitle>Eklenecek Veriler</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <h3 className="font-semibold mb-2">📦 Ekipman</h3>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">

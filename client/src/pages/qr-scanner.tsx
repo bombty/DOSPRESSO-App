@@ -257,7 +257,7 @@ export default function QRScanner() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <QrCode className="h-8 w-8" />
@@ -278,7 +278,7 @@ export default function QRScanner() {
             QR kod taramak için kamera iznine ihtiyacınız var
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {error && (
             <div className="bg-destructive/10 text-destructive p-3 rounded-md flex items-start gap-2">
               <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
@@ -337,7 +337,7 @@ export default function QRScanner() {
             )}
           </div>
 
-          <div className="border-t pt-4 grid grid-cols-1 gap-2">
+          <div className="border-t pt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
             <p className="text-sm font-medium">Nasıl Kullanılır?</p>
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
               <li>"Taramaya Başla" butonuna tıklayın</li>

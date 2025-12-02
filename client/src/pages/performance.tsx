@@ -29,7 +29,7 @@ export default function Performance() {
   const aiScoreTrend = calculateTrend(latestMetric?.averageAiScore ?? 0, previousMetric?.averageAiScore ?? 0);
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Performans</h1>

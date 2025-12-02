@@ -138,7 +138,7 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-2xl">
-        <CardHeader className="grid grid-cols-1 gap-4">
+        <CardHeader className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex justify-center">
             <img 
               src={logoUrl} 
@@ -154,7 +154,7 @@ export default function Register() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -268,7 +268,7 @@ export default function Register() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <FormLabel>Çalışma Konumu</FormLabel>
                 <div className="grid grid-cols-2 gap-2">
                   <Button

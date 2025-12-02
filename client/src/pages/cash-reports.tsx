@@ -203,7 +203,7 @@ export default function CashReports() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 grid grid-cols-1 gap-6">
+    <div className="container mx-auto p-4 sm:p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
@@ -233,7 +233,7 @@ export default function CashReports() {
                 </DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-4">
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="reportDate"
@@ -463,7 +463,7 @@ export default function CashReports() {
           <CardHeader>
             <CardTitle className="text-lg">Filtreler</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4">
+          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               <div>
                 <label className="text-xs font-medium mb-1 block">Şube</label>
@@ -560,7 +560,7 @@ export default function CashReports() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}>
@@ -614,21 +614,21 @@ export default function CashReports() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4">
+                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="grid grid-cols-1 gap-1">
+                    <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                       <p className="text-xs text-muted-foreground">Açılış Kasası</p>
                       <p className="text-lg font-semibold" data-testid={`text-opening-${report.id}`}>
                         {formatCurrency(Number(report.openingCash))}
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 gap-1">
+                    <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                       <p className="text-xs text-muted-foreground">Kapanış Kasası</p>
                       <p className="text-lg font-semibold" data-testid={`text-closing-${report.id}`}>
                         {formatCurrency(Number(report.closingCash))}
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 gap-1">
+                    <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                       <p className="text-xs text-muted-foreground">Fark</p>
                       <div className="flex items-center gap-1">
                         {diff > 0 && <TrendingUp className="w-4 h-4 text-success" />}
@@ -642,7 +642,7 @@ export default function CashReports() {
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-1">
+                    <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                       <p className="text-xs text-muted-foreground">Toplam Satış</p>
                       <p className="text-lg font-semibold" data-testid={`text-sales-${report.id}`}>
                         {formatCurrency(Number(report.totalSales))}
@@ -652,19 +652,19 @@ export default function CashReports() {
 
                   {(report.cashSales || report.cardSales || report.expenses) && (
                     <div className="grid grid-cols-3 gap-4 pt-2 border-t">
-                      <div className="grid grid-cols-1 gap-1">
+                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-xs text-muted-foreground">Nakit Satış</p>
                         <p className="text-sm font-medium">
                           {report.cashSales ? formatCurrency(Number(report.cashSales)) : '-'}
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 gap-1">
+                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-xs text-muted-foreground">Kart Satış</p>
                         <p className="text-sm font-medium">
                           {report.cardSales ? formatCurrency(Number(report.cardSales)) : '-'}
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 gap-1">
+                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-xs text-muted-foreground">Giderler</p>
                         <p className="text-sm font-medium text-destructive">
                           {report.expenses ? formatCurrency(Number(report.expenses)) : '-'}

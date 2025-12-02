@@ -176,14 +176,14 @@ export default function NewFaultReport() {
       </Card>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-6">
+        <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {/* Basic Info */}
           <Card>
             <CardHeader>
               <CardTitle>Temel Bilgiler</CardTitle>
               <CardDescription>Arıza hakkında temel bilgileri girin</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="branchId"
@@ -288,7 +288,7 @@ export default function NewFaultReport() {
               <CardTitle>Detaylı Açıklama</CardTitle>
               <CardDescription>Arıza hakkında ayrıntılı bilgi verin</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="description"
@@ -381,7 +381,7 @@ export default function NewFaultReport() {
             <CardHeader>
               <CardTitle>Etki Değerlendirmesi</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="immediateImpact"
@@ -420,9 +420,9 @@ export default function NewFaultReport() {
               <CardTitle>Fotoğraf (İsteğe Bağlı)</CardTitle>
               <CardDescription>Sorunu belgeleyen bir fotoğraf yükleyin</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {photoPreview ? (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div className="relative w-full h-48 rounded-lg overflow-hidden bg-muted">
                     <img src={photoPreview} alt="Arıza fotoğrafı" className="w-full h-full object-cover" />
                   </div>

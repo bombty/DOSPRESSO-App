@@ -210,7 +210,7 @@ export default function Mesajlar() {
       {/* Left Panel - Thread List */}
       <div className="w-96 border-r flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b grid grid-cols-1 gap-4">
+        <div className="p-4 border-b grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold" data-testid="text-messages-title">Mesajlar</h1>
             <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
@@ -333,7 +333,7 @@ export default function Mesajlar() {
 
             {/* Messages */}
             <ScrollArea className="flex-1 p-4" ref={scrollRef as any}>
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {threadData.messages.map((message, idx) => {
                   const isSent = message.senderId === user?.id;
                   const isLastInGroup = idx === threadData.messages.length - 1 || 
@@ -359,7 +359,7 @@ export default function Mesajlar() {
                           
                           {/* Attachments */}
                           {message.attachments && message.attachments.length > 0 && (
-                            <div className="mt-2 grid grid-cols-1 gap-2">
+                            <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                               {message.attachments.map((att: any) => (
                                 <a
                                   key={att.id}
@@ -394,7 +394,7 @@ export default function Mesajlar() {
             </ScrollArea>
 
             {/* Message Composer */}
-            <div className="p-4 border-t grid grid-cols-1 gap-2">
+            <div className="p-4 border-t grid grid-cols-1 gap-2 md:grid-cols-2">
               {/* Attachments Preview */}
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -545,7 +545,7 @@ function NewMessageForm({
       {/* HQ cascading selection: Branch → Personnel */}
       {isHQ && (
         <>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <Label htmlFor="branch">Şube Seçin</Label>
             <Select value={selectedBranchId} onValueChange={(val) => {
               setSelectedBranchId(val);
@@ -568,7 +568,7 @@ function NewMessageForm({
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <Label htmlFor="personnel">Personel Seçin</Label>
             <Select value={recipientId} onValueChange={setRecipientId} disabled={!selectedBranchId}>
               <SelectTrigger id="personnel" data-testid="select-personnel">
@@ -594,7 +594,7 @@ function NewMessageForm({
 
       {/* Standard recipient selection for non-HQ users */}
       {!isHQ && (
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <Label htmlFor="recipient">Alıcı</Label>
           <Select value={recipientId} onValueChange={setRecipientId}>
             <SelectTrigger id="recipient" data-testid="select-recipient">
@@ -615,7 +615,7 @@ function NewMessageForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <Label htmlFor="subject">Konu</Label>
         <Input
           id="subject"
@@ -626,7 +626,7 @@ function NewMessageForm({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <Label htmlFor="body">Mesaj</Label>
         <Textarea
           id="body"

@@ -88,7 +88,7 @@ function useDebounce<T>(value: T, delay: number): T {
 function FaultSkeleton() {
   return (
     <div className="flex items-center justify-between p-3 border rounded animate-pulse">
-      <div className="flex-1 grid grid-cols-1 gap-2">
+      <div className="flex-1 grid grid-cols-1 gap-2 md:grid-cols-2">
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
         <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
       </div>
@@ -99,7 +99,7 @@ function FaultSkeleton() {
 
 function FaultSkeletonList() {
   return (
-    <div className="grid grid-cols-1 gap-3">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       {Array.from({ length: 5 }).map((_, i) => (
         <FaultSkeleton key={i} />
       ))}
@@ -211,7 +211,7 @@ export default function FaultHub() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="p-3 grid grid-cols-1 gap-4">
+      <div className="p-3 grid grid-cols-1 gap-4 md:grid-cols-2">
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
@@ -404,7 +404,7 @@ export default function FaultHub() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {isFaultsLoading ? (
                   <FaultSkeletonList />
                 ) : paginatedManageFaults.length === 0 ? (
@@ -474,7 +474,7 @@ export default function FaultHub() {
                 <DialogTitle>Arıza Güncelleyin: {selectedFault?.equipmentName}</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4">
+                <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="currentStage"
@@ -596,7 +596,7 @@ export default function FaultHub() {
                 <CardTitle>Benim Arızalarım</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {metrics.myFaults.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">Size atanmış arıza yok</p>
                   ) : (

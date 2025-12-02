@@ -103,7 +103,7 @@ export default function LeaveRequestsPage() {
   });
 
   return (
-    <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
+    <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">İzin Talepleri</h1>
@@ -139,7 +139,7 @@ export default function LeaveRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
@@ -284,7 +284,7 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField
               control={form.control}
               name="leaveType"

@@ -132,7 +132,7 @@ export default function KampanyaYonetimi() {
 
   if (isLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 gap-4">
+      <div className="p-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -140,7 +140,7 @@ export default function KampanyaYonetimi() {
   }
 
   return (
-    <div className="p-6 grid grid-cols-1 gap-6">
+    <div className="p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" data-testid="heading-kampanya-yonetimi">Kampanya Yönetimi</h1>
@@ -160,7 +160,7 @@ export default function KampanyaYonetimi() {
                 <DialogDescription>Yeni bir pazarlama kampanyası başlatın</DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="name"

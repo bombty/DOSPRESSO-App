@@ -129,7 +129,7 @@ export default function ContentManagement() {
               <DialogTitle>Yeni İçerik Oluştur</DialogTitle>
             </DialogHeader>
             <Form {...createForm}>
-              <form onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
+              <form onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField control={createForm.control} name="slug" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Slug (URL)</FormLabel>
@@ -272,7 +272,7 @@ export default function ContentManagement() {
               <DialogTitle>İçerik Düzenle</DialogTitle>
             </DialogHeader>
             <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate({ slug: editContent.slug, data }))} className="grid grid-cols-1 gap-4">
+              <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate({ slug: editContent.slug, data }))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField control={editForm.control} name="title" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Başlık</FormLabel>

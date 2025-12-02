@@ -190,7 +190,7 @@ export default function PersonelOnboardingPage() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -198,7 +198,7 @@ export default function PersonelOnboardingPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

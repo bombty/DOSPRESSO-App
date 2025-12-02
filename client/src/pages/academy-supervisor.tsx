@@ -194,9 +194,9 @@ export default function AcademySupervisor() {
               {pendingExams.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">Beklemede talep yok</div>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {pendingExams.map((exam: any) => (
-                    <div key={exam.id} className="p-4 border rounded-lg grid grid-cols-1 gap-3">
+                    <div key={exam.id} className="p-4 border rounded-lg grid grid-cols-1 gap-3 md:grid-cols-2">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">{exam.userId}</p>
@@ -241,7 +241,7 @@ export default function AcademySupervisor() {
                             <DialogHeader>
                               <DialogTitle>Sınav Talebini Reddet</DialogTitle>
                             </DialogHeader>
-                            <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                               <p className="text-sm text-muted-foreground">
                                 {exam.userId} kullanıcısının {exam.targetRoleId} pozisyonuna geçiş talebini reddetmek üzeresin.
                               </p>

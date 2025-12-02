@@ -125,7 +125,7 @@ export default function Notifications() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 grid grid-cols-1 gap-6">
+    <div className="container mx-auto p-4 sm:p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
@@ -159,9 +159,9 @@ export default function Notifications() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="mt-6 grid grid-cols-1 gap-4">
+        <TabsContent value={activeTab} className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {[...Array(5)].map((_, i) => (
                 <Card key={i}>
                   <CardContent className="p-4">
@@ -172,7 +172,7 @@ export default function Notifications() {
               ))}
             </div>
           ) : filteredNotifications.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {filteredNotifications.map((notification) => {
                 const Icon = notificationTypeIcons[notification.type] || Bell;
                 const typeLabel = notificationTypeLabels[notification.type] || "Bildirim";

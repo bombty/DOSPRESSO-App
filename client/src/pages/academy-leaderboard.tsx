@@ -106,7 +106,7 @@ export default function AcademyLeaderboard() {
               <CardTitle>Top 5 Performans</CardTitle>
               <CardDescription>Toplam puanlara göre en iyi performans gösteren 5 çalışan</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {topPerformers.map((performer) => (
                 <div key={performer.rank} className="flex items-center justify-between p-3 border rounded-lg hover-elevate">
                   <div className="flex items-center gap-3">
@@ -138,7 +138,7 @@ export default function AcademyLeaderboard() {
               <CardTitle>Şube Performansı</CardTitle>
               <CardDescription>Her şubenin ortalama puanı ve tamamlama oranı</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3">
+            <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {branchLeaders.map((branch) => (
                 <div key={branch.branchName} className="grid grid-cols-1 gap-2 p-3 border rounded-lg">
                   <div className="flex items-center justify-between">
@@ -166,7 +166,7 @@ export default function AcademyLeaderboard() {
               <CardTitle>Sınav Performans Liderleri</CardTitle>
               <CardDescription>En yüksek notla sınav geçen çalışanlar</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {examLeaderboard.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">Henüz sınav sonucu bulunmuyor</p>
               ) : (

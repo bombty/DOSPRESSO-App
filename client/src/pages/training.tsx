@@ -186,7 +186,7 @@ export default function Training() {
 
   if (isLoading || progressLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <Skeleton className="h-12 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
@@ -198,7 +198,7 @@ export default function Training() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Eğitim Modülleri</h1>
@@ -217,7 +217,7 @@ export default function Training() {
                 <DialogTitle>Yeni Eğitim Modülü</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="title"
@@ -401,7 +401,7 @@ export default function Training() {
         )}
       </div>
 
-      <Tabs defaultValue={myTrainings.length > 0 ? "my-trainings" : "all"} className="grid grid-cols-1 gap-4">
+      <Tabs defaultValue={myTrainings.length > 0 ? "my-trainings" : "all"} className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <TabsList>
           {myTrainings.length > 0 && (
             <TabsTrigger value="my-trainings" data-testid="tab-my-trainings">
@@ -469,7 +469,7 @@ export default function Training() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 gap-4">
+                    <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {module.description || "Açıklama yok"}
                       </p>
@@ -560,7 +560,7 @@ export default function Training() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-4">
+                  <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
                     
                     <div className="flex flex-wrap gap-2">
@@ -602,7 +602,7 @@ export default function Training() {
                 <CardHeader>
                   <CardTitle className="text-lg">{module.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4">
+                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
                   <Badge variant="outline">
                     {categoryLabels[module.category || "barista_basics"]}
@@ -620,7 +620,7 @@ export default function Training() {
                 <CardHeader>
                   <CardTitle className="text-lg">{module.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4">
+                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
                   <Badge variant="outline">
                     {categoryLabels[module.category || "barista_basics"]}

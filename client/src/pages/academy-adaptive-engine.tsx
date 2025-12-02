@@ -50,7 +50,7 @@ export default function AcademyAdaptiveEngine() {
             Önerilen Yollar
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2">
+        <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
           {recommendations.length > 0 ? (
             recommendations.map((rec: any, idx: number) => (
               <div key={idx} className="p-2 border rounded-lg space-y-1">
@@ -63,7 +63,7 @@ export default function AcademyAdaptiveEngine() {
                     {rec.priority === "high" ? "Yüksek" : "Önerilen"}
                   </Badge>
                 </div>
-                <div className="grid grid-cols-1 gap-1">
+                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Tahmini</span>
                     <span className="font-medium">{rec.completionPercent}%</span>

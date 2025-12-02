@@ -205,7 +205,7 @@ export default function AttendancePage() {
   const canEndBreak = isOnBreak;
 
   return (
-    <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
+    <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
       <div>
         <h1 className="text-3xl font-bold" data-testid="text-page-title">Devam Takibi</h1>
         <p className="text-muted-foreground">Vardiya giriş/çıkış ve mola yönetimi</p>
@@ -224,12 +224,12 @@ export default function AttendancePage() {
                 : "Vardiyaya giriş yapmadınız"}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4">
+          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {activeLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : activeShift ? (
               <>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Giriş Saati</span>
                     <span className="font-medium" data-testid="text-checkin-time">
@@ -331,9 +331,9 @@ export default function AttendancePage() {
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {uploadedPhotoUrl ? (
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     <div className="relative aspect-video rounded-lg overflow-hidden border">
                       <img 
                         src={uploadedPhotoUrl} 
@@ -353,7 +353,7 @@ export default function AttendancePage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     <p className="text-sm text-muted-foreground text-center">
                       Giriş yapmak için fotoğraf yüklemesi zorunludur
                     </p>
@@ -419,7 +419,7 @@ export default function AttendancePage() {
             {historyLoading ? (
               <Skeleton className="h-20 w-full" />
             ) : (
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Toplam Vardiya</span>
                   <span className="text-2xl font-bold" data-testid="text-total-shifts">
@@ -447,7 +447,7 @@ export default function AttendancePage() {
         </CardHeader>
         <CardContent>
           {historyLoading ? (
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}

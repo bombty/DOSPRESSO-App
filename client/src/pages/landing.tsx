@@ -14,11 +14,11 @@ export default function Landing() {
             Franchise Yönetim Platformu
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <p className="text-center text-muted-foreground">
             Şube operasyonlarınızı yönetin, görevleri takip edin, ekipman arızalarını raporlayın ve performansı analiz edin.
           </p>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <Link href="/login" className="block w-full">
               <Button className="w-full" size="lg" data-testid="button-login">
                 Giriş Yap
