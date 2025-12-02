@@ -22,8 +22,8 @@ export default function AcademyAdaptiveEngine() {
   });
 
   return (
-    <div className="grid grid-cols-1 gap-2 p-3">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+      <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -34,7 +34,7 @@ export default function AcademyAdaptiveEngine() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      <div>
+      <div className="col-span-full">
         <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
           <Brain className="w-5 h-5 text-purple-500" />
           Uyarlanabilir Öğrenme
@@ -43,7 +43,7 @@ export default function AcademyAdaptiveEngine() {
       </div>
 
       {/* Learning Path Recommendations */}
-      <Card>
+      <Card className="col-span-full">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-1">
             <Zap className="w-4 h-4 text-yellow-500" />
@@ -91,7 +91,7 @@ export default function AcademyAdaptiveEngine() {
       </Card>
 
       {/* Learning Style Analysis */}
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+      <Card className="col-span-full bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-1">
             <TrendingUp className="w-4 h-4" />
@@ -99,7 +99,7 @@ export default function AcademyAdaptiveEngine() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
             <div className="p-2 bg-white dark:bg-slate-900 rounded-lg">
               <p className="text-xs text-muted-foreground">Zorluk</p>
               <p className="text-sm font-semibold mt-0.5">Orta</p>
@@ -121,7 +121,7 @@ export default function AcademyAdaptiveEngine() {
       </Card>
 
       {/* Adaptive Tips */}
-      <Card>
+      <Card className="col-span-full">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Adaptif İpuçları</CardTitle>
         </CardHeader>

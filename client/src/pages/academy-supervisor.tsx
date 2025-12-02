@@ -81,8 +81,8 @@ export default function AcademySupervisor() {
   });
 
   return (
-    <div className="grid grid-cols-1 gap-2 p-3">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+      <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -93,7 +93,7 @@ export default function AcademySupervisor() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      <div>
+      <div className="col-span-full">
         <h1 className="text-lg font-bold tracking-tight">Supervisor Paneli</h1>
         <p className="text-xs text-muted-foreground mt-1">Ekip yönetimi ve sınav talepleri</p>
       </div>

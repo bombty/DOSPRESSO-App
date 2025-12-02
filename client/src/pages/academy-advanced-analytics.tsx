@@ -36,8 +36,8 @@ export default function AcademyAdvancedAnalytics() {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-2 p-3">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+      <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -48,7 +48,7 @@ export default function AcademyAdvancedAnalytics() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
       </div>
-      <div>
+      <div className="col-span-full">
         <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-green-500" />
           Analitikler
@@ -57,7 +57,7 @@ export default function AcademyAdvancedAnalytics() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+      <div className="col-span-full grid grid-cols-2 md:grid-cols-4 gap-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Toplam Puan</CardTitle>
@@ -100,7 +100,7 @@ export default function AcademyAdvancedAnalytics() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Score Trend */}
         <Card>
           <CardHeader>
