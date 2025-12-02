@@ -428,10 +428,6 @@ export default function AcademyHQ() {
 
       <Tabs defaultValue="training" className="w-full">
         <TabsList className="w-full flex flex-wrap gap-1">
-          <TabsTrigger value="modules" className="flex-1 min-w-fit">
-            <BookOpen className="w-4 h-4 mr-2" />
-            Modüller
-          </TabsTrigger>
           <TabsTrigger value="exams" className="flex-1 min-w-fit">
             <Clock className="w-4 h-4 mr-2" />
             Sınav Talepleri
