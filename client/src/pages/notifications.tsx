@@ -118,6 +118,9 @@ export default function Notifications() {
     
     if (notification.link) {
       navigate(notification.link);
+    } else {
+      // Fallback: go to home if no link
+      navigate("/");
     }
   };
 
