@@ -118,6 +118,16 @@ export default function FaultHub() {
   const [managePage, setManagePage] = useState(1);
   const debouncedSearch = useDebounce(searchText, 300);
 
+  // Get unread notifications count
+  const { data: notificationData } = useQuery({
+    queryKey: ["/api/notifications/unread-count"],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications/unread-count", { credentials: "include" });
+      if (!res.ok) return { count: 0 };
+      return res.json();
+    },
+  });
+
   const { data: faults = [], isLoading: isFaultsLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
     queryFn: async () => {
@@ -217,6 +227,7 @@ export default function FaultHub() {
         subtitle="Ekipman arızalarını yönetin"
         icon={Wrench}
         backPath="/"
+        notificationCount={notificationData?.count || 0}
         actions={
           <Button onClick={() => setLocation("/ariza-yeni")} size="sm">
             <Plus className="w-4 h-4 mr-1" />

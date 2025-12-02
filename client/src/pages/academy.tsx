@@ -32,6 +32,16 @@ export default function Academy() {
   const [isExamDialogOpen, setIsExamDialogOpen] = useState(false);
   const [activeHub, setActiveHub] = useState<"learning" | "achievements" | "analytics">("learning");
 
+  // Get unread notifications count
+  const { data: notificationData } = useQuery({
+    queryKey: ["/api/notifications/unread-count"],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications/unread-count", { credentials: "include" });
+      if (!res.ok) return { count: 0 };
+      return res.json();
+    },
+  });
+
   // Get career levels
   const { data: careerLevels = [] } = useQuery({
     queryKey: ["/api/academy/career-levels"],
@@ -169,6 +179,7 @@ export default function Academy() {
         subtitle="Kariyer yolunuzu takip edin"
         icon={BookOpen}
         backPath="/"
+        notificationCount={notificationData?.count || 0}
         actions={
           (user?.role === 'admin' || isHQRole(user?.role as any)) && (
             <Link href="/akademi-hq">

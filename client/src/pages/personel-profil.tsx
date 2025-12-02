@@ -60,6 +60,16 @@ export default function PersonelProfilPage() {
   const { id } = useParams();
   const { user } = useAuth();
 
+  // Get unread notifications count
+  const { data: notificationData } = useQuery({
+    queryKey: ["/api/notifications/unread-count"],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications/unread-count", { credentials: "include" });
+      if (!res.ok) return { count: 0 };
+      return res.json();
+    },
+  });
+
   // Fetch personnel profile
   const { data: profile, isLoading } = useQuery<PersonnelProfile>({
     queryKey: ['/api/personnel', id],
@@ -110,6 +120,7 @@ export default function PersonelProfilPage() {
         subtitle={`${roleLabels[profile.role] || profile.role}${profile.branchName ? ` - ${profile.branchName}` : ''}`}
         icon={User}
         backPath="/"
+        notificationCount={notificationData?.count || 0}
       />
       
       <div className="p-3 space-y-4">

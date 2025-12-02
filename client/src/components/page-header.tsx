@@ -1,6 +1,9 @@
-import { ArrowLeft, MoreVertical } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
+import dospressoLogo from "@assets/IMG_5044_1764674613097.jpeg";
+import { useState, useEffect } from "react";
 
 interface PageHeaderProps {
   title: string;
@@ -10,6 +13,7 @@ interface PageHeaderProps {
   backPath?: string;
   actions?: React.ReactNode;
   tabs?: React.ReactNode;
+  notificationCount?: number;
 }
 
 export function PageHeader({ 
@@ -19,7 +23,8 @@ export function PageHeader({
   showBack = true, 
   backPath,
   actions,
-  tabs
+  tabs,
+  notificationCount = 0
 }: PageHeaderProps) {
   const [, setLocation] = useLocation();
 
@@ -33,12 +38,14 @@ export function PageHeader({
 
   return (
     <div className="sticky top-0 z-40 bg-background border-b">
-      {/* Logo Bar */}
-      <div className="px-3 py-2 border-b bg-muted/50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-xs font-bold text-primary tracking-widest">DOSPRESSO</p>
-          <p className="text-[10px] text-muted-foreground">Franchise Management</p>
-        </div>
+      {/* Logo Bar - Centered */}
+      <div className="px-3 py-2 border-b bg-white dark:bg-slate-950 flex items-center justify-center">
+        <img 
+          src={dospressoLogo} 
+          alt="DOSPRESSO" 
+          className="h-10 object-contain"
+          data-testid="img-dospresso-logo"
+        />
       </div>
       
       {/* Header Content */}
@@ -63,11 +70,35 @@ export function PageHeader({
             )}
           </div>
         </div>
-        {actions && (
-          <div className="flex items-center gap-1 shrink-0">
-            {actions}
+
+        {/* Actions and Mailbox */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Mailbox Icon with Badge */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              data-testid="button-mailbox"
+            >
+              <Mail className="w-4 h-4" />
+            </Button>
+            {notificationCount > 0 && (
+              <Badge 
+                className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-red-600 hover:bg-red-700"
+                data-testid="badge-notification-count"
+              >
+                {notificationCount}
+              </Badge>
+            )}
           </div>
-        )}
+
+          {actions && (
+            <div className="flex items-center gap-1">
+              {actions}
+            </div>
+          )}
+        </div>
       </div>
       {tabs && (
         <div className="px-3 pb-2 overflow-x-auto">
