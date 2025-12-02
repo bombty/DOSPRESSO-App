@@ -61,40 +61,29 @@ export function AppHeader({ notificationCount = 0, user, branchName }: AppHeader
 
   return (
     <div className="sticky top-0 z-50 bg-background border-b">
-      {/* Header - Logo Left + User Info */}
+      {/* Header - User Left + Logo Center + Mailbox Right */}
       <div className="px-3 py-2 border-b bg-white dark:bg-slate-950 flex items-center justify-between gap-3">
         
-        {/* Left: Logo + User Info */}
+        {/* Left: User Info Dropdown */}
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex-1 justify-start p-0 h-auto cursor-pointer hover:bg-transparent"
+              className="justify-start p-0 h-auto cursor-pointer hover:bg-transparent"
               data-testid="button-profile-menu"
             >
-              <div className="flex items-center gap-2 flex-1">
-                <img 
-                  src={dospressoLogo} 
-                  alt="DOSPRESSO" 
-                  className="h-8 object-contain"
-                  onClick={() => setLocation("/")}
-                  data-testid="img-dospresso-logo"
-                />
-                
-                {/* User Info */}
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-xs font-medium truncate" data-testid="text-user-name">
-                    {user?.firstName || user?.username || "Kullanıcı"}
-                  </p>
-                  <div className="text-[11px] text-muted-foreground flex gap-1 items-center flex-wrap">
-                    <span data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
-                    {branchName && (
-                      <>
-                        <span>•</span>
-                        <span data-testid="text-branch-name">{branchName}</span>
-                      </>
-                    )}
-                  </div>
+              <div className="text-left min-w-0">
+                <p className="text-xs font-medium truncate" data-testid="text-user-name">
+                  {user?.firstName || user?.username || "Kullanıcı"}
+                </p>
+                <div className="text-[11px] text-muted-foreground flex gap-1 items-center flex-wrap">
+                  <span data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
+                  {branchName && (
+                    <>
+                      <span>•</span>
+                      <span data-testid="text-branch-name">{branchName}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </Button>
@@ -106,6 +95,15 @@ export function AppHeader({ notificationCount = 0, user, branchName }: AppHeader
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Center: Logo */}
+        <img 
+          src={dospressoLogo} 
+          alt="DOSPRESSO" 
+          className="h-8 object-contain cursor-pointer"
+          onClick={() => setLocation("/")}
+          data-testid="img-dospresso-logo"
+        />
 
         {/* Right: Mailbox */}
         <div className="relative flex justify-end">
