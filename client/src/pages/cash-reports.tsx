@@ -112,7 +112,7 @@ export default function CashReports() {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-reports'] });
       toast({
         title: "Başarılı",
-        description: "Kasa raporu oluşturuldu",
+        description: "Cashier raporu oluşturuldu",
       });
       setIsCreateDialogOpen(false);
       form.reset();
@@ -120,7 +120,7 @@ export default function CashReports() {
     onError: (error: any) => {
       toast({
         title: "Hata",
-        description: error.message || "Kasa raporu oluşturulamadı",
+        description: error.message || "Cashier raporu oluşturulamadı",
         variant: "destructive",
       });
     },
@@ -134,14 +134,14 @@ export default function CashReports() {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-reports'] });
       toast({
         title: "Başarılı",
-        description: "Kasa raporu güncellendi",
+        description: "Cashier raporu güncellendi",
       });
       setEditingReport(null);
     },
     onError: (error: any) => {
       toast({
         title: "Hata",
-        description: error.message || "Kasa raporu güncellenemedi",
+        description: error.message || "Cashier raporu güncellenemedi",
         variant: "destructive",
       });
     },
@@ -155,13 +155,13 @@ export default function CashReports() {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-reports'] });
       toast({
         title: "Başarılı",
-        description: "Kasa raporu silindi",
+        description: "Cashier raporu silindi",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Hata",
-        description: error.message || "Kasa raporu silinemedi",
+        description: error.message || "Cashier raporu silinemedi",
         variant: "destructive",
       });
     },
@@ -207,7 +207,7 @@ export default function CashReports() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
-            Günlük Kasa Raporları
+            Günlük Cashier Raporları
           </h1>
           <p className="text-muted-foreground mt-1" data-testid="text-page-description">
             {isSupervisor && "Şubenizin günlük kasa raporlarını yönetin"}
@@ -229,7 +229,7 @@ export default function CashReports() {
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
-                  {editingReport ? "Kasa Raporu Düzenle" : "Yeni Kasa Raporu"}
+                  {editingReport ? "Cashier Raporu Düzenle" : "Yeni Cashier Raporu"}
                 </DialogTitle>
               </DialogHeader>
               <Form {...form}>
@@ -284,7 +284,7 @@ export default function CashReports() {
                       name="openingCash"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Açılış Kasası *</FormLabel>
+                          <FormLabel>Açılış Cashiersı *</FormLabel>
                           <FormControl>
                             <Input 
                               type="number" 
@@ -306,7 +306,7 @@ export default function CashReports() {
                       name="closingCash"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Kapanış Kasası *</FormLabel>
+                          <FormLabel>Kapanış Cashiersı *</FormLabel>
                           <FormControl>
                             <Input 
                               type="number" 
@@ -617,13 +617,13 @@ export default function CashReports() {
                 <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
-                      <p className="text-xs text-muted-foreground">Açılış Kasası</p>
+                      <p className="text-xs text-muted-foreground">Açılış Cashiersı</p>
                       <p className="text-lg font-semibold" data-testid={`text-opening-${report.id}`}>
                         {formatCurrency(Number(report.openingCash))}
                       </p>
                     </div>
                     <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
-                      <p className="text-xs text-muted-foreground">Kapanış Kasası</p>
+                      <p className="text-xs text-muted-foreground">Kapanış Cashiersı</p>
                       <p className="text-lg font-semibold" data-testid={`text-closing-${report.id}`}>
                         {formatCurrency(Number(report.closingCash))}
                       </p>

@@ -373,7 +373,7 @@ export default function EquipmentManagement() {
     }
 
     // Prepare CSV rows
-    const headers = ['ID', 'Ekipman Türü', 'Şube', 'Durum', 'Teknisyen', 'Notlar', 'Oluşturma Tarihi'];
+    const headers = ['ID', 'Ekipman Türü', 'Şube', 'Durum', 'Technician', 'Notlar', 'Oluşturma Tarihi'];
     const rows = pendingRequests.map(req => {
       const eq = equipment.find(e => e.id === req.equipmentId);
       const branch = branches.find(b => b.id === eq?.branchId);
@@ -603,7 +603,7 @@ export default function EquipmentManagement() {
                           )}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {branch?.name} • {req.serviceProvider || 'Teknisyen atanmadı'}
+                          {branch?.name} • {req.serviceProvider || 'Technician atanmadı'}
                         </div>
                         {req.notes && <p className="text-sm mt-2">{req.notes.substring(0, 100)}</p>}
                         <div className="text-xs text-muted-foreground mt-1">{hoursOld.toFixed(1)}s önce oluşturuldu</div>
@@ -1025,7 +1025,7 @@ export default function EquipmentManagement() {
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <label className="text-sm font-medium">Teknik / Sağlayıcı *</label>
                   <input
-                    placeholder="Teknisyen adı"
+                    placeholder="Technician adı"
                     value={form.watch('serviceProvider') || ''}
                     onChange={(e) => form.setValue('serviceProvider', e.target.value)}
                     className="w-full px-3 py-2 border border-input rounded-md"

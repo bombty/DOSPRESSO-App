@@ -554,7 +554,7 @@ export default function EkipmanServis() {
                     </>
                   ) : (
                     <>
-                      <p>Teknisyen: {req.serviceProvider}</p>
+                      <p>Technician: {req.serviceProvider}</p>
                       {req.notes && <p className="mt-1">Not: {req.notes}</p>}
                     </>
                   )}
@@ -757,7 +757,7 @@ export default function EkipmanServis() {
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <Label>Servis Sağlayıcı *</Label>
                   <Input
-                    placeholder="Teknisyen veya şirket adı"
+                    placeholder="Technician veya şirket adı"
                     value={serviceProvider}
                     onChange={(e) => setServiceProvider(e.target.value)}
                   />
@@ -920,7 +920,7 @@ export default function EkipmanServis() {
               ) : (
                 <>
                   <div className="border-t pt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
-                    <p className="text-sm text-muted-foreground">Teknisyen</p>
+                    <p className="text-sm text-muted-foreground">Technician</p>
                     <p className="font-medium">{selectedRequest.serviceProvider}</p>
                   </div>
                   {selectedRequest.notes && (

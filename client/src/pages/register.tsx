@@ -58,7 +58,7 @@ const BRANCH_ROLES = [
   { value: 'bar_buddy', label: 'Bar Buddy' },
   { value: 'barista', label: 'Barista' },
   { value: 'supervisor_buddy', label: 'Supervisor Buddy' },
-  { value: 'supervisor', label: 'Süpervizör' },
+  { value: 'supervisor', label: 'Supervisor' },
   { value: 'yatirimci', label: 'Yatırımcı (Şube)' },
 ];
 

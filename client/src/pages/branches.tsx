@@ -216,7 +216,7 @@ export default function Branches() {
                   name="managerName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Müdür Adı</FormLabel>
+                      <FormLabel>Manager Adı</FormLabel>
                       <FormControl>
                         <Input {...field} value={field.value || ""} placeholder="Şube müdürü" data-testid="input-branch-manager" />
                       </FormControl>

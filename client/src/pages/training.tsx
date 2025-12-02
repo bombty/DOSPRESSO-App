@@ -159,15 +159,15 @@ export default function Training() {
     barista: "Barista",
     shift_lead: "Vardiya Lideri",
     supervisor: "Supervisor",
-    regional_manager: "Bölge Müdürü",
+    regional_manager: "Bölge Managerü",
     coach: "Koç",
     trainer: "Eğitmen",
     quality_auditor: "Kalite Denetçisi",
     tech_support: "Teknik Destek",
-    hr_manager: "İK Müdürü",
-    finance_manager: "Finans Müdürü",
-    operations_manager: "Operasyon Müdürü",
-    marketing_manager: "Pazarlama Müdürü",
+    hr_manager: "İK Managerü",
+    finance_manager: "Finans Managerü",
+    operations_manager: "Operasyon Managerü",
+    marketing_manager: "Pazarlama Managerü",
     admin: "Admin"
   };
 

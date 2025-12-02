@@ -317,7 +317,7 @@ export default function OvertimeRequestsPage() {
           <DialogHeader>
             <DialogTitle>Yeni Mesai Talebi</DialogTitle>
             <DialogDescription>
-              Fazla mesai yaptığınız süre için talep oluşturun. Yöneticiniz tarafından onaylanmalıdır.
+              Fazla mesai yaptığınız süre için talep oluşturun. Administratorniz tarafından onaylanmalıdır.
             </DialogDescription>
           </DialogHeader>
           <Form {...createForm}>

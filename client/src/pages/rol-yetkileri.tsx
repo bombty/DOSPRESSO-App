@@ -52,7 +52,7 @@ const ROLE_GROUPS = {
 
 // Rol etiketleri (Türkçe)
 const ROLE_LABELS: Record<UserRoleType, string> = {
-  admin: "Sistem Yöneticisi",
+  admin: "Sistem Administratorsi",
   muhasebe: "Muhasebe",
   satinalma: "Satınalma",
   coach: "Coach",
@@ -64,7 +64,7 @@ const ROLE_LABELS: Record<UserRoleType, string> = {
   bar_buddy: "Bar Buddy",
   barista: "Barista",
   supervisor_buddy: "Supervisor Buddy",
-  supervisor: "Supervisor (Şube Müdürü)",
+  supervisor: "Supervisor (Şube Managerü)",
   yatirimci_branch: "Yatırımcı (Şube)",
 };
 

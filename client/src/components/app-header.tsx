@@ -41,9 +41,9 @@ export function AppHeader({ notificationCount = 0, user, branchName }: AppHeader
   const getRoleLabel = (role: string | undefined) => {
     const roleMap: Record<string, string> = {
       "admin": "Admin",
-      "supervisor": "Süpervizör",
+      "supervisor": "Supervisor",
       "barista": "Barista",
-      "supervisor_buddy": "Süpervizör Buddy",
+      "supervisor_buddy": "Supervisor Buddy",
       "bar_buddy": "Bar Buddy",
       "stajyer": "Stajyer",
       "muhasebe": "Muhasebe",

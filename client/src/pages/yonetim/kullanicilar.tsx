@@ -315,7 +315,7 @@ export default function UserCRM() {
                     <SelectItem value="hq_staff">HQ Staff</SelectItem>
                     <SelectItem value="accountant">Muhasebe</SelectItem>
                     <SelectItem value="hr_specialist">İK Uzmanı</SelectItem>
-                    <SelectItem value="supervisor">Süpervizör</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
                     <SelectItem value="barista">Barista</SelectItem>
                   </SelectContent>
                 </Select>
@@ -510,7 +510,7 @@ export default function UserCRM() {
                                     <SelectItem value="hq_staff">HQ Staff</SelectItem>
                                     <SelectItem value="accountant">Muhasebe</SelectItem>
                                     <SelectItem value="hr_specialist">İK Uzmanı</SelectItem>
-                                    <SelectItem value="supervisor">Süpervizör</SelectItem>
+                                    <SelectItem value="supervisor">Supervisor</SelectItem>
                                     <SelectItem value="barista">Barista</SelectItem>
                                   </SelectContent>
                                 </Select>

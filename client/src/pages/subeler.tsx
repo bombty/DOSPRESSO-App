@@ -214,7 +214,7 @@ export default function SubelerPage() {
                 name="managerName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Müdür Adı</FormLabel>
+                    <FormLabel>Manager Adı</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value || ""} placeholder="Şube müdürü" data-testid="input-branch-manager" />
                     </FormControl>
@@ -285,7 +285,7 @@ export default function SubelerPage() {
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Yönetici: {branch.managerName}</span>
+                  <span className="text-muted-foreground">Administrator: {branch.managerName}</span>
                 </div>
               </CardContent>
             </Card>

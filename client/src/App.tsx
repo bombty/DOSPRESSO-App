@@ -241,9 +241,9 @@ function AppContent() {
   const getRoleLabel = (role: string | undefined) => {
     const roleMap: Record<string, string> = {
       "admin": "Admin",
-      "supervisor": "Süpervizör",
+      "supervisor": "Supervisor",
       "barista": "Barista",
-      "supervisor_buddy": "Süpervizör Buddy",
+      "supervisor_buddy": "Supervisor Buddy",
       "muhasebe": "Muhasebe",
       "coach": "Coach",
       "teknik": "Teknik",

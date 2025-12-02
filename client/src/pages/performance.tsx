@@ -156,7 +156,7 @@ export default function Performance() {
                     <div className="text-lg font-bold mt-0.5">{latestMetric.timeScore || 0}</div>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-muted/50">
-                    <p className="text-xs text-muted-foreground">Süpervizör</p>
+                    <p className="text-xs text-muted-foreground">Supervisor</p>
                     <div className="text-lg font-bold mt-0.5">{latestMetric.supervisorScore || 0}</div>
                   </div>
                 </div>

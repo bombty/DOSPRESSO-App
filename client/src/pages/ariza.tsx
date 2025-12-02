@@ -501,7 +501,7 @@ export default function FaultHub() {
                     name="assignedTo"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Teknisyen</FormLabel>
+                        <FormLabel>Technician</FormLabel>
                         <FormControl>
                           <Select value={field.value} onValueChange={field.onChange}>
                             <SelectTrigger>

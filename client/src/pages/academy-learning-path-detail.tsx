@@ -27,7 +27,7 @@ export default function AcademyLearningPathDetail() {
     { id: 2, title: "Espresso Çekme Teknikleri", difficulty: "medium", duration: 15, completion: 0, status: "recommended" },
     { id: 3, title: "Müşteri Hizmetleri İlkeleri", difficulty: "easy", duration: 12, completion: 0, status: "available" },
     { id: 4, title: "Barista Sertifikası", difficulty: "hard", duration: 20, completion: 0, status: "available" },
-    { id: 5, title: "Yönetici Sorumluluğu", difficulty: "hard", duration: 25, completion: 0, status: "locked" },
+    { id: 5, title: "Administrator Sorumluluğu", difficulty: "hard", duration: 25, completion: 0, status: "locked" },
   ];
 
   const pathTitle = pathId === "1" ? "Hızlı Kariyer Yolu" : pathId === "2" ? "Barista Ustası Yolu" : "Temel Beceriler Yolu";

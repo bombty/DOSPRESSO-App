@@ -720,7 +720,7 @@ export default function Tasks() {
                           ) : (
                             employees.map((emp) => {
                               const roleLabels: Record<string, string> = {
-                                admin: "Yönetici",
+                                admin: "Administrator",
                                 muhasebe: "Muhasebe",
                                 satinalma: "Satın Alma",
                                 coach: "Koç",
@@ -732,7 +732,7 @@ export default function Tasks() {
                                 bar_buddy: "Bar Buddy",
                                 barista: "Barista",
                                 supervisor_buddy: "Supervisor Buddy",
-                                supervisor: "Süpervizör",
+                                supervisor: "Supervisor",
                                 yatirimci: "Yatırımcı",
                               };
                               return (
