@@ -119,12 +119,6 @@ export default function FaultHub() {
 
   const { data: faults = [], isLoading: isFaultsLoading } = useQuery<EquipmentFault[]>({
     queryKey: ["/api/faults"],
-    queryFn: async () => {
-      const response = await fetch("/api/faults", { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch faults");
-      const data = await response.json();
-      return Array.isArray(data) ? data : (data.data || []);
-    },
   });
 
   const { data: users = [] } = useQuery<any[]>({
