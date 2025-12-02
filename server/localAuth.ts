@@ -171,7 +171,6 @@ export async function setupAuth(app: Express) {
         res.clearCookie('connect.sid', {
           path: '/',
           httpOnly: true,
-          secure: true, // Match HTTPS environment
           sameSite: 'lax',
         });
         res.json({ message: "Logged out" });

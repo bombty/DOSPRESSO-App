@@ -62,7 +62,10 @@ export default function PersonelProfilPage() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { credentials: 'include' });
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include' 
+      });
       // Clear all queries and redirect
       window.location.href = '/';
     } catch (error) {
