@@ -882,63 +882,34 @@ export default function Tasks() {
                     className="hover-elevate cursor-pointer"
                     onClick={() => setSelectedTask(task)}
                   >
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">{task.description}</CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {new Date(task.createdAt!).toLocaleDateString("tr-TR", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
+                    <CardContent className="p-3">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="text-sm font-medium line-clamp-2 flex-1">{task.description}</h3>
+                          <Badge
+                            variant={
+                              task.status === "onaylandi"
+                                ? "default"
+                                : task.status === "reddedildi" || task.status === "gecikmiş"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                            className="text-xs whitespace-nowrap"
+                            data-testid={`badge-task-status-${task.id}`}
+                          >
+                            {task.status === "beklemede" && "Beklemede"}
+                            {task.status === "devam_ediyor" && "Devam"}
+                            {task.status === "foto_bekleniyor" && "Foto"}
+                            {task.status === "incelemede" && "İncele"}
+                            {task.status === "onaylandi" && "Onaylı"}
+                            {task.status === "reddedildi" && "Reddedildi"}
+                            {task.status === "gecikmiş" && "Gecikmiş"}
+                          </Badge>
                         </div>
-                        <Badge
-                          variant={
-                            task.status === "onaylandi"
-                              ? "default"
-                              : task.status === "reddedildi" || task.status === "gecikmiş"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                          data-testid={`badge-task-status-${task.id}`}
-                        >
-                          {task.status === "beklemede" && "Beklemede"}
-                          {task.status === "devam_ediyor" && "Devam Ediyor"}
-                          {task.status === "foto_bekleniyor" && "Fotoğraf Bekleniyor"}
-                          {task.status === "incelemede" && "İncelemede"}
-                          {task.status === "onaylandi" && "Onaylandı"}
-                          {task.status === "reddedildi" && "Reddedildi"}
-                          {task.status === "gecikmiş" && "Gecikmiş"}
-                          {task.status === "tamamlandi" && "Tamamlandı"}
-                        </Badge>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                        </p>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {task.photoUrl && (
-                        <div>
-                          <img
-                            src={task.photoUrl}
-                            alt="Görev fotoğrafı"
-                            className="rounded-md max-h-48 object-cover"
-                            data-testid={`img-task-photo-${task.id}`}
-                          />
-                        </div>
-                      )}
-                      {task.aiAnalysis && (
-                        <div className="bg-muted p-3 rounded-md">
-                          <p className="text-sm font-medium mb-1">AI Analizi:</p>
-                          <p className="text-sm text-muted-foreground">{task.aiAnalysis}</p>
-                          {task.aiScore !== null && (
-                            <p className="text-sm font-medium mt-2">
-                              Skor: <span className="text-primary">{task.aiScore}/100</span>
-                            </p>
-                          )}
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 ))}

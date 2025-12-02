@@ -263,50 +263,29 @@ export default function KaliteDenetimi() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           {audits.map((audit) => {
             const scorePercentage = getScorePercentage(audit);
             return (
               <Card key={audit.id} data-testid={`card-audit-${audit.id}`} className="hover-elevate">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg" data-testid={`text-audit-id-${audit.id}`}>
-                        Denetim #{audit.id}
-                      </CardTitle>
-                      <CardDescription data-testid={`text-audit-date-${audit.id}`}>
-                        {format(new Date(audit.auditDate), "dd MMMM yyyy")}
-                      </CardDescription>
-                    </div>
-                    {getStatusBadge(audit.status)}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Şube ID</p>
-                      <p className="font-medium" data-testid={`text-branch-id-${audit.id}`}>{audit.branchId}</p>
+                <CardContent className="p-3">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium" data-testid={`text-audit-id-${audit.id}`}>
+                          Denetim #{audit.id}
+                        </h3>
+                        <p className="text-xs text-muted-foreground" data-testid={`text-audit-date-${audit.id}`}>
+                          {format(new Date(audit.auditDate), "dd MMM")}
+                        </p>
+                      </div>
+                      {getStatusBadge(audit.status)}
                     </div>
                     {scorePercentage !== null && (
-                      <>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Puan</p>
-                          <p className="font-medium" data-testid={`text-score-${audit.id}`}>
-                            {audit.totalScore} / {audit.maxScore}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Başarı Oranı</p>
-                          <p className={`font-medium ${scorePercentage >= (audit.passingScore || 70) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} data-testid={`text-percentage-${audit.id}`}>
-                            %{scorePercentage}
-                          </p>
-                        </div>
-                      </>
-                    )}
-                    {audit.notes && (
-                      <div className="col-span-2 md:col-span-1">
-                        <p className="text-sm text-muted-foreground">Notlar</p>
-                        <p className="text-sm" data-testid={`text-notes-${audit.id}`}>{audit.notes}</p>
+                      <div className="text-xs">
+                        <p className="text-muted-foreground">
+                          {audit.totalScore}/{audit.maxScore} ({scorePercentage}%)
+                        </p>
                       </div>
                     )}
                   </div>

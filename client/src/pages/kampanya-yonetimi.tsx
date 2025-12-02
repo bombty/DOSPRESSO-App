@@ -58,7 +58,7 @@ export default function KampanyaYonetimi() {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const isHQ = user?.role && isHQRole(user.role as any);
+  const isHQ = !!(user?.role && isHQRole(user.role as any));
   const canManageCampaigns = isHQ;
 
   const { data: campaigns, isLoading } = useQuery<Campaign[]>({
@@ -273,7 +273,7 @@ export default function KampanyaYonetimi() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           {campaigns.map((campaign) => {
             const isActive = campaign.status === "active";
             const startDate = new Date(campaign.startDate);
@@ -283,53 +283,26 @@ export default function KampanyaYonetimi() {
 
             return (
               <Card key={campaign.id} data-testid={`card-campaign-${campaign.id}`} className="hover-elevate">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1 flex-1">
-                      <CardTitle className="text-lg" data-testid={`text-campaign-name-${campaign.id}`}>
-                        {campaign.name}
-                      </CardTitle>
-                      <CardDescription>{getCampaignTypeLabel(campaign.campaignType)}</CardDescription>
+                <CardContent className="p-3">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium line-clamp-2" data-testid={`text-campaign-name-${campaign.id}`}>
+                          {campaign.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">{getCampaignTypeLabel(campaign.campaignType)}</p>
+                      </div>
+                      {getStatusBadge(campaign.status, campaign.id)}
                     </div>
-                    {getStatusBadge(campaign.status, campaign.id)}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {campaign.description && (
-                    <p className="text-sm text-muted-foreground" data-testid={`text-campaign-description-${campaign.id}`}>
-                      {campaign.description}
+                    <p className="text-xs text-muted-foreground">
+                      {format(startDate, "dd MMM")} - {format(endDate, "dd MMM")}
                     </p>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>Başlangıç</span>
+                    {isActive && daysRemaining !== null && (
+                      <div className="text-xs text-blue-600">
+                        {daysRemaining > 0 ? `${daysRemaining} gün` : "Bugün sona"}
                       </div>
-                      <p className="font-medium" data-testid={`text-start-date-${campaign.id}`}>
-                        {format(startDate, "dd MMM yyyy")}
-                      </p>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>Bitiş</span>
-                      </div>
-                      <p className="font-medium" data-testid={`text-end-date-${campaign.id}`}>
-                        {format(endDate, "dd MMM yyyy")}
-                      </p>
-                    </div>
+                    )}
                   </div>
-
-                  {isActive && daysRemaining !== null && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <TrendingUp className="w-4 h-4 text-blue-600" />
-                      <span className="text-muted-foreground">
-                        {daysRemaining > 0 ? `${daysRemaining} gün kaldı` : "Bugün sona eriyor"}
-                      </span>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             );
