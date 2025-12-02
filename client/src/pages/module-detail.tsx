@@ -28,6 +28,7 @@ const stepsEditSchema = z.object({
     title: z.string(),
     content: z.string(),
     media_suggestions: z.array(z.string()).optional(),
+    photos: z.array(z.string()).optional(),
   })).default([]),
 });
 
@@ -615,20 +616,22 @@ export default function ModuleDetail() {
                             <Badge variant="outline">{currentStepIndex + 1}/{steps.length}</Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <p className="text-sm whitespace-pre-wrap">{steps[currentStepIndex]?.content}</p>
-                          {steps[currentStepIndex]?.media_suggestions && steps[currentStepIndex].media_suggestions.length > 0 && (
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-2">Önerilen Medya:</p>
-                              <div className="flex gap-1 flex-wrap">
-                                {steps[currentStepIndex].media_suggestions.map((media: string, idx: number) => (
-                                  <Badge key={idx} variant="secondary" className="text-xs">
-                                    {media}
-                                  </Badge>
-                                ))}
+                        <CardContent className="grid grid-cols-1 gap-4">
+                          <div className="space-y-3">
+                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{steps[currentStepIndex]?.content}</p>
+                            {steps[currentStepIndex]?.media_suggestions && steps[currentStepIndex].media_suggestions.length > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-2">Önerilen Medya:</p>
+                                <div className="flex gap-1 flex-wrap">
+                                  {steps[currentStepIndex].media_suggestions.map((media: string, idx: number) => (
+                                    <Badge key={idx} variant="secondary" className="text-xs">
+                                      {media}
+                                    </Badge>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                       <div className="flex gap-2 justify-between">
@@ -1103,8 +1106,8 @@ export default function ModuleDetail() {
                         )}
                         className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
                       >
-                        {stepsForm.watch("steps").map((_, index) => (
-                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2 bg-muted/30">
+                        {stepsForm.watch("steps").map((step: any, index) => (
+                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-3 bg-muted/30">
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
                                 <FormField
@@ -1145,6 +1148,53 @@ export default function ModuleDetail() {
                                 </FormItem>
                               )}
                             />
+                            <div className="border-t pt-2">
+                              <FormLabel className="text-xs mb-2 block">Adım Fotoğrafı</FormLabel>
+                              <div className="flex items-center gap-2">
+                                <Input 
+                                  type="file" 
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onload = (event) => {
+                                        const photoUrl = event.target?.result as string;
+                                        if (!step.photos) {
+                                          stepsForm.setValue(`steps.${index}.photos`, []);
+                                        }
+                                        const current = stepsForm.watch(`steps.${index}.photos`) || [];
+                                        stepsForm.setValue(`steps.${index}.photos`, [...current, photoUrl]);
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
+                                  className="text-xs"
+                                  data-testid={`input-step-photo-${index}`}
+                                />
+                                <Image className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                              {step.photos && step.photos.length > 0 && (
+                                <div className="flex gap-2 mt-2 flex-wrap">
+                                  {step.photos.map((photo: string, pidx: number) => (
+                                    <div key={pidx} className="relative w-16 h-16 rounded overflow-hidden bg-muted">
+                                      <img src={photo} alt={`Photo ${pidx}`} className="w-full h-full object-cover" />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const current = stepsForm.watch(`steps.${index}.photos`) || [];
+                                          stepsForm.setValue(`steps.${index}.photos`, current.filter((_: any, i: number) => i !== pidx));
+                                        }}
+                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                        data-testid={`button-remove-photo-${index}-${pidx}`}
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ))}
                         <Button
