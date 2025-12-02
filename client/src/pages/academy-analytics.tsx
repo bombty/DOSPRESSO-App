@@ -180,8 +180,8 @@ export default function AcademyAnalytics() {
                 <CardTitle>Rozet İlerleme</CardTitle>
                 <CardDescription>Kazanılan ve kilitli rozetler</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
+              <CardContent>
+                <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Rozet Tamamlama</span>
                     <Badge variant="outline">{userBadges.length}/6</Badge>
@@ -206,8 +206,8 @@ export default function AcademyAnalytics() {
                 <CardTitle>Kariyer Ilerlemesi</CardTitle>
                 <CardDescription>Kariyer seviyesi ve hedef</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
+              <CardContent>
+                <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Mevcut Seviye</span>
                     <Badge>{userProgress?.currentLevel || "Bilinmiyor"}</Badge>

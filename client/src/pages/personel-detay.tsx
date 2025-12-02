@@ -909,7 +909,7 @@ export default function PersonelDetay() {
               <CardDescription>Personelin izin ve fazla mesai geçmişi</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
                 <div>
                   <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
@@ -1274,14 +1274,11 @@ export default function PersonelDetay() {
                   {trainingProgress.assignments && trainingProgress.assignments.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3">Atanan Eğitimler</h4>
-                      <div className="space-y-2">
-                        {trainingProgress.assignments.slice(0, 5).map((a: any) => (
-                          <div key={a.id} className="flex items-center justify-between p-2 border rounded-lg">
-                            <div>
-                              <p className="font-medium text-sm">{a.materialId}</p>
-                              <p className="text-xs text-muted-foreground">{a.status}</p>
-                            </div>
-                            <Badge variant={a.status === 'completed' ? 'default' : 'outline'}>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {trainingProgress.assignments.slice(0, 6).map((a: any) => (
+                          <div key={a.id} className="p-2 border rounded-lg text-center">
+                            <p className="font-medium text-xs line-clamp-1">{a.materialId}</p>
+                            <Badge variant={a.status === 'completed' ? 'default' : 'outline'} className="mt-1 text-xs">
                               {a.status}
                             </Badge>
                           </div>

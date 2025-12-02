@@ -146,7 +146,7 @@ export default function AcademyAdvancedAnalytics() {
         <CardHeader>
           <CardTitle className="text-base">Yapay Zeka İçgörüleri</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
           <p>✓ Orta zorluk sınavlarda en iyi performans gösteriyorsunuz</p>
           <p>✓ Teknik konular hakkında daha fazla pratik yapmanız önerilir</p>
           <p>✓ Son hafta performansında %5 artış görülmektedir</p>

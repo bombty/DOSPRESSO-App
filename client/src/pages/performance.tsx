@@ -170,31 +170,23 @@ export default function Performance() {
                 <CardTitle>Son Performans Kayıtları</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {metrics.slice(0, 10).map((metric, index) => (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {metrics.slice(0, 9).map((metric) => (
                     <div
                       key={metric.id}
-                      className="flex items-center justify-between border-b pb-2 last:border-0"
+                      className="p-3 rounded-lg bg-muted/50"
                       data-testid={`metric-item-${metric.id}`}
                     >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {new Date(metric.date).toLocaleDateString("tr-TR", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {metric.tasksCompleted}/{metric.tasksTotal} görev
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">%{metric.completionRate}</p>
-                        <p className="text-xs text-muted-foreground">
-                          AI: {metric.averageAiScore}/100
-                        </p>
-                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(metric.date).toLocaleDateString("tr-TR", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </p>
+                      <p className="text-sm font-bold mt-1">%{metric.completionRate}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {metric.tasksCompleted}/{metric.tasksTotal} görev
+                      </p>
                     </div>
                   ))}
                 </div>
