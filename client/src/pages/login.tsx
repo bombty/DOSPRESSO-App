@@ -79,16 +79,13 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="flex justify-center">
-            <img 
-              src={logoUrl} 
-              alt="DOSPRESSO Logo" 
-              className="w-48"
-              data-testid="img-logo"
-            />
-          </div>
-          <CardTitle className="text-2xl font-bold text-center">DOSPRESSO</CardTitle>
+        <CardHeader className="flex flex-col items-center gap-4">
+          <img 
+            src={logoUrl} 
+            alt="DOSPRESSO Logo" 
+            className="w-48"
+            data-testid="img-logo"
+          />
           <CardDescription className="text-center">
             Franchise Yönetim Sistemi
           </CardDescription>
