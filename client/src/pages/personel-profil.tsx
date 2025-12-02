@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   User, Calendar, Award, ClipboardCheck, 
-  Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle
+  Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -58,6 +58,12 @@ const roleLabels: Record<string, string> = {
 export default function PersonelProfilPage() {
   const { id } = useParams();
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { credentials: 'include' });
+    setLocation('/');
+  };
 
   // Fetch personnel profile
   const { data: profile, isLoading } = useQuery<PersonnelProfile>({
@@ -106,10 +112,19 @@ export default function PersonelProfilPage() {
     <div className="min-h-screen pb-20">
       <div className="p-3 grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Status badges */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap justify-between">
           <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
             {profile.isActive ? "Aktif" : "Pasif"}
           </Badge>
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={handleLogout}
+            data-testid="button-logout"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Çıkış
+          </Button>
         </div>
 
       {/* Performance Overview Card */}
