@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon, Download, Plus, QrCode, AlertTriangle } from 'lucide-react';
+import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon, Download, Plus, QrCode, AlertTriangle, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch } from '@shared/schema';
 import { format, parseISO } from 'date-fns';
@@ -427,29 +427,38 @@ export default function EkipmanServis() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Toplam</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                <Wrench className="h-4 w-4 text-blue-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Toplam</p>
+              <p className="text-lg font-bold">{stats.total}</p>
+            </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Arıza Raporları</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.faults}</div>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Arıza</p>
+              <p className="text-lg font-bold">{stats.faults}</p>
+            </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Servis Talepleri</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.services}</div>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                <ClipboardList className="h-4 w-4 text-green-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Servis</p>
+              <p className="text-lg font-bold">{stats.services}</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -465,9 +474,9 @@ export default function EkipmanServis() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Şube</Label>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Şube</Label>
               <Select value={filterBranch} onValueChange={setFilterBranch}>
                 <SelectTrigger data-testid="select-filter-branch">
                   <SelectValue placeholder="Tüm şubeler" />
@@ -482,8 +491,8 @@ export default function EkipmanServis() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Tip</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">Tip</Label>
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger data-testid="select-filter-type">
                   <SelectValue placeholder="Tüm tipler" />

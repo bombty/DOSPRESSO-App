@@ -479,48 +479,52 @@ export default function Vardiyalar() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             <Card data-testid="card-total-shifts">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Bu Hafta</CardTitle>
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalWeekShifts}</div>
-                <p className="text-xs text-muted-foreground">toplam vardiya</p>
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                    <CalendarIcon className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Bu Hafta</p>
+                  <p className="text-lg font-bold">{totalWeekShifts}</p>
+                </div>
               </CardContent>
             </Card>
 
             <Card data-testid="card-confirmed">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Onaylı</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{confirmedCount}</div>
-                <p className="text-xs text-muted-foreground">kesinleşmiş vardiya</p>
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Onaylı</p>
+                  <p className="text-lg font-bold text-green-600">{confirmedCount}</p>
+                </div>
               </CardContent>
             </Card>
 
             <Card data-testid="card-pending">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
-                <AlertCircle className="h-4 w-4 text-yellow-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
-                <p className="text-xs text-muted-foreground">onay bekliyor</p>
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Bekleyen</p>
+                  <p className="text-lg font-bold text-yellow-600">{pendingCount}</p>
+                </div>
               </CardContent>
             </Card>
 
             <Card data-testid="card-coverage">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Doluluk</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{coverageRate}%</div>
-                <Progress value={coverageRate} className="mt-2 h-2" />
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Doluluk</p>
+                  <p className="text-lg font-bold">{coverageRate}%</p>
+                </div>
               </CardContent>
             </Card>
           </div>

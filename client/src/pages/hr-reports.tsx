@@ -274,64 +274,74 @@ export default function HRReportsPage() {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Vardiya</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : 
-              <div className="text-2xl font-bold">{attendanceStats.totalRecords}</div>
-            }
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                <Users className="h-4 w-4 text-blue-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Vardiya</p>
+              {isLoading ? <Skeleton className="h-5 w-12" /> : 
+                <p className="text-lg font-bold">{attendanceStats.totalRecords}</p>
+              }
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Saat</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : 
-              <div className="text-2xl font-bold">{attendanceStats.totalHoursWorked.toFixed(1)}</div>
-            }
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-green-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Toplam</p>
+              {isLoading ? <Skeleton className="h-5 w-12" /> : 
+                <p className="text-lg font-bold">{attendanceStats.totalHoursWorked.toFixed(1)}h</p>
+              }
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ort. Saat</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : 
-              <div className="text-2xl font-bold">{attendanceStats.avgHoursPerShift.toFixed(1)}</div>
-            }
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-purple-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Ortalama</p>
+              {isLoading ? <Skeleton className="h-5 w-12" /> : 
+                <p className="text-lg font-bold">{attendanceStats.avgHoursPerShift.toFixed(1)}h</p>
+              }
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Mola</CardTitle>
-            <Coffee className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : 
-              <div className="text-2xl font-bold">{attendanceStats.totalBreakMinutes}</div>
-            }
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                <Coffee className="h-4 w-4 text-orange-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Mola</p>
+              {isLoading ? <Skeleton className="h-5 w-12" /> : 
+                <p className="text-lg font-bold">{attendanceStats.totalBreakMinutes}m</p>
+              }
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Geç Varışlar</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : 
-              <div className="text-2xl font-bold text-amber-600">{attendanceStats.lateArrivals}</div>
-            }
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Geç</p>
+              {isLoading ? <Skeleton className="h-5 w-12" /> : 
+                <p className="text-lg font-bold text-amber-600">{attendanceStats.lateArrivals}</p>
+              }
+            </div>
           </CardContent>
         </Card>
       </div>

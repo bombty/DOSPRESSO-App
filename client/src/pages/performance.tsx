@@ -57,91 +57,71 @@ export default function Performance() {
       </div>
 
       {metricsLoading ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-32 w-full" />
+            <Skeleton key={i} className="h-20 w-full" />
           ))}
         </div>
       ) : (
         <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Tamamlanma Oranı
-                </CardTitle>
-                {completionTrend > 0 ? (
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                ) : completionTrend < 0 ? (
-                  <TrendingDown className="h-4 w-4 text-red-600" />
-                ) : null}
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold" data-testid="text-completion-rate">
-                  %{latestMetric?.completionRate || 0}
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                    {completionTrend > 0 ? (
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                    ) : completionTrend < 0 ? (
+                      <TrendingDown className="h-4 w-4 text-red-600" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Tamamlanma</p>
+                  <p className="text-lg font-bold" data-testid="text-completion-rate">%{latestMetric?.completionRate || 0}</p>
                 </div>
-                {completionTrend !== 0 && (
-                  <p className={`text-xs mt-1 ${completionTrend > 0 ? "text-green-600" : "text-red-600"}`}>
-                    {completionTrend > 0 ? "+" : ""}{completionTrend}% önceki döneme göre
-                  </p>
-                )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Ortalama AI Skoru
-                </CardTitle>
-                {aiScoreTrend > 0 ? (
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                ) : aiScoreTrend < 0 ? (
-                  <TrendingDown className="h-4 w-4 text-red-600" />
-                ) : null}
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold" data-testid="text-avg-ai-score">
-                  {latestMetric?.averageAiScore || 0}/100
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                    {aiScoreTrend > 0 ? (
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                    ) : aiScoreTrend < 0 ? (
+                      <TrendingDown className="h-4 w-4 text-red-600" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 text-purple-600" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">AI Skoru</p>
+                  <p className="text-lg font-bold" data-testid="text-avg-ai-score">{latestMetric?.averageAiScore || 0}/100</p>
                 </div>
-                {aiScoreTrend !== 0 && (
-                  <p className={`text-xs mt-1 ${aiScoreTrend > 0 ? "text-green-600" : "text-red-600"}`}>
-                    {aiScoreTrend > 0 ? "+" : ""}{aiScoreTrend}% önceki döneme göre
-                  </p>
-                )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Tamamlanan Görevler
-                </CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold" data-testid="text-tasks-completed">
-                  {latestMetric?.tasksCompleted || 0}
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Görevler</p>
+                  <p className="text-lg font-bold" data-testid="text-tasks-completed">{latestMetric?.tasksCompleted || 0}/{latestMetric?.tasksTotal || 0}</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Toplam {latestMetric?.tasksTotal || 0} görevden
-                </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Arıza Çözüm Oranı
-                </CardTitle>
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold" data-testid="text-faults-resolved">
-                  {latestMetric?.faultsResolved || 0}
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Arıza Çözüm</p>
+                  <p className="text-lg font-bold" data-testid="text-faults-resolved">{latestMetric?.faultsResolved || 0}/{latestMetric?.faultsReported || 0}</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {latestMetric?.faultsReported || 0} raporlanan arızadan
-                </p>
               </CardContent>
             </Card>
           </div>
@@ -158,26 +138,26 @@ export default function Performance() {
 
           {latestMetric && (
             <Card>
-              <CardHeader>
-                <CardTitle>Performans Skorları</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Performans Skorları</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Görev Skoru</p>
-                    <div className="text-2xl font-bold mt-1">{latestMetric.taskScore || 0}/100</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Görev</p>
+                    <div className="text-lg font-bold mt-0.5">{latestMetric.taskScore || 0}</div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fotoğraf Skoru</p>
-                    <div className="text-2xl font-bold mt-1">{latestMetric.photoScore || 0}/100</div>
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Fotoğraf</p>
+                    <div className="text-lg font-bold mt-0.5">{latestMetric.photoScore || 0}</div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Zaman Skoru</p>
-                    <div className="text-2xl font-bold mt-1">{latestMetric.timeScore || 0}/100</div>
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Zaman</p>
+                    <div className="text-lg font-bold mt-0.5">{latestMetric.timeScore || 0}</div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Süpervizör Skoru</p>
-                    <div className="text-2xl font-bold mt-1">{latestMetric.supervisorScore || 0}/100</div>
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Süpervizör</p>
+                    <div className="text-lg font-bold mt-0.5">{latestMetric.supervisorScore || 0}</div>
                   </div>
                 </div>
               </CardContent>

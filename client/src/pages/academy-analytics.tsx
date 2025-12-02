@@ -86,56 +86,52 @@ export default function AcademyAnalytics() {
         <p className="text-muted-foreground mt-2">Şube-çapı eğitim performansı ve ilerleme</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Trophy className="w-4 h-4" />
-              Kariyer Seviyesi
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{userProgress?.currentLevel || "—"}</p>
-            <p className="text-xs text-muted-foreground">Mevcut rol</p>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                <Trophy className="h-4 w-4 text-yellow-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Kariyer</p>
+              <p className="text-lg font-bold">{userProgress?.currentLevel || "—"}</p>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Target className="w-4 h-4" />
-              Ortalama Puan
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{quizStats?.averageScore?.toFixed(1) || "—"}</p>
-            <p className="text-xs text-muted-foreground">/100 puan</p>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                <Target className="h-4 w-4 text-blue-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Ort. Puan</p>
+              <p className="text-lg font-bold">{quizStats?.averageScore?.toFixed(1) || "—"}</p>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              Tamamlanan Sınavlar
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{quizStats?.completedQuizzes || 0}</p>
-            <p className="text-xs text-muted-foreground">Sınav</p>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                <Zap className="h-4 w-4 text-purple-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Sınavlar</p>
+              <p className="text-lg font-bold">{quizStats?.completedQuizzes || 0}</p>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Award className="w-4 h-4" />
-              Rozetler
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{userBadges.length}</p>
-            <p className="text-xs text-muted-foreground">6 mümkün</p>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                <Award className="h-4 w-4 text-green-600" />
+              </div>
+              <p className="text-xs text-muted-foreground">Rozetler</p>
+              <p className="text-lg font-bold">{userBadges.length}/6</p>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -464,9 +464,9 @@ export default function CashReports() {
             <CardTitle className="text-lg">Filtreler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               <div>
-                <label className="text-sm font-medium mb-2 block">Şube</label>
+                <label className="text-xs font-medium mb-1 block">Şube</label>
                 <Select 
                   value={selectedBranchFilter?.toString()} 
                   onValueChange={(value) => setSelectedBranchFilter(value === 'all' ? undefined : Number(value))}

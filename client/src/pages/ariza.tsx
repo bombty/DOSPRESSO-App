@@ -223,56 +223,52 @@ export default function FaultHub() {
 
         {/* TAB 1: Overview */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  Kritik
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-red-600" data-testid="text-critical-count">{metrics.critical.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">Acil müdahale</p>
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Kritik</p>
+                  <p className="text-lg font-bold text-red-600" data-testid="text-critical-count">{metrics.critical.length}</p>
+                </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-orange-600" />
-                  Yüksek
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-orange-600" data-testid="text-high-count">{metrics.high.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">Kısa sürede çözülmeli</p>
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Yüksek</p>
+                  <p className="text-lg font-bold text-orange-600" data-testid="text-high-count">{metrics.high.length}</p>
+                </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  Çözüldü
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-600" data-testid="text-resolved-count">{metrics.resolved.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">Toplam çözülen</p>
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Çözüldü</p>
+                  <p className="text-lg font-bold text-green-600" data-testid="text-resolved-count">{metrics.resolved.length}</p>
+                </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Wrench className="w-4 h-4 text-blue-600" />
-                  Açık
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold" data-testid="text-open-count">{metrics.open.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">İşlem halinde</p>
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                    <Wrench className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Açık</p>
+                  <p className="text-lg font-bold" data-testid="text-open-count">{metrics.open.length}</p>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -323,31 +319,40 @@ export default function FaultHub() {
 
         {/* TAB 2: SLA Status */}
         <TabsContent value="sla" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Card className="border-red-500 bg-red-50 dark:bg-red-950">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-red-600">SLA İhlali</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-red-600" data-testid="text-breached-count">{metrics.breached.length}</div>
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                  </div>
+                  <p className="text-xs text-red-600">SLA İhlali</p>
+                  <p className="text-lg font-bold text-red-600" data-testid="text-breached-count">{metrics.breached.length}</p>
+                </div>
               </CardContent>
             </Card>
 
             <Card className="border-orange-500 bg-orange-50 dark:bg-orange-950">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-orange-600">Risk Altında</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-orange-600" data-testid="text-atrisk-count">{metrics.atRisk.length}</div>
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <p className="text-xs text-orange-600">Risk Altında</p>
+                  <p className="text-lg font-bold text-orange-600" data-testid="text-atrisk-count">{metrics.atRisk.length}</p>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Sağlıklı</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-600" data-testid="text-healthy-count">{metrics.healthy.length}</div>
+            <Card className="border-green-500 bg-green-50 dark:bg-green-950">
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  </div>
+                  <p className="text-xs text-green-600">Sağlıklı</p>
+                  <p className="text-lg font-bold text-green-600" data-testid="text-healthy-count">{metrics.healthy.length}</p>
+                </div>
               </CardContent>
             </Card>
           </div>

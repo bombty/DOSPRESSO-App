@@ -243,7 +243,7 @@ export default function SubelerPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredBranches.map((branch) => (
           <Link key={branch.id} href={`/subeler/${branch.id}`}>
             <Card className="hover-elevate active-elevate-2 cursor-pointer h-full" data-testid={`card-branch-${branch.id}`}>

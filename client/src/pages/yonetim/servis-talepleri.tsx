@@ -580,9 +580,9 @@ export default function ServiceRequestsManagement() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Şube</Label>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Şube</Label>
               <Select value={filterBranch} onValueChange={setFilterBranch}>
                 <SelectTrigger data-testid="select-filter-branch">
                   <SelectValue placeholder="Tüm şubeler" />
@@ -597,8 +597,8 @@ export default function ServiceRequestsManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Durum</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">Durum</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger data-testid="select-filter-status">
                   <SelectValue placeholder="Tüm durumlar" />
