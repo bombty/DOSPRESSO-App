@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap, Upload, FileText, Image } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, BookOpen, Users, Trash2, Plus, GraduationCap, Upload, FileText, Image, Edit2 } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -434,7 +434,7 @@ export default function AcademyHQ() {
           </TabsTrigger>
           <TabsTrigger value="training" className="flex-1 min-w-fit">
             <GraduationCap className="w-4 h-4 mr-2" />
-            Eğitim Modülleri ({trainingModules.length})
+            Modüller ({trainingModules.length})
           </TabsTrigger>
         </TabsList>
 
@@ -753,19 +753,20 @@ export default function AcademyHQ() {
           </div>
         </TabsContent>
 
-        {/* EĞİTİM MODÜLLERI TAB */}
-        <TabsContent value="training" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-          <div className="flex justify-between items-center mb-2 col-span-2 md:col-span-3 text-sm">
-            <h2 className="text-xl font-semibold">Eğitim Modülleri Yönetimi</h2>
-            <div className="flex gap-2">
+        {/* MODÜLLER TAB */}
+        <TabsContent value="training" className="grid grid-cols-1 gap-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <h2 className="text-base sm:text-lg font-semibold">Modülleri Yönet</h2>
+            <div className="flex flex-wrap gap-2">
               <Dialog open={isAiGeneratorOpen} onOpenChange={(open) => {
                 setIsAiGeneratorOpen(open);
                 if (!open) resetAiWizard();
               }}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" data-testid="button-ai-generator">
-                    <GraduationCap className="w-4 h-4 mr-2" />
-                    AI ile Modül Oluştur
+                  <Button variant="outline" size="sm" data-testid="button-ai-generator">
+                    <GraduationCap className="w-3 h-3 mr-1" />
+                    <span className="hidden sm:inline">AI ile Modül Oluştur</span>
+                    <span className="sm:hidden">AI</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1061,9 +1062,10 @@ export default function AcademyHQ() {
               </Dialog>
               <Dialog open={isAddTrainingOpen} onOpenChange={setIsAddTrainingOpen}>
               <DialogTrigger asChild>
-                <Button data-testid="button-add-training">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Yeni Modül
+                <Button size="sm" data-testid="button-add-training">
+                  <Plus className="w-3 h-3 mr-1" />
+                  <span className="hidden sm:inline">Yeni Modül</span>
+                  <span className="sm:hidden">Ekle</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
@@ -1226,7 +1228,7 @@ export default function AcademyHQ() {
             </DialogContent>
           </Dialog>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             {trainingModules.map((module: TrainingModule) => (
               <div 
                 key={module.id}
@@ -1237,18 +1239,19 @@ export default function AcademyHQ() {
                 className="cursor-pointer"
               >
                 <Card className="hover-elevate h-full">
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2 pt-3 px-3">
                     <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1">
-                        <CardTitle className="text-base">{module.title}</CardTitle>
-                        <CardDescription className="text-xs mt-1">
-                          Seviye: {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-sm line-clamp-2">{module.title}</CardTitle>
+                        <CardDescription className="text-xs mt-0.5">
+                          {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
                         </CardDescription>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-0.5 flex-shrink-0">
                         <Button
-                          size="sm"
-                          variant="outline"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingModule(module);
@@ -1264,31 +1267,34 @@ export default function AcademyHQ() {
                             });
                             setIsEditTrainingOpen(true);
                           }}
+                          title="Düzenle"
                           data-testid={`button-edit-module-${module.id}`}
                         >
-                          ✎ Düzenle
+                          <Edit2 className="w-3 h-3" />
                         </Button>
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
+                          className="h-7 w-7"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteTrainingMutation.mutate(module.id);
                           }}
                           disabled={deleteTrainingMutation.isPending}
+                          title="Sil"
                           data-testid={`button-delete-module-${module.id}`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-2 text-sm">
-                    {module.description && <p className="text-muted-foreground line-clamp-2">{module.description}</p>}
-                    <div className="flex gap-2 flex-wrap">
-                      {module.isPublished && <Badge variant="default">Yayında</Badge>}
-                      {!module.isPublished && <Badge variant="secondary">Taslak</Badge>}
-                      <Badge variant="outline">{module.estimatedDuration} dk</Badge>
+                  <CardContent className="grid grid-cols-1 gap-1 text-xs p-3">
+                    {module.description && <p className="text-muted-foreground line-clamp-1 text-xs">{module.description}</p>}
+                    <div className="flex gap-1 flex-wrap">
+                      {module.isPublished && <Badge variant="default" className="text-xs px-1.5 py-0">Yayında</Badge>}
+                      {!module.isPublished && <Badge variant="secondary" className="text-xs px-1.5 py-0">Taslak</Badge>}
+                      <Badge variant="outline" className="text-xs px-1.5 py-0">{module.estimatedDuration} dk</Badge>
                     </div>
                     {module.requiredForRole && module.requiredForRole.length > 0 && (
                       <div className="pt-2 border-t">
