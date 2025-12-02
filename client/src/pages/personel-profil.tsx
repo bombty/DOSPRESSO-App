@@ -9,11 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
-  ArrowLeft, User, Calendar, Award, ClipboardCheck, 
+  User, Calendar, Award, ClipboardCheck, 
   Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { PageHeader } from "@/components/page-header";
 
 type PersonnelProfile = {
   id: string;
@@ -103,32 +104,21 @@ export default function PersonelProfilPage() {
   const attendanceRate = profile.attendanceRate || 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          data-testid="button-back"
-          onClick={() => window.history.back()}
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold" data-testid="personnel-name">{profile.fullName}</h1>
-          <div className="flex items-center gap-3 mt-1">
-            <Badge variant="default" data-testid="personnel-role">
-              {roleLabels[profile.role] || profile.role}
-            </Badge>
-            {profile.branchName && (
-              <span className="text-muted-foreground">{profile.branchName}</span>
-            )}
-            <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
-              {profile.isActive ? "Aktif" : "Pasif"}
-            </Badge>
-          </div>
+    <div className="min-h-screen pb-20">
+      <PageHeader 
+        title={profile.fullName}
+        subtitle={`${roleLabels[profile.role] || profile.role}${profile.branchName ? ` - ${profile.branchName}` : ''}`}
+        icon={User}
+        backPath="/"
+      />
+      
+      <div className="p-3 space-y-4">
+        {/* Status badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
+            {profile.isActive ? "Aktif" : "Pasif"}
+          </Badge>
         </div>
-      </div>
 
       {/* Performance Overview Card */}
       <Card className="border-2">
@@ -373,6 +363,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

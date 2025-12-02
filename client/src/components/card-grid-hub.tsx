@@ -192,12 +192,13 @@ export function CardGridHub() {
   };
 
   return (
-    <div className="p-3 space-y-4">
+    <div className="p-3 pb-24 space-y-4">
       {/* Welcome Section */}
       <div className="text-center py-4">
         <p className="text-lg font-medium text-muted-foreground">{getGreeting()}</p>
-        <h1 className="text-2xl font-bold">
-          {user?.firstName || user?.username} ☕
+        <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
+          {user?.firstName || user?.username}
+          <Coffee className="w-5 h-5 text-amber-600" />
         </h1>
         {user?.branchId && (
           <p className="text-sm text-muted-foreground mt-1">
