@@ -479,7 +479,7 @@ export default function Vardiyalar() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             <Card data-testid="card-total-shifts">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
