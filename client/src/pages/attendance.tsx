@@ -205,7 +205,7 @@ export default function AttendancePage() {
   const canEndBreak = isOnBreak;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
       <div>
         <h1 className="text-3xl font-bold" data-testid="text-page-title">Devam Takibi</h1>
         <p className="text-muted-foreground">Vardiya giriş/çıkış ve mola yönetimi</p>
@@ -250,7 +250,7 @@ export default function AttendancePage() {
                   )}
 
                   {activeShift.analysisDetails && (
-                    <div className="space-y-2 pt-2 border-t">
+                    <div className="grid grid-cols-1 gap-2 pt-2 border-t">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Dress Code</span>
                         {activeShift.analysisStatus === 'completed' ? (

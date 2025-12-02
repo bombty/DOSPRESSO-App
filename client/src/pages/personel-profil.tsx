@@ -90,7 +90,7 @@ export default function PersonelProfilPage() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-4">
+      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4">
         <p className="text-lg text-muted-foreground">Personel bulunamadı</p>
         <Link href="/ik">
           <Button variant="default" data-testid="button-back-ik">İK Yönetimine Dön</Button>
@@ -104,7 +104,7 @@ export default function PersonelProfilPage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="p-3 space-y-4">
+      <div className="p-3 grid grid-cols-1 gap-4">
         {/* Status badges */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">

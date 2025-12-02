@@ -98,7 +98,7 @@ export default function GorevDetay() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -135,7 +135,7 @@ export default function GorevDetay() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
@@ -322,7 +322,7 @@ export default function GorevDetay() {
                   </Button>
                 </div>
                 {task.notes && task.notes.length > 0 ? (
-                  <div className="space-y-2 pt-4 border-t">
+                  <div className="grid grid-cols-1 gap-2 pt-4 border-t">
                     {task.notes.map((n: any, idx: number) => (
                       <div key={idx} className="p-3 rounded-lg bg-muted">
                         <p className="text-sm">{n.content}</p>

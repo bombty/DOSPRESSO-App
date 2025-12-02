@@ -25,7 +25,7 @@ export default function AdminChecklistManagement() {
     return (
       <Card>
         <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center text-center space-y-3">
+          <div className="flex flex-col items-center justify-center text-center grid grid-cols-1 gap-3">
             <AlertCircle className="h-12 w-12 text-destructive" />
             <h3 className="font-semibold text-lg">Yetkisiz Erişim</h3>
             <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
@@ -391,7 +391,7 @@ function ChecklistFormDialog({
       <DialogHeader>
         <DialogTitle>{mode === "create" ? "Yeni Checklist" : "Checklist Düzenle"}</DialogTitle>
       </DialogHeader>
-      <div className="space-y-4 py-4">
+      <div className="grid grid-cols-1 gap-4 py-4">
         <div className="grid grid-cols-1 gap-2">
           <Label htmlFor="title">Başlık *</Label>
           <Input
@@ -515,7 +515,7 @@ function ChecklistFormDialog({
               <CardContent className="py-3">
                 <div className="flex gap-2 items-start">
                   <span className="text-sm text-muted-foreground pt-2">{index + 1}.</span>
-                  <div className="flex-1 space-y-2">
+                  <div className="flex-1 grid grid-cols-1 gap-2">
                     <Input
                       value={task.taskDescription}
                       onChange={(e) => updateTask(index, 'taskDescription', e.target.value)}

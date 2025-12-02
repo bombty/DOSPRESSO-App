@@ -309,7 +309,7 @@ export default function VardiyaCheckin() {
   }
 
   return (
-    <div className="container max-w-2xl mx-auto p-4 space-y-6">
+    <div className="container max-w-2xl mx-auto p-4 grid grid-cols-1 gap-6">
       {/* Hidden video and canvas elements for photo capture */}
       <video ref={videoRef} className="hidden" autoPlay playsInline />
       <canvas ref={canvasRef} className="hidden" />
@@ -344,7 +344,7 @@ export default function VardiyaCheckin() {
       {/* Captured data display */}
       {(capturedPhoto || location) && (
         <Card>
-          <CardContent className="pt-6 space-y-2">
+          <CardContent className="pt-6 grid grid-cols-1 gap-2">
             {capturedPhoto && (
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />

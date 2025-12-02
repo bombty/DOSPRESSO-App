@@ -480,7 +480,7 @@ export default function ServiceRequestsManagement() {
   };
 
   return (
-    <div className="container mx-auto p-4 lg:p-6 space-y-4">
+    <div className="container mx-auto p-4 lg:p-6 grid grid-cols-1 gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold" data-testid="text-page-title">Servis Talepleri</h1>
@@ -757,7 +757,7 @@ export default function ServiceRequestsManagement() {
               </div>
 
               {/* Service Request Info */}
-              <div className="border-t pt-4 space-y-4">
+              <div className="border-t pt-4 grid grid-cols-1 gap-4">
                 <h3 className="font-semibold">Servis Talebi Bilgileri</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid grid-cols-1 gap-1">
@@ -789,7 +789,7 @@ export default function ServiceRequestsManagement() {
 
               {/* Dates */}
               {(selectedRequest.scheduledDate || selectedRequest.completedDate) && (
-                <div className="border-t pt-4 space-y-4">
+                <div className="border-t pt-4 grid grid-cols-1 gap-4">
                   <h3 className="font-semibold">Tarihler</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {selectedRequest.scheduledDate && (
@@ -810,7 +810,7 @@ export default function ServiceRequestsManagement() {
 
               {/* Costs */}
               {(selectedRequest.estimatedCost || selectedRequest.actualCost) && (
-                <div className="border-t pt-4 space-y-4">
+                <div className="border-t pt-4 grid grid-cols-1 gap-4">
                   <h3 className="font-semibold">Maliyetler</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {selectedRequest.estimatedCost && (
@@ -831,7 +831,7 @@ export default function ServiceRequestsManagement() {
 
               {/* Notes */}
               {selectedRequest.notes && (
-                <div className="border-t pt-4 space-y-4">
+                <div className="border-t pt-4 grid grid-cols-1 gap-4">
                   <h3 className="font-semibold">Notlar</h3>
                   <p className="text-sm whitespace-pre-wrap">{selectedRequest.notes}</p>
                 </div>
@@ -839,7 +839,7 @@ export default function ServiceRequestsManagement() {
 
               {/* Timeline */}
               {selectedRequest.timeline && selectedRequest.timeline.length > 0 && (
-                <div className="border-t pt-4 space-y-4">
+                <div className="border-t pt-4 grid grid-cols-1 gap-4">
                   <h3 className="font-semibold flex items-center gap-2">
                     <History className="w-4 h-4" />
                     Tarih
@@ -894,7 +894,7 @@ export default function ServiceRequestsManagement() {
               {selectedRequest?.equipmentName} - Detaylı servis durumu güncellemesi
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="grid grid-cols-1 gap-4 py-4">
             {/* Status */}
             <div className="grid grid-cols-1 gap-2">
               <Label>Yeni Durum *</Label>
@@ -964,7 +964,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Photo Uploads */}
-            <div className="space-y-4 border-t pt-4">
+            <div className="grid grid-cols-1 gap-4 border-t pt-4">
               <h3 className="font-semibold flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />
                 Kırık Parça Fotoğrafları
@@ -1104,7 +1104,7 @@ export default function ServiceRequestsManagement() {
               <div className="grid grid-cols-1 gap-3">
                 <Label className="text-base font-semibold">Adım 2: Cihaz Seçimi *</Label>
                 {branchEquipment.length > 0 ? (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
                     {branchEquipment.map((eq: any) => (
                       <button
                         key={eq.id}

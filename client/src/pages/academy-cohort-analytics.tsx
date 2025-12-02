@@ -72,7 +72,7 @@ export default function AcademyCohortAnalytics() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="grid grid-cols-1 gap-6 p-6">
       <div className="flex items-center gap-2 mb-4">
         <Button
           onClick={() => window.history.back()}

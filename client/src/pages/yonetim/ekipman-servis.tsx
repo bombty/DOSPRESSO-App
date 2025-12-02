@@ -677,7 +677,7 @@ export default function EkipmanServis() {
 
             {/* Fault Fields */}
             {createType === 'fault' && (
-              <div className="space-y-4 border-t pt-4">
+              <div className="grid grid-cols-1 gap-4 border-t pt-4">
                 <div className="grid grid-cols-1 gap-2">
                   <Label>Arıza Açıklaması *</Label>
                   <Textarea
@@ -702,7 +702,7 @@ export default function EkipmanServis() {
                 </div>
 
                 {aiDiagnosis && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 space-y-3">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 grid grid-cols-1 gap-3">
                     <div>
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-100">AI Tanısı</p>
                       <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">{aiDiagnosis.diagnosis}</p>
@@ -753,7 +753,7 @@ export default function EkipmanServis() {
 
             {/* Service Fields */}
             {createType === 'service' && (
-              <div className="space-y-4 border-t pt-4">
+              <div className="grid grid-cols-1 gap-4 border-t pt-4">
                 <div className="grid grid-cols-1 gap-2">
                   <Label>Servis Sağlayıcı *</Label>
                   <Input
@@ -797,7 +797,7 @@ export default function EkipmanServis() {
                     rows={3}
                   />
                 </div>
-                <div className="space-y-3 border-t pt-4">
+                <div className="grid grid-cols-1 gap-3 border-t pt-4">
                   <Label>Fotoğraflar (İsteğe Bağlı)</Label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -902,7 +902,7 @@ export default function EkipmanServis() {
 
               {selectedRequest.type === 'fault' ? (
                 <>
-                  <div className="border-t pt-4 space-y-2">
+                  <div className="border-t pt-4 grid grid-cols-1 gap-2">
                     <p className="text-sm text-muted-foreground">Arıza Açıklaması</p>
                     <p>{selectedRequest.faultDescription}</p>
                   </div>
@@ -919,7 +919,7 @@ export default function EkipmanServis() {
                 </>
               ) : (
                 <>
-                  <div className="border-t pt-4 space-y-2">
+                  <div className="border-t pt-4 grid grid-cols-1 gap-2">
                     <p className="text-sm text-muted-foreground">Teknisyen</p>
                     <p className="font-medium">{selectedRequest.serviceProvider}</p>
                   </div>

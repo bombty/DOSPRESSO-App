@@ -88,7 +88,7 @@ function useDebounce<T>(value: T, delay: number): T {
 function FaultSkeleton() {
   return (
     <div className="flex items-center justify-between p-3 border rounded animate-pulse">
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 grid grid-cols-1 gap-2">
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
         <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
       </div>
@@ -211,7 +211,7 @@ export default function FaultHub() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="p-3 space-y-4">
+      <div className="p-3 grid grid-cols-1 gap-4">
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-4">

@@ -66,7 +66,7 @@ export default function BranchFeedback() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="grid grid-cols-1 gap-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button
@@ -154,7 +154,7 @@ export default function BranchFeedback() {
             {feedbacks.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">Henüz geribildirim göderilmedi</p>
             ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto">
+              <div className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto">
                 {feedbacks.map((fb) => (
                   <Card key={fb.id} className="bg-muted/50" data-testid={`card-feedback-${fb.id}`}>
                     <CardContent className="pt-4">

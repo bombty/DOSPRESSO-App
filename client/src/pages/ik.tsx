@@ -372,7 +372,7 @@ export default function IKPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">İK Yönetimi</h1>
@@ -1638,7 +1638,7 @@ function WarningsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+        <div className="grid grid-cols-1 gap-4 max-h-[60vh] overflow-y-auto">
           {warnings.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               Uyarı kaydı bulunmuyor

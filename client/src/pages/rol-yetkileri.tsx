@@ -234,7 +234,7 @@ export default function RolYetkileri() {
   // Auth check - show unauthorized if not admin
   if (!authLoading && (!user || user.role !== 'admin')) {
     return (
-      <div className="container mx-auto py-6 space-y-6" data-testid="page-rol-yetkileri">
+      <div className="container mx-auto py-6 grid grid-cols-1 gap-6" data-testid="page-rol-yetkileri">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
           <p className="text-muted-foreground mt-1">
@@ -254,7 +254,7 @@ export default function RolYetkileri() {
   // Loading state
   if (authLoading || isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6" data-testid="page-rol-yetkileri">
+      <div className="container mx-auto py-6 grid grid-cols-1 gap-6" data-testid="page-rol-yetkileri">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
           <p className="text-muted-foreground mt-1">
@@ -273,7 +273,7 @@ export default function RolYetkileri() {
   // Error state
   if (error) {
     return (
-      <div className="container mx-auto py-6 space-y-6" data-testid="page-rol-yetkileri">
+      <div className="container mx-auto py-6 grid grid-cols-1 gap-6" data-testid="page-rol-yetkileri">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
           <p className="text-muted-foreground mt-1">
@@ -291,7 +291,7 @@ export default function RolYetkileri() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6" data-testid="page-rol-yetkileri">
+    <div className="container mx-auto py-6 grid grid-cols-1 gap-6" data-testid="page-rol-yetkileri">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
@@ -338,7 +338,7 @@ export default function RolYetkileri() {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6">
-                <div className="space-y-6 mt-4">
+                <div className="grid grid-cols-1 gap-6 mt-4">
                   {group.roles.map(role => (
                     <Card key={role} data-testid={`card-role-${role}`}>
                       <CardHeader>

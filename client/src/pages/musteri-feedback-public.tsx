@@ -66,7 +66,7 @@ export default function MusteriFeedbackPublic() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
         <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
+          <CardContent className="flex flex-col items-center justify-center py-12 grid grid-cols-1 gap-4">
             <CheckCircle className="w-16 h-16 text-green-600" data-testid="icon-success" />
             <h2 className="text-2xl font-bold" data-testid="heading-thank-you">Teşekkür Ederiz!</h2>
             <p className="text-center text-muted-foreground" data-testid="text-success-message">
@@ -176,7 +176,7 @@ export default function MusteriFeedbackPublic() {
             </div>
 
             {!isAnonymous && (
-              <div className="space-y-4 p-4 bg-muted rounded-lg">
+              <div className="grid grid-cols-1 gap-4 p-4 bg-muted rounded-lg">
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="name">Adınız (İsteğe bağlı)</Label>
                   <Input

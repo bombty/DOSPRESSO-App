@@ -489,7 +489,7 @@ export default function EquipmentManagement() {
         {/* TAB 1: Bekleyen Talepler */}
         <TabsContent value="pending" className="grid grid-cols-1 gap-4">
           {/* Filters */}
-          <div className="bg-muted p-4 rounded-lg space-y-3">
+          <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-3">
             <div className="flex gap-2 items-center">
               <Search className="w-4 h-4 text-muted-foreground" />
               <Input
@@ -759,11 +759,11 @@ export default function EquipmentManagement() {
             <div className="grid grid-cols-1 gap-6">
               {/* Equipment Details */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-muted p-4 rounded-lg space-y-2">
+                <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
                   <div className="text-sm font-medium text-muted-foreground">Seri No</div>
                   <div className="font-semibold">{selectedEquipmentDetail.serialNumber || '-'}</div>
                 </div>
-                <div className="bg-muted p-4 rounded-lg space-y-2">
+                <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
                   <div className="text-sm font-medium text-muted-foreground">Durum</div>
                   <div className="font-semibold">
                     <Badge className={getHealthStatus(selectedEquipmentDetail).color}>
@@ -773,25 +773,25 @@ export default function EquipmentManagement() {
                   </div>
                 </div>
                 {selectedEquipmentDetail.purchaseDate && (
-                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
                     <div className="text-sm font-medium text-muted-foreground">Satın Alma Tarihi</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.purchaseDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.warrantyEndDate && (
-                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
                     <div className="text-sm font-medium text-muted-foreground">Garanti Bitiş</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.warrantyEndDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.lastMaintenanceDate && (
-                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
                     <div className="text-sm font-medium text-muted-foreground">Son Bakım</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.lastMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.nextMaintenanceDate && (
-                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-2">
                     <div className="text-sm font-medium text-muted-foreground">Sonraki Bakım</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
@@ -809,7 +809,7 @@ export default function EquipmentManagement() {
                     Bu ekipman için servis talebi yok
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
                     {serviceRequests
                       .filter(r => r.equipmentId === selectedEquipmentDetail.id)
                       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())

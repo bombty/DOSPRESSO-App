@@ -62,7 +62,7 @@ export default function AIAssistant() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-3xl font-semibold" data-testid="text-page-title">AI Asistan</h1>
         <p className="text-muted-foreground mt-1">Bilgi bankasından soru sorun ve anında cevap alın</p>

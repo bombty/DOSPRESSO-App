@@ -179,7 +179,7 @@ export default function DenetimYurutmePage() {
 
   if (!audit) {
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-4">
+      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4">
         <p className="text-lg text-muted-foreground">Denetim bulunamadı</p>
         <Link href="/denetimler">
           <Button>Denetimlere Dön</Button>
@@ -214,7 +214,7 @@ export default function DenetimYurutmePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/denetimler">

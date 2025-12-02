@@ -692,7 +692,7 @@ export default function AcademyHQ() {
                 {pendingExams.length === 0 ? (
                   <p className="text-center py-8 text-muted-foreground text-sm">Talep yok</p>
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
                     {pendingExams.map((exam: any) => (
                       <div key={exam.id} className="p-3 border rounded text-sm">
                         <div className="flex items-start justify-between mb-2">
@@ -742,7 +742,7 @@ export default function AcademyHQ() {
                 {approvedExams.length === 0 ? (
                   <p className="text-center py-8 text-muted-foreground text-sm">Onay yok</p>
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
                     {approvedExams.map((exam: any) => (
                       <div key={exam.id} className="p-3 border rounded text-sm">
                         <p className="font-medium">{exam.userId}</p>
@@ -972,7 +972,7 @@ export default function AcademyHQ() {
                         <p className="text-sm font-medium text-green-700 dark:text-green-300">Modül başarıyla oluşturuldu!</p>
                       </div>
                       
-                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                      <div className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto">
                         <div>
                           <h4 className="font-semibold text-lg">{generatedModule.title}</h4>
                           <p className="text-sm text-muted-foreground">{generatedModule.description}</p>

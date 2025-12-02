@@ -163,7 +163,7 @@ export default function Academy() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="p-3 space-y-2">
+      <div className="p-3 grid grid-cols-1 gap-2">
 
       {/* 3-Hub Navigation - MOVED TO TOP */}
       <div className="flex gap-2 mb-2 sticky top-0 bg-background z-10 pb-1 border-b">

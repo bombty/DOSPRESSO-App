@@ -210,7 +210,7 @@ export default function Mesajlar() {
       {/* Left Panel - Thread List */}
       <div className="w-96 border-r flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b space-y-4">
+        <div className="p-4 border-b grid grid-cols-1 gap-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold" data-testid="text-messages-title">Mesajlar</h1>
             <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
@@ -359,7 +359,7 @@ export default function Mesajlar() {
                           
                           {/* Attachments */}
                           {message.attachments && message.attachments.length > 0 && (
-                            <div className="mt-2 space-y-2">
+                            <div className="mt-2 grid grid-cols-1 gap-2">
                               {message.attachments.map((att: any) => (
                                 <a
                                   key={att.id}
@@ -394,7 +394,7 @@ export default function Mesajlar() {
             </ScrollArea>
 
             {/* Message Composer */}
-            <div className="p-4 border-t space-y-2">
+            <div className="p-4 border-t grid grid-cols-1 gap-2">
               {/* Attachments Preview */}
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2">

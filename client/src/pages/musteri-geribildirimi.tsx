@@ -101,7 +101,7 @@ export default function MisafirGeriBildirim() {
 
   if (feedbackLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-6 grid grid-cols-1 gap-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -109,7 +109,7 @@ export default function MisafirGeriBildirim() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 grid grid-cols-1 gap-6">
       <div>
         <h1 className="text-3xl font-bold" data-testid="heading-misafir-geribildirimi">Misafir Geri Bildirimleri</h1>
         <p className="text-muted-foreground mt-1">Misafirlerimizin görüşlerini takip edin ve değerlendirin</p>

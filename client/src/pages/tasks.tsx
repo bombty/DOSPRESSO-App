@@ -1019,7 +1019,7 @@ export default function Tasks() {
                     <Separator />
                     <div>
                       <p className="font-medium mb-2">AI Analizi</p>
-                      <div className="bg-muted p-4 rounded-md space-y-2">
+                      <div className="bg-muted p-4 rounded-md grid grid-cols-1 gap-2">
                         {selectedTask.aiScore !== null && selectedTask.aiScore !== undefined && (
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium">Skor:</span>

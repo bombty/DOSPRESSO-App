@@ -176,7 +176,7 @@ export default function Announcements() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
@@ -592,7 +592,7 @@ export default function Announcements() {
                 </div>
 
                 {readStatus.readers && readStatus.readers.length > 0 ? (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
                     <p className="text-sm font-medium text-muted-foreground">Okuyanlar:</p>
                     {readStatus.readers.map((reader, idx) => (
                       <div key={idx} className="flex items-center justify-between p-2 border rounded text-sm">

@@ -633,7 +633,7 @@ export default function AdminMenuManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 grid grid-cols-1 gap-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold">Menü Yönetimi</h1>
         <div className="flex gap-2">
@@ -1085,7 +1085,7 @@ export default function AdminMenuManagement() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Roller (Çoklu Seçim)</FormLabel>
-                            <div className="space-y-2 max-h-64 overflow-y-auto border rounded-md p-3">
+                            <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto border rounded-md p-3">
                               {ALL_ROLES.map(role => (
                                 <div key={role} className="flex items-center space-x-2">
                                   <Checkbox

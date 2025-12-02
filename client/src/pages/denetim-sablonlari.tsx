@@ -646,7 +646,7 @@ export default function DenetimSablonlariPage() {
               </div>
 
               {/* Items */}
-              <div className="space-y-3 border-t pt-4">
+              <div className="grid grid-cols-1 gap-3 border-t pt-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-lg">Denetim Maddeleri</Label>
                   <Button
@@ -663,7 +663,7 @@ export default function DenetimSablonlariPage() {
 
                 {items.map((item, index) => (
                   <Card key={index} data-testid={`card-item-${index}`}>
-                    <CardContent className="pt-4 space-y-3">
+                    <CardContent className="pt-4 grid grid-cols-1 gap-3">
                       <div className="flex items-start justify-between gap-2">
                         <Label className="text-sm font-medium">Madde {index + 1}</Label>
                         <Button
@@ -767,7 +767,7 @@ export default function DenetimSablonlariPage() {
                         <div className="grid grid-cols-1 gap-3">
                           <div>
                             <Label>Şıklar (En az 2 şık gerekli)</Label>
-                            <div className="space-y-2 mt-2">
+                            <div className="grid grid-cols-1 gap-2 mt-2">
                               {(item.options || []).map((option: string, optionIndex: number) => (
                                 <div key={optionIndex} className="flex gap-2">
                                   <Input

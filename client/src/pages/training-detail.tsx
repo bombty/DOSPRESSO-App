@@ -248,7 +248,7 @@ export default function TrainingDetail() {
 
   if (!module) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 space-y-4">
+      <div className="flex flex-col items-center justify-center h-96 grid grid-cols-1 gap-4">
         <BookOpen className="h-16 w-16 text-muted-foreground" />
         <h2 className="text-2xl font-semibold">Modül bulunamadı</h2>
         <Button onClick={() => setLocation("/egitim")} data-testid="button-back">
@@ -328,7 +328,7 @@ export default function TrainingDetail() {
           </div>
 
           {progress && (
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 grid grid-cols-1 gap-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">İlerleme</span>
                 <span className="font-medium" data-testid="text-progress-percentage">
@@ -636,7 +636,7 @@ export default function TrainingDetail() {
                   data-testid={`flashcard-${card.id}`}
                 >
                   <CardContent className="pt-6 min-h-48 flex items-center justify-center">
-                    <div className="text-center space-y-2">
+                    <div className="text-center grid grid-cols-1 gap-2">
                       <p className="text-sm text-muted-foreground uppercase tracking-wide">
                         {flippedCards.has(card.id) ? "Cevap" : "Soru"}
                       </p>

@@ -288,7 +288,7 @@ export default function ModuleDetail() {
   // STUDENT VIEW - Auto-show full learning experience immediately
   if (!isEditor) {
     return (
-      <div className="space-y-6 p-6 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 gap-6 p-6 max-w-4xl mx-auto">
         <div className="flex items-center gap-2 mb-4">
           <Button
             onClick={() => setLocation(referrerPage || "/akademi")}
@@ -783,7 +783,7 @@ export default function ModuleDetail() {
 
               {/* Completed Phase */}
               {previewPhase === 'completed' && (
-                <div className="space-y-6 text-center py-8">
+                <div className="grid grid-cols-1 gap-6 text-center py-8">
                   <div className="flex justify-center">
                     <div className="relative">
                       <Award className="w-24 h-24 text-yellow-500" />
@@ -1047,10 +1047,10 @@ export default function ModuleDetail() {
                         onSubmit={stepsForm.handleSubmit((data) =>
                           updateStepsMutation.mutate(data)
                         )}
-                        className="space-y-4 max-h-96 overflow-y-auto"
+                        className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
                       >
                         {stepsForm.watch("steps").map((_, index) => (
-                          <div key={index} className="border p-3 rounded space-y-2 bg-muted/30">
+                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2 bg-muted/30">
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
                                 <FormField
@@ -1177,10 +1177,10 @@ export default function ModuleDetail() {
                     <Form {...quizForm}>
                       <form
                         onSubmit={quizForm.handleSubmit((data) => updateQuizMutation.mutate(data))}
-                        className="space-y-4 max-h-96 overflow-y-auto"
+                        className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
                       >
                         {quizForm.watch("quiz").map((_, index) => (
-                          <div key={index} className="border p-3 rounded space-y-3 bg-muted/30">
+                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-3 bg-muted/30">
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
                                 <FormField
@@ -1211,7 +1211,7 @@ export default function ModuleDetail() {
                             </div>
 
                             {/* Options */}
-                            <div className="space-y-2 pl-2 border-l-2 border-muted-foreground/30">
+                            <div className="grid grid-cols-1 gap-2 pl-2 border-l-2 border-muted-foreground/30">
                               <FormLabel className="text-xs">Cevap Seçenekleri</FormLabel>
                               {quizForm.watch(`quiz.${index}.options`)?.map((_, optIndex) => (
                                 <div key={optIndex} className="flex gap-2 items-center">
@@ -1351,10 +1351,10 @@ export default function ModuleDetail() {
                     <Form {...scenariosForm}>
                       <form
                         onSubmit={scenariosForm.handleSubmit((data) => updateScenariosMutation.mutate(data))}
-                        className="space-y-4 max-h-96 overflow-y-auto"
+                        className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
                       >
                         {scenariosForm.watch("scenarioTasks").map((_, index) => (
-                          <div key={index} className="border p-3 rounded space-y-2">
+                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2">
                             <FormField
                               control={scenariosForm.control}
                               name={`scenarioTasks.${index}.title`}
@@ -1457,10 +1457,10 @@ export default function ModuleDetail() {
                     <Form {...checklistForm}>
                       <form
                         onSubmit={checklistForm.handleSubmit((data) => updateChecklistMutation.mutate(data))}
-                        className="space-y-4 max-h-96 overflow-y-auto"
+                        className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
                       >
                         {checklistForm.watch("supervisorChecklist").map((_, index) => (
-                          <div key={index} className="border p-3 rounded space-y-2">
+                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2">
                             <FormField
                               control={checklistForm.control}
                               name={`supervisorChecklist.${index}.title`}

@@ -783,7 +783,7 @@ export default function EquipmentDetail() {
                           <Wrench className="h-4 w-4 text-primary" />
                         </div>
                       </div>
-                      <div className="flex-1 space-y-2">
+                      <div className="flex-1 grid grid-cols-1 gap-2">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-medium" data-testid={`text-maintenance-type-${log.id}`}>
@@ -848,7 +848,7 @@ export default function EquipmentDetail() {
                           <AlertTriangle className="h-4 w-4 text-destructive" />
                         </div>
                       </div>
-                      <div className="flex-1 space-y-2">
+                      <div className="flex-1 grid grid-cols-1 gap-2">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-medium" data-testid={`text-fault-equipment-${fault.id}`}>
@@ -936,9 +936,9 @@ export default function EquipmentDetail() {
               {serviceRequests && serviceRequests.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {serviceRequests.map((request) => (
-                    <div key={request.id} className="rounded-lg border p-4 space-y-4" data-testid={`service-request-${request.id}`}>
+                    <div key={request.id} className="rounded-lg border p-4 grid grid-cols-1 gap-4" data-testid={`service-request-${request.id}`}>
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-3">
+                        <div className="flex-1 grid grid-cols-1 gap-3">
                           <div className="flex items-center gap-2 flex-wrap">
                             <Badge variant={
                               request.status === SERVICE_REQUEST_STATUS.CLOSED ? 'default' :
@@ -996,7 +996,7 @@ export default function EquipmentDetail() {
                             </div>
                           )}
                         </div>
-                        <div className="text-right space-y-2">
+                        <div className="text-right grid grid-cols-1 gap-2">
                           <p className="text-sm text-muted-foreground">
                             {new Date(request.createdAt!).toLocaleDateString('tr-TR', {
                               year: 'numeric',
@@ -1024,7 +1024,7 @@ export default function EquipmentDetail() {
                         </div>
                       </div>
                       {request.timeline && request.timeline.length > 0 && (
-                        <div className="pt-4 border-t space-y-2">
+                        <div className="pt-4 border-t grid grid-cols-1 gap-2">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium">Geçmiş (Son 3)</p>
                             <Button
@@ -1173,7 +1173,7 @@ export default function EquipmentDetail() {
                       data-testid="img-qr-code"
                     />
                   </div>
-                  <div className="text-center space-y-2">
+                  <div className="text-center grid grid-cols-1 gap-2">
                     <p className="text-sm text-muted-foreground">
                       QR kodu mobil cihazınızla tarayarak bu ekipmanı hızlıca tanımlayabilirsiniz
                     </p>
@@ -1660,7 +1660,7 @@ export default function EquipmentDetail() {
                       {entry.actorId?.substring(0, 2).toUpperCase() || '??'}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 space-y-2">
+                  <div className="flex-1 grid grid-cols-1 gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium">
                         {entry.actorId}
@@ -1913,7 +1913,7 @@ export default function EquipmentDetail() {
               
               {/* Troubleshooting Steps Section */}
               {troubleshootingSteps && troubleshootingSteps.length > 0 && (
-                <div className="border rounded-lg p-4 space-y-3 bg-muted/50">
+                <div className="border rounded-lg p-4 grid grid-cols-1 gap-3 bg-muted/50">
                   <div className="flex items-center gap-2">
                     <Wrench className="h-5 w-5 text-primary" />
                     <h3 className="font-semibold">Sorun Giderme Adımları</h3>
@@ -1951,7 +1951,7 @@ export default function EquipmentDetail() {
                               }}
                               data-testid={`checkbox-troubleshooting-step-${step.id}`}
                             />
-                            <div className="flex-1 space-y-2">
+                            <div className="flex-1 grid grid-cols-1 gap-2">
                               <div className="flex items-center gap-2">
                                 <span className={`font-medium ${isMissing ? 'text-destructive' : ''}`}>
                                   Adım {step.order}
@@ -1990,7 +1990,7 @@ export default function EquipmentDetail() {
               )}
               
               {/* AI Technical Assistant Section */}
-              <div className="border rounded-lg p-4 space-y-3 bg-gradient-to-br from-primary/5 to-primary/10">
+              <div className="border rounded-lg p-4 grid grid-cols-1 gap-3 bg-gradient-to-br from-primary/5 to-primary/10">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
                   <h3 className="font-semibold">AI Teknik Asistan</h3>
@@ -2033,10 +2033,10 @@ export default function EquipmentDetail() {
                 </div>
                 
                 {aiAnswer && (
-                  <div className="bg-background rounded-lg p-3 space-y-2 border" data-testid="ai-response-container">
+                  <div className="bg-background rounded-lg p-3 grid grid-cols-1 gap-2 border" data-testid="ai-response-container">
                     <div className="flex items-start gap-2">
                       <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 space-y-2">
+                      <div className="flex-1 grid grid-cols-1 gap-2">
                         <p className="text-sm text-foreground whitespace-pre-wrap" data-testid="text-ai-answer">{aiAnswer.answer}</p>
                         {aiAnswer.sources && aiAnswer.sources.length > 0 && (
                           <div className="pt-2 border-t">

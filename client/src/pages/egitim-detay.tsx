@@ -50,7 +50,7 @@ export default function EgitimDetay() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -79,7 +79,7 @@ export default function EgitimDetay() {
   const getUserById = (userId: string) => users?.find((u) => u.id === userId);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button

@@ -180,7 +180,7 @@ export default function Sikayetler() {
 
   if (complaintsLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-6 grid grid-cols-1 gap-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -188,7 +188,7 @@ export default function Sikayetler() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 grid grid-cols-1 gap-6">
       <div>
         <h1 className="text-3xl font-bold" data-testid="heading-sikayetler">Misafir Şikayetleri</h1>
         <p className="text-muted-foreground mt-1">SLA takipli şikayet yönetim sistemi</p>
@@ -349,7 +349,7 @@ export default function Sikayetler() {
                           Şikayetin nasıl çözüldüğünü açıklayın
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-4 py-4">
+                      <div className="grid grid-cols-1 gap-4 py-4">
                         <div>
                           <label className="text-sm font-medium mb-2 block">
                             Çözüm Notları

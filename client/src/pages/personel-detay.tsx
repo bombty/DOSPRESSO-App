@@ -359,7 +359,7 @@ export default function PersonelDetay() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -414,7 +414,7 @@ export default function PersonelDetay() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button 
@@ -1041,7 +1041,7 @@ export default function PersonelDetay() {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-3 text-sm">
+                        <div className="grid grid-cols-1 gap-3 text-sm">
                           <div>
                             <p className="font-medium mb-1">Açıklama:</p>
                             <p className="text-muted-foreground">{report.description}</p>

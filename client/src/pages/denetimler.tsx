@@ -241,7 +241,7 @@ export default function DenetimlerPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="grid grid-cols-1 gap-4 py-4">
             <div className="grid grid-cols-1 gap-2">
               <Label htmlFor="template">Denetim Şablonu *</Label>
               <Select

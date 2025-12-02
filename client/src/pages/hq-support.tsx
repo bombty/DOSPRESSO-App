@@ -670,7 +670,7 @@ function TicketDetailDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+        <div className="grid grid-cols-1 gap-4 flex-1 overflow-hidden flex flex-col">
           {/* Ticket Info */}
           <div className="grid grid-cols-1 gap-2">
             <p className="text-sm text-muted-foreground" data-testid="text-detail-description">
@@ -690,7 +690,7 @@ function TicketDetailDialog({
 
           {/* Messages */}
           <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4 pb-4">
+            <div className="grid grid-cols-1 gap-4 pb-4">
               {messages.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">Henüz mesaj yok</p>
               ) : (

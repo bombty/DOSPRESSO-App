@@ -81,7 +81,7 @@ export default function AcademySupervisor() {
   });
 
   return (
-    <div className="space-y-2 p-3">
+    <div className="grid grid-cols-1 gap-2 p-3">
       <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
@@ -196,7 +196,7 @@ export default function AcademySupervisor() {
               ) : (
                 <div className="grid grid-cols-1 gap-3">
                   {pendingExams.map((exam: any) => (
-                    <div key={exam.id} className="p-4 border rounded-lg space-y-3">
+                    <div key={exam.id} className="p-4 border rounded-lg grid grid-cols-1 gap-3">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">{exam.userId}</p>

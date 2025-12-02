@@ -131,7 +131,7 @@ export default function SubelerPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-4">
+      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4">
         <p className="text-lg text-destructive">Şubeler yüklenirken hata oluştu</p>
         <p className="text-sm text-muted-foreground">Lütfen sistem yöneticinize başvurun</p>
       </div>

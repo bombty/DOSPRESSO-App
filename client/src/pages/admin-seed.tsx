@@ -82,7 +82,7 @@ export default function AdminSeedPage() {
           </Button>
 
           {result && (
-            <div className="p-4 rounded-lg bg-muted space-y-2">
+            <div className="p-4 rounded-lg bg-muted grid grid-cols-1 gap-2">
               <p className="font-semibold text-green-600">✅ İşlem Başarılı</p>
               <div className="text-sm space-y-1">
                 <p>

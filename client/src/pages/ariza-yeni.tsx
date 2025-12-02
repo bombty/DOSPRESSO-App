@@ -149,7 +149,7 @@ export default function NewFaultReport() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="grid grid-cols-1 gap-6 max-w-2xl mx-auto">
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => setLocation("/ekipman-arizalar")}>
           <ArrowLeft className="w-4 h-4" />

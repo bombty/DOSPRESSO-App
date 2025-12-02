@@ -45,7 +45,7 @@ export default function AcademyCertificates() {
   const today = new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <div className="space-y-2 p-3">
+    <div className="grid grid-cols-1 gap-2 p-3">
       <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}

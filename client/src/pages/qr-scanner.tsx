@@ -337,7 +337,7 @@ export default function QRScanner() {
             )}
           </div>
 
-          <div className="border-t pt-4 space-y-2">
+          <div className="border-t pt-4 grid grid-cols-1 gap-2">
             <p className="text-sm font-medium">Nasıl Kullanılır?</p>
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
               <li>"Taramaya Başla" butonuna tıklayın</li>

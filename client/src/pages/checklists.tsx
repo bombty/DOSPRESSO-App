@@ -422,7 +422,7 @@ export default function Checklists() {
                                 </div>
                                 
                                 <CollapsibleContent>
-                                  <div className="px-3 pb-3 pt-1 space-y-3 border-t">
+                                  <div className="px-3 pb-3 pt-1 grid grid-cols-1 gap-3 border-t">
                                     <p className="text-xs text-muted-foreground">
                                       En son Ece tarafından tarihinde işlem yapılmıştır.
                                     </p>
@@ -642,7 +642,7 @@ export default function Checklists() {
                 />
               </div>
 
-              <div className="border-t pt-4 space-y-3">
+              <div className="border-t pt-4 grid grid-cols-1 gap-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium">Görevler</h3>
                   {(isCoach || (editingChecklist && editingChecklist.isEditable)) && (
@@ -661,7 +661,7 @@ export default function Checklists() {
 
                 <div className="grid grid-cols-1 gap-2">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="border rounded-md p-3 space-y-2">
+                    <div key={field.id} className="border rounded-md p-3 grid grid-cols-1 gap-2">
                       <div className="flex gap-2">
                         <FormField
                           control={editForm.control}

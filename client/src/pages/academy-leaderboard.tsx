@@ -140,7 +140,7 @@ export default function AcademyLeaderboard() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3">
               {branchLeaders.map((branch) => (
-                <div key={branch.branchName} className="space-y-2 p-3 border rounded-lg">
+                <div key={branch.branchName} className="grid grid-cols-1 gap-2 p-3 border rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-sm">{branch.branchName}</p>

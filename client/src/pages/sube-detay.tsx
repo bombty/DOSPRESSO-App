@@ -94,7 +94,7 @@ export default function SubeDetayPage() {
   // Authorization: Supervisor can only view their own branch
   if (user?.role === 'supervisor' && user?.branchId !== branchId) {
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-4">
+      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4">
         <p className="text-lg text-muted-foreground">Bu şubeye erişim yetkiniz yok</p>
         <Link href="/subeler">
           <Button variant="default">Şubelere Dön</Button>
