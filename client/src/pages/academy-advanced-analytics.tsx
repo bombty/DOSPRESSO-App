@@ -36,8 +36,8 @@ export default function AcademyAdvancedAnalytics() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -49,15 +49,15 @@ export default function AcademyAdvancedAnalytics() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <TrendingUp className="w-8 h-8 text-green-500" />
-          İleri Analitikler
+        <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-green-500" />
+          Analitikler
         </h1>
-        <p className="text-muted-foreground mt-2">Kapsamlı performans analizi ve içgörüler</p>
+        <p className="text-xs text-muted-foreground mt-1">Performans analizi</p>
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Toplam Puan</CardTitle>

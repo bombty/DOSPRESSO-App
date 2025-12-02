@@ -45,8 +45,8 @@ export default function AcademyCertificates() {
   const today = new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -58,24 +58,23 @@ export default function AcademyCertificates() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Sertifikalar & Başarılar</h1>
-        <p className="text-muted-foreground mt-2">Kariyer seviyelerine ulaştığında kazanılan resmi sertifikalar</p>
+        <h1 className="text-lg font-bold tracking-tight">Sertifikalar</h1>
+        <p className="text-xs text-muted-foreground mt-1">Kariyer seviyelerine ulaşınca kazanılan sertifikalar</p>
       </div>
 
       {/* Current Level Certificate */}
       {currentLevel && (
         <Card className="border-2 border-primary">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-primary" />
-              Aktif Sertifika: {currentLevel.titleTr}
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-1">
+              <Award className="w-4 h-4 text-primary" />
+              {currentLevel.titleTr}
             </CardTitle>
-            <CardDescription>Kariyer seviye {currentLevel.levelNumber} başarısıyla kazanıldı</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-2">
               {/* Certificate Preview */}
-              <div className={`bg-gradient-to-br ${currentLevel.certificateColor} p-8 rounded-lg border-2 border-dashed border-gray-300 text-center min-h-80 flex flex-col justify-between`}>
+              <div className={`bg-gradient-to-br ${currentLevel.certificateColor} p-4 rounded-lg border-2 border-dashed border-gray-300 text-center min-h-40 flex flex-col justify-between text-xs`}>
                 <div>
                   <p className="text-sm text-gray-600 uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
                   <p className="text-lg font-serif mt-2">Kariyer Sertifikası</p>

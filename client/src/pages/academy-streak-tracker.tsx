@@ -50,8 +50,8 @@ export default function AcademyStreakTracker() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -63,80 +63,79 @@ export default function AcademyStreakTracker() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Flame className="w-8 h-8 text-orange-500" />
+        <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
+          <Flame className="w-5 h-5 text-orange-500" />
           Öğrenme Serisi
         </h1>
-        <p className="text-muted-foreground mt-2">Tutarlılık seni başarıya götürür</p>
+        <p className="text-xs text-muted-foreground mt-1">Tutarlılık seni başarıya götürür</p>
       </div>
 
       {/* Main Streak Card */}
       <Card className="bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900 dark:to-orange-950 border-orange-200 dark:border-orange-800">
-        <CardContent className="p-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Flame className="w-12 h-12 text-orange-500 animate-pulse" />
+        <CardContent className="p-3 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Flame className="w-7 h-7 text-orange-500 animate-pulse" />
             <div>
-              <p className="text-6xl font-bold text-orange-600">{streakDays}</p>
-              <p className="text-sm text-muted-foreground">Gün Serisi</p>
+              <p className="text-2xl font-bold text-orange-600">{streakDays}</p>
+              <p className="text-xs text-muted-foreground">Gün</p>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">Son Etkinlik: {lastActivityDay}</p>
+          <p className="text-xs text-muted-foreground mb-2">Son: {lastActivityDay}</p>
           {streakDays > 0 ? (
-            <p className="text-green-600 font-semibold">✓ Bugünü tamamladın!</p>
+            <p className="text-green-600 text-xs font-semibold">✓ Bugünü tamamladın!</p>
           ) : (
-            <p className="text-amber-600 font-semibold">Bugün bir sınav al</p>
+            <p className="text-amber-600 text-xs font-semibold">Sınav al</p>
           )}
         </CardContent>
       </Card>
 
       {/* Best Streak & Stats */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Trophy className="w-4 h-4" />
-              En İyi Seri
+            <CardTitle className="text-sm flex items-center gap-1">
+              <Trophy className="w-3 h-3" />
+              En İyi
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-yellow-600">{bestStreak}</p>
+            <p className="text-lg font-bold text-yellow-600">{bestStreak}</p>
             <p className="text-xs text-muted-foreground">gün</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Target className="w-4 h-4" />
+            <CardTitle className="text-sm flex items-center gap-1">
+              <Target className="w-3 h-3" />
               Hedef
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-blue-600">30</p>
-            <p className="text-xs text-muted-foreground">gün hedef</p>
+            <p className="text-lg font-bold text-blue-600">30</p>
+            <p className="text-xs text-muted-foreground">gün</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Streak Milestones */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Başarı Mileleri</CardTitle>
-          <CardDescription>Serilerini uzat ve rozet kazan</CardDescription>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Başarı Mileleri</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-1">
             {streakMilestones.map((m, idx) => (
               <div
                 key={idx}
-                className={`p-4 rounded-lg text-center border-2 transition-all ${
+                className={`p-2 rounded-lg text-center border transition-all ${
                   m.unlocked
                     ? "bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-900 dark:to-amber-950 border-amber-300 dark:border-amber-700"
                     : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 opacity-60"
                 }`}
               >
-                <p className="text-2xl mb-1">{m.icon}</p>
-                <p className="text-xs font-semibold">{m.days} Gün</p>
+                <p className="text-lg mb-0.5">{m.icon}</p>
+                <p className="text-xs font-semibold">{m.days}g</p>
                 <p className="text-xs text-muted-foreground">{m.label}</p>
               </div>
             ))}
@@ -146,15 +145,14 @@ export default function AcademyStreakTracker() {
 
       {/* 30-Day Activity Heatmap */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
             Son 30 Gün
           </CardTitle>
-          <CardDescription>Yeşil = Etkin, Gri = Atlanamış</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-0.5">
             {activityDays.map((day, idx) => (
               <div
                 key={idx}

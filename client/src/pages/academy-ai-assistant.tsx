@@ -82,8 +82,8 @@ export default function AcademyAIAssistant() {
   ];
 
   return (
-    <div className="space-y-6 p-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3 max-w-4xl mx-auto">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -95,16 +95,16 @@ export default function AcademyAIAssistant() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Sparkles className="w-8 h-8 text-blue-500" />
+        <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-blue-500" />
           Academy AI Asistan
         </h1>
-        <p className="text-muted-foreground mt-2">Yapay zeka destekli öğrenme yardımcısı</p>
+        <p className="text-xs text-muted-foreground mt-1">Yapay zeka destekli öğrenme yardımcısı</p>
       </div>
 
       {/* Chat Container */}
-      <Card className="h-[500px] flex flex-col">
-        <CardContent className="flex-1 p-4 overflow-hidden">
+      <Card className="h-[400px] flex flex-col">
+        <CardContent className="flex-1 p-2 overflow-hidden">
           <ScrollArea className="h-full pr-4">
             <div className="space-y-4">
               {messages.map((msg, idx) => (
@@ -140,8 +140,8 @@ export default function AcademyAIAssistant() {
       </Card>
 
       {/* Input Area */}
-      <div className="space-y-3">
-        <div className="flex gap-2">
+      <div className="space-y-1">
+        <div className="flex gap-1">
           <Textarea
             placeholder="Sorunuzu yazın..."
             value={input}
@@ -152,7 +152,7 @@ export default function AcademyAIAssistant() {
                 handleSend();
               }
             }}
-            className="min-h-12 resize-none"
+            className="min-h-10 resize-none text-xs"
             data-testid="input-assistant-message"
             disabled={isLoading}
           />
@@ -162,14 +162,14 @@ export default function AcademyAIAssistant() {
             size="icon"
             data-testid="button-send-message"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-3 h-3" />
           </Button>
         </div>
 
         {/* Suggested Questions */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">Örnek Sorular:</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <p className="text-xs font-semibold text-muted-foreground mb-1">Örnek Sorular:</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
             {suggestedQuestions.map((q, idx) => (
               <Button
                 key={idx}
@@ -191,17 +191,16 @@ export default function AcademyAIAssistant() {
 
       {/* Info Card */}
       <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Sparkles className="w-3 h-3" />
             AI Asistan Hakkında
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm space-y-2">
+        <CardContent className="text-xs space-y-1">
           <p>✓ Kariyer gelişimi ve sertifikasyon hakkında bilgiler</p>
           <p>✓ Sınav ve öğrenme stratejileri</p>
           <p>✓ Academy özellikleri ve kullanım ipuçları</p>
-          <p>✓ Kişiselleştirilmiş öğrenme önerileri</p>
         </CardContent>
       </Card>
     </div>

@@ -99,8 +99,8 @@ export default function AcademyAchievements() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -112,36 +112,36 @@ export default function AcademyAchievements() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Trophy className="w-8 h-8 text-amber-500" />
+        <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-amber-500" />
           Başarılar
         </h1>
-        <p className="text-muted-foreground mt-2">Mileleri aşarak özel başarıları kilidi aç</p>
+        <p className="text-xs text-muted-foreground mt-1">Mileleri aşarak başarıları aç</p>
       </div>
 
       {/* Summary */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Başarı Özeti</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Özet</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-3 gap-1">
           <div className="text-center">
-            <p className="text-3xl font-bold text-amber-500">{unlockedCount}</p>
+            <p className="text-lg font-bold text-amber-500">{unlockedCount}</p>
             <p className="text-xs text-muted-foreground">Açıldı</p>
           </div>
           <div className="text-center">
-            <p className="text-3xl font-bold text-blue-500">{ACHIEVEMENTS.length - unlockedCount}</p>
+            <p className="text-lg font-bold text-blue-500">{ACHIEVEMENTS.length - unlockedCount}</p>
             <p className="text-xs text-muted-foreground">Kilitli</p>
           </div>
           <div className="text-center">
-            <p className="text-3xl font-bold text-green-500">{Math.round((unlockedCount / ACHIEVEMENTS.length) * 100)}%</p>
+            <p className="text-lg font-bold text-green-500">{Math.round((unlockedCount / ACHIEVEMENTS.length) * 100)}%</p>
             <p className="text-xs text-muted-foreground">Tamamlandı</p>
           </div>
         </CardContent>
       </Card>
 
       {/* Achievements Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
         {ACHIEVEMENTS.map((achievement) => {
           const Icon = achievement.icon;
           const progress = getProgress(achievement);
@@ -159,20 +159,20 @@ export default function AcademyAchievements() {
               {/* Lock overlay */}
               {!unlocked && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-                  <Lock className="w-8 h-8 text-white" />
+                  <Lock className="w-5 h-5 text-white" />
                 </div>
               )}
 
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
+              <CardContent className="p-2 space-y-1">
+                <div className="flex items-start justify-between gap-1">
                   <div>
-                    <h3 className="font-semibold text-base">{achievement.name}</h3>
+                    <h3 className="font-semibold text-sm">{achievement.name}</h3>
                     <p className="text-xs text-muted-foreground">{achievement.description}</p>
                   </div>
-                  <Icon className={`w-6 h-6 flex-shrink-0 ${unlocked ? "text-amber-500" : "text-gray-400"}`} />
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${unlocked ? "text-amber-500" : "text-gray-400"}`} />
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">İlerleme</span>
                     <span className="font-semibold">{progress}%</span>

@@ -37,8 +37,8 @@ export default function AcademyTeamCompetitions() {
   const chartData = activeCompetition?.leaderboard || [];
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -50,25 +50,24 @@ export default function AcademyTeamCompetitions() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Takım Yarışmaları</h1>
-        <p className="text-muted-foreground mt-2">Şubeler arası rekabetçi eğitim yarışmaları</p>
+        <h1 className="text-lg font-bold tracking-tight">Takım Yarışmaları</h1>
+        <p className="text-xs text-muted-foreground mt-1">Rekabetçi eğitim yarışmaları</p>
       </div>
 
       {/* Monthly Challenge */}
       {monthlyChallenge && (
         <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800">
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-orange-500" />
-                  Aylık Zorluk: {monthlyChallenge.title}
+                <CardTitle className="text-sm flex items-center gap-1">
+                  <Flame className="w-4 h-4 text-orange-500" />
+                  Aylık Zorluk
                 </CardTitle>
-                <CardDescription>{monthlyChallenge.description}</CardDescription>
               </div>
               <div className="text-right">
-                <p className="text-sm font-medium">{monthlyChallenge.daysRemaining} gün kaldı</p>
-                <Badge variant="default">{monthlyChallenge.reward} puan ödül</Badge>
+                <p className="text-xs font-medium">{monthlyChallenge.daysRemaining}g</p>
+                <Badge variant="default" className="text-xs">{monthlyChallenge.reward}p</Badge>
               </div>
             </div>
           </CardHeader>

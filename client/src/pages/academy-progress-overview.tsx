@@ -41,8 +41,8 @@ export default function AcademyProgressOverview() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -54,17 +54,17 @@ export default function AcademyProgressOverview() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">İlerleme Özeti</h1>
-        <p className="text-muted-foreground mt-2">Tüm başarılarınızı ve hedeflerinizi bir yerde görün</p>
+        <h1 className="text-lg font-bold tracking-tight">İlerleme Özeti</h1>
+        <p className="text-xs text-muted-foreground mt-1">Başarılar ve hedefleriniz</p>
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
         {metrics.map((m, idx) => (
           <Card key={idx}>
-            <CardContent className="pt-4">
+            <CardContent className="pt-2">
               <p className="text-xs text-muted-foreground">{m.label}</p>
-              <p className={`text-2xl font-bold ${m.color}`}>{m.value}</p>
+              <p className={`text-lg font-bold ${m.color}`}>{m.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -72,43 +72,41 @@ export default function AcademyProgressOverview() {
 
       {/* Next Milestones */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5" />
-            Yaklaşan Hedefler
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-1">
+            <Target className="w-4 h-4" />
+            Hedefler
           </CardTitle>
-          <CardDescription>Sıradaki başarı rozeti seçin</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-2">
           {nextMilestones.map((m, idx) => (
-            <div key={idx} className="space-y-2">
-              <div className="flex justify-between text-sm">
+            <div key={idx} className="space-y-0.5">
+              <div className="flex justify-between text-xs">
                 <span className="font-medium">{m.stage}</span>
                 <span className="text-muted-foreground">{m.progress}%</span>
               </div>
-              <Progress value={m.progress} className="h-2" />
-              <p className="text-xs text-muted-foreground">{m.quizzes}</p>
+              <Progress value={m.progress} className="h-1" />
             </div>
           ))}
         </CardContent>
       </Card>
 
       {/* Personalized Recommendations */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Zap className="w-5 h-5" />
-          AI Önerileri
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold flex items-center gap-1">
+          <Zap className="w-4 h-4" />
+          Öneriler
         </h2>
         {recommendations.map((rec, idx) => (
           <Card key={idx} className="hover-elevate">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-3">
+            <CardContent className="p-2">
+              <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-semibold">{rec.title}</h3>
-                  <p className="text-sm text-muted-foreground">{rec.description}</p>
+                  <h3 className="text-sm font-semibold">{rec.title}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-1">{rec.description}</p>
                 </div>
                 <Link to="/akademi-learning-paths">
-                  <Button size="sm" variant="outline">{rec.action}</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs">{rec.action}</Button>
                 </Link>
               </div>
             </CardContent>
@@ -118,33 +116,26 @@ export default function AcademyProgressOverview() {
 
       {/* Progress Timeline */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-1">
+            <Calendar className="w-4 h-4" />
             Son Aktiviteler
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="flex gap-3 items-start">
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-2">
+            <div className="flex gap-2 items-start">
+              <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-sm">Barista Rozeti Kazandı</p>
+                <p className="text-xs font-medium">Barista Rozeti Kazandı</p>
                 <p className="text-xs text-muted-foreground">2 gün önce</p>
               </div>
             </div>
-            <div className="flex gap-3 items-start">
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex gap-2 items-start">
+              <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-sm">Zor Seviye Sınavı Tamamlandı</p>
-                <p className="text-xs text-muted-foreground">5 gün önce - 88 puan</p>
-              </div>
-            </div>
-            <div className="flex gap-3 items-start">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-sm">Supervisor Buddy Sınavını Geç Aldı</p>
-                <p className="text-xs text-muted-foreground">1 hafta önce - Bekleniyor</p>
+                <p className="text-xs font-medium">Zor Sınav Tamamlandı</p>
+                <p className="text-xs text-muted-foreground">5 gün önce</p>
               </div>
             </div>
           </div>
@@ -153,16 +144,15 @@ export default function AcademyProgressOverview() {
 
       {/* Call to Action */}
       <Card className="bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900 dark:to-purple-950">
-        <CardContent className="p-6">
-          <div className="flex items-start justify-between gap-4">
+        <CardContent className="p-3">
+          <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="font-semibold mb-1">Sıradaki Adım: Supervisor Buddy Sınavı</h3>
-              <p className="text-sm text-muted-foreground">Takım yönetimi ve özür verme tekniklerini öğren</p>
+              <h3 className="text-sm font-semibold mb-0.5">Sıradaki: Supervisor Buddy Sınavı</h3>
+              <p className="text-xs text-muted-foreground">Takım yönetimi öğren</p>
             </div>
             <Link to="/akademi-learning-paths">
-              <Button>
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Devam Et
+              <Button size="sm" className="h-8">
+                <TrendingUp className="w-3 h-3" />
               </Button>
             </Link>
           </div>

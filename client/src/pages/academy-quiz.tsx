@@ -114,41 +114,41 @@ export default function AcademyQuiz() {
 
   if (submitted) {
     return (
-      <div className="space-y-6 p-6 max-w-2xl mx-auto">
+      <div className="space-y-2 p-3 max-w-2xl mx-auto">
         <Card>
-          <CardHeader className="text-center">
-            <CardTitle>Quiz Tamamlandı</CardTitle>
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-sm">Quiz Tamamlandı</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-2">
             <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="flex items-center justify-center gap-2 mb-1">
                 {score >= quiz.passingScore ? (
-                  <CheckCircle className="w-12 h-12 text-green-500" />
+                  <CheckCircle className="w-8 h-8 text-green-500" />
                 ) : (
-                  <XCircle className="w-12 h-12 text-red-500" />
+                  <XCircle className="w-8 h-8 text-red-500" />
                 )}
               </div>
-              <p className="text-5xl font-bold mb-2">{score}%</p>
-              <Badge variant={score >= quiz.passingScore ? "default" : "destructive"}>
+              <p className="text-3xl font-bold mb-1">{score}%</p>
+              <Badge variant={score >= quiz.passingScore ? "default" : "destructive"} className="text-xs">
                 {score >= quiz.passingScore ? "BAŞARILI" : "BAŞARISIZ"}
               </Badge>
             </div>
 
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Gerekli puan: {quiz.passingScore}%</p>
-              <Progress value={score} className="h-2" />
+              <p className="text-xs text-muted-foreground mb-0.5">Gerekli: {quiz.passingScore}%</p>
+              <Progress value={score} className="h-1" />
             </div>
 
             {/* Adaptive Progression */}
             {recommendation && (
               <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    <CardTitle className="text-base">Uyarlanabilir Yol Önerisi</CardTitle>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-1">
+                    <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <CardTitle className="text-sm">Yol Önerisi</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-1">
                   <p className="text-sm">{recommendation.recommendation}</p>
                   
                   {/* Difficulty Progression Path */}
@@ -183,29 +183,29 @@ export default function AcademyQuiz() {
   const question = quiz.questions[currentQuestion];
 
   return (
-    <div className="space-y-6 p-6 max-w-2xl mx-auto">
+    <div className="space-y-2 p-3 max-w-2xl mx-auto">
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between mb-4">
-            <CardTitle>{quiz.title}</CardTitle>
-            <Badge variant="outline">
-              <Clock className="w-3 h-3 mr-1" />
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between mb-2">
+            <CardTitle className="text-sm">{quiz.title}</CardTitle>
+            <Badge variant="outline" className="text-xs">
+              <Clock className="w-3 h-3 mr-0.5" />
               30 dk
             </Badge>
           </div>
-          <Progress value={progress} className="h-2" />
-          <p className="text-xs text-muted-foreground mt-2">
-            Soru {currentQuestion + 1} / {quiz.questions.length}
+          <Progress value={progress} className="h-1" />
+          <p className="text-xs text-muted-foreground mt-1">
+            {currentQuestion + 1} / {quiz.questions.length}
           </p>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-2">
           <div>
-            <p className="text-lg font-medium mb-4">{question.questionText}</p>
+            <p className="text-sm font-medium mb-2">{question.questionText}</p>
 
             <RadioGroup value={answers[currentQuestion] || ""} onValueChange={(value) => setAnswers({ ...answers, [currentQuestion]: value })}>
               {question.options.map((option: string, idx: number) => (
-                <div key={idx} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted" data-testid={`option-${idx}`}>
+                <div key={idx} className="flex items-center space-x-2 p-2 border rounded hover:bg-muted text-xs" data-testid={`option-${idx}`}>
                   <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
                   <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer">
                     {option}
@@ -215,17 +215,17 @@ export default function AcademyQuiz() {
             </RadioGroup>
           </div>
 
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))} disabled={currentQuestion === 0}>
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))} disabled={currentQuestion === 0} className="h-8">
               Önceki
             </Button>
 
             {currentQuestion === quiz.questions.length - 1 ? (
-              <Button onClick={handleSubmit} disabled={submitMutation.isPending} className="flex-1">
+              <Button size="sm" onClick={handleSubmit} disabled={submitMutation.isPending} className="flex-1 h-8">
                 {submitMutation.isPending ? "Gönderiliyor..." : "Bitir"}
               </Button>
             ) : (
-              <Button onClick={() => setCurrentQuestion(currentQuestion + 1)} className="flex-1">
+              <Button size="sm" onClick={() => setCurrentQuestion(currentQuestion + 1)} className="flex-1 h-8">
                 Sonraki
               </Button>
             )}

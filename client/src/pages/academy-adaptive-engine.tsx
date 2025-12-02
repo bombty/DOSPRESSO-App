@@ -22,8 +22,8 @@ export default function AcademyAdaptiveEngine() {
   });
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -35,49 +35,48 @@ export default function AcademyAdaptiveEngine() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Brain className="w-8 h-8 text-purple-500" />
-          Uyarlanabilir Öğrenme Motoru
+        <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
+          <Brain className="w-5 h-5 text-purple-500" />
+          Uyarlanabilir Öğrenme
         </h1>
-        <p className="text-muted-foreground mt-2">AI-güçlendirme yapılan kişiselleştirilmiş öğrenme yolları</p>
+        <p className="text-xs text-muted-foreground mt-1">AI-güçlendirilen kişiselleştirilmiş yollar</p>
       </div>
 
       {/* Learning Path Recommendations */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-yellow-500" />
-            Önerilen Öğrenme Yolları
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-1">
+            <Zap className="w-4 h-4 text-yellow-500" />
+            Önerilen Yollar
           </CardTitle>
-          <CardDescription>Performansınıza göre AI tarafından özelleştirilmiş</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-2">
           {recommendations.length > 0 ? (
             recommendations.map((rec: any, idx: number) => (
-              <div key={idx} className="p-4 border rounded-lg space-y-3">
+              <div key={idx} className="p-2 border rounded-lg space-y-1">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold">{rec.pathName}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{rec.description}</p>
+                    <h3 className="text-sm font-semibold">{rec.pathName}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{rec.description}</p>
                   </div>
-                  <Badge variant={rec.priority === "high" ? "default" : "secondary"}>
-                    {rec.priority === "high" ? "Yüksek Öncelik" : "Önerilen"}
+                  <Badge variant="outline" className="text-xs">
+                    {rec.priority === "high" ? "Yüksek" : "Önerilen"}
                   </Badge>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Tahmini Tamamlanma</span>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Tahmini</span>
                     <span className="font-medium">{rec.completionPercent}%</span>
                   </div>
-                  <Progress value={rec.completionPercent} className="h-2" />
+                  <Progress value={rec.completionPercent} className="h-1" />
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-muted-foreground">Tahmini Süre: {rec.estimatedDays} gün</span>
+                <div className="flex items-center gap-1 text-xs">
+                  <CheckCircle className="w-3 h-3 text-green-500" />
+                  <span className="text-muted-foreground">{rec.estimatedDays}g</span>
                 </div>
                 <Link href={`/akademi-learning-path/${rec.pathId}`}>
-                  <Button size="sm" variant="outline" className="w-full">
-                    Yolu Başlat
+                  <Button size="sm" variant="outline" className="w-full text-xs h-8">
+                    Başlat
                   </Button>
                 </Link>
               </div>
@@ -93,29 +92,29 @@ export default function AcademyAdaptiveEngine() {
 
       {/* Learning Style Analysis */}
       <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-1">
+            <TrendingUp className="w-4 h-4" />
             Öğrenme Stiliniz
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-white dark:bg-slate-900 rounded-lg">
-              <p className="text-sm text-muted-foreground">Tercih Edilen Zorluk</p>
-              <p className="text-lg font-semibold mt-1">Orta Seviye</p>
+        <CardContent className="space-y-1">
+          <div className="grid grid-cols-2 gap-1">
+            <div className="p-2 bg-white dark:bg-slate-900 rounded-lg">
+              <p className="text-xs text-muted-foreground">Zorluk</p>
+              <p className="text-sm font-semibold mt-0.5">Orta</p>
             </div>
-            <div className="p-3 bg-white dark:bg-slate-900 rounded-lg">
-              <p className="text-sm text-muted-foreground">En İyi Performans</p>
-              <p className="text-lg font-semibold mt-1">Quizler</p>
+            <div className="p-2 bg-white dark:bg-slate-900 rounded-lg">
+              <p className="text-xs text-muted-foreground">Performans</p>
+              <p className="text-sm font-semibold mt-0.5">Quizler</p>
             </div>
-            <div className="p-3 bg-white dark:bg-slate-900 rounded-lg">
-              <p className="text-sm text-muted-foreground">Öğrenme Hızı</p>
-              <p className="text-lg font-semibold mt-1">Normal</p>
+            <div className="p-2 bg-white dark:bg-slate-900 rounded-lg">
+              <p className="text-xs text-muted-foreground">Hız</p>
+              <p className="text-sm font-semibold mt-0.5">Normal</p>
             </div>
-            <div className="p-3 bg-white dark:bg-slate-900 rounded-lg">
-              <p className="text-sm text-muted-foreground">Güç Alanlar</p>
-              <p className="text-lg font-semibold mt-1">Teknik</p>
+            <div className="p-2 bg-white dark:bg-slate-900 rounded-lg">
+              <p className="text-xs text-muted-foreground">Güçlü</p>
+              <p className="text-sm font-semibold mt-0.5">Teknik</p>
             </div>
           </div>
         </CardContent>
@@ -123,14 +122,13 @@ export default function AcademyAdaptiveEngine() {
 
       {/* Adaptive Tips */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Adaptif Öğrenme İpuçları</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Adaptif İpuçları</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm space-y-2">
-          <p>✓ Performansınıza göre zorluk otomatik ayarlanır</p>
-          <p>✓ Zayıf alanlar daha fazla pratik için önerilir</p>
-          <p>✓ Başarı hızlı öğrenme teşvik eder</p>
-          <p>✓ AI sürekli öğrenme stilinizi analiz eder</p>
+        <CardContent className="text-xs space-y-1">
+          <p>✓ Zorluk otomatik ayarlanır</p>
+          <p>✓ Zayıf alanlar önerilir</p>
+          <p>✓ Başarı teşvik eder</p>
         </CardContent>
       </Card>
     </div>

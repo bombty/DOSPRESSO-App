@@ -302,8 +302,8 @@ export default function ModuleDetail() {
 
         {/* Student Learning Header */}
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{module.title}</h1>
-          <p className="text-muted-foreground mt-2">{module.description}</p>
+          <h1 className="text-lg font-bold tracking-tight">{module.title}</h1>
+          <p className="text-xs text-muted-foreground mt-1">{module.description}</p>
           <div className="flex gap-2 mt-4 flex-wrap">
             <Badge variant="outline">
               {module.level === "beginner" ? "Başlangıç" : module.level === "intermediate" ? "Orta" : "İleri"}
@@ -325,7 +325,7 @@ export default function ModuleDetail() {
           <TabsContent value="objectives" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Öğrenme Hedefleri</CardTitle>
+                <CardTitle className="text-sm">Öğrenme Hedefleri</CardTitle>
                 <CardDescription>Bu modülü tamamladığında neler öğreneceksin</CardDescription>
               </CardHeader>
               <CardContent>
@@ -558,7 +558,7 @@ export default function ModuleDetail() {
                 <div className="space-y-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Öğrenme Hedefleri</CardTitle>
+                      <CardTitle className="text-sm">Öğrenme Hedefleri</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {learningObjectives.length === 0 ? (

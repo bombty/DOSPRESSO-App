@@ -51,8 +51,8 @@ export default function AcademyBadges() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -64,69 +64,68 @@ export default function AcademyBadges() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Başarılar ve Rozetler</h1>
-        <p className="text-muted-foreground mt-2">Eğitim yolculuğunda elde ettiğiniz başarılar</p>
+        <h1 className="text-lg font-bold tracking-tight">Rozetler</h1>
+        <p className="text-xs text-muted-foreground mt-1">Eğitim yolculuğunda kazanılan başarılar</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Puan</CardTitle>
+            <CardTitle className="text-sm">Puan</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{totalPoints}</p>
-            <p className="text-xs text-muted-foreground">Tüm rozetlerden</p>
+            <p className="text-lg font-bold">{totalPoints}</p>
+            <p className="text-xs text-muted-foreground">toplam</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Açılan Rozetler</CardTitle>
+            <CardTitle className="text-sm">Açılan</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{unlockedBadges.length}/{allBadges.length}</p>
-            <Progress value={(unlockedBadges.length / allBadges.length) * 100} className="mt-2" />
+            <p className="text-lg font-bold">{unlockedBadges.length}/{allBadges.length}</p>
+            <Progress value={(unlockedBadges.length / allBadges.length) * 100} className="mt-1 h-1" />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Başarı Oranı</CardTitle>
+            <CardTitle className="text-sm">Oran</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{Math.round((unlockedBadges.length / allBadges.length) * 100)}%</p>
-            <p className="text-xs text-muted-foreground">Tüm rozetlerin ortalaması</p>
+            <p className="text-lg font-bold">{Math.round((unlockedBadges.length / allBadges.length) * 100)}%</p>
+            <p className="text-xs text-muted-foreground">ortalama</p>
           </CardContent>
         </Card>
       </div>
 
       {unlockedBadges.length > 0 && (
         <div>
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            Açılan Rozetler ({unlockedBadges.length})
+          <h2 className="text-sm font-semibold mb-2 flex items-center gap-1">
+            <Trophy className="w-4 h-4 text-yellow-500" />
+            Açılan ({unlockedBadges.length})
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {unlockedBadges.map((badge: any) => {
               const IconComponent = BADGE_ICONS[badge.iconName] || Star;
               return (
                 <Card key={badge.id} className="border-primary/50 bg-primary/5 hover-elevate">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-primary/20 rounded-lg">
-                          <IconComponent className="w-5 h-5 text-primary" />
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="flex items-center gap-1">
+                        <div className="p-1 bg-primary/20 rounded">
+                          <IconComponent className="w-3 h-3 text-primary" />
                         </div>
                         <div>
-                          <CardTitle className="text-sm">{badge.titleTr}</CardTitle>
-                          <Badge className="mt-1 text-xs">+{badge.points} Puan</Badge>
+                          <CardTitle className="text-xs">{badge.titleTr}</CardTitle>
+                          <Badge className="mt-0.5 text-xs h-4">+{badge.points}</Badge>
                         </div>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-xs text-muted-foreground">{badge.descriptionTr}</p>
-                    <p className="text-xs text-muted-foreground mt-2">Kategori: <span className="font-medium">{badge.category}</span></p>
                   </CardContent>
                 </Card>
               );
@@ -137,31 +136,30 @@ export default function AcademyBadges() {
 
       {lockedBadges.length > 0 && (
         <div>
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Lock className="w-5 h-5 text-gray-400" />
-            Kilitli Rozetler ({lockedBadges.length})
+          <h2 className="text-sm font-semibold mb-2 flex items-center gap-1">
+            <Lock className="w-4 h-4 text-gray-400" />
+            Kilitli ({lockedBadges.length})
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {lockedBadges.map((badge: any) => {
               const IconComponent = BADGE_ICONS[badge.iconName] || Star;
               return (
                 <Card key={badge.id} className="opacity-50">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-gray-200 dark:bg-gray-700 rounded-lg">
-                          <IconComponent className="w-5 h-5 text-gray-400 dark:text-gray-600" />
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="flex items-center gap-1">
+                        <div className="p-1 bg-gray-200 dark:bg-gray-700 rounded">
+                          <IconComponent className="w-3 h-3 text-gray-400 dark:text-gray-600" />
                         </div>
                         <div>
-                          <CardTitle className="text-sm text-gray-500">{badge.titleTr}</CardTitle>
-                          <Badge variant="outline" className="mt-1 text-xs">+{badge.points} Puan</Badge>
+                          <CardTitle className="text-xs text-gray-500">{badge.titleTr}</CardTitle>
+                          <Badge variant="outline" className="mt-0.5 text-xs h-4">+{badge.points}</Badge>
                         </div>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-xs text-muted-foreground">{badge.descriptionTr}</p>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">Açmak için şartları yerine getir</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{badge.descriptionTr}</p>
                   </CardContent>
                 </Card>
               );

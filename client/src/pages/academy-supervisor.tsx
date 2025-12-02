@@ -81,8 +81,8 @@ export default function AcademySupervisor() {
   });
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -94,27 +94,27 @@ export default function AcademySupervisor() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Akademi - Supervisor Paneli</h1>
-        <p className="text-muted-foreground mt-2">Ekip eğitim yönetimi ve sınav talepleri</p>
+        <h1 className="text-lg font-bold tracking-tight">Supervisor Paneli</h1>
+        <p className="text-xs text-muted-foreground mt-1">Ekip yönetimi ve sınav talepleri</p>
       </div>
 
       <Tabs defaultValue="team" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="team">
-            <Users className="w-4 h-4 mr-2" />
+          <TabsTrigger value="team" className="text-xs">
+            <Users className="w-3 h-3 mr-1" />
             Ekibim
           </TabsTrigger>
-          <TabsTrigger value="modules">
-            <BookOpen className="w-4 h-4 mr-2" />
-            Modüller ({modules.length})
+          <TabsTrigger value="modules" className="text-xs">
+            <BookOpen className="w-3 h-3 mr-1" />
+            Modüller
           </TabsTrigger>
-          <TabsTrigger value="exams">
-            <Clock className="w-4 h-4 mr-2" />
-            Sınavlar ({pendingExams.length})
+          <TabsTrigger value="exams" className="text-xs">
+            <Clock className="w-3 h-3 mr-1" />
+            Sınavlar
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="team" className="space-y-4">
+        <TabsContent value="team" className="space-y-2">
           <Card>
             <CardHeader>
               <CardTitle>Ekip Üyeleri Eğitim Durumu</CardTitle>

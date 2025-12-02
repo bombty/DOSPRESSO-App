@@ -408,7 +408,7 @@ export default function AcademyHQ() {
   });
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-2 p-3">
       <div className="flex items-center gap-2 mb-4">
         <Button
           onClick={() => window.history.back()}
@@ -422,7 +422,7 @@ export default function AcademyHQ() {
       </div>
       
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Akademi - HQ Yönetim Paneli</h1>
+        <h1 className="text-lg font-bold tracking-tight">Akademi - HQ Yönetim Paneli</h1>
         <p className="text-muted-foreground mt-2">Modül yönetimi, sınav talepleri ve atamalar</p>
       </div>
 

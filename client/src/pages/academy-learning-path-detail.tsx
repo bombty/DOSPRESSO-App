@@ -34,8 +34,8 @@ export default function AcademyLearningPathDetail() {
   const totalCompletion = Math.round(recommendedQuizzes.reduce((sum, q) => sum + q.completion, 0) / recommendedQuizzes.length);
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -47,28 +47,27 @@ export default function AcademyLearningPathDetail() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Brain className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+        <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
+          <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />
           {pathTitle}
         </h1>
-        <p className="text-muted-foreground mt-2">AI tarafından önerilen, sırayla öğrenilecek sınavlar</p>
+        <p className="text-xs text-muted-foreground mt-1">AI tarafından önerilen sınavlar</p>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center p-12">
-          <Loader className="w-6 h-6 animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center p-6">
+          <Loader className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-2">
           {/* Overall Progress */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Yol İlerleme</CardTitle>
-              <CardDescription>{totalCompletion}% tamamlandı</CardDescription>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">İlerleme</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Progress value={totalCompletion} className="h-3" />
-              <div className="grid grid-cols-3 gap-2 text-sm">
+            <CardContent className="space-y-1">
+              <Progress value={totalCompletion} className="h-1" />
+              <div className="grid grid-cols-3 gap-1 text-xs">
                 <div>
                   <p className="text-muted-foreground">Tamamlanan</p>
                   <p className="font-bold text-lg">{recommendedQuizzes.filter(q => q.status === "completed").length}</p>
@@ -86,8 +85,8 @@ export default function AcademyLearningPathDetail() {
           </Card>
 
           {/* Recommended Sequence */}
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold">Sırasıyla Öğren</h2>
+          <div className="space-y-1">
+            <h2 className="text-sm font-semibold">Sırasıyla Öğren</h2>
             {recommendedQuizzes.map((quiz, idx) => (
               <Card 
                 key={quiz.id} 
@@ -95,18 +94,18 @@ export default function AcademyLearningPathDetail() {
                   quiz.status === "completed" ? "opacity-75" : ""
                 } ${quiz.status === "locked" ? "opacity-50" : ""}`}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
+                <CardContent className="p-2">
+                  <div className="flex items-start gap-2">
                     {/* Step Number */}
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900 dark:to-purple-950 flex items-center justify-center font-bold text-sm">
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900 dark:to-purple-950 flex items-center justify-center font-bold text-xs">
                       {idx + 1}
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-start justify-between gap-1 mb-1">
                         <div>
-                          <h3 className="font-semibold flex items-center gap-2">
+                          <h3 className="text-xs font-semibold flex items-center gap-1">
                             {quiz.status === "completed" && <CheckCircle2 className="w-4 h-4 text-green-600" />}
                             {quiz.status === "recommended" && <Zap className="w-4 h-4 text-amber-600" />}
                             {quiz.status === "locked" && <Lock className="w-4 h-4 text-gray-400" />}
