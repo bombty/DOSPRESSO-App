@@ -155,7 +155,7 @@ export default function HQSupport() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">
@@ -173,7 +173,7 @@ export default function HQSupport() {
           )}
         </TabsContent>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">

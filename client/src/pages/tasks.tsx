@@ -763,7 +763,7 @@ export default function Tasks() {
         </div>
 
         {["all", "acilis", "kapanis", "gunluk"].map((tabValue) => (
-          <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {isLoading ? (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {[1, 2, 3, 4, 5].map((i) => (

@@ -478,7 +478,7 @@ export default function Vardiyalar() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             <Card data-testid="card-total-shifts">
               <CardContent className="p-3">
@@ -650,7 +650,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card data-testid="card-week-view">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -805,7 +805,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card data-testid="card-live-active">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -966,7 +966,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <CheckInContent user={user} toast={toast} />
         </TabsContent>
       </Tabs>

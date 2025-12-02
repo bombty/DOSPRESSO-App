@@ -487,7 +487,7 @@ export default function EquipmentManagement() {
         </TabsList>
 
         {/* TAB 1: Bekleyen Talepler */}
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Filters */}
           <div className="bg-muted p-4 rounded-lg grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="flex gap-2 items-center">
@@ -626,7 +626,7 @@ export default function EquipmentManagement() {
         </TabsContent>
 
         {/* TAB 2: Devam Eden */}
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {inProgressRequests.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">Devam eden talep yok</div>
           ) : (
@@ -657,7 +657,7 @@ export default function EquipmentManagement() {
         </TabsContent>
 
         {/* TAB 3: Tamamlanan */}
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {completedRequests.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">Tamamlanan talep yok</div>
           ) : (
@@ -685,7 +685,7 @@ export default function EquipmentManagement() {
         </TabsContent>
 
         {/* TAB 4: Ekipman Durumu */}
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {equipmentForDisplay.map(eq => {
               const health = getHealthStatus(eq);

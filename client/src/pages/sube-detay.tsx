@@ -324,7 +324,7 @@ export default function SubeDetayPage() {
           )}
         </TabsList>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card data-testid="card-active-employees">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -378,7 +378,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Şube Personeli</CardTitle>
@@ -423,7 +423,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Son Görevler</CardTitle>
@@ -453,7 +453,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Ekipman</CardTitle>
@@ -483,7 +483,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Son Arızalar</CardTitle>
@@ -519,7 +519,7 @@ export default function SubeDetayPage() {
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="temp" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* QR Kod Üretici */}
               <Card>
