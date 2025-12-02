@@ -73,18 +73,16 @@ export function AppHeader({ notificationCount = 0, user, branchName }: AppHeader
               data-testid="button-profile-menu"
             >
               <div className="text-left min-w-0">
-                <p className="text-xs font-medium truncate" data-testid="text-user-name">
-                  {user?.firstName || user?.username || "Kullanıcı"}
-                </p>
-                <div className="text-[11px] text-muted-foreground flex gap-1 items-center flex-wrap">
+                <p className="text-xs font-medium" data-testid="text-user-name">
+                  <span className="truncate">{user?.firstName || user?.username || "Kullanıcı"}</span>
+                  <span className="text-muted-foreground mx-1">•</span>
                   <span data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
-                  {branchName && (
-                    <>
-                      <span>•</span>
-                      <span data-testid="text-branch-name">{branchName}</span>
-                    </>
-                  )}
-                </div>
+                </p>
+                {branchName && (
+                  <p className="text-[11px] text-muted-foreground truncate" data-testid="text-branch-name">
+                    {branchName}
+                  </p>
+                )}
               </div>
             </Button>
           </DropdownMenuTrigger>
