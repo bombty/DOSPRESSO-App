@@ -162,8 +162,8 @@ export default function Academy() {
   const progressPercent = userProgress?.averageQuizScore || 0;
 
   return (
-    <div className="space-y-3 p-4">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="space-y-2 p-3">
+      <div className="flex items-center gap-2 mb-1">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -184,13 +184,13 @@ export default function Academy() {
       </div>
 
       {/* Page Header - COMPACT */}
-      <div className="mb-2">
-        <h1 className="text-2xl font-bold tracking-tight">DOSPRESSO Academy</h1>
-        <p className="text-muted-foreground text-sm">Kariyer yolunuzu takip edin</p>
+      <div className="mb-1">
+        <h1 className="text-xl font-bold tracking-tight">DOSPRESSO Academy</h1>
+        <p className="text-muted-foreground text-xs">Kariyer yolunuzu takip edin</p>
       </div>
 
       {/* 3-Hub Navigation - MOVED TO TOP */}
-      <div className="flex gap-2 mb-3 sticky top-0 bg-background z-10 pb-1 border-b">
+      <div className="flex gap-2 mb-2 sticky top-0 bg-background z-10 pb-1 border-b">
         <Button
           onClick={() => setActiveHub("learning")}
           variant={activeHub === "learning" ? "default" : "outline"}
@@ -383,15 +383,14 @@ export default function Academy() {
 
       {/* Learning Hub */}
       {activeHub === "learning" && (
-        <div className="space-y-6">
+        <div className="space-y-2">
           {modules.length > 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  Tüm Eğitim Modülleri
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BookOpen className="w-4 h-4" />
+                  Modüller
                 </CardTitle>
-                <CardDescription>Kariyerini ilerletmek için modülleri tamamla</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
@@ -430,31 +429,14 @@ export default function Academy() {
 
           {recommendedQuizzes.length > 0 && (
             <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lightbulb className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  Senin İçin Önerilen Sınavlar
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  Önerilen
                 </CardTitle>
-                <CardDescription>Kolaydan zora doğru ilerle: Kolay → Orta → Zor</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {/* Difficulty Progression Indicator */}
-                  <div className="flex items-center justify-between text-xs mb-3">
-                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                      <span className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></span>
-                      Kolay
-                    </span>
-                    <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
-                      <span className="w-2 h-2 bg-yellow-600 dark:bg-yellow-400 rounded-full"></span>
-                      Orta
-                    </span>
-                    <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
-                      <span className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full"></span>
-                      Zor
-                    </span>
-                  </div>
-                  
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {recommendedQuizzes.map((quiz: any) => {
                       const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200' 
