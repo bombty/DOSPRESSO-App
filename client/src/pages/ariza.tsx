@@ -274,47 +274,41 @@ export default function FaultHub() {
           </div>
 
           {metrics.critical.length > 0 && (
-            <Card className="border-red-500 bg-red-50 dark:bg-red-950">
-              <CardHeader>
-                <CardTitle className="text-red-600 dark:text-red-400">Kritik Arızalar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {metrics.critical.map((fault: EquipmentFault) => (
-                    <div key={fault.id} className="flex items-center justify-between p-2 bg-white dark:bg-red-900/20 rounded border border-red-200" data-testid={`card-critical-fault-${fault.id}`}>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{fault.equipmentName}</p>
-                        <p className="text-xs text-muted-foreground">{fault.description}</p>
+            <div>
+              <h3 className="text-sm font-medium mb-2">Kritik Arızalar</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                {metrics.critical.map((fault: EquipmentFault) => (
+                  <Card key={fault.id} className="border-red-500 bg-red-50 dark:bg-red-950 hover-elevate" data-testid={`card-critical-fault-${fault.id}`}>
+                    <CardContent className="p-3">
+                      <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{fault.description}</p>
+                      <div className="mt-2">
+                        <Badge className={getStageColor(fault.currentStage)}>{STAGE_LABELS[fault.currentStage] || fault.currentStage}</Badge>
                       </div>
-                      <Badge className={getStageColor(fault.currentStage)}>{STAGE_LABELS[fault.currentStage] || fault.currentStage}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Son Arızalar</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {faults.slice(0, RECENT_FAULTS_LIMIT).map((fault: EquipmentFault) => (
-                  <div key={fault.id} className="flex items-center justify-between p-2 border rounded" data-testid={`card-recent-fault-${fault.id}`}>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{fault.equipmentName}</p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(fault.createdAt || new Date()), "dd MMM HH:mm", { locale: tr })}</p>
-                    </div>
-                    <div className="flex gap-2">
+          <div>
+            <h3 className="text-sm font-medium mb-2">Son Arızalar</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              {faults.slice(0, RECENT_FAULTS_LIMIT).map((fault: EquipmentFault) => (
+                <Card key={fault.id} className="hover-elevate" data-testid={`card-recent-fault-${fault.id}`}>
+                  <CardContent className="p-3">
+                    <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{format(new Date(fault.createdAt || new Date()), "dd MMM HH:mm", { locale: tr })}</p>
+                    <div className="flex flex-wrap gap-1 mt-2">
                       <Badge className={getPriorityColor(fault.priority)}>{fault.priority === "kritik" ? "Kritik" : "Yüksek"}</Badge>
                       <Badge className={getStageColor(fault.currentStage)}>{STAGE_LABELS[fault.currentStage]}</Badge>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         </TabsContent>
 
         {/* TAB 2: SLA Status */}
@@ -358,39 +352,35 @@ export default function FaultHub() {
           </div>
 
           {metrics.breached.length > 0 && (
-            <Card className="border-red-500">
-              <CardHeader>
-                <CardTitle className="text-red-600">SLA İhlali Yapan</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {metrics.breached.map((fault: EquipmentFault) => (
-                    <div key={fault.id} className="p-2 bg-red-50 dark:bg-red-950 rounded" data-testid={`card-breached-fault-${fault.id}`}>
-                      <p className="font-medium text-sm">{fault.equipmentName}</p>
-                      <p className="text-xs text-muted-foreground">{getTimeSinceCreation(fault.createdAt)} açık</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <div>
+              <h3 className="text-sm font-medium mb-2 text-red-600">SLA İhlali Yapan</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                {metrics.breached.map((fault: EquipmentFault) => (
+                  <Card key={fault.id} className="border-red-500 bg-red-50 dark:bg-red-950 hover-elevate" data-testid={`card-breached-fault-${fault.id}`}>
+                    <CardContent className="p-3">
+                      <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{getTimeSinceCreation(fault.createdAt)} açık</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           )}
 
           {metrics.atRisk.length > 0 && (
-            <Card className="border-orange-500">
-              <CardHeader>
-                <CardTitle className="text-orange-600">Risk Altında Olan</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {metrics.atRisk.map((fault: EquipmentFault) => (
-                    <div key={fault.id} className="p-2 bg-orange-50 dark:bg-orange-950 rounded" data-testid={`card-atrisk-fault-${fault.id}`}>
-                      <p className="font-medium text-sm">{fault.equipmentName}</p>
-                      <p className="text-xs text-muted-foreground">{getTimeSinceCreation(fault.createdAt)} (sınıra yaklaşıyor)</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <div>
+              <h3 className="text-sm font-medium mb-2 text-orange-600">Risk Altında Olan</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                {metrics.atRisk.map((fault: EquipmentFault) => (
+                  <Card key={fault.id} className="border-orange-500 bg-orange-50 dark:bg-orange-950 hover-elevate" data-testid={`card-atrisk-fault-${fault.id}`}>
+                    <CardContent className="p-3">
+                      <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{getTimeSinceCreation(fault.createdAt)} (sınıra yaklaşıyor)</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           )}
         </TabsContent>
 
