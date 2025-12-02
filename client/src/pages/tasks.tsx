@@ -369,7 +369,7 @@ export default function Tasks() {
   }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig]);
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6">
       <h1 className="text-2xl font-semibold" data-testid="text-page-title">Açılış Çizelgeleri</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
@@ -470,7 +470,7 @@ export default function Tasks() {
             </div>
           </CardHeader>
           <CollapsibleContent>
-            <CardContent className="space-y-4">
+            <CardContent className="grid grid-cols-1 gap-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Arama</label>
@@ -622,7 +622,7 @@ export default function Tasks() {
         </Card>
       </Collapsible>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <TabsList data-testid="tabs-task-filter">
             <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
@@ -940,7 +940,7 @@ export default function Tasks() {
             </DrawerHeader>
             
             {selectedTask && (
-              <div className="px-4 pb-4 space-y-4">
+              <div className="px-4 pb-4 grid grid-cols-1 gap-4">
                 {/* Task Description */}
                 <div>
                   <h3 className="font-semibold text-lg mb-2">{selectedTask.description}</h3>

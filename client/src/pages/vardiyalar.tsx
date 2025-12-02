@@ -273,7 +273,7 @@ export default function Vardiyalar() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="container mx-auto p-4 sm:p-6 grid grid-cols-1 gap-6">
         <Skeleton className="h-10 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
@@ -283,7 +283,7 @@ export default function Vardiyalar() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 grid grid-cols-1 gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="text-page-title">
@@ -458,7 +458,7 @@ export default function Vardiyalar() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-6">
         <TabsList className="grid w-full grid-cols-4 max-w-xl">
           <TabsTrigger value="overview" data-testid="tab-overview">
             <TrendingUp className="w-4 h-4 mr-2" />
@@ -478,7 +478,7 @@ export default function Vardiyalar() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="grid grid-cols-1 gap-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             <Card data-testid="card-total-shifts">
               <CardContent className="p-3">
