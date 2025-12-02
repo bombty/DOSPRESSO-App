@@ -212,7 +212,7 @@ export default function FaultHub() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
-          <TabsTrigger value="sla">SLA Durumu</TabsTrigger>
+          <TabsTrigger value="sla">Arıza Süreleri</TabsTrigger>
           <TabsTrigger value="manage">Yönet</TabsTrigger>
           {user?.id && <TabsTrigger value="myFaults">Benim Arızalarım</TabsTrigger>}
         </TabsList>
@@ -307,7 +307,7 @@ export default function FaultHub() {
           </div>
         </TabsContent>
 
-        {/* TAB 2: SLA Status */}
+        {/* TAB 2: Arıza Süreleri */}
         <TabsContent value="sla-status" className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Card className="border-red-500 bg-red-50 dark:bg-red-950">
@@ -316,7 +316,7 @@ export default function FaultHub() {
                   <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                   </div>
-                  <p className="text-xs text-red-600">SLA İhlali</p>
+                  <p className="text-xs text-red-600">Zaman Aşımı</p>
                   <p className="text-lg font-bold text-red-600" data-testid="text-breached-count">{metrics.breached.length}</p>
                 </div>
               </CardContent>
@@ -349,7 +349,7 @@ export default function FaultHub() {
 
           {metrics.breached.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium mb-2 text-red-600">SLA İhlali Yapan</h3>
+              <h3 className="text-sm font-medium mb-2 text-red-600">Zaman Aşımı Yapan</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {metrics.breached.map((fault: EquipmentFault) => (
                   <Card key={fault.id} className="border-red-500 bg-red-50 dark:bg-red-950 hover-elevate" data-testid={`card-breached-fault-${fault.id}`}>
