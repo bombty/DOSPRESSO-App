@@ -3,8 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import { BottomNav } from "@/components/bottom-nav";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import logoPath from "@assets/IMG_5044_1764274022052.jpeg";
@@ -217,16 +216,11 @@ function Router() {
 
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { data: branches } = useQuery<any[]>({
     queryKey: ["/api/branches"],
     enabled: isAuthenticated && !!user,
   });
-
-  const style = {
-    "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "3rem",
-  };
 
   if (isLoading || !isAuthenticated) {
     return <Router />;
@@ -257,53 +251,39 @@ function AppContent() {
     return branch?.name || `Şube ${branchId}`;
   };
 
-  const userDisplayInfo = user ? (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="header-user-info">
-      <span className="font-medium">
-        {user.branchId ? getBranchName(user.branchId) : "Merkez"}
-      </span>
-      {user.role && (
-        <>
-          <span>-</span>
-          <span>{getRoleLabel(user.role)}</span>
-        </>
-      )}
-      {(user.firstName || user.lastName) && (
-        <>
-          <span>|</span>
-          <span className="text-foreground font-medium">
-            {user.firstName} {user.lastName?.charAt(0)}.
-          </span>
-        </>
-      )}
-    </div>
-  ) : null;
+  const isHomePage = location === "/";
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between px-4 py-2 border-b bg-white dark:bg-slate-900 shadow-sm">
-            <div className="flex items-center gap-2 md:gap-4">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <img 
-                src={logoPath} 
-                alt="DOSPRESSO" 
-                className="h-8 md:h-10 object-contain cursor-pointer hover:opacity-75 transition-opacity" 
-                onClick={() => setLocation("/")}
-                data-testid="logo-header" 
-              />
-              <div className="hidden sm:block">{userDisplayInfo}</div>
-            </div>
+    <div className="flex flex-col min-h-screen bg-background">
+      {/* Minimal Top Header - only on home */}
+      {isHomePage && (
+        <header className="flex items-center justify-between px-3 py-2 border-b bg-white dark:bg-slate-900 sticky top-0 z-50">
+          <div className="flex items-center gap-2">
+            <img 
+              src={logoPath} 
+              alt="DOSPRESSO" 
+              className="h-8 object-contain cursor-pointer" 
+              onClick={() => setLocation("/")}
+              data-testid="logo-header" 
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:block">
+              {user?.firstName} {user?.lastName?.charAt(0)}.
+            </span>
             <InboxDialog />
-          </header>
-          <main className="flex-1 overflow-auto p-3 md:p-6 bg-background">
-            <Router />
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
+          </div>
+        </header>
+      )}
+      
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto pb-20">
+        <Router />
+      </main>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
+    </div>
   );
 }
 
