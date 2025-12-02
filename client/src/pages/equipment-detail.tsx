@@ -606,7 +606,7 @@ export default function EquipmentDetail() {
   const metadata = EQUIPMENT_METADATA[equipment.equipmentType as keyof typeof EQUIPMENT_METADATA];
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-full overflow-x-hidden space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/ekipman" asChild>
           <Button variant="outline" data-testid="button-back">
@@ -618,7 +618,7 @@ export default function EquipmentDetail() {
 
       <Card data-testid="card-equipment-header">
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div className="flex-1">
               <CardTitle className="text-2xl flex items-center gap-3">
                 <Settings className="h-6 w-6" />
@@ -631,11 +631,12 @@ export default function EquipmentDetail() {
                 </div>
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 onClick={() => openEditDialog()}
                 variant="outline"
                 data-testid={`button-edit-equipment-${equipment.id}`}
+                size="sm"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Düzenle
@@ -651,6 +652,7 @@ export default function EquipmentDetail() {
                 }}
                 variant="destructive"
                 data-testid="button-fault-create"
+                size="sm"
               >
                 <AlertTriangle className="h-4 w-4 mr-2" />
                 Arıza Kaydı Aç
@@ -667,6 +669,7 @@ export default function EquipmentDetail() {
                   setServiceRequestDialogOpen(true);
                 }}
                 data-testid="button-start-maintenance"
+                size="sm"
               >
                 <Wrench className="mr-2 h-4 w-4" />
                 Bakım Başlat
