@@ -16,7 +16,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExamRequestSchema, type ExamRequest, isHQRole } from "@shared/schema";
 import { BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, CheckCircle, Flame, Sparkles } from "lucide-react";
 import { Link } from "wouter";
-import { PageHeader } from "@/components/page-header";
 
 const CAREER_LEVELS = [
   { id: 1, roleId: "stajyer", titleTr: "Stajyer", levelNumber: 1 },

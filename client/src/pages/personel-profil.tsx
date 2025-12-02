@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { PageHeader } from "@/components/page-header";
 
 type PersonnelProfile = {
   id: string;
@@ -106,12 +105,6 @@ export default function PersonelProfilPage() {
   return (
     <div className="min-h-screen pb-20">
       <div className="p-3 space-y-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">{profile.fullName}</h1>
-            <p className="text-sm text-muted-foreground">{roleLabels[profile.role] || profile.role}{profile.branchName ? ` - ${profile.branchName}` : ''}</p>
-          </div>
-        </div>
         {/* Status badges */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">

@@ -20,7 +20,6 @@ import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useLocation } from "wouter";
 import type { EquipmentFault } from "@shared/schema";
-import { PageHeader } from "@/components/page-header";
 
 // Constants
 const SLA_CRITICAL_HOURS = 2.5;
