@@ -370,87 +370,67 @@ export default function Tasks() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-page-title">Açılış Çizelgeleri</h1>
-          <p className="text-muted-foreground mt-1">İşte bugünün operasyonel özeti</p>
-        </div>
-      </div>
+      <h1 className="text-2xl font-semibold" data-testid="text-page-title">Açılış Çizelgeleri</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {overdueTasks.length > 0 && (
           <Card data-testid="card-stat-overdue" className="border-destructive">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Gecikmiş</p>
-                  <p className="text-3xl font-bold mt-1 text-destructive">{overdueTasks.length}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Deadline geçti</p>
+            <CardContent className="p-3">
+              <div className="flex flex-col items-center text-center gap-1.5">
+                <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-500" />
                 </div>
-                <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-500" />
-                </div>
+                <p className="text-xs text-muted-foreground">Gecikmiş</p>
+                <p className="text-lg font-bold text-destructive">{overdueTasks.length}</p>
               </div>
             </CardContent>
           </Card>
         )}
         
         <Card data-testid="card-stat-beklemede">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Bekleyen</p>
-                <p className="text-3xl font-bold mt-1">{stats.beklemede}</p>
-                <p className="text-xs text-muted-foreground mt-1">Oran %12</p>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
               </div>
-              <div className="h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-500" />
-              </div>
+              <p className="text-xs text-muted-foreground">Bekleyen</p>
+              <p className="text-lg font-bold">{stats.beklemede}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card data-testid="card-stat-devam-eden">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Devam Eden</p>
-                <p className="text-3xl font-bold mt-1">{stats.devamEden}</p>
-                <p className="text-xs text-muted-foreground mt-1">Oran %1</p>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                <PlayCircle className="h-4 w-4 text-blue-600 dark:text-blue-500" />
               </div>
-              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                <PlayCircle className="h-6 w-6 text-blue-600 dark:text-blue-500" />
-              </div>
+              <p className="text-xs text-muted-foreground">Devam Eden</p>
+              <p className="text-lg font-bold">{stats.devamEden}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card data-testid="card-stat-tamamlanmayan">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Tamamlanmayan</p>
-                <p className="text-3xl font-bold mt-1">{stats.tamamlanmayan}</p>
-                <p className="text-xs text-muted-foreground mt-1">Oran %60</p>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-500" />
               </div>
-              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-500" />
-              </div>
+              <p className="text-xs text-muted-foreground">Tamamlanmayan</p>
+              <p className="text-lg font-bold">{stats.tamamlanmayan}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card data-testid="card-stat-tamamlanan">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Tamamlanan</p>
-                <p className="text-3xl font-bold mt-1">{stats.tamamlanan}</p>
-                <p className="text-xs text-muted-foreground mt-1">Oran %30</p>
+          <CardContent className="p-3">
+            <div className="flex flex-col items-center text-center gap-1.5">
+              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />
               </div>
-              <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-500" />
-              </div>
+              <p className="text-xs text-muted-foreground">Tamamlanan</p>
+              <p className="text-lg font-bold">{stats.tamamlanan}</p>
             </div>
           </CardContent>
         </Card>
