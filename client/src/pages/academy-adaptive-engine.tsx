@@ -22,7 +22,7 @@ export default function AcademyAdaptiveEngine() {
   });
 
   return (
-    <div className="space-y-2 p-3">
+    <div className="grid grid-cols-1 gap-2 p-3">
       <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
@@ -50,7 +50,7 @@ export default function AcademyAdaptiveEngine() {
             Önerilen Yollar
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="grid grid-cols-1 gap-2">
           {recommendations.length > 0 ? (
             recommendations.map((rec: any, idx: number) => (
               <div key={idx} className="p-2 border rounded-lg space-y-1">
@@ -98,7 +98,7 @@ export default function AcademyAdaptiveEngine() {
             Öğrenme Stiliniz
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1">
+        <CardContent>
           <div className="grid grid-cols-2 gap-1">
             <div className="p-2 bg-white dark:bg-slate-900 rounded-lg">
               <p className="text-xs text-muted-foreground">Zorluk</p>
@@ -125,7 +125,7 @@ export default function AcademyAdaptiveEngine() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Adaptif İpuçları</CardTitle>
         </CardHeader>
-        <CardContent className="text-xs space-y-1">
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-1 text-xs">
           <p>✓ Zorluk otomatik ayarlanır</p>
           <p>✓ Zayıf alanlar önerilir</p>
           <p>✓ Başarı teşvik eder</p>

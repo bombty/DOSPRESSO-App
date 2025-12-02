@@ -99,7 +99,7 @@ export default function AcademyAchievements() {
   }
 
   return (
-    <div className="space-y-2 p-3">
+    <div className="grid grid-cols-1 gap-2 p-3">
       <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
@@ -163,7 +163,7 @@ export default function AcademyAchievements() {
                 </div>
               )}
 
-              <CardContent className="p-2 space-y-1">
+              <CardContent className="p-2 grid grid-cols-1 gap-1">
                 <div className="flex items-start justify-between gap-1">
                   <div>
                     <h3 className="font-semibold text-sm">{achievement.name}</h3>
@@ -172,7 +172,7 @@ export default function AcademyAchievements() {
                   <Icon className={`w-4 h-4 flex-shrink-0 ${unlocked ? "text-amber-500" : "text-gray-400"}`} />
                 </div>
 
-                <div className="space-y-0.5">
+                <div className="grid grid-cols-1 gap-0.5">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">İlerleme</span>
                     <span className="font-semibold">{progress}%</span>
@@ -199,7 +199,7 @@ export default function AcademyAchievements() {
             Başarıları Nasıl Açarsın?
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
           <p>🎯 Düzenli olarak sınavlara katıl - her sınav ilerlemenizi arttırır</p>
           <p>⭐ Mükemmel puanlar almaya çalış - 100 puan başarısını açmak mümkün</p>
           <p>🔥 Tutarlı kal - haftada birden fazla sınav tamamla</p>

@@ -82,7 +82,7 @@ export default function AcademyAIAssistant() {
   ];
 
   return (
-    <div className="space-y-2 p-3 max-w-4xl mx-auto">
+    <div className="grid grid-cols-1 gap-2 p-3 max-w-4xl mx-auto">
       <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}
@@ -140,7 +140,7 @@ export default function AcademyAIAssistant() {
       </Card>
 
       {/* Input Area */}
-      <div className="space-y-1">
+      <div className="grid grid-cols-1 gap-1">
         <div className="flex gap-1">
           <Textarea
             placeholder="Sorunuzu yazın..."
@@ -197,7 +197,7 @@ export default function AcademyAIAssistant() {
             AI Asistan Hakkında
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-xs space-y-1">
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-1 text-xs">
           <p>✓ Kariyer gelişimi ve sertifikasyon hakkında bilgiler</p>
           <p>✓ Sınav ve öğrenme stratejileri</p>
           <p>✓ Academy özellikleri ve kullanım ipuçları</p>
