@@ -426,64 +426,51 @@ export default function DenetimSablonlariPage() {
       </Card>
 
       {/* Templates Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         {templates.map((template) => (
-          <Card key={template.id} data-testid={`card-template-${template.id}`}>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <CardTitle className="text-lg" data-testid={`title-template-${template.id}`}>
+          <Card key={template.id} data-testid={`card-template-${template.id}`} className="hover-elevate">
+            <CardContent className="p-3">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-sm font-medium line-clamp-2" data-testid={`title-template-${template.id}`}>
                     {template.title}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2" data-testid={`desc-template-${template.id}`}>
-                    {template.description || "Açıklama yok"}
-                  </CardDescription>
+                  </h3>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => handleOpenEditDialog(template)}
+                      data-testid={`button-edit-template-${template.id}`}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() => handleDelete(template.id)}
+                      data-testid={`button-delete-template-${template.id}`}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleOpenEditDialog(template)}
-                    data-testid={`button-edit-template-${template.id}`}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleDelete(template.id)}
-                    data-testid={`button-delete-template-${template.id}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex flex-wrap gap-2">
-                <Badge variant={template.auditType === 'branch' ? 'default' : 'secondary'} data-testid={`badge-type-${template.id}`}>
-                  {template.auditType === 'branch' ? 'Şube' : 'Personel'}
-                </Badge>
-                {template.category && (
-                  <Badge variant="outline" data-testid={`badge-category-${template.id}`}>{template.category}</Badge>
-                )}
-                <Badge variant={template.isActive ? 'default' : 'secondary'} data-testid={`badge-status-${template.id}`}>
-                  {template.isActive ? (
-                    <>
-                      <CheckCircle2 className="mr-1 h-3 w-3" />
-                      Aktif
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="mr-1 h-3 w-3" />
-                      Pasif
-                    </>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant={template.auditType === 'branch' ? 'default' : 'secondary'} className="text-xs" data-testid={`badge-type-${template.id}`}>
+                    {template.auditType === 'branch' ? 'Şube' : 'Personel'}
+                  </Badge>
+                  {template.category && (
+                    <Badge variant="outline" className="text-xs" data-testid={`badge-category-${template.id}`}>{template.category}</Badge>
                   )}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid={`itemcount-${template.id}`}>
-                <ClipboardList className="h-4 w-4" />
-                {template.itemCount} madde
+                  <Badge variant={template.isActive ? 'default' : 'secondary'} className="text-xs" data-testid={`badge-status-${template.id}`}>
+                    {template.isActive ? 'Aktif' : 'Pasif'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1" data-testid={`itemcount-${template.id}`}>
+                  <ClipboardList className="h-3 w-3" />
+                  {template.itemCount} madde
+                </p>
               </div>
             </CardContent>
           </Card>
