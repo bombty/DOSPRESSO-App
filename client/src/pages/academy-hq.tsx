@@ -408,7 +408,7 @@ export default function AcademyHQ() {
   });
 
   return (
-    <div className="space-y-2 p-3">
+    <div className="grid grid-cols-1 gap-2 p-3">
       <div className="flex items-center gap-2 mb-4">
         <Button
           onClick={() => window.history.back()}
@@ -443,7 +443,7 @@ export default function AcademyHQ() {
         </TabsList>
 
         {/* MODULES TAB - ANA SAYFA */}
-        <TabsContent value="modules" className="space-y-4">
+        <TabsContent value="modules" className="grid grid-cols-1 gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Modüller Listesi */}
             <Card>
@@ -452,7 +452,7 @@ export default function AcademyHQ() {
                 <CardDescription>Modülleri seçip düzenle veya ata</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
                   {ACADEMY_MODULES.map((module) => (
                     <button
                       key={module.id}
@@ -473,7 +473,7 @@ export default function AcademyHQ() {
             </Card>
 
             {/* Seçili Modül Detayı */}
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
               {selectedModuleId && (
                 <>
                   <Card>
@@ -481,7 +481,7 @@ export default function AcademyHQ() {
                       <CardTitle>{ACADEMY_MODULES.find(m => m.id === selectedModuleId)?.name}</CardTitle>
                       <CardDescription>Modül yönetimi ve atama işlemleri</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="grid grid-cols-1 gap-4">
                       <div>
                         <p className="text-sm text-muted-foreground mb-2">Yol:</p>
                         <p className="text-sm font-mono bg-muted p-2 rounded">
@@ -510,7 +510,7 @@ export default function AcademyHQ() {
                                 ...data,
                                 quizId: selectedModuleId.toString(),
                               });
-                            })} className="space-y-4">
+                            })} className="grid grid-cols-1 gap-4">
                               <FormField
                                 control={assignForm.control}
                                 name="assignTo"
@@ -580,7 +580,7 @@ export default function AcademyHQ() {
                             <Form {...quizForm}>
                               <form onSubmit={quizForm.handleSubmit((data) => {
                                 createQuizMutation.mutate(data);
-                              })} className="space-y-4">
+                              })} className="grid grid-cols-1 gap-4">
                                 <FormField
                                   control={quizForm.control}
                                   name="title"

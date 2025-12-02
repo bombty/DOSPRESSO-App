@@ -46,7 +46,7 @@ export default function AcademyLeaderboard() {
   const userRank = topPerformers.findIndex((p) => p.name === user?.firstName) + 1;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="grid grid-cols-1 gap-6 p-6">
       <div className="flex items-center gap-2 mb-4">
         <Button
           onClick={() => window.history.back()}
@@ -100,13 +100,13 @@ export default function AcademyLeaderboard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="global" className="space-y-4">
+        <TabsContent value="global" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Top 5 Performans</CardTitle>
               <CardDescription>Toplam puanlara göre en iyi performans gösteren 5 çalışan</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="grid grid-cols-1 gap-4">
               {topPerformers.map((performer) => (
                 <div key={performer.rank} className="flex items-center justify-between p-3 border rounded-lg hover-elevate">
                   <div className="flex items-center gap-3">
@@ -132,13 +132,13 @@ export default function AcademyLeaderboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="branches" className="space-y-4">
+        <TabsContent value="branches" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Şube Performansı</CardTitle>
               <CardDescription>Her şubenin ortalama puanı ve tamamlama oranı</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="grid grid-cols-1 gap-3">
               {branchLeaders.map((branch) => (
                 <div key={branch.branchName} className="space-y-2 p-3 border rounded-lg">
                   <div className="flex items-center justify-between">
@@ -160,13 +160,13 @@ export default function AcademyLeaderboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="exams" className="space-y-4">
+        <TabsContent value="exams" className="grid grid-cols-1 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Sınav Performans Liderleri</CardTitle>
               <CardDescription>En yüksek notla sınav geçen çalışanlar</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="grid grid-cols-1 gap-4">
               {examLeaderboard.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">Henüz sınav sonucu bulunmuyor</p>
               ) : (

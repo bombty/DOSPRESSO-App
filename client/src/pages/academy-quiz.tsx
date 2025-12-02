@@ -114,12 +114,12 @@ export default function AcademyQuiz() {
 
   if (submitted) {
     return (
-      <div className="space-y-2 p-3 max-w-2xl mx-auto">
+      <div className="grid grid-cols-1 gap-2 p-3 max-w-2xl mx-auto">
         <Card>
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-sm">Quiz Tamamlandı</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="grid grid-cols-1 gap-2">
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-1">
                 {score >= quiz.passingScore ? (
@@ -148,7 +148,7 @@ export default function AcademyQuiz() {
                     <CardTitle className="text-sm">Yol Önerisi</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-1">
+                <CardContent className="grid grid-cols-1 gap-1">
                   <p className="text-sm">{recommendation.recommendation}</p>
                   
                   {/* Difficulty Progression Path */}
@@ -183,7 +183,7 @@ export default function AcademyQuiz() {
   const question = quiz.questions[currentQuestion];
 
   return (
-    <div className="space-y-2 p-3 max-w-2xl mx-auto">
+    <div className="grid grid-cols-1 gap-2 p-3 max-w-2xl mx-auto">
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between mb-2">
@@ -199,7 +199,7 @@ export default function AcademyQuiz() {
           </p>
         </CardHeader>
 
-        <CardContent className="space-y-2">
+        <CardContent className="grid grid-cols-1 gap-2">
           <div>
             <p className="text-sm font-medium mb-2">{question.questionText}</p>
 
