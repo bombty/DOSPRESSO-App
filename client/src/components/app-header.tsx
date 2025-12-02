@@ -1,38 +1,114 @@
-import { Mail } from "lucide-react";
+import { Mail, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
+import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import dospressoLogo from "@assets/IMG_5044_1764674613097.jpeg";
+import type { User } from "@shared/schema";
 
 interface AppHeaderProps {
   notificationCount?: number;
+  user?: User | null;
+  branchName?: string | null;
 }
 
-export function AppHeader({ notificationCount = 0 }: AppHeaderProps) {
+export function AppHeader({ notificationCount = 0, user, branchName }: AppHeaderProps) {
   const [, setLocation] = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleMailboxClick = () => {
     setLocation("/bildirimler");
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      setLocation("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  const getRoleLabel = (role: string | undefined) => {
+    const roleMap: Record<string, string> = {
+      "admin": "Admin",
+      "supervisor": "Süpervizör",
+      "barista": "Barista",
+      "supervisor_buddy": "Süpervizör Buddy",
+      "bar_buddy": "Bar Buddy",
+      "stajyer": "Stajyer",
+      "muhasebe": "Muhasebe",
+      "coach": "Coach",
+      "teknik": "Teknik",
+      "destek": "Destek",
+      "satinalma": "Satın Alma",
+      "fabrika": "Fabrika",
+      "yatirimci_hq": "Yatırımcı HQ",
+      "yatirimci_branch": "Yatırımcı Şube",
+      "hq_staff": "HQ Staff",
+    };
+    return role ? roleMap[role] || role : "";
+  };
+
   return (
     <div className="sticky top-0 z-50 bg-background border-b">
-      {/* Logo Bar - Centered */}
-      <div className="px-3 py-3 border-b bg-white dark:bg-slate-950 flex items-center justify-between">
-        {/* Empty left space */}
-        <div className="w-8" />
+      {/* Header - Logo Left + User Info */}
+      <div className="px-3 py-2 border-b bg-white dark:bg-slate-950 flex items-center justify-between gap-3">
         
-        {/* Logo centered */}
-        <img 
-          src={dospressoLogo} 
-          alt="DOSPRESSO" 
-          className="h-10 object-contain cursor-pointer"
-          onClick={() => setLocation("/")}
-          data-testid="img-dospresso-logo"
-        />
-        
-        {/* Mailbox right */}
-        <div className="relative w-8 flex justify-end">
+        {/* Left: Logo + User Info */}
+        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex-1 justify-start p-0 h-auto cursor-pointer hover:bg-transparent"
+              data-testid="button-profile-menu"
+            >
+              <div className="flex items-center gap-2 flex-1">
+                <img 
+                  src={dospressoLogo} 
+                  alt="DOSPRESSO" 
+                  className="h-8 object-contain"
+                  onClick={() => setLocation("/")}
+                  data-testid="img-dospresso-logo"
+                />
+                
+                {/* User Info */}
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-xs font-medium truncate" data-testid="text-user-name">
+                    {user?.firstName || user?.username || "Kullanıcı"}
+                  </p>
+                  <div className="text-[11px] text-muted-foreground flex gap-1 items-center flex-wrap">
+                    <span data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
+                    {branchName && (
+                      <>
+                        <span>•</span>
+                        <span data-testid="text-branch-name">{branchName}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-40">
+            <DropdownMenuItem onClick={handleLogout} data-testid="button-logout">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Çıkış Yap</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Right: Mailbox */}
+        <div className="relative flex justify-end">
           <Button
             variant="ghost"
             size="icon"

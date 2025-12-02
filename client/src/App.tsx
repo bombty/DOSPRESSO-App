@@ -265,10 +265,16 @@ function AppContent() {
 
   const isHomePage = location === "/";
 
+  const branchName = getBranchName(user?.branchId);
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Global Header */}
-      <AppHeader notificationCount={notificationData?.count || 0} />
+      <AppHeader 
+        notificationCount={notificationData?.count || 0}
+        user={user}
+        branchName={branchName}
+      />
       
       {/* Main Content */}
       <main className="flex-1 overflow-auto pb-20">
