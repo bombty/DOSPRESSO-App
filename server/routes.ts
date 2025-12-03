@@ -86,7 +86,9 @@ import {
   badges,
   userBadges,
   insertBadgeSchema,
-  insertUserBadgeSchema
+  insertUserBadgeSchema,
+  insertLostFoundItemSchema,
+  handoverLostFoundItemSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -12119,6 +12121,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completedAt: progress?.completedAt,
         badges: userBadgeList,
       });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ========================================
+  // LOST & FOUND API ROUTES
+  // ========================================
+
+  // GET /api/lost-found - Get lost found items (branch-filtered for non-HQ)
+  app.get('/api/lost-found', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { status } = req.query;
+      
+      const filters: { branchId?: number; status?: string } = {};
+      if (status) filters.status = status;
+      
+      // Non-HQ users only see their branch items
+      if (!isHQRole(user.role) && user.branchId) {
+        filters.branchId = user.branchId;
+      }
+      
+      const items = await storage.getLostFoundItems(filters);
+      
+      // Enrich with user and branch info
+      const enrichedItems = await Promise.all(items.map(async (item) => {
+        const foundBy = await storage.getUser(item.foundById);
+        const branch = await storage.getBranch(item.branchId);
+        const handoveredBy = item.handoveredById ? await storage.getUser(item.handoveredById) : null;
+        return {
+          ...item,
+          foundByName: foundBy ? `${foundBy.firstName} ${foundBy.lastName}` : 'Bilinmiyor',
+          branchName: branch?.name || 'Bilinmiyor',
+          handoveredByName: handoveredBy ? `${handoveredBy.firstName} ${handoveredBy.lastName}` : null,
+        };
+      }));
+      
+      res.json(enrichedItems);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/lost-found/all - HQ can view all branches (requires HQ role)
+  app.get('/api/lost-found/all', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Bu sayfaya erişim yetkiniz yok" });
+      }
+      
+      const { status, branchId } = req.query;
+      const filters: { branchId?: number; status?: string } = {};
+      if (status) filters.status = status;
+      if (branchId) filters.branchId = parseInt(branchId);
+      
+      const items = await storage.getLostFoundItems(filters);
+      
+      const enrichedItems = await Promise.all(items.map(async (item) => {
+        const foundBy = await storage.getUser(item.foundById);
+        const branch = await storage.getBranch(item.branchId);
+        const handoveredBy = item.handoveredById ? await storage.getUser(item.handoveredById) : null;
+        return {
+          ...item,
+          foundByName: foundBy ? `${foundBy.firstName} ${foundBy.lastName}` : 'Bilinmiyor',
+          branchName: branch?.name || 'Bilinmiyor',
+          handoveredByName: handoveredBy ? `${handoveredBy.firstName} ${handoveredBy.lastName}` : null,
+        };
+      }));
+      
+      res.json(enrichedItems);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/lost-found/count - Get new items count for notification badge
+  app.get('/api/lost-found/count', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const branchId = !isHQRole(user.role) && user.branchId ? user.branchId : undefined;
+      const count = await storage.getNewLostFoundItemsCount(branchId);
+      res.json({ count });
+    } catch (error: any) {
+      res.json({ count: 0 });
+    }
+  });
+
+  // POST /api/lost-found - Create a new lost found item
+  app.post('/api/lost-found', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const validation = insertLostFoundItemSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Geçersiz veri", 
+          errors: validation.error.flatten().fieldErrors 
+        });
+      }
+      
+      // Ensure user can only create for their branch
+      const branchId = user.branchId || validation.data.branchId;
+      if (!branchId) {
+        return res.status(400).json({ message: "Şube bilgisi gerekli" });
+      }
+      
+      const item = await storage.createLostFoundItem({
+        ...validation.data,
+        branchId,
+        foundById: user.id,
+      });
+      
+      res.status(201).json(item);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/lost-found/:id/handover - Mark item as handed over to owner
+  app.patch('/api/lost-found/:id/handover', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user;
+      const validation = handoverLostFoundItemSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Geçersiz veri", 
+          errors: validation.error.flatten().fieldErrors 
+        });
+      }
+      
+      const item = await storage.getLostFoundItem(parseInt(id));
+      if (!item) {
+        return res.status(404).json({ message: "Kayıt bulunamadı" });
+      }
+      
+      // Check branch access
+      if (!isHQRole(user.role) && user.branchId !== item.branchId) {
+        return res.status(403).json({ message: "Bu kaydı güncelleme yetkiniz yok" });
+      }
+      
+      const updated = await storage.handoverLostFoundItem(parseInt(id), {
+        ...validation.data,
+        handoveredById: user.id,
+      });
+      
+      res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

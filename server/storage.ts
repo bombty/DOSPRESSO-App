@@ -216,6 +216,10 @@ import {
   BranchFeedback,
   InsertBranchFeedback,
   branchFeedbacks,
+  LostFoundItem,
+  InsertLostFoundItem,
+  HandoverLostFoundItem,
+  lostFoundItems,
   TicketActivityLog,
   InsertTicketActivityLog,
   ticketActivityLogs,
@@ -5741,6 +5745,58 @@ export class DatabaseStorage implements IStorage {
   async updateBranchFeedback(id: number, updates: any): Promise<BranchFeedback | undefined> {
     const [result] = await db.update(branchFeedbacks).set(updates).where(eq(branchFeedbacks.id, id)).returning();
     return result;
+  }
+
+  // ========================================
+  // LOST & FOUND SYSTEM
+  // ========================================
+
+  async createLostFoundItem(item: InsertLostFoundItem): Promise<LostFoundItem> {
+    const [result] = await db.insert(lostFoundItems).values(item).returning();
+    return result;
+  }
+
+  async getLostFoundItems(filters?: { branchId?: number; status?: string }): Promise<LostFoundItem[]> {
+    const conditions: SQL[] = [];
+    if (filters?.branchId) conditions.push(eq(lostFoundItems.branchId, filters.branchId));
+    if (filters?.status) conditions.push(eq(lostFoundItems.status, filters.status));
+    
+    let query = db.select().from(lostFoundItems);
+    if (conditions.length) query = query.where(and(...conditions)) as any;
+    return query.orderBy(desc(lostFoundItems.createdAt));
+  }
+
+  async getLostFoundItem(id: number): Promise<LostFoundItem | undefined> {
+    const [result] = await db.select().from(lostFoundItems).where(eq(lostFoundItems.id, id)).limit(1);
+    return result;
+  }
+
+  async handoverLostFoundItem(id: number, data: HandoverLostFoundItem & { handoveredById: string }): Promise<LostFoundItem | undefined> {
+    const [result] = await db
+      .update(lostFoundItems)
+      .set({
+        status: "teslim_edildi",
+        ownerName: data.ownerName,
+        ownerPhone: data.ownerPhone,
+        handoverNotes: data.handoverNotes,
+        handoveredById: data.handoveredById,
+        handoverDate: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(lostFoundItems.id, id))
+      .returning();
+    return result;
+  }
+
+  async getNewLostFoundItemsCount(branchId?: number): Promise<number> {
+    const conditions: SQL[] = [eq(lostFoundItems.status, "bulunan")];
+    if (branchId) conditions.push(eq(lostFoundItems.branchId, branchId));
+    
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(lostFoundItems)
+      .where(and(...conditions));
+    return result[0]?.count || 0;
   }
 }
 

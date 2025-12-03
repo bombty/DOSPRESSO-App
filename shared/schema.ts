@@ -3784,3 +3784,57 @@ export const insertBranchFeedbackSchema = createInsertSchema(branchFeedbacks).om
 
 export type InsertBranchFeedback = z.infer<typeof insertBranchFeedbackSchema>;
 export type BranchFeedback = typeof branchFeedbacks.$inferSelect;
+
+// ========================================
+// LOST & FOUND SYSTEM - Kayıp Eşya Takibi
+// ========================================
+
+export const lostFoundStatusEnum = ["bulunan", "teslim_edildi"] as const;
+export type LostFoundStatusType = typeof lostFoundStatusEnum[number];
+
+export const lostFoundItems = pgTable("lost_found_items", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  foundById: varchar("found_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  foundDate: date("found_date").notNull(),
+  foundTime: time("found_time").notNull(),
+  foundArea: varchar("found_area", { length: 100 }).notNull(),
+  itemDescription: text("item_description").notNull(),
+  photoUrl: text("photo_url"),
+  notes: text("notes"),
+  status: varchar("status", { length: 20 }).default("bulunan").notNull(),
+  ownerName: varchar("owner_name", { length: 100 }),
+  ownerPhone: varchar("owner_phone", { length: 20 }),
+  handoverDate: timestamp("handover_date"),
+  handoveredById: varchar("handovered_by_id").references(() => users.id, { onDelete: "set null" }),
+  handoverNotes: text("handover_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("lost_found_branch_idx").on(table.branchId),
+  index("lost_found_status_idx").on(table.status),
+  index("lost_found_found_date_idx").on(table.foundDate),
+  index("lost_found_created_idx").on(table.createdAt),
+]);
+
+export const insertLostFoundItemSchema = createInsertSchema(lostFoundItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  ownerName: true,
+  ownerPhone: true,
+  handoverDate: true,
+  handoveredById: true,
+  handoverNotes: true,
+});
+
+export const handoverLostFoundItemSchema = z.object({
+  ownerName: z.string().min(2, "Sahip adı en az 2 karakter olmalı"),
+  ownerPhone: z.string().min(10, "Telefon numarası geçersiz"),
+  handoverNotes: z.string().optional(),
+});
+
+export type InsertLostFoundItem = z.infer<typeof insertLostFoundItemSchema>;
+export type HandoverLostFoundItem = z.infer<typeof handoverLostFoundItemSchema>;
+export type LostFoundItem = typeof lostFoundItems.$inferSelect;
