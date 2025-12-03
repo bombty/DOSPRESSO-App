@@ -90,9 +90,9 @@ export default function PersonelProfilPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4 p-3">
         <Skeleton className="h-12 w-full" />
-        <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -104,7 +104,7 @@ export default function PersonelProfilPage() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+      <div className="flex flex-col items-center justify-center h-full gap-3 p-3">
         <p className="text-lg text-muted-foreground">Personel bulunamadı</p>
         <Link href="/ik">
           <Button variant="default" data-testid="button-back-ik">İK Yönetimine Dön</Button>
@@ -169,7 +169,7 @@ export default function PersonelProfilPage() {
       </Card>
 
       {/* KPI Cards */}
-      <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Toplam Vardiya</CardTitle>
@@ -233,13 +233,13 @@ export default function PersonelProfilPage() {
           <TabsTrigger value="akademi" data-testid="tab-academy" className="flex-1 min-w-fit">Akademi</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="bilgiler" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Personel Bilgileri</CardTitle>
             </CardHeader>
-            <CardContent className="w-full space-y-2 sm:space-y-3">
-              <div className="w-full space-y-2 sm:space-y-3">
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Kullanıcı Adı</p>
                   <p className="text-base" data-testid="info-username">{profile.username}</p>
@@ -287,7 +287,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="performans" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Performans Metrikleri</CardTitle>
@@ -295,13 +295,13 @@ export default function PersonelProfilPage() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                Bu bölümde haftalık performans trendleri, görev tamamlama oranları ve gelişim grafikler i görüntülenecek.
+                Bu bölümde haftalık performans trendleri, görev tamamlama oranları ve gelişim grafikleri görüntülenecek.
               </p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="denetimler" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Personel Denetimleri</CardTitle>
@@ -315,7 +315,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="vardiyalar" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Vardiya Geçmişi</CardTitle>
@@ -329,14 +329,14 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="akademi" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Akademi Modülleri</CardTitle>
               <CardDescription>Tüm akademi eğitim ve gelişim programlarına erişim</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-4 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                 <Link href="/akademi">
                   <Button variant="outline" className="w-full" data-testid="link-akademi">Akademi</Button>
                 </Link>

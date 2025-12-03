@@ -181,7 +181,7 @@ export default function PersonelMusaitlik() {
   }
 
   return (
-    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4 p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4" />
@@ -203,7 +203,7 @@ export default function PersonelMusaitlik() {
               </DialogDescription>
             </DialogHeader>
             <Form {...availabilityForm}>
-              <form onSubmit={availabilityForm.handleSubmit(onSubmitCreate)} className="w-full space-y-2 sm:space-y-3">
+              <form onSubmit={availabilityForm.handleSubmit(onSubmitCreate)} className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={availabilityForm.control}
@@ -375,7 +375,7 @@ export default function PersonelMusaitlik() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="w-full space-y-2 sm:space-y-3">
+            <CardContent className="flex flex-col gap-3">
               <div className="flex flex-col gap-3 sm:gap-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Başlangıç:</span>
@@ -442,7 +442,7 @@ export default function PersonelMusaitlik() {
             </DialogDescription>
           </DialogHeader>
           <Form {...availabilityForm}>
-            <form onSubmit={availabilityForm.handleSubmit(onSubmitEdit)} className="w-full space-y-2 sm:space-y-3">
+            <form onSubmit={availabilityForm.handleSubmit(onSubmitEdit)} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <FormField
                   control={availabilityForm.control}

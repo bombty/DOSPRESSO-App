@@ -190,7 +190,7 @@ export default function PersonelOnboardingPage() {
 
   if (isLoading) {
     return (
-      <div className="w-full space-y-2 sm:space-y-3">
+      <div className="flex flex-col gap-3">
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-96 w-full" />
       </div>

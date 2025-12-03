@@ -414,7 +414,7 @@ export default function PersonelDetay() {
   };
 
   return (
-    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4 p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 sm:gap-3">
           <Button 
@@ -526,7 +526,7 @@ export default function PersonelDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="documents" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="documents" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -550,7 +550,7 @@ export default function PersonelDetay() {
                         Personelin özlük dosyasına yeni belge ekleyin
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="w-full space-y-2 sm:space-y-3">
+                    <div className="flex flex-col gap-3">
                       <div>
                         <Label htmlFor="document-type">Belge Türü *</Label>
                         <Select value={documentType} onValueChange={setDocumentType}>
@@ -712,7 +712,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="attendance" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="attendance" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -774,7 +774,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="performance" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="performance" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -790,7 +790,7 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : performanceScores && performanceScores.length > 0 ? (
-                <div className="w-full space-y-2 sm:space-y-3">
+                <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                     {performanceScores.slice(0, 4).map((score, idx: number) => (
                       <Card key={idx} className="text-center p-3">
@@ -844,7 +844,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="training" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="training" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -860,7 +860,7 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : trainingProgress && trainingProgress.length > 0 ? (
-                <div className="w-full space-y-2 sm:space-y-3">
+                <div className="flex flex-col gap-3">
                   {trainingProgress.map((progress) => {
                     const module = trainingModules?.find((m) => m.id === progress.moduleId);
                     return (
@@ -899,7 +899,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="leave" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="leave" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1019,7 +1019,7 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : disciplinaryReports && disciplinaryReports.length > 0 ? (
-                <div className="w-full space-y-2 sm:space-y-3">
+                <div className="flex flex-col gap-3">
                   {disciplinaryReports.map((report) => (
                     <Card key={report.id} className="border-l-4" data-testid={`disciplinary-report-${report.id}`}>
                       <CardHeader className="pb-3">
@@ -1220,7 +1220,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="disciplinary" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="disciplinary" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1297,7 +1297,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="onboarding" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="onboarding" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1307,7 +1307,7 @@ export default function PersonelDetay() {
               <CardDescription>Bu personele yeni görev atayın</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="w-full space-y-2 sm:space-y-3">
+              <div className="flex flex-col gap-3">
                 <div>
                   <Label htmlFor="task-title">Görev Adı *</Label>
                   <Input
@@ -1374,7 +1374,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="tasks" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="tasks" className="flex flex-col gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1384,7 +1384,7 @@ export default function PersonelDetay() {
               <CardDescription>Bu personele mesaj gönderin</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="w-full space-y-2 sm:space-y-3">
+              <div className="flex flex-col gap-3">
                 <div>
                   <Label htmlFor="message">Mesaj *</Label>
                   <Textarea
