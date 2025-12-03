@@ -317,7 +317,7 @@ export default function ModuleDetail() {
         </div>
 
         {/* Student Learning Tabs */}
-        <Tabs value={previewPhase} onValueChange={(v) => setPreviewPhase(v)} className="w-full">
+        <Tabs value={previewPhase} onValueChange={(v) => setPreviewPhase(v as 'objectives' | 'steps' | 'quiz' | 'scenarios' | 'completed')} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="objectives">Hedefler</TabsTrigger>
             <TabsTrigger value="steps" disabled={previewPhase === 'objectives'}>İçerik</TabsTrigger>
@@ -421,7 +421,7 @@ export default function ModuleDetail() {
                       queryClient.invalidateQueries({ queryKey: ["/api/training/user-modules-stats"] });
                       queryClient.invalidateQueries({ queryKey: ["/api/academy/career-progress"] });
                     } catch (err) {
-                      toast({ title: "Hata", description: err.message, variant: "destructive" });
+                      toast({ title: "Hata", description: (err instanceof Error ? err.message : "Bilinmeyen hata"), variant: "destructive" });
                     } finally {
                       setIsMarkingComplete(false);
                     }
@@ -690,7 +690,7 @@ export default function ModuleDetail() {
                   ) : (
                     <>
                       <div className="w-full space-y-2 sm:space-y-3">
-                        {module.quiz.map((q, idx: number) => (
+                        {module.quiz.map((q: typeof module.quiz[0], idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-green-500">
                             <CardContent className="pt-4">
                               <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
@@ -754,7 +754,7 @@ export default function ModuleDetail() {
                   ) : (
                     <>
                       <div className="flex flex-col gap-3 sm:gap-4">
-                        {scenarioTasks.map((scenario, idx: number) => (
+                        {scenarioTasks.map((scenario: typeof scenarioTasks[0], idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-purple-500">
                             <CardContent className="pt-4">
                               <div className="flex flex-col gap-3 sm:gap-4">
@@ -965,7 +965,7 @@ export default function ModuleDetail() {
                     toast({ title: "Atamalar kaydedildi" });
                     queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
                   } catch (err) {
-                    toast({ title: "Hata", description: err.message, variant: "destructive" });
+                    toast({ title: "Hata", description: (err instanceof Error ? err.message : "Bilinmeyen hata"), variant: "destructive" });
                   }
                 }}
                 data-testid="button-save-role-assignment"
@@ -989,7 +989,7 @@ export default function ModuleDetail() {
               </CardHeader>
               <CardContent>
                 <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
-                  {module.galleryImages.map((img, idx: number) => (
+                  {module.galleryImages.map((img: typeof module.galleryImages[0], idx: number) => (
                     <div key={idx} className="overflow-hidden rounded-lg bg-muted aspect-[6/4]">
                       <img
                         src={img.url}
@@ -1240,7 +1240,7 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Adım tanımlanmamış</p>
               ) : (
                 <div className="w-full space-y-2 sm:space-y-3">
-                  {steps.map((step, idx: number) => (
+                  {steps.map((step: typeof steps[0], idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-blue-500">
                       <CardHeader className="pb-2">
                         <div className="flex items-center gap-2">
@@ -1434,7 +1434,7 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Quiz sorusu tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {module.quiz.map((q, idx: number) => (
+                  {module.quiz.map((q: typeof module.quiz[0], idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-green-500">
                       <CardContent className="pt-4">
                         <p className="font-medium text-sm">{q.question_text || `Soru ${idx + 1}`}</p>
@@ -1537,7 +1537,7 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Senaryo görev tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {scenarioTasks.map((scenario, idx: number) => (
+                  {scenarioTasks.map((scenario: typeof scenarioTasks[0], idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-purple-500">
                       <CardContent className="pt-4">
                         <div className="flex flex-col gap-3 sm:gap-4">
@@ -1643,7 +1643,7 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Kontrol listesi maddesi tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {module.supervisorChecklist.map((item, idx: number) => (
+                  {module.supervisorChecklist.map((item: typeof module.supervisorChecklist[0], idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-orange-500">
                       <CardContent className="pt-4">
                         <div className="w-full space-y-1 md:space-y-1">
