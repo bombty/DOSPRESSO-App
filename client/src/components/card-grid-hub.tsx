@@ -168,7 +168,7 @@ export function CardGridHub() {
     { 
       id: "lost-found", 
       icon: Briefcase, 
-      label: "Kayıp Eşya", 
+      label: "Lost&Found", 
       path: "/kayip-esya-hq",
       color: "bg-yellow-600",
       description: "Bulunan eşyalar"

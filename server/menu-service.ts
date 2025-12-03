@@ -99,7 +99,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "lost-found",
-        titleTr: "Kayıp Eşya",
+        titleTr: "Lost&Found",
         path: "/kayip-esya",
         icon: "Briefcase",
         moduleKey: "equipment",
@@ -107,7 +107,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "lost-found-hq",
-        titleTr: "Kayıp Eşya (Tüm Şubeler)",
+        titleTr: "Lost&Found (Tüm Şubeler)",
         path: "/kayip-esya-hq",
         icon: "Briefcase",
         moduleKey: "equipment",
