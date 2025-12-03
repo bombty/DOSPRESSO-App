@@ -458,7 +458,7 @@ export default function Vardiyalar() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col gap-3 sm:gap-4">
         <TabsList className="grid w-full grid-cols-4 max-w-xl">
           <TabsTrigger value="overview" data-testid="tab-overview">
             <TrendingUp className="w-4 h-4 mr-2" />

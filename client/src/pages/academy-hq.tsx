@@ -439,8 +439,8 @@ export default function AcademyHQ() {
         </TabsList>
 
         {/* MODULES TAB - ANA SAYFA */}
-        <TabsContent value="modules" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-          <div className="grid grid-cols-1 gap-2 sm:gap-3 col-span-2 md:col-span-1">
+        <TabsContent value="modules" className="w-full space-y-2 sm:space-y-3">
+          <div className="w-full">
             {/* Modüller Listesi */}
             <Card>
               <CardHeader>
@@ -469,7 +469,7 @@ export default function AcademyHQ() {
             </Card>
 
             {/* Seçili Modül Detayı */}
-            <div className="grid grid-cols-1 gap-2 sm:gap-3 col-span-2 md:col-span-2">
+            <div className="w-full">
               {selectedModuleId && (
                 <>
                   <Card>

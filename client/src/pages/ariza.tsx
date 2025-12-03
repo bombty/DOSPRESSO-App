@@ -218,7 +218,7 @@ export default function FaultHub() {
         </TabsList>
 
         {/* TAB 1: Overview */}
-        <TabsContent value="overview" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <TabsContent value="overview" className="w-full">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             <Card>
               <CardContent className="p-3">
