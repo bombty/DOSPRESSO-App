@@ -6,6 +6,7 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { compressImage } from "@/lib/image-utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,7 @@ export default function KayipEsyaPage() {
   const [isHandoverDialogOpen, setIsHandoverDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<LostFoundItemEnriched | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [activeTab, setActiveTab] = useState("bulunan");
 
   const { data: items = [], isLoading } = useQuery<LostFoundItemEnriched[]>({
@@ -483,14 +485,21 @@ export default function KayipEsyaPage() {
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setPhotoUrl(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
+                          setIsCompressing(true);
+                          try {
+                            const compressed = await compressImage(file);
+                            setPhotoUrl(compressed);
+                            toast({ title: "Fotoğraf sıkıştırıldı", description: "Boyut optimize edildi" });
+                          } catch {
+                            const reader = new FileReader();
+                            reader.onloadend = () => setPhotoUrl(reader.result as string);
+                            reader.readAsDataURL(file);
+                          } finally {
+                            setIsCompressing(false);
+                          }
                         }
                       }}
                       className="hidden"
@@ -498,10 +507,10 @@ export default function KayipEsyaPage() {
                       data-testid="input-photo"
                     />
                     <label htmlFor="photo-upload">
-                      <Button type="button" variant="outline" size="sm" asChild>
+                      <Button type="button" variant="outline" size="sm" asChild disabled={isCompressing}>
                         <span className="cursor-pointer flex items-center gap-1">
-                          <Camera className="h-4 w-4" />
-                          Fotoğraf Ekle
+                          {isCompressing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                          {isCompressing ? "Sıkıştırılıyor..." : "Fotoğraf Ekle"}
                         </span>
                       </Button>
                     </label>
