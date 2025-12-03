@@ -333,19 +333,23 @@ export default function PersonelProfilPage() {
           <Card>
             <CardHeader>
               <CardTitle>Akademi Modülleri</CardTitle>
-              <CardDescription>Tüm akademi eğitim ve gelişim programlarına erişim</CardDescription>
+              <CardDescription>Akademi eğitim ve gelişim programlarına erişim</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                 <Link href="/akademi">
                   <Button variant="outline" className="w-full" data-testid="link-akademi">Akademi</Button>
                 </Link>
-                <Link href="/akademi-hq">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-hq">Yönetim</Button>
-                </Link>
-                <Link href="/akademi-supervisor">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-supervisor">Supervisor</Button>
-                </Link>
+                {(user?.role === 'admin' || user?.role === 'yatirimci_hq') && (
+                  <Link href="/akademi-hq">
+                    <Button variant="outline" className="w-full" data-testid="link-akademi-hq">Yönetim</Button>
+                  </Link>
+                )}
+                {(user?.role === 'supervisor' || user?.role === 'admin' || user?.role === 'yatirimci_hq') && (
+                  <Link href="/akademi-supervisor">
+                    <Button variant="outline" className="w-full" data-testid="link-akademi-supervisor">Supervisor</Button>
+                  </Link>
+                )}
                 <Link href="/akademi-analytics">
                   <Button variant="outline" className="w-full" data-testid="link-akademi-analytics">Analitik</Button>
                 </Link>
@@ -364,9 +368,11 @@ export default function PersonelProfilPage() {
                 <Link href="/akademi-achievements">
                   <Button variant="outline" className="w-full" data-testid="link-akademi-achievements">Başarılar</Button>
                 </Link>
-                <Link href="/akademi-progress-overview">
-                  <Button variant="outline" className="w-full" data-testid="link-akademi-progress">İlerleme</Button>
-                </Link>
+                {(user?.role === 'admin' || user?.role === 'yatirimci_hq') && (
+                  <Link href="/akademi-progress-overview">
+                    <Button variant="outline" className="w-full" data-testid="link-akademi-progress">İlerleme</Button>
+                  </Link>
+                )}
                 <Link href="/akademi-streak-tracker">
                   <Button variant="outline" className="w-full" data-testid="link-akademi-streak">Seri</Button>
                 </Link>
