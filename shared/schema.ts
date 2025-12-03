@@ -3827,6 +3827,8 @@ export const insertLostFoundItemSchema = createInsertSchema(lostFoundItems).omit
   handoverDate: true,
   handoveredById: true,
   handoverNotes: true,
+  branchId: true,
+  foundById: true,
 });
 
 export const handoverLostFoundItemSchema = z.object({
