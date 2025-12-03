@@ -66,7 +66,7 @@ export default function BranchFeedback() {
   };
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">
       {/* Header */}
       <div className="flex items-center gap-2 sm:gap-3">
         <Button

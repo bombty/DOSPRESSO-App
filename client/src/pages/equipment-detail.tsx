@@ -569,7 +569,7 @@ export default function EquipmentDetail() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <Skeleton className="h-10 w-48" />
         <Card>
           <CardHeader>
@@ -586,7 +586,7 @@ export default function EquipmentDetail() {
 
   if (!equipment) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <Link href="/ekipman" asChild>
           <Button variant="outline" data-testid="button-back">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -740,7 +740,7 @@ export default function EquipmentDetail() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="maintenance" className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+      <Tabs className="w-full flex flex-col gap-3 sm:gap-4">
         <TabsList data-testid="tabs-equipment-detail">
           <TabsTrigger value="maintenance" data-testid="tab-maintenance">
             Bakım Geçmişi
@@ -765,7 +765,7 @@ export default function EquipmentDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Bakım Geçmişi</CardTitle>
@@ -830,7 +830,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Arıza Kayıtları</CardTitle>
@@ -904,7 +904,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-2 sm:gap-3">
@@ -1040,7 +1040,7 @@ export default function EquipmentDetail() {
                               Tümünü Gör
                             </Button>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                          <div className="flex flex-col gap-3 sm:gap-4">
                             {request.timeline.slice(-3).reverse().map((entry: any) => (
                               <div key={entry.id} className="text-xs text-muted-foreground flex items-start gap-2">
                                 <Avatar className="h-4 w-4">
@@ -1077,7 +1077,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Yorumlar</CardTitle>
@@ -1151,7 +1151,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1207,7 +1207,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Bakım Planı</CardTitle>
@@ -1215,7 +1215,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {maintenanceSchedules.filter(s => String(s.equipmentId) === equipmentId).length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3" data-testid="list-maintenance-schedules">
+                <div className="flex flex-col gap-3 sm:gap-4" data-testid="list-maintenance-schedules">
                   {maintenanceSchedules.filter(s => String(s.equipmentId) === equipmentId).map((schedule) => (
                     <Card key={schedule.id} data-testid={`card-maintenance-schedule-${String(schedule.id)}`}>
                       <CardHeader className="pb-3">
@@ -1268,7 +1268,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {proactiveMaintenanceLogs.filter(l => String(l.equipmentId) === equipmentId).length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3" data-testid="list-maintenance-logs">
+                <div className="flex flex-col gap-3 sm:gap-4" data-testid="list-maintenance-logs">
                   {proactiveMaintenanceLogs.filter(l => String(l.equipmentId) === equipmentId).map((log) => (
                     <Card key={log.id} data-testid={`card-maintenance-log-${String(log.id)}`}>
                       <CardHeader className="pb-3">
@@ -1323,7 +1323,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {troubleshootingSteps && troubleshootingSteps.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {troubleshootingSteps.map((step) => (
                     <div 
                       key={step.id} 
@@ -1564,7 +1564,7 @@ export default function EquipmentDetail() {
           {selectedServiceRequest && (
             <Form {...statusUpdateForm}>
               <form onSubmit={statusUpdateForm.handleSubmit((data) => updateStatusMutation.mutate({ ...data, requestId: selectedServiceRequest.id }))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <p className="text-sm font-medium">Mevcut Durum</p>
                   <Badge variant="outline" data-testid="badge-current-status">
                     {statusLabels[selectedServiceRequest.status] || selectedServiceRequest.status}
@@ -1922,13 +1922,13 @@ export default function EquipmentDetail() {
                     Arıza raporu oluşturmadan önce aşağıdaki adımları tamamlayın:
                   </p>
                   {isLoadingSteps ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-3 sm:gap-4">
                       {[1, 2, 3].map((i) => (
                         <Skeleton key={i} className="h-12 w-full" />
                       ))}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-3 sm:gap-4">
                       {troubleshootingSteps.map((step) => {
                         const isMissing = step.isRequired && !completedStepIds.has(step.id);
                         return (

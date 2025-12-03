@@ -393,7 +393,7 @@ export default function VardiyaCheckin() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <p className="text-sm text-muted-foreground">Çıkış yapmak için QR kodu okutun:</p>
               {!isScanning && (
                 <Button
@@ -491,7 +491,7 @@ export default function VardiyaCheckin() {
         <CardHeader>
           <CardTitle>Nasıl Kullanılır?</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <CardContent className="flex flex-col gap-3 sm:gap-4">
           <div className="flex items-start gap-2">
             <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
               1

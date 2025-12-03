@@ -304,7 +304,7 @@ export default function SubeDetayPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+      <Tabs className="w-full flex flex-col gap-3 sm:gap-4">
         <TabsList className="flex-wrap">
           {canViewActive && (
             <TabsTrigger value="canlı" data-testid="tab-active-employees">
@@ -324,7 +324,7 @@ export default function SubeDetayPage() {
           )}
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card data-testid="card-active-employees">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -337,7 +337,7 @@ export default function SubeDetayPage() {
             </CardHeader>
             <CardContent>
               {activeEmployees && activeEmployees.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {activeEmployees.map((attendance: any) => {
                     const emp = staff?.find(s => s.id === attendance.userId);
                     const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
@@ -378,7 +378,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Şube Personeli</CardTitle>
@@ -388,7 +388,7 @@ export default function SubeDetayPage() {
               {staff.length === 0 ? (
                 <p className="text-muted-foreground">Henüz personel eklenmemiş</p>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {staff.map((emp) => (
                     <Link key={emp.id} href={`/personel-detay/${emp.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`employee-${emp.id}`}>
@@ -423,7 +423,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Son Görevler</CardTitle>
@@ -435,7 +435,7 @@ export default function SubeDetayPage() {
               {recentTasks.length === 0 ? (
                 <p className="text-muted-foreground">Henüz görev yok</p>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {recentTasks.slice(0, 10).map((task) => (
                     <div key={task.id} className="flex items-center justify-between p-3 rounded-lg border" data-testid={`task-${task.id}`}>
                       <div>
@@ -453,7 +453,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Ekipman</CardTitle>
@@ -463,7 +463,7 @@ export default function SubeDetayPage() {
               {equipment.length === 0 ? (
                 <p className="text-muted-foreground">Henüz ekipman eklenmemiş</p>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {equipment.map((equip) => (
                     <Link key={equip.id} href={`/ekipman/${equip.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`equipment-${equip.id}`}>
@@ -483,7 +483,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Son Arızalar</CardTitle>
@@ -491,7 +491,7 @@ export default function SubeDetayPage() {
             </CardHeader>
             <CardContent>
               {branchData.recentFaults && branchData.recentFaults.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {branchData.recentFaults.slice(0, 10).map((fault: any) => (
                     <Link key={fault.id} href={`/ariza-detay/${fault.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`fault-${fault.id}`}>
@@ -519,7 +519,7 @@ export default function SubeDetayPage() {
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">
               {/* QR Kod Üretici */}
               <Card>
@@ -609,7 +609,7 @@ export default function SubeDetayPage() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-3 sm:gap-4">
                       <Label htmlFor="latitude">Enlem (Latitude)</Label>
                       <Input 
                         id="latitude"
@@ -620,7 +620,7 @@ export default function SubeDetayPage() {
                         data-testid="input-latitude"
                       />
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-3 sm:gap-4">
                       <Label htmlFor="longitude">Boylam (Longitude)</Label>
                       <Input 
                         id="longitude"
@@ -643,7 +643,7 @@ export default function SubeDetayPage() {
                     Mevcut Konumu Al
                   </Button>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     <Label htmlFor="radius">İzin Yarıçapı (metre)</Label>
                     <Input 
                       id="radius"
@@ -658,7 +658,7 @@ export default function SubeDetayPage() {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     <Label htmlFor="wifi" className="flex items-center gap-2">
                       <Wifi className="h-4 w-4" />
                       WiFi Ağ Adı (Opsiyonel)

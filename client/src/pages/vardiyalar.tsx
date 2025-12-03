@@ -478,8 +478,8 @@ export default function Vardiyalar() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+          <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-4 gap-2 sm:gap-3">
             <Card data-testid="card-total-shifts">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
@@ -544,7 +544,7 @@ export default function Vardiyalar() {
                   <p className="text-muted-foreground text-center py-8">Bugün planlanmış vardiya yok</p>
                 ) : (
                   <ScrollArea className="h-[200px]">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-3 sm:gap-4">
                       {todayShifts.map((shift) => {
                         const ShiftIcon = shiftTypeIcons[shift.shiftType];
                         return (
@@ -590,7 +590,7 @@ export default function Vardiyalar() {
                   </div>
                 ) : (
                   <ScrollArea className="h-[200px]">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-3 sm:gap-4">
                       {tomorrowShifts.map((shift) => {
                         const ShiftIcon = shiftTypeIcons[shift.shiftType];
                         return (
@@ -650,7 +650,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card data-testid="card-week-view">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
@@ -739,7 +739,7 @@ export default function Vardiyalar() {
                 </div>
               ) : (
                 <ScrollArea className="h-[400px]">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     {thisWeekShifts
                       .sort((a, b) => a.shiftDate.localeCompare(b.shiftDate) || a.startTime.localeCompare(b.startTime))
                       .map((shift) => {
@@ -805,7 +805,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <Card data-testid="card-live-active">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -857,7 +857,7 @@ export default function Vardiyalar() {
               </CardHeader>
               <CardContent>
                 {activeAttendances && activeAttendances.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     {activeAttendances.map((attendance: any) => {
                       const user = users?.find(u => u.id === attendance.userId);
                       const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
@@ -912,7 +912,7 @@ export default function Vardiyalar() {
                     if (typeShifts.length === 0) return null;
                     const ShiftIcon = shiftTypeIcons[type];
                     return (
-                      <div key={type} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                      <div key={type} className="flex flex-col gap-3 sm:gap-4">
                         <div className="flex items-center gap-2">
                           <div className={cn("p-1.5 rounded", shiftTypeColors[type])}>
                             <ShiftIcon className="h-4 w-4" />
@@ -966,7 +966,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <CheckInContent user={user} toast={toast} />
         </TabsContent>
       </Tabs>
@@ -1418,7 +1418,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <p className="text-sm text-muted-foreground">Çalışma Süresi</p>
                 <div className="font-mono text-3xl font-bold text-green-700 dark:text-green-300 tracking-wide">
                   {String(elapsedTime.hours).padStart(2, '0')}:{String(elapsedTime.minutes).padStart(2, '0')}:{String(elapsedTime.seconds).padStart(2, '0')}
@@ -1535,7 +1535,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               <CardHeader>
                 <CardTitle>Bugünkü Vardiyaları Seç</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <CardContent className="flex flex-col gap-3 sm:gap-4">
                 {todayShifts.map((shift) => {
                   const ShiftIcon = shiftTypeIcons[shift.shiftType];
                   return (
@@ -1574,8 +1574,8 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               <CardHeader>
                 <CardTitle>Şube Seçerek Giriş Yap</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <CardContent className="flex flex-col gap-3 sm:gap-4">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Button
                     onClick={() => {
                       if (user?.branchId) {

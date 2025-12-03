@@ -141,7 +141,7 @@ export default function SubelerPage() {
   const isHQ = user?.role && isHQRole(user.role as any);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">Şubeler</h1>
@@ -273,7 +273,7 @@ export default function SubelerPage() {
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <CardContent className="flex flex-col gap-3 sm:gap-4">
                 <CardDescription>{branch.city}</CardDescription>
                 <div className="flex items-start gap-2 text-sm">
                   <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />

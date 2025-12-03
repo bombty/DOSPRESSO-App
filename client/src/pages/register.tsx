@@ -268,7 +268,7 @@ export default function Register() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <FormLabel>Çalışma Konumu</FormLabel>
                 <div className="grid grid-cols-2 gap-2">
                   <Button

@@ -628,7 +628,7 @@ export default function AcademyHQ() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="flex flex-col gap-3 sm:gap-4">
                         {quizzes.slice(0, 3).map((quiz: any) => (
                           <div key={quiz.id} className="p-2 border rounded text-sm">
                             <p className="font-medium">{quiz.title_tr}</p>
@@ -675,8 +675,8 @@ export default function AcademyHQ() {
         </TabsContent>
 
         {/* EXAM REQUESTS TAB */}
-        <TabsContent value="exams" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 col-span-2 md:col-span-3">
+        <TabsContent value="exams" className="w-full space-y-2 sm:space-y-3">
+          <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 col-span-2 md:col-span-3">
             {/* Pending */}
             <Card>
               <CardHeader>
@@ -755,7 +755,7 @@ export default function AcademyHQ() {
         </TabsContent>
 
         {/* MODÜLLER TAB */}
-        <TabsContent value="training" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <TabsContent value="training" className="w-full space-y-2 sm:space-y-3">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <h2 className="text-base sm:text-lg font-semibold">Modülleri Yönet</h2>
             <div className="flex flex-wrap gap-2">
@@ -853,7 +853,7 @@ export default function AcademyHQ() {
                       
                       {/* File Upload Mode */}
                       {aiInputMode === "file" && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                        <div className="flex flex-col gap-3 sm:gap-4">
                           <label className="text-sm font-medium mb-1 block">PDF veya Fotoğraf Yükle</label>
                           <div 
                             className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
@@ -991,7 +991,7 @@ export default function AcademyHQ() {
                         
                         <div>
                           <h5 className="font-medium text-sm mb-2">Eğitim Adımları ({generatedModule.steps?.length || 0})</h5>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                          <div className="flex flex-col gap-3 sm:gap-4">
                             {generatedModule.steps?.map((step: any, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{step.stepNumber}. {step.title}</p>
@@ -1003,7 +1003,7 @@ export default function AcademyHQ() {
                         
                         <div>
                           <h5 className="font-medium text-sm mb-2">Quiz Soruları ({generatedModule.quiz?.length || 0})</h5>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                          <div className="flex flex-col gap-3 sm:gap-4">
                             {generatedModule.quiz?.map((q: any, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{q.questionText}</p>
@@ -1021,7 +1021,7 @@ export default function AcademyHQ() {
                         
                         <div>
                           <h5 className="font-medium text-sm mb-2">Senaryolar ({generatedModule.scenarioTasks?.length || 0})</h5>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                          <div className="flex flex-col gap-3 sm:gap-4">
                             {generatedModule.scenarioTasks?.map((s: any, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{s.title}</p>
@@ -1033,7 +1033,7 @@ export default function AcademyHQ() {
                         
                         <div>
                           <h5 className="font-medium text-sm mb-2">Denetçi Kontrol Listesi ({generatedModule.supervisorChecklist?.length || 0})</h5>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                          <div className="flex flex-col gap-3 sm:gap-4">
                             {generatedModule.supervisorChecklist?.map((c: any, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{c.title}</p>
@@ -1229,7 +1229,7 @@ export default function AcademyHQ() {
             </DialogContent>
           </Dialog>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="flex flex-col gap-3 sm:gap-4">
             {trainingModules.map((module: TrainingModule) => (
               <div 
                 key={module.id}

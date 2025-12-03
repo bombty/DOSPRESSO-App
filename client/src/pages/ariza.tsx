@@ -99,7 +99,7 @@ function FaultSkeleton() {
 
 function FaultSkeletonList() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4">
       {Array.from({ length: 5 }).map((_, i) => (
         <FaultSkeleton key={i} />
       ))}
@@ -272,7 +272,7 @@ export default function FaultHub() {
           {metrics.critical.length > 0 && (
             <div>
               <h3 className="text-sm font-medium mb-2">Kritik Arızalar</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 {metrics.critical.map((fault: EquipmentFault) => (
                   <Card key={fault.id} className="border-red-500 bg-red-50 dark:bg-red-950 hover-elevate" data-testid={`card-critical-fault-${fault.id}`}>
                     <CardContent className="p-3">
@@ -290,7 +290,7 @@ export default function FaultHub() {
 
           <div>
             <h3 className="text-sm font-medium mb-2">Son Arızalar</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               {faults.slice(0, RECENT_FAULTS_LIMIT).map((fault: EquipmentFault) => (
                 <Card key={fault.id} className="hover-elevate" data-testid={`card-recent-fault-${fault.id}`}>
                   <CardContent className="p-3">
@@ -308,7 +308,7 @@ export default function FaultHub() {
         </TabsContent>
 
         {/* TAB 2: Arıza Süreleri */}
-        <TabsContent value="sla" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <TabsContent value="sla" className="w-full space-y-2 sm:space-y-3">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Card className="border-red-500 bg-red-50 dark:bg-red-950">
               <CardContent className="p-3">
@@ -350,7 +350,7 @@ export default function FaultHub() {
           {metrics.breached.length > 0 && (
             <div>
               <h3 className="text-sm font-medium mb-2 text-red-600">Zaman Aşımı Yapan</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 {metrics.breached.map((fault: EquipmentFault) => (
                   <Card key={fault.id} className="border-red-500 bg-red-50 dark:bg-red-950 hover-elevate" data-testid={`card-breached-fault-${fault.id}`}>
                     <CardContent className="p-3">
@@ -366,7 +366,7 @@ export default function FaultHub() {
           {metrics.atRisk.length > 0 && (
             <div>
               <h3 className="text-sm font-medium mb-2 text-orange-600">Risk Altında Olan</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 {metrics.atRisk.map((fault: EquipmentFault) => (
                   <Card key={fault.id} className="border-orange-500 bg-orange-50 dark:bg-orange-950 hover-elevate" data-testid={`card-atrisk-fault-${fault.id}`}>
                     <CardContent className="p-3">
@@ -381,7 +381,7 @@ export default function FaultHub() {
         </TabsContent>
 
         {/* TAB 3: Manage Faults */}
-        <TabsContent value="manage" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <TabsContent value="manage" className="w-full space-y-2 sm:space-y-3">
           <Card className="col-span-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Tüm Arızalar ({manageFaults.length})</CardTitle>
@@ -398,7 +398,7 @@ export default function FaultHub() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 {isFaultsLoading ? (
                   <FaultSkeletonList />
                 ) : paginatedManageFaults.length === 0 ? (
@@ -555,7 +555,7 @@ export default function FaultHub() {
 
         {/* TAB 4: My Faults (Technician) */}
         {user?.id && (
-          <TabsContent value="myFaults" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <TabsContent value="myFaults" className="w-full space-y-2 sm:space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
               <Card>
                 <CardHeader className="pb-3">
@@ -590,7 +590,7 @@ export default function FaultHub() {
                 <CardTitle>Benim Arızalarım</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {metrics.myFaults.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-3">Size atanmış arıza yok</p>
                   ) : (

@@ -214,7 +214,7 @@ export default function OvertimeRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16" />
               ))}

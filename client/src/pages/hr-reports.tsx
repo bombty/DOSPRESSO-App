@@ -274,7 +274,7 @@ export default function HRReportsPage() {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+      <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-5 gap-2 sm:gap-3">
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
@@ -359,7 +359,7 @@ export default function HRReportsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />

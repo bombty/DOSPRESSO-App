@@ -58,7 +58,7 @@ export default function AICostDashboard() {
   const highestCostFeature = data?.costByFeature[0];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">
@@ -178,7 +178,7 @@ export default function AICostDashboard() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Skeleton className="h-10 w-full" data-testid="skeleton-feature-table" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
@@ -226,7 +226,7 @@ export default function AICostDashboard() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Skeleton className="h-10 w-full" data-testid="skeleton-model-table" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
@@ -275,7 +275,7 @@ export default function AICostDashboard() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <Skeleton className="h-10 w-full" data-testid="skeleton-trend-list" />
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />

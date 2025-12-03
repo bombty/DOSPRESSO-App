@@ -42,7 +42,7 @@ export default function AcademyBranchAnalytics() {
     }));
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">
       <div className="flex items-center gap-2 mb-4">
         <Button
           onClick={() => window.history.back()}
@@ -157,7 +157,7 @@ export default function AcademyBranchAnalytics() {
                 <CardTitle>Şube Sıralaması</CardTitle>
                 <CardDescription>Tamamlama oranına göre sıralanmış</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <CardContent className="flex flex-col gap-3 sm:gap-4">
                 {topBranches.map((branch: any, idx: number) => (
                   <div key={branch.branchId} className="grid grid-cols-1 gap-2 p-3 border rounded-lg" data-testid={`branch-card-${branch.branchId}`}>
                     <div className="flex items-center justify-between">

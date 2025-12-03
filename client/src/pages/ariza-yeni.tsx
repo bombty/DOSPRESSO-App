@@ -179,7 +179,7 @@ export default function NewFaultReport() {
       </Card>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="flex flex-col gap-3 sm:gap-4">
           {/* Basic Info */}
           <Card>
             <CardHeader>
@@ -425,7 +425,7 @@ export default function NewFaultReport() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {photoPreview ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="relative w-full h-48 rounded-lg overflow-hidden bg-muted">
                     <img src={photoPreview} alt="Arıza fotoğrafı" className="w-full h-full object-cover" />
                   </div>

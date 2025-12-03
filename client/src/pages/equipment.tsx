@@ -288,7 +288,7 @@ export default function Equipment() {
   const missingQRCount = equipment?.filter(e => !e.qrCodeUrl).length || 0;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4">
       {criticalEquipment && criticalEquipment.length > 0 && (
         <Card className="border-red-500 bg-red-50 dark:bg-red-950 col-span-full">
           <CardHeader className="pb-2">
@@ -866,7 +866,7 @@ export default function Equipment() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <CardContent className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <span data-testid={`text-branch-${item.id}`}>{getBranchName(item.branchId)}</span>

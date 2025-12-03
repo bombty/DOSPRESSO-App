@@ -51,7 +51,7 @@ export default function AcademyBadges() {
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">
       <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
@@ -106,7 +106,7 @@ export default function AcademyBadges() {
             <Trophy className="w-4 h-4 text-yellow-500" />
             Açılan ({unlockedBadges.length})
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="flex flex-col gap-3 sm:gap-4 gap-2">
             {unlockedBadges.map((badge: any) => {
               const IconComponent = BADGE_ICONS[badge.iconName] || Star;
               return (
@@ -140,7 +140,7 @@ export default function AcademyBadges() {
             <Lock className="w-4 h-4 text-gray-400" />
             Kilitli ({lockedBadges.length})
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="flex flex-col gap-3 sm:gap-4 gap-2">
             {lockedBadges.map((badge: any) => {
               const IconComponent = BADGE_ICONS[badge.iconName] || Star;
               return (

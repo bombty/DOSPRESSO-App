@@ -29,7 +29,7 @@ export default function Performance() {
   const aiScoreTrend = calculateTrend(latestMetric?.averageAiScore ?? 0, previousMetric?.averageAiScore ?? 0);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Performans</h1>
@@ -170,7 +170,7 @@ export default function Performance() {
                 <CardTitle>Son Performans Kayıtları</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="flex flex-col gap-3 sm:gap-4 gap-2">
                   {metrics.slice(0, 9).map((metric) => (
                     <div
                       key={metric.id}

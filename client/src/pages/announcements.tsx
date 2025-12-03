@@ -508,7 +508,7 @@ export default function Announcements() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <CardContent className="flex flex-col gap-3 sm:gap-4">
                   <p className="text-sm" data-testid={`text-message-${announcement.id}`}>
                     {announcement.message}
                   </p>

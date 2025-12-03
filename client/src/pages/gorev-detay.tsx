@@ -255,7 +255,7 @@ export default function GorevDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Checklist Öğeleri</CardTitle>
@@ -265,7 +265,7 @@ export default function GorevDetay() {
             </CardHeader>
             <CardContent>
               {checklistTasks && checklistTasks.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {checklistTasks.map((item: any) => (
                     <div
                       key={item.id}
@@ -295,7 +295,7 @@ export default function GorevDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Görev Notları</CardTitle>
@@ -340,14 +340,14 @@ export default function GorevDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Görev Geçmişi</CardTitle>
               <CardDescription>Görev durum değişiklikleri ve aktivite</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <div className="flex items-start gap-2 sm:gap-3 p-3 rounded-lg border">
                   <Clock className="h-4 w-4 mt-1 text-muted-foreground" />
                   <div>

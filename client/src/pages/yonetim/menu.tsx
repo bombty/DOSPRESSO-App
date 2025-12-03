@@ -188,7 +188,7 @@ function SortableSection({
             onDragEnd={(e) => onDragItemEnd(e, section.id)}
           >
             <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 {items.map(item => (
                   <SortableItem 
                     key={item.id} 
@@ -633,7 +633,7 @@ export default function AdminMenuManagement() {
   }
 
   return (
-    <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="p-3 flex flex-col gap-3 sm:gap-4">
       <div className="flex justify-between items-center flex-wrap gap-2 sm:gap-3">
         <h1 className="text-3xl font-bold">Menü Yönetimi</h1>
         <div className="flex gap-2">
@@ -1022,7 +1022,7 @@ export default function AdminMenuManagement() {
               {currentRules.length === 0 ? (
                 <div className="text-sm text-muted-foreground py-2" data-testid="text-no-rules">Henüz kural eklenmemiş</div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {currentRules.map(rule => (
                     <div key={rule.id} className="flex items-center justify-between p-2 bg-muted/40 rounded-md" data-testid={`rule-${rule.id}`}>
                       <div className="flex items-center gap-2">

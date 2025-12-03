@@ -413,7 +413,7 @@ export default function EkipmanServis() {
   }), [unifiedRequests]);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -576,9 +576,9 @@ export default function EkipmanServis() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="flex flex-col gap-3 sm:gap-4">
             {/* Branch Selection */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <Label htmlFor="create-branch">Şube *</Label>
               <Select value={createBranch} onValueChange={(val) => {
                 setCreateBranch(val);
@@ -599,10 +599,10 @@ export default function EkipmanServis() {
 
             {/* Equipment Selection */}
             {createBranch && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Label>Ekipman Seçimi *</Label>
                 {qrScannerOpen ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     <div id="qr-reader-ekipman-servis" style={{ minHeight: '300px' }} className="rounded-lg border-2 border-blue-300" />
                     <Button onClick={stopQRScanner} variant="outline" className="w-full">
                       <X className="w-4 h-4 mr-2" />
@@ -642,7 +642,7 @@ export default function EkipmanServis() {
 
             {/* Type Selection */}
             {createEquipment && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Label>Rapor Tipi *</Label>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <button
@@ -678,7 +678,7 @@ export default function EkipmanServis() {
             {/* Fault Fields */}
             {createType === 'fault' && (
               <div className="grid grid-cols-1 gap-2 sm:gap-3 border-t pt-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Arıza Açıklaması *</Label>
                   <Textarea
                     placeholder="Sorunu detaylı açıklayın..."
@@ -734,7 +734,7 @@ export default function EkipmanServis() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Ciddiyet Seviyesi</Label>
                   <Select value={faultSeverity} onValueChange={setFaultSeverity}>
                     <SelectTrigger>
@@ -754,7 +754,7 @@ export default function EkipmanServis() {
             {/* Service Fields */}
             {createType === 'service' && (
               <div className="grid grid-cols-1 gap-2 sm:gap-3 border-t pt-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Servis Sağlayıcı *</Label>
                   <Input
                     placeholder="Technician veya şirket adı"
@@ -762,7 +762,7 @@ export default function EkipmanServis() {
                     onChange={(e) => setServiceProvider(e.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Öncelik</Label>
                   <Select value={priority} onValueChange={setPriority}>
                     <SelectTrigger className={
@@ -788,7 +788,7 @@ export default function EkipmanServis() {
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Notlar</Label>
                   <Textarea
                     placeholder="Ek bilgiler..."
@@ -924,13 +924,13 @@ export default function EkipmanServis() {
                     <p className="font-medium">{selectedRequest.serviceProvider}</p>
                   </div>
                   {selectedRequest.notes && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-3 sm:gap-4">
                       <p className="text-sm text-muted-foreground">Notlar</p>
                       <p>{selectedRequest.notes}</p>
                     </div>
                   )}
                   {(selectedRequest.photo1Url || selectedRequest.photo2Url) && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-3 sm:gap-4">
                       <p className="text-sm text-muted-foreground">Fotoğraflar</p>
                       <div className="grid grid-cols-2 gap-2">
                         {selectedRequest.photo1Url && <img src={selectedRequest.photo1Url} alt="Foto 1" className="w-full h-32 object-cover rounded-lg" />}

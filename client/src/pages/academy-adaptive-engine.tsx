@@ -22,7 +22,7 @@ export default function AcademyAdaptiveEngine() {
   });
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">
       <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
@@ -50,7 +50,7 @@ export default function AcademyAdaptiveEngine() {
             Önerilen Yollar
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <CardContent className="flex flex-col gap-3 sm:gap-4">
           {recommendations.length > 0 ? (
             recommendations.map((rec: any, idx: number) => (
               <div key={idx} className="p-2 border rounded-lg space-y-1">

@@ -526,7 +526,7 @@ export default function PersonelDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="documents" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="documents" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -712,7 +712,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="attendance" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="attendance" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -723,7 +723,7 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {attendanceLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
@@ -774,7 +774,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="performance" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="performance" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -785,7 +785,7 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {performanceLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Skeleton className="h-20 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
@@ -844,7 +844,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="training" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="training" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -855,7 +855,7 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {trainingLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
@@ -899,7 +899,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="leave" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="leave" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -909,7 +909,7 @@ export default function PersonelDetay() {
               <CardDescription>Personelin izin ve fazla mesai geçmişi</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <div>
                   <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
@@ -1013,7 +1013,7 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {disciplinaryLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
@@ -1096,13 +1096,13 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {onboardingLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Skeleton className="h-20 w-full" />
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : onboarding ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 rounded-lg border">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Durum</p>
@@ -1130,13 +1130,13 @@ export default function PersonelDetay() {
                       {onboarding && <OnboardingTaskDialog onboardingId={onboarding.id} userId={id!} />}
                     </div>
                     {onboardingTasksLoading ? (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="flex flex-col gap-3 sm:gap-4">
                         <Skeleton className="h-12 w-full" />
                         <Skeleton className="h-12 w-full" />
                         <Skeleton className="h-12 w-full" />
                       </div>
                     ) : onboardingTasks && onboardingTasks.length > 0 ? (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="flex flex-col gap-3 sm:gap-4">
                         {onboardingTasks.map((task) => (
                           <Card key={task.id} data-testid={`onboarding-task-${task.id}`}>
                             <CardContent className="p-3">
@@ -1220,7 +1220,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="disciplinary" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="disciplinary" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1231,12 +1231,12 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {trainingLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-3/4" />
                 </div>
               ) : trainingProgress ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="grid grid-cols-4 gap-2 sm:gap-3">
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Toplam</p>
@@ -1274,7 +1274,7 @@ export default function PersonelDetay() {
                   {trainingProgress.assignments && trainingProgress.assignments.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3">Atanan Eğitimler</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <div className="flex flex-col gap-3 sm:gap-4 gap-2">
                         {trainingProgress.assignments.slice(0, 6).map((a: any) => (
                           <div key={a.id} className="p-2 border rounded-lg text-center">
                             <p className="font-medium text-xs line-clamp-1">{a.materialId}</p>
@@ -1297,7 +1297,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="onboarding" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="onboarding" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1374,7 +1374,7 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="tasks" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="tasks" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

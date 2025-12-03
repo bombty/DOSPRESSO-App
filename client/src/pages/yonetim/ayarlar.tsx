@@ -223,7 +223,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSaveGeneral} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="site_title">Site Başlığı</Label>
                   <Input
                     id="site_title"
@@ -234,7 +234,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="contact_email">İletişim Email</Label>
                   <Input
                     id="contact_email"
@@ -246,7 +246,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="contact_phone">İletişim Telefon</Label>
                   <Input
                     id="contact_phone"
@@ -258,7 +258,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="address">Adres</Label>
                   <Textarea
                     id="address"
@@ -270,7 +270,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="instagram_url">Instagram URL</Label>
                   <Input
                     id="instagram_url"
@@ -282,7 +282,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="facebook_url">Facebook URL</Label>
                   <Input
                     id="facebook_url"
@@ -294,7 +294,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="twitter_url">Twitter URL</Label>
                   <Input
                     id="twitter_url"
@@ -306,7 +306,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="working_hours">Çalışma Saatleri</Label>
                   <Input
                     id="working_hours"
@@ -334,7 +334,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSaveSMTP} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="smtp_host">SMTP Host</Label>
                   <Input
                     id="smtp_host"
@@ -345,7 +345,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="smtp_port">SMTP Port</Label>
                   <Input
                     id="smtp_port"
@@ -357,7 +357,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="smtp_user">SMTP Kullanıcı</Label>
                   <Input
                     id="smtp_user"
@@ -368,7 +368,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="smtp_password">SMTP Şifre</Label>
                   <Input
                     id="smtp_password"
@@ -380,7 +380,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="smtp_from_email">Gönderen Email</Label>
                   <Input
                     id="smtp_from_email"
@@ -392,7 +392,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="smtp_from_name">Gönderen İsim</Label>
                   <Input
                     id="smtp_from_name"
@@ -426,7 +426,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSaveTheme} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="primary_color">Ana Renk (Primary Color)</Label>
                   <Input
                     id="primary_color"
@@ -438,7 +438,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="secondary_color">İkincil Renk (Secondary Color)</Label>
                   <Input
                     id="secondary_color"
@@ -450,7 +450,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="accent_color">Vurgu Renk (Accent Color)</Label>
                   <Input
                     id="accent_color"
@@ -462,7 +462,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="font_family">Font Ailesi</Label>
                   <Select
                     value={themeSettings.font_family}
@@ -479,7 +479,7 @@ export default function Settings() {
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Kenar Yuvarlama (Border Radius)</Label>
                   <RadioGroup
                     value={themeSettings.border_radius}
@@ -522,7 +522,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSaveBranding} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="logo_url">Logo URL</Label>
                   <Input
                     id="logo_url"
@@ -542,7 +542,7 @@ export default function Settings() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="favicon_url">Favicon URL</Label>
                   <Input
                     id="favicon_url"
@@ -562,7 +562,7 @@ export default function Settings() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="banner_url">Ana Sayfa Banner URL</Label>
                   <Input
                     id="banner_url"
@@ -599,7 +599,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSaveContent} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="about_us_content">Hakkımızda</Label>
                   <Textarea
                     id="about_us_content"
@@ -611,7 +611,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="privacy_policy_content">Gizlilik Politikası</Label>
                   <Textarea
                     id="privacy_policy_content"
@@ -623,7 +623,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="terms_of_service_content">Kullanım Koşulları</Label>
                   <Textarea
                     id="terms_of_service_content"

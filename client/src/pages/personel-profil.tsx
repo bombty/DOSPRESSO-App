@@ -91,7 +91,7 @@ export default function PersonelProfilPage() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <Skeleton className="h-12 w-full" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           <Skeleton className="h-32" />
@@ -119,7 +119,7 @@ export default function PersonelProfilPage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <div className="p-3 flex flex-col gap-3 sm:gap-4">
         {/* Status badges */}
         <div className="flex items-center gap-2 flex-wrap justify-between">
           <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
@@ -225,7 +225,7 @@ export default function PersonelProfilPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="bilgiler" className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+      <Tabs className="w-full flex flex-col gap-3 sm:gap-4">
         <TabsList className="flex flex-wrap gap-1">
           <TabsTrigger value="bilgiler" data-testid="tab-info" className="flex-1 min-w-fit">Kişisel Bilgiler</TabsTrigger>
           <TabsTrigger value="performans" data-testid="tab-performance" className="flex-1 min-w-fit">Performans</TabsTrigger>
@@ -234,7 +234,7 @@ export default function PersonelProfilPage() {
           <TabsTrigger value="akademi" data-testid="tab-academy" className="flex-1 min-w-fit">Akademi</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Personel Bilgileri</CardTitle>
@@ -288,7 +288,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Performans Metrikleri</CardTitle>
@@ -302,7 +302,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Personel Denetimleri</CardTitle>
@@ -316,7 +316,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Vardiya Geçmişi</CardTitle>
@@ -330,14 +330,14 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Akademi Modülleri</CardTitle>
               <CardDescription>Tüm akademi eğitim ve gelişim programlarına erişim</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-4 gap-2 sm:gap-3">
                 <Link href="/akademi">
                   <Button variant="outline" className="w-full" data-testid="link-akademi">Akademi</Button>
                 </Link>

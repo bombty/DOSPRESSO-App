@@ -133,7 +133,7 @@ export default function HQSupport() {
   };
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">HQ Destek</h1>
@@ -155,7 +155,7 @@ export default function HQSupport() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">
@@ -173,7 +173,7 @@ export default function HQSupport() {
           )}
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">
@@ -237,11 +237,11 @@ function TicketList({
     });
 
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <div className="flex flex-col gap-3 sm:gap-4">
         {Object.entries(grouped).map(([category, categoryTickets]) => (
           <div key={category}>
             <h3 className="text-lg font-medium mb-3">{CATEGORY_LABELS[category as HQSupportCategoryType]}</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               {categoryTickets.map(ticket => (
                 <TicketCard key={ticket.id} ticket={ticket} onClick={onTicketClick} />
               ))}
@@ -254,7 +254,7 @@ function TicketList({
 
   // Simple list for branch users
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4">
       {tickets.map(ticket => (
         <TicketCard key={ticket.id} ticket={ticket} onClick={onTicketClick} />
       ))}
@@ -672,7 +672,7 @@ function TicketDetailDialog({
 
         <div className="grid grid-cols-1 gap-2 sm:gap-3 flex-1 overflow-hidden flex flex-col">
           {/* Ticket Info */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="flex flex-col gap-3 sm:gap-4">
             <p className="text-sm text-muted-foreground" data-testid="text-detail-description">
               {ticket.description}
             </p>

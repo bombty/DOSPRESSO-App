@@ -109,7 +109,7 @@ export default function MisafirGeriBildirim() {
   }
 
   return (
-    <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="p-3 flex flex-col gap-3 sm:gap-4">
       <div>
         <h1 className="text-3xl font-bold" data-testid="heading-misafir-geribildirimi">Misafir Geri Bildirimleri</h1>
         <p className="text-muted-foreground mt-1">Misafirlerimizin görüşlerini takip edin ve değerlendirin</p>
@@ -149,7 +149,7 @@ export default function MisafirGeriBildirim() {
               <CardTitle className="text-sm font-medium">Puan Dağılımı</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 {[5, 4, 3, 2, 1].map((rating) => {
                   const count = stats[`rating${rating}` as keyof FeedbackStats] as number;
                   const percentage = stats.totalCount > 0 ? (count / stats.totalCount) * 100 : 0;
@@ -187,7 +187,7 @@ export default function MisafirGeriBildirim() {
             <Card key={feedback.id} data-testid={`card-feedback-${feedback.id}`} className="hover-elevate">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex items-center gap-2 sm:gap-3">
                       {renderStars(feedback.rating, "sm")}
                       <span className="text-sm text-muted-foreground" data-testid={`text-feedback-date-${feedback.id}`}>
@@ -238,7 +238,7 @@ export default function MisafirGeriBildirim() {
           </DialogHeader>
           <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             {reviewingFeedback && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 {renderStars(reviewingFeedback.rating)}
                 {reviewingFeedback.comment && (
                   <p className="text-sm p-3 bg-muted rounded-md">{reviewingFeedback.comment}</p>

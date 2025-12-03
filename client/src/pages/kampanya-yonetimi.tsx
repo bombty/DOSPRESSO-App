@@ -140,7 +140,7 @@ export default function KampanyaYonetimi() {
   }
 
   return (
-    <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="p-3 flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" data-testid="heading-kampanya-yonetimi">Kampanya Yönetimi</h1>
@@ -273,7 +273,7 @@ export default function KampanyaYonetimi() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <div className="flex flex-col gap-3 sm:gap-4">
           {campaigns.map((campaign) => {
             const isActive = campaign.status === "active";
             const startDate = new Date(campaign.startDate);

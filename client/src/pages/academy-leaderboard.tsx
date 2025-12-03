@@ -46,7 +46,7 @@ export default function AcademyLeaderboard() {
   const userRank = topPerformers.findIndex((p) => p.name === user?.firstName) + 1;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">
       <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
@@ -100,7 +100,7 @@ export default function AcademyLeaderboard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="global" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="global" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Top 5 Performans</CardTitle>
@@ -132,13 +132,13 @@ export default function AcademyLeaderboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="branches" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="branches" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Şube Performansı</CardTitle>
               <CardDescription>Her şubenin ortalama puanı ve tamamlama oranı</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <CardContent className="flex flex-col gap-3 sm:gap-4">
               {branchLeaders.map((branch) => (
                 <div key={branch.branchName} className="grid grid-cols-1 gap-2 p-3 border rounded-lg">
                   <div className="flex items-center justify-between">
@@ -160,7 +160,7 @@ export default function AcademyLeaderboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="exams" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="exams" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Sınav Performans Liderleri</CardTitle>

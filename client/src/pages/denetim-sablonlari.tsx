@@ -355,7 +355,7 @@ export default function DenetimSablonlariPage() {
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div>
@@ -426,7 +426,7 @@ export default function DenetimSablonlariPage() {
       </Card>
 
       {/* Templates Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <div className="flex flex-col gap-3 sm:gap-4">
         {templates.map((template) => (
           <Card key={template.id} data-testid={`card-template-${template.id}`} className="hover-elevate">
             <CardContent className="p-3">
@@ -504,7 +504,7 @@ export default function DenetimSablonlariPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {/* Template Info */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <FormField
                   control={form.control}
                   name="title"
@@ -764,7 +764,7 @@ export default function DenetimSablonlariPage() {
 
                       {/* Multiple Choice Options */}
                       {item.itemType === 'multiple_choice' && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                        <div className="flex flex-col gap-3 sm:gap-4">
                           <div>
                             <Label>Şıklar (En az 2 şık gerekli)</Label>
                             <div className="grid grid-cols-1 gap-2 mt-2">

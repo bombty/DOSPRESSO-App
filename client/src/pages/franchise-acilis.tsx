@@ -140,7 +140,7 @@ export default function FranchiseAcilis() {
   }
 
   return (
-    <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="p-3 flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" data-testid="heading-franchise-acilis">Franchise Açılış Yönetimi</h1>
@@ -323,7 +323,7 @@ export default function FranchiseAcilis() {
                   </div>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 text-sm">
+                  <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 text-sm">
                     <div>
                       <p className="text-muted-foreground mb-1">Şube ID</p>
                       <p className="font-medium" data-testid={`text-branch-id-${process.id}`}>{process.branchId}</p>

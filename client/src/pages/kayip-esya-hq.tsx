@@ -102,7 +102,7 @@ export default function KayipEsyaHQPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+      <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-5 gap-2 sm:gap-3">
         <Card className="hover-elevate">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
@@ -301,7 +301,7 @@ export default function KayipEsyaHQPage() {
             <CardTitle className="text-sm font-medium">Şube Özeti</CardTitle>
           </CardHeader>
           <CardContent className="p-3">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-4 gap-2">
               {stats.byBranch.map((branch) => (
                 <div
                   key={branch.id}

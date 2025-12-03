@@ -62,7 +62,7 @@ export default function AIAssistant() {
   };
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 max-w-6xl mx-auto">
+    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-semibold" data-testid="text-page-title">AI Asistan</h1>
         <p className="text-muted-foreground mt-1">Bilgi bankasından soru sorun ve anında cevap alın</p>
@@ -75,7 +75,7 @@ export default function AIAssistant() {
             Sohbet
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+        <CardContent className="flex flex-col gap-3 sm:gap-4">
           {conversation.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -84,7 +84,7 @@ export default function AIAssistant() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="flex flex-col gap-3 sm:gap-4">
             {conversation.map((item, index) => (
               <div key={index} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <div className="flex gap-2 sm:gap-3">
@@ -115,7 +115,7 @@ export default function AIAssistant() {
                     {item.sources?.length > 0 && (
                       <div className="mt-4 pt-4 border-t">
                         <p className="text-sm font-medium text-muted-foreground mb-2">Kaynaklar:</p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                        <div className="flex flex-col gap-3 sm:gap-4">
                           {item.sources.map((source, idx) => (
                             <div key={idx} className="text-sm">
                               <Badge variant="outline" className="mb-1">

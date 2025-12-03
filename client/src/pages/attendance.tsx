@@ -229,7 +229,7 @@ export default function AttendancePage() {
               <Skeleton className="h-24 w-full" />
             ) : activeShift ? (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Giriş Saati</span>
                     <span className="font-medium" data-testid="text-checkin-time">
@@ -333,7 +333,7 @@ export default function AttendancePage() {
             ) : (
               <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {uploadedPhotoUrl ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="relative aspect-video rounded-lg overflow-hidden border">
                       <img 
                         src={uploadedPhotoUrl} 
@@ -353,7 +353,7 @@ export default function AttendancePage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     <p className="text-sm text-muted-foreground text-center">
                       Giriş yapmak için fotoğraf yüklemesi zorunludur
                     </p>
@@ -419,7 +419,7 @@ export default function AttendancePage() {
             {historyLoading ? (
               <Skeleton className="h-20 w-full" />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Toplam Vardiya</span>
                   <span className="text-2xl font-bold" data-testid="text-total-shifts">
@@ -447,7 +447,7 @@ export default function AttendancePage() {
         </CardHeader>
         <CardContent>
           {historyLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}

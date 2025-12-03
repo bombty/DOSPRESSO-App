@@ -81,7 +81,7 @@ export default function AcademySupervisor() {
   });
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
+    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">
       <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}
@@ -126,7 +126,7 @@ export default function AcademySupervisor() {
               ) : teamMembers.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">Ekip üyesi bulunamadı</div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {teamMembers.map((member: any) => (
                     <div key={member.id} className="flex flex-col items-center text-center p-3 border rounded-lg hover-elevate">
                       <div>
@@ -147,7 +147,7 @@ export default function AcademySupervisor() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="modules" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="modules" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Eğitim Modülleri</CardTitle>
@@ -184,7 +184,7 @@ export default function AcademySupervisor() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="exams" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <TabsContent value="exams" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Beklemede Olan Sınav Talepleri</CardTitle>
@@ -194,7 +194,7 @@ export default function AcademySupervisor() {
               {pendingExams.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">Beklemede talep yok</div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   {pendingExams.map((exam: any) => (
                     <div key={exam.id} className="p-3 border rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <div className="flex items-center justify-between">

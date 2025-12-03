@@ -735,7 +735,7 @@ export default function ServiceRequestsManagement() {
           </DialogHeader>
 
           {selectedRequest && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               {/* Equipment Info */}
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
@@ -844,7 +844,7 @@ export default function ServiceRequestsManagement() {
                     <History className="w-4 h-4" />
                     Tarih
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     {selectedRequest.timeline.map((entry, idx) => (
                       <div key={entry.id} className="flex gap-2 sm:gap-3">
                         <div className="flex flex-col items-center">
@@ -896,7 +896,7 @@ export default function ServiceRequestsManagement() {
           </DialogHeader>
           <div className="grid grid-cols-1 gap-2 sm:gap-3 py-3">
             {/* Status */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <Label>Yeni Durum *</Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger data-testid="select-new-status">
@@ -913,7 +913,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Last Contact Date */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <Label>Son Görüşme Tarihi</Label>
               <Input 
                 type="datetime-local" 
@@ -925,7 +925,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Service Status Update */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <Label>Servis Durumu / Güncellemeler</Label>
               <Textarea
                 placeholder="Teknikçinin çalışma durumu, bulduğu sorunlar, yapılan işlemler vs..."
@@ -939,7 +939,7 @@ export default function ServiceRequestsManagement() {
 
             {/* Estimated Completion */}
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Label>Tahmini Bitiş Tarihi</Label>
                 <Input 
                   type="date" 
@@ -950,7 +950,7 @@ export default function ServiceRequestsManagement() {
               </div>
 
               {/* Actual Cost */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Label>Gerçek Maliyet (₺)</Label>
                 <Input 
                   type="number" 
@@ -972,7 +972,7 @@ export default function ServiceRequestsManagement() {
               
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {/* Photo 1 */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Fotoğraf 1</Label>
                   {photo1Preview && (
                     <img src={photo1Preview} alt="Photo 1" className="w-full h-32 object-cover rounded-md border" />
@@ -1007,7 +1007,7 @@ export default function ServiceRequestsManagement() {
                 </div>
 
                 {/* Photo 2 */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label>Fotoğraf 2</Label>
                   {photo2Preview && (
                     <img src={photo2Preview} alt="Photo 2" className="w-full h-32 object-cover rounded-md border" />
@@ -1081,9 +1081,9 @@ export default function ServiceRequestsManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="flex flex-col gap-3 sm:gap-4">
             {/* Step 1: Branch Selection */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <Label htmlFor="create-branch" className="text-base font-semibold">Adım 1: Şube Seçimi *</Label>
               <Select value={createBranch} onValueChange={(val) => { setCreateBranch(val); setSelectedEquipment(null); }}>
                 <SelectTrigger id="create-branch" data-testid="select-create-branch">
@@ -1101,7 +1101,7 @@ export default function ServiceRequestsManagement() {
 
             {/* Step 2: Equipment Selection */}
             {createBranch && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Label className="text-base font-semibold">Adım 2: Cihaz Seçimi *</Label>
                 {branchEquipment.length > 0 ? (
                   <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
@@ -1131,7 +1131,7 @@ export default function ServiceRequestsManagement() {
             <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="create-priority">Öncelik</Label>
                   <Select value={createPriority} onValueChange={setCreatePriority}>
                     <SelectTrigger id="create-priority" data-testid="select-create-priority">
@@ -1147,7 +1147,7 @@ export default function ServiceRequestsManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Label htmlFor="create-provider">Servis Sağlayıcı *</Label>
                 <Input
                   id="create-provider"
@@ -1158,7 +1158,7 @@ export default function ServiceRequestsManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Label htmlFor="create-notes">Notlar</Label>
                 <Textarea
                   id="create-notes"
@@ -1173,7 +1173,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Photo Upload Section */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <Label className="text-base font-semibold">Fotoğraflar (İsteğe Bağlı)</Label>
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
