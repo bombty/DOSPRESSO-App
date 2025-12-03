@@ -75,26 +75,46 @@ export default function AcademyCertificates() {
           <CardContent>
             <div className="flex flex-col gap-3 sm:gap-4">
               {/* Certificate Preview */}
-              <div className={`bg-gradient-to-br ${currentLevel.certificateColor} p-3 rounded-lg border-2 border-dashed border-gray-300 text-center min-h-40 flex flex-col justify-between text-xs`}>
-                <div className="flex flex-col items-center gap-2">
-                  <img src={dospressoLogo} alt="DOSPRESSO" className="h-12 object-contain" />
-                  <div>
-                    <p className="text-sm text-muted-foreground uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
-                    <p className="text-lg font-serif mt-1">Kariyer Sertifikası</p>
+              <div className="relative">
+                <div className={`bg-gradient-to-br ${currentLevel.certificateColor} p-6 rounded-xl border-4 border-amber-900 text-center min-h-56 flex flex-col justify-between text-xs shadow-2xl relative overflow-hidden`}
+                  style={{
+                    boxShadow: "0 0 0 8px rgba(217, 119, 6, 0.1), 0 8px 16px rgba(0, 0, 0, 0.2)"
+                  }}>
+                  
+                  {/* Dekoratif köşeler */}
+                  <div className="absolute top-1 left-1 w-3 h-3 border-t-2 border-l-2 border-amber-900"></div>
+                  <div className="absolute top-1 right-1 w-3 h-3 border-t-2 border-r-2 border-amber-900"></div>
+                  <div className="absolute bottom-1 left-1 w-3 h-3 border-b-2 border-l-2 border-amber-900"></div>
+                  <div className="absolute bottom-1 right-1 w-3 h-3 border-b-2 border-r-2 border-amber-900"></div>
+
+                  <div className="flex flex-col items-center gap-2 relative z-10">
+                    <img src={dospressoLogo} alt="DOSPRESSO" className="h-16 object-contain" />
+                    <div>
+                      <p className="text-xs font-semibold text-amber-900 uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
+                      <p className="text-base font-serif font-bold mt-1 text-amber-950">Kariyer Sertifikası</p>
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <p className="text-3xl font-bold text-foreground mb-2">{currentLevel.titleTr}</p>
-                  <p className="text-sm text-muted-foreground">Seviye {currentLevel.levelNumber} / 5</p>
-                </div>
+                  <div className="relative z-10">
+                    <p className="text-4xl font-bold text-amber-950 mb-1">{currentLevel.titleTr}</p>
+                    <p className="text-xs text-amber-800 font-semibold">Seviye {currentLevel.levelNumber} / 5</p>
+                  </div>
 
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  <p className="text-sm text-foreground">
-                    <span className="font-semibold">{user?.firstName ? `${user.firstName} ${user.lastName || ""}` : "Kullanıcı"}</span> tarafından başarıyla tamamlanmış
-                  </p>
-                  <p className="text-xs text-muted-foreground">{today}</p>
-                  <p className="text-xs text-muted-foreground mt-3">Sertifika No: CERT-{user?.id?.substring(0, 8).toUpperCase()}</p>
+                  <div className="flex flex-col gap-2 relative z-10">
+                    <p className="text-xs text-amber-950 font-semibold">
+                      <span className="font-bold">{user?.firstName ? `${user.firstName} ${user.lastName || ""}` : "Kullanıcı"}</span>
+                    </p>
+                    <p className="text-xs text-amber-800">tarafından başarıyla tamamlanmış</p>
+                    <p className="text-xs text-amber-700 mt-1">{today}</p>
+                    <p className="text-xs text-amber-700 font-mono">Sertifika No: CERT-{user?.id?.substring(0, 8).toUpperCase()}</p>
+                  </div>
+
+                  {/* Damga Efekti */}
+                  <div className="absolute -right-6 top-1/2 transform -translate-y-1/2 -rotate-45 opacity-20 z-20 pointer-events-none">
+                    <div className="border-4 border-red-600 rounded-full px-6 py-3 text-center">
+                      <p className="text-xs font-bold text-red-600 tracking-widest">ONAYLANDI</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
