@@ -91,7 +91,7 @@ export default function AcademyLearningPaths() {
                   <Brain className="w-4 h-4 text-purple-600 flex-shrink-0" />
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-1 md:grid-cols-2">
+              <CardContent className="w-full space-y-1 md:space-y-1">
                 <div className="flex gap-1 flex-wrap">
                   <Badge variant="outline" className="text-xs">{path.duration}</Badge>
                   <Badge variant="outline" className="text-xs">{path.difficulty}</Badge>

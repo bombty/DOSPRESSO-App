@@ -694,7 +694,7 @@ export default function Vardiyalar() {
                         <p className="text-xs text-muted-foreground">{format(day, "EEE", { locale: tr })}</p>
                         <p className="text-lg">{format(day, "d")}</p>
                       </div>
-                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                      <div className="w-full space-y-1 md:space-y-1">
                         {dayShifts.length === 0 ? (
                           <p className="text-xs text-muted-foreground text-center py-3">-</p>
                         ) : (

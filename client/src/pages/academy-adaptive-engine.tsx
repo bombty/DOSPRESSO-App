@@ -63,7 +63,7 @@ export default function AcademyAdaptiveEngine() {
                     {rec.priority === "high" ? "Yüksek" : "Önerilen"}
                   </Badge>
                 </div>
-                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                <div className="w-full space-y-1 md:space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Tahmini</span>
                     <span className="font-medium">{rec.completionPercent}%</span>

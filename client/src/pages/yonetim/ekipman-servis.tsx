@@ -475,7 +475,7 @@ export default function EkipmanServis() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+            <div className="w-full space-y-1 md:space-y-1">
               <Label className="text-xs">Şube</Label>
               <Select value={filterBranch} onValueChange={setFilterBranch}>
                 <SelectTrigger data-testid="select-filter-branch">
@@ -491,7 +491,7 @@ export default function EkipmanServis() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+            <div className="w-full space-y-1 md:space-y-1">
               <Label className="text-xs">Tip</Label>
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger data-testid="select-filter-type">

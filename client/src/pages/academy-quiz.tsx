@@ -148,7 +148,7 @@ export default function AcademyQuiz() {
                     <CardTitle className="text-sm">Yol Önerisi</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                <CardContent className="w-full space-y-1 md:space-y-1">
                   <p className="text-sm">{recommendation.recommendation}</p>
                   
                   {/* Difficulty Progression Path */}

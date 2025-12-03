@@ -616,19 +616,19 @@ export default function CashReports() {
                 </CardHeader>
                 <CardContent className="w-full space-y-2 sm:space-y-3">
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                    <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                    <div className="w-full space-y-1 md:space-y-1">
                       <p className="text-xs text-muted-foreground">Açılış Cashiersı</p>
                       <p className="text-lg font-semibold" data-testid={`text-opening-${report.id}`}>
                         {formatCurrency(Number(report.openingCash))}
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                    <div className="w-full space-y-1 md:space-y-1">
                       <p className="text-xs text-muted-foreground">Kapanış Cashiersı</p>
                       <p className="text-lg font-semibold" data-testid={`text-closing-${report.id}`}>
                         {formatCurrency(Number(report.closingCash))}
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                    <div className="w-full space-y-1 md:space-y-1">
                       <p className="text-xs text-muted-foreground">Fark</p>
                       <div className="flex items-center gap-1">
                         {diff > 0 && <TrendingUp className="w-4 h-4 text-success" />}
@@ -642,7 +642,7 @@ export default function CashReports() {
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                    <div className="w-full space-y-1 md:space-y-1">
                       <p className="text-xs text-muted-foreground">Toplam Satış</p>
                       <p className="text-lg font-semibold" data-testid={`text-sales-${report.id}`}>
                         {formatCurrency(Number(report.totalSales))}
@@ -652,19 +652,19 @@ export default function CashReports() {
 
                   {(report.cashSales || report.cardSales || report.expenses) && (
                     <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 border-t">
-                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                      <div className="w-full space-y-1 md:space-y-1">
                         <p className="text-xs text-muted-foreground">Nakit Satış</p>
                         <p className="text-sm font-medium">
                           {report.cashSales ? formatCurrency(Number(report.cashSales)) : '-'}
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                      <div className="w-full space-y-1 md:space-y-1">
                         <p className="text-xs text-muted-foreground">Kart Satış</p>
                         <p className="text-sm font-medium">
                           {report.cardSales ? formatCurrency(Number(report.cardSales)) : '-'}
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                      <div className="w-full space-y-1 md:space-y-1">
                         <p className="text-xs text-muted-foreground">Giderler</p>
                         <p className="text-sm font-medium text-destructive">
                           {report.expenses ? formatCurrency(Number(report.expenses)) : '-'}

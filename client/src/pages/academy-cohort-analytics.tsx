@@ -129,7 +129,7 @@ export default function AcademyCohortAnalytics() {
               <CardContent>
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {funnelData.map((stage, idx) => (
-                    <div key={idx} className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                    <div key={idx} className="w-full space-y-1 md:space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium">{stage.stage}</span>
                         <div className="flex gap-2">

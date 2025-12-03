@@ -65,7 +65,7 @@ export default function AcademyLearningPathDetail() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">İlerleme</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-1 md:grid-cols-2">
+            <CardContent className="w-full space-y-1 md:space-y-1">
               <Progress value={totalCompletion} className="h-1" />
               <div className="grid grid-cols-3 gap-1 text-xs">
                 <div>
@@ -85,7 +85,7 @@ export default function AcademyLearningPathDetail() {
           </Card>
 
           {/* Recommended Sequence */}
-          <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+          <div className="w-full space-y-1 md:space-y-1">
             <h2 className="text-sm font-semibold">Sırasıyla Öğren</h2>
             {recommendedQuizzes.map((quiz, idx) => (
               <Card 

@@ -1646,7 +1646,7 @@ export default function ModuleDetail() {
                   {module.supervisorChecklist.map((item: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-orange-500">
                       <CardContent className="pt-4">
-                        <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                        <div className="w-full space-y-1 md:space-y-1">
                           <p className="font-medium text-sm">{item.title}</p>
                           <p className="text-sm text-muted-foreground">{item.description}</p>
                         </div>

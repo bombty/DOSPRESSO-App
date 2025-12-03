@@ -581,7 +581,7 @@ export default function ServiceRequestsManagement() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+            <div className="w-full space-y-1 md:space-y-1">
               <Label className="text-xs">Şube</Label>
               <Select value={filterBranch} onValueChange={setFilterBranch}>
                 <SelectTrigger data-testid="select-filter-branch">
@@ -597,7 +597,7 @@ export default function ServiceRequestsManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+            <div className="w-full space-y-1 md:space-y-1">
               <Label className="text-xs">Durum</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger data-testid="select-filter-status">
@@ -738,19 +738,19 @@ export default function ServiceRequestsManagement() {
             <div className="flex flex-col gap-3 sm:gap-4">
               {/* Equipment Info */}
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                <div className="w-full space-y-1 md:space-y-1">
                   <p className="text-sm text-muted-foreground">Cihaz Adı</p>
                   <p className="font-medium">{selectedRequest.equipmentName}</p>
                 </div>
-                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                <div className="w-full space-y-1 md:space-y-1">
                   <p className="text-sm text-muted-foreground">Cihaz Tipi</p>
                   <p className="font-medium">{selectedRequest.equipmentType}</p>
                 </div>
-                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                <div className="w-full space-y-1 md:space-y-1">
                   <p className="text-sm text-muted-foreground">Şube</p>
                   <p className="font-medium">{selectedRequest.branchName || `Şube #${selectedRequest.branchId}`}</p>
                 </div>
-                <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                <div className="w-full space-y-1 md:space-y-1">
                   <p className="text-sm text-muted-foreground">Cihaz ID</p>
                   <p className="font-medium">{selectedRequest.equipmentId}</p>
                 </div>
@@ -760,13 +760,13 @@ export default function ServiceRequestsManagement() {
               <div className="border-t pt-4 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <h3 className="font-semibold">Servis Talebi Bilgileri</h3>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                  <div className="w-full space-y-1 md:space-y-1">
                     <p className="text-sm text-muted-foreground">Durum</p>
                     <Badge className={STATUS_VARIANTS[selectedRequest.status]}>
                       {STATUS_LABELS[selectedRequest.status]}
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                  <div className="w-full space-y-1 md:space-y-1">
                     <p className="text-sm text-muted-foreground">Öncelik</p>
                     {selectedRequest.priority ? (
                       <Badge className={`${PRIORITY_COLORS[selectedRequest.priority]} border ${PRIORITY_VARIANTS[selectedRequest.priority]}`}>
@@ -776,11 +776,11 @@ export default function ServiceRequestsManagement() {
                       <span className="text-sm text-muted-foreground">-</span>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                  <div className="w-full space-y-1 md:space-y-1">
                     <p className="text-sm text-muted-foreground">Servis Sağlayıcı</p>
                     <p className="font-medium">{selectedRequest.serviceProvider}</p>
                   </div>
-                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                  <div className="w-full space-y-1 md:space-y-1">
                     <p className="text-sm text-muted-foreground">Talep Tarihi</p>
                     <p className="font-medium">{format(new Date(selectedRequest.createdAt), 'd MMM yyyy, HH:mm', { locale: tr })}</p>
                   </div>
@@ -793,13 +793,13 @@ export default function ServiceRequestsManagement() {
                   <h3 className="font-semibold">Tarihler</h3>
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {selectedRequest.scheduledDate && (
-                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                      <div className="w-full space-y-1 md:space-y-1">
                         <p className="text-sm text-muted-foreground">Planlanan Tarih</p>
                         <p className="font-medium">{format(new Date(selectedRequest.scheduledDate), 'd MMM yyyy', { locale: tr })}</p>
                       </div>
                     )}
                     {selectedRequest.completedDate && (
-                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                      <div className="w-full space-y-1 md:space-y-1">
                         <p className="text-sm text-muted-foreground">Tamamlanma Tarihi</p>
                         <p className="font-medium text-green-600">{format(new Date(selectedRequest.completedDate), 'd MMM yyyy', { locale: tr })}</p>
                       </div>
@@ -814,13 +814,13 @@ export default function ServiceRequestsManagement() {
                   <h3 className="font-semibold">Maliyetler</h3>
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {selectedRequest.estimatedCost && (
-                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                      <div className="w-full space-y-1 md:space-y-1">
                         <p className="text-sm text-muted-foreground">Tahmini Maliyet</p>
                         <p className="font-medium">₺{selectedRequest.estimatedCost}</p>
                       </div>
                     )}
                     {selectedRequest.actualCost && (
-                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                      <div className="w-full space-y-1 md:space-y-1">
                         <p className="text-sm text-muted-foreground">Gerçek Maliyet</p>
                         <p className="font-medium">₺{selectedRequest.actualCost}</p>
                       </div>

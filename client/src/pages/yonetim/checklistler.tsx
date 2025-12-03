@@ -223,7 +223,7 @@ export default function AdminChecklistManagement() {
                       {isExpanded && tasks.length > 0 && (
                         <>
                           <Separator className="my-3" />
-                          <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                          <div className="w-full space-y-1 md:space-y-1">
                             <h4 className="font-medium text-sm mb-2">Görevler:</h4>
                             {tasks.map((task, index) => (
                               <div

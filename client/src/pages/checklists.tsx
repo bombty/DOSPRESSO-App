@@ -391,7 +391,7 @@ export default function Checklists() {
                         <h3 className="text-sm font-medium text-muted-foreground">Çizelge Maddeleri</h3>
                       </div>
                       
-                      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                      <div className="w-full space-y-1 md:space-y-1">
                         <h4 className="text-sm font-semibold">09:00</h4>
                         {tasks.map((task) => {
                           const isChecked = taskStates[task.id]?.checked || false;

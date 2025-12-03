@@ -92,7 +92,7 @@ export default function AcademyProgressOverview() {
       </Card>
 
       {/* Personalized Recommendations */}
-      <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+      <div className="w-full space-y-1 md:space-y-1">
         <h2 className="text-sm font-semibold flex items-center gap-1">
           <Zap className="w-4 h-4" />
           Öneriler

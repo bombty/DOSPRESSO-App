@@ -302,7 +302,7 @@ export default function UserCRM() {
             <CardDescription>Kullanıcıları rol, şube veya ada göre filtrele</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
               <div>
                 <Label htmlFor="role-filter">Rol</Label>
                 <Select value={roleFilter} onValueChange={setRoleFilter}>

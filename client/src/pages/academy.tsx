@@ -325,7 +325,7 @@ export default function Academy() {
               <span className="text-muted-foreground">Seviye {currentLevel.levelNumber}/5</span>
             </div>
             {nextLevel && (
-              <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+              <div className="w-full space-y-1 md:space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Sonraki: {nextLevel.titleTr}</span>
                   <span className="font-medium">{Math.round(progressPercent)}%</span>
@@ -346,7 +346,7 @@ export default function Academy() {
               Beklemede ({examRequests.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-1 md:grid-cols-2">
+          <CardContent className="w-full space-y-1 md:space-y-1">
             {examRequests.map((req: ExamRequest) => (
               <div key={req.id} className="flex items-center justify-between p-2 text-xs border-b last:border-0">
                 <span className="font-medium truncate">{req.userId}</span>

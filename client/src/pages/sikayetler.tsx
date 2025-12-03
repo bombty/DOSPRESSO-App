@@ -277,7 +277,7 @@ export default function Sikayetler() {
             <Card key={complaint.id} data-testid={`card-complaint-${complaint.id}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
+                  <div className="w-full space-y-1 md:space-y-1">
                     <CardTitle className="text-lg">
                       {complaint.customerName || "Anonim Misafir"}
                     </CardTitle>
