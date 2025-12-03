@@ -144,7 +144,7 @@ export default function AcademyQuiz() {
               <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-1">
-                    <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <Zap className="w-4 h-4 text-primary dark:text-blue-400" />
                     <CardTitle className="text-sm">Yol Önerisi</CardTitle>
                   </div>
                 </CardHeader>
@@ -159,7 +159,7 @@ export default function AcademyQuiz() {
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />
                     <div className="text-xs text-center">
-                      <Badge variant="outline" className={recommendation.nextDifficulty === 'medium' ? "bg-warning/20 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200" : "bg-slate-100 dark:bg-slate-800"}>Orta</Badge>
+                      <Badge variant="outline" className={recommendation.nextDifficulty === 'medium' ? "bg-warning/20 dark:bg-warning/5 text-yellow-800 dark:text-warning" : "bg-slate-100 dark:bg-slate-800"}>Orta</Badge>
                       <p className="text-xs text-muted-foreground mt-1">{recommendation.nextDifficulty === 'medium' ? 'Sonraki' : 'Kilitli'}</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />

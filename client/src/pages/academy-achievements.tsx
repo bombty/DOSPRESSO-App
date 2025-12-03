@@ -192,7 +192,7 @@ export default function AcademyAchievements() {
       </div>
 
       {/* Tips */}
-      <Card className="col-span-full bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+      <Card className="col-span-full bg-warning/10 dark:bg-amber-950 border-warning/30 dark:border-amber-800">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Zap className="w-5 h-5" />

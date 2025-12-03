@@ -112,7 +112,7 @@ export default function AcademyStreakTracker() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-lg font-bold text-blue-600">30</p>
+            <p className="text-lg font-bold text-primary">30</p>
             <p className="text-xs text-muted-foreground">gün</p>
           </CardContent>
         </Card>
@@ -130,7 +130,7 @@ export default function AcademyStreakTracker() {
                 key={idx}
                 className={`p-2 rounded-lg text-center border transition-all ${
                   m.unlocked
-                    ? "bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-900 dark:to-amber-950 border-amber-300 dark:border-amber-700"
+                    ? "bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-900 dark:to-amber-950 border-amber-300 dark:border-warning/40"
                     : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 opacity-60"
                 }`}
               >

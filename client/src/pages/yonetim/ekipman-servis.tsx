@@ -33,10 +33,10 @@ const SERVICE_STATUS_LABELS = {
 } as const;
 
 const PRIORITY_VARIANTS = {
-  'düşük': 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700',
-  'orta': 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700',
-  'yüksek': 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-700',
-  'kritik': 'bg-destructive/10 border-destructive/30 dark:bg-red-900/20 dark:border-red-700',
+  'düşük': 'bg-primary/10 border-primary/30 dark:bg-primary/5 dark:border-primary/40',
+  'orta': 'bg-warning/10 border-warning/30 dark:bg-warning/5 dark:border-warning/40',
+  'yüksek': 'bg-warning/10 border-warning/30 dark:bg-warning/5 dark:border-warning/40',
+  'kritik': 'bg-destructive/10 border-destructive/30 dark:bg-destructive/5 dark:border-destructive/40',
 } as const;
 
 interface UnifiedRequest {
@@ -395,7 +395,7 @@ export default function EkipmanServis() {
     } catch (error) {
       toast({
         title: 'Hata',
-        description: error.message || 'AI analiz başarısız',
+        description: (error instanceof Error ? error.message : 'AI analiz başarısız'),
         variant: 'destructive',
       });
     } finally {
@@ -428,8 +428,8 @@ export default function EkipmanServis() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                <Wrench className="h-4 w-4 text-blue-600" />
+              <div className="h-4 w-4 rounded-full bg-primary/10 dark:bg-primary/5/20 flex items-center justify-center">
+                <Wrench className="h-4 w-4 text-primary" />
               </div>
               <p className="text-xs text-muted-foreground">Toplam</p>
               <p className="text-lg font-bold">{stats.total}</p>
@@ -530,13 +530,13 @@ export default function EkipmanServis() {
                       {req.type === 'fault' ? '⚠️ Arıza' : '📋 Talep'}
                     </Badge>
                     {req.type === 'fault' && (
-                      <Badge className={req.faultStatus === 'acik' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}>
+                      <Badge className={req.faultStatus === 'acik' ? 'bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}>
                         {FAULT_STATUS_LABELS[req.faultStatus as keyof typeof FAULT_STATUS_LABELS]}
                       </Badge>
                     )}
-                    {req.type === 'service' && (
-                      <Badge className={req.priority === 'kritik' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}>
-                        {req.priority?.charAt(0).toUpperCase() + req.priority?.slice(1)}
+                    {req.type === 'service' && req.priority && (
+                      <Badge className={req.priority === 'kritik' ? 'bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive' : 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary'}>
+                        {req.priority.charAt(0).toUpperCase() + req.priority.slice(1)}
                       </Badge>
                     )}
                   </div>
@@ -659,7 +659,7 @@ export default function EkipmanServis() {
                     onClick={() => setCreateType('service')}
                     className={`p-3 rounded-lg border-2 text-center hover-elevate transition-all ${
                       createType === 'service'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        ? 'border-primary bg-primary/10 dark:bg-primary/5'
                         : 'border-border'
                     }`}
                     data-testid="button-type-service"
@@ -699,15 +699,15 @@ export default function EkipmanServis() {
                 </div>
 
                 {aiDiagnosis && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="bg-primary/10 dark:bg-primary/5 border border-primary/30 dark:border-primary/40 rounded-lg p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div>
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-100">AI Tanısı</p>
-                      <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">{aiDiagnosis.diagnosis}</p>
+                      <p className="text-sm text-primary dark:text-primary mt-1">{aiDiagnosis.diagnosis}</p>
                     </div>
                     {aiDiagnosis.troubleshootingSteps?.length > 0 && (
                       <div>
                         <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Sorun Giderme Adımları</p>
-                        <ul className="text-sm text-blue-800 dark:text-blue-200 mt-1 list-disc list-inside space-y-1">
+                        <ul className="text-sm text-primary dark:text-primary mt-1 list-disc list-inside space-y-1">
                           {aiDiagnosis.troubleshootingSteps.map((step: string, idx: number) => (
                             <li key={idx}>{step}</li>
                           ))}
@@ -715,15 +715,15 @@ export default function EkipmanServis() {
                       </div>
                     )}
                     <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="bg-white dark:bg-blue-900 p-2 rounded">
+                      <div className="bg-white dark:bg-primary/5 p-2 rounded">
                         <p className="text-muted-foreground dark:text-gray-300">Ciddiyet</p>
                         <p className="font-semibold text-blue-900 dark:text-blue-100">{aiDiagnosis.estimatedSeverity}</p>
                       </div>
-                      <div className="bg-white dark:bg-blue-900 p-2 rounded">
+                      <div className="bg-white dark:bg-primary/5 p-2 rounded">
                         <p className="text-muted-foreground dark:text-gray-300">Süre</p>
                         <p className="font-semibold text-blue-900 dark:text-blue-100">{aiDiagnosis.estimatedRepairTime}</p>
                       </div>
-                      <div className="bg-white dark:bg-blue-900 p-2 rounded">
+                      <div className="bg-white dark:bg-primary/5 p-2 rounded">
                         <p className="text-muted-foreground dark:text-gray-300">Eylem</p>
                         <p className="font-semibold text-blue-900 dark:text-blue-100 truncate">{aiDiagnosis.recommendedAction?.substring(0, 10)}</p>
                       </div>

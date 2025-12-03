@@ -60,8 +60,8 @@ const shiftTypeIcons: Record<string, any> = {
 };
 
 const shiftTypeColors: Record<string, string> = {
-  morning: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800",
-  evening: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+  morning: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-warning/30 dark:border-amber-800",
+  evening: "bg-primary/10 text-primary dark:bg-primary/5/30 dark:text-blue-300 border-blue-200 dark:border-blue-800",
   night: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800",
 };
 
@@ -77,7 +77,7 @@ const statusColors: Record<string, string> = {
   draft: "bg-secondary text-foreground dark:bg-gray-800 dark:text-gray-300",
   pending_hq: "bg-warning/20 text-warning dark:bg-yellow-900/30 dark:text-yellow-300",
   confirmed: "bg-green-100 text-success dark:bg-green-900/30 dark:text-green-300",
-  completed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  completed: "bg-primary/10 text-primary dark:bg-primary/5/30 dark:text-blue-300",
   cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
 };
 
@@ -483,8 +483,8 @@ export default function Vardiyalar() {
             <Card data-testid="card-total-shifts">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                    <CalendarIcon className="h-4 w-4 text-blue-600" />
+                  <div className="h-4 w-4 rounded-full bg-primary/10 dark:bg-primary/5/20 flex items-center justify-center">
+                    <CalendarIcon className="h-4 w-4 text-primary" />
                   </div>
                   <p className="text-xs text-muted-foreground">Bu Hafta</p>
                   <p className="text-lg font-bold">{totalWeekShifts}</p>
@@ -826,7 +826,7 @@ export default function Vardiyalar() {
                 <Timer className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-600">{todayShifts.length}</div>
+                <div className="text-3xl font-bold text-primary">{todayShifts.length}</div>
                 <p className="text-xs text-muted-foreground">bugün planlanmış</p>
               </CardContent>
             </Card>
@@ -1434,7 +1434,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       {hasCompletedShift && (
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30" data-testid="card-completed">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <CardTitle className="flex items-center gap-2 text-primary dark:text-blue-300">
               <CheckCircle2 className="h-4 w-4" />
               Vardiya Tamamlandı
             </CardTitle>
@@ -1592,12 +1592,12 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
         <CardContent className="pt-6">
           <div className="flex gap-2 sm:gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg h-fit">
-              <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-primary/10 dark:bg-primary/5 rounded-lg h-fit">
+              <CheckCircle2 className="h-4 w-4 text-primary dark:text-blue-400" />
             </div>
             <div>
               <h4 className="font-medium text-blue-900 dark:text-blue-100">Giriş/Çıkış Sistemi Hakkında</h4>
-              <ul className="mt-2 text-sm text-blue-700 dark:text-blue-300 space-y-1">
+              <ul className="mt-2 text-sm text-primary dark:text-blue-300 space-y-1">
                 <li>1. Şubenizde bulunan QR kodu okutun veya manuel giriş yapın</li>
                 <li>2. Konum bilginiz otomatik olarak doğrulanır</li>
                 <li>3. Şube yarıçapı içinde olmanız gerekir</li>

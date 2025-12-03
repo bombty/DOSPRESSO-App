@@ -1248,7 +1248,7 @@ export default function PersonelDetay() {
                     </div>
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Devam Eden</p>
-                      <p className="text-2xl font-bold text-blue-600">{trainingProgress.summary?.inProgress || 0}</p>
+                      <p className="text-2xl font-bold text-primary">{trainingProgress.summary?.inProgress || 0}</p>
                     </div>
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Geciken</p>

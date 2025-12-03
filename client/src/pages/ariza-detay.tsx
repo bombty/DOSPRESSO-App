@@ -46,7 +46,7 @@ const updateFaultSchema = z.object({
 
 const STAGE_COLORS: Record<string, string> = {
   bekliyor: "bg-secondary text-foreground dark:bg-gray-900",
-  isleme_alindi: "bg-blue-100 text-blue-800 dark:bg-blue-900",
+  isleme_alindi: "bg-primary/10 text-primary dark:bg-primary/5",
   devam_ediyor: "bg-warning/20 text-yellow-800 dark:bg-yellow-900",
   servis_cagrildi: "bg-orange-100 text-orange-800 dark:bg-orange-900",
   kargoya_verildi: "bg-purple-100 text-purple-800 dark:bg-purple-900",
@@ -56,7 +56,7 @@ const STAGE_COLORS: Record<string, string> = {
 const PRIORITY_COLORS: Record<string, string> = {
   kritik: "bg-red-100 text-red-800 dark:bg-red-900",
   yuksek: "bg-orange-100 text-orange-800 dark:bg-orange-900",
-  normal: "bg-blue-100 text-blue-800 dark:bg-blue-900",
+  normal: "bg-primary/10 text-primary dark:bg-primary/5",
 };
 
 export default function FaultDetail() {
@@ -239,7 +239,7 @@ export default function FaultDetail() {
             <div>
               <p className="text-sm text-muted-foreground">Fotoğraf</p>
               {fault.photoUrl ? (
-                <a href={fault.photoUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                <a href={fault.photoUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
                   Fotoğrafı Görüntüle
                 </a>
               ) : (

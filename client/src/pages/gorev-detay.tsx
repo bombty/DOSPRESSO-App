@@ -225,7 +225,7 @@ export default function GorevDetay() {
                     <User className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium text-blue-600 hover:underline">
+                    <p className="font-medium text-primary hover:underline">
                       {assignedUser.firstName} {assignedUser.lastName}
                     </p>
                     <p className="text-sm text-muted-foreground">{assignedUser.role}</p>
@@ -274,7 +274,7 @@ export default function GorevDetay() {
                     >
                       <div
                         className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                          item.isCompleted ? "bg-success/100 border-green-500" : "border-gray-300"
+                          item.isCompleted ? "bg-success/100 border-success" : "border-gray-300"
                         }`}
                       >
                         {item.isCompleted && <CheckCircle className="h-3 w-3 text-white" />}

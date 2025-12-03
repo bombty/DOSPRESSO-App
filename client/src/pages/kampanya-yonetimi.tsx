@@ -298,7 +298,7 @@ export default function KampanyaYonetimi() {
                       {format(startDate, "dd MMM")} - {format(endDate, "dd MMM")}
                     </p>
                     {isActive && daysRemaining !== null && (
-                      <div className="text-xs text-blue-600">
+                      <div className="text-xs text-primary">
                         {daysRemaining > 0 ? `${daysRemaining} gün` : "Bugün sona"}
                       </div>
                     )}

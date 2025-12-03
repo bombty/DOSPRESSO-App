@@ -402,8 +402,8 @@ export default function Tasks() {
         <Card data-testid="card-stat-devam-eden">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                <PlayCircle className="h-4 w-4 text-blue-600 dark:text-blue-500" />
+              <div className="h-4 w-4 rounded-full bg-primary/10 dark:bg-primary/5/20 flex items-center justify-center">
+                <PlayCircle className="h-4 w-4 text-primary dark:text-blue-500" />
               </div>
               <p className="text-xs text-muted-foreground">Devam Eden</p>
               <p className="text-lg font-bold">{stats.devamEden}</p>

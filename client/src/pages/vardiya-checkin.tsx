@@ -323,13 +323,13 @@ export default function VardiyaCheckin() {
             <div className="flex items-center gap-2 sm:gap-3">
               {isCapturingPhoto && (
                 <div className="flex items-center gap-2">
-                  <Camera className="h-4 w-4 text-blue-600 animate-pulse" />
+                  <Camera className="h-4 w-4 text-primary animate-pulse" />
                   <span className="text-sm font-medium">Fotoğraf çekiliyor...</span>
                 </div>
               )}
               {isGettingLocation && (
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-blue-600 animate-pulse" />
+                  <MapPin className="h-4 w-4 text-primary animate-pulse" />
                   <span className="text-sm font-medium">Konum alınıyor...</span>
                 </div>
               )}

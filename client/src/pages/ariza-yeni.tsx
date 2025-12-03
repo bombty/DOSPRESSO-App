@@ -168,7 +168,7 @@ export default function NewFaultReport() {
           <div className="flex gap-2 sm:gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-warning dark:text-yellow-200">Acil Durum</p>
+              <p className="font-medium text-warning dark:text-warning">Acil Durum</p>
               <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">
                 Eğer bu bir güvenlik tehlikesi veya üretim durması ise, lütfen "Yüksek" veya "Kritik" olarak işaretleyin.
               </p>

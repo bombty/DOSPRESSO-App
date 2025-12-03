@@ -26,7 +26,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  bulunan: "bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  bulunan: "bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-warning",
   teslim_edildi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
 };
 
@@ -213,8 +213,8 @@ export default function KayipEsyaPage() {
         <Card className="hover-elevate hidden md:block">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-blue-100 dark:bg-blue-900">
-                <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-md bg-primary/10 dark:bg-primary/5">
+                <Clock className="h-4 w-4 text-primary dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Toplam</p>

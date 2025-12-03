@@ -46,15 +46,15 @@ const updateFaultSchema = z.object({
 });
 
 const PRIORITY_COLORS: Record<string, string> = {
-  kritik: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  kritik: "bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive",
   yuksek: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  default: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  default: "bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary",
 };
 
 const STAGE_COLORS: Record<string, string> = {
   bekliyor: "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-200",
-  isleme_alindi: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  devam_ediyor: "bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  isleme_alindi: "bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary",
+  devam_ediyor: "bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-warning",
   servis_cagrildi: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
   kargoya_verildi: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
   kapatildi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -259,8 +259,8 @@ export default function FaultHub() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                    <Wrench className="h-4 w-4 text-blue-600" />
+                  <div className="h-4 w-4 rounded-full bg-primary/10 dark:bg-primary/5/20 flex items-center justify-center">
+                    <Wrench className="h-4 w-4 text-primary" />
                   </div>
                   <p className="text-xs text-muted-foreground">Açık</p>
                   <p className="text-lg font-bold" data-testid="text-open-count">{metrics.open.length}</p>
@@ -334,7 +334,7 @@ export default function FaultHub() {
               </CardContent>
             </Card>
 
-            <Card className="border-green-500 bg-success/10 dark:bg-success/5">
+            <Card className="border-success bg-success/10 dark:bg-success/5">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
                   <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
@@ -577,10 +577,10 @@ export default function FaultHub() {
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-blue-600">Devam Ediyor</CardTitle>
+                  <CardTitle className="text-sm font-medium text-primary">Devam Ediyor</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-blue-600" data-testid="text-my-inprogress">{metrics.myFaults.filter((f: EquipmentFault) => f.currentStage === "devam_ediyor").length}</div>
+                  <div className="text-3xl font-bold text-primary" data-testid="text-my-inprogress">{metrics.myFaults.filter((f: EquipmentFault) => f.currentStage === "devam_ediyor").length}</div>
                 </CardContent>
               </Card>
             </div>

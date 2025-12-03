@@ -68,13 +68,13 @@ export default function Performance() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-primary/10 dark:bg-primary/5/20 flex items-center justify-center">
                     {completionTrend > 0 ? (
                       <TrendingUp className="h-4 w-4 text-success" />
                     ) : completionTrend < 0 ? (
                       <TrendingDown className="h-4 w-4 text-destructive" />
                     ) : (
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <CheckCircle className="h-4 w-4 text-primary" />
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">Tamamlanma</p>

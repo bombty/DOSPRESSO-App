@@ -61,7 +61,7 @@ export default function BranchFeedback() {
 
   const statusColors: Record<string, string> = {
     yeni: "bg-warning/20 text-yellow-800",
-    okundu: "bg-blue-100 text-blue-800",
+    okundu: "bg-primary/10 text-primary",
     yanıtlandı: "bg-green-100 text-green-800",
   };
 

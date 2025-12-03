@@ -109,7 +109,7 @@ export default function Sikayetler() {
       case "resolved":
         return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Çözüldü</Badge>;
       case "in_progress":
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" data-testid={testId}><Timer className="w-3 h-3 mr-1" />İşlemde</Badge>;
+        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-blue-100" data-testid={testId}><Timer className="w-3 h-3 mr-1" />İşlemde</Badge>;
       case "assigned":
         return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100" data-testid={testId}><MessageSquare className="w-3 h-3 mr-1" />Atandı</Badge>;
       case "closed":

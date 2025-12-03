@@ -248,7 +248,7 @@ export default function PersonelOnboardingPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Devam Ediyor</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
+            <div className="text-2xl font-bold text-primary">{stats.inProgress}</div>
           </CardContent>
         </Card>
         <Card>

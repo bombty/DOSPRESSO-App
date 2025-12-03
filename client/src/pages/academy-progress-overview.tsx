@@ -23,7 +23,7 @@ export default function AcademyProgressOverview() {
 
   const metrics = [
     { label: "Kariyer Seviyesi", value: "Barista", color: "text-success" },
-    { label: "Tamamlanan Sınavlar", value: "24", color: "text-blue-600" },
+    { label: "Tamamlanan Sınavlar", value: "24", color: "text-primary" },
     { label: "Ortalama Puan", value: "82.5", color: "text-purple-600" },
     { label: "Başarı Rozeti", value: "4/6", color: "text-amber-600" },
   ];

@@ -109,7 +109,7 @@ export default function FranchiseAcilis() {
       case "opened":
         return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Açıldı</Badge>;
       case "ready":
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Hazır</Badge>;
+        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-blue-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Hazır</Badge>;
       case "training":
         return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Eğitim</Badge>;
       case "construction":

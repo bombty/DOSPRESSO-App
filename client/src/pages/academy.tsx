@@ -214,7 +214,7 @@ export default function Academy() {
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
             <CardTitle className="text-xs font-medium flex items-center gap-1">
-              <BookOpen className="w-3 h-3 text-blue-600" />
+              <BookOpen className="w-3 h-3 text-primary" />
               <span className="truncate">Modüller</span>
             </CardTitle>
           </CardHeader>
@@ -379,7 +379,7 @@ export default function Academy() {
                         data-testid={`link-module-${module.id}`}
                         onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
                       >
-                        <Card className={`cursor-pointer hover-elevate h-full flex flex-col ${completed ? 'border-green-500 dark:border-green-600' : ''}`} data-testid={`card-module-${module.id}`}>
+                        <Card className={`cursor-pointer hover-elevate h-full flex flex-col ${completed ? 'border-success dark:border-green-600' : ''}`} data-testid={`card-module-${module.id}`}>
                           <CardHeader className="pb-2 pt-2 px-2 flex-1">
                             <div className="flex items-start gap-1 mb-2">
                               <CardTitle className="text-xs font-semibold line-clamp-2 flex-1 leading-tight">{module.title}</CardTitle>
@@ -407,7 +407,7 @@ export default function Academy() {
             <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <Lightbulb className="w-4 h-4 text-primary dark:text-blue-400" />
                   Önerilen
                 </CardTitle>
               </CardHeader>
@@ -417,7 +417,7 @@ export default function Academy() {
                     {recommendedQuizzes.map((quiz) => {
                       const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-success/5 text-green-800 dark:text-green-200' 
                         : quiz.difficulty === 'hard' ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200'
-                        : 'bg-warning/20 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200';
+                        : 'bg-warning/20 dark:bg-warning/5 text-yellow-800 dark:text-warning';
                       
                       const diffLabel = quiz.difficulty === 'easy' ? 'Kolay' 
                         : quiz.difficulty === 'hard' ? 'Zor' : 'Orta';
@@ -432,7 +432,7 @@ export default function Academy() {
                             <p className="text-xs text-muted-foreground line-clamp-1">{quiz.descriptionTr}</p>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-xs">{quiz.estimatedMinutes}dk</span>
-                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">→</span>
+                              <span className="text-xs font-medium text-primary dark:text-blue-400">→</span>
                             </div>
                           </div>
                         </Link>

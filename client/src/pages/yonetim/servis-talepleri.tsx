@@ -29,7 +29,7 @@ const STATUS_LABELS = {
 } as const;
 
 const STATUS_VARIANTS = {
-  'talep_edildi': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  'talep_edildi': 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary',
   'planlandi': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   'devam_ediyor': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   'tamamlandi': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -37,14 +37,14 @@ const STATUS_VARIANTS = {
 } as const;
 
 const PRIORITY_VARIANTS = {
-  'düşük': 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700',
-  'orta': 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700',
+  'düşük': 'bg-primary/10 border-primary/30 dark:bg-primary/5 dark:border-primary/40',
+  'orta': 'bg-warning/10 border-warning/30 dark:bg-warning/5 dark:border-warning/40',
   'yüksek': 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-700',
   'kritik': 'bg-destructive/10 border-destructive/30 dark:bg-red-900/20 dark:border-red-700',
 } as const;
 
 const PRIORITY_COLORS = {
-  'düşük': 'text-blue-600 dark:text-blue-400',
+  'düşük': 'text-primary dark:text-blue-400',
   'orta': 'text-amber-600 dark:text-amber-400',
   'yüksek': 'text-orange-600 dark:text-orange-400',
   'kritik': 'text-destructive dark:text-red-400',
@@ -1041,8 +1041,8 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Info Box */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md p-3">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
+            <div className="bg-primary/10 dark:bg-primary/5 border border-primary/30 dark:border-primary/40 rounded-md p-3">
+              <p className="text-sm text-primary dark:text-primary">
                 💡 <span className="font-medium">İpucu:</span> Durum "Devam Ediyor" olduğunda son görüşme ve güncellemeler kaydedilir. "Tamamlandı" olduğunda gerçek maliyet kaydedilir.
               </p>
             </div>
@@ -1257,8 +1257,8 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Info Box */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md p-3">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
+            <div className="bg-primary/10 dark:bg-primary/5 border border-primary/30 dark:border-primary/40 rounded-md p-3">
+              <p className="text-sm text-primary dark:text-primary">
                 💡 <span className="font-medium">Bilgi:</span> Yeni talep "Talep Edildi" durumuyla oluşturulacak. Daha sonra fotoğraf ekleyebilir ve durumunu güncelleyebilirsiniz.
               </p>
             </div>

@@ -109,7 +109,7 @@ export default function AcademyLearningPathDetail() {
                             {quiz.status === "completed" && <CheckCircle2 className="w-4 h-4 text-success" />}
                             {quiz.status === "recommended" && <Zap className="w-4 h-4 text-amber-600" />}
                             {quiz.status === "locked" && <Lock className="w-4 h-4 text-gray-400" />}
-                            {(quiz.status === "available") && <Circle className="w-4 h-4 text-blue-600" />}
+                            {(quiz.status === "available") && <Circle className="w-4 h-4 text-primary" />}
                             {quiz.title}
                           </h3>
                           <div className="flex gap-2 mt-1">

@@ -113,7 +113,7 @@ export default function KaliteDenetimi() {
       case "failed":
         return <Badge data-testid={`badge-status-failed`} variant="destructive"><XCircle className="w-3 h-3 mr-1" />Başarısız</Badge>;
       case "in_progress":
-        return <Badge data-testid={`badge-status-in-progress`} className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"><Clock className="w-3 h-3 mr-1" />Devam Ediyor</Badge>;
+        return <Badge data-testid={`badge-status-in-progress`} className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-blue-100"><Clock className="w-3 h-3 mr-1" />Devam Ediyor</Badge>;
       default:
         return <Badge data-testid={`badge-status-pending`} variant="outline"><Clock className="w-3 h-3 mr-1" />Bekliyor</Badge>;
     }

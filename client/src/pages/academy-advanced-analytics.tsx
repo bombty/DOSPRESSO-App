@@ -94,7 +94,7 @@ export default function AcademyAdvancedAnalytics() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">92%</p>
-            <p className="text-xs text-blue-600 mt-1">Sınavlarda geçiş oranı</p>
+            <p className="text-xs text-primary mt-1">Sınavlarda geçiş oranı</p>
           </CardContent>
         </Card>
       </div>

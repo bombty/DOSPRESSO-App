@@ -98,7 +98,7 @@ export default function BadgeCollection() {
             {allBadges.map((badge) => {
               const isEarned = userBadges.some((ub) => ub.id === badge.id);
               return (
-                <div key={badge.id} className={`p-3 rounded-lg border ${isEarned ? "border-green-500 bg-success/10 dark:bg-success/5/30" : "border-muted"}`}>
+                <div key={badge.id} className={`p-3 rounded-lg border ${isEarned ? "border-success bg-success/10 dark:bg-success/5/30" : "border-muted"}`}>
                   <div className="flex items-start justify-between gap-2 sm:gap-3">
                     <div className="flex-1">
                       <h3 className="font-semibold">{badge.name}</h3>

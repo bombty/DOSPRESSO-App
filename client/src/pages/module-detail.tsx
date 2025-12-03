@@ -691,7 +691,7 @@ export default function ModuleDetail() {
                     <>
                       <div className="w-full space-y-2 sm:space-y-3">
                         {module.quiz.map((q: typeof module.quiz[0], idx: number) => (
-                          <Card key={idx} className="border-l-4 border-l-green-500">
+                          <Card key={idx} className="border-l-4 border-l-success">
                             <CardContent className="pt-4">
                               <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
                               <div className="flex flex-col gap-3 sm:gap-4">
@@ -702,7 +702,7 @@ export default function ModuleDetail() {
                                     className={`w-full text-left p-3 rounded border-2 transition-colors ${
                                       previewQuizAnswers[idx] === optIdx
                                         ? optIdx === q.correct_option_index
-                                          ? "border-green-500 bg-success/10 dark:bg-success/5/20"
+                                          ? "border-success bg-success/10 dark:bg-success/5/20"
                                           : "border-destructive bg-destructive/10 dark:bg-destructive/10"
                                         : "border-muted hover:border-primary"
                                     }`}
@@ -755,7 +755,7 @@ export default function ModuleDetail() {
                     <>
                       <div className="flex flex-col gap-3 sm:gap-4">
                         {scenarioTasks.map((scenario: typeof scenarioTasks[0], idx: number) => (
-                          <Card key={idx} className="border-l-4 border-l-purple-500">
+                          <Card key={idx} className="border-l-4 border-l-secondary">
                             <CardContent className="pt-4">
                               <div className="flex flex-col gap-3 sm:gap-4">
                                 <p className="font-medium text-sm">{scenario.title || `Senaryo ${idx + 1}`}</p>
@@ -808,7 +808,7 @@ export default function ModuleDetail() {
                   <div>
                     <h3 className="text-2xl font-bold mb-2">Tebrikler!</h3>
                     <p className="text-muted-foreground mb-1">Modülü başarıyla tamamladınız</p>
-                    <Badge className="mt-3 bg-warning/20 text-warning dark:bg-yellow-950 dark:text-yellow-200">
+                    <Badge className="mt-3 bg-warning/20 text-warning dark:bg-warning/5 dark:text-warning">
                       <Award className="w-3 h-3 mr-1" />
                       Rozet Kazandı: {module.title}
                     </Badge>
@@ -1241,10 +1241,10 @@ export default function ModuleDetail() {
               ) : (
                 <div className="w-full space-y-2 sm:space-y-3">
                   {steps.map((step: typeof steps[0], idx: number) => (
-                    <Card key={idx} className="border-l-4 border-l-blue-500">
+                    <Card key={idx} className="border-l-4 border-l-primary">
                       <CardHeader className="pb-2">
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-semibold">
                             {step.step_number || idx + 1}
                           </span>
                           <CardTitle className="text-base">{step.title}</CardTitle>
@@ -1435,7 +1435,7 @@ export default function ModuleDetail() {
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {module.quiz.map((q: typeof module.quiz[0], idx: number) => (
-                    <Card key={idx} className="border-l-4 border-l-green-500">
+                    <Card key={idx} className="border-l-4 border-l-success">
                       <CardContent className="pt-4">
                         <p className="font-medium text-sm">{q.question_text || `Soru ${idx + 1}`}</p>
                         {q.options && (
@@ -1538,7 +1538,7 @@ export default function ModuleDetail() {
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {scenarioTasks.map((scenario: typeof scenarioTasks[0], idx: number) => (
-                    <Card key={idx} className="border-l-4 border-l-purple-500">
+                    <Card key={idx} className="border-l-4 border-l-secondary">
                       <CardContent className="pt-4">
                         <div className="flex flex-col gap-3 sm:gap-4">
                           <p className="font-medium text-sm">{scenario.title || `Senaryo ${idx + 1}`}</p>
@@ -1644,7 +1644,7 @@ export default function ModuleDetail() {
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {module.supervisorChecklist.map((item: typeof module.supervisorChecklist[0], idx: number) => (
-                    <Card key={idx} className="border-l-4 border-l-orange-500">
+                    <Card key={idx} className="border-l-4 border-l-warning">
                       <CardContent className="pt-4">
                         <div className="w-full space-y-1 md:space-y-1">
                           <p className="font-medium text-sm">{item.title}</p>

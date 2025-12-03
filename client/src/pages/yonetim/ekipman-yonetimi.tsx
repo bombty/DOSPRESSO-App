@@ -54,7 +54,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  'talep_edildi': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  'talep_edildi': 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary',
   'planlandı': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   'devam_ediyor': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   'tamamlandı': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -62,9 +62,9 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  'kritik': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  'kritik': 'bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive',
   'yuksek': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  'normal': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  'normal': 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary',
 };
 
 const getPriority = (req: ServiceRequest, equipment: EquipmentType[]): string => {
@@ -95,7 +95,7 @@ const getHealthStatus = (equipment: EquipmentType): { status: string; color: str
     const warrantyEnd = parseISO(equipment.warrantyEndDate.toString());
     const daysToWarrantyEnd = differenceInDays(warrantyEnd, new Date());
     if (daysToWarrantyEnd < 0) {
-      return { status: 'Garanti Sona Erdi', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <AlertCircle className="w-4 h-4" /> };
+      return { status: 'Garanti Sona Erdi', color: 'bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive', icon: <AlertCircle className="w-4 h-4" /> };
     }
     if (daysToWarrantyEnd < 30) {
       return { status: 'Garanti Bitme Yakın', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200', icon: <AlertCircle className="w-4 h-4" /> };
