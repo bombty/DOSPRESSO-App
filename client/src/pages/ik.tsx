@@ -387,28 +387,28 @@ export default function IKPage() {
       </div>
 
       {/* Accordion Sections */}
-      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         {/* Section 1: Personel Listesi */}
         <AccordionItem value="personel" data-testid="accordion-personel">
           <Card>
             <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-personel">
               <div className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+                <Users className="h-4 w-4" />
                 <span className="text-lg font-semibold">Personel Listesi</span>
                 <Badge variant="secondary" className="ml-2">{filteredEmployees.length}</Badge>
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {/* Filters */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Filter className="h-5 w-5" />
+                      <Filter className="h-4 w-4" />
                       Filtreler
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex flex-wrap gap-4">
+                  <CardContent className="flex flex-wrap gap-2 sm:gap-3">
                     {/* Branch filter - only for HQ users */}
                     {user?.role && isHQRole(user.role as any) && (
                       <div className="flex-1 min-w-[200px]">
@@ -642,7 +642,7 @@ export default function IKPage() {
             <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-disiplin">
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-2">
-                  <FileWarning className="h-5 w-5" />
+                  <FileWarning className="h-4 w-4" />
                   <span className="text-lg font-semibold">Disiplin Yönetimi</span>
                   <Badge variant="secondary" className="ml-2">{filteredDisciplinaryReports.length}</Badge>
                 </div>
@@ -657,10 +657,10 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {/* Disciplinary Filter */}
                 <div className="flex justify-between items-center">
-                  <div className="flex gap-4">
+                  <div className="flex gap-2 sm:gap-3">
                     <div className="w-[200px]">
                       <label className="text-sm font-medium">Durum</label>
                       <Select value={disciplinaryStatusFilter} onValueChange={setDisciplinaryStatusFilter}>
@@ -755,15 +755,15 @@ export default function IKPage() {
           <Card>
             <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-onboarding">
               <div className="flex items-center gap-2">
-                <UserCheck className="h-5 w-5" />
+                <UserCheck className="h-4 w-4" />
                 <span className="text-lg font-semibold">Yeni Personel Onboarding</span>
                 <Badge variant="secondary" className="ml-2">{filteredOnboardingRecords.length}</Badge>
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {/* Onboarding Filter */}
-                <div className="flex gap-4">
+                <div className="flex gap-2 sm:gap-3">
                   <div className="w-[200px]">
                     <label className="text-sm font-medium">Durum</label>
                     <Select value={onboardingStatusFilter} onValueChange={setOnboardingStatusFilter}>
@@ -857,15 +857,15 @@ export default function IKPage() {
           <Card>
             <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-documents">
               <div className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5" />
+                <FolderOpen className="h-4 w-4" />
                 <span className="text-lg font-semibold">Özlük Dosyaları</span>
                 <Badge variant="secondary" className="ml-2">{filteredEmployeeDocuments.length}</Badge>
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {/* Documents Filter */}
-                <div className="flex gap-4">
+                <div className="flex gap-2 sm:gap-3">
                   <div className="w-[200px]">
                     <label className="text-sm font-medium">Belge Türü</label>
                     <Select value={documentTypeFilter} onValueChange={setDocumentTypeFilter}>
@@ -1081,8 +1081,8 @@ function AddEmployeeDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="firstName"
@@ -1112,7 +1112,7 @@ function AddEmployeeDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="username"
@@ -1156,7 +1156,7 @@ function AddEmployeeDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="role"
@@ -1214,7 +1214,7 @@ function AddEmployeeDialog({
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="hireDate"
@@ -1272,7 +1272,7 @@ function AddEmployeeDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="emergencyContactName"
@@ -1400,10 +1400,10 @@ function EditEmployeeDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             {userRole === "admin" && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="firstName"
@@ -1433,7 +1433,7 @@ function EditEmployeeDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="role"
@@ -1490,7 +1490,7 @@ function EditEmployeeDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="hireDate"
@@ -1552,7 +1552,7 @@ function EditEmployeeDialog({
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="emergencyContactName"
@@ -1638,7 +1638,7 @@ function WarningsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 gap-4 max-h-[60vh] overflow-y-auto">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 max-h-[60vh] overflow-y-auto">
           {warnings.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               Uyarı kaydı bulunmuyor
@@ -1742,7 +1742,7 @@ function AddWarningDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             <FormField
               control={form.control}
               name="warningType"
@@ -1889,7 +1889,7 @@ function ResetPasswordDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <label className="text-sm font-medium">Yeni Şifre</label>
             <Input

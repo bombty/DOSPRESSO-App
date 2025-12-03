@@ -77,7 +77,7 @@ export default function EquipmentAnalytics() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -132,7 +132,7 @@ export default function EquipmentAnalytics() {
       </div>
 
       {/* Fault Priority Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">
         <Card>
           <CardHeader>
             <CardTitle>Arıza Öncelik Dağılımı</CardTitle>

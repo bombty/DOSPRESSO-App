@@ -223,7 +223,7 @@ export default function FaultHub() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Kritik</p>
@@ -235,7 +235,7 @@ export default function FaultHub() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
                     <Clock className="h-4 w-4 text-orange-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Yüksek</p>
@@ -247,7 +247,7 @@ export default function FaultHub() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Çözüldü</p>
@@ -259,7 +259,7 @@ export default function FaultHub() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                     <Wrench className="h-4 w-4 text-blue-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Açık</p>
@@ -313,7 +313,7 @@ export default function FaultHub() {
             <Card className="border-red-500 bg-red-50 dark:bg-red-950">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                   </div>
                   <p className="text-xs text-red-600">Zaman Aşımı</p>
@@ -325,7 +325,7 @@ export default function FaultHub() {
             <Card className="border-orange-500 bg-orange-50 dark:bg-orange-950">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
                     <Clock className="h-4 w-4 text-orange-600" />
                   </div>
                   <p className="text-xs text-orange-600">Risk Altında</p>
@@ -337,7 +337,7 @@ export default function FaultHub() {
             <Card className="border-green-500 bg-green-50 dark:bg-green-950">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                   </div>
                   <p className="text-xs text-green-600">Sağlıklı</p>
@@ -402,7 +402,7 @@ export default function FaultHub() {
                 {isFaultsLoading ? (
                   <FaultSkeletonList />
                 ) : paginatedManageFaults.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">Arıza bulunamadı</p>
+                  <p className="text-sm text-muted-foreground text-center py-3">Arıza bulunamadı</p>
                 ) : (
                   paginatedManageFaults.map((fault: EquipmentFault) => (
                     <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted" data-testid={`card-manage-fault-${fault.id}`}>
@@ -468,7 +468,7 @@ export default function FaultHub() {
                 <DialogTitle>Arıza Güncelleyin: {selectedFault?.equipmentName}</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="currentStage"
@@ -555,8 +555,8 @@ export default function FaultHub() {
 
         {/* TAB 4: My Faults (Technician) */}
         {user?.id && (
-          <TabsContent value="myFaults" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <TabsContent value="myFaults" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium">Toplam</CardTitle>
@@ -592,7 +592,7 @@ export default function FaultHub() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {metrics.myFaults.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">Size atanmış arıza yok</p>
+                    <p className="text-sm text-muted-foreground text-center py-3">Size atanmış arıza yok</p>
                   ) : (
                     metrics.myFaults.map((fault: EquipmentFault) => (
                       <div key={fault.id} className="p-3 border rounded" data-testid={`card-my-fault-${fault.id}`}>

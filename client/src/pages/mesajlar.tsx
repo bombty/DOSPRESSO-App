@@ -210,7 +210,7 @@ export default function Mesajlar() {
       {/* Left Panel - Thread List */}
       <div className="w-96 border-r flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="p-3 border-b grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold" data-testid="text-messages-title">Mesajlar</h1>
             <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
@@ -247,11 +247,11 @@ export default function Mesajlar() {
         {/* Thread List */}
         <ScrollArea className="flex-1">
           {threadsLoading ? (
-            <div className="p-4 text-center text-muted-foreground" data-testid="text-loading">
+            <div className="p-3 text-center text-muted-foreground" data-testid="text-loading">
               Yükleniyor...
             </div>
           ) : threads.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground" data-testid="text-no-threads">
+            <div className="p-3 text-center text-muted-foreground" data-testid="text-no-threads">
               Mesaj bulunamadı
             </div>
           ) : (
@@ -260,12 +260,12 @@ export default function Mesajlar() {
                 <div
                   key={thread.threadId}
                   onClick={() => setSelectedThreadId(thread.threadId)}
-                  className={`p-4 cursor-pointer hover-elevate ${
+                  className={`p-3 cursor-pointer hover-elevate ${
                     selectedThreadId === thread.threadId ? 'bg-accent' : ''
                   }`}
                   data-testid={`thread-item-${thread.threadId}`}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     <Avatar>
                       <AvatarFallback>
                         {getInitials(
@@ -316,7 +316,7 @@ export default function Mesajlar() {
         ) : threadData ? (
           <>
             {/* Thread Header */}
-            <div className="p-4 border-b">
+            <div className="p-3 border-b">
               <h2 className="font-semibold text-lg" data-testid="text-thread-title">
                 {threadData.messages[0]?.subject}
               </h2>
@@ -332,8 +332,8 @@ export default function Mesajlar() {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4" ref={scrollRef as any}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <ScrollArea className="flex-1 p-3" ref={scrollRef as any}>
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {threadData.messages.map((message, idx) => {
                   const isSent = message.senderId === user?.id;
                   const isLastInGroup = idx === threadData.messages.length - 1 || 
@@ -347,7 +347,7 @@ export default function Mesajlar() {
                     >
                       <div className={`max-w-[70%] ${isSent ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
                         <div
-                          className={`rounded-lg px-4 py-2 ${
+                          className={`rounded-lg px-3 py-2 ${
                             isSent
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted'
@@ -394,7 +394,7 @@ export default function Mesajlar() {
             </ScrollArea>
 
             {/* Message Composer */}
-            <div className="p-4 border-t grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="p-3 border-t grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               {/* Attachments Preview */}
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -541,7 +541,7 @@ function NewMessageForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4" data-testid="form-new-message">
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-2 sm:gap-3" data-testid="form-new-message">
       {/* HQ cascading selection: Branch → Personnel */}
       {isHQ && (
         <>

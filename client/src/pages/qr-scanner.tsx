@@ -259,8 +259,8 @@ export default function QRScanner() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <QrCode className="h-8 w-8" />
+        <h1 className="text-3xl font-bold flex items-center gap-2 sm:gap-3">
+          <QrCode className="h-4 w-4" />
           QR Kod Tarayıcı
         </h1>
         <p className="text-muted-foreground mt-2">
@@ -271,17 +271,17 @@ export default function QRScanner() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5" />
+            <Camera className="h-4 w-4" />
             Kamera
           </CardTitle>
           <CardDescription>
             QR kod taramak için kamera iznine ihtiyacınız var
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           {error && (
             <div className="bg-destructive/10 text-destructive p-3 rounded-md flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium">Hata</p>
                 <p className="text-sm">{error}</p>
@@ -299,7 +299,7 @@ export default function QRScanner() {
             )}
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2 sm:gap-3">
             {!isScanning ? (
               <Button
                 onClick={startScanning}
@@ -307,7 +307,7 @@ export default function QRScanner() {
                 className="w-full"
                 data-testid="button-start-scanning"
               >
-                <Camera className="mr-2 h-5 w-5" />
+                <Camera className="mr-2 h-4 w-4" />
                 Taramaya Başla
               </Button>
             ) : (
@@ -318,7 +318,7 @@ export default function QRScanner() {
                 className="w-full"
                 data-testid="button-stop-scanning"
               >
-                <XCircle className="mr-2 h-5 w-5" />
+                <XCircle className="mr-2 h-4 w-4" />
                 Taramayı Durdur
               </Button>
             )}

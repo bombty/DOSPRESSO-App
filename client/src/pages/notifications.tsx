@@ -159,12 +159,12 @@ export default function Notifications() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <TabsContent value={activeTab} className="mt-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {[...Array(5)].map((_, i) => (
                 <Card key={i}>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3">
                     <Skeleton className="h-6 w-3/4 mb-2" />
                     <Skeleton className="h-4 w-1/2" />
                   </CardContent>
@@ -186,8 +186,8 @@ export default function Notifications() {
                     onClick={() => handleNotificationClick(notification)}
                     data-testid={`card-notification-${notification.id}`}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-2 sm:gap-3">
                         <div className={`p-2 rounded-lg ${
                           !notification.isRead ? 'bg-primary/10' : 'bg-muted'
                         }`}>

@@ -284,7 +284,7 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             <FormField
               control={form.control}
               name="leaveType"
@@ -309,7 +309,7 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="startDate"

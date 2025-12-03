@@ -68,7 +68,7 @@ export default function Performance() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                     {completionTrend > 0 ? (
                       <TrendingUp className="h-4 w-4 text-green-600" />
                     ) : completionTrend < 0 ? (
@@ -86,7 +86,7 @@ export default function Performance() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                     {aiScoreTrend > 0 ? (
                       <TrendingUp className="h-4 w-4 text-green-600" />
                     ) : aiScoreTrend < 0 ? (
@@ -104,7 +104,7 @@ export default function Performance() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                     <CheckCircle className="h-4 w-4 text-green-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Görevler</p>
@@ -116,7 +116,7 @@ export default function Performance() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
                     <AlertTriangle className="h-4 w-4 text-orange-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Arıza Çözüm</p>

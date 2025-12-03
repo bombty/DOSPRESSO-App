@@ -77,7 +77,7 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-3">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-center text-destructive">Geçersiz Link</CardTitle>
@@ -101,9 +101,9 @@ export default function ResetPassword() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-3">
         <Card className="w-full max-w-md">
-          <CardHeader className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <CardHeader className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             <div className="flex justify-center">
               <CheckCircle className="h-16 w-16 text-green-500" data-testid="icon-success" />
             </div>
@@ -118,9 +118,9 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-3">
       <Card className="w-full max-w-md">
-        <CardHeader className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <CardHeader className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           <div className="flex justify-center">
             <img 
               src={logoUrl} 
@@ -136,7 +136,7 @@ export default function ResetPassword() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="password"

@@ -154,7 +154,7 @@ function SortableSection({
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
         <div className="flex items-center gap-2 flex-1">
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing" data-testid={`drag-section-${section.id}`}>
-            <GripVertical className="h-5 w-5 text-muted-foreground" />
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
           <CardTitle className="text-lg">{section.titleTr}</CardTitle>
           <Badge variant="outline" className="text-xs">{section.scope}</Badge>
@@ -180,7 +180,7 @@ function SortableSection({
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-4">Bu bölümde öğe yok</div>
+          <div className="text-sm text-muted-foreground py-3">Bu bölümde öğe yok</div>
         ) : (
           <DndContext 
             sensors={sensors} 
@@ -634,7 +634,7 @@ export default function AdminMenuManagement() {
 
   return (
     <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-      <div className="flex justify-between items-center flex-wrap gap-4">
+      <div className="flex justify-between items-center flex-wrap gap-2 sm:gap-3">
         <h1 className="text-3xl font-bold">Menü Yönetimi</h1>
         <div className="flex gap-2">
           <Button 
@@ -663,7 +663,7 @@ export default function AdminMenuManagement() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -722,7 +722,7 @@ export default function AdminMenuManagement() {
             </DialogTitle>
           </DialogHeader>
           <Form {...sectionForm}>
-            <form onSubmit={sectionForm.handleSubmit(onSectionSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={sectionForm.handleSubmit(onSectionSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={sectionForm.control}
                 name="slug"
@@ -838,7 +838,7 @@ export default function AdminMenuManagement() {
             </DialogTitle>
           </DialogHeader>
           <Form {...itemForm}>
-            <form onSubmit={itemForm.handleSubmit(onItemSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={itemForm.handleSubmit(onItemSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={itemForm.control}
                 name="sectionId"
@@ -1015,7 +1015,7 @@ export default function AdminMenuManagement() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             {/* Existing Rules */}
             <div>
               <h3 className="text-sm font-medium mb-2">Mevcut Kurallar</h3>
@@ -1053,7 +1053,7 @@ export default function AdminMenuManagement() {
             <div>
               <h3 className="text-sm font-medium mb-2">Yeni Kural Ekle</h3>
               <Form {...ruleForm}>
-                <form onSubmit={ruleForm.handleSubmit(onRuleSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <form onSubmit={ruleForm.handleSubmit(onRuleSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <FormField
                     control={ruleForm.control}
                     name="ruleType"

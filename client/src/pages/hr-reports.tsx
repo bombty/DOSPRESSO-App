@@ -193,17 +193,17 @@ export default function HRReportsPage() {
   const isLoading = isLoadingAttendance || isLoadingEmployees;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-2 sm:gap-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
             data-testid="button-back"
             onClick={() => window.history.back()}
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h1 className="text-3xl font-bold" data-testid="text-page-title">
@@ -231,7 +231,7 @@ export default function HRReportsPage() {
           <CardTitle>Filtreler ve Dönem</CardTitle>
           <CardDescription>Tarih aralığı ve şube seçin</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-4">
+        <CardContent className="flex flex-wrap gap-2 sm:gap-3">
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Başlangıç Tarihi</label>
             <input
@@ -278,7 +278,7 @@ export default function HRReportsPage() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                 <Users className="h-4 w-4 text-blue-600" />
               </div>
               <p className="text-xs text-muted-foreground">Vardiya</p>
@@ -292,7 +292,7 @@ export default function HRReportsPage() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                 <Clock className="h-4 w-4 text-green-600" />
               </div>
               <p className="text-xs text-muted-foreground">Toplam</p>
@@ -306,7 +306,7 @@ export default function HRReportsPage() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-purple-600" />
               </div>
               <p className="text-xs text-muted-foreground">Ortalama</p>
@@ -320,7 +320,7 @@ export default function HRReportsPage() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
                 <Coffee className="h-4 w-4 text-orange-600" />
               </div>
               <p className="text-xs text-muted-foreground">Mola</p>
@@ -334,7 +334,7 @@ export default function HRReportsPage() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                 <AlertCircle className="h-4 w-4 text-red-600" />
               </div>
               <p className="text-xs text-muted-foreground">Geç</p>
@@ -350,7 +350,7 @@ export default function HRReportsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
+            <BarChart3 className="h-4 w-4" />
             Çalışan Bazında Detaylı Rapor
           </CardTitle>
           <CardDescription>

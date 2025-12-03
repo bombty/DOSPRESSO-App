@@ -103,8 +103,8 @@ export default function AcademyTeamCompetitions() {
                 <CardTitle>{activeCompetition.title}</CardTitle>
                 <CardDescription>{activeCompetition.description}</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
                   <div className="p-3 border rounded-lg">
                     <p className="text-xs text-muted-foreground">Başlama</p>
                     <p className="font-medium">{new Date(activeCompetition.startDate).toLocaleDateString('tr-TR')}</p>
@@ -155,7 +155,7 @@ export default function AcademyTeamCompetitions() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {activeCompetition?.leaderboard?.map((entry: any, idx: number) => (
-                  <div key={entry.branchId} className="flex items-center gap-4 p-3 border rounded-lg hover-elevate transition" data-testid={`team-rank-${idx + 1}`}>
+                  <div key={entry.branchId} className="flex items-center gap-2 sm:gap-3 p-3 border rounded-lg hover-elevate transition" data-testid={`team-rank-${idx + 1}`}>
                     <div className="text-2xl font-bold text-primary w-12 text-center">
                       #{idx + 1}
                     </div>
@@ -185,7 +185,7 @@ export default function AcademyTeamCompetitions() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {completedCompetitions.length > 0 ? (
                   completedCompetitions.map((comp: any) => (
-                    <div key={comp.id} className="p-4 border rounded-lg">
+                    <div key={comp.id} className="p-3 border rounded-lg">
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <p className="font-medium">{comp.title}</p>
@@ -221,7 +221,7 @@ export default function AcademyTeamCompetitions() {
           <CardDescription>Yarışmalarda kazanılan özel rozetler</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
             <div className="p-3 text-center border rounded-lg">
               <p className="text-2xl mb-2">🥇</p>
               <p className="text-xs font-medium">1. Sıra Ustası</p>

@@ -81,7 +81,7 @@ export default function EgitimDetay() {
   return (
     <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="outline"
             size="icon"
@@ -97,7 +97,7 @@ export default function EgitimDetay() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Kayıtlı</CardTitle>
@@ -139,12 +139,12 @@ export default function EgitimDetay() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5" />
+            <GraduationCap className="h-4 w-4" />
             Modül Bilgileri
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Kategori</p>
               <Badge variant="outline" className="mt-1">
@@ -196,7 +196,7 @@ export default function EgitimDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Kayıtlı Personeller</CardTitle>
@@ -247,7 +247,7 @@ export default function EgitimDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Eğitim İçeriği</CardTitle>
@@ -260,22 +260,22 @@ export default function EgitimDetay() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                  <div className="flex items-center gap-3 p-3 rounded-lg border">
-                    <Play className="h-5 w-5 text-primary" />
+                  <div className="flex items-center gap-2 sm:gap-3 p-3 rounded-lg border">
+                    <Play className="h-4 w-4 text-primary" />
                     <div>
                       <p className="font-medium">Video Eğitimi</p>
                       <p className="text-sm text-muted-foreground">30 dakika</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 rounded-lg border">
-                    <FileText className="h-5 w-5 text-primary" />
+                  <div className="flex items-center gap-2 sm:gap-3 p-3 rounded-lg border">
+                    <FileText className="h-4 w-4 text-primary" />
                     <div>
                       <p className="font-medium">Eğitim Dokümanları</p>
                       <p className="text-sm text-muted-foreground">PDF formatında</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 rounded-lg border">
-                    <CheckCircle className="h-5 w-5 text-primary" />
+                  <div className="flex items-center gap-2 sm:gap-3 p-3 rounded-lg border">
+                    <CheckCircle className="h-4 w-4 text-primary" />
                     <div>
                       <p className="font-medium">Quiz Değerlendirmesi</p>
                       <p className="text-sm text-muted-foreground">10 soru</p>
@@ -287,7 +287,7 @@ export default function EgitimDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Verilen Sertifikalar</CardTitle>
@@ -306,8 +306,8 @@ export default function EgitimDetay() {
                           className="flex items-center justify-between p-3 rounded-lg border bg-green-50/50 dark:bg-green-950/20"
                           data-testid={`certificate-${p.userId}`}
                         >
-                          <div className="flex items-center gap-3">
-                            <Award className="h-5 w-5 text-green-600" />
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <Award className="h-4 w-4 text-green-600" />
                             <div>
                               <p className="font-medium">
                                 {user?.firstName || "Bilinmeyen"} {user?.lastName || ""}

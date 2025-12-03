@@ -184,7 +184,7 @@ export default function PersonelMusaitlik() {
     <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <CalendarDays className="h-6 w-6" />
+          <CalendarDays className="h-4 w-4" />
           <h1 className="text-2xl font-bold">Müsaitlik Takvimi</h1>
         </div>
         
@@ -203,8 +203,8 @@ export default function PersonelMusaitlik() {
               </DialogDescription>
             </DialogHeader>
             <Form {...availabilityForm}>
-              <form onSubmit={availabilityForm.handleSubmit(onSubmitCreate)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={availabilityForm.handleSubmit(onSubmitCreate)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={availabilityForm.control}
                     name="startDate"
@@ -282,7 +282,7 @@ export default function PersonelMusaitlik() {
                 />
 
                 {!isAllDay && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <FormField
                       control={availabilityForm.control}
                       name="startTime"
@@ -361,7 +361,7 @@ export default function PersonelMusaitlik() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
         {availabilities?.map((availability) => (
           <Card key={availability.id} data-testid={`card-availability-${availability.id}`}>
             <CardHeader>
@@ -375,7 +375,7 @@ export default function PersonelMusaitlik() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Başlangıç:</span>
@@ -442,8 +442,8 @@ export default function PersonelMusaitlik() {
             </DialogDescription>
           </DialogHeader>
           <Form {...availabilityForm}>
-            <form onSubmit={availabilityForm.handleSubmit(onSubmitEdit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={availabilityForm.handleSubmit(onSubmitEdit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <FormField
                   control={availabilityForm.control}
                   name="startDate"
@@ -521,7 +521,7 @@ export default function PersonelMusaitlik() {
               />
 
               {!isAllDay && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={availabilityForm.control}
                     name="startTime"

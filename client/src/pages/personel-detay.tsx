@@ -416,7 +416,7 @@ export default function PersonelDetay() {
   return (
     <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button 
             variant="outline" 
             size="icon" 
@@ -439,14 +439,14 @@ export default function PersonelDetay() {
           <CardTitle>Genel Bilgiler</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-start gap-6">
+          <div className="flex items-start gap-2 sm:gap-3">
             <Avatar className="h-24 w-24">
               <AvatarImage src={employee.profileImageUrl || undefined} />
               <AvatarFallback className="text-2xl">
                 {getInitials(employee.firstName || "", employee.lastName || "")}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <p className="text-sm text-muted-foreground">Ad Soyad</p>
                 <p className="font-medium">{employee.firstName} {employee.lastName}</p>
@@ -526,7 +526,7 @@ export default function PersonelDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="documents" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="documents" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -550,7 +550,7 @@ export default function PersonelDetay() {
                         Personelin özlük dosyasına yeni belge ekleyin
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                       <div>
                         <Label htmlFor="document-type">Belge Türü *</Label>
                         <Select value={documentType} onValueChange={setDocumentType}>
@@ -712,11 +712,11 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="attendance" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="attendance" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
+                <Clock className="h-4 w-4" />
                 Vardiya Geçmişi
               </CardTitle>
               <CardDescription>Personelin giriş-çıkış kayıtları</CardDescription>
@@ -774,11 +774,11 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="performance" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="performance" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+                <TrendingUp className="h-4 w-4" />
                 Performans Skorları
               </CardTitle>
               <CardDescription>Personelin performans değerlendirmeleri</CardDescription>
@@ -790,10 +790,10 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : performanceScores && performanceScores.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                     {performanceScores.slice(0, 4).map((score: any, idx: number) => (
-                      <Card key={idx} className="text-center p-4">
+                      <Card key={idx} className="text-center p-3">
                         <p className="text-2xl font-bold text-primary">{score.overallScore || score.score || 0}</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {new Date(score.periodStart || score.createdAt).toLocaleDateString("tr-TR")}
@@ -844,11 +844,11 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="training" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="training" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
+                <Award className="h-4 w-4" />
                 Eğitim Durumu
               </CardTitle>
               <CardDescription>Personelin eğitim ilerlemesi ve sertifikaları</CardDescription>
@@ -860,13 +860,13 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : trainingProgress && trainingProgress.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {trainingProgress.map((progress: any) => {
                     const module = trainingModules?.find((m: any) => m.id === progress.moduleId);
                     return (
                       <Card key={progress.id} data-testid={`training-progress-${progress.id}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between gap-4">
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between gap-2 sm:gap-3">
                             <div className="flex-1">
                               <p className="font-medium">{module?.title || `Modül ${progress.moduleId}`}</p>
                               <p className="text-sm text-muted-foreground">{module?.description || ""}</p>
@@ -899,11 +899,11 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="leave" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="leave" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5" />
+                <CalendarDays className="h-4 w-4" />
                 İzin & Fazla Mesai Talepleri
               </CardTitle>
               <CardDescription>Personelin izin ve fazla mesai geçmişi</CardDescription>
@@ -951,7 +951,7 @@ export default function PersonelDetay() {
                       </Table>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">İzin talebi bulunmuyor</p>
+                    <p className="text-sm text-muted-foreground text-center py-3">İzin talebi bulunmuyor</p>
                   )}
                 </div>
 
@@ -992,7 +992,7 @@ export default function PersonelDetay() {
                       </Table>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">Fazla mesai talebi bulunmuyor</p>
+                    <p className="text-sm text-muted-foreground text-center py-3">Fazla mesai talebi bulunmuyor</p>
                   )}
                 </div>
               </div>
@@ -1019,11 +1019,11 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : disciplinaryReports && disciplinaryReports.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {disciplinaryReports.map((report) => (
                     <Card key={report.id} className="border-l-4" data-testid={`disciplinary-report-${report.id}`}>
                       <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start justify-between gap-2 sm:gap-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <CardTitle className="text-base">{report.subject}</CardTitle>
@@ -1041,7 +1041,7 @@ export default function PersonelDetay() {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-1 gap-3 text-sm">
+                        <div className="grid grid-cols-1 gap-2 sm:gap-3 text-sm">
                           <div>
                             <p className="font-medium mb-1">Açıklama:</p>
                             <p className="text-muted-foreground">{report.description}</p>
@@ -1103,7 +1103,7 @@ export default function PersonelDetay() {
                 </div>
               ) : onboarding ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                  <div className="grid grid-cols-2 gap-4 p-4 rounded-lg border">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 rounded-lg border">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Durum</p>
                       <Badge className="mt-1" variant={onboarding.status === 'completed' ? 'outline' : 'default'}>
@@ -1139,8 +1139,8 @@ export default function PersonelDetay() {
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                         {onboardingTasks.map((task) => (
                           <Card key={task.id} data-testid={`onboarding-task-${task.id}`}>
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between gap-4">
+                            <CardContent className="p-3">
+                              <div className="flex items-center justify-between gap-2 sm:gap-3">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
                                     <p className="font-medium">{task.taskName}</p>
@@ -1220,11 +1220,11 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="disciplinary" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="disciplinary" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
+                <Award className="h-4 w-4" />
                 Eğitim Durumu
               </CardTitle>
               <CardDescription>Atanan ve tamamlanan eğitimler</CardDescription>
@@ -1237,7 +1237,7 @@ export default function PersonelDetay() {
                 </div>
               ) : trainingProgress ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-4 gap-2 sm:gap-3">
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Toplam</p>
                       <p className="text-2xl font-bold">{trainingProgress.summary?.total || 0}</p>
@@ -1257,7 +1257,7 @@ export default function PersonelDetay() {
                   </div>
 
                   {trainingProgress.averageScore > 0 && (
-                    <div className="border rounded-lg p-4 bg-blue-50">
+                    <div className="border rounded-lg p-3 bg-blue-50">
                       <p className="text-sm text-muted-foreground mb-1">Ortalama Başarı Oranı</p>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
@@ -1297,17 +1297,17 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="onboarding" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="onboarding" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ListTodo className="h-5 w-5" />
+                <ListTodo className="h-4 w-4" />
                 Görev Ata
               </CardTitle>
               <CardDescription>Bu personele yeni görev atayın</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <div>
                   <Label htmlFor="task-title">Görev Adı *</Label>
                   <Input
@@ -1374,17 +1374,17 @@ export default function PersonelDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="tasks" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="tasks" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Send className="h-5 w-5" />
+                <Send className="h-4 w-4" />
                 Mesaj Gönder
               </CardTitle>
               <CardDescription>Bu personele mesaj gönderin</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <div>
                   <Label htmlFor="message">Mesaj *</Label>
                   <Textarea

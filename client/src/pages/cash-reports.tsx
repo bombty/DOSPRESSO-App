@@ -233,7 +233,7 @@ export default function CashReports() {
                 </DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="reportDate"
@@ -278,7 +278,7 @@ export default function CashReports() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <FormField
                       control={form.control}
                       name="openingCash"
@@ -346,7 +346,7 @@ export default function CashReports() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <FormField
                       control={form.control}
                       name="cashSales"
@@ -463,7 +463,7 @@ export default function CashReports() {
           <CardHeader>
             <CardTitle className="text-lg">Filtreler</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               <div>
                 <label className="text-xs font-medium mb-1 block">Şube</label>
@@ -560,7 +560,7 @@ export default function CashReports() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}>
@@ -576,7 +576,7 @@ export default function CashReports() {
               <Card key={report.id} className="hover-elevate" data-testid={`card-report-${report.id}`}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <CalendarIcon className="w-5 h-5 text-muted-foreground" />
                       <div>
                         <CardTitle className="text-lg" data-testid={`text-report-date-${report.id}`}>
@@ -614,8 +614,8 @@ export default function CashReports() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                     <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                       <p className="text-xs text-muted-foreground">Açılış Cashiersı</p>
                       <p className="text-lg font-semibold" data-testid={`text-opening-${report.id}`}>
@@ -651,7 +651,7 @@ export default function CashReports() {
                   </div>
 
                   {(report.cashSales || report.cardSales || report.expenses) && (
-                    <div className="grid grid-cols-3 gap-4 pt-2 border-t">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 border-t">
                       <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-xs text-muted-foreground">Nakit Satış</p>
                         <p className="text-sm font-medium">

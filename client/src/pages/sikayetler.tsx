@@ -180,7 +180,7 @@ export default function Sikayetler() {
 
   if (complaintsLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="p-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -195,7 +195,7 @@ export default function Sikayetler() {
       </div>
 
       {stats && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Toplam Şikayet</CardTitle>
@@ -242,7 +242,7 @@ export default function Sikayetler() {
         </div>
       )}
 
-      <div className="flex gap-4">
+      <div className="flex gap-2 sm:gap-3">
         <Select value={filterPriority} onValueChange={setFilterPriority}>
           <SelectTrigger className="w-48" data-testid="select-priority-filter">
             <SelectValue placeholder="Öncelik Filtrele" />
@@ -271,7 +271,7 @@ export default function Sikayetler() {
         </Select>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-2 sm:gap-3">
         {filteredComplaints && filteredComplaints.length > 0 ? (
           filteredComplaints.map((complaint) => (
             <Card key={complaint.id} data-testid={`card-complaint-${complaint.id}`}>
@@ -293,7 +293,7 @@ export default function Sikayetler() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm font-medium">Misafir Memnuniyeti:</span>
@@ -349,7 +349,7 @@ export default function Sikayetler() {
                           Şikayetin nasıl çözüldüğünü açıklayın
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="grid grid-cols-1 gap-4 py-4">
+                      <div className="grid grid-cols-1 gap-2 sm:gap-3 py-3">
                         <div>
                           <label className="text-sm font-medium mb-2 block">
                             Çözüm Notları

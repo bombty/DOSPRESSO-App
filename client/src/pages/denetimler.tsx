@@ -138,7 +138,7 @@ export default function DenetimlerPage() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div>
           <h1 className="text-3xl font-bold">Denetimler</h1>
           <p className="text-muted-foreground">Şube denetimlerini görüntüleyin ve yeni denetim başlatın</p>
@@ -151,12 +151,12 @@ export default function DenetimlerPage() {
 
       {/* In Progress Audits */}
       {inProgressAudits.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Clock className="h-5 w-5 text-orange-500" />
+            <Clock className="h-4 w-4 text-orange-500" />
             Devam Eden Denetimler ({inProgressAudits.length})
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {inProgressAudits.map((audit) => (
               <Link key={audit.id} href={`/denetim/${audit.id}`}>
                 <Card className="hover-elevate cursor-pointer" data-testid={`card-audit-${audit.id}`}>
@@ -186,20 +186,20 @@ export default function DenetimlerPage() {
       )}
 
       {/* Completed Audits */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <h2 className="text-xl font-semibold flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-green-500" />
           Tamamlanan Denetimler ({completedAudits.length})
         </h2>
         {completedAudits.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-8">
-              <ClipboardList className="h-8 w-8 text-muted-foreground mb-2" />
+              <ClipboardList className="h-4 w-4 text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">Henüz tamamlanmış denetim yok</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {completedAudits.map((audit) => (
               <Link key={audit.id} href={`/denetim/${audit.id}`}>
                 <Card className="hover-elevate cursor-pointer" data-testid={`card-audit-${audit.id}`}>
@@ -241,7 +241,7 @@ export default function DenetimlerPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 gap-4 py-4">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 py-3">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <Label htmlFor="template">Denetim Şablonu *</Label>
               <Select

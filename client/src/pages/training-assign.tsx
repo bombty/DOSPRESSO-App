@@ -68,7 +68,7 @@ export default function TrainingAssign() {
 
   return (
     <div className="container mx-auto p-6 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-3">
         <Link href="/hq">
           <Button variant="outline" size="icon">
             <ArrowLeft className="h-4 w-4" />
@@ -92,13 +92,13 @@ export default function TrainingAssign() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Toplu Eğitim Ataması</CardTitle>
               <CardDescription>Rol grubuna eğitim materyali atayın</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <div>
                 <Label htmlFor="material">Eğitim Materyali *</Label>
                 <Select value={selectedMaterial} onValueChange={setSelectedMaterial}>

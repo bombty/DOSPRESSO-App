@@ -128,7 +128,7 @@ export default function KnowledgeBase() {
               <DialogTitle>Yeni Bilgi Bankası Makalesi</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="title"
@@ -226,20 +226,20 @@ export default function KnowledgeBase() {
 
         <TabsContent value={selectedCategory} className="mt-6">
           {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2 sm:gap-3 md:grid-cols-2">
               {[1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-48 w-full" />
               ))}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2 sm:gap-3 md:grid-cols-2">
               {filteredArticles?.map((article) => (
                 <Card key={article.id} data-testid={`card-article-${article.id}`}>
                   <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-2 sm:gap-3">
                       <div className="flex-1">
                         <CardTitle className="text-lg flex items-center gap-2">
-                          <BookOpen className="h-5 w-5" />
+                          <BookOpen className="h-4 w-4" />
                           {article.title}
                         </CardTitle>
                       </div>

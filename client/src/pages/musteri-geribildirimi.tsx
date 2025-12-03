@@ -101,7 +101,7 @@ export default function MisafirGeriBildirim() {
 
   if (feedbackLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="p-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -116,7 +116,7 @@ export default function MisafirGeriBildirim() {
       </div>
 
       {stats && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Ortalama Puan</CardTitle>
@@ -154,7 +154,7 @@ export default function MisafirGeriBildirim() {
                   const count = stats[`rating${rating}` as keyof FeedbackStats] as number;
                   const percentage = stats.totalCount > 0 ? (count / stats.totalCount) * 100 : 0;
                   return (
-                    <div key={rating} className="flex items-center gap-3">
+                    <div key={rating} className="flex items-center gap-2 sm:gap-3">
                       <span className="text-sm font-medium w-12">{rating} yıldız</span>
                       <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div
@@ -174,7 +174,7 @@ export default function MisafirGeriBildirim() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         {!feedbackList || feedbackList.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -188,7 +188,7 @@ export default function MisafirGeriBildirim() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       {renderStars(feedback.rating, "sm")}
                       <span className="text-sm text-muted-foreground" data-testid={`text-feedback-date-${feedback.id}`}>
                         {format(new Date(feedback.feedbackDate), "dd MMMM yyyy, HH:mm", { locale: tr })}
@@ -236,7 +236,7 @@ export default function MisafirGeriBildirim() {
             <DialogTitle>Geri Bildirimi İncele</DialogTitle>
             <DialogDescription>Geri bildirim için inceleme notu ekleyin</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             {reviewingFeedback && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {renderStars(reviewingFeedback.rating)}

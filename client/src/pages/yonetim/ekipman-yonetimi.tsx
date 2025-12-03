@@ -437,7 +437,7 @@ export default function EquipmentManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
         <Card className={stats.critical > 0 ? 'border-red-200 dark:border-red-800' : ''}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
@@ -487,9 +487,9 @@ export default function EquipmentManagement() {
         </TabsList>
 
         {/* TAB 1: Bekleyen Talepler */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           {/* Filters */}
-          <div className="bg-muted p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="bg-muted p-3 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <div className="flex gap-2 items-center">
               <Search className="w-4 h-4 text-muted-foreground" />
               <Input
@@ -588,11 +588,11 @@ export default function EquipmentManagement() {
                 return (
                   <Card
                     key={req.id}
-                    className={`hover-elevate cursor-pointer p-4 ${priority === 'kritik' ? 'border-red-300 dark:border-red-700' : priority === 'yuksek' ? 'border-orange-200 dark:border-orange-700' : ''}`}
+                    className={`hover-elevate cursor-pointer p-3 ${priority === 'kritik' ? 'border-red-300 dark:border-red-700' : priority === 'yuksek' ? 'border-orange-200 dark:border-orange-700' : ''}`}
                     onClick={() => setSelectedRequest(req)}
                     data-testid={`card-request-${req.id}`}
                   >
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center justify-between gap-2 sm:gap-3">
                       <div className="flex-1">
                         <div className="font-medium flex items-center gap-2">
                           {EQUIPMENT_TYPE_LABELS[eq?.equipmentType || ''] || eq?.equipmentType || 'Bilinmiyor'}
@@ -626,7 +626,7 @@ export default function EquipmentManagement() {
         </TabsContent>
 
         {/* TAB 2: Devam Eden */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           {inProgressRequests.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">Devam eden talep yok</div>
           ) : (
@@ -638,7 +638,7 @@ export default function EquipmentManagement() {
                 return (
                   <Card
                     key={req.id}
-                    className="hover-elevate cursor-pointer p-4"
+                    className="hover-elevate cursor-pointer p-3"
                     onClick={() => setSelectedRequest(req)}
                     data-testid={`card-request-${req.id}`}
                   >
@@ -657,7 +657,7 @@ export default function EquipmentManagement() {
         </TabsContent>
 
         {/* TAB 3: Tamamlanan */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           {completedRequests.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">Tamamlanan talep yok</div>
           ) : (
@@ -667,7 +667,7 @@ export default function EquipmentManagement() {
                 const branch = branches.find(b => b.id === eq?.branchId);
 
                 return (
-                  <Card key={req.id} className="p-4 opacity-75">
+                  <Card key={req.id} className="p-3 opacity-75">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-medium">{EQUIPMENT_TYPE_LABELS[eq?.equipmentType || ''] || eq?.equipmentType}</div>
@@ -685,8 +685,8 @@ export default function EquipmentManagement() {
         </TabsContent>
 
         {/* TAB 4: Ekipman Durumu */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {equipmentForDisplay.map(eq => {
               const health = getHealthStatus(eq);
               const branch = branches.find(b => b.id === eq.branchId);
@@ -758,12 +758,12 @@ export default function EquipmentManagement() {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               {/* Equipment Details */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-muted p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <div className="bg-muted p-3 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <div className="text-sm font-medium text-muted-foreground">Seri No</div>
                   <div className="font-semibold">{selectedEquipmentDetail.serialNumber || '-'}</div>
                 </div>
-                <div className="bg-muted p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="bg-muted p-3 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <div className="text-sm font-medium text-muted-foreground">Durum</div>
                   <div className="font-semibold">
                     <Badge className={getHealthStatus(selectedEquipmentDetail).color}>
@@ -773,25 +773,25 @@ export default function EquipmentManagement() {
                   </div>
                 </div>
                 {selectedEquipmentDetail.purchaseDate && (
-                  <div className="bg-muted p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="bg-muted p-3 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div className="text-sm font-medium text-muted-foreground">Satın Alma Tarihi</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.purchaseDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.warrantyEndDate && (
-                  <div className="bg-muted p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="bg-muted p-3 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div className="text-sm font-medium text-muted-foreground">Garanti Bitiş</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.warrantyEndDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.lastMaintenanceDate && (
-                  <div className="bg-muted p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="bg-muted p-3 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div className="text-sm font-medium text-muted-foreground">Son Bakım</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.lastMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
                 )}
                 {selectedEquipmentDetail.nextMaintenanceDate && (
-                  <div className="bg-muted p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="bg-muted p-3 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div className="text-sm font-medium text-muted-foreground">Sonraki Bakım</div>
                     <div className="font-semibold">{format(parseISO(selectedEquipmentDetail.nextMaintenanceDate), 'dd MMM yyyy', { locale: tr })}</div>
                   </div>
@@ -805,7 +805,7 @@ export default function EquipmentManagement() {
                   Servis Geçmişi ({serviceRequests.filter(r => r.equipmentId === selectedEquipmentDetail.id).length} talep)
                 </label>
                 {serviceRequests.filter(r => r.equipmentId === selectedEquipmentDetail.id).length === 0 ? (
-                  <div className="text-sm text-muted-foreground bg-muted p-4 rounded-lg text-center">
+                  <div className="text-sm text-muted-foreground bg-muted p-3 rounded-lg text-center">
                     Bu ekipman için servis talebi yok
                   </div>
                 ) : (
@@ -878,7 +878,7 @@ export default function EquipmentManagement() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               {/* Equipment Info */}
               {equipment.find(e => e.id === selectedRequest.equipmentId) && (
-                <div className="bg-muted p-4 rounded-lg">
+                <div className="bg-muted p-3 rounded-lg">
                   <div className="font-medium">Ekipman Bilgisi</div>
                   <div className="text-sm mt-2 text-muted-foreground">
                     {EQUIPMENT_TYPE_LABELS[equipment.find(e => e.id === selectedRequest.equipmentId)?.equipmentType || ''] || 'Bilinmiyor'} •{' '}
@@ -950,7 +950,7 @@ export default function EquipmentManagement() {
               Ekipman QR kodunu kameraya gösteriniz
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             <div 
               id="qr-reader" 
               className="w-full rounded-lg overflow-hidden bg-black"
@@ -1021,7 +1021,7 @@ export default function EquipmentManagement() {
 
             {/* Step 3: Form */}
             {createStep === 3 && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <label className="text-sm font-medium">Teknik / Sağlayıcı *</label>
                   <input

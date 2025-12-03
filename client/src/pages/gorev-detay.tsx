@@ -137,7 +137,7 @@ export default function GorevDetay() {
   return (
     <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="outline"
             size="icon"
@@ -163,16 +163,16 @@ export default function GorevDetay() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ListTodo className="h-5 w-5" />
+              <ListTodo className="h-4 w-4" />
               Görev Bilgileri
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <p className="text-sm text-muted-foreground">Durum</p>
                 <Badge variant={task.status === "completed" ? "outline" : "default"} className="mt-1">
@@ -213,16 +213,16 @@ export default function GorevDetay() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
+              <User className="h-4 w-4" />
               Atanan Kişi
             </CardTitle>
           </CardHeader>
           <CardContent>
             {assignedUser ? (
               <Link href={`/personel-detay/${assignedUser.id}`}>
-                <div className="flex items-center gap-3 p-3 rounded-lg border hover-elevate cursor-pointer">
+                <div className="flex items-center gap-2 sm:gap-3 p-3 rounded-lg border hover-elevate cursor-pointer">
                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary" />
+                    <User className="h-4 w-4 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium text-blue-600 hover:underline">
@@ -255,7 +255,7 @@ export default function GorevDetay() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Checklist Öğeleri</CardTitle>
@@ -269,11 +269,11 @@ export default function GorevDetay() {
                   {checklistTasks.map((item: any) => (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border"
+                      className="flex items-center gap-2 sm:gap-3 p-3 rounded-lg border"
                       data-testid={`checklist-item-${item.id}`}
                     >
                       <div
-                        className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+                        className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
                           item.isCompleted ? "bg-green-500 border-green-500" : "border-gray-300"
                         }`}
                       >
@@ -295,14 +295,14 @@ export default function GorevDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Görev Notları</CardTitle>
               <CardDescription>Bu göreve ait notlar ve yorumlar</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <div>
                   <Textarea
                     placeholder="Not ekle..."
@@ -333,14 +333,14 @@ export default function GorevDetay() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground py-4">Henüz not eklenmemiş</p>
+                  <p className="text-center text-muted-foreground py-3">Henüz not eklenmemiş</p>
                 )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Görev Geçmişi</CardTitle>
@@ -348,7 +348,7 @@ export default function GorevDetay() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                <div className="flex items-start gap-3 p-3 rounded-lg border">
+                <div className="flex items-start gap-2 sm:gap-3 p-3 rounded-lg border">
                   <Clock className="h-4 w-4 mt-1 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Görev oluşturuldu</p>
@@ -358,7 +358,7 @@ export default function GorevDetay() {
                   </div>
                 </div>
                 {task.updatedAt && task.updatedAt !== task.createdAt && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg border">
+                  <div className="flex items-start gap-2 sm:gap-3 p-3 rounded-lg border">
                     <AlertCircle className="h-4 w-4 mt-1 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Son güncelleme</p>
@@ -369,7 +369,7 @@ export default function GorevDetay() {
                   </div>
                 )}
                 {task.status === "completed" && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg border bg-green-50 dark:bg-green-950/20">
+                  <div className="flex items-start gap-2 sm:gap-3 p-3 rounded-lg border bg-green-50 dark:bg-green-950/20">
                     <CheckCircle className="h-4 w-4 mt-1 text-green-600" />
                     <div>
                       <p className="text-sm font-medium text-green-700 dark:text-green-400">Görev tamamlandı</p>

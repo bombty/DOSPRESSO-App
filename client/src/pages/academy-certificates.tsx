@@ -74,7 +74,7 @@ export default function AcademyCertificates() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               {/* Certificate Preview */}
-              <div className={`bg-gradient-to-br ${currentLevel.certificateColor} p-4 rounded-lg border-2 border-dashed border-gray-300 text-center min-h-40 flex flex-col justify-between text-xs`}>
+              <div className={`bg-gradient-to-br ${currentLevel.certificateColor} p-3 rounded-lg border-2 border-dashed border-gray-300 text-center min-h-40 flex flex-col justify-between text-xs`}>
                 <div>
                   <p className="text-sm text-gray-600 uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
                   <p className="text-lg font-serif mt-2">Kariyer Sertifikası</p>
@@ -130,7 +130,7 @@ export default function AcademyCertificates() {
 
         {/* Earned Certificates */}
         <TabsContent value="earned">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             {completedLevels.map((level, idx) => (
               <Card key={level.id} className="overflow-hidden">
                 <CardHeader className={`bg-gradient-to-r ${level.certificateColor} pb-3`}>
@@ -162,7 +162,7 @@ export default function AcademyCertificates() {
 
         {/* Upcoming Certificates */}
         <TabsContent value="upcoming">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             {CAREER_LEVELS.filter(l => l.id > (userProgress?.currentCareerLevelId || 0)).map((level) => {
               const progress = Math.min(100, Math.round(((userProgress?.currentCareerLevelId || 0) / level.id) * 100));
               return (

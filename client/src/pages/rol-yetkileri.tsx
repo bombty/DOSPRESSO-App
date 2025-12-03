@@ -234,7 +234,7 @@ export default function RolYetkileri() {
   // Auth check - show unauthorized if not admin
   if (!authLoading && (!user || user.role !== 'admin')) {
     return (
-      <div className="container mx-auto py-6 grid grid-cols-1 gap-6" data-testid="page-rol-yetkileri">
+      <div className="container mx-auto py-6 grid grid-cols-1 gap-2 sm:gap-3" data-testid="page-rol-yetkileri">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
           <p className="text-muted-foreground mt-1">
@@ -254,14 +254,14 @@ export default function RolYetkileri() {
   // Loading state
   if (authLoading || isLoading) {
     return (
-      <div className="container mx-auto py-6 grid grid-cols-1 gap-6" data-testid="page-rol-yetkileri">
+      <div className="container mx-auto py-6 grid grid-cols-1 gap-2 sm:gap-3" data-testid="page-rol-yetkileri">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
           <p className="text-muted-foreground mt-1">
             Sistem rollerinin modül ve işlem yetkilerini yönetin
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
@@ -273,7 +273,7 @@ export default function RolYetkileri() {
   // Error state
   if (error) {
     return (
-      <div className="container mx-auto py-6 grid grid-cols-1 gap-6" data-testid="page-rol-yetkileri">
+      <div className="container mx-auto py-6 grid grid-cols-1 gap-2 sm:gap-3" data-testid="page-rol-yetkileri">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
           <p className="text-muted-foreground mt-1">
@@ -291,7 +291,7 @@ export default function RolYetkileri() {
   }
 
   return (
-    <div className="container mx-auto py-6 grid grid-cols-1 gap-6" data-testid="page-rol-yetkileri">
+    <div className="container mx-auto py-6 grid grid-cols-1 gap-2 sm:gap-3" data-testid="page-rol-yetkileri">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Rol ve Yetki Yönetimi</h1>
@@ -320,7 +320,7 @@ export default function RolYetkileri() {
         )}
       </div>
 
-      <Accordion type="multiple" defaultValue={["hq", "branch"]} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Accordion type="multiple" defaultValue={["hq", "branch"]} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         {Object.entries(ROLE_GROUPS).map(([groupKey, group]) => {
           const Icon = group.icon;
           return (
@@ -331,14 +331,14 @@ export default function RolYetkileri() {
               data-testid={`accordion-group-${groupKey}`}
             >
               <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <Icon className="w-5 h-5 text-primary" />
                   <span className="text-lg font-semibold">{group.title}</span>
                   <Badge variant="secondary">{group.roles.length} Rol</Badge>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6">
-                <div className="grid grid-cols-1 gap-6 mt-4">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 mt-4">
                   {group.roles.map(role => (
                     <Card key={role} data-testid={`card-role-${role}`}>
                       <CardHeader>
@@ -351,20 +351,20 @@ export default function RolYetkileri() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                           {allModules.map(module => {
                             const modulePerms = permissions[role]?.[module] || [];
                             
                             return (
                               <div 
                                 key={module} 
-                                className="grid grid-cols-[200px_1fr] gap-4 items-center border-b pb-3 last:border-b-0"
+                                className="grid grid-cols-[200px_1fr] gap-2 sm:gap-3 items-center border-b pb-3 last:border-b-0"
                                 data-testid={`module-${role}-${module}`}
                               >
                                 <Label className="font-medium text-sm">
                                   {moduleLabels[module] || module}
                                 </Label>
-                                <div className="flex flex-wrap gap-4">
+                                <div className="flex flex-wrap gap-2 sm:gap-3">
                                   {allActions.map(action => {
                                     const hasPermission = modulePerms.includes(action);
                                     return (
@@ -400,7 +400,7 @@ export default function RolYetkileri() {
       </Accordion>
 
       {hasChanges && (
-        <div className="flex justify-end gap-3 sticky bottom-6">
+        <div className="flex justify-end gap-2 sm:gap-3 sticky bottom-6">
           <Button
             variant="outline"
             onClick={() => {

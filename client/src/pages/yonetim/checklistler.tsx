@@ -91,7 +91,7 @@ export default function AdminChecklistManagement() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -116,7 +116,7 @@ export default function AdminChecklistManagement() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-3 mb-4">
+          <div className="flex gap-2 sm:gap-3 mb-4">
             <Select value={filterFrequency} onValueChange={setFilterFrequency}>
               <SelectTrigger className="w-48" data-testid="filter-frequency">
                 <SelectValue placeholder="Sıklık" />
@@ -156,7 +156,7 @@ export default function AdminChecklistManagement() {
 
                 return (
                   <Card key={checklist.id} data-testid={`checklist-card-${checklist.id}`}>
-                    <CardContent className="py-4">
+                    <CardContent className="py-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
@@ -183,7 +183,7 @@ export default function AdminChecklistManagement() {
                           {checklist.description && (
                             <p className="text-sm text-muted-foreground mb-2">{checklist.description}</p>
                           )}
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
                             <span>{tasks.length} görev</span>
                             {checklist.timeWindowStart && checklist.timeWindowEnd && (
                               <span>
@@ -391,7 +391,7 @@ function ChecklistFormDialog({
       <DialogHeader>
         <DialogTitle>{mode === "create" ? "Yeni Checklist" : "Checklist Düzenle"}</DialogTitle>
       </DialogHeader>
-      <div className="grid grid-cols-1 gap-4 py-4">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 py-3">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <Label htmlFor="title">Başlık *</Label>
           <Input
@@ -415,7 +415,7 @@ function ChecklistFormDialog({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <Label>Sıklık *</Label>
             <Select value={frequency} onValueChange={setFrequency}>
@@ -447,7 +447,7 @@ function ChecklistFormDialog({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <Label htmlFor="timeWindowStart">Başlangıç Saati</Label>
             <Input
@@ -471,7 +471,7 @@ function ChecklistFormDialog({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2">
             <Checkbox
               id="isEditable"

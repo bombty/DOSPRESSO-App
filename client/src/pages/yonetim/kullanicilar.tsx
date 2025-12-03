@@ -270,7 +270,7 @@ export default function UserCRM() {
                     Format: id,firstName,lastName,email,role,branchId
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <div>
                     <Label htmlFor="csv-text">CSV Verisi</Label>
                     <textarea
@@ -498,7 +498,7 @@ export default function UserCRM() {
                                 {user.firstName} {user.lastName} için rol ve şube değiştir
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                               <div>
                                 <Label htmlFor="edit-role">Rol</Label>
                                 <Select value={editRole ?? undefined} onValueChange={setEditRole}>

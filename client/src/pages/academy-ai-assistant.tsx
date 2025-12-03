@@ -106,14 +106,14 @@ export default function AcademyAIAssistant() {
       <Card className="col-span-full h-[400px] flex flex-col">
         <CardContent className="flex-1 p-2 overflow-hidden">
           <ScrollArea className="h-full pr-4">
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-lg ${
+                    className={`max-w-xs md:max-w-md lg:max-w-lg px-3 py-3 rounded-lg ${
                       msg.role === "user"
                         ? "bg-blue-500 text-white rounded-br-none"
                         : "bg-slate-100 dark:bg-slate-800 text-foreground rounded-bl-none"
@@ -128,7 +128,7 @@ export default function AcademyAIAssistant() {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-lg rounded-bl-none">
+                  <div className="bg-slate-100 dark:bg-slate-800 px-3 py-3 rounded-lg rounded-bl-none">
                     <Loader className="w-4 h-4 animate-spin" />
                   </div>
                 </div>

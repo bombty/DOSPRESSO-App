@@ -155,7 +155,7 @@ export default function HQSupport() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">
@@ -173,7 +173,7 @@ export default function HQSupport() {
           )}
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           {isLoading ? (
             <Card>
               <CardContent className="p-6">
@@ -276,8 +276,8 @@ function TicketCard({
       onClick={() => onClick(ticket.id)}
       data-testid={`card-ticket-${ticket.id}`}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
+      <CardContent className="p-3">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <h4 className="font-medium truncate" data-testid={`text-ticket-title-${ticket.id}`}>
@@ -295,7 +295,7 @@ function TicketCard({
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
               <span data-testid={`text-branch-${ticket.id}`}>{ticket.branch?.name}</span>
               <span data-testid={`text-created-${ticket.id}`}>
                 {ticket.createdAt && format(new Date(ticket.createdAt), "d MMM yyyy", { locale: tr })}
@@ -392,7 +392,7 @@ function CreateTicketDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             {/* HQ Branch Selection */}
             {isHQ && (
               <FormField
@@ -634,7 +634,7 @@ function TicketDetailDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col" data-testid="dialog-ticket-detail">
         <DialogHeader>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
             <div className="flex-1">
               <DialogTitle data-testid="text-detail-title">{ticket.title}</DialogTitle>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -670,13 +670,13 @@ function TicketDetailDialog({
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 gap-4 flex-1 overflow-hidden flex flex-col">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 flex-1 overflow-hidden flex flex-col">
           {/* Ticket Info */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <p className="text-sm text-muted-foreground" data-testid="text-detail-description">
               {ticket.description}
             </p>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
               <span data-testid="text-detail-branch">
                 <strong>Şube:</strong> {ticket.branch?.name}
               </span>
@@ -690,7 +690,7 @@ function TicketDetailDialog({
 
           {/* Messages */}
           <ScrollArea className="flex-1 pr-4">
-            <div className="grid grid-cols-1 gap-4 pb-4">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 pb-4">
               {messages.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">Henüz mesaj yok</p>
               ) : (
@@ -699,7 +699,7 @@ function TicketDetailDialog({
                   return (
                     <div
                       key={msg.id}
-                      className={`flex gap-3 ${isCurrentUser ? "flex-row-reverse" : ""}`}
+                      className={`flex gap-2 sm:gap-3 ${isCurrentUser ? "flex-row-reverse" : ""}`}
                       data-testid={`message-${msg.id}`}
                     >
                       <Avatar className="w-8 h-8">

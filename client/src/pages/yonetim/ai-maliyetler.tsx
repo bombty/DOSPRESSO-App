@@ -68,7 +68,7 @@ export default function AICostDashboard() {
             Yapay zeka kullanım maliyetlerini izleyin ve bütçenizi yönetin
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <p className="text-sm text-muted-foreground" data-testid="text-last-updated">
             Son güncelleme: {lastUpdated.toLocaleTimeString('tr-TR')}
           </p>
@@ -86,7 +86,7 @@ export default function AICostDashboard() {
       </div>
 
       {/* Header Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-2 sm:gap-3 md:grid-cols-3">
         <Card data-testid="card-month-cost">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Bu Ay Harcama</CardTitle>
@@ -167,7 +167,7 @@ export default function AICostDashboard() {
         </Card>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-2 sm:gap-3 md:grid-cols-2">
         {/* Cost by Feature Table */}
         <Card data-testid="card-cost-by-feature">
           <CardHeader>

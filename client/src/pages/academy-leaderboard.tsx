@@ -100,16 +100,16 @@ export default function AcademyLeaderboard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="global" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="global" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Top 5 Performans</CardTitle>
               <CardDescription>Toplam puanlara göre en iyi performans gösteren 5 çalışan</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {topPerformers.map((performer) => (
                 <div key={performer.rank} className="flex items-center justify-between p-3 border rounded-lg hover-elevate">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <div className="text-center">
                       <Trophy className={`w-5 h-5 mx-auto ${performer.rank === 1 ? "text-yellow-500" : performer.rank === 2 ? "text-gray-400" : performer.rank === 3 ? "text-orange-600" : "text-gray-500"}`} />
                       <p className="text-xs font-bold mt-1">#{performer.rank}</p>
@@ -132,7 +132,7 @@ export default function AcademyLeaderboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="branches" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="branches" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Şube Performansı</CardTitle>
@@ -160,19 +160,19 @@ export default function AcademyLeaderboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="exams" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="exams" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Sınav Performans Liderleri</CardTitle>
               <CardDescription>En yüksek notla sınav geçen çalışanlar</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {examLeaderboard.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">Henüz sınav sonucu bulunmuyor</p>
               ) : (
                 examLeaderboard.map((performer: any, idx: number) => (
                   <div key={performer.userId} className="flex items-center justify-between p-3 border rounded-lg hover-elevate">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <div className="text-center">
                         <Flame className={`w-5 h-5 mx-auto ${idx === 0 ? "text-red-500" : idx === 1 ? "text-orange-500" : idx === 2 ? "text-yellow-500" : "text-gray-500"}`} />
                         <p className="text-xs font-bold mt-1">#{idx + 1}</p>

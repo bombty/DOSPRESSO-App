@@ -71,7 +71,7 @@ export default function AIAssistant() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
+            <BookOpen className="h-4 w-4" />
             Sohbet
           </CardTitle>
         </CardHeader>
@@ -86,8 +86,8 @@ export default function AIAssistant() {
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             {conversation.map((item, index) => (
-              <div key={index} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="flex gap-3">
+              <div key={index} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="flex gap-2 sm:gap-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
                     S
                   </div>
@@ -97,7 +97,7 @@ export default function AIAssistant() {
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-semibold text-sm">
                     AI
                   </div>
@@ -137,7 +137,7 @@ export default function AIAssistant() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             <Textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}

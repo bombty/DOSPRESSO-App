@@ -77,9 +77,9 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-3">
       <Card className="w-full max-w-md">
-        <CardHeader className="flex flex-col items-center gap-4">
+        <CardHeader className="flex flex-col items-center gap-2 sm:gap-3">
           <img 
             src={logoUrl} 
             alt="DOSPRESSO Logo" 
@@ -92,7 +92,7 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="username"

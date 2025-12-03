@@ -188,7 +188,7 @@ export default function Training() {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-12 w-64" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
           {[...Array(6)].map((_, i) => (
             <Skeleton key={i} className="h-64" />
           ))}
@@ -217,7 +217,7 @@ export default function Training() {
                 <DialogTitle>Yeni Eğitim Modülü</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="title"
@@ -326,7 +326,7 @@ export default function Training() {
                         <div className="text-sm text-muted-foreground mb-2">
                           Bu eğitimin zorunlu olduğu rolleri seçin
                         </div>
-                        <div className="grid grid-cols-2 gap-3 p-4 border rounded-md max-h-48 overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 border rounded-md max-h-48 overflow-y-auto">
                           {Object.entries(roleLabels).map(([roleValue, roleLabel]) => (
                             <div key={roleValue} className="flex items-center space-x-2">
                               <Checkbox
@@ -401,7 +401,7 @@ export default function Training() {
         )}
       </div>
 
-      <Tabs defaultValue={myTrainings.length > 0 ? "my-trainings" : "all"} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Tabs defaultValue={myTrainings.length > 0 ? "my-trainings" : "all"} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <TabsList>
           {myTrainings.length > 0 && (
             <TabsTrigger value="my-trainings" data-testid="tab-my-trainings">
@@ -420,14 +420,14 @@ export default function Training() {
         </TabsList>
 
         {/* My Trainings Tab - Mandatory + optional modules with progress */}
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           {myTrainings.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>Henüz atanmış eğitiminiz yok</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
               {myTrainings.map((module) => {
                 const progressStatus = getProgressStatus(module.id);
                 const StatusIcon = progressStatus.icon;
@@ -469,7 +469,7 @@ export default function Training() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {module.description || "Açıklama yok"}
                       </p>
@@ -507,8 +507,8 @@ export default function Training() {
           )}
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {modules?.map((module) => {
               const progressStatus = getProgressStatus(module.id);
               const StatusIcon = progressStatus.icon;
@@ -560,7 +560,7 @@ export default function Training() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                     <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
                     
                     <div className="flex flex-wrap gap-2">
@@ -595,14 +595,14 @@ export default function Training() {
           </div>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {modules?.filter(m => m.isPublished).map((module) => (
               <Card key={module.id} className="hover-elevate" data-testid={`card-module-${module.id}`}>
                 <CardHeader>
                   <CardTitle className="text-lg">{module.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
                   <Badge variant="outline">
                     {categoryLabels[module.category || "barista_basics"]}
@@ -613,14 +613,14 @@ export default function Training() {
           </div>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {modules?.filter(m => !m.isPublished).map((module) => (
               <Card key={module.id} className="hover-elevate" data-testid={`card-module-${module.id}`}>
                 <CardHeader>
                   <CardTitle className="text-lg">{module.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <p className="text-sm text-muted-foreground line-clamp-2">{module.description || "Açıklama yok"}</p>
                   <Badge variant="outline">
                     {categoryLabels[module.category || "barista_basics"]}

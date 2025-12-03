@@ -377,7 +377,7 @@ export default function Tasks() {
           <Card data-testid="card-stat-overdue" className="border-destructive">
             <CardContent className="p-3">
               <div className="flex flex-col items-center text-center gap-1.5">
-                <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                   <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-500" />
                 </div>
                 <p className="text-xs text-muted-foreground">Gecikmiş</p>
@@ -390,7 +390,7 @@ export default function Tasks() {
         <Card data-testid="card-stat-beklemede">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
                 <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
               </div>
               <p className="text-xs text-muted-foreground">Bekleyen</p>
@@ -402,7 +402,7 @@ export default function Tasks() {
         <Card data-testid="card-stat-devam-eden">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                 <PlayCircle className="h-4 w-4 text-blue-600 dark:text-blue-500" />
               </div>
               <p className="text-xs text-muted-foreground">Devam Eden</p>
@@ -414,7 +414,7 @@ export default function Tasks() {
         <Card data-testid="card-stat-tamamlanmayan">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                 <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-500" />
               </div>
               <p className="text-xs text-muted-foreground">Tamamlanmayan</p>
@@ -426,7 +426,7 @@ export default function Tasks() {
         <Card data-testid="card-stat-tamamlanan">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                 <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />
               </div>
               <p className="text-xs text-muted-foreground">Tamamlanan</p>
@@ -441,7 +441,7 @@ export default function Tasks() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
+                <Filter className="h-4 w-4" />
                 <CardTitle>Filtreler</CardTitle>
                 {activeFilterCount > 0 && (
                   <Badge variant="default" data-testid="badge-active-filters">
@@ -470,8 +470,8 @@ export default function Tasks() {
             </div>
           </CardHeader>
           <CollapsibleContent>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <label className="text-sm font-medium">Arama</label>
                   <div className="relative">
@@ -622,8 +622,8 @@ export default function Tasks() {
         </Card>
       </Collapsible>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
           <TabsList data-testid="tabs-task-filter">
             <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
             <TabsTrigger value="acilis" data-testid="tab-acilis">Açılış</TabsTrigger>
@@ -640,7 +640,7 @@ export default function Tasks() {
               <DialogTitle>Yeni Görev Ekle</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="description"
@@ -763,7 +763,7 @@ export default function Tasks() {
         </div>
 
         {["all", "acilis", "kapanis", "gunluk"].map((tabValue) => (
-          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             {isLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {[1, 2, 3, 4, 5].map((i) => (
@@ -774,8 +774,8 @@ export default function Tasks() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {/* Sortable Column Headers - Desktop only */}
                 <Card className="hidden lg:block">
-                  <CardContent className="py-2 px-4">
-                    <div className="grid grid-cols-5 gap-3">
+                  <CardContent className="py-2 px-3">
+                    <div className="grid grid-cols-5 gap-2 sm:gap-3">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -940,7 +940,7 @@ export default function Tasks() {
             </DrawerHeader>
             
             {selectedTask && (
-              <div className="px-4 pb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="px-3 pb-4 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {/* Task Description */}
                 <div>
                   <h3 className="font-semibold text-lg mb-2">{selectedTask.description}</h3>
@@ -974,7 +974,7 @@ export default function Tasks() {
                 <Separator />
 
                 {/* Task Info */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 text-sm">
                   {selectedTask.dueDate && (
                     <div className="flex items-start gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
@@ -1019,7 +1019,7 @@ export default function Tasks() {
                     <Separator />
                     <div>
                       <p className="font-medium mb-2">AI Analizi</p>
-                      <div className="bg-muted p-4 rounded-md grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="bg-muted p-3 rounded-md grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                         {selectedTask.aiScore !== null && selectedTask.aiScore !== undefined && (
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium">Skor:</span>

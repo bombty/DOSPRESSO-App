@@ -93,7 +93,7 @@ export default function PersonelProfilPage() {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-12 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -105,7 +105,7 @@ export default function PersonelProfilPage() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <p className="text-lg text-muted-foreground">Personel bulunamadı</p>
         <Link href="/ik">
           <Button variant="default" data-testid="button-back-ik">İK Yönetimine Dön</Button>
@@ -140,13 +140,13 @@ export default function PersonelProfilPage() {
       <Card className="border-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Award className="h-5 w-5 text-primary" />
+            <Award className="h-4 w-4 text-primary" />
             Genel Performans
           </CardTitle>
           <CardDescription>Son 30 günlük performans özeti</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Performans Skoru</span>
@@ -170,7 +170,7 @@ export default function PersonelProfilPage() {
       </Card>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Toplam Vardiya</CardTitle>
@@ -225,7 +225,7 @@ export default function PersonelProfilPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="bilgiler" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Tabs defaultValue="bilgiler" className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <TabsList className="flex flex-wrap gap-1">
           <TabsTrigger value="bilgiler" data-testid="tab-info" className="flex-1 min-w-fit">Kişisel Bilgiler</TabsTrigger>
           <TabsTrigger value="performans" data-testid="tab-performance" className="flex-1 min-w-fit">Performans</TabsTrigger>
@@ -234,13 +234,13 @@ export default function PersonelProfilPage() {
           <TabsTrigger value="akademi" data-testid="tab-academy" className="flex-1 min-w-fit">Akademi</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Personel Bilgileri</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Kullanıcı Adı</p>
                   <p className="text-base" data-testid="info-username">{profile.username}</p>
@@ -288,7 +288,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Performans Metrikleri</CardTitle>
@@ -302,7 +302,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Personel Denetimleri</CardTitle>
@@ -316,7 +316,7 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Vardiya Geçmişi</CardTitle>
@@ -330,14 +330,14 @@ export default function PersonelProfilPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Akademi Modülleri</CardTitle>
               <CardDescription>Tüm akademi eğitim ve gelişim programlarına erişim</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                 <Link href="/akademi">
                   <Button variant="outline" className="w-full" data-testid="link-akademi">Akademi</Button>
                 </Link>

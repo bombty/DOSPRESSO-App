@@ -171,7 +171,7 @@ export default function Branches() {
               <DialogTitle>{editingBranch ? "Şube Düzenle" : "Yeni Şube Ekle"}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="name"
@@ -246,7 +246,7 @@ export default function Branches() {
       </Dialog>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
           {[1, 2, 3].map((i) => (
             <Card key={i}>
               <CardHeader>
@@ -274,7 +274,7 @@ export default function Branches() {
                       <Button 
                         size="icon" 
                         variant="ghost"
-                        className="h-8 w-8"
+                        className="h-4 w-4"
                         onClick={() => handleEdit(branch)}
                         data-testid={`button-edit-branch-${branch.id}`}
                       >
@@ -283,7 +283,7 @@ export default function Branches() {
                       <Button 
                         size="icon" 
                         variant="ghost"
-                        className="h-8 w-8"
+                        className="h-4 w-4"
                         onClick={() => handleDelete(branch.id)}
                         data-testid={`button-delete-branch-${branch.id}`}
                       >

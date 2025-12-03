@@ -235,7 +235,7 @@ export default function VardiyaSablonlari() {
     <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Calendar className="h-6 w-6" />
+          <Calendar className="h-4 w-4" />
           <h1 className="text-2xl font-bold">Vardiya Şablonları</h1>
         </div>
         
@@ -254,7 +254,7 @@ export default function VardiyaSablonlari() {
               </DialogDescription>
             </DialogHeader>
             <Form {...templateForm}>
-              <form onSubmit={templateForm.handleSubmit(onSubmitCreate)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <form onSubmit={templateForm.handleSubmit(onSubmitCreate)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <FormField
                   control={templateForm.control}
                   name="name"
@@ -306,7 +306,7 @@ export default function VardiyaSablonlari() {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={templateForm.control}
                     name="startTime"
@@ -410,7 +410,7 @@ export default function VardiyaSablonlari() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
         {templates?.map((template) => (
           <Card key={template.id} data-testid={`card-template-${template.id}`}>
             <CardHeader>
@@ -424,7 +424,7 @@ export default function VardiyaSablonlari() {
                 <CardDescription>{template.description}</CardDescription>
               )}
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Saat:</span>
@@ -492,7 +492,7 @@ export default function VardiyaSablonlari() {
             </DialogDescription>
           </DialogHeader>
           <Form {...templateForm}>
-            <form onSubmit={templateForm.handleSubmit(onSubmitEdit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={templateForm.handleSubmit(onSubmitEdit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={templateForm.control}
                 name="name"
@@ -544,7 +544,7 @@ export default function VardiyaSablonlari() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <FormField
                   control={templateForm.control}
                   name="startTime"
@@ -643,7 +643,7 @@ export default function VardiyaSablonlari() {
             </DialogDescription>
           </DialogHeader>
           <Form {...generateForm}>
-            <form onSubmit={generateForm.handleSubmit(onSubmitGenerate)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={generateForm.handleSubmit(onSubmitGenerate)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={generateForm.control}
                 name="startDate"

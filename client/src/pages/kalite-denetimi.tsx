@@ -126,7 +126,7 @@ export default function KaliteDenetimi() {
 
   if (auditsLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="p-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-32 w-full" />
@@ -155,7 +155,7 @@ export default function KaliteDenetimi() {
                 <DialogDescription>Şube için yeni bir kalite denetimi başlatın</DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="branchId"

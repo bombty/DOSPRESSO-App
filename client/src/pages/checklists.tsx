@@ -267,7 +267,7 @@ export default function Checklists() {
               <DialogTitle>Yeni Checklist Oluştur</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="title"
@@ -350,16 +350,16 @@ export default function Checklists() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-2 sm:gap-3">
           {checklists?.map((checklist) => {
             const tasks = getTasksForChecklist(checklist.id);
             return (
               <Card key={checklist.id} data-testid={`card-checklist-${checklist.id}`}>
                 <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-2 sm:gap-3">
                     <div className="flex-1">
                       <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
+                        <FileText className="h-4 w-4" />
                         {checklist.title}
                       </CardTitle>
                       {checklist.description && (
@@ -386,7 +386,7 @@ export default function Checklists() {
                 </CardHeader>
                 <CardContent>
                   {tasks.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                       <div className="border-b pb-2">
                         <h3 className="text-sm font-medium text-muted-foreground">Çizelge Maddeleri</h3>
                       </div>
@@ -407,7 +407,7 @@ export default function Checklists() {
                                 className="border rounded-md hover-elevate"
                                 data-testid={`checklist-task-${task.id}`}
                               >
-                                <div className="flex items-center gap-3 p-3">
+                                <div className="flex items-center gap-2 sm:gap-3 p-3">
                                   <Checkbox
                                     checked={isChecked}
                                     onCheckedChange={() => toggleTaskChecked(task.id)}
@@ -470,7 +470,7 @@ export default function Checklists() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
+                    <p className="text-sm text-muted-foreground text-center py-3">
                       Bu checklist için henüz görev eklenmemiş
                     </p>
                   )}
@@ -496,14 +496,14 @@ export default function Checklists() {
             <DialogTitle>Checklist Düzenle</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {editingChecklist && !(editingChecklist.isEditable ?? true) && !isCoach && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 text-sm text-yellow-800 dark:text-yellow-200">
                   ⚠️ Bu checklist düzenlenemez olarak işaretlenmiş. Sadece HQ Coach yetkisi ile düzenlenebilir.
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <FormField
                   control={editForm.control}
                   name="title"
@@ -556,7 +556,7 @@ export default function Checklists() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <FormField
                   control={editForm.control}
                   name="category"
@@ -596,7 +596,7 @@ export default function Checklists() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <FormField
                   control={editForm.control}
                   name="timeWindowStart"
@@ -739,7 +739,7 @@ export default function Checklists() {
                   ))}
 
                   {fields.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
+                    <p className="text-sm text-muted-foreground text-center py-3">
                       Henüz görev eklenmemiş. "Görev Ekle" butonunu kullanın.
                     </p>
                   )}

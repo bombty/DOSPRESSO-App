@@ -88,7 +88,7 @@ export default function AcademyQuiz() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-6 min-h-screen">
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-2 sm:gap-3">
           <Loader className="w-8 h-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Soru yükleniyor...</p>
         </div>

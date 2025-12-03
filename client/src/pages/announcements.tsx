@@ -200,7 +200,7 @@ export default function Announcements() {
                 <DialogTitle>Yeni Duyuru Yayınla</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="title"
@@ -368,7 +368,7 @@ export default function Announcements() {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                     <div>
                       <FormLabel>Dosya Ekle (Opsiyonel)</FormLabel>
                       <div className="mt-2">
@@ -456,10 +456,10 @@ export default function Announcements() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           {[...Array(3)].map((_, i) => (
             <Card key={i}>
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <Skeleton className="h-6 w-3/4 mb-2" />
                 <Skeleton className="h-4 w-1/2" />
               </CardContent>
@@ -467,7 +467,7 @@ export default function Announcements() {
           ))}
         </div>
       ) : announcements && announcements.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           {announcements.map((announcement) => {
             const isUrgent = announcement.priority === 'urgent';
             const isActive = announcement.publishedAt && (!announcement.expiresAt || new Date(announcement.expiresAt) > new Date());
@@ -480,8 +480,8 @@ export default function Announcements() {
                 data-testid={`card-announcement-${announcement.id}`}
               >
                 <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 sm:gap-3">
+                    <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
                       <div className={`p-2 rounded-lg ${isUrgent ? 'bg-destructive/10' : 'bg-primary/10'}`}>
                         <Icon className={`w-5 h-5 ${isUrgent ? 'text-destructive' : ''}`} />
                       </div>
@@ -513,7 +513,7 @@ export default function Announcements() {
                     {announcement.message}
                   </p>
 
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <User className="w-3 h-3" />
                       <span data-testid={`text-author-${announcement.id}`}>
@@ -577,10 +577,10 @@ export default function Announcements() {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             {readStatus ? (
               <>
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-500" />
                     <span className="font-medium">Okuyan: {readStatus.readCount}</span>
@@ -604,14 +604,14 @@ export default function Announcements() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground py-4">
+                  <p className="text-center text-muted-foreground py-3">
                     Henüz okuyan yok
                   </p>
                 )}
               </>
             ) : (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
               </div>
             )}
           </div>

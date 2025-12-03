@@ -321,7 +321,7 @@ export default function OvertimeRequestsPage() {
             </DialogDescription>
           </DialogHeader>
           <Form {...createForm}>
-            <form onSubmit={handleCreateSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={handleCreateSubmit} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={createForm.control}
                 name="shiftAttendanceId"

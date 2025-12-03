@@ -211,11 +211,11 @@ export default function AttendancePage() {
         <p className="text-muted-foreground">Vardiya giriş/çıkış ve mola yönetimi</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-2 sm:gap-3 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+              <Clock className="h-4 w-4" />
               {activeShift ? "Aktif Vardiya" : "Vardiya Durumu"}
             </CardTitle>
             <CardDescription>
@@ -224,7 +224,7 @@ export default function AttendancePage() {
                 : "Vardiyaya giriş yapmadınız"}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             {activeLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : activeShift ? (
@@ -331,7 +331,7 @@ export default function AttendancePage() {
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {uploadedPhotoUrl ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div className="relative aspect-video rounded-lg overflow-hidden border">
@@ -410,7 +410,7 @@ export default function AttendancePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
+              <Calendar className="h-4 w-4" />
               Bu Hafta
             </CardTitle>
             <CardDescription>Toplam çalışma süresi özeti</CardDescription>
@@ -486,7 +486,7 @@ export default function AttendancePage() {
                           </div>
                         ) : (
                           <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
-                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
                           </div>
                         )}
                       </TableCell>

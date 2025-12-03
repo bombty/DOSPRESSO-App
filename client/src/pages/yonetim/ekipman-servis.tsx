@@ -431,7 +431,7 @@ export default function EkipmanServis() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                 <Wrench className="h-4 w-4 text-blue-600" />
               </div>
               <p className="text-xs text-muted-foreground">Toplam</p>
@@ -442,7 +442,7 @@ export default function EkipmanServis() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                 <AlertTriangle className="h-4 w-4 text-red-600" />
               </div>
               <p className="text-xs text-muted-foreground">Arıza</p>
@@ -453,7 +453,7 @@ export default function EkipmanServis() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                 <ClipboardList className="h-4 w-4 text-green-600" />
               </div>
               <p className="text-xs text-muted-foreground">Servis</p>
@@ -509,7 +509,7 @@ export default function EkipmanServis() {
       </Card>
 
       {/* List */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         {unifiedRequests.length === 0 ? (
           <Card>
             <CardContent className="pt-6 text-center text-muted-foreground">
@@ -523,7 +523,7 @@ export default function EkipmanServis() {
               setDetailsDialogOpen(true);
             }} data-testid={`card-request-${req.type}-${req.id}`}>
               <CardHeader>
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-2 sm:gap-3">
                   <div className="flex-1">
                     <CardTitle className="text-lg">{req.equipmentType}</CardTitle>
                     <CardDescription>{req.equipmentName} • {req.branchName || `Şube #${req.branchId}`}</CardDescription>
@@ -629,7 +629,7 @@ export default function EkipmanServis() {
                       ))}
                     </div>
                     {branchEquipment.length === 0 && (
-                      <div className="text-center text-muted-foreground py-4">Bu şube için ekipman bulunmuyor</div>
+                      <div className="text-center text-muted-foreground py-3">Bu şube için ekipman bulunmuyor</div>
                     )}
                     <Button onClick={startQRScanner} variant="outline" className="w-full" data-testid="button-scan-qr">
                       <QrCode className="w-4 h-4 mr-2" />
@@ -644,10 +644,10 @@ export default function EkipmanServis() {
             {createEquipment && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <Label>Rapor Tipi *</Label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <button
                     onClick={() => setCreateType('fault')}
-                    className={`p-4 rounded-lg border-2 text-center hover-elevate transition-all ${
+                    className={`p-3 rounded-lg border-2 text-center hover-elevate transition-all ${
                       createType === 'fault'
                         ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
                         : 'border-border'
@@ -660,7 +660,7 @@ export default function EkipmanServis() {
                   </button>
                   <button
                     onClick={() => setCreateType('service')}
-                    className={`p-4 rounded-lg border-2 text-center hover-elevate transition-all ${
+                    className={`p-3 rounded-lg border-2 text-center hover-elevate transition-all ${
                       createType === 'service'
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-border'
@@ -677,7 +677,7 @@ export default function EkipmanServis() {
 
             {/* Fault Fields */}
             {createType === 'fault' && (
-              <div className="grid grid-cols-1 gap-4 border-t pt-4">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 border-t pt-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label>Arıza Açıklaması *</Label>
                   <Textarea
@@ -702,7 +702,7 @@ export default function EkipmanServis() {
                 </div>
 
                 {aiDiagnosis && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div>
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-100">AI Tanısı</p>
                       <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">{aiDiagnosis.diagnosis}</p>
@@ -753,7 +753,7 @@ export default function EkipmanServis() {
 
             {/* Service Fields */}
             {createType === 'service' && (
-              <div className="grid grid-cols-1 gap-4 border-t pt-4">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 border-t pt-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label>Servis Sağlayıcı *</Label>
                   <Input
@@ -797,9 +797,9 @@ export default function EkipmanServis() {
                     rows={3}
                   />
                 </div>
-                <div className="grid grid-cols-1 gap-3 border-t pt-4">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 border-t pt-4">
                   <Label>Fotoğraflar (İsteğe Bağlı)</Label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       {photo1Preview ? (
                         <img src={photo1Preview} alt="Foto 1" className="w-full aspect-square object-cover rounded-lg border" />
@@ -888,8 +888,8 @@ export default function EkipmanServis() {
           </DialogHeader>
 
           {selectedRequest && (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Ekipman</p>
                   <p className="font-medium">{selectedRequest.equipmentType}</p>
@@ -906,7 +906,7 @@ export default function EkipmanServis() {
                     <p className="text-sm text-muted-foreground">Arıza Açıklaması</p>
                     <p>{selectedRequest.faultDescription}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       <p className="text-sm text-muted-foreground">Durum</p>
                       <Badge>{FAULT_STATUS_LABELS[selectedRequest.faultStatus as keyof typeof FAULT_STATUS_LABELS]}</Badge>

@@ -131,7 +131,7 @@ export default function SubelerPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <p className="text-lg text-destructive">Şubeler yüklenirken hata oluştu</p>
         <p className="text-sm text-muted-foreground">Lütfen sistem yöneticinize başvurun</p>
       </div>
@@ -169,7 +169,7 @@ export default function SubelerPage() {
             <DialogTitle>{editingBranch ? "Şube Düzenle" : "Yeni Şube Ekle"}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="name"
@@ -243,13 +243,13 @@ export default function SubelerPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
         {filteredBranches.map((branch) => (
           <Link key={branch.id} href={`/subeler/${branch.id}`}>
             <Card className="hover-elevate active-elevate-2 cursor-pointer h-full" data-testid={`card-branch-${branch.id}`}>
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
                 <CardTitle className="text-lg flex items-center gap-2 flex-1 min-w-0">
-                  <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
+                  <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
                   <span className="truncate">{branch.name}</span>
                 </CardTitle>
                 {isHQ && (

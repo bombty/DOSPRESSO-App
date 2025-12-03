@@ -132,7 +132,7 @@ export default function FranchiseAcilis() {
 
   if (isLoading) {
     return (
-      <div className="p-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="p-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -160,7 +160,7 @@ export default function FranchiseAcilis() {
                 <DialogDescription>Yeni bir franchise açılış süreci başlatın</DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="branchId"
@@ -200,7 +200,7 @@ export default function FranchiseAcilis() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <FormField
                       control={form.control}
                       name="contactPerson"
@@ -301,7 +301,7 @@ export default function FranchiseAcilis() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-2 sm:gap-3">
           {onboardingProcesses.map((process) => {
             const expectedDate = new Date(process.expectedOpeningDate);
             const progress = process.completionPercentage || 0;
@@ -322,8 +322,8 @@ export default function FranchiseAcilis() {
                     {getStatusBadge(process.status, process.id)}
                   </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 text-sm">
                     <div>
                       <p className="text-muted-foreground mb-1">Şube ID</p>
                       <p className="font-medium" data-testid={`text-branch-id-${process.id}`}>{process.branchId}</p>

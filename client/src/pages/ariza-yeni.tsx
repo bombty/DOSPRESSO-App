@@ -149,7 +149,7 @@ export default function NewFaultReport() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 max-w-2xl mx-auto">
+    <div className="grid grid-cols-1 gap-2 sm:gap-3 max-w-2xl mx-auto">
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => setLocation("/ekipman-arizalar")}>
           <ArrowLeft className="w-4 h-4" />
@@ -163,7 +163,7 @@ export default function NewFaultReport() {
       {/* Priority Warning */}
       <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800">
         <CardContent className="pt-6">
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-yellow-900 dark:text-yellow-200">Acil Durum</p>
@@ -183,7 +183,7 @@ export default function NewFaultReport() {
               <CardTitle>Temel Bilgiler</CardTitle>
               <CardDescription>Arıza hakkında temel bilgileri girin</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="branchId"
@@ -288,7 +288,7 @@ export default function NewFaultReport() {
               <CardTitle>Detaylı Açıklama</CardTitle>
               <CardDescription>Arıza hakkında ayrıntılı bilgi verin</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="description"
@@ -381,12 +381,12 @@ export default function NewFaultReport() {
             <CardHeader>
               <CardTitle>Etki Değerlendirmesi</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="immediateImpact"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
+                  <FormItem className="flex items-center gap-2 sm:gap-3 space-y-0">
                     <FormControl>
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
@@ -401,7 +401,7 @@ export default function NewFaultReport() {
                 control={form.control}
                 name="safetyHazard"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
+                  <FormItem className="flex items-center gap-2 sm:gap-3 space-y-0">
                     <FormControl>
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
@@ -420,7 +420,7 @@ export default function NewFaultReport() {
               <CardTitle>Fotoğraf (İsteğe Bağlı)</CardTitle>
               <CardDescription>Sorunu belgeleyen bir fotoğraf yükleyin</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {photoPreview ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <div className="relative w-full h-48 rounded-lg overflow-hidden bg-muted">
@@ -439,7 +439,7 @@ export default function NewFaultReport() {
                   </Button>
                 </div>
               ) : (
-                <label className="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                <label className="flex items-center justify-center w-full px-3 py-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
                   <div className="text-center">
                     <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm font-medium">Fotoğraf yüklemek için tıklayın</p>
@@ -458,7 +458,7 @@ export default function NewFaultReport() {
           </Card>
 
           {/* Submit */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <Button
               type="button"
               variant="outline"

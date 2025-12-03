@@ -90,7 +90,7 @@ export default function AcademyAnalytics() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
                 <Trophy className="h-4 w-4 text-yellow-600" />
               </div>
               <p className="text-xs text-muted-foreground">Kariyer</p>
@@ -102,7 +102,7 @@ export default function AcademyAnalytics() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                 <Target className="h-4 w-4 text-blue-600" />
               </div>
               <p className="text-xs text-muted-foreground">Ort. Puan</p>
@@ -114,7 +114,7 @@ export default function AcademyAnalytics() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                 <Zap className="h-4 w-4 text-purple-600" />
               </div>
               <p className="text-xs text-muted-foreground">Sınavlar</p>
@@ -126,7 +126,7 @@ export default function AcademyAnalytics() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                 <Award className="h-4 w-4 text-green-600" />
               </div>
               <p className="text-xs text-muted-foreground">Rozetler</p>
@@ -188,7 +188,7 @@ export default function AcademyAnalytics() {
                   </div>
                   <Progress value={(userBadges.length / 6) * 100} className="h-2" />
                 </div>
-                <div className="grid grid-cols-2 gap-3 mt-6">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-6">
                   {userBadges.map((badge: any) => (
                     <div key={badge.id} className="p-3 border rounded-lg bg-green-50 dark:bg-green-950">
                       <p className="font-medium text-sm">{badge.titleTr}</p>
@@ -217,7 +217,7 @@ export default function AcademyAnalytics() {
                   </p>
                   <Progress value={userProgress?.completionPercent || 0} className="h-2 mt-2" />
                 </div>
-                <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                   <p className="text-sm font-medium mb-1">Tavsiyelenecek Sınavlar</p>
                   <p className="text-xs text-muted-foreground">
                     {userProgress?.nextSteps || "Kariyer hedeflerinize ulaşmak için sınavlara başlayın"}

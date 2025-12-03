@@ -90,7 +90,7 @@ export default function AcademyCohortAnalytics() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
         {stats.map((stat, idx) => (
           <Card key={idx}>
             <CardHeader className="pb-2">
@@ -216,7 +216,7 @@ export default function AcademyCohortAnalytics() {
 
           {/* Engagement */}
           <TabsContent value="engagement">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
               <Card>
                 <CardHeader>
                   <CardTitle>Katılım Dağılımı</CardTitle>

@@ -275,7 +275,7 @@ export default function Vardiyalar() {
     return (
       <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-10 w-64" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
         </div>
       </div>
@@ -284,7 +284,7 @@ export default function Vardiyalar() {
 
   return (
     <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="text-page-title">
             Vardiya Yönetimi
@@ -316,7 +316,7 @@ export default function Vardiyalar() {
                   <DialogTitle>Yeni Vardiya Oluştur</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                     <FormField
                       control={form.control}
                       name="shiftDate"
@@ -369,7 +369,7 @@ export default function Vardiyalar() {
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
                       <FormField
                         control={form.control}
                         name="startTime"
@@ -478,12 +478,12 @@ export default function Vardiyalar() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             <Card data-testid="card-total-shifts">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                     <CalendarIcon className="h-4 w-4 text-blue-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Bu Hafta</p>
@@ -495,7 +495,7 @@ export default function Vardiyalar() {
             <Card data-testid="card-confirmed">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Onaylı</p>
@@ -507,7 +507,7 @@ export default function Vardiyalar() {
             <Card data-testid="card-pending">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Bekleyen</p>
@@ -519,7 +519,7 @@ export default function Vardiyalar() {
             <Card data-testid="card-coverage">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                     <Users className="h-4 w-4 text-purple-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Doluluk</p>
@@ -529,11 +529,11 @@ export default function Vardiyalar() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">
             <Card data-testid="card-today">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sun className="h-5 w-5 text-amber-500" />
+                  <Sun className="h-4 w-4 text-amber-500" />
                   Bugün
                   <Badge variant="secondary" className="ml-auto">{todayShifts.length} vardiya</Badge>
                 </CardTitle>
@@ -549,8 +549,8 @@ export default function Vardiyalar() {
                         const ShiftIcon = shiftTypeIcons[shift.shiftType];
                         return (
                           <div key={shift.id} className={cn("flex items-center justify-between p-3 rounded-lg border", shiftTypeColors[shift.shiftType])} data-testid={`shift-today-${shift.id}`}>
-                            <div className="flex items-center gap-3">
-                              <ShiftIcon className="h-5 w-5" />
+                            <div className="flex items-center gap-2 sm:gap-3">
+                              <ShiftIcon className="h-4 w-4" />
                               <div>
                                 <p className="font-medium">{shift.assignedTo?.fullName || "Atanmamış"}</p>
                                 <p className="text-sm opacity-80">{shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)}</p>
@@ -571,7 +571,7 @@ export default function Vardiyalar() {
             <Card data-testid="card-tomorrow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ArrowRight className="h-5 w-5 text-blue-500" />
+                  <ArrowRight className="h-4 w-4 text-blue-500" />
                   Yarın
                   <Badge variant="secondary" className="ml-auto">{tomorrowShifts.length} vardiya</Badge>
                 </CardTitle>
@@ -595,8 +595,8 @@ export default function Vardiyalar() {
                         const ShiftIcon = shiftTypeIcons[shift.shiftType];
                         return (
                           <div key={shift.id} className={cn("flex items-center justify-between p-3 rounded-lg border", shiftTypeColors[shift.shiftType])} data-testid={`shift-tomorrow-${shift.id}`}>
-                            <div className="flex items-center gap-3">
-                              <ShiftIcon className="h-5 w-5" />
+                            <div className="flex items-center gap-2 sm:gap-3">
+                              <ShiftIcon className="h-4 w-4" />
                               <div>
                                 <p className="font-medium">{shift.assignedTo?.fullName || "Atanmamış"}</p>
                                 <p className="text-sm opacity-80">{shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)}</p>
@@ -620,27 +620,27 @@ export default function Vardiyalar() {
               <CardTitle>Hızlı Erişim</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <Link href="/vardiya-checkin">
                   <Button variant="outline" className="w-full h-24 flex-col gap-2" data-testid="button-checkin">
-                    <QrCode className="h-6 w-6" />
+                    <QrCode className="h-4 w-4" />
                     <span>Giriş/Çıkış</span>
                   </Button>
                 </Link>
                 <Link href="/vardiya-sablonlari">
                   <Button variant="outline" className="w-full h-24 flex-col gap-2" data-testid="button-templates-quick">
-                    <FileText className="h-6 w-6" />
+                    <FileText className="h-4 w-4" />
                     <span>Şablonlar</span>
                   </Button>
                 </Link>
                 {isSupervisor && (
                   <>
                     <Button variant="outline" className="w-full h-24 flex-col gap-2" onClick={() => setIsCreateDialogOpen(true)} data-testid="button-new-shift-quick">
-                      <Plus className="h-6 w-6" />
+                      <Plus className="h-4 w-4" />
                       <span>Yeni Vardiya</span>
                     </Button>
                     <Button variant="outline" className="w-full h-24 flex-col gap-2" onClick={() => setActiveTab('planning')} data-testid="button-weekly-plan">
-                      <CalendarIcon className="h-6 w-6" />
+                      <CalendarIcon className="h-4 w-4" />
                       <span>Haftalık Plan</span>
                     </Button>
                   </>
@@ -650,10 +650,10 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card data-testid="card-week-view">
             <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
                 <div>
                   <CardTitle>Haftalık Plan</CardTitle>
                   <CardDescription>
@@ -696,7 +696,7 @@ export default function Vardiyalar() {
                       </div>
                       <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         {dayShifts.length === 0 ? (
-                          <p className="text-xs text-muted-foreground text-center py-4">-</p>
+                          <p className="text-xs text-muted-foreground text-center py-3">-</p>
                         ) : (
                           dayShifts.slice(0, 3).map((shift) => (
                             <div 
@@ -748,12 +748,12 @@ export default function Vardiyalar() {
                         return (
                           <div 
                             key={shift.id} 
-                            className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                            className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                             data-testid={`shift-item-${shift.id}`}
                           >
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 sm:gap-3">
                               <div className={cn("p-2 rounded-lg", shiftTypeColors[shift.shiftType])}>
-                                <ShiftIcon className="h-5 w-5" />
+                                <ShiftIcon className="h-4 w-4" />
                               </div>
                               <div>
                                 <p className="font-medium">{shift.assignedTo?.fullName || "Atanmamış"}</p>
@@ -805,8 +805,8 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <Card data-testid="card-live-active">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Canlı Çalışanlar</CardTitle>
@@ -850,7 +850,7 @@ export default function Vardiyalar() {
             <Card data-testid="card-active-checkins">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <UserCheck className="h-5 w-5 text-green-500" />
+                  <UserCheck className="h-4 w-4 text-green-500" />
                   Canlı Giriş Yapanlar
                 </CardTitle>
                 <CardDescription>Şu an faal olan personel listesi</CardDescription>
@@ -864,11 +864,11 @@ export default function Vardiyalar() {
                       const duration = checkInTime ? Math.floor((Date.now() - checkInTime.getTime()) / (60 * 1000)) : 0;
                       return (
                         <div key={attendance.id} className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950/20">
-                          <div className="flex items-center gap-3 flex-1">
+                          <div className="flex items-center gap-2 sm:gap-3 flex-1">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                             <div className="flex-1">
                               <p className="font-medium">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || 'Bilinmeyen'}</p>
-                              <div className="flex gap-4 text-xs text-muted-foreground mt-1">
+                              <div className="flex gap-2 sm:gap-3 text-xs text-muted-foreground mt-1">
                                 <span>📍 {attendance.location_confidence ? Math.round(attendance.location_confidence) + '%' : 'Bilinmeyen'}</span>
                                 <span>⏱️ {duration} dakika</span>
                               </div>
@@ -894,7 +894,7 @@ export default function Vardiyalar() {
           <Card data-testid="card-live-timeline">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
+                <Clock className="h-4 w-4" />
                 Bugünkü Zaman Çizelgesi
               </CardTitle>
               <CardDescription>{format(new Date(), "d MMMM yyyy, EEEE", { locale: tr })}</CardDescription>
@@ -906,7 +906,7 @@ export default function Vardiyalar() {
                   <p className="text-muted-foreground">Bugün için planlanmış vardiya yok</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {['morning', 'evening', 'night'].map((type) => {
                     const typeShifts = todayShifts.filter(s => s.shiftType === type);
                     if (typeShifts.length === 0) return null;
@@ -947,10 +947,10 @@ export default function Vardiyalar() {
 
           <Card data-testid="card-checkin-prompt">
             <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <div className="p-3 rounded-full bg-primary/10">
-                    <QrCode className="h-6 w-6 text-primary" />
+                    <QrCode className="h-4 w-4 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium">Vardiya Giriş/Çıkış</p>
@@ -966,7 +966,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <CheckInContent user={user} toast={toast} />
         </TabsContent>
       </Tabs>
@@ -977,7 +977,7 @@ export default function Vardiyalar() {
             <DialogTitle>Vardiya Düzenle</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdateSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={form.handleSubmit(handleUpdateSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="shiftDate"
@@ -1030,7 +1030,7 @@ export default function Vardiyalar() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <FormField
                   control={form.control}
                   name="startTime"
@@ -1379,7 +1379,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   }, [isCheckedIn, todayAttendance?.checkInTime]);
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Vardiya Giriş/Çıkış</h2>
         {locationStatus === 'idle' && (
@@ -1412,12 +1412,12 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
         <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30" data-testid="card-checked-in">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
-              <UserCheck className="h-5 w-5" />
+              <UserCheck className="h-4 w-4" />
               Aktif Vardiya - {format(parseISO(todayAttendance.checkInTime), "HH:mm", { locale: tr })}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <p className="text-sm text-muted-foreground">Çalışma Süresi</p>
                 <div className="font-mono text-3xl font-bold text-green-700 dark:text-green-300 tracking-wide">
@@ -1443,12 +1443,12 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30" data-testid="card-completed">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-              <CheckCircle2 className="h-5 w-5" />
+              <CheckCircle2 className="h-4 w-4" />
               Vardiya Tamamlandı
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <p className="text-sm text-muted-foreground">Giriş</p>
                 <p className="font-medium">{format(parseISO(todayAttendance.checkInTime), "HH:mm", { locale: tr })}</p>
@@ -1463,14 +1463,14 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       )}
 
       {!isCheckedIn && !hasCompletedShift && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           {/* Inline QR Scanner - Only show when active */}
           {scannerActive && (
             <Card className="border-primary/50 bg-card/80 backdrop-blur-sm" data-testid="card-qr-scan-inline">
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <QrCode className="h-5 w-5" />
+                    <QrCode className="h-4 w-4" />
                     QR Kod Tara
                   </CardTitle>
                   <CardDescription className="mt-1">
@@ -1483,11 +1483,11 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
                   size="icon"
                   data-testid="button-close-scanner"
                 >
-                  <AlertCircle className="h-5 w-5 opacity-50" />
+                  <AlertCircle className="h-4 w-4 opacity-50" />
                 </Button>
               </CardHeader>
 
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {/* Scanner Container */}
                 <div className="border rounded-lg overflow-hidden bg-black/5">
                   <div id="qr-scanner-container" style={{ width: '100%' }} />
@@ -1511,7 +1511,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
             <Card data-testid="card-qr-prompt">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <QrCode className="h-5 w-5" />
+                  <QrCode className="h-4 w-4" />
                   QR Kod ile Giriş Yap
                 </CardTitle>
               </CardHeader>
@@ -1541,12 +1541,12 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
                   return (
                     <div 
                       key={shift.id}
-                      className="flex items-center justify-between p-4 rounded-lg border bg-muted/30"
+                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
                       data-testid={`shift-card-${shift.id}`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
                         <div className={cn("p-2 rounded-lg", shiftTypeColors[shift.shiftType])}>
-                          <ShiftIcon className="h-5 w-5" />
+                          <ShiftIcon className="h-4 w-4" />
                         </div>
                         <div>
                           <p className="font-medium">{shiftTypeLabels[shift.shiftType]} Vardiyası</p>
@@ -1599,9 +1599,9 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
 
       <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
         <CardContent className="pt-6">
-          <div className="flex gap-4">
+          <div className="flex gap-2 sm:gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg h-fit">
-              <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <h4 className="font-medium text-blue-900 dark:text-blue-100">Giriş/Çıkış Sistemi Hakkında</h4>

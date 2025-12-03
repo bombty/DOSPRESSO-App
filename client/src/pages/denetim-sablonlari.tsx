@@ -357,7 +357,7 @@ export default function DenetimSablonlariPage() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div>
           <h1 className="text-3xl font-bold">Denetim Şablonları</h1>
           <p className="text-muted-foreground">Şube ve personel denetim şablonlarını yönetin</p>
@@ -372,11 +372,11 @@ export default function DenetimSablonlariPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+            <Settings className="h-4 w-4" />
             Filtreler
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-4">
+        <CardContent className="flex flex-wrap gap-2 sm:gap-3">
           <div className="flex-1 min-w-[200px]">
             <Label htmlFor="filter-type">Denetim Türü</Label>
             <Select value={filterType} onValueChange={setFilterType}>
@@ -439,7 +439,7 @@ export default function DenetimSablonlariPage() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8"
+                      className="h-4 w-4"
                       onClick={() => handleOpenEditDialog(template)}
                       data-testid={`button-edit-template-${template.id}`}
                     >
@@ -448,7 +448,7 @@ export default function DenetimSablonlariPage() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8"
+                      className="h-4 w-4"
                       onClick={() => handleDelete(template.id)}
                       data-testid={`button-delete-template-${template.id}`}
                     >
@@ -502,7 +502,7 @@ export default function DenetimSablonlariPage() {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {/* Template Info */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <FormField
@@ -542,7 +542,7 @@ export default function DenetimSablonlariPage() {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="auditType"
@@ -598,12 +598,12 @@ export default function DenetimSablonlariPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={form.control}
                     name="requiresPhoto"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
@@ -625,7 +625,7 @@ export default function DenetimSablonlariPage() {
                     control={form.control}
                     name="aiAnalysisEnabled"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
@@ -646,7 +646,7 @@ export default function DenetimSablonlariPage() {
               </div>
 
               {/* Items */}
-              <div className="grid grid-cols-1 gap-3 border-t pt-4">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 border-t pt-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-lg">Denetim Maddeleri</Label>
                   <Button
@@ -688,7 +688,7 @@ export default function DenetimSablonlariPage() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3">
                         <div>
                           <Label htmlFor={`item-type-${index}`}>Madde Tipi</Label>
                           <Select
@@ -845,7 +845,7 @@ export default function DenetimSablonlariPage() {
                 {items.length === 0 && (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
-                      <ClipboardList className="h-8 w-8 text-muted-foreground mb-2" />
+                      <ClipboardList className="h-4 w-4 text-muted-foreground mb-2" />
                       <p className="text-sm text-muted-foreground">
                         Henüz madde eklenmedi. "Madde Ekle" butonuna tıklayın
                       </p>

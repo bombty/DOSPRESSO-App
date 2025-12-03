@@ -607,7 +607,7 @@ export default function EquipmentDetail() {
 
   return (
     <div className="max-w-full overflow-x-hidden grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-3">
         <Link href="/ekipman" asChild>
           <Button variant="outline" data-testid="button-back">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -618,10 +618,10 @@ export default function EquipmentDetail() {
 
       <Card data-testid="card-equipment-header">
         <CardHeader>
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2 sm:gap-3">
             <div className="flex-1">
-              <CardTitle className="text-2xl flex items-center gap-3">
-                <Settings className="h-6 w-6" />
+              <CardTitle className="text-2xl flex items-center gap-2 sm:gap-3">
+                <Settings className="h-4 w-4" />
                 {metadata?.nameTr || equipment.equipmentType}
               </CardTitle>
               <CardDescription className="mt-2 space-y-1">
@@ -680,8 +680,8 @@ export default function EquipmentDetail() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="grid gap-4 md:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <div className="grid gap-2 sm:gap-3 md:grid-cols-2">
             {equipment.purchaseDate && (
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -740,7 +740,7 @@ export default function EquipmentDetail() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="maintenance" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Tabs defaultValue="maintenance" className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <TabsList data-testid="tabs-equipment-detail">
           <TabsTrigger value="maintenance" data-testid="tab-maintenance">
             Bakım Geçmişi
@@ -765,7 +765,7 @@ export default function EquipmentDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Bakım Geçmişi</CardTitle>
@@ -775,11 +775,11 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {equipment.maintenanceLogs.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {equipment.maintenanceLogs.map((log) => (
-                    <div key={log.id} className="flex gap-4 pb-4 border-b last:border-0" data-testid={`maintenance-log-${log.id}`}>
+                    <div key={log.id} className="flex gap-2 sm:gap-3 pb-4 border-b last:border-0" data-testid={`maintenance-log-${log.id}`}>
                       <div className="flex-shrink-0 mt-1">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <div className="h-4 w-4 rounded-full bg-primary/10 flex items-center justify-center">
                           <Wrench className="h-4 w-4 text-primary" />
                         </div>
                       </div>
@@ -830,7 +830,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Arıza Kayıtları</CardTitle>
@@ -840,11 +840,11 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {equipment.faults.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {equipment.faults.map((fault) => (
-                    <div key={fault.id} className="flex gap-4 pb-4 border-b last:border-0" data-testid={`fault-${fault.id}`}>
+                    <div key={fault.id} className="flex gap-2 sm:gap-3 pb-4 border-b last:border-0" data-testid={`fault-${fault.id}`}>
                       <div className="flex-shrink-0 mt-1">
-                        <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <div className="h-4 w-4 rounded-full bg-destructive/10 flex items-center justify-center">
                           <AlertTriangle className="h-4 w-4 text-destructive" />
                         </div>
                       </div>
@@ -904,10 +904,10 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start justify-between gap-2 sm:gap-3">
                 <div className="flex-1">
                   <CardTitle>Servis Talepleri</CardTitle>
                   <CardDescription>
@@ -934,10 +934,10 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {serviceRequests && serviceRequests.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {serviceRequests.map((request) => (
-                    <div key={request.id} className="rounded-lg border p-4 grid grid-cols-1 gap-4" data-testid={`service-request-${request.id}`}>
-                      <div className="flex items-start justify-between gap-4">
+                    <div key={request.id} className="rounded-lg border p-3 grid grid-cols-1 gap-2 sm:gap-3" data-testid={`service-request-${request.id}`}>
+                      <div className="flex items-start justify-between gap-2 sm:gap-3">
                         <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                           <div className="flex items-center gap-2 flex-wrap">
                             <Badge variant={
@@ -1043,7 +1043,7 @@ export default function EquipmentDetail() {
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                             {request.timeline.slice(-3).reverse().map((entry: any) => (
                               <div key={entry.id} className="text-xs text-muted-foreground flex items-start gap-2">
-                                <Avatar className="h-6 w-6">
+                                <Avatar className="h-4 w-4">
                                   <AvatarFallback className="text-xs">
                                     {entry.actorId?.substring(0, 2).toUpperCase() || '??'}
                                   </AvatarFallback>
@@ -1077,7 +1077,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Yorumlar</CardTitle>
@@ -1085,13 +1085,13 @@ export default function EquipmentDetail() {
                 Bu ekipman hakkında yorumlar
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {equipment.comments.length > 0 && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {equipment.comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-4 pb-4 border-b" data-testid={`comment-${comment.id}`}>
+                    <div key={comment.id} className="flex gap-2 sm:gap-3 pb-4 border-b" data-testid={`comment-${comment.id}`}>
                       <div className="flex-shrink-0 mt-1">
-                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                        <div className="h-4 w-4 rounded-full bg-muted flex items-center justify-center">
                           <User className="h-4 w-4 text-muted-foreground" />
                         </div>
                       </div>
@@ -1116,7 +1116,7 @@ export default function EquipmentDetail() {
 
               <div className="pt-4 border-t">
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit((data) => createCommentMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <form onSubmit={form.handleSubmit((data) => createCommentMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                     <FormField
                       control={form.control}
                       name="comment"
@@ -1151,18 +1151,18 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <QrCode className="h-5 w-5" />
+                <QrCode className="h-4 w-4" />
                 QR Kod
               </CardTitle>
               <CardDescription>
                 Bu ekipmana hızlı erişim için QR kodu tarayın
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col items-center gap-6">
+            <CardContent className="flex flex-col items-center gap-2 sm:gap-3">
               {equipment.qrCodeUrl ? (
                 <>
                   <div className="bg-white p-6 rounded-lg border" data-testid="qr-code-container">
@@ -1207,7 +1207,7 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Bakım Planı</CardTitle>
@@ -1379,7 +1379,7 @@ export default function EquipmentDetail() {
             <DialogTitle>Sorun Giderme Adımı Düzenle</DialogTitle>
           </DialogHeader>
           {selectedTroubleshootingStep && (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <div>
                 <label className="text-sm font-medium">Adım Açıklaması</label>
                 <Textarea 
@@ -1460,7 +1460,7 @@ export default function EquipmentDetail() {
             </DialogDescription>
           </DialogHeader>
           <Form {...serviceRequestForm}>
-            <form onSubmit={serviceRequestForm.handleSubmit((data) => createServiceRequestMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={serviceRequestForm.handleSubmit((data) => createServiceRequestMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={serviceRequestForm.control}
                 name="serviceDecision"
@@ -1563,7 +1563,7 @@ export default function EquipmentDetail() {
           </DialogHeader>
           {selectedServiceRequest && (
             <Form {...statusUpdateForm}>
-              <form onSubmit={statusUpdateForm.handleSubmit((data) => updateStatusMutation.mutate({ ...data, requestId: selectedServiceRequest.id }))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <form onSubmit={statusUpdateForm.handleSubmit((data) => updateStatusMutation.mutate({ ...data, requestId: selectedServiceRequest.id }))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <p className="text-sm font-medium">Mevcut Durum</p>
                   <Badge variant="outline" data-testid="badge-current-status">
@@ -1652,9 +1652,9 @@ export default function EquipmentDetail() {
             </DialogDescription>
           </DialogHeader>
           {selectedTimeline && selectedTimeline.timeline && selectedTimeline.timeline.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {[...selectedTimeline.timeline].reverse().map((entry: any) => (
-                <div key={entry.id} className="flex items-start gap-3 pb-4 border-b last:border-0" data-testid={`timeline-entry-${entry.id}`}>
+                <div key={entry.id} className="flex items-start gap-2 sm:gap-3 pb-4 border-b last:border-0" data-testid={`timeline-entry-${entry.id}`}>
                   <Avatar className="h-10 w-10">
                     <AvatarFallback>
                       {entry.actorId?.substring(0, 2).toUpperCase() || '??'}
@@ -1709,7 +1709,7 @@ export default function EquipmentDetail() {
             </DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={editForm.control}
                 name="equipmentType"
@@ -1896,7 +1896,7 @@ export default function EquipmentDetail() {
             </DialogDescription>
           </DialogHeader>
           <Form {...faultForm}>
-            <form onSubmit={faultForm.handleSubmit((data) => createFaultMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form onSubmit={faultForm.handleSubmit((data) => createFaultMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={faultForm.control}
                 name="equipmentName"
@@ -1913,9 +1913,9 @@ export default function EquipmentDetail() {
               
               {/* Troubleshooting Steps Section */}
               {troubleshootingSteps && troubleshootingSteps.length > 0 && (
-                <div className="border rounded-lg p-4 grid grid-cols-1 gap-3 bg-muted/50">
+                <div className="border rounded-lg p-3 grid grid-cols-1 gap-2 sm:gap-3 bg-muted/50">
                   <div className="flex items-center gap-2">
-                    <Wrench className="h-5 w-5 text-primary" />
+                    <Wrench className="h-4 w-4 text-primary" />
                     <h3 className="font-semibold">Sorun Giderme Adımları</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
@@ -1934,7 +1934,7 @@ export default function EquipmentDetail() {
                         return (
                           <div 
                             key={step.id} 
-                            className={`flex items-start gap-3 p-3 bg-background rounded border ${
+                            className={`flex items-start gap-2 sm:gap-3 p-3 bg-background rounded border ${
                               isMissing ? 'border-destructive border-2' : ''
                             }`}
                           >
@@ -1990,9 +1990,9 @@ export default function EquipmentDetail() {
               )}
               
               {/* AI Technical Assistant Section */}
-              <div className="border rounded-lg p-4 grid grid-cols-1 gap-3 bg-gradient-to-br from-primary/5 to-primary/10">
+              <div className="border rounded-lg p-3 grid grid-cols-1 gap-2 sm:gap-3 bg-gradient-to-br from-primary/5 to-primary/10">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
+                  <Sparkles className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold">AI Teknik Asistan</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">

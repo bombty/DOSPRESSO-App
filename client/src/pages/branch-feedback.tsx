@@ -68,14 +68,14 @@ export default function BranchFeedback() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 p-3">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => window.history.back()}
           data-testid="button-back"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-blue-900" data-testid="text-page-title">Muhasebe Geribildirimi</h1>
@@ -83,16 +83,16 @@ export default function BranchFeedback() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-2 sm:gap-3 md:grid-cols-3">
         {/* Send Feedback Form */}
         <Card className="md:col-span-1" data-testid="card-feedback-form">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Send className="h-5 w-5" />
+              <Send className="h-4 w-4" />
               Yeni Geribildirim
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             <div>
               <label className="text-sm font-medium">Tür</label>
               <select
@@ -146,7 +146,7 @@ export default function BranchFeedback() {
         <Card className="md:col-span-2" data-testid="card-feedback-list">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
+              <MessageSquare className="h-4 w-4" />
               Geçmiş Geribildirimleri ({feedbacks.length})
             </CardTitle>
           </CardHeader>
@@ -154,7 +154,7 @@ export default function BranchFeedback() {
             {feedbacks.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">Henüz geribildirim göderilmedi</p>
             ) : (
-              <div className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 max-h-96 overflow-y-auto">
                 {feedbacks.map((fb) => (
                   <Card key={fb.id} className="bg-muted/50" data-testid={`card-feedback-${fb.id}`}>
                     <CardContent className="pt-4">

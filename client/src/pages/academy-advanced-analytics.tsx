@@ -100,7 +100,7 @@ export default function AcademyAdvancedAnalytics() {
       </div>
 
       {/* Charts */}
-      <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
         {/* Score Trend */}
         <Card>
           <CardHeader>

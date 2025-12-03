@@ -190,7 +190,7 @@ export default function PersonelOnboardingPage() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -201,14 +201,14 @@ export default function PersonelOnboardingPage() {
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
             data-testid="button-back"
             onClick={() => window.history.back()}
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Yeni Personel Onboarding</h1>
@@ -226,7 +226,7 @@ export default function PersonelOnboardingPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Toplam</CardTitle>
@@ -267,7 +267,7 @@ export default function PersonelOnboardingPage() {
           <CardTitle className="text-lg">Filtreler</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4 flex-col md:flex-row">
+          <div className="flex gap-2 sm:gap-3 flex-col md:flex-row">
             <div className="flex-1">
               <label className="text-sm font-medium">Durum</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -459,7 +459,7 @@ function OnboardingDialog({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="grid grid-cols-1 gap-4"
+            className="grid grid-cols-1 gap-2 sm:gap-3"
           >
             <FormField
               control={form.control}
@@ -511,7 +511,7 @@ function OnboardingDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
                 name="startDate"

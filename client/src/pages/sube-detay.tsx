@@ -94,7 +94,7 @@ export default function SubeDetayPage() {
   // Authorization: Supervisor can only view their own branch
   if (user?.role === 'supervisor' && user?.branchId !== branchId) {
     return (
-      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <p className="text-lg text-muted-foreground">Bu şubeye erişim yetkiniz yok</p>
         <Link href="/subeler">
           <Button variant="default">Şubelere Dön</Button>
@@ -220,10 +220,10 @@ export default function SubeDetayPage() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-3">
         <Link href="/subeler">
           <Button variant="ghost" size="icon" data-testid="button-back">
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
@@ -236,12 +236,12 @@ export default function SubeDetayPage() {
       <Card className="border-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5 text-primary" />
+            <Star className="h-4 w-4 text-primary" />
             Genel Performans Skoru
           </CardTitle>
           <CardDescription>4 ana kategorinin ağırlıklı ortalaması</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           <div className="text-center">
             <div className="text-5xl font-bold text-primary" data-testid="composite-score">
               {scores.compositeScore.toFixed(1)}
@@ -253,7 +253,7 @@ export default function SubeDetayPage() {
       </Card>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Personel Performansı</CardTitle>
@@ -304,7 +304,7 @@ export default function SubeDetayPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <TabsList className="flex-wrap">
           {canViewActive && (
             <TabsTrigger value="canlı" data-testid="tab-active-employees">
@@ -324,7 +324,7 @@ export default function SubeDetayPage() {
           )}
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card data-testid="card-active-employees">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -347,12 +347,12 @@ export default function SubeDetayPage() {
                     return (
                       <div 
                         key={attendance.id} 
-                        className="flex items-center justify-between p-4 rounded-lg border bg-green-50 dark:bg-green-950/20"
+                        className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950/20"
                         data-testid={`active-emp-${emp?.id}`}
                       >
                         <div className="flex-1">
                           <p className="font-semibold">{emp?.fullName || 'Bilinmeyen'}</p>
-                          <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                          <div className="flex gap-2 sm:gap-3 text-sm text-muted-foreground mt-1">
                             <span>Giriş: {checkInTime ? checkInTime.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'}) : '-'}</span>
                             <span>⏱️ {hours > 0 ? `${hours}s ${minutes}d` : `${minutes}d`}</span>
                             {attendance.location_confidence && (
@@ -378,7 +378,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Şube Personeli</CardTitle>
@@ -423,7 +423,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Son Görevler</CardTitle>
@@ -453,7 +453,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Ekipman</CardTitle>
@@ -483,7 +483,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Son Arızalar</CardTitle>
@@ -519,23 +519,23 @@ export default function SubeDetayPage() {
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">
               {/* QR Kod Üretici */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <QrCode className="h-5 w-5" />
+                    <QrCode className="h-4 w-4" />
                     Vardiya Giriş QR Kodu
                   </CardTitle>
                   <CardDescription>
                     Bu QR kodu şubeye asarak personelin vardiya girişi yapmasını sağlayın
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {branch.qrCodeToken ? (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="flex flex-col items-center p-4 bg-white rounded-lg">
+                    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                      <div className="flex flex-col items-center p-3 bg-white rounded-lg">
                         <QRCodeSVG 
                           id="branch-qr-code"
                           value={qrValue} 
@@ -600,15 +600,15 @@ export default function SubeDetayPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
+                    <MapPin className="h-4 w-4" />
                     Lokasyon Doğrulama Ayarları
                   </CardTitle>
                   <CardDescription>
                     Personelin şubede olduğunu doğrulamak için GPS koordinatlarını ayarlayın
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="grid grid-cols-2 gap-4">
+                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <Label htmlFor="latitude">Enlem (Latitude)</Label>
                       <Input 
@@ -691,9 +691,9 @@ export default function SubeDetayPage() {
             {/* Bilgi Kartı */}
             <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
               <CardContent className="pt-6">
-                <div className="flex gap-4">
+                <div className="flex gap-2 sm:gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg h-fit">
-                    <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
                     <h4 className="font-medium text-blue-900 dark:text-blue-100">Nasıl Çalışır?</h4>

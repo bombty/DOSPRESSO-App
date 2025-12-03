@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-3">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary">
@@ -14,7 +14,7 @@ export default function Landing() {
             Franchise Yönetim Platformu
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           <p className="text-center text-muted-foreground">
             Şube operasyonlarınızı yönetin, görevleri takip edin, ekipman arızalarını raporlayın ve performansı analiz edin.
           </p>

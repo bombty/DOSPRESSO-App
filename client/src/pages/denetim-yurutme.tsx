@@ -179,7 +179,7 @@ export default function DenetimYurutmePage() {
 
   if (!audit) {
     return (
-      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="flex flex-col items-center justify-center h-full grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <p className="text-lg text-muted-foreground">Denetim bulunamadı</p>
         <Link href="/denetimler">
           <Button>Denetimlere Dön</Button>
@@ -216,10 +216,10 @@ export default function DenetimYurutmePage() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-3">
         <Link href="/denetimler">
           <Button variant="ghost" size="icon" data-testid="button-back">
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div className="flex-1">
@@ -238,12 +238,12 @@ export default function DenetimYurutmePage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5 text-primary" />
+            <Star className="h-4 w-4 text-primary" />
             İlerleme ve Skor
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="grid grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Tamamlanan Maddeler</p>
               <p className="text-2xl font-bold">{answeredItems} / {totalItems}</p>
@@ -258,7 +258,7 @@ export default function DenetimYurutmePage() {
       </Card>
 
       {/* Audit Items */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <h2 className="text-xl font-semibold">Denetim Maddeleri</h2>
         
         {audit.items.map((item, index) => {
@@ -279,7 +279,7 @@ export default function DenetimYurutmePage() {
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 {/* Response Input */}
                 {itemType === 'checkbox' && (
                   <RadioGroup
@@ -353,14 +353,14 @@ export default function DenetimYurutmePage() {
                       }`} data-testid={`feedback-mc-${index}`}>
                         {item.response === item.templateItem.correctAnswer ? (
                           <>
-                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />
+                            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />
                             <span className="text-sm font-medium text-green-700 dark:text-green-400">
                               Doğru cevap!
                             </span>
                           </>
                         ) : (
                           <>
-                            <XCircle className="h-5 w-5 text-red-600 dark:text-red-500" />
+                            <XCircle className="h-4 w-4 text-red-600 dark:text-red-500" />
                             <div className="flex-1">
                               <span className="text-sm font-medium text-red-700 dark:text-red-400 block">
                                 Yanlış cevap
@@ -448,7 +448,7 @@ export default function DenetimYurutmePage() {
           <CardTitle>Genel Değerlendirme</CardTitle>
           <CardDescription>Denetim sonucu genel notlar ve aksiyon öğeleri</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           <div>
             <Label htmlFor="overall-notes">Genel Notlar</Label>
             <Textarea
@@ -478,7 +478,7 @@ export default function DenetimYurutmePage() {
 
       {/* Action Buttons */}
       {!isCompleted && (
-        <div className="flex gap-3 justify-end sticky bottom-4 bg-background p-4 rounded-lg border">
+        <div className="flex gap-2 sm:gap-3 justify-end sticky bottom-4 bg-background p-3 rounded-lg border">
           <Link href="/denetimler">
             <Button variant="outline" data-testid="button-cancel">
               İptal
@@ -507,8 +507,8 @@ export default function DenetimYurutmePage() {
       {/* Warning if incomplete */}
       {answeredItems < totalItems && audit.status !== 'completed' && (
         <Card className="border-orange-500">
-          <CardContent className="flex items-center gap-2 py-4">
-            <AlertCircle className="h-5 w-5 text-orange-500" />
+          <CardContent className="flex items-center gap-2 py-3">
+            <AlertCircle className="h-4 w-4 text-orange-500" />
             <p className="text-sm">
               Denetimi tamamlamak için tüm maddeleri cevaplamanız gerekiyor.
               ({totalItems - answeredItems} madde kaldı)

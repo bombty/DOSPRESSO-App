@@ -480,7 +480,7 @@ export default function ServiceRequestsManagement() {
   };
 
   return (
-    <div className="container mx-auto p-4 lg:p-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="container mx-auto p-3 lg:p-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold" data-testid="text-page-title">Servis Talepleri</h1>
@@ -493,7 +493,7 @@ export default function ServiceRequestsManagement() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Toplam Talep</CardTitle>
@@ -629,11 +629,11 @@ export default function ServiceRequestsManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           {filteredRequests.map(request => (
             <Card key={request.id} className="hover-elevate border-l-4" style={{ borderLeftColor: !request.priority ? '#3b82f6' : request.priority === 'kritik' ? '#ef4444' : request.priority === 'yüksek' ? '#f97316' : request.priority === 'orta' ? '#eab308' : '#3b82f6' }} data-testid={`card-service-request-${request.id}`}>
               <CardHeader>
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-2 sm:gap-3">
                   <div className="flex-1 cursor-pointer" onClick={() => handleEquipmentClick(request)}>
                     <CardTitle className="text-lg hover:text-primary transition-colors" data-testid={`text-equipment-name-${request.id}`}>
                       {request.equipmentName}
@@ -655,9 +655,9 @@ export default function ServiceRequestsManagement() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {/* Location and dates */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <MapPin className="w-4 h-4" />
                       <span>{request.branchName || `Şube #${request.branchId}`}</span>
@@ -737,7 +737,7 @@ export default function ServiceRequestsManagement() {
           {selectedRequest && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               {/* Equipment Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                   <p className="text-sm text-muted-foreground">Cihaz Adı</p>
                   <p className="font-medium">{selectedRequest.equipmentName}</p>
@@ -757,9 +757,9 @@ export default function ServiceRequestsManagement() {
               </div>
 
               {/* Service Request Info */}
-              <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="border-t pt-4 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <h3 className="font-semibold">Servis Talebi Bilgileri</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                     <p className="text-sm text-muted-foreground">Durum</p>
                     <Badge className={STATUS_VARIANTS[selectedRequest.status]}>
@@ -789,9 +789,9 @@ export default function ServiceRequestsManagement() {
 
               {/* Dates */}
               {(selectedRequest.scheduledDate || selectedRequest.completedDate) && (
-                <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="border-t pt-4 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <h3 className="font-semibold">Tarihler</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {selectedRequest.scheduledDate && (
                       <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-sm text-muted-foreground">Planlanan Tarih</p>
@@ -810,9 +810,9 @@ export default function ServiceRequestsManagement() {
 
               {/* Costs */}
               {(selectedRequest.estimatedCost || selectedRequest.actualCost) && (
-                <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="border-t pt-4 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <h3 className="font-semibold">Maliyetler</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {selectedRequest.estimatedCost && (
                       <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                         <p className="text-sm text-muted-foreground">Tahmini Maliyet</p>
@@ -831,7 +831,7 @@ export default function ServiceRequestsManagement() {
 
               {/* Notes */}
               {selectedRequest.notes && (
-                <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="border-t pt-4 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <h3 className="font-semibold">Notlar</h3>
                   <p className="text-sm whitespace-pre-wrap">{selectedRequest.notes}</p>
                 </div>
@@ -839,14 +839,14 @@ export default function ServiceRequestsManagement() {
 
               {/* Timeline */}
               {selectedRequest.timeline && selectedRequest.timeline.length > 0 && (
-                <div className="border-t pt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="border-t pt-4 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <h3 className="font-semibold flex items-center gap-2">
                     <History className="w-4 h-4" />
                     Tarih
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     {selectedRequest.timeline.map((entry, idx) => (
-                      <div key={entry.id} className="flex gap-3">
+                      <div key={entry.id} className="flex gap-2 sm:gap-3">
                         <div className="flex flex-col items-center">
                           <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                           {idx < selectedRequest.timeline!.length - 1 && (
@@ -894,7 +894,7 @@ export default function ServiceRequestsManagement() {
               {selectedRequest?.equipmentName} - Detaylı servis durumu güncellemesi
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-4 py-4">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 py-3">
             {/* Status */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <Label>Yeni Durum *</Label>
@@ -938,7 +938,7 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Estimated Completion */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <Label>Tahmini Bitiş Tarihi</Label>
                 <Input 
@@ -964,13 +964,13 @@ export default function ServiceRequestsManagement() {
             </div>
 
             {/* Photo Uploads */}
-            <div className="grid grid-cols-1 gap-4 border-t pt-4">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 border-t pt-4">
               <h3 className="font-semibold flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />
                 Kırık Parça Fotoğrafları
               </h3>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {/* Photo 1 */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label>Fotoğraf 1</Label>
@@ -1128,8 +1128,8 @@ export default function ServiceRequestsManagement() {
             )}
 
             {/* Form Fields */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label htmlFor="create-priority">Öncelik</Label>
@@ -1175,7 +1175,7 @@ export default function ServiceRequestsManagement() {
             {/* Photo Upload Section */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <Label className="text-base font-semibold">Fotoğraflar (İsteğe Bağlı)</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   {createPhoto1Preview ? (
                     <img src={createPhoto1Preview} alt="Fotoğraf 1" className="w-full aspect-square object-cover rounded-lg border" />

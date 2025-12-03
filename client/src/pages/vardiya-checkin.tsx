@@ -315,7 +315,7 @@ export default function VardiyaCheckin() {
       <canvas ref={canvasRef} className="hidden" />
       
       <div className="flex items-center gap-2">
-        <QrCode className="h-6 w-6" />
+        <QrCode className="h-4 w-4" />
         <h1 className="text-2xl font-bold">Vardiya Giriş/Çıkış (QR)</h1>
       </div>
       
@@ -323,16 +323,16 @@ export default function VardiyaCheckin() {
       {(isCapturingPhoto || isGettingLocation) && (
         <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {isCapturingPhoto && (
                 <div className="flex items-center gap-2">
-                  <Camera className="h-5 w-5 text-blue-600 animate-pulse" />
+                  <Camera className="h-4 w-4 text-blue-600 animate-pulse" />
                   <span className="text-sm font-medium">Fotoğraf çekiliyor...</span>
                 </div>
               )}
               {isGettingLocation && (
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-blue-600 animate-pulse" />
+                  <MapPin className="h-4 w-4 text-blue-600 animate-pulse" />
                   <span className="text-sm font-medium">Konum alınıyor...</span>
                 </div>
               )}
@@ -365,15 +365,15 @@ export default function VardiyaCheckin() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-green-600" />
               Aktif Vardiya
             </CardTitle>
             <CardDescription>
               Vardiyaya giriş yaptınız
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <p className="text-sm text-muted-foreground">Başlangıç</p>
                 <p className="font-medium" data-testid="text-checkin-time">
@@ -408,7 +408,7 @@ export default function VardiyaCheckin() {
               )}
 
               {isScanning && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <div 
                     id="qr-reader-checkin" 
                     className="rounded-lg overflow-hidden border"
@@ -440,14 +440,14 @@ export default function VardiyaCheckin() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+              <Clock className="h-4 w-4" />
               Vardiya Girişi
             </CardTitle>
             <CardDescription>
               Vardiyaya giriş yapmak için QR kodu okutun
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             {!isScanning && (
               <Button
                 onClick={startScanning}
@@ -460,7 +460,7 @@ export default function VardiyaCheckin() {
             )}
 
             {isScanning && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                 <div 
                   id="qr-reader-checkin" 
                   className="rounded-lg overflow-hidden border"
@@ -493,7 +493,7 @@ export default function VardiyaCheckin() {
         </CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <div className="flex items-start gap-2">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
               1
             </span>
             <p className="text-sm text-muted-foreground">
@@ -501,7 +501,7 @@ export default function VardiyaCheckin() {
             </p>
           </div>
           <div className="flex items-start gap-2">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
               2
             </span>
             <p className="text-sm text-muted-foreground">
@@ -509,7 +509,7 @@ export default function VardiyaCheckin() {
             </p>
           </div>
           <div className="flex items-start gap-2">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
               3
             </span>
             <p className="text-sm text-muted-foreground">

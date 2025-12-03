@@ -362,7 +362,7 @@ export default function Equipment() {
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="equipmentType"
@@ -523,7 +523,7 @@ export default function Equipment() {
               if (editingEquipment) {
                 updateMutation.mutate({ id: editingEquipment.id, data });
               }
-            })} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            })} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               <FormField
                 control={editForm.control}
                 name="equipmentType"
@@ -731,7 +731,7 @@ export default function Equipment() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2 sm:gap-3">
         <Select value={selectedType} onValueChange={setSelectedType}>
           <SelectTrigger className="w-[200px]" data-testid="filter-type">
             <SelectValue placeholder="Tüm Tipler" />
@@ -813,7 +813,7 @@ export default function Equipment() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
             <Card key={i}>
               <CardHeader>
@@ -827,7 +827,7 @@ export default function Equipment() {
           ))}
         </div>
       ) : filteredEquipment && filteredEquipment.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3">
           {filteredEquipment.map((item) => {
             const metadata = EQUIPMENT_METADATA[item.equipmentType as keyof typeof EQUIPMENT_METADATA];
             const maintenanceStatus = getMaintenanceStatus(item);
@@ -838,7 +838,7 @@ export default function Equipment() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="flex items-center gap-2">
-                        <Settings className="h-5 w-5" />
+                        <Settings className="h-4 w-4" />
                         <Link href={`/ekipman/${item.id}`} data-testid={`link-equipment-${item.id}`}>
                           <span className="hover-elevate rounded-sm px-1 -mx-1 cursor-pointer">
                             {metadata.nameTr}

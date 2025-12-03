@@ -248,7 +248,7 @@ export default function TrainingDetail() {
 
   if (!module) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="flex flex-col items-center justify-center h-96 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <BookOpen className="h-16 w-16 text-muted-foreground" />
         <h2 className="text-2xl font-semibold">Modül bulunamadı</h2>
         <Button onClick={() => setLocation("/egitim")} data-testid="button-back">
@@ -265,7 +265,7 @@ export default function TrainingDetail() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             onClick={() => setLocation("/egitim")}
@@ -341,7 +341,7 @@ export default function TrainingDetail() {
         </CardHeader>
       </Card>
 
-      <Tabs defaultValue="videos" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Tabs defaultValue="videos" className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
         <TabsList className="grid w-full grid-cols-4" data-testid="tabs-list">
           <TabsTrigger value="videos" data-testid="tab-videos">
             <Video className="mr-2 h-4 w-4" />
@@ -361,9 +361,9 @@ export default function TrainingDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="tab-content-videos">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3" data-testid="tab-content-videos">
           {module.videos && module.videos.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
               {module.videos.map((video, index) => (
                 <Card key={video.id} data-testid={`video-card-${video.id}`}>
                   <CardHeader>
@@ -414,7 +414,7 @@ export default function TrainingDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="tab-content-lessons">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3" data-testid="tab-content-lessons">
           {isAdminOrCoach && (
             <div className="flex justify-end mb-4">
               <Button 
@@ -433,7 +433,7 @@ export default function TrainingDetail() {
           )}
 
           {module.lessons && module.lessons.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {module.lessons.map((lesson) => (
                 <Card key={lesson.id} data-testid={`lesson-card-${lesson.id}`}>
                   <CardHeader>
@@ -471,7 +471,7 @@ export default function TrainingDetail() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                     <div className="prose dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
                       {lesson.content}
                     </div>
@@ -521,7 +521,7 @@ export default function TrainingDetail() {
                 <CardHeader>
                   <CardTitle>{editingLesson ? "Dersi Düzenle" : "Yeni Ders Ekle"}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-medium">Başlık</label>
                     <Input
@@ -541,7 +541,7 @@ export default function TrainingDetail() {
                       data-testid="input-lesson-content"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       <label className="text-sm font-medium">Tahmini Süre (dk)</label>
                       <Input
@@ -587,9 +587,9 @@ export default function TrainingDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="tab-content-quiz">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3" data-testid="tab-content-quiz">
           {module.quizzes && module.quizzes.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
               {module.quizzes.map((quiz) => (
                 <Card key={quiz.id} data-testid={`quiz-card-${quiz.id}`}>
                   <CardHeader>
@@ -599,7 +599,7 @@ export default function TrainingDetail() {
                     )}
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                    <div className="flex gap-4 text-sm text-muted-foreground">
+                    <div className="flex gap-2 sm:gap-3 text-sm text-muted-foreground">
                       {quiz.passingScore && (
                         <span>Geçme Puanı: {quiz.passingScore}%</span>
                       )}
@@ -625,9 +625,9 @@ export default function TrainingDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="tab-content-flashcards">
+        <TabsContent value="content" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3" data-testid="tab-content-flashcards">
           {module.flashcards && module.flashcards.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
               {module.flashcards.map((card) => (
                 <Card
                   key={card.id}

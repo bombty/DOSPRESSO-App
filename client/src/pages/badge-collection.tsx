@@ -62,13 +62,13 @@ export default function BadgeCollection() {
           ) : userBadges.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No badges yet. Complete modules to earn badges!</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
               {userBadges.map((userBadge: any) => {
                 const config = badgeColors[userBadge.badgeKey] || badgeColors.coffee_cherry;
                 const IconComponent = config.icon;
                 return (
-                  <div key={userBadge.id} className={`${config.bg} p-4 rounded-lg border border-current border-opacity-20`}>
-                    <div className="flex items-start gap-3">
+                  <div key={userBadge.id} className={`${config.bg} p-3 rounded-lg border border-current border-opacity-20`}>
+                    <div className="flex items-start gap-2 sm:gap-3">
                       <IconComponent className="w-8 h-8 flex-shrink-0 mt-1" />
                       <div className="flex-1">
                         <h3 className="font-semibold">{userBadge.name}</h3>
@@ -94,12 +94,12 @@ export default function BadgeCollection() {
           <CardDescription>All badges in the system and how to earn them</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {allBadges.map((badge: any) => {
               const isEarned = userBadges.some((ub: any) => ub.id === badge.id);
               return (
-                <div key={badge.id} className={`p-4 rounded-lg border ${isEarned ? "border-green-500 bg-green-50 dark:bg-green-950/30" : "border-muted"}`}>
-                  <div className="flex items-start justify-between gap-3">
+                <div key={badge.id} className={`p-3 rounded-lg border ${isEarned ? "border-green-500 bg-green-50 dark:bg-green-950/30" : "border-muted"}`}>
+                  <div className="flex items-start justify-between gap-2 sm:gap-3">
                     <div className="flex-1">
                       <h3 className="font-semibold">{badge.name}</h3>
                       <p className="text-sm text-muted-foreground">{badge.description}</p>

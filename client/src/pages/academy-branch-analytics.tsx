@@ -60,7 +60,7 @@ export default function AcademyBranchAnalytics() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -161,7 +161,7 @@ export default function AcademyBranchAnalytics() {
                 {topBranches.map((branch: any, idx: number) => (
                   <div key={branch.branchId} className="grid grid-cols-1 gap-2 p-3 border rounded-lg" data-testid={`branch-card-${branch.branchId}`}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
                         <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold">
                           #{idx + 1}
                         </div>

@@ -325,7 +325,7 @@ export default function ModuleDetail() {
           </TabsList>
 
           {/* Objectives Tab */}
-          <TabsContent value="objectives" className="grid grid-cols-1 gap-4">
+          <TabsContent value="objectives" className="grid grid-cols-1 gap-2 sm:gap-3">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Öğrenme Hedefleri</CardTitle>
@@ -337,7 +337,7 @@ export default function ModuleDetail() {
                 ) : (
                   <ul className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     {learningObjectives.map((objective: string, idx: number) => (
-                      <li key={idx} className="flex gap-3 text-sm">
+                      <li key={idx} className="flex gap-2 sm:gap-3 text-sm">
                         <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                         <span>{objective}</span>
                       </li>
@@ -352,7 +352,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Steps Tab */}
-          <TabsContent value="steps" className="grid grid-cols-1 gap-4">
+          <TabsContent value="steps" className="grid grid-cols-1 gap-2 sm:gap-3">
             {steps.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">İçerik tanımlanmamış</p>
             ) : (
@@ -397,7 +397,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Quiz Tab */}
-          <TabsContent value="quiz" className="grid grid-cols-1 gap-4">
+          <TabsContent value="quiz" className="grid grid-cols-1 gap-2 sm:gap-3">
             {module.quiz && module.quiz.length > 0 ? (
               <>
                 <Card>
@@ -441,7 +441,7 @@ export default function ModuleDetail() {
           </TabsContent>
 
           {/* Completed Tab */}
-          <TabsContent value="completed" className="grid grid-cols-1 gap-4">
+          <TabsContent value="completed" className="grid grid-cols-1 gap-2 sm:gap-3">
             <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
@@ -480,7 +480,7 @@ export default function ModuleDetail() {
 
       {/* Header */}
       <div>
-        <div className="flex justify-between items-start gap-4">
+        <div className="flex justify-between items-start gap-2 sm:gap-3">
           <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight">{module.title}</h1>
             <p className="text-muted-foreground mt-2">{module.description}</p>
@@ -558,7 +558,7 @@ export default function ModuleDetail() {
 
               {/* Objectives Phase */}
               {previewPhase === 'objectives' && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-sm">Öğrenme Hedefleri</CardTitle>
@@ -569,7 +569,7 @@ export default function ModuleDetail() {
                       ) : (
                         <ul className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                           {learningObjectives.map((objective: string, idx: number) => (
-                            <li key={idx} className="flex gap-3 text-sm">
+                            <li key={idx} className="flex gap-2 sm:gap-3 text-sm">
                               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                               <span>{objective}</span>
                             </li>
@@ -602,7 +602,7 @@ export default function ModuleDetail() {
 
               {/* Steps Phase */}
               {previewPhase === 'steps' && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {steps.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Adım tanımlanmamış</p>
                   ) : (
@@ -616,7 +616,7 @@ export default function ModuleDetail() {
                             <Badge variant="outline">{currentStepIndex + 1}/{steps.length}</Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 gap-4">
+                        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3">
                           <div className="space-y-3">
                             <p className="text-sm whitespace-pre-wrap leading-relaxed">{steps[currentStepIndex]?.content}</p>
                             {steps[currentStepIndex]?.photos && steps[currentStepIndex].photos.length > 0 && (
@@ -683,12 +683,12 @@ export default function ModuleDetail() {
 
               {/* Quiz Phase */}
               {previewPhase === 'quiz' && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {!module?.quiz || module.quiz.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Quiz sorusu tanımlanmamış</p>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                         {module.quiz.map((q: any, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-green-500">
                             <CardContent className="pt-4">
@@ -747,7 +747,7 @@ export default function ModuleDetail() {
 
               {/* Scenarios Phase */}
               {previewPhase === 'scenarios' && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {scenarioTasks.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Senaryo tanımlanmamış</p>
                   ) : (
@@ -797,7 +797,7 @@ export default function ModuleDetail() {
 
               {/* Completed Phase */}
               {previewPhase === 'completed' && (
-                <div className="grid grid-cols-1 gap-6 text-center py-8">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 text-center py-8">
                   <div className="flex justify-center">
                     <div className="relative">
                       <Award className="w-24 h-24 text-yellow-500" />
@@ -874,14 +874,14 @@ export default function ModuleDetail() {
         </TabsList>
 
         {/* Overview */}
-        <TabsContent value="overview" className="grid grid-cols-1 gap-4">
+        <TabsContent value="overview" className="grid grid-cols-1 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle>Modül Bilgileri & Atama</CardTitle>
               <CardDescription>Temel modül özellikleri ve yapısı</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="grid md:grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="grid md:grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Başlık</p>
                   <p className="font-medium">{module.title}</p>
@@ -901,7 +901,7 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground mb-1">Açıklama</p>
                 <p className="text-sm">{module.description}</p>
               </div>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Tahmini Süre</p>
                   <p className="font-medium">{module.estimatedDuration} dakika</p>
@@ -928,7 +928,7 @@ export default function ModuleDetail() {
               <CardTitle className="text-base">Rol Ataması</CardTitle>
               <CardDescription>Bu modülü hangi rollere atanacak?</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
+            <CardContent className="grid grid-cols-2 gap-2 sm:gap-3">
               {["Stajyer", "Bar Buddy", "Barista", "Supervisor Buddy", "Supervisor"].map((role) => (
                 <label key={role} className="flex items-center gap-2 p-2 border rounded cursor-pointer hover-elevate">
                   <input
@@ -987,7 +987,7 @@ export default function ModuleDetail() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                   {module.galleryImages.map((img: any, idx: number) => (
                     <div key={idx} className="overflow-hidden rounded-lg bg-muted aspect-[6/4]">
                       <img
@@ -1005,7 +1005,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Learning Objectives */}
-        <TabsContent value="objectives" className="grid grid-cols-1 gap-4">
+        <TabsContent value="objectives" className="grid grid-cols-1 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1040,7 +1040,7 @@ export default function ModuleDetail() {
                         onSubmit={objectivesForm.handleSubmit((data) =>
                           updateObjectivesMutation.mutate(data)
                         )}
-                        className="grid grid-cols-1 gap-4"
+                        className="grid grid-cols-1 gap-2 sm:gap-3"
                       >
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                           {objectivesForm.watch("objectives").map((_, index) => (
@@ -1072,7 +1072,7 @@ export default function ModuleDetail() {
             </CardHeader>
             <CardContent>
               {learningObjectives.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Hedef tanımlanmamış</p>
+                <p className="text-sm text-muted-foreground text-center py-3">Hedef tanımlanmamış</p>
               ) : (
                 <ul className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {learningObjectives.map((objective: string, idx: number) => (
@@ -1088,7 +1088,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Steps */}
-        <TabsContent value="steps" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="steps" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1113,10 +1113,10 @@ export default function ModuleDetail() {
                         onSubmit={stepsForm.handleSubmit((data) =>
                           updateStepsMutation.mutate(data)
                         )}
-                        className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
+                        className="grid grid-cols-1 gap-2 sm:gap-3 max-h-96 overflow-y-auto"
                       >
                         {stepsForm.watch("steps").map((step: any, index) => (
-                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-3 bg-muted/30">
+                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2 sm:gap-3 bg-muted/30">
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
                                 <FormField
@@ -1230,9 +1230,9 @@ export default function ModuleDetail() {
             </CardHeader>
             <CardContent>
               {steps.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Adım tanımlanmamış</p>
+                <p className="text-sm text-muted-foreground text-center py-3">Adım tanımlanmamış</p>
               ) : (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
                   {steps.map((step: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-blue-500">
                       <CardHeader className="pb-2">
@@ -1243,7 +1243,7 @@ export default function ModuleDetail() {
                           <CardTitle className="text-base">{step.title}</CardTitle>
                         </div>
                       </CardHeader>
-                      <CardContent className="grid grid-cols-1 gap-3 text-sm">
+                      <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 text-sm">
                         <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{step.content}</p>
                         {step.photos && step.photos.length > 0 && (
                           <div className="grid grid-cols-2 gap-2">
@@ -1276,7 +1276,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Quiz */}
-        <TabsContent value="quiz" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="quiz" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1299,10 +1299,10 @@ export default function ModuleDetail() {
                     <Form {...quizForm}>
                       <form
                         onSubmit={quizForm.handleSubmit((data) => updateQuizMutation.mutate(data))}
-                        className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
+                        className="grid grid-cols-1 gap-2 sm:gap-3 max-h-96 overflow-y-auto"
                       >
                         {quizForm.watch("quiz").map((_, index) => (
-                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-3 bg-muted/30">
+                          <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2 sm:gap-3 bg-muted/30">
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
                                 <FormField
@@ -1424,7 +1424,7 @@ export default function ModuleDetail() {
             </CardHeader>
             <CardContent>
               {!module?.quiz || module.quiz.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Quiz sorusu tanımlanmamış</p>
+                <p className="text-sm text-muted-foreground text-center py-3">Quiz sorusu tanımlanmamış</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {module.quiz.map((q: any, idx: number) => (
@@ -1450,7 +1450,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Scenarios */}
-        <TabsContent value="scenarios" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="scenarios" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1473,7 +1473,7 @@ export default function ModuleDetail() {
                     <Form {...scenariosForm}>
                       <form
                         onSubmit={scenariosForm.handleSubmit((data) => updateScenariosMutation.mutate(data))}
-                        className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
+                        className="grid grid-cols-1 gap-2 sm:gap-3 max-h-96 overflow-y-auto"
                       >
                         {scenariosForm.watch("scenarioTasks").map((_, index) => (
                           <div key={index} className="border p-3 rounded grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
@@ -1527,7 +1527,7 @@ export default function ModuleDetail() {
             </CardHeader>
             <CardContent>
               {scenarioTasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Senaryo görev tanımlanmamış</p>
+                <p className="text-sm text-muted-foreground text-center py-3">Senaryo görev tanımlanmamış</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {scenarioTasks.map((scenario: any, idx: number) => (
@@ -1556,7 +1556,7 @@ export default function ModuleDetail() {
         </TabsContent>
 
         {/* Supervisor Checklist */}
-        <TabsContent value="checklist" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="checklist" className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center gap-2">
@@ -1579,7 +1579,7 @@ export default function ModuleDetail() {
                     <Form {...checklistForm}>
                       <form
                         onSubmit={checklistForm.handleSubmit((data) => updateChecklistMutation.mutate(data))}
-                        className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"
+                        className="grid grid-cols-1 gap-2 sm:gap-3 max-h-96 overflow-y-auto"
                       >
                         {checklistForm.watch("supervisorChecklist").map((_, index) => (
                           <div key={index} className="border p-3 rounded grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
@@ -1633,7 +1633,7 @@ export default function ModuleDetail() {
             </CardHeader>
             <CardContent>
               {!module?.supervisorChecklist || module.supervisorChecklist.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Kontrol listesi maddesi tanımlanmamış</p>
+                <p className="text-sm text-muted-foreground text-center py-3">Kontrol listesi maddesi tanımlanmamış</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {module.supervisorChecklist.map((item: any, idx: number) => (
