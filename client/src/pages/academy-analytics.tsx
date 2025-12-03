@@ -188,9 +188,9 @@ export default function AcademyAnalytics() {
                   </div>
                   <Progress value={(userBadges.length / 6) * 100} className="h-2" />
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 mt-6">
                   {userBadges.map((badge) => (
-                    <div key={badge.id} className="p-3 border rounded-lg bg-success/10 dark:bg-success/5">
+                    <div key={badge.id} className="p-3 border rounded-lg bg-success/10 dark:bg-success/5 hover-elevate">
                       <p className="font-medium text-sm">{badge.titleTr}</p>
                       <p className="text-xs text-muted-foreground">{badge.points} puan</p>
                     </div>
