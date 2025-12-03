@@ -6,13 +6,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { 
-  format, startOfWeek, addDays, parseISO, isSameDay, isToday
+  format, startOfWeek, addDays, isToday
 } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Clock, Sparkles, Users, Calendar, CheckCircle2, Loader2 } from "lucide-react";
 
 interface ShiftDay {
   date: Date;
@@ -24,10 +27,16 @@ export default function VardiyaPlanlama() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [selectedShift, setSelectedShift] = useState(null);
+  const [selectedShift, setSelectedShift] = useState<any>(null);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const { data: shifts } = useQuery({
     queryKey: ['/api/shifts', format(weekStart, 'yyyy-MM-dd')],
+  });
+
+  const { data: branchEmployees } = useQuery({
+    queryKey: ['/api/employees', user?.branchId],
+    enabled: !!user?.branchId,
   });
 
   const weekDays = useMemo(() => {
@@ -58,6 +67,16 @@ export default function VardiyaPlanlama() {
             {format(weekStart, "d MMMM", { locale: tr })} - {format(addDays(weekStart, 6), "d MMMM yyyy", { locale: tr })}
           </p>
         </div>
+        
+        {/* AI Planlama Butonu */}
+        <Button 
+          onClick={() => setAiModalOpen(true)} 
+          className="gap-2"
+          data-testid="button-ai-plan"
+        >
+          <Sparkles className="w-4 h-4" />
+          AI ile Otomatik Planla
+        </Button>
       </div>
 
       {/* Week Navigation */}
@@ -116,19 +135,20 @@ export default function VardiyaPlanlama() {
                         </div>
                         {shift.shiftChecklists && shift.shiftChecklists.length > 0 && (
                           <Badge variant="secondary" className="text-xs h-4 py-0">
-                            {shift.shiftChecklists.length} 📋
+                            {shift.shiftChecklists.length}
                           </Badge>
                         )}
                       </div>
                       {shift.assignedTo?.fullName && (
-                        <div className="text-xs text-muted-foreground mt-0.5">
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <Users className="w-3 h-3" />
                           {shift.assignedTo.fullName}
                         </div>
                       )}
                       <Badge variant="outline" className="mt-1 text-xs h-4">
                         {shift.status === 'draft' ? 'Taslak' : 
                          shift.status === 'pending_hq' ? 'Onay Bekliyor' :
-                         shift.status === 'confirmed' ? 'Onaylı' : shift.status}
+                         shift.status === 'confirmed' ? 'Onayli' : shift.status}
                       </Badge>
                     </div>
                   ))
@@ -146,10 +166,14 @@ export default function VardiyaPlanlama() {
                 <DialogContent className="max-w-md">
                   <DialogHeader>
                     <DialogTitle>
-                      {format(day.date, 'd MMMM yyyy', { locale: tr })} İçin Vardiya
+                      {format(day.date, 'd MMMM yyyy', { locale: tr })} Icin Vardiya
                     </DialogTitle>
                   </DialogHeader>
-                  <QuickAddShiftForm date={day.date} onSuccess={() => queryClient.invalidateQueries({ queryKey: ['/api/shifts'] })} />
+                  <QuickAddShiftForm 
+                    date={day.date} 
+                    employees={branchEmployees || []}
+                    onSuccess={() => queryClient.invalidateQueries({ queryKey: ['/api/shifts'] })} 
+                  />
                 </DialogContent>
               </Dialog>
             </CardContent>
@@ -157,12 +181,21 @@ export default function VardiyaPlanlama() {
         ))}
       </div>
 
+      {/* AI Planlama Modal */}
+      <AIShiftPlannerModal 
+        open={aiModalOpen} 
+        onOpenChange={setAiModalOpen}
+        weekStart={weekStart}
+        employees={branchEmployees || []}
+        branchId={user?.branchId}
+      />
+
       {/* Shift Details Modal */}
       {selectedShift && (
         <Dialog open={!!selectedShift} onOpenChange={() => setSelectedShift(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Vardiya Detayları</DialogTitle>
+              <DialogTitle>Vardiya Detaylari</DialogTitle>
             </DialogHeader>
             <div className="space-y-2 text-sm">
               <div>
@@ -187,7 +220,7 @@ export default function VardiyaPlanlama() {
   );
 }
 
-function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => void }) {
+function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employees: any[]; onSuccess: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -226,7 +259,6 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
 
       const shiftRes = await apiRequest('POST', '/api/shifts', payload);
       
-      // Attach checklists if selected
       if ((formData.openingChecklistId || formData.closingChecklistId) && shiftRes?.id) {
         if (formData.openingChecklistId) {
           await apiRequest('POST', `/api/shifts/${shiftRes.id}/checklists`, {
@@ -243,10 +275,10 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
       }
     },
     onSuccess: () => {
-      toast({ title: "Başarılı", description: "Vardiya oluşturuldu" });
+      toast({ title: "Basarili", description: "Vardiya olusturuldu" });
       onSuccess();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Hata",
         description: error.message,
@@ -256,7 +288,32 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
   });
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {/* Personel Secici */}
+      <div>
+        <label className="text-xs font-semibold">Personel</label>
+        <Select value={formData.assignedToId} onValueChange={(v) => setFormData({ ...formData, assignedToId: v })}>
+          <SelectTrigger data-testid="select-employee">
+            <SelectValue placeholder="Personel secin..." />
+          </SelectTrigger>
+          <SelectContent>
+            {employees.map((emp: any) => (
+              <SelectItem key={emp.id} value={emp.id}>
+                <div className="flex items-center gap-2">
+                  <span>{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
+                  <Badge variant="outline" className="text-xs h-4">
+                    {emp.role === 'barista' ? 'Barista' : 
+                     emp.role === 'intern' ? 'Stajyer' : 
+                     emp.role === 'supervisor' ? 'Supervisor' : emp.role}
+                  </Badge>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Vardiya Tipi */}
       <div>
         <label className="text-xs font-semibold">Vardiya Tipi</label>
         <Select value={formData.shiftType} onValueChange={(v) => setFormData({ ...formData, shiftType: v })}>
@@ -265,7 +322,7 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="morning">Sabah (06:00-14:00)</SelectItem>
-            <SelectItem value="evening">Akşam (14:00-22:00)</SelectItem>
+            <SelectItem value="evening">Aksam (14:00-22:00)</SelectItem>
             <SelectItem value="night">Gece (22:00-06:00)</SelectItem>
           </SelectContent>
         </Select>
@@ -273,10 +330,10 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
 
       {openingChecklists.length > 0 && (
         <div>
-          <label className="text-xs font-semibold">Açılış Çeklisti (Opsiyonel)</label>
+          <label className="text-xs font-semibold">Acilis Ceklisti (Opsiyonel)</label>
           <Select value={formData.openingChecklistId} onValueChange={(v) => setFormData({ ...formData, openingChecklistId: v })}>
             <SelectTrigger data-testid="select-opening-checklist">
-              <SelectValue placeholder="Seçin..." />
+              <SelectValue placeholder="Secin..." />
             </SelectTrigger>
             <SelectContent>
               {openingChecklists.map((c: any) => (
@@ -291,10 +348,10 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
 
       {closingChecklists.length > 0 && (
         <div>
-          <label className="text-xs font-semibold">Kapanış Çeklisti (Opsiyonel)</label>
+          <label className="text-xs font-semibold">Kapanis Ceklisti (Opsiyonel)</label>
           <Select value={formData.closingChecklistId} onValueChange={(v) => setFormData({ ...formData, closingChecklistId: v })}>
             <SelectTrigger data-testid="select-closing-checklist">
-              <SelectValue placeholder="Seçin..." />
+              <SelectValue placeholder="Secin..." />
             </SelectTrigger>
             <SelectContent>
               {closingChecklists.map((c: any) => (
@@ -316,5 +373,258 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
         {createMutation.isPending ? "Ekleniyor..." : "Vardiya Ekle"}
       </Button>
     </div>
+  );
+}
+
+function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchId }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  weekStart: Date;
+  employees: any[];
+  branchId?: number;
+}) {
+  const { toast } = useToast();
+  const [step, setStep] = useState<'config' | 'preview' | 'done'>('config');
+  const [offDays, setOffDays] = useState<Record<string, string>>({});
+  const [generatedPlan, setGeneratedPlan] = useState<any>(null);
+
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(weekStart, i);
+      return {
+        date,
+        dayName: format(date, 'EEEE', { locale: tr }),
+        dateStr: format(date, 'yyyy-MM-dd'),
+      };
+    });
+  }, [weekStart]);
+
+  const toggleOffDay = (employeeId: string, dateStr: string) => {
+    setOffDays(prev => {
+      const key = `${employeeId}-${dateStr}`;
+      if (prev[key]) {
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [key]: 'off' };
+    });
+  };
+
+  const aiGenerateMutation = useMutation({
+    mutationFn: async () => {
+      const weekEnd = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+      const result = await apiRequest('POST', '/api/shifts/ai-suggest', {
+        branchId,
+        weekStart: format(weekStart, 'yyyy-MM-dd'),
+        weekEnd,
+        offDays,
+      });
+      return result;
+    },
+    onSuccess: (data) => {
+      setGeneratedPlan(data);
+      setStep('preview');
+      toast({ title: "AI Plan Olusturuldu", description: "Onizleme icin hazir" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const applyPlanMutation = useMutation({
+    mutationFn: async () => {
+      if (!generatedPlan?.shifts) return;
+      await apiRequest('POST', '/api/shifts/bulk-create', {
+        shifts: generatedPlan.shifts,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      setStep('done');
+      toast({ title: "Basarili", description: "Vardiyalar olusturuldu" });
+      setTimeout(() => {
+        onOpenChange(false);
+        setStep('config');
+        setGeneratedPlan(null);
+      }, 1500);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getEmployeeRoleBadge = (role: string) => {
+    switch (role) {
+      case 'barista': return <Badge className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20">Barista</Badge>;
+      case 'intern': return <Badge className="text-xs bg-orange-500/10 text-orange-600 border-orange-500/20">Stajyer</Badge>;
+      case 'supervisor': return <Badge className="text-xs bg-green-500/10 text-green-600 border-green-500/20">Supervisor</Badge>;
+      default: return <Badge variant="outline" className="text-xs">{role}</Badge>;
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            AI ile Haftalik Vardiya Planlama
+          </DialogTitle>
+        </DialogHeader>
+
+        {step === 'config' && (
+          <>
+            <div className="space-y-4 flex-1 overflow-hidden">
+              {/* Kurallar Bilgisi */}
+              <Card className="bg-muted/50">
+                <CardContent className="py-3 space-y-1">
+                  <p className="text-sm font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    AI Planlama Kurallari:
+                  </p>
+                  <ul className="text-xs text-muted-foreground space-y-1 ml-6">
+                    <li>- Her stajyerin yaninda en az 1 barista olacak</li>
+                    <li>- Sabah vardiyalari daha az personel (yogun degil)</li>
+                    <li>- Aksam vardiyalari daha fazla personel (yogun)</li>
+                    <li>- Gucler ayriligi: Ayni kisi hem acilis hem kapanis yapmaz</li>
+                    <li>- Her personele haftada en az 1 gun off</li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              {/* Off Gunleri Secimi */}
+              <div>
+                <p className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Off Gunlerini Isaretleyin:
+                </p>
+                <ScrollArea className="h-[300px] border rounded-md p-2">
+                  <div className="space-y-3">
+                    {employees.map((emp: any) => (
+                      <div key={emp.id} className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
+                          {getEmployeeRoleBadge(emp.role)}
+                        </div>
+                        <div className="flex gap-1 flex-wrap">
+                          {weekDays.map((day) => {
+                            const isOff = offDays[`${emp.id}-${day.dateStr}`];
+                            return (
+                              <Button
+                                key={day.dateStr}
+                                size="sm"
+                                variant={isOff ? "default" : "outline"}
+                                className={`text-xs px-2 h-7 ${isOff ? 'bg-destructive hover:bg-destructive/90' : ''}`}
+                                onClick={() => toggleOffDay(emp.id, day.dateStr)}
+                                data-testid={`off-${emp.id}-${day.dateStr}`}
+                              >
+                                {day.dayName.substring(0, 3)}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        <Separator className="mt-2" />
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Iptal
+              </Button>
+              <Button 
+                onClick={() => aiGenerateMutation.mutate()} 
+                disabled={aiGenerateMutation.isPending || !branchId}
+                className="gap-2"
+              >
+                {aiGenerateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    AI Planiyor...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Plan Olustur
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {step === 'preview' && generatedPlan && (
+          <>
+            <div className="flex-1 overflow-hidden">
+              <p className="text-sm font-semibold mb-2">Olusturulan Plan Onizlemesi:</p>
+              <ScrollArea className="h-[400px] border rounded-md p-2">
+                <div className="space-y-2">
+                  {generatedPlan.shifts?.map((shift: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-2 border rounded text-sm">
+                      <div>
+                        <span className="font-medium">{shift.shiftDate}</span>
+                        <span className="text-muted-foreground ml-2">
+                          {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>{employees.find(e => e.id === shift.assignedToId)?.fullName || 'Bilinmiyor'}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {shift.shiftType === 'morning' ? 'Sabah' : 
+                           shift.shiftType === 'evening' ? 'Aksam' : 'Gece'}
+                        </Badge>
+                      </div>
+                    </div>
+                  )) || <p className="text-muted-foreground text-center py-4">Plan bos</p>}
+                </div>
+              </ScrollArea>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep('config')}>
+                Geri
+              </Button>
+              <Button 
+                onClick={() => applyPlanMutation.mutate()} 
+                disabled={applyPlanMutation.isPending}
+                className="gap-2"
+              >
+                {applyPlanMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uygulanıyor...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Plani Uygula
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {step === 'done' && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center space-y-2">
+              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+              <p className="text-lg font-semibold">Vardiyalar Basariyla Olusturuldu!</p>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
