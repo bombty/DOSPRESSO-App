@@ -69,6 +69,7 @@ export default function KayipEsyaPage() {
   const [selectedItem, setSelectedItem] = useState<LostFoundItemEnriched | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("bulunan");
 
   const { data: items = [], isLoading } = useQuery<LostFoundItemEnriched[]>({
@@ -268,7 +269,8 @@ export default function KayipEsyaPage() {
                       <img
                         src={item.photoUrl}
                         alt="Eşya fotoğrafı"
-                        className="w-full h-24 object-cover rounded-md"
+                        className="w-full h-24 object-cover rounded-md cursor-pointer hover-elevate"
+                        onClick={() => setSelectedPhotoUrl(item.photoUrl)}
                         data-testid={`img-photo-${item.id}`}
                       />
                     )}
@@ -338,7 +340,9 @@ export default function KayipEsyaPage() {
                       <img
                         src={item.photoUrl}
                         alt="Eşya fotoğrafı"
-                        className="w-full h-20 object-cover rounded-md opacity-70"
+                        className="w-full h-20 object-cover rounded-md opacity-70 cursor-pointer hover-elevate"
+                        onClick={() => setSelectedPhotoUrl(item.photoUrl)}
+                        data-testid={`img-photo-handover-${item.id}`}
                       />
                     )}
 
@@ -647,6 +651,21 @@ export default function KayipEsyaPage() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedPhotoUrl} onOpenChange={(open) => !open && setSelectedPhotoUrl(null)}>
+        <DialogContent className="max-w-2xl" data-testid="dialog-photo-view">
+          <DialogHeader>
+            <DialogTitle>Fotoğraf</DialogTitle>
+          </DialogHeader>
+          {selectedPhotoUrl && (
+            <img
+              src={selectedPhotoUrl}
+              alt="Fotoğraf"
+              className="w-full h-auto rounded-md"
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
