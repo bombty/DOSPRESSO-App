@@ -345,7 +345,7 @@ export default function PersonelProfilPage() {
                     <Button variant="outline" className="w-full" data-testid="link-akademi-hq">Yönetim</Button>
                   </Link>
                 )}
-                {(user?.role === 'supervisor' || user?.role === 'admin' || user?.role === 'yatirimci_hq') && (
+                {(user?.role === 'supervisor' || user?.role === 'supervisor_buddy' || user?.role === 'admin' || user?.role === 'yatirimci_hq') && (
                   <Link href="/akademi-supervisor">
                     <Button variant="outline" className="w-full" data-testid="link-akademi-supervisor">Supervisor</Button>
                   </Link>
