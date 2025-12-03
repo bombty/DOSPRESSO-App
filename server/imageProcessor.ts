@@ -30,7 +30,7 @@ export async function optimizeGalleryImage(
 
     console.log(`📸 Image optimized: ${imageBuffer.length} → ${optimized.length} bytes`);
     return optimized;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("Image optimization error:", error);
     throw new Error("Fotoğraf optimize edilemedi: " + error.message);
   }
@@ -46,7 +46,7 @@ export async function generateThumbnail(imageBuffer: Buffer): Promise<Buffer> {
       .webp({ quality: 60 })
       .toBuffer();
     return thumbnail;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("Thumbnail generation error:", error);
     throw new Error("Küçük resim oluşturulamadı");
   }

@@ -741,13 +741,13 @@ export class DatabaseStorage implements IStorage {
   async getPasswordResetToken(token: string): Promise<{ id: number; userId: string; token: string; expiresAt: Date; usedAt: Date | null } | undefined> {
     const { passwordResetTokens } = await import("@shared/schema");
     const [result] = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token));
-    return result as any;
+    return result ;
   }
 
   async getAllPasswordResetTokens(): Promise<Array<{ id: number; userId: string; token: string; expiresAt: Date; usedAt: Date | null }>> {
     const { passwordResetTokens } = await import("@shared/schema");
     const results = await db.select().from(passwordResetTokens);
-    return results as any[];
+    return results;
   }
 
   async markPasswordResetTokenUsed(tokenId: number): Promise<void> {
@@ -1249,14 +1249,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFault(fault: InsertEquipmentFault): Promise<EquipmentFault> {
-    const [newFault] = await db.insert(equipmentFaults).values(fault as any).returning();
+    const [newFault] = await db.insert(equipmentFaults).values(fault ).returning();
     return newFault;
   }
 
   async updateFault(id: number, updates: Partial<InsertEquipmentFault>): Promise<EquipmentFault | undefined> {
     const [updated] = await db
       .update(equipmentFaults)
-      .set({ ...updates, updatedAt: new Date() } as any)
+      .set({ ...updates, updatedAt: new Date() } )
       .where(eq(equipmentFaults.id, id))
       .returning();
     return updated;
@@ -1298,7 +1298,7 @@ export class DatabaseStorage implements IStorage {
       notes,
     };
     
-    const existingHistory = (fault.stageHistory as any[]) || [];
+    const existingHistory = (fault.stageHistory []) || [];
     const [updated] = await db
       .update(equipmentFaults)
       .set({
@@ -1344,7 +1344,7 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         viewCount: db.$with("current").as(
           db.select({ viewCount: knowledgeBaseArticles.viewCount }).from(knowledgeBaseArticles).where(eq(knowledgeBaseArticles.id, id))
-        ) as any + 1
+        )  + 1
       })
       .where(eq(knowledgeBaseArticles.id, id));
   }
@@ -1387,7 +1387,7 @@ export class DatabaseStorage implements IStorage {
   // Knowledge Base Embedding operations
   async createEmbeddings(embeddings: InsertKnowledgeBaseEmbedding[]): Promise<void> {
     if (embeddings.length === 0) return;
-    await db.insert(knowledgeBaseEmbeddings).values(embeddings as any);
+    await db.insert(knowledgeBaseEmbeddings).values(embeddings );
   }
 
   async deleteEmbeddingsByArticle(articleId: number): Promise<void> {
@@ -1564,7 +1564,7 @@ export class DatabaseStorage implements IStorage {
 
   async createOrUpdateUserTrainingProgress(data: { userId: string; moduleId: number; status: string; completedAt?: Date; score?: number }): Promise<UserTrainingProgress | undefined> {
     return this.updateUserProgress(data.userId, data.moduleId, {
-      status: data.status as any,
+      status: data.status ,
       completedAt: data.completedAt,
       score: data.score,
     });
@@ -4048,7 +4048,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getGuestComplaintStats(branchId?: number, startDate?: Date, endDate?: Date): Promise<any> {
+  async getGuestComplaintStats(branchId?: number, startDate?: Date, endDate?: Date): Promise<unknown> {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const start = startDate || thirtyDaysAgo;
     const end = endDate || new Date();
@@ -4067,11 +4067,11 @@ export class DatabaseStorage implements IStorage {
       .where(and(...whereConditions));
     
     const total = complaints.length;
-    const byStatus = complaints.reduce((acc: any, c: any) => {
+    const byStatus = complaints.reduce((acc: unknown, c: any) => {
       acc[c.status] = (acc[c.status] || 0) + 1;
       return acc;
     }, {});
-    const byPriority = complaints.reduce((acc: any, c: any) => {
+    const byPriority = complaints.reduce((acc: unknown, c: any) => {
       acc[c.priority] = (acc[c.priority] || 0) + 1;
       return acc;
     }, {});
@@ -4093,7 +4093,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getGuestComplaintHeatmap(branchId?: number, startDate?: Date, endDate?: Date): Promise<any> {
+  async getGuestComplaintHeatmap(branchId?: number, startDate?: Date, endDate?: Date): Promise<unknown> {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const start = startDate || thirtyDaysAgo;
     const end = endDate || new Date();
@@ -5031,11 +5031,11 @@ export class DatabaseStorage implements IStorage {
       }
 
       if (conditions.length > 0) {
-        query = query.where(and(...conditions)) as any;
+        query = query.where(and(...conditions)) ;
       }
 
       if (filters.limit) {
-        query = query.limit(filters.limit) as any;
+        query = query.limit(filters.limit) ;
       }
     }
 
@@ -5689,7 +5689,7 @@ export class DatabaseStorage implements IStorage {
       .from(userBadges)
       .innerJoin(badges, eq(userBadges.badgeId, badges.id))
       .where(eq(userBadges.userId, userId));
-    return results.map(r => ({ ...r.badge, ...r.userBadge })) as any;
+    return results.map(r => ({ ...r.badge, ...r.userBadge })) ;
   }
 
   async unlockBadge(userId: string, badgeId: number): Promise<typeof userBadges.$inferSelect> {
@@ -5762,7 +5762,7 @@ export class DatabaseStorage implements IStorage {
     if (filters?.status) conditions.push(eq(lostFoundItems.status, filters.status));
     
     let query = db.select().from(lostFoundItems);
-    if (conditions.length) query = query.where(and(...conditions)) as any;
+    if (conditions.length) query = query.where(and(...conditions)) ;
     return query.orderBy(desc(lostFoundItems.createdAt));
   }
 

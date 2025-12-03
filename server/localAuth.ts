@@ -88,7 +88,7 @@ export async function setupAuth(app: Express) {
     })
   );
 
-  passport.serializeUser((user: any, cb) => {
+  passport.serializeUser((user: unknown, cb) => {
     cb(null, user.id);
   });
 
@@ -114,7 +114,7 @@ export async function setupAuth(app: Express) {
       });
     }
 
-    passport.authenticate("local", (err: any, user: any, info: any) => {
+    passport.authenticate("local", (err: unknown, user: unknown, info: any) => {
       if (err) {
         return res.status(500).json({ error: "Sunucu hatası" });
       }
@@ -153,7 +153,7 @@ export async function setupAuth(app: Express) {
   });
 
   // Logout handler (shared logic)
-  const logoutHandler = (req: any, res: any) => {
+  const logoutHandler = (req: unknown, res: any) => {
     req.logout((err: any) => {
       if (err) {
         console.error("[Auth] Logout error:", err);

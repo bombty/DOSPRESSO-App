@@ -97,7 +97,7 @@ export function ModuleGallery({
         {images.map((image, idx) => (
           <div
             key={idx}
-            className="relative group rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-900"
+            className="relative group rounded-lg overflow-hidden bg-secondary/10 dark:bg-gray-900"
             data-testid={`gallery-image-${idx}`}
           >
             {/* Banner-style image container: 600x400 aspect ratio */}

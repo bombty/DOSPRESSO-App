@@ -62,7 +62,7 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
@@ -159,7 +159,7 @@ async function ensureAdminUserApproved() {
 // Background job for shift reminders
 function startShiftReminderJob() {
   // Run immediately on startup
-  storage.sendShiftReminders().catch((error: any) => {
+  storage.sendShiftReminders().catch((error: Error | unknown) => {
     console.error("Error sending shift reminders:", error);
   });
   

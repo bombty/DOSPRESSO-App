@@ -273,7 +273,7 @@ async function createBackupSnapshot(backupType: 'weekly' | 'manual' = 'weekly'):
     console.log(`💾 Backup veritabanına kaydedildi (ID: ${backupRecord.id})`);
     
     return backupRecord;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     const duration = Date.now() - startTime;
     
     // Insert failed backup record to database
@@ -487,7 +487,7 @@ export async function performHealthCheck(): Promise<{
     }
     
     return { status, checks, details };
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     return {
       status: 'critical',
       checks: { database: false, integrity: false, recentBackup: false },

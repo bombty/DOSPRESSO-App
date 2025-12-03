@@ -104,7 +104,7 @@ export function PerformanceRow({ name, score, onClick, testId }: PerformanceRowP
     >
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-blue-600">{name}</p>
-        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+        <div className="w-full bg-secondary/20 rounded-full h-1.5 mt-1">
           <div
             className={`h-1.5 rounded-full ${
               score >= 80 ? 'bg-green-600' : score >= 70 ? 'bg-yellow-600' : 'bg-red-600'

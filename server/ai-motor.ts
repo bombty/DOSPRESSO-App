@@ -6,7 +6,7 @@ import { storage } from "./storage";
  * Supports: flashcard_set, quiz, multi_step_guide, mindmap
  */
 
-export async function generateMultiStepGuideFromArticle(articleContent: string, articleTitle: string): Promise<any> {
+export async function generateMultiStepGuideFromArticle(articleContent: string, articleTitle: string): Promise<unknown> {
   try {
     const steps = articleContent.split('\n\n').filter(p => p.trim()).map((paragraph, idx) => ({
       stepNumber: idx + 1,
@@ -28,7 +28,7 @@ export async function generateMultiStepGuideFromArticle(articleContent: string, 
   }
 }
 
-export async function generateScenarioFromArticle(articleContent: string): Promise<any> {
+export async function generateScenarioFromArticle(articleContent: string): Promise<unknown> {
   try {
     const sentences = articleContent.split('.').filter(s => s.trim());
     const mainPoint = sentences[0]?.trim() || "Senaryo";

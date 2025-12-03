@@ -2064,26 +2064,26 @@ ZORUNLU KURALLAR:
       description: result.description || "",
       estimatedDuration: result.estimatedDuration || estimatedMinutes,
       learningObjectives: result.learningObjectives || [],
-      steps: (result.steps || []).map((s: any, idx: number) => ({
+      steps: (result.steps || []).map((s: unknown, idx: number) => ({
         stepNumber: s.stepNumber || idx + 1,
         title: s.title || `Adım ${idx + 1}`,
         content: s.content || "",
         mediaSuggestions: s.mediaSuggestions || [],
       })),
-      quiz: (result.quiz || []).map((q: any, idx: number) => ({
+      quiz: (result.quiz || []).map((q: unknown, idx: number) => ({
         questionId: q.questionId || `q${idx + 1}`,
         questionType: q.questionType === 'true_false' ? 'true_false' : 'mcq',
         questionText: q.questionText || "",
         options: q.options || [],
         correctOptionIndex: q.correctOptionIndex || 0,
       })),
-      scenarioTasks: (result.scenarioTasks || []).map((s: any, idx: number) => ({
+      scenarioTasks: (result.scenarioTasks || []).map((s: unknown, idx: number) => ({
         scenarioId: s.scenarioId || `s${idx + 1}`,
         title: s.title || `Senaryo ${idx + 1}`,
         description: s.description || "",
         tasks: s.tasks || [],
       })),
-      supervisorChecklist: (result.supervisorChecklist || []).map((c: any, idx: number) => ({
+      supervisorChecklist: (result.supervisorChecklist || []).map((c: unknown, idx: number) => ({
         itemId: c.itemId || `c${idx + 1}`,
         title: c.title || `Kontrol ${idx + 1}`,
         description: c.description || "",
@@ -2095,7 +2095,7 @@ ZORUNLU KURALLAR:
     console.log(`🎓 AI Module Generation (${remaining}/${MODULE_GEN_LIMIT} remaining)`);
 
     return module;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("Module generation error:", error);
     throw new Error("Modül oluşturulamadı: " + (error.message || "Bilinmeyen hata"));
   }
@@ -2118,7 +2118,7 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     
     console.log(`📄 PDF parsed: ${allText.length} characters extracted`);
     return allText;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("PDF parsing error:", error);
     throw new Error("PDF dosyası okunamadı: " + (error.message || "Bilinmeyen hata"));
   }
@@ -2187,7 +2187,7 @@ Görüntüdeki metni düzenli, okunabilir bir formatta yaz. Eğer tablo veya lis
     console.log(`📷 Image text extracted: ${extractedText.length} characters`);
     
     return extractedText;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("Image extraction error:", error);
     throw new Error("Görüntü işlenemedi: " + (error.message || "Bilinmeyen hata"));
   }
@@ -2255,7 +2255,7 @@ export async function generateImageWithAI(
     console.log(`✅ AI image generated successfully: ${imageUrl.substring(0, 50)}...`);
     
     return imageUrl;
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("❌ Image generation error:", error.message || error);
     throw new Error("Görüntü üretilmesi başarısız oldu: " + (error.message || "Bilinmeyen hata"));
   }

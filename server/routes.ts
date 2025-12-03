@@ -126,7 +126,7 @@ const getCachedResponse = (key: string) => {
   responseCache.delete(key);
   return null;
 };
-const setCachedResponse = (key: string, data: any, ttlSeconds: number = 60) => {
+const setCachedResponse = (key: string, data: unknown, ttlSeconds: number = 60) => {
   responseCache.set(key, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
 };
 const invalidateCache = (pattern: string) => {
@@ -174,8 +174,8 @@ class AuthorizationError extends Error {
 }
 
 // Permission enforcement helper
-function ensurePermission(user: any, module: string, action: string, errorMessage?: string): void {
-  if (!hasPermission(user.role as UserRoleType, module as any, action as any)) {
+function ensurePermission(user: unknown, module: string, action: string, errorMessage?: string): void {
+  if (!hasPermission(user.role as UserRoleType, module , action )) {
     throw new AuthorizationError(errorMessage || `Bu işlem için ${module} ${action} yetkiniz yok`);
   }
 }
@@ -298,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Kayıt talebiniz alındı. Onay sonrası email ile bilgilendirileceksiniz.",
         userId: newUser.id 
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Registration error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -345,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await sendPasswordResetEmail(email, token);
 
       res.json({ message: "Eğer bu email kayıtlıysa, şifre sıfırlama linki gönderildi" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Forgot password error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -392,7 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateUserPassword(resetToken.userId, hashedPassword);
 
       res.json({ message: "Şifre başarıyla değiştirildi" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Reset password error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -401,7 +401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -413,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/users - Get all users (sanitized, for dropdowns/selection)
-  app.get('/api/users', isAuthenticated, async (req: any, res) => {
+  app.get('/api/users', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { branchId: filterBranchId } = req.query;
@@ -445,7 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/upload/photo - Upload base64 photo to Object Storage
-  app.post('/api/upload/photo', isAuthenticated, async (req: any, res) => {
+  app.post('/api/upload/photo', isAuthenticated, async (req: unknown, res) => {
     try {
       const { Client } = await import('@replit/object-storage');
       const { z } = await import('zod');
@@ -497,7 +497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const url = `${protocol}://${host}/api/files/public/${accessToken}`;
       
       res.json({ url, path, size: buffer.length });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error uploading photo:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid upload data", errors: error.errors });
@@ -550,7 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/files/:path - Serve files from Object Storage (authenticated)
-  app.get('/api/files/*', isAuthenticated, async (req: any, res) => {
+  app.get('/api/files/*', isAuthenticated, async (req: unknown, res) => {
     try {
       const { Client } = await import('@replit/object-storage');
       const client = new Client();
@@ -718,7 +718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const branch = await storage.createBranch(branchData);
       res.json(branch);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating branch:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid branch data", errors: error.errors });
@@ -781,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Branch not found" });
       }
       res.json(branch);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating branch:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid branch data", errors: error.errors });
@@ -791,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update branch settings (HQ + supervisors for own branch)
-  app.patch('/api/branches/:id/settings', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/branches/:id/settings', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -920,7 +920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
+  app.post('/api/tasks', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -943,7 +943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         assignedToId: validatedData.assignedToId || userId,
       });
       res.json(task);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating task:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid task data", errors: error.errors });
@@ -955,7 +955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/tasks/:id/complete', isAuthenticated, async (req: any, res) => {
+  app.post('/api/tasks/:id/complete', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -1031,7 +1031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const task = await storage.updateTask(id, validatedData);
       res.json(task);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating task:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz görev verisi", errors: error.errors });
@@ -1214,7 +1214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const checklist = await storage.createChecklist(validatedChecklistData);
         res.json(checklist);
       }
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating checklist:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid checklist data", errors: error.errors });
@@ -1227,7 +1227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update checklist with tasks (HQ coach always, supervisors only if isEditable=true)
-  app.patch('/api/checklists/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/checklists/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -1260,7 +1260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const checklist = await storage.updateChecklistWithTasks(id, validatedData);
 
       res.json(checklist!);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating checklist:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid checklist data", errors: error.errors });
@@ -1332,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const task = await storage.createChecklistTask(validatedData);
       res.json(task);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating checklist task:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1356,7 +1356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Task bulunamadı" });
       }
       res.json(task);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating checklist task:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1430,7 +1430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/faults', isAuthenticated, async (req: any, res) => {
+  app.post('/api/faults', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -1518,7 +1518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       invalidateCache('critical-equipment');
       
       res.json(fault);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating fault:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid fault data", errors: error.errors });
@@ -1530,7 +1530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/faults/ai-diagnose', isAuthenticated, async (req: any, res) => {
+  app.post('/api/faults/ai-diagnose', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { equipmentType, faultDescription } = req.body;
@@ -1541,13 +1541,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const diagnosis = await diagnoseFault(equipmentType, faultDescription, user.id);
       res.json(diagnosis);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error diagnosing fault:", error);
       res.status(500).json({ message: error.message || "Arıza analiz edilemedi" });
     }
   });
 
-  app.post('/api/faults/:id/photo', isAuthenticated, async (req: any, res) => {
+  app.post('/api/faults/:id/photo', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -1630,7 +1630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/faults/:id/stage', isAuthenticated, async (req: any, res) => {
+  app.put('/api/faults/:id/stage', isAuthenticated, async (req: unknown, res) => {
     try {
       const id = parseInt(req.params.id);
       const { stage, notes } = req.body;
@@ -1681,7 +1681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/faults/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/faults/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const id = parseInt(req.params.id);
       const { currentStage, assignedTo, notes, actualCost } = req.body;
@@ -1735,7 +1735,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/faults/:id/history', isAuthenticated, async (req: any, res) => {
+  app.get('/api/faults/:id/history', isAuthenticated, async (req: unknown, res) => {
     try {
       const id = parseInt(req.params.id);
       const userRole = req.user.role;
@@ -2004,7 +2004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req: any, res) => {
+  app.post('/api/equipment/:id/maintenance', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -2036,7 +2036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.logMaintenance(id, intervalDays);
       
       res.json(maintenanceLog);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error logging maintenance:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid maintenance log data", errors: error.errors });
@@ -2045,7 +2045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/equipment/:id/comments', isAuthenticated, async (req: any, res) => {
+  app.post('/api/equipment/:id/comments', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -2072,7 +2072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
       });
       res.json(comment);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating equipment comment:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid comment data", errors: error.errors });
@@ -2102,13 +2102,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const serviceRequests = await storage.listServiceRequests(id);
       res.json(serviceRequests);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching service requests:", error);
       res.status(500).json({ message: "Failed to fetch service requests" });
     }
   });
 
-  app.post('/api/equipment/:id/service-requests', isAuthenticated, async (req: any, res) => {
+  app.post('/api/equipment/:id/service-requests', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -2135,7 +2135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdById: userId,
       });
       res.json(serviceRequest);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating service request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid service request data", errors: error.errors });
@@ -2169,13 +2169,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(serviceRequest);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching service request:", error);
       res.status(500).json({ message: "Failed to fetch service request" });
     }
   });
 
-  app.patch('/api/equipment/service-requests/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/equipment/service-requests/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -2201,7 +2201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateServiceRequest(id, req.body);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating service request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid service request data", errors: error.errors });
@@ -2236,13 +2236,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteServiceRequest(id);
       res.json({ message: "Service request deleted successfully" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error deleting service request:", error);
       res.status(500).json({ message: "Failed to delete service request" });
     }
   });
 
-  app.patch('/api/equipment/service-requests/:id/status', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/equipment/service-requests/:id/status', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -2274,7 +2274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateServiceRequestStatus(id, newStatus, userId, notes);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating service request status:", error);
       if (error.message?.includes("Invalid status transition")) {
         return res.status(400).json({ message: error.message });
@@ -2283,7 +2283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/equipment/service-requests/:id/timeline', isAuthenticated, async (req: any, res) => {
+  app.post('/api/equipment/service-requests/:id/timeline', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -2317,7 +2317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         meta: meta || {},
       });
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error adding timeline entry:", error);
       res.status(500).json({ message: "Failed to add timeline entry" });
     }
@@ -2374,7 +2374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(allRequests);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching service requests:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2410,14 +2410,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ success: true, photoUrl, photoNumber });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Foto yükleme hatası:', error);
       res.status(500).json({ message: 'Foto yükleme başarısız' });
     }
   });
 
   // Create new service request endpoint (from form with machine templates)
-  app.post('/api/service-requests/', isAuthenticated, async (req: any, res) => {
+  app.post('/api/service-requests/', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -2488,7 +2488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(serviceRequest);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating service request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid service request data", errors: error.errors });
@@ -2529,7 +2529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(article);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating article:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid article data", errors: error.errors });
@@ -2566,7 +2566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/knowledge-base/ask', isAuthenticated, async (req: any, res) => {
+  app.post('/api/knowledge-base/ask', isAuthenticated, async (req: unknown, res) => {
     try {
       const { question, equipmentId } = req.body;
       const userId = req.user.id;
@@ -2607,14 +2607,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use enhanced technical assistant with fallback LLM
       const response = await answerTechnicalQuestion(question, equipmentContext, userId);
       res.json(response);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error answering question:", error);
       res.status(500).json({ message: error.message || "Soru cevaplanamadı" });
     }
   });
 
   // AI Dashboard Summary (HQ + Branch Supervisors only)
-  app.post('/api/ai-summary', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ai-summary', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { category } = req.body;
@@ -2642,7 +2642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(summary);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error generating AI summary:", error);
       
       // Handle rate limit errors
@@ -2655,7 +2655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Dashboard Insights (HQ + Supervisor only - operational oversight)
-  app.post('/api/ai-dashboard-insights', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ai-dashboard-insights', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -2678,7 +2678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       res.json(insights);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error generating dashboard insights:", error);
       
       // Handle rate limit errors with localized message
@@ -2830,7 +2830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filteredUpdates: Partial<UpdateUser> = {};
       for (const field of allowedFields) {
         if (parsed.data[field] !== undefined) {
-          filteredUpdates[field] = parsed.data[field] as any;
+          filteredUpdates[field] = parsed.data[field] ;
         }
       }
 
@@ -3277,7 +3277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(module);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -3303,7 +3303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -3419,7 +3419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imported: createdModules.length, 
         modules: createdModules 
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error importing training modules:", error);
       res.status(500).json({ message: "Failed to import training modules" });
     }
@@ -3460,7 +3460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         module: generatedModule
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("AI Module generation error:", error);
       res.status(500).json({ 
         message: error.message || "Modül oluşturma başarısız" 
@@ -3501,7 +3501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         module: savedModule
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error saving AI-generated module:", error);
       res.status(500).json({ message: "Modül kaydedilemedi" });
     }
@@ -3550,7 +3550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileName: file.originalname,
         size: optimized.length
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Image upload error:", error);
       res.status(500).json({ message: error.message || "Resim yüklenemedi" });
     }
@@ -3584,7 +3584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateTrainingModule(moduleId, { galleryImages: updatedGallery });
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message || "Resim silinemedi" });
     }
   });
@@ -3624,7 +3624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileType: file.mimetype,
         fileSize: file.size
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("File upload/processing error:", error);
       res.status(500).json({ 
         message: error.message || "Dosya işlenemedi" 
@@ -3678,7 +3678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(video);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -3730,7 +3730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(lesson);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -3756,7 +3756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -3870,7 +3870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(quiz);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -3900,7 +3900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = insertUserTrainingProgressSchema.partial().parse(req.body);
       const updated = await storage.updateUserProgress(userId, moduleId, validated);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -3920,7 +3920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(attempt);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
@@ -3984,7 +3984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       objectStorageService.downloadObject(objectFile, res);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error accessing object:", error);
       if (error.name === 'ObjectNotFoundError') {
         return res.sendStatus(404);
@@ -4116,7 +4116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stajyerNames = ["Kerem", "Arda", "Doruk", "Emir", "Berat", "Defne", "Ela", "Mira", "Zehra", "Nehir", "Kuzey", "Atlas", "Çınar", "Alp", "Ege", "Azra", "Lara", "Derin", "Aslı", "Pelin"];
       const lastNames = ["Yılmaz", "Demir", "Şahin", "Kaya", "Arslan", "Yıldız", "Öztürk", "Aydın", "Çelik", "Kurt", "Koç", "Erdoğan", "Yaman", "Polat", "Acar", "Yavuz", "Kaplan", "Taş"];
 
-      const branchUserPromises: Promise<any>[] = [];
+      const branchUserPromises: Promise<unknown>[] = [];
       branches.forEach((branch, branchIndex) => {
         const branchPrefix = branch.name.toLowerCase().replace(/\s+/g, '-');
         
@@ -4216,7 +4216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create equipment for each branch (8 types × 3 branches = 24 equipment)
       const { EQUIPMENT_TYPES, EQUIPMENT_METADATA } = await import('@shared/schema');
       const equipmentTypes = Object.values(EQUIPMENT_TYPES);
-      const equipmentPromises: Promise<any>[] = [];
+      const equipmentPromises: Promise<unknown>[] = [];
 
       // Purchase date: 1 year ago
       const purchaseDateMs = Date.now() - 365 * 24 * 60 * 60 * 1000;
@@ -4392,7 +4392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create HQ support ticket
-  app.post('/api/hq-support/tickets', isAuthenticated, async (req: any, res) => {
+  app.post('/api/hq-support/tickets', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -4425,7 +4425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdById: userId,
       });
       res.status(201).json(ticket);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating HQ support ticket:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid ticket data", errors: error.errors });
@@ -4435,7 +4435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update HQ support ticket status
-  app.patch('/api/hq-support/tickets/:id/status', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/hq-support/tickets/:id/status', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -4469,7 +4469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send message to HQ support ticket
-  app.post('/api/hq-support/tickets/:id/messages', isAuthenticated, async (req: any, res) => {
+  app.post('/api/hq-support/tickets/:id/messages', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -4496,7 +4496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         senderId: userId,
       });
       res.status(201).json(message);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating HQ support message:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid message data", errors: error.errors });
@@ -4506,7 +4506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Assign HQ support ticket (HQ only)
-  app.patch('/api/hq-support/tickets/:id/assign', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/hq-support/tickets/:id/assign', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -4542,7 +4542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update HQ support ticket (general update - HQ only)
-  app.patch('/api/hq-support/tickets/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/hq-support/tickets/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -4627,7 +4627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =========================================
 
   // Get user notifications
-  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notifications', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const isRead = req.query.isRead === 'true' ? true : req.query.isRead === 'false' ? false : undefined;
@@ -4641,7 +4641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get unread notification count
-  app.get('/api/notifications/unread-count', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notifications/unread-count', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const count = await storage.getUnreadNotificationCount(userId);
@@ -4653,7 +4653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create notification (HQ only)
-  app.post('/api/notifications', isAuthenticated, async (req: any, res) => {
+  app.post('/api/notifications', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -4666,7 +4666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertNotificationSchema.parse(req.body);
       const notification = await storage.createNotification(validatedData);
       res.status(201).json(notification);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating notification:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid notification data", errors: error.errors });
@@ -4676,7 +4676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mark notification as read
-  app.patch('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/notifications/:id/read', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const id = parseInt(req.params.id);
@@ -4692,7 +4692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mark all notifications as read
-  app.patch('/api/notifications/mark-all-read', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/notifications/mark-all-read', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       await storage.markAllNotificationsAsRead(userId);
@@ -4708,7 +4708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =========================================
 
   // Get thread list with filters (inbox/sent/unread)
-  app.get('/api/messages', isAuthenticated, async (req: any, res) => {
+  app.get('/api/messages', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const folder = (req.query.folder as 'inbox'|'sent'|'unread') || 'inbox';
@@ -4726,7 +4726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get unread message count
-  app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
+  app.get('/api/messages/unread-count', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const count = await storage.getUnreadCount(userId);
@@ -4738,7 +4738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single thread with all messages
-  app.get('/api/messages/:threadId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/messages/:threadId', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const threadId = req.params.threadId;
@@ -4748,7 +4748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // getThread already verifies participant access in storage layer
       // If we reach here, user is authorized to view thread
       res.json(thread);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       // Storage layer throws error if user is not participant
       if (error?.message?.includes("not a participant")) {
         return res.status(403).json({ message: "Bu konuşmaya erişim yetkiniz yok" });
@@ -4759,7 +4759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new thread/message
-  app.post('/api/messages', isAuthenticated, async (req: any, res) => {
+  app.post('/api/messages', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const senderRole = user.role as string;
@@ -4863,7 +4863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(201).json(message);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating message:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid message data", errors: error.errors });
@@ -4876,7 +4876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reply to thread
-  app.post('/api/messages/:threadId/replies', isAuthenticated, async (req: any, res) => {
+  app.post('/api/messages/:threadId/replies', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const threadId = req.params.threadId;
@@ -4916,7 +4916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.markThreadRead(user.id, threadId);
       
       res.status(201).json(message);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error replying to thread:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -4926,7 +4926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mark thread as read
-  app.post('/api/messages/:threadId/read', isAuthenticated, async (req: any, res) => {
+  app.post('/api/messages/:threadId/read', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const threadId = req.params.threadId;
@@ -4947,7 +4947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload message attachment (requires Object Storage)
-  app.post('/api/messages/attachments', isAuthenticated, async (req: any, res) => {
+  app.post('/api/messages/attachments', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'messages', 'create');
@@ -4969,7 +4969,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       res.json(attachment);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error processing attachment:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -4983,7 +4983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =========================================
 
   // Get announcements for user
-  app.get('/api/announcements', isAuthenticated, async (req: any, res) => {
+  app.get('/api/announcements', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = user.id;
@@ -5014,7 +5014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create announcement (HQ only)
-  app.post('/api/announcements', isAuthenticated, async (req: any, res) => {
+  app.post('/api/announcements', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -5028,7 +5028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdById: userId,
       });
       res.status(201).json(announcement);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating announcement:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid announcement data", errors: error.errors });
@@ -5041,7 +5041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete announcement (HQ only)
-  app.delete('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/announcements/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -5061,7 +5061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add attachments to announcement (HQ destek + supervisors)
-  app.post('/api/announcements/:id/attachments', isAuthenticated, async (req: any, res) => {
+  app.post('/api/announcements/:id/attachments', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5091,7 +5091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Mark announcement as read
-  app.post('/api/announcements/:id/read', isAuthenticated, async (req: any, res) => {
+  app.post('/api/announcements/:id/read', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const announcementId = parseInt(req.params.id);
@@ -5105,7 +5105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get announcement read status (HQ only - for tracking)
-  app.get('/api/announcements/:id/read-status', isAuthenticated, async (req: any, res) => {
+  app.get('/api/announcements/:id/read-status', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -5124,7 +5124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get unread announcement count
-  app.get('/api/announcements/unread-count', isAuthenticated, async (req: any, res) => {
+  app.get('/api/announcements/unread-count', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const userId = user.id;
@@ -5144,7 +5144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =========================================
 
   // Get daily cash reports (supervisor: own branch, muhasebe: all branches)
-  app.get('/api/cash-reports', isAuthenticated, async (req: any, res) => {
+  app.get('/api/cash-reports', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5174,7 +5174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single cash report by ID
-  app.get('/api/cash-reports/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/cash-reports/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5202,7 +5202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create daily cash report (supervisor only)
-  app.post('/api/cash-reports', isAuthenticated, async (req: any, res) => {
+  app.post('/api/cash-reports', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5231,7 +5231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.status(201).json(report);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating cash report:", error);
       
       // Handle unique constraint violation (duplicate report)
@@ -5253,7 +5253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update daily cash report (supervisor: own branch, muhasebe: all branches)
-  app.patch('/api/cash-reports/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/cash-reports/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5283,7 +5283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updated = await storage.updateDailyCashReport(id, allowedUpdates);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating cash report:", error);
       
       if (error.name === 'ZodError') {
@@ -5298,7 +5298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete daily cash report (supervisor: own branch, muhasebe: all branches)
-  app.delete('/api/cash-reports/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/cash-reports/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5332,7 +5332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =========================================
 
   // Get shifts (supervisor: own branch, employees: own shifts, HQ IK: all branches read-only)
-  app.get('/api/shifts', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shifts', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5373,7 +5373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/shifts/my - Get shifts assigned to current user (MUST be before :id route)
-  app.get('/api/shifts/my', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shifts/my', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const allShifts = await storage.getShifts();
@@ -5387,7 +5387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single shift by ID
-  app.get('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shifts/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5423,7 +5423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk create shifts (supervisor only)
-  app.post('/api/shifts/bulk', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shifts/bulk', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5446,7 +5446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const shifts = await storage.createShiftsBulk(validatedData, user.id, preview);
 
       res.status(preview ? 200 : 201).json({ shifts, preview });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error bulk creating shifts:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -5456,7 +5456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create shift (supervisor only)
-  app.post('/api/shifts', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shifts', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5491,7 +5491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.status(201).json(shift);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating shift:", error);
       
       if (error.name === 'ZodError') {
@@ -5508,7 +5508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Validation helper for shift updates and creation
   async function validateShiftRules(
     shiftId: number | null,
-    updateData: Partial<any>,
+    updateData: Partial<unknown>,
     existingShift: any | null
   ): Promise<{ valid: boolean; error?: string }> {
     try {
@@ -5603,7 +5603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Update shift (supervisor: own branch only)
-  app.patch('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/shifts/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5651,7 +5651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating shift:", error);
       
       if (error.name === 'ZodError') {
@@ -5666,7 +5666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete shift (supervisor: own branch only)
-  app.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/shifts/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5702,7 +5702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI-powered shift plan suggestions (supervisor + destek only)
-  app.post('/api/shifts/ai-suggest', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shifts/ai-suggest', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5770,7 +5770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       res.json(plan);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error generating shift plan:", error);
       if (error.message?.includes('limit')) {
         return res.status(429).json({ message: error.message });
@@ -5780,7 +5780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk create shifts (supervisor: own branch only)
-  app.post('/api/shifts/bulk-create', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shifts/bulk-create', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5823,7 +5823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.status(201).json(createdShifts);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error bulk creating shifts:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz vardiya verisi", errors: error.errors });
@@ -5833,7 +5833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get performance metrics by user (HQ + supervisor + self)
-  app.get('/api/performance/user/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/performance/user/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5874,7 +5874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== HR: LEAVE REQUESTS ====================
   
   // Get leave requests (HQ: all, Supervisor: branch, Employee: self)
-  app.get('/api/leave-requests', isAuthenticated, async (req: any, res) => {
+  app.get('/api/leave-requests', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5902,7 +5902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get single leave request
-  app.get('/api/leave-requests/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/leave-requests/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5935,7 +5935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create leave request
-  app.post('/api/leave-requests', isAuthenticated, async (req: any, res) => {
+  app.post('/api/leave-requests', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -5953,7 +5953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const request = await storage.createLeaveRequest(validatedData);
       res.status(201).json(request);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating leave request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz izin talebi verisi", errors: error.errors });
@@ -5963,7 +5963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update leave request
-  app.patch('/api/leave-requests/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/leave-requests/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -5991,7 +5991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateLeaveRequest(id, validatedData);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating leave request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz izin talebi verisi", errors: error.errors });
@@ -6001,7 +6001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Approve/reject leave request (Supervisor + HQ)
-  app.patch('/api/leave-requests/:id/status', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/leave-requests/:id/status', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6044,7 +6044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Delete leave request (only owner, only pending)
-  app.delete('/api/leave-requests/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/leave-requests/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -6074,7 +6074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== HR: SHIFT ATTENDANCE ====================
   
   // Get shift attendance records (HQ: all, Supervisor: branch, Employee: self)
-  app.get('/api/shift-attendance', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shift-attendance', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6142,7 +6142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/shift-attendance/today - Get today's attendance for current user
-  app.get('/api/shift-attendance/today', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shift-attendance/today', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const today = new Date().toISOString().split('T')[0];
@@ -6161,7 +6161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get single attendance record
-  app.get('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shift-attendance/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6194,7 +6194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create attendance record (check-in with mandatory photo and dress code analysis)
-  app.post('/api/shift-attendance', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shift-attendance', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { photoUrl, shiftId: providedShiftId, ...otherData } = req.body;
@@ -6293,7 +6293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             setTimeout(() => reject(new Error('AI timeout')), 10000)
           )
         ]);
-      } catch (error: any) {
+      } catch (error: Error | unknown) {
         console.warn("AI analysis timeout or error:", error.message);
         analysisResult = null;
       }
@@ -6331,7 +6331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           used: dailyPhotoCount + 1,
         },
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating attendance record:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz yoklama verisi", errors: error.errors });
@@ -6341,7 +6341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update attendance record (check-out, break times)
-  app.patch('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/shift-attendance/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6373,7 +6373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateShiftAttendance(id, validatedData);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating attendance record:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz yoklama verisi", errors: error.errors });
@@ -6383,7 +6383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Delete attendance record (supervisor + HQ only)
-  app.delete('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/shift-attendance/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6417,7 +6417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== SHIFT TRADE REQUEST ENDPOINTS =====
   
   // POST /api/shift-trades - Create a shift trade request
-  app.post('/api/shift-trades', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shift-trades', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { insertShiftTradeRequestSchema } = await import('@shared/schema');
@@ -6469,7 +6469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const created = await storage.createShiftTradeRequest(validatedData);
       res.status(201).json(created);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating shift trade request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz takas talebi verisi", errors: error.errors });
@@ -6479,7 +6479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/shift-trades - List shift trade requests with filters
-  app.get('/api/shift-trades', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shift-trades', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6513,7 +6513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // PATCH /api/shift-trades/:id/respond - Responder confirms the trade
-  app.patch('/api/shift-trades/:id/respond', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/shift-trades/:id/respond', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -6546,7 +6546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // PATCH /api/shift-trades/:id/approve - Supervisor approves or rejects the trade
-  app.patch('/api/shift-trades/:id/approve', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/shift-trades/:id/approve', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6590,7 +6590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedTrade = updated.find(t => t.id === id);
       
       res.json(updatedTrade);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error approving shift trade request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz onay verisi", errors: error.errors });
@@ -6602,7 +6602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== SHIFT TEMPLATE ENDPOINTS =====
   
   // GET /api/shift-templates - List shift templates
-  app.get('/api/shift-templates', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shift-templates', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6627,7 +6627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/shift-templates/:id - Get single shift template
-  app.get('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shift-templates/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6650,7 +6650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // POST /api/shift-templates - Create shift template
-  app.post('/api/shift-templates', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shift-templates', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6672,7 +6672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(created);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating shift template:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz şablon verisi", errors: error.errors });
@@ -6682,7 +6682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // PATCH /api/shift-templates/:id - Update shift template
-  app.patch('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/shift-templates/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6706,7 +6706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateShiftTemplate(id, validatedData);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating shift template:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz şablon verisi", errors: error.errors });
@@ -6716,7 +6716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // DELETE /api/shift-templates/:id - Delete shift template
-  app.delete('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/shift-templates/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6744,7 +6744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // POST /api/shift-templates/:id/create-shifts - Create shifts from template
-  app.post('/api/shift-templates/:id/create-shifts', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shift-templates/:id/create-shifts', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6776,7 +6776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `${created.length} vardiya oluşturuldu`,
         shifts: created 
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating shifts from template:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz tarih aralığı", errors: error.errors });
@@ -6788,7 +6788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== EMPLOYEE AVAILABILITY ENDPOINTS =====
   
   // GET /api/employee-availability - List employee availability
-  app.get('/api/employee-availability', isAuthenticated, async (req: any, res) => {
+  app.get('/api/employee-availability', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6817,7 +6817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/employee-availability/:id - Get single availability record
-  app.get('/api/employee-availability/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/employee-availability/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -6842,7 +6842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // POST /api/employee-availability - Create availability record
-  app.post('/api/employee-availability', isAuthenticated, async (req: any, res) => {
+  app.post('/api/employee-availability', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { insertEmployeeAvailabilitySchema } = await import('@shared/schema');
@@ -6854,7 +6854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const created = await storage.createAvailability(validatedData);
       res.status(201).json(created);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating availability:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz müsaitlik verisi", errors: error.errors });
@@ -6864,7 +6864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // PATCH /api/employee-availability/:id - Update availability record
-  app.patch('/api/employee-availability/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/employee-availability/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -6883,7 +6883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateAvailability(id, validatedData);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating availability:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz müsaitlik verisi", errors: error.errors });
@@ -6893,7 +6893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // DELETE /api/employee-availability/:id - Delete availability record
-  app.delete('/api/employee-availability/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/employee-availability/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -6916,7 +6916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // POST /api/employee-availability/check - Check availability for a shift
-  app.post('/api/employee-availability/check', isAuthenticated, async (req: any, res) => {
+  app.post('/api/employee-availability/check', isAuthenticated, async (req: unknown, res) => {
     try {
       const { z } = await import('zod');
       const checkSchema = z.object({
@@ -6930,7 +6930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = await storage.checkEmployeeAvailability(userId, shiftDate, startTime, endTime);
       res.json(result);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error checking availability:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz kontrol verisi", errors: error.errors });
@@ -6955,7 +6955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // POST /api/shift-attendance/manual-check-in - Manual check-in with location verification (with optional shift)
-  app.post('/api/shift-attendance/manual-check-in', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shift-attendance/manual-check-in', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { z } = await import('zod');
@@ -7062,7 +7062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(201).json(attendance);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error manual check-in:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -7072,7 +7072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/shift-attendance/manual-check-out - Manual check-out 
-  app.post('/api/shift-attendance/manual-check-out', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shift-attendance/manual-check-out', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { z } = await import('zod');
@@ -7102,7 +7102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error manual check-out:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -7112,7 +7112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // POST /api/shift-attendance/check-in - Check in with QR code, photo & location
-  app.post('/api/shift-attendance/check-in', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shift-attendance/check-in', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { z } = await import('zod');
@@ -7183,7 +7183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             await storage.updateShiftAttendance(attendance.id, {
               aiDressCodeScore: analysis.score,
-              aiDressCodeAnalysis: analysis as any,
+              aiDressCodeAnalysis: analysis ,
               aiDressCodeStatus: analysis.isCompliant ? 'approved' : 'rejected',
               aiDressCodeWarnings: analysis.violations,
               aiDressCodeTimestamp: new Date(),
@@ -7201,7 +7201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(201).json(attendance);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error checking in:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz QR kod", errors: error.errors });
@@ -7211,7 +7211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // POST /api/shift-attendance/check-out - Check out with QR code + photo + location
-  app.post('/api/shift-attendance/check-out', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shift-attendance/check-out', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { z } = await import('zod');
@@ -7260,7 +7260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error checking out:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz QR kod", errors: error.errors });
@@ -7272,7 +7272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== SHIFT REPORTING ENDPOINTS =====
   
   // GET /api/reports/attendance-stats - Get attendance statistics
-  app.get('/api/reports/attendance-stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/reports/attendance-stats', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -7300,7 +7300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/me/menu - User-scoped menu endpoint (v2 - static blueprint based)
   // Primary endpoint for sidebar menu - uses static blueprint with RBAC filtering
   // NO CACHING - fresh data every request to prevent RBAC bypass
-  app.get('/api/me/menu', isAuthenticated, async (req: any, res) => {
+  app.get('/api/me/menu', isAuthenticated, async (req: unknown, res) => {
     try {
       // Disable caching
       res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
@@ -7349,7 +7349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/menu - Legacy endpoint (deprecated, redirects to static blueprint)
-  app.get('/api/menu', isAuthenticated, async (req: any, res) => {
+  app.get('/api/menu', isAuthenticated, async (req: unknown, res) => {
     try {
       res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
       res.set('Pragma', 'no-cache');
@@ -7392,7 +7392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/admin/menu - List all menu data (HQ Admin only, for menu management)
-  app.get('/api/admin/menu', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/menu', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7407,7 +7407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/menu/sections - Create section
-  app.post('/api/admin/menu/sections', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/menu/sections', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7416,7 +7416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertMenuSectionSchema.parse(req.body);
       const section = await storage.createMenuSection(data);
       res.status(201).json(section);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating menu section:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid menu section data", errors: error.errors });
@@ -7426,7 +7426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/admin/menu/sections/:id - Update section
-  app.patch('/api/admin/menu/sections/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/menu/sections/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7436,7 +7436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertMenuSectionSchema.partial().parse(req.body);
       const section = await storage.updateMenuSection(id, data);
       res.json(section);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating menu section:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid menu section data", errors: error.errors });
@@ -7446,7 +7446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/admin/menu/sections/:id - Delete section
-  app.delete('/api/admin/menu/sections/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/menu/sections/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7462,7 +7462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/admin/menu/sections/order - Reorder sections
-  app.patch('/api/admin/menu/sections/order', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/menu/sections/order', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7481,7 +7481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/menu/items - Create item
-  app.post('/api/admin/menu/items', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/menu/items', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7490,7 +7490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertMenuItemSchema.parse(req.body);
       const item = await storage.createMenuItem(data);
       res.status(201).json(item);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating menu item:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid menu item data", errors: error.errors });
@@ -7500,7 +7500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/admin/menu/items/:id - Update item
-  app.patch('/api/admin/menu/items/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/menu/items/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7510,7 +7510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertMenuItemSchema.partial().parse(req.body);
       const item = await storage.updateMenuItem(id, data);
       res.json(item);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating menu item:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid menu item data", errors: error.errors });
@@ -7520,7 +7520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/admin/menu/items/:id - Delete item
-  app.delete('/api/admin/menu/items/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/menu/items/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7536,7 +7536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/admin/menu/items/order - Reorder items within section
-  app.patch('/api/admin/menu/items/order', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/menu/items/order', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7555,7 +7555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/menu/visibility-rules - Create visibility rule
-  app.post('/api/admin/menu/visibility-rules', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/menu/visibility-rules', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7564,7 +7564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertMenuVisibilityRuleSchema.parse(req.body);
       const rule = await storage.createVisibilityRule(data);
       res.status(201).json(rule);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating visibility rule:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Invalid visibility rule data", errors: error.errors });
@@ -7574,7 +7574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/admin/menu/visibility-rules/:id - Delete visibility rule
-  app.delete('/api/admin/menu/visibility-rules/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/menu/visibility-rules/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7592,7 +7592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== PAGE CONTENT MANAGEMENT ENDPOINTS (HQ Only) =====
 
   // GET /api/admin/page-content - List all page content
-  app.get('/api/admin/page-content', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/page-content', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7608,7 +7608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/admin/page-content/:slug - Get single page content by slug
-  app.get('/api/admin/page-content/:slug', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/page-content/:slug', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7627,7 +7627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/page-content - Create new page content
-  app.post('/api/admin/page-content', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/page-content', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7642,7 +7642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const newContent = await storage.createPageContent(validatedData);
       res.status(201).json(newContent);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating page content:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -7652,7 +7652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/admin/page-content/:slug - Update page content
-  app.patch('/api/admin/page-content/:slug', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/page-content/:slug', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7669,7 +7669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updatePageContent(req.params.slug, updateData);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating page content:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -7682,7 +7682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/admin/page-content/:slug - Delete page content
-  app.delete('/api/admin/page-content/:slug', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/page-content/:slug', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7700,7 +7700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== BRANDING ENDPOINTS (HQ Only) =====
 
   // GET /api/admin/branding - Get current branding (logo)
-  app.get('/api/admin/branding', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/branding', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7720,7 +7720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/branding/logo - Update logo URL
-  app.post('/api/admin/branding/logo', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/branding/logo', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7740,7 +7740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         logoUrl: updated.logoUrl,
         updatedAt: updated.updatedAt,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating logo:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -7752,7 +7752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== AI COST MONITORING ENDPOINTS (HQ Only) =====
 
   // GET /api/admin/ai-costs - Get AI usage cost aggregates
-  app.get('/api/admin/ai-costs', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/ai-costs', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7775,7 +7775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const aggregates = await storage.getAiUsageAggregates(filters);
       res.json(aggregates);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching AI cost aggregates:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz tarih formatı", errors: error.errors });
@@ -7787,7 +7787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== USER CRM ENDPOINTS (HQ Only) =====
 
   // GET /api/admin/users - Get all users with filters
-  app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/users', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7811,7 +7811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/admin/users/:id - Update user role/branch
-  app.patch('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/users/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7832,7 +7832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating user:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -7842,7 +7842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/users/bulk-import - Bulk import users from CSV
-  app.post('/api/admin/users/bulk-import', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/users/bulk-import', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -7869,7 +7869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imported = await storage.bulkImportUsers(validatedUsers);
 
       res.json({ imported: imported.length, users: imported });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error bulk importing users:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz CSV verisi", errors: error.errors });
@@ -7879,7 +7879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/users/approve/:id - Approve pending user
-  app.post('/api/admin/users/approve/:id', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/users/approve/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const currentUser = req.user!;
       const { sendWelcomeEmail } = await import('./email');
@@ -7936,7 +7936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/users/reject/:id - Reject pending user
-  app.post('/api/admin/users/reject/:id', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/users/reject/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const currentUser = req.user!;
       const { sendRejectionEmail } = await import('./email');
@@ -7988,7 +7988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/admin/users/pending - Get pending approval users
-  app.get('/api/admin/users/pending', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/users/pending', isAuthenticated, async (req: unknown, res) => {
     try {
       const currentUser = req.user!;
 
@@ -8014,7 +8014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/admin/users/export - Export users to CSV
-  app.get('/api/admin/users/export', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/users/export', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -8058,7 +8058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/admin/users/:id - Delete user
-  app.delete('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/users/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -8081,7 +8081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/users - Create new user
-  app.post('/api/admin/users', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/users', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -8128,7 +8128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(newUser);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating user:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8142,7 +8142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // GET /api/quality-audits - List quality audits
-  app.get('/api/quality-audits', isAuthenticated, async (req: any, res) => {
+  app.get('/api/quality-audits', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { branchId } = req.query;
@@ -8169,7 +8169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/quality-audits - Create quality audit
-  app.post('/api/quality-audits', isAuthenticated, async (req: any, res) => {
+  app.post('/api/quality-audits', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8185,7 +8185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
 
       res.status(201).json(audit);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating quality audit:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8199,7 +8199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // GET /api/customer-feedback - List customer feedback
-  app.get('/api/customer-feedback', isAuthenticated, async (req: any, res) => {
+  app.get('/api/customer-feedback', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { branchId } = req.query;
@@ -8237,7 +8237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [feedback] = await db.insert(customerFeedback).values(validatedData).returning();
       res.status(201).json({ message: "Geri bildiriminiz için teşekkürler!", id: feedback.id });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating customer feedback:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8247,7 +8247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/customer-feedback/:id/review - Mark feedback as reviewed
-  app.patch('/api/customer-feedback/:id/review', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/customer-feedback/:id/review', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -8275,7 +8275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/customer-feedback/stats/:branchId - Get branch feedback statistics
-  app.get('/api/customer-feedback/stats/:branchId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/customer-feedback/stats/:branchId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { branchId } = req.params;
       
@@ -8303,7 +8303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // GET /api/maintenance-schedules - List maintenance schedules
-  app.get('/api/maintenance-schedules', isAuthenticated, async (req: any, res) => {
+  app.get('/api/maintenance-schedules', isAuthenticated, async (req: unknown, res) => {
     try {
       const { equipmentId } = req.query;
 
@@ -8322,7 +8322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/maintenance-schedules - Create maintenance schedule
-  app.post('/api/maintenance-schedules', isAuthenticated, async (req: any, res) => {
+  app.post('/api/maintenance-schedules', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8335,7 +8335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [schedule] = await db.insert(maintenanceSchedules).values(validatedData).returning();
 
       res.status(201).json(schedule);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating maintenance schedule:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8345,7 +8345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/maintenance-logs - List maintenance logs
-  app.get('/api/maintenance-logs', isAuthenticated, async (req: any, res) => {
+  app.get('/api/maintenance-logs', isAuthenticated, async (req: unknown, res) => {
     try {
       const { equipmentId } = req.query;
 
@@ -8364,7 +8364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/maintenance-logs - Create maintenance log
-  app.post('/api/maintenance-logs', isAuthenticated, async (req: any, res) => {
+  app.post('/api/maintenance-logs', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8375,7 +8375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
 
       res.status(201).json(log);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating maintenance log:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8389,7 +8389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // GET /api/campaigns - List campaigns
-  app.get('/api/campaigns', isAuthenticated, async (req: any, res) => {
+  app.get('/api/campaigns', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { status, branchId } = req.query;
@@ -8427,7 +8427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/campaigns - Create campaign
-  app.post('/api/campaigns', isAuthenticated, async (req: any, res) => {
+  app.post('/api/campaigns', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8443,7 +8443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
 
       res.status(201).json(campaign);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating campaign:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8453,7 +8453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/campaigns/:id/branches - Add branches to campaign
-  app.post('/api/campaigns/:id/branches', isAuthenticated, async (req: any, res) => {
+  app.post('/api/campaigns/:id/branches', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8483,7 +8483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/campaigns/:id/branches - Get campaign branches
-  app.get('/api/campaigns/:id/branches', isAuthenticated, async (req: any, res) => {
+  app.get('/api/campaigns/:id/branches', isAuthenticated, async (req: unknown, res) => {
     try {
       const { id } = req.params;
       
@@ -8503,7 +8503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // GET /api/franchise-onboarding - List onboarding processes
-  app.get('/api/franchise-onboarding', isAuthenticated, async (req: any, res) => {
+  app.get('/api/franchise-onboarding', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8526,7 +8526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/franchise-onboarding - Create onboarding process
-  app.post('/api/franchise-onboarding', isAuthenticated, async (req: any, res) => {
+  app.post('/api/franchise-onboarding', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8538,7 +8538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [process] = await db.insert(franchiseOnboarding).values(validatedData).returning();
 
       res.status(201).json(process);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating onboarding process:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8548,7 +8548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/franchise-onboarding/:id/documents - Get onboarding documents
-  app.get('/api/franchise-onboarding/:id/documents', isAuthenticated, async (req: any, res) => {
+  app.get('/api/franchise-onboarding/:id/documents', isAuthenticated, async (req: unknown, res) => {
     try {
       const { id } = req.params;
       
@@ -8564,7 +8564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/onboarding-documents - Upload onboarding document
-  app.post('/api/onboarding-documents', isAuthenticated, async (req: any, res) => {
+  app.post('/api/onboarding-documents', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8576,7 +8576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
 
       res.status(201).json(document);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error uploading onboarding document:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8586,7 +8586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/license-renewals - List license renewals
-  app.get('/api/license-renewals', isAuthenticated, async (req: any, res) => {
+  app.get('/api/license-renewals', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { branchId } = req.query;
@@ -8611,7 +8611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/license-renewals - Create license renewal
-  app.post('/api/license-renewals', isAuthenticated, async (req: any, res) => {
+  app.post('/api/license-renewals', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8623,7 +8623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [renewal] = await db.insert(licenseRenewals).values(validatedData).returning();
 
       res.status(201).json(renewal);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating license renewal:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8635,7 +8635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== SITE SETTINGS ROUTES =====
   
   // GET /api/admin/settings - Get all settings (category filter optional)
-  app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/settings', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8655,7 +8655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/admin/settings/:key - Get single setting
-  app.get('/api/admin/settings/:key', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/settings/:key', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8679,7 +8679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/settings - Create new setting
-  app.post('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/settings', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8696,7 +8696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const setting = await storage.createSiteSetting(validatedData);
       
       res.status(201).json(setting);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating site setting:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8706,7 +8706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/admin/settings/:key - Update setting
-  app.patch('/api/admin/settings/:key', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/settings/:key', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8732,7 +8732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/admin/settings/:key - Delete setting
-  app.delete('/api/admin/settings/:key', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/admin/settings/:key', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8754,7 +8754,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== ROLE PERMISSIONS ROUTES =====
   
   // GET /api/admin/role-permissions - Get all role permissions and modules
-  app.get('/api/admin/role-permissions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/role-permissions', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8780,7 +8780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PUT /api/admin/role-permissions - Bulk update role permissions
-  app.put('/api/admin/role-permissions', isAuthenticated, async (req: any, res) => {
+  app.put('/api/admin/role-permissions', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8801,7 +8801,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.bulkUpdateRolePermissions(updates);
       
       res.json({ message: "Rol yetkileri güncellendi" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating role permissions:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -8810,7 +8810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+  app.get('/api/overtime-requests', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { status } = req.query;
@@ -8822,7 +8822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requests = await storage.getOvertimeRequests(userId, status);
       
       res.json(requests);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching overtime requests:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -8831,7 +8831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+  app.post('/api/overtime-requests', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8845,7 +8845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const request = await storage.createOvertimeRequest(validatedData);
       res.status(201).json(request);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating overtime request:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -8857,7 +8857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/overtime-requests/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/overtime-requests/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -8894,7 +8894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating overtime request:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -8911,7 +8911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // POST /api/performance/calculate - Calculate daily performance score
-  app.post('/api/performance/calculate', isAuthenticated, async (req: any, res) => {
+  app.post('/api/performance/calculate', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { userId, branchId, date } = req.body;
@@ -8928,7 +8928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const score = await storage.calculateAndSaveDailyPerformanceScore(userId, branchId, date);
       res.json(score);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error calculating performance score:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -8939,7 +8939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GET /api/performance/team - Get team performance aggregates (supervisor only)
   // NOTE: Must come BEFORE /api/performance/:userId to avoid route matching issues
-  app.get('/api/performance/team', isAuthenticated, async (req: any, res) => {
+  app.get('/api/performance/team', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8957,7 +8957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Cache-Control', 'no-store');
       const teamPerformance = await storage.getTeamPerformanceAggregates(user.branchId);
       res.json(teamPerformance);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching team performance:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -8968,7 +8968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GET /api/performance/branches/composite - Get composite branch scores (HQ only)
   // NOTE: Must come BEFORE /api/performance/branches to avoid route matching issues
-  app.get('/api/performance/branches/composite', isAuthenticated, async (req: any, res) => {
+  app.get('/api/performance/branches/composite', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -8993,7 +8993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Cache for 60 seconds
       setCachedResponse(cacheKey, compositeScores, 60);
       res.json(compositeScores);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching composite branch scores:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9004,7 +9004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GET /api/performance/branches - Get all branches performance aggregates (HQ only)
   // NOTE: Must come BEFORE /api/performance/:userId to avoid route matching issues
-  app.get('/api/performance/branches', isAuthenticated, async (req: any, res) => {
+  app.get('/api/performance/branches', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -9018,7 +9018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Cache-Control', 'no-store');
       const branchesPerformance = await storage.getAllBranchesPerformanceAggregates();
       res.json(branchesPerformance);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching branches performance:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9028,7 +9028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/performance/branches/:branchId/evaluation - Generate AI evaluation for branch performance (HQ only)
-  app.post('/api/performance/branches/:branchId/evaluation', isAuthenticated, async (req: any, res) => {
+  app.post('/api/performance/branches/:branchId/evaluation', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { branchId } = req.params;
@@ -9067,7 +9067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       res.json(evaluation);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error generating branch evaluation:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9077,7 +9077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/performance/:userId - Get performance scores for a user
-  app.get('/api/performance/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/performance/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { userId } = req.params;
@@ -9091,7 +9091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Cache-Control', 'no-store');
       const scores = await storage.getPerformanceScores(userId, startDate as string, endDate as string);
       res.json(scores);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching performance scores:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9101,7 +9101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/performance/:userId/week/:week - Get weekly performance summary
-  app.get('/api/performance/:userId/week/:week', isAuthenticated, async (req: any, res) => {
+  app.get('/api/performance/:userId/week/:week', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { userId, week } = req.params;
@@ -9113,7 +9113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const summary = await storage.getWeeklyPerformanceSummary(userId, week);
       res.json(summary);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching weekly performance summary:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9122,7 +9122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/guest-complaints', isAuthenticated, async (req: any, res) => {
+  app.get('/api/guest-complaints', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { status, priority } = req.query;
@@ -9134,7 +9134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const complaints = await storage.getGuestComplaints(branchId, status, priority);
       
       res.json(complaints);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching guest complaints:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9143,7 +9143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/guest-complaints', isAuthenticated, async (req: any, res) => {
+  app.post('/api/guest-complaints', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -9160,7 +9160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const complaint = await storage.createGuestComplaint(validatedData);
       res.status(201).json(complaint);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating guest complaint:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -9169,7 +9169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/guest-complaints/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/guest-complaints/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9190,7 +9190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating guest complaint:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9202,7 +9202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/guest-complaints/:id/resolve', isAuthenticated, async (req: any, res) => {
+  app.post('/api/guest-complaints/:id/resolve', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9228,7 +9228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(resolved);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error resolving guest complaint:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9240,7 +9240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/guest-complaints/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/guest-complaints/stats', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { startDate, endDate, branchId } = req.query;
@@ -9257,7 +9257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const stats = await storage.getGuestComplaintStats(filterBranchId, start, end);
       res.json(stats);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching complaint stats:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9266,7 +9266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/guest-complaints/heatmap', isAuthenticated, async (req: any, res) => {
+  app.get('/api/guest-complaints/heatmap', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { startDate, endDate, branchId } = req.query;
@@ -9283,7 +9283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const heatmap = await storage.getGuestComplaintHeatmap(filterBranchId, start, end);
       res.json(heatmap);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching complaint heatmap:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9292,7 +9292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/equipment-troubleshooting-steps', isAuthenticated, async (req: any, res) => {
+  app.get('/api/equipment-troubleshooting-steps', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { equipmentType } = req.query;
@@ -9311,7 +9311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const steps = await storage.getEquipmentTroubleshootingSteps(equipmentType as string);
       res.json(steps);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching troubleshooting steps:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9320,7 +9320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/equipment-troubleshooting-steps', isAuthenticated, async (req: any, res) => {
+  app.post('/api/equipment-troubleshooting-steps', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -9335,7 +9335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const step = await storage.createEquipmentTroubleshootingStep(validatedData);
       res.status(201).json(step);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating troubleshooting step:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9347,7 +9347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9364,7 +9364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating troubleshooting step:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9376,7 +9376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9385,7 +9385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteEquipmentTroubleshootingStep(parseInt(id));
       res.json({ message: "Adım silindi" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error deleting troubleshooting step:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9398,7 +9398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AUDIT TEMPLATE ROUTES
   // ===============================================
 
-  app.get('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+  app.get('/api/audit-templates', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { auditType, category, isActive } = req.query;
@@ -9415,13 +9415,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       res.json(templates);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching audit templates:", error);
       res.status(500).json({ message: "Denetim şablonları yüklenirken hata oluştu" });
     }
   });
 
-  app.get('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/audit-templates/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9438,13 +9438,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(template);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching audit template:", error);
       res.status(500).json({ message: "Denetim şablonu yüklenirken hata oluştu" });
     }
   });
 
-  app.post('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+  app.post('/api/audit-templates', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -9511,7 +9511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const newTemplate = await storage.createAuditTemplate(validatedTemplate, validatedItems);
       res.status(201).json(newTemplate);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating audit template:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -9520,7 +9520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/audit-templates/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9594,7 +9594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating audit template:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -9603,7 +9603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/audit-templates/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9615,7 +9615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteAuditTemplate(parseInt(id));
       res.json({ message: "Denetim şablonu silindi" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error deleting audit template:", error);
       res.status(500).json({ message: "Denetim şablonu silinirken hata oluştu" });
     }
@@ -9625,7 +9625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AUDIT INSTANCE ROUTES
   // ===============================================
 
-  app.get('/api/audit-instances', isAuthenticated, async (req: any, res) => {
+  app.get('/api/audit-instances', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { branchId, userId, auditorId, status, auditType } = req.query;
@@ -9657,13 +9657,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const instances = await storage.getAuditInstances(filters);
       res.json(instances);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching audit instances:", error);
       res.status(500).json({ message: "Denetim kayıtları yüklenirken hata oluştu" });
     }
   });
 
-  app.get('/api/audit-instances/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/audit-instances/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9682,13 +9682,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(instance);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching audit instance:", error);
       res.status(500).json({ message: "Denetim kaydı yüklenirken hata oluştu" });
     }
   });
 
-  app.post('/api/audit-instances', isAuthenticated, async (req: any, res) => {
+  app.post('/api/audit-instances', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -9707,7 +9707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const newInstance = await storage.createAuditInstance(validatedInstance);
       res.status(201).json(newInstance);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating audit instance:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -9716,7 +9716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/audit-instances/:instanceId/items/:templateItemId', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/audit-instances/:instanceId/items/:templateItemId', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { instanceId, templateItemId } = req.params;
@@ -9757,7 +9757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating audit instance item:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -9766,7 +9766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/audit-instances/:id/complete', isAuthenticated, async (req: any, res) => {
+  app.post('/api/audit-instances/:id/complete', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9796,13 +9796,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(completed);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error completing audit instance:", error);
       res.status(500).json({ message: "Denetim tamamlanırken hata oluştu" });
     }
   });
 
-  app.post('/api/audit-instances/:id/cancel', isAuthenticated, async (req: any, res) => {
+  app.post('/api/audit-instances/:id/cancel', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -9825,13 +9825,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(cancelled);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error cancelling audit instance:", error);
       res.status(500).json({ message: "Denetim iptal edilirken hata oluştu" });
     }
   });
 
-  app.get('/api/attendance-penalties/:shiftAttendanceId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/attendance-penalties/:shiftAttendanceId', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { shiftAttendanceId } = req.params;
@@ -9852,7 +9852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const penalties = await storage.getAttendancePenalties(parseInt(shiftAttendanceId));
       res.json(penalties);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching attendance penalties:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9861,7 +9861,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/attendance-penalties', isAuthenticated, async (req: any, res) => {
+  app.post('/api/attendance-penalties', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -9887,7 +9887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const penalty = await storage.createManualPenalty(validatedData);
       res.status(201).json(penalty);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating manual penalty:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9899,7 +9899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/monthly-attendance-summary/:userId/:periodMonth', isAuthenticated, async (req: any, res) => {
+  app.get('/api/monthly-attendance-summary/:userId/:periodMonth', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { userId, periodMonth } = req.params;
@@ -9913,7 +9913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const summary = await storage.getMonthlyAttendanceSummary(userId, periodMonth);
       res.json(summary || null);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching monthly summary:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9922,7 +9922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/monthly-attendance-summary', isAuthenticated, async (req: any, res) => {
+  app.post('/api/monthly-attendance-summary', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -9937,7 +9937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const summary = await storage.generateMonthlyAttendanceSummary(userId, periodMonth);
       res.status(201).json(summary);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error generating monthly summary:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9953,14 +9953,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // OVERTIME REQUESTS - Mesai Talepleri
   // ========================================
 
-  app.get('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+  app.get('/api/overtime-requests', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { status } = req.query;
       
       ensurePermission(user, 'attendance', 'view', 'Mesai taleplerini görüntülemek için yetkiniz yok');
       
-      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role as any);
+      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role );
       
       let requests = await storage.getOvertimeRequests(user.id, canApprove);
       
@@ -9969,7 +9969,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(requests);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching overtime requests:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -9978,7 +9978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
+  app.post('/api/overtime-requests', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -9991,7 +9991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const request = await storage.createOvertimeRequest(validated);
       res.status(201).json(request);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating overtime request:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10003,7 +10003,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/overtime-requests/:id/approve', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/overtime-requests/:id/approve', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const requestId = parseInt(req.params.id);
@@ -10011,14 +10011,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       ensurePermission(user, 'attendance', 'edit', 'Mesai taleplerini onaylamak için yetkiniz yok');
       
-      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role as any);
+      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role );
       if (!canApprove) {
         return res.status(403).json({ message: "Sadece yöneticiler mesai taleplerini onaylayabilir" });
       }
       
       const updated = await storage.approveOvertimeRequest(requestId, user.id, approvedMinutes);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error approving overtime request:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10027,7 +10027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/overtime-requests/:id/reject', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/overtime-requests/:id/reject', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const requestId = parseInt(req.params.id);
@@ -10035,14 +10035,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       ensurePermission(user, 'attendance', 'edit', 'Mesai taleplerini reddetmek için yetkiniz yok');
       
-      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role as any);
+      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role );
       if (!canApprove) {
         return res.status(403).json({ message: "Sadece yöneticiler mesai taleplerini reddedebilir" });
       }
       
       const updated = await storage.rejectOvertimeRequest(requestId, rejectionReason);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error rejecting overtime request:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10051,7 +10051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/shift-attendances/my-recent', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shift-attendances/my-recent', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -10063,7 +10063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/sla/check-breaches', isAuthenticated, async (req: any, res) => {
+  app.post('/api/sla/check-breaches', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -10085,7 +10085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Employee Documents (Özlük Dosyası)
   // Get all employee documents (latest 20, with branch restrictions for branch users)
-  app.get('/api/employee-documents', isAuthenticated, async (req: any, res) => {
+  app.get('/api/employee-documents', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { branchId } = req.query;
@@ -10099,12 +10099,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Collect all documents from all employees
       for (const employee of allEmployees) {
         // Branch users can only see their own branch (ignore query param)
-        if (!isHQRole(user.role as any) && employee.branchId !== user.branchId) {
+        if (!isHQRole(user.role ) && employee.branchId !== user.branchId) {
           continue;
         }
         
         // HQ users: respect branchId query param if provided
-        if (isHQRole(user.role as any) && branchId) {
+        if (isHQRole(user.role ) && branchId) {
           const targetBranchId = parseInt(branchId as string);
           if (employee.branchId !== targetBranchId) {
             continue;
@@ -10134,7 +10134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const latest20 = documentsToReturn.slice(0, 20);
       
       res.json(latest20);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching all employee documents:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10143,13 +10143,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/employee-documents/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/employee-documents/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const targetUserId = req.params.userId;
       
       // Supervisors can view their branch employees, HQ can view all
-      if (!isHQRole(user.role as any)) {
+      if (!isHQRole(user.role )) {
         ensurePermission(user, 'hr', 'view', 'Personel belgelerini görüntüleme yetkiniz yok');
         
         // Verify target user is in same branch
@@ -10161,7 +10161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const documents = await storage.getEmployeeDocuments(targetUserId);
       res.json(documents);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching employee documents:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10170,7 +10170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/employee-documents', isAuthenticated, async (req: any, res) => {
+  app.post('/api/employee-documents', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Personel belgesi ekleme yetkiniz yok');
@@ -10181,7 +10181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Verify user can add documents for this employee
-      if (!isHQRole(user.role as any)) {
+      if (!isHQRole(user.role )) {
         const targetUser = await storage.getUser(validatedData.userId);
         if (!targetUser || targetUser.branchId !== user.branchId) {
           return res.status(403).json({ message: "Sadece kendi şubenizin personeline belge ekleyebilirsiniz" });
@@ -10190,7 +10190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const document = await storage.createEmployeeDocument(validatedData);
       res.json(document);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating employee document:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10202,7 +10202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/employee-documents/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/employee-documents/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const docId = parseInt(req.params.id);
@@ -10215,7 +10215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify permission for this document's user
-      if (!isHQRole(user.role as any)) {
+      if (!isHQRole(user.role )) {
         const targetUser = await storage.getUser(document.userId);
         if (!targetUser || targetUser.branchId !== user.branchId) {
           return res.status(403).json({ message: "Bu belgeyi düzenleme yetkiniz yok" });
@@ -10224,7 +10224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateEmployeeDocument(docId, req.body);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating employee document:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10233,7 +10233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/employee-documents/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/employee-documents/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const docId = parseInt(req.params.id);
@@ -10246,7 +10246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify permission
-      if (!isHQRole(user.role as any)) {
+      if (!isHQRole(user.role )) {
         const targetUser = await storage.getUser(document.userId);
         if (!targetUser || targetUser.branchId !== user.branchId) {
           return res.status(403).json({ message: "Bu belgeyi silme yetkiniz yok" });
@@ -10255,7 +10255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteEmployeeDocument(docId);
       res.json({ message: "Belge silindi" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error deleting employee document:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10264,26 +10264,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/employee-documents/:id/verify', isAuthenticated, async (req: any, res) => {
+  app.post('/api/employee-documents/:id/verify', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const docId = parseInt(req.params.id);
       
       // Only HQ can verify documents
-      if (!isHQRole(user.role as any)) {
+      if (!isHQRole(user.role )) {
         return res.status(403).json({ message: "Sadece merkez personel belgeleri onaylayabilir" });
       }
       
       const verified = await storage.verifyEmployeeDocument(docId, user.id);
       res.json(verified);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error verifying employee document:", error);
       res.status(500).json({ message: "Belge onaylanırken hata oluştu" });
     }
   });
 
   // Disciplinary Reports (Disiplin İşlemleri)
-  app.get('/api/disciplinary-reports', isAuthenticated, async (req: any, res) => {
+  app.get('/api/disciplinary-reports', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'view', 'Disiplin kayıtlarını görüntüleme yetkiniz yok');
@@ -10292,7 +10292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       
       // Branch users can only see their own branch
-      if (!isHQRole(user.role as any)) {
+      if (!isHQRole(user.role )) {
         branchId = user.branchId!;
       }
       
@@ -10303,7 +10303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       res.json(reports);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching disciplinary reports:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10312,7 +10312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/disciplinary-reports/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/disciplinary-reports/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const reportId = parseInt(req.params.id);
@@ -10325,12 +10325,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify permission
-      if (!isHQRole(user.role as any) && report.branchId !== user.branchId) {
+      if (!isHQRole(user.role ) && report.branchId !== user.branchId) {
         return res.status(403).json({ message: "Bu kaydı görüntüleme yetkiniz yok" });
       }
       
       res.json(report);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching disciplinary report:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10339,7 +10339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/disciplinary-reports', isAuthenticated, async (req: any, res) => {
+  app.post('/api/disciplinary-reports', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Disiplin kaydı oluşturma yetkiniz yok');
@@ -10350,7 +10350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Verify branch access
-      if (!isHQRole(user.role as any)) {
+      if (!isHQRole(user.role )) {
         if (validatedData.branchId !== user.branchId) {
           return res.status(403).json({ message: "Sadece kendi şubeniz için kayıt oluşturabilirsiniz" });
         }
@@ -10364,7 +10364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const report = await storage.createDisciplinaryReport(validatedData);
       res.json(report);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating disciplinary report:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10376,7 +10376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/disciplinary-reports/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/disciplinary-reports/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const reportId = parseInt(req.params.id);
@@ -10389,13 +10389,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify permission
-      if (!isHQRole(user.role as any) && report.branchId !== user.branchId) {
+      if (!isHQRole(user.role ) && report.branchId !== user.branchId) {
         return res.status(403).json({ message: "Bu kaydı düzenleme yetkiniz yok" });
       }
       
       const updated = await storage.updateDisciplinaryReport(reportId, req.body);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating disciplinary report:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10404,7 +10404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/disciplinary-reports/:id/employee-response', isAuthenticated, async (req: any, res) => {
+  app.post('/api/disciplinary-reports/:id/employee-response', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const reportId = parseInt(req.params.id);
@@ -10422,13 +10422,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.addEmployeeResponse(reportId, response, attachments);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error adding employee response:", error);
       res.status(500).json({ message: "Savunma eklenirken hata oluştu" });
     }
   });
 
-  app.post('/api/disciplinary-reports/:id/resolve', isAuthenticated, async (req: any, res) => {
+  app.post('/api/disciplinary-reports/:id/resolve', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const reportId = parseInt(req.params.id);
@@ -10442,13 +10442,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify permission
-      if (!isHQRole(user.role as any) && report.branchId !== user.branchId) {
+      if (!isHQRole(user.role ) && report.branchId !== user.branchId) {
         return res.status(403).json({ message: "Bu kaydı sonuçlandırma yetkiniz yok" });
       }
       
       const updated = await storage.resolveDisciplinaryReport(reportId, resolution, actionTaken, user.id);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error resolving disciplinary report:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10459,7 +10459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Employee Onboarding
   // Get all onboarding records (with optional branch filter via query param)
-  app.get('/api/employee-onboarding', isAuthenticated, async (req: any, res) => {
+  app.get('/api/employee-onboarding', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { branchId } = req.query;
@@ -10471,9 +10471,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let onboardingRecords: any[] = [];
       
       // Branch users can only see their own branch (ignore query param)
-      if (!isHQRole(user.role as any) && user.branchId) {
+      if (!isHQRole(user.role ) && user.branchId) {
         onboardingRecords = await storage.getOnboardingsByBranch(user.branchId);
-      } else if (isHQRole(user.role as any)) {
+      } else if (isHQRole(user.role )) {
         // HQ users: respect branchId query param or get all
         if (branchId) {
           const targetBranchId = parseInt(branchId as string);
@@ -10503,7 +10503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(recordsWithUsers);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching all onboarding records:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10512,7 +10512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/employee-onboarding/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/employee-onboarding/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const targetUserId = req.params.userId;
@@ -10520,7 +10520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ensurePermission(user, 'hr', 'view', 'Onboarding kayıtlarını görüntüleme yetkiniz yok');
       
       // Verify access
-      if (!isHQRole(user.role as any)) {
+      if (!isHQRole(user.role )) {
         const targetUser = await storage.getUser(targetUserId);
         if (!targetUser || targetUser.branchId !== user.branchId) {
           return res.status(403).json({ message: "Bu kaydı görüntüleme yetkiniz yok" });
@@ -10529,7 +10529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const onboarding = await storage.getEmployeeOnboarding(targetUserId);
       res.json(onboarding);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching employee onboarding:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10538,7 +10538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/employee-onboarding', isAuthenticated, async (req: any, res) => {
+  app.post('/api/employee-onboarding', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Onboarding kaydı oluşturma yetkiniz yok');
@@ -10552,14 +10552,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId, branchId } = validatedData;
       
       // Verify branch access
-      if (!isHQRole(user.role as any) && branchId !== user.branchId) {
+      if (!isHQRole(user.role ) && branchId !== user.branchId) {
         return res.status(403).json({ message: "Sadece kendi şubeniz için kayıt oluşturabilirsiniz" });
       }
       
       // Use getOrCreate for idempotent operation - it handles all defaults internally
       const onboarding = await storage.getOrCreateEmployeeOnboarding(userId, branchId, user.id);
       res.json(onboarding);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating employee onboarding:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10571,7 +10571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/employee-onboarding/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/employee-onboarding/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const onboardingId = parseInt(req.params.id);
@@ -10584,13 +10584,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify permission
-      if (!isHQRole(user.role as any) && onboarding.branchId !== user.branchId) {
+      if (!isHQRole(user.role ) && onboarding.branchId !== user.branchId) {
         return res.status(403).json({ message: "Bu kaydı düzenleme yetkiniz yok" });
       }
       
       const updated = await storage.updateEmployeeOnboarding(onboardingId, req.body);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating employee onboarding:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10600,7 +10600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Onboarding Tasks
-  app.get('/api/onboarding-tasks/:onboardingId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/onboarding-tasks/:onboardingId', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const onboardingId = parseInt(req.params.onboardingId);
@@ -10609,7 +10609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const tasks = await storage.getOnboardingTasks(onboardingId);
       res.json(tasks);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching onboarding tasks:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10618,7 +10618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/onboarding-tasks', isAuthenticated, async (req: any, res) => {
+  app.post('/api/onboarding-tasks', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Onboarding görevi oluşturma yetkiniz yok');
@@ -10627,7 +10627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const task = await storage.createOnboardingTask(validatedData);
       res.json(task);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error creating onboarding task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10639,7 +10639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/onboarding-tasks/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/onboarding-tasks/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -10648,7 +10648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateOnboardingTask(taskId, req.body);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating onboarding task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10657,7 +10657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/onboarding-tasks/:id/complete', isAuthenticated, async (req: any, res) => {
+  app.post('/api/onboarding-tasks/:id/complete', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -10667,7 +10667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const completed = await storage.completeOnboardingTask(taskId, user.id, attachments);
       res.json(completed);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error completing onboarding task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -10676,19 +10676,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/onboarding-tasks/:id/verify', isAuthenticated, async (req: any, res) => {
+  app.post('/api/onboarding-tasks/:id/verify', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
       
       // Only supervisors and HQ can verify
-      if (!isHQRole(user.role as any) && user.role !== 'supervisor' && user.role !== 'supervisor_buddy') {
+      if (!isHQRole(user.role ) && user.role !== 'supervisor' && user.role !== 'supervisor_buddy') {
         return res.status(403).json({ message: "Sadece yöneticiler görevleri onaylayabilir" });
       }
       
       const verified = await storage.verifyOnboardingTask(taskId, user.id);
       res.json(verified);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error verifying onboarding task:", error);
       res.status(500).json({ message: "Görev onaylanırken hata oluştu" });
     }
@@ -10697,7 +10697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   startReminderSystem();
 
   // System health and backup endpoints
-  app.get('/api/system/health', isAuthenticated, async (req: any, res) => {
+  app.get('/api/system/health', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -10720,13 +10720,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dataStats,
         serverTime: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching system health:", error);
       res.status(500).json({ message: "Sistem durumu alınırken hata oluştu" });
     }
   });
   
-  app.post('/api/system/backup', isAuthenticated, async (req: any, res) => {
+  app.post('/api/system/backup', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       
@@ -10746,7 +10746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         durationMs: backupRecord.durationMs,
         errorMessage: backupRecord.errorMessage,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error triggering manual backup:", error);
       res.status(500).json({ message: "Backup tetiklenirken hata oluştu" });
     }
@@ -10756,7 +10756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // LIVE TRACKING - Real-time Employee Tracking
   // ========================================
   
-  app.post('/api/tracking/location', isAuthenticated, async (req: any, res) => {
+  app.post('/api/tracking/location', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const { latitude, longitude, accuracy } = req.body;
@@ -10769,13 +10769,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await updateEmployeeLocation(user.id, branchId, latitude, longitude, accuracy);
       
       res.json({ success: true, message: "Konum güncellendi" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error updating location:", error);
       res.status(500).json({ message: "Konum güncellenirken hata oluştu" });
     }
   });
 
-  app.get('/api/tracking/branch/:branchId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/tracking/branch/:branchId', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       const branchId = parseInt(req.params.branchId);
@@ -10793,18 +10793,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accuracy: emp.accuracy,
         lastUpdate: emp.lastUpdate,
       })));
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error fetching branch tracking:", error);
       res.status(500).json({ message: "Takip bilgisi alınırken hata oluştu" });
     }
   });
 
-  app.post('/api/tracking/checkout', isAuthenticated, async (req: any, res) => {
+  app.post('/api/tracking/checkout', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user!;
       removeEmployeeLocation(user.id);
       res.json({ success: true, message: "Çıkış yapıldı" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error checking out:", error);
       res.status(500).json({ message: "Çıkış yapılırken hata oluştu" });
     }
@@ -10815,7 +10815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // Hook: Create training material when knowledge base article is published
-  app.post('/api/training/materials/generate', isAuthenticated, async (req: any, res) => {
+  app.post('/api/training/materials/generate', isAuthenticated, async (req: unknown, res) => {
     try {
       if (!hasPermission(req.user.role, 'training', 'create')) {
         return res.status(403).json({ message: "İzniniz yok" });
@@ -10841,35 +10841,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.status(201).json({ material, message: "Eğitim materyali oluşturuldu" });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(400).json({ message: error.message || "Oluşturulamadı" });
     }
   });
 
   // GET /api/training/materials - List published training materials
-  app.get('/api/training/materials', isAuthenticated, async (req: any, res) => {
+  app.get('/api/training/materials', isAuthenticated, async (req: unknown, res) => {
     try {
       const { status } = req.query;
       const materials = await storage.getTrainingMaterials(status || 'published');
       res.json(materials);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message || "Eğitim materyalleri yüklenemedi" });
     }
   });
 
   // GET /api/training/assignments/:userId - Get user's training assignments
-  app.get('/api/training/assignments/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/training/assignments/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { userId } = req.params;
       const assignments = await storage.getTrainingAssignments({ userId });
       res.json(assignments);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message || "Atamalar yüklenemedi" });
     }
   });
 
   // POST /api/training/assignments - Bulk assign training to users/roles
-  app.post('/api/training/assignments', isAuthenticated, async (req: any, res) => {
+  app.post('/api/training/assignments', isAuthenticated, async (req: unknown, res) => {
     try {
       if (!hasPermission(req.user.role, 'training', 'create')) {
         return res.status(403).json({ message: "Eğitim ataması yapma izniniz yok" });
@@ -10881,13 +10881,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         assignedById: req.user.id,
       });
       res.status(201).json(assignment);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(400).json({ message: error.message || "Atama oluşturulamadı" });
     }
   });
 
   // POST /api/training/assignments/:id/complete - Mark assignment complete with score
-  app.post('/api/training/assignments/:id/complete', isAuthenticated, async (req: any, res) => {
+  app.post('/api/training/assignments/:id/complete', isAuthenticated, async (req: unknown, res) => {
     try {
       const { id } = req.params;
       const { score, timeSpentSeconds, notes } = req.body;
@@ -10932,13 +10932,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ completion, assignment: target });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(400).json({ message: error.message || "Tamamlanmadı" });
     }
   });
 
   // GET /api/training/progress/:userId - Get user's training progress
-  app.get('/api/training/progress/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/training/progress/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { userId } = req.params;
       const progress = await storage.getUserTrainingProgress(userId);
@@ -10953,13 +10953,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? Math.round(completions.reduce((sum: number, c: any) => sum + (c.score || 0), 0) / completions.length)
           : 0,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message || "İlerleme yüklenemedi" });
     }
   });
 
   // GET /api/training/stats - Training statistics for HQ/Supervisor
-  app.get('/api/training/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/training/stats', isAuthenticated, async (req: unknown, res) => {
     try {
       if (!hasPermission(req.user.role, 'training', 'view')) {
         return res.status(403).json({ message: "İzniniz yok" });
@@ -10976,7 +10976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         averageScore: allCompletions.length > 0
           ? Math.round(allCompletions.reduce((sum: number, c: any) => sum + (c.score || 0), 0) / allCompletions.length)
           : 0,
-        byRole: {} as any,
+        byRole: {} ,
       };
 
       // Group by role
@@ -10993,7 +10993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       stats.byRole = Object.fromEntries(roleStats);
 
       res.json(stats);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message || "İstatistik yüklenemedi" });
     }
   });
@@ -11061,18 +11061,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
   
   // GET /api/academy/career-levels - Tüm kariyer seviyeleri
-  app.get('/api/academy/career-levels', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/career-levels', isAuthenticated, async (req: unknown, res) => {
     try {
       const levels = await storage.getCareerLevels();
       res.json(levels);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Career levels error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/career-progress/:userId - Kullanıcı kariyer durumu
-  app.get('/api/academy/career-progress/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/career-progress/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { userId } = req.params;
       const progress = await storage.getUserCareerProgress(userId);
@@ -11080,14 +11080,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ averageQuizScore: 0, completedModuleIds: [] });
       }
       res.json(progress);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Career progress error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/user-dashboard - Dashboard için kullanıcı Academy özeti
-  app.get('/api/academy/user-dashboard', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/user-dashboard', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       
@@ -11129,14 +11129,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quizStats,
         totalBadgesEarned: userBadges?.length || 0
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Dashboard error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/exam-requests - Sınav talepleri listesi
-  app.get('/api/academy/exam-requests', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/exam-requests', isAuthenticated, async (req: unknown, res) => {
     try {
       const { status, supervisorId } = req.query;
       const requests = await storage.getExamRequests({ 
@@ -11144,14 +11144,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: supervisorId as string 
       });
       res.json(requests);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Exam requests error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/team-members - Supervisor'un ekip üyeleri
-  app.get('/api/academy/team-members', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/team-members', isAuthenticated, async (req: unknown, res) => {
     try {
       const supervisorId = req.user.id;
       const branchId = req.user.branchId;
@@ -11173,14 +11173,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
 
       res.json(teamMembers);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Team members error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
   // PATCH /api/academy/exam-request/:id/approve - Sınav onayı (HQ only)
-  app.patch('/api/academy/exam-request/:id/approve', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/academy/exam-request/:id/approve', isAuthenticated, async (req: unknown, res) => {
     try {
       if (!isHQRole(req.user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
@@ -11229,14 +11229,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(updatedRequest);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Exam approval error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
   // PATCH /api/academy/exam-request/:id/reject - Sınav reddi
-  app.patch('/api/academy/exam-request/:id/reject', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/academy/exam-request/:id/reject', isAuthenticated, async (req: unknown, res) => {
     try {
       const { id } = req.params;
       const { rejectionReason } = req.body;
@@ -11247,14 +11247,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(request);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Exam rejection error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
   // POST /api/academy/exam-request - Sınav talep et (Supervisor)
-  app.post('/api/academy/exam-request', isAuthenticated, async (req: any, res) => {
+  app.post('/api/academy/exam-request', isAuthenticated, async (req: unknown, res) => {
     try {
       const { userId, targetRoleId, supervisorNotes } = req.body;
       const supervisorId = req.user.id;
@@ -11273,7 +11273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(request);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Exam request error:", error);
       res.status(500).json({ message: error.message });
     }
@@ -11283,7 +11283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // RAG KNOWLEDGE BASE - Vector Search
   // ========================================
   
-  app.post('/api/knowledge-base/search', isAuthenticated, async (req: any, res) => {
+  app.post('/api/knowledge-base/search', isAuthenticated, async (req: unknown, res) => {
     try {
       const { query, limit = 5 } = req.body;
       const userId = req.user.id;
@@ -11316,7 +11316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Group by article
       const groupedResults = new Map();
-      const resultRows = results.rows as any[];
+      const resultRows = results.rows || [];
       
       resultRows.forEach(row => {
         const key = row.id;
@@ -11345,18 +11345,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Motor: Module content endpoint
-  app.get('/api/academy/module-content/:materialId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/module-content/:materialId', isAuthenticated, async (req: unknown, res) => {
     try {
       const material = await storage.getTrainingMaterial(Number(req.params.materialId));
       if (!material) return res.status(404).json({ message: "Bulunamadı" });
       res.json(material);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/stats - Analytics statistics
-  app.get('/api/academy/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/stats', isAuthenticated, async (req: unknown, res) => {
     try {
       const stats = {
         totalCompletion: 87,
@@ -11366,13 +11366,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         roleCompletion: { barista: 85, supervisor_buddy: 60, bar_buddy: 92, stajyer: 45 }
       };
       res.json(stats);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // POST /api/academy/quiz-result - Submit quiz result + Auto-unlock badges
-  app.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) => {
+  app.post('/api/academy/quiz-result', isAuthenticated, async (req: unknown, res) => {
     try {
       const { quizId, score, answers } = req.body;
       if (!quizId || score === undefined) {
@@ -11406,73 +11406,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json({ success: true, result, unlockedBadges });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Quiz result error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/badges - Get all available badges
-  app.get('/api/academy/badges', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/badges', isAuthenticated, async (req: unknown, res) => {
     try {
       const badges = await storage.getBadges();
       res.json(badges);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/user-badges - Get user's unlocked badges
-  app.get('/api/academy/user-badges', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/user-badges', isAuthenticated, async (req: unknown, res) => {
     try {
       const userBadges = await storage.getUserBadges(req.user.id);
       res.json(userBadges);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/quiz/:quizId/questions - Get quiz questions
-  app.get('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req: unknown, res) => {
     try {
       const questions = await storage.getQuizQuestions(req.params.quizId);
       res.json(questions);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // POST /api/academy/question - Create new question
-  app.post('/api/academy/question', isAuthenticated, async (req: any, res) => {
+  app.post('/api/academy/question', isAuthenticated, async (req: unknown, res) => {
     try {
       const roleStr = Array.isArray(req.user.role) ? req.user.role[0] : req.user.role;
-      if (!isHQRole(roleStr as any)) return res.status(403).json({ message: "Yalnızca HQ erişebilir" });
+      if (!isHQRole(roleStr )) return res.status(403).json({ message: "Yalnızca HQ erişebilir" });
       const question = await storage.createQuizQuestion(req.body);
       res.json(question);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // DELETE /api/academy/question/:id - Delete question
-  app.delete('/api/academy/question/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/academy/question/:id', isAuthenticated, async (req: unknown, res) => {
     try {
       const roleStr = Array.isArray(req.user.role) ? req.user.role[0] : req.user.role;
-      if (!isHQRole(roleStr as any)) return res.status(403).json({ message: "Yalnızca HQ erişebilir" });
+      if (!isHQRole(roleStr )) return res.status(403).json({ message: "Yalnızca HQ erişebilir" });
       const { id } = req.params;
       await db.delete(quizQuestions).where(eq(quizQuestions.id, parseInt(id)));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/recommended-quizzes - Get quizzes for user's career level
-  app.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: unknown, res) => {
     try {
       const quizzes = await storage.getRecommendedQuizzes(req.user.id);
       res.json(quizzes || []);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       // Return empty array if quizzes table doesn't exist yet
       if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
         res.json([]);
@@ -11483,7 +11483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/academy/quiz-stats/:userId - Get user's quiz performance stats
-  app.get('/api/academy/quiz-stats/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/quiz-stats/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { userId } = req.params;
       const stats = await storage.getUserQuizStats(userId);
@@ -11497,13 +11497,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           targetRole: r.targetRoleId
         }))
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/exam-leaderboard - Top exam performers
-  app.get('/api/academy/exam-leaderboard', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/exam-leaderboard', isAuthenticated, async (req: unknown, res) => {
     try {
       const approvedExams = await storage.getExamRequests({ status: 'approved' });
       
@@ -11523,13 +11523,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
 
       res.json(topPerformers);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // POST /api/academy/generate-quiz - AI Motor: Generate quiz from article content
-  app.post('/api/academy/generate-quiz', isAuthenticated, async (req: any, res) => {
+  app.post('/api/academy/generate-quiz', isAuthenticated, async (req: unknown, res) => {
     try {
       const { articleContent, articleTitle, quizId } = req.body;
       
@@ -11559,14 +11559,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `${savedQuestions.length} soru başarıyla oluşturuldu`,
         questions: savedQuestions,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Quiz generation error:', error);
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/academy/branch-analytics - Branch-level training metrics
-  app.get('/api/academy/branch-analytics', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/branch-analytics', isAuthenticated, async (req: unknown, res) => {
     try {
       // Get all branches with user count
       const branches = await storage.getBranches();
@@ -11606,27 +11606,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       res.json(branchMetrics);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Branch analytics error:', error);
       res.json([]);
     }
   });
 
   // GET /api/academy/team-competitions - Active and completed team competitions
-  app.get('/api/academy/team-competitions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/team-competitions', isAuthenticated, async (req: unknown, res) => {
     try {
       const branches = await storage.getBranches() || [];
       
       // Mock active competition data
       const leaderboard = branches
-        .map((b: any, idx: number) => ({
+        .map((b: unknown, idx: number) => ({
           branchId: b.id,
           branchName: b.name,
           score: Math.floor(Math.random() * 1000) + 500,
           place: idx + 1,
           quizzesCompleted: Math.floor(Math.random() * 50) + 10,
         }))
-        .sort((a: any, b: any) => b.score - a.score);
+        .sort((a: unknown, b: any) => b.score - a.score);
 
       const competitions = [
         {
@@ -11652,14 +11652,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       res.json(competitions);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Team competitions error:', error);
       res.json([]);
     }
   });
 
   // GET /api/academy/monthly-challenge - Current monthly challenge
-  app.get('/api/academy/monthly-challenge', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/monthly-challenge', isAuthenticated, async (req: unknown, res) => {
     try {
       const now = new Date();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -11677,14 +11677,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       res.json(challenge);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Monthly challenge error:', error);
       res.json(null);
     }
   });
 
   // GET /api/academy/adaptive-recommendation/:quizId - Adaptive difficulty progression
-  app.get('/api/academy/adaptive-recommendation/:quizId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/adaptive-recommendation/:quizId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { quizId } = req.params;
       const userId = req.user.id;
@@ -11723,14 +11723,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentScore: score,
         progressionPath: ['easy', 'medium', 'hard'],
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Adaptive recommendation error:', error);
       res.json({ recommendation: null });
     }
   });
 
   // GET /api/academy/cohort-analytics - Cohort analysis for HQ leadership
-  app.get('/api/academy/cohort-analytics', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/cohort-analytics', isAuthenticated, async (req: unknown, res) => {
     try {
       const branches = await storage.getBranches() || [];
       
@@ -11745,14 +11745,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       res.json(cohortData);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Cohort analytics error:', error);
       res.json([]);
     }
   });
 
   // GET /api/academy/learning-paths - AI-generated personalized learning paths
-  app.get('/api/academy/learning-paths', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/learning-paths', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const stats = await storage.getUserQuizStats?.(userId) || {};
@@ -11788,14 +11788,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       res.json(paths);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Learning paths error:', error);
       res.json([]);
     }
   });
 
   // GET /api/academy/learning-path-detail/:pathId - Get detailed learning path with recommended quizzes
-  app.get('/api/academy/learning-path-detail/:pathId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/learning-path-detail/:pathId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { pathId } = req.params;
       const userId = req.user.id;
@@ -11804,7 +11804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userResults = await storage.getQuizResults?.() || [];
       const userQuizzes = userResults.filter((r: any) => r.userId === userId);
 
-      const recommendedQuizzes = quizzes.map((q: any, idx: number) => ({
+      const recommendedQuizzes = quizzes.map((q: unknown, idx: number) => ({
         id: q.id,
         title: q.title || `Quiz ${idx + 1}`,
         difficulty: q.difficulty || 'easy',
@@ -11818,14 +11818,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: pathId === '1' ? 'Hızlı Kariyer Yolu' : pathId === '2' ? 'Barista Ustası Yolu' : 'Temel Beceriler Yolu',
         quizzes: recommendedQuizzes,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Learning path detail error:', error);
       res.json({ quizzes: [] });
     }
   });
 
   // Achievement stats
-  app.get('/api/academy/achievement-stats/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/achievement-stats/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { userId } = req.params;
       const userResults = await storage.getQuizResults?.() || [];
@@ -11839,12 +11839,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentStreak: Math.floor(Math.random() * 7) + 1,
         leaderboardRank: Math.floor(Math.random() * 50) + 1,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.json({ completedQuizzes: 0, maxScore: 0, currentLevel: 1, currentStreak: 0, leaderboardRank: 0 });
     }
   });
   // Achievement stats
-  app.get('/api/academy/achievement-stats/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/achievement-stats/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { userId } = req.params;
       const userResults = await storage.getQuizResults?.() || [];
@@ -11858,13 +11858,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentStreak: Math.floor(Math.random() * 7) + 1,
         leaderboardRank: Math.floor(Math.random() * 50) + 1,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.json({ completedQuizzes: 0, maxScore: 0, currentLevel: 1, currentStreak: 0, leaderboardRank: 0 });
     }
   });
 
   // GET /api/academy/progress-overview/:userId - Comprehensive progress dashboard
-  app.get('/api/academy/progress-overview/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/progress-overview/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { userId } = req.params;
       const userResults = await storage.getQuizResults?.() || [];
@@ -11884,7 +11884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         earnedBadges: (userBadges || []).length,
         nextMilestone: Math.min(completedCount + 3, 40),
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.json({
         careerLevel: 1,
         completedQuizzes: 0,
@@ -11895,7 +11895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/academy/streak-tracker/:userId - Get user learning streak data
-  app.get('/api/academy/streak-tracker/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/streak-tracker/:userId', isAuthenticated, async (req: unknown, res) => {
     try {
       const { userId } = req.params;
       const userResults = await storage.getQuizResults?.() || [];
@@ -11910,7 +11910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastActivityDay: 'Bugün',
         totalDaysActive: userQuizzes.length,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.json({
         currentStreak: 0,
         bestStreak: 0,
@@ -11921,21 +11921,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Phase 23-25 APIs (code ready for next session)
-  app.get('/api/academy/adaptive-recommendations/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/adaptive-recommendations/:userId', isAuthenticated, async (req: unknown, res) => {
     res.json([
       { pathId: '1', pathName: 'Barista Yolu', completionPercent: 45, priority: 'high', estimatedDays: 14 },
       { pathId: '2', pathName: 'Hizmet Yolu', completionPercent: 30, priority: 'medium', estimatedDays: 10 },
     ]);
   });
 
-  app.get('/api/academy/study-groups/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/study-groups/:userId', isAuthenticated, async (req: unknown, res) => {
     res.json([
       { id: '1', name: 'Kahve Eksperleri', topic: 'Teknik', memberCount: 12 },
       { id: '2', name: 'Kariyer Yolu', topic: 'Gelişim', memberCount: 8 },
     ]);
   });
 
-  app.get('/api/academy/advanced-analytics/:userId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/academy/advanced-analytics/:userId', isAuthenticated, async (req: unknown, res) => {
     res.json({ totalScore: 85, quizzesCompleted: 24, learningHours: 42, successRate: 92 });
   });
 
@@ -11944,7 +11944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // POST /api/feedback - Şubeler geribildirimi gönder
-  app.post("/api/feedback", isAuthenticated, async (req: any, res) => {
+  app.post("/api/feedback", isAuthenticated, async (req: unknown, res) => {
     try {
       const { branchId, type, subject, message } = req.body;
       const feedback = await storage.createBranchFeedback({
@@ -11955,24 +11955,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message,
       });
       res.json(feedback);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(400).json({ error: error.message });
     }
   });
 
   // GET /api/feedback - Muhasebe tüm geribildirimleri görmesi
-  app.get("/api/feedback", isAuthenticated, async (req: any, res) => {
+  app.get("/api/feedback", isAuthenticated, async (req: unknown, res) => {
     try {
       const { status, type, branchId } = req.query;
       const feedbacks = await storage.getBranchFeedbacks({ status, type, branchId: branchId ? parseInt(branchId) : undefined });
       res.json(feedbacks);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(400).json({ error: error.message });
     }
   });
 
   // PATCH /api/feedback/:id - Muhasebe geri cevap ver
-  app.patch("/api/feedback/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/feedback/:id", isAuthenticated, async (req: unknown, res) => {
     try {
       const { response, status } = req.body;
       const feedback = await storage.updateBranchFeedback(parseInt(req.params.id), {
@@ -11982,7 +11982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         respondedAt: new Date(),
       });
       res.json(feedback);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(400).json({ error: error.message });
     }
   });
@@ -12023,7 +12023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
   
   // POST /api/training/modules/:id/complete - Mark module as completed
-  app.post('/api/training/modules/:id/complete', isAuthenticated, async (req: any, res) => {
+  app.post('/api/training/modules/:id/complete', isAuthenticated, async (req: unknown, res) => {
     try {
       const { id } = req.params;
       const moduleId = parseInt(id);
@@ -12080,14 +12080,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         badge: awardedBadge,
         module 
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error('Module completion error:', error);
       res.status(400).json({ message: error.message || "Modül tamamlanamadı" });
     }
   });
 
   // GET /api/training/user-modules-stats - Get user's completed modules count
-  app.get('/api/training/user-modules-stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/training/user-modules-stats', isAuthenticated, async (req: unknown, res) => {
     try {
       const userId = req.user.id;
       const allModules = await storage.getTrainingModules();
@@ -12101,13 +12101,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalCount,
         percentage: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.json({ completedCount: 0, totalCount: 0, percentage: 0 });
     }
   });
 
   // GET /api/training/modules/:id/completion-status - Get module completion status and earned badges
-  app.get('/api/training/modules/:id/completion-status', isAuthenticated, async (req: any, res) => {
+  app.get('/api/training/modules/:id/completion-status', isAuthenticated, async (req: unknown, res) => {
     try {
       const { id } = req.params;
       const moduleId = parseInt(id);
@@ -12121,7 +12121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completedAt: progress?.completedAt,
         badges: userBadgeList,
       });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
@@ -12131,7 +12131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // GET /api/lost-found - Get lost found items (branch-filtered for non-HQ)
-  app.get('/api/lost-found', isAuthenticated, async (req: any, res) => {
+  app.get('/api/lost-found', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user;
       const { status } = req.query;
@@ -12160,13 +12160,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       
       res.json(enrichedItems);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/lost-found/all - HQ can view all branches (requires HQ role)
-  app.get('/api/lost-found/all', isAuthenticated, async (req: any, res) => {
+  app.get('/api/lost-found/all', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role)) {
@@ -12193,25 +12193,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       
       res.json(enrichedItems);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // GET /api/lost-found/count - Get new items count for notification badge
-  app.get('/api/lost-found/count', isAuthenticated, async (req: any, res) => {
+  app.get('/api/lost-found/count', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user;
       const branchId = !isHQRole(user.role) && user.branchId ? user.branchId : undefined;
       const count = await storage.getNewLostFoundItemsCount(branchId);
       res.json({ count });
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.json({ count: 0 });
     }
   });
 
   // POST /api/lost-found - Create a new lost found item
-  app.post('/api/lost-found', isAuthenticated, async (req: any, res) => {
+  app.post('/api/lost-found', isAuthenticated, async (req: unknown, res) => {
     try {
       const user = req.user;
       const validation = insertLostFoundItemSchema.safeParse(req.body);
@@ -12236,13 +12236,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(item);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });
 
   // PATCH /api/lost-found/:id/handover - Mark item as handed over to owner
-  app.patch('/api/lost-found/:id/handover', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/lost-found/:id/handover', isAuthenticated, async (req: unknown, res) => {
     try {
       const { id } = req.params;
       const user = req.user;
@@ -12271,7 +12271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       res.status(500).json({ message: error.message });
     }
   });

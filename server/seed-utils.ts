@@ -187,7 +187,7 @@ export async function seedBranchPersonnel(hashedPassword: string) {
           isActive: true,
         });
         created++;
-      } catch (error: any) {
+      } catch (error: Error | unknown) {
         if (error.code === '23505') { // Unique constraint violation
           skipped++;
         } else {
@@ -227,7 +227,7 @@ export async function seedBranchPersonnel(hashedPassword: string) {
           isActive: true,
         });
         created++;
-      } catch (error: any) {
+      } catch (error: Error | unknown) {
         if (error.code === '23505') { // Unique constraint violation
           skipped++;
         } else {
@@ -258,7 +258,7 @@ export async function seedBranchPersonnel(hashedPassword: string) {
           isActive: true,
         });
         created++;
-      } catch (error: any) {
+      } catch (error: Error | unknown) {
         if (error.code === '23505') { // Unique constraint violation
           skipped++;
         } else {
