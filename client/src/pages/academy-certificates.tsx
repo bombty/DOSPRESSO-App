@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Award, Download, Share2, Loader } from "lucide-react";
+import dospressoLogo from "@assets/old_board2_1764794942278.png";
 
 const CAREER_LEVELS = [
   { id: 1, roleId: "stajyer", titleTr: "Stajyer", levelNumber: 1, certificateColor: "from-blue-100 to-blue-50" },
@@ -75,9 +76,12 @@ export default function AcademyCertificates() {
             <div className="flex flex-col gap-3 sm:gap-4">
               {/* Certificate Preview */}
               <div className={`bg-gradient-to-br ${currentLevel.certificateColor} p-3 rounded-lg border-2 border-dashed border-gray-300 text-center min-h-40 flex flex-col justify-between text-xs`}>
-                <div>
-                  <p className="text-sm text-muted-foreground uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
-                  <p className="text-lg font-serif mt-2">Kariyer Sertifikası</p>
+                <div className="flex flex-col items-center gap-2">
+                  <img src={dospressoLogo} alt="DOSPRESSO" className="h-12 object-contain" />
+                  <div>
+                    <p className="text-sm text-muted-foreground uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
+                    <p className="text-lg font-serif mt-1">Kariyer Sertifikası</p>
+                  </div>
                 </div>
 
                 <div>
