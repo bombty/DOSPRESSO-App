@@ -186,8 +186,17 @@ export interface ShiftSuggestion {
 }
 
 export interface ShiftPlanResponse {
-  suggestions: ShiftSuggestion[];
+  shifts?: Array<{
+    shiftDate: string;
+    startTime: string;
+    endTime: string;
+    shiftType: string;
+    assignedToId: string;
+    status: string;
+  }>;
+  suggestions?: ShiftSuggestion[];
   totalShifts: number;
+  summary?: string;
   weekStart: string;
   weekEnd: string;
   cached: boolean;
@@ -986,40 +995,50 @@ export async function generateShiftPlan(
           role: "user",
           content: `DOSPRESSO Şube #${branchId} için ${weekStart} - ${weekEnd} tarihleri arası vardiya planı oluştur.
 
+⚠️ ZORUNLU KURALLAR (KESİNLİKLE UYULMALI):
+1. STAJYER KURALI: Her stajyer (intern) yanında mutlaka en az 1 barista olmalı. Stajyer asla tek başına çalışamaz!
+2. GÜÇ AYRIMI: Aynı kişi aynı gün hem sabah açılış hem akşam kapanış yapmamalı.
+3. YOĞUNLUK DENGESİ: Sabah vardiyaları (06:00-14:00) daha az personel gerektirir. Akşam vardiyaları (14:00-22:00) en yoğun saatler - daha fazla personel.
+4. HAFTALİK OFF: Her personele haftada en az 1 gün izin verilmeli.
+5. 45 SAAT LİMİTİ: Hiçbir personel haftada 45 saatten fazla çalışmamalı.
+
 Geçmiş Vardiya İstatistikleri (son 6 hafta):
 - Toplam vardiya: ${shiftStats.totalShifts}
-- Sabah vardiyas ı: ${shiftStats.morningShifts}
+- Sabah vardiyası: ${shiftStats.morningShifts}
 - Akşam vardiyası: ${shiftStats.eveningShifts}
 - Gece vardiyası: ${shiftStats.nightShifts}
 - Atanmış vardiya: ${shiftStats.assignedShifts}
 - Tamamlanan vardiya: ${shiftStats.completedShifts}
 
-Mevcut Çalışanlar:
+Mevcut Çalışanlar (rol önemli!):
 ${employeeList}
 
 ${workloadMetrics ? `Yoğunluk Metrikleri:
 - Ortalama günlük satış: ${workloadMetrics.averageDailySales || 'Bilinmiyor'}
 - Yoğun saatler: ${workloadMetrics.peakHours?.join(', ') || 'Bilinmiyor'}` : ''}
 
-GÖREV: ${weekStart} - ${weekEnd} tarihleri arası her gün için vardiya planı oluştur. Her vardiya için:
-1. Vardiya tipi (morning: 08:00-16:00, evening: 16:00-00:00, night: 00:00-08:00)
-2. En uygun çalışan(lar)ın ID'lerini öner
-3. Güven skoru (0-100: ne kadar emin olduğun)
-4. Kısa açıklama (neden bu çalışanları seçtin?)
+GÖREV: ${weekStart} - ${weekEnd} tarihleri arası her gün için vardiya planı oluştur.
+
+Vardiya Tipleri:
+- morning: 06:00-14:00 (sabah açılış, daha az personel yeterli)
+- evening: 14:00-22:00 (en yoğun saatler, daha fazla personel)
+- night: 22:00-06:00 (gece vardiyası, orta yoğunluk)
+
+Her vardiya için tek bir çalışan ata. Stajyerler için aynı vardiyaya ayrıca barista da ata.
 
 JSON formatında yanıt ver:
 {
-  "suggestions": [
+  "shifts": [
     {
       "shiftDate": "YYYY-MM-DD",
-      "startTime": "HH:MM",
-      "endTime": "HH:MM",
+      "startTime": "06:00:00",
+      "endTime": "14:00:00",
       "shiftType": "morning",
-      "assignedCandidateIds": ["user-id-1", "user-id-2"],
-      "confidence": 85,
-      "notes": "Açıklama"
+      "assignedToId": "user-uuid-here",
+      "status": "draft"
     }
-  ]
+  ],
+  "summary": "Planlama özeti"
 }`,
         },
       ],
@@ -1034,8 +1053,10 @@ JSON formatında yanıt ver:
 
     const result = JSON.parse(content);
     const planResponse: ShiftPlanResponse = {
-      suggestions: result.suggestions || [],
-      totalShifts: result.suggestions?.length || 0,
+      shifts: result.shifts || [],
+      suggestions: result.suggestions || result.shifts || [],
+      totalShifts: (result.shifts || result.suggestions)?.length || 0,
+      summary: result.summary || '',
       weekStart,
       weekEnd,
       cached: false,
