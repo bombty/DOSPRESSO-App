@@ -91,7 +91,7 @@ export default function AcademyCertificates() {
                   <div className="flex flex-col items-center gap-2 relative z-10">
                     <img src={dospressoLogo} alt="DOSPRESSO" className="h-24 object-contain" />
                     <div>
-                      <p className="text-xs font-semibold text-amber-900 uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
+                      <p className="text-xs font-semibold text-amber-900 uppercase tracking-widest">DOSPRESSO ACADEMY</p>
                       <p className="text-base font-serif font-bold mt-1 text-amber-950">Kariyer Sertifikası</p>
                     </div>
                   </div>
