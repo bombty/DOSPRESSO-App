@@ -5376,8 +5376,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/shifts/my', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      const allShifts = await storage.getShifts();
-      const myShifts = allShifts.filter(s => s.assignedToId === user.id);
+      const start = req.query.start as string | undefined;
+      const end = req.query.end as string | undefined;
+      const myShifts = await storage.getShifts(undefined, user.id, start, end);
       
       res.json(myShifts);
     } catch (error) {

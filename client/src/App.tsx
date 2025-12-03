@@ -65,6 +65,8 @@ import CashReports from "@/pages/cash-reports";
 import Vardiyalar from "@/pages/vardiyalar";
 import VardiyaCheckin from "@/pages/vardiya-checkin";
 import VardiyaSablonlari from "@/pages/vardiya-sablonlari";
+import VardiyaPlanlama from "@/pages/vardiya-planlama";
+import Vardiyalarim from "@/pages/vardiyalarim";
 import PersonelMusaitlik from "@/pages/personel-musaitlik";
 import AIAssistant from "@/pages/ai-assistant";
 import Performance from "@/pages/performance";
@@ -117,6 +119,8 @@ function Router() {
           <Route path="/personel-detay/:id" component={PersonelDetay} />
           <Route path="/personel-onboarding" component={PersonelOnboarding} />
           <Route path="/vardiyalar" component={Vardiyalar} />
+          <Route path="/vardiya-planlama" component={VardiyaPlanlama} />
+          <Route path="/vardiyalarim" component={Vardiyalarim} />
           <Route path="/vardiya-checkin" component={VardiyaCheckin} />
           <Route path="/vardiya-sablonlari" component={VardiyaSablonlari} />
           <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
