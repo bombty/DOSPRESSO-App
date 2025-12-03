@@ -89,7 +89,7 @@ export default function AcademyCertificates() {
                   <div className="absolute bottom-1 right-1 w-3 h-3 border-b-2 border-r-2 border-amber-900"></div>
 
                   <div className="flex flex-col items-center gap-2 relative z-10">
-                    <img src={dospressoLogo} alt="DOSPRESSO" className="h-16 object-contain" />
+                    <img src={dospressoLogo} alt="DOSPRESSO" className="h-24 object-contain" />
                     <div>
                       <p className="text-xs font-semibold text-amber-900 uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
                       <p className="text-base font-serif font-bold mt-1 text-amber-950">Kariyer Sertifikası</p>
@@ -111,11 +111,11 @@ export default function AcademyCertificates() {
                   </div>
 
                   {/* Sertifika Damgası */}
-                  <div className="absolute -right-6 top-1/3 transform -translate-y-1/2 z-30 pointer-events-none">
+                  <div className="absolute -right-4 top-1/3 transform -translate-y-1/2 z-30 pointer-events-none">
                     <img 
                       src={certificationSeal} 
                       alt="Sertifika Damgası" 
-                      className="w-32 h-32 object-contain drop-shadow-lg"
+                      className="w-24 h-24 object-contain drop-shadow-lg"
                     />
                   </div>
                 </div>
