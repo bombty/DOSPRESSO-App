@@ -74,9 +74,9 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  pending_hq: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
-  confirmed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  draft: "bg-secondary text-foreground dark:bg-gray-800 dark:text-gray-300",
+  pending_hq: "bg-warning/20 text-warning dark:bg-yellow-900/30 dark:text-yellow-300",
+  confirmed: "bg-green-100 text-success dark:bg-green-900/30 dark:text-green-300",
   completed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
 };
@@ -154,7 +154,7 @@ export default function Vardiyalar() {
       setIsCreateDialogOpen(false);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Vardiya oluşturulamadı",
@@ -174,7 +174,7 @@ export default function Vardiyalar() {
       setEditingShift(null);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Vardiya güncellenemedi",
@@ -192,7 +192,7 @@ export default function Vardiyalar() {
       toast({ title: "Başarılı", description: "Vardiya silindi" });
       setShiftToDelete(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Vardiya silinemedi",
@@ -495,11 +495,11 @@ export default function Vardiyalar() {
             <Card data-testid="card-confirmed">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
                   <p className="text-xs text-muted-foreground">Onaylı</p>
-                  <p className="text-lg font-bold text-green-600">{confirmedCount}</p>
+                  <p className="text-lg font-bold text-success">{confirmedCount}</p>
                 </div>
               </CardContent>
             </Card>
@@ -507,7 +507,7 @@ export default function Vardiyalar() {
             <Card data-testid="card-pending">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-yellow-900/20 flex items-center justify-center">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
                   </div>
                   <p className="text-xs text-muted-foreground">Bekleyen</p>
@@ -813,7 +813,7 @@ export default function Vardiyalar() {
                 <UserCheck className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-600">
+                <div className="text-3xl font-bold text-success">
                   {activeAttendances?.length || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">şu an giriş yapan</p>
@@ -837,7 +837,7 @@ export default function Vardiyalar() {
                 <UserX className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-red-600">
+                <div className="text-3xl font-bold text-destructive">
                   {(todayShifts.length - (activeAttendances?.length || 0)) > 0 ? todayShifts.length - (activeAttendances?.length || 0) : 0}
                 </div>
                 <p className="text-xs text-muted-foreground">eksik personel</p>
@@ -858,14 +858,14 @@ export default function Vardiyalar() {
               <CardContent>
                 {activeAttendances && activeAttendances.length > 0 ? (
                   <div className="flex flex-col gap-3 sm:gap-4">
-                    {activeAttendances.map((attendance: any) => {
+                    {activeAttendances.map((attendance) => {
                       const user = users?.find(u => u.id === attendance.userId);
                       const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
                       const duration = checkInTime ? Math.floor((Date.now() - checkInTime.getTime()) / (60 * 1000)) : 0;
                       return (
-                        <div key={attendance.id} className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950/20">
+                        <div key={attendance.id} className="flex items-center justify-between p-3 rounded-lg border bg-success/10 dark:bg-success/5/20">
                           <div className="flex items-center gap-2 sm:gap-3 flex-1">
-                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            <div className="w-2 h-2 rounded-full bg-success/100 animate-pulse" />
                             <div className="flex-1">
                               <p className="font-medium">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || 'Bilinmeyen'}</p>
                               <div className="flex gap-2 sm:gap-3 text-xs text-muted-foreground mt-1">
@@ -875,7 +875,7 @@ export default function Vardiyalar() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-medium text-green-600">{checkInTime ? format(checkInTime, 'HH:mm') : '-'}</p>
+                            <p className="text-sm font-medium text-success">{checkInTime ? format(checkInTime, 'HH:mm') : '-'}</p>
                           </div>
                         </div>
                       );
@@ -928,7 +928,7 @@ export default function Vardiyalar() {
                               data-testid={`live-shift-${shift.id}`}
                             >
                               <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-green-500" />
+                                <div className="w-2 h-2 rounded-full bg-success/100" />
                                 <span className="font-medium">{shift.assignedTo?.fullName || "Atanmamış"}</span>
                               </div>
                               <span className="text-sm text-muted-foreground">
@@ -1256,7 +1256,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       queryClient.invalidateQueries({ queryKey: ['/api/shift-attendance/today'] });
       toast({ title: "Başarılı", description: "Vardiya girişi yapıldı" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message || "Giriş yapılamadı", variant: "destructive" });
     },
   });
@@ -1269,7 +1269,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       queryClient.invalidateQueries({ queryKey: ['/api/shift-attendance/today'] });
       toast({ title: "Başarılı", description: "Vardiya çıkışı yapıldı" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message || "Çıkış yapılamadı", variant: "destructive" });
     },
   });
@@ -1387,7 +1387,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
           </Badge>
         )}
         {locationStatus === 'success' && (
-          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+          <Badge className="bg-green-100 text-success dark:bg-green-900/30 dark:text-green-300">
             <CheckCircle2 className="w-4 h-4 mr-2" />
             Doğrulandı
           </Badge>
@@ -1401,9 +1401,9 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       </div>
 
       {isCheckedIn && todayAttendance && (
-        <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30" data-testid="card-checked-in">
+        <Card className="border-success/30 dark:border-success/40 bg-success/10 dark:bg-success/5/30" data-testid="card-checked-in">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
+            <CardTitle className="flex items-center gap-2 text-success dark:text-green-300">
               <UserCheck className="h-4 w-4" />
               Aktif Vardiya - {format(parseISO(todayAttendance.checkInTime), "HH:mm", { locale: tr })}
             </CardTitle>
@@ -1412,7 +1412,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
               <div className="flex flex-col gap-3 sm:gap-4">
                 <p className="text-sm text-muted-foreground">Çalışma Süresi</p>
-                <div className="font-mono text-3xl font-bold text-green-700 dark:text-green-300 tracking-wide">
+                <div className="font-mono text-3xl font-bold text-success dark:text-green-300 tracking-wide">
                   {String(elapsedTime.hours).padStart(2, '0')}:{String(elapsedTime.minutes).padStart(2, '0')}:{String(elapsedTime.seconds).padStart(2, '0')}
                 </div>
               </div>

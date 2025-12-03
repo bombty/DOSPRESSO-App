@@ -117,7 +117,7 @@ export default function CashReports() {
       setIsCreateDialogOpen(false);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Cashier raporu oluşturulamadı",
@@ -138,7 +138,7 @@ export default function CashReports() {
       });
       setEditingReport(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Cashier raporu güncellenemedi",
@@ -158,7 +158,7 @@ export default function CashReports() {
         description: "Cashier raporu silindi",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Cashier raporu silinemedi",

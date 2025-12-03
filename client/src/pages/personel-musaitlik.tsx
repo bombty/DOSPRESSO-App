@@ -57,7 +57,7 @@ export default function PersonelMusaitlik() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       return apiRequest("POST", "/api/employee-availability", data);
     },
     onSuccess: () => {
@@ -68,7 +68,7 @@ export default function PersonelMusaitlik() {
       queryClient.invalidateQueries({ queryKey: ["/api/employee-availability"] });
       setIsCreateOpen(false);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Müsaitlik durumu eklenemedi",
@@ -90,7 +90,7 @@ export default function PersonelMusaitlik() {
       setIsEditOpen(false);
       setSelectedAvailability(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Müsaitlik durumu güncellenemedi",
@@ -110,7 +110,7 @@ export default function PersonelMusaitlik() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/employee-availability"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Müsaitlik durumu silinemedi",
@@ -162,11 +162,11 @@ export default function PersonelMusaitlik() {
     }
   };
 
-  const onSubmitCreate = (data: any) => {
+  const onSubmitCreate = (data) => {
     createMutation.mutate(data);
   };
 
-  const onSubmitEdit = (data: any) => {
+  const onSubmitEdit = (data) => {
     if (selectedAvailability) {
       updateMutation.mutate({ id: selectedAvailability.id, data });
     }

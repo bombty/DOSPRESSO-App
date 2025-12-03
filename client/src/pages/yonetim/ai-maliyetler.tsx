@@ -323,7 +323,7 @@ export default function AICostDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="text-cache-savings">
+            <div className="text-2xl font-bold text-success" data-testid="text-cache-savings">
               {formatCurrency(data.cachedSavings)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">

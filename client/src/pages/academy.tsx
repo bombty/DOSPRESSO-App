@@ -126,7 +126,7 @@ export default function Academy() {
   // Helper: check if module is completed
   const isModuleCompleted = (moduleId: number) => {
     if (!Array.isArray(completedModules)) return false;
-    return completedModules.some((m: any) => m.moduleId === moduleId && m.completedAt);
+    return completedModules.some((m) => m.moduleId === moduleId && m.completedAt);
   };
 
   // Exam request form
@@ -142,7 +142,7 @@ export default function Academy() {
   });
 
   const createExamMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       return apiRequest("POST", "/api/academy/exam-request", data);
     },
     onSuccess: () => {
@@ -151,7 +151,7 @@ export default function Academy() {
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/academy/exam-requests"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -226,7 +226,7 @@ export default function Academy() {
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
             <CardTitle className="text-xs font-medium flex items-center gap-1">
-              <Target className="w-3 h-3 text-green-600" />
+              <Target className="w-3 h-3 text-success" />
               <span className="truncate">İlerleme</span>
             </CardTitle>
           </CardHeader>
@@ -370,7 +370,7 @@ export default function Academy() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                  {modules.map((module: any) => {
+                  {modules.map((module) => {
                     const completed = isModuleCompleted(module.id);
                     return (
                       <Link 
@@ -414,10 +414,10 @@ export default function Academy() {
               <CardContent>
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex flex-col gap-3 sm:gap-4 gap-2">
-                    {recommendedQuizzes.map((quiz: any) => {
-                      const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200' 
+                    {recommendedQuizzes.map((quiz) => {
+                      const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-success/5 text-green-800 dark:text-green-200' 
                         : quiz.difficulty === 'hard' ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200'
-                        : 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200';
+                        : 'bg-warning/20 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200';
                       
                       const diffLabel = quiz.difficulty === 'easy' ? 'Kolay' 
                         : quiz.difficulty === 'hard' ? 'Zor' : 'Orta';
@@ -493,7 +493,7 @@ export default function Academy() {
             <Card className="cursor-pointer hover-elevate" data-testid="card-adaptive-engine">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Target className="w-4 h-4 text-red-600" />
+                  <Target className="w-4 h-4 text-destructive" />
                   Adaptif Motor
                 </CardTitle>
               </CardHeader>

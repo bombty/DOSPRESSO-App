@@ -70,9 +70,9 @@ export default function Performance() {
                 <div className="flex flex-col items-center text-center gap-1.5">
                   <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                     {completionTrend > 0 ? (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      <TrendingUp className="h-4 w-4 text-success" />
                     ) : completionTrend < 0 ? (
-                      <TrendingDown className="h-4 w-4 text-red-600" />
+                      <TrendingDown className="h-4 w-4 text-destructive" />
                     ) : (
                       <CheckCircle className="h-4 w-4 text-blue-600" />
                     )}
@@ -88,9 +88,9 @@ export default function Performance() {
                 <div className="flex flex-col items-center text-center gap-1.5">
                   <div className="h-4 w-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                     {aiScoreTrend > 0 ? (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      <TrendingUp className="h-4 w-4 text-success" />
                     ) : aiScoreTrend < 0 ? (
-                      <TrendingDown className="h-4 w-4 text-red-600" />
+                      <TrendingDown className="h-4 w-4 text-destructive" />
                     ) : (
                       <CheckCircle className="h-4 w-4 text-purple-600" />
                     )}
@@ -104,8 +104,8 @@ export default function Performance() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                    <CheckCircle className="h-4 w-4 text-success" />
                   </div>
                   <p className="text-xs text-muted-foreground">Görevler</p>
                   <p className="text-lg font-bold" data-testid="text-tasks-completed">{latestMetric?.tasksCompleted || 0}/{latestMetric?.tasksTotal || 0}</p>

@@ -338,7 +338,7 @@ export default function SubeDetayPage() {
             <CardContent>
               {activeEmployees && activeEmployees.length > 0 ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {activeEmployees.map((attendance: any) => {
+                  {activeEmployees.map((attendance) => {
                     const emp = staff?.find(s => s.id === attendance.userId);
                     const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
                     const duration = checkInTime ? Math.floor((Date.now() - checkInTime.getTime()) / (60 * 1000)) : 0;
@@ -347,7 +347,7 @@ export default function SubeDetayPage() {
                     return (
                       <div 
                         key={attendance.id} 
-                        className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950/20"
+                        className="flex items-center justify-between p-3 rounded-lg border bg-success/10 dark:bg-success/5/20"
                         data-testid={`active-emp-${emp?.id}`}
                       >
                         <div className="flex-1">
@@ -361,8 +361,8 @@ export default function SubeDetayPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse mx-auto" />
-                          <p className="text-xs text-green-600 font-medium mt-1">Canlı</p>
+                          <div className="w-3 h-3 rounded-full bg-success/100 animate-pulse mx-auto" />
+                          <p className="text-xs text-success font-medium mt-1">Canlı</p>
                         </div>
                       </div>
                     );
@@ -492,7 +492,7 @@ export default function SubeDetayPage() {
             <CardContent>
               {branchData.recentFaults && branchData.recentFaults.length > 0 ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {branchData.recentFaults.slice(0, 10).map((fault: any) => (
+                  {branchData.recentFaults.slice(0, 10).map((fault) => (
                     <Link key={fault.id} href={`/ariza-detay/${fault.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`fault-${fault.id}`}>
                         <div>
@@ -543,7 +543,7 @@ export default function SubeDetayPage() {
                           level="H"
                           includeMargin
                         />
-                        <p className="text-xs text-gray-600 mt-2 font-mono">
+                        <p className="text-xs text-muted-foreground mt-2 font-mono">
                           QR İçeriği: {qrValue || "(QR oluşturulmamış)"}
                         </p>
                       </div>

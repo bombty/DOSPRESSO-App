@@ -27,12 +27,12 @@ interface EquipmentWithHealth extends EquipmentType {
 const getHealthScoreBadge = (score?: number) => {
   if (score === undefined) return null;
   if (score >= 80) {
-    return { label: `${Math.round(score)} Sağlıklı`, variant: "default" as const, color: "text-green-600" };
+    return { label: `${Math.round(score)} Sağlıklı`, variant: "default" as const, color: "text-success" };
   }
   if (score >= 50) {
     return { label: `${Math.round(score)} Uyarı`, variant: "secondary" as const, color: "text-yellow-600" };
   }
-  return { label: `${Math.round(score)} Kritik`, variant: "destructive" as const, color: "text-red-600" };
+  return { label: `${Math.round(score)} Kritik`, variant: "destructive" as const, color: "text-destructive" };
 };
 
 export default function Equipment() {
@@ -182,7 +182,7 @@ export default function Equipment() {
       const response = await apiRequest("POST", "/api/equipment/generate-qr-bulk", {});
       return response;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
       toast({ 
         title: "Başarılı", 
@@ -290,9 +290,9 @@ export default function Equipment() {
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
       {criticalEquipment && criticalEquipment.length > 0 && (
-        <Card className="border-red-500 bg-red-50 dark:bg-red-950 col-span-full">
+        <Card className="border-destructive bg-destructive/10 dark:bg-red-950 col-span-full">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+            <CardTitle className="text-sm font-semibold text-destructive dark:text-red-400 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               Kritik Ekipmanlar ({criticalEquipment.length})
             </CardTitle>
@@ -303,7 +303,7 @@ export default function Equipment() {
           <CardContent>
             <div className="grid gap-2 md:grid-cols-2">
               {criticalEquipment.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-md border border-red-200 dark:border-red-800">
+                <div key={item.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-md border border-destructive/30 dark:border-red-800">
                   <div className="flex-1">
                     <p className="font-semibold text-sm" data-testid={`text-critical-${item.id}`}>
                       {EQUIPMENT_METADATA[item.equipmentType as keyof typeof EQUIPMENT_METADATA]?.nameTr || item.equipmentType}

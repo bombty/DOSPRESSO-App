@@ -292,8 +292,8 @@ export default function HRReportsPage() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-green-600" />
+              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-success" />
               </div>
               <p className="text-xs text-muted-foreground">Toplam</p>
               {isLoading ? <Skeleton className="h-5 w-12" /> : 
@@ -335,7 +335,7 @@ export default function HRReportsPage() {
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
               <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertCircle className="h-4 w-4 text-destructive" />
               </div>
               <p className="text-xs text-muted-foreground">Geç</p>
               {isLoading ? <Skeleton className="h-5 w-12" /> : 

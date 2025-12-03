@@ -137,7 +137,7 @@ export default function PersonelOnboardingPage() {
       setDialogOpen(false);
       setEditingRecord(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -153,7 +153,7 @@ export default function PersonelOnboardingPage() {
       setDialogOpen(false);
       setEditingRecord(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -167,7 +167,7 @@ export default function PersonelOnboardingPage() {
       toast({ title: "Başarılı", description: "Onboarding kaydı silindi" });
       queryClient.invalidateQueries({ queryKey: ["/api/employee-onboarding"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -256,7 +256,7 @@ export default function PersonelOnboardingPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Tamamlandı</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+            <div className="text-2xl font-bold text-success">{stats.completed}</div>
           </CardContent>
         </Card>
       </div>

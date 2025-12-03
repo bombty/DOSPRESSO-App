@@ -81,7 +81,7 @@ export default function EquipmentAnalytics() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-600" />
+              <AlertTriangle className="w-4 h-4 text-destructive" />
               Toplam Arızalar
             </CardTitle>
           </CardHeader>
@@ -94,12 +94,12 @@ export default function EquipmentAnalytics() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-600" />
+              <CheckCircle2 className="w-4 h-4 text-success" />
               Çözüm Oranı
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">{resolutionRate}%</div>
+            <div className="text-3xl font-bold text-success">{resolutionRate}%</div>
             <p className="text-xs text-muted-foreground mt-1">{resolvedFaults} çözüldü</p>
           </CardContent>
         </Card>
@@ -125,7 +125,7 @@ export default function EquipmentAnalytics() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">{faultsByPriority.kritik}</div>
+            <div className="text-3xl font-bold text-destructive">{faultsByPriority.kritik}</div>
             <p className="text-xs text-muted-foreground mt-1">Acil müdahale</p>
           </CardContent>
         </Card>

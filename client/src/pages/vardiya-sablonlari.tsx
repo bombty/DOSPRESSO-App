@@ -71,7 +71,7 @@ export default function VardiyaSablonlari() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       return apiRequest("POST", "/api/shift-templates", data);
     },
     onSuccess: () => {
@@ -82,7 +82,7 @@ export default function VardiyaSablonlari() {
       queryClient.invalidateQueries({ queryKey: ["/api/shift-templates"] });
       setIsCreateOpen(false);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Şablon oluşturulamadı",
@@ -104,7 +104,7 @@ export default function VardiyaSablonlari() {
       setIsEditOpen(false);
       setSelectedTemplate(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Şablon güncellenemedi",
@@ -124,7 +124,7 @@ export default function VardiyaSablonlari() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/shift-templates"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Şablon silinemedi",
@@ -137,7 +137,7 @@ export default function VardiyaSablonlari() {
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
       return apiRequest("POST", `/api/shift-templates/${id}/create-shifts`, data);
     },
-    onSuccess: (result: any) => {
+    onSuccess: (result) => {
       toast({
         title: "Başarılı",
         description: `${result.createdCount || 0} vardiya oluşturuldu`,
@@ -146,7 +146,7 @@ export default function VardiyaSablonlari() {
       setIsGenerateOpen(false);
       setSelectedTemplate(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Vardiyalar oluşturulamadı",
@@ -207,17 +207,17 @@ export default function VardiyaSablonlari() {
     setIsGenerateOpen(true);
   };
 
-  const onSubmitCreate = (data: any) => {
+  const onSubmitCreate = (data) => {
     createMutation.mutate(data);
   };
 
-  const onSubmitEdit = (data: any) => {
+  const onSubmitEdit = (data) => {
     if (selectedTemplate) {
       updateMutation.mutate({ id: selectedTemplate.id, data });
     }
   };
 
-  const onSubmitGenerate = (data: any) => {
+  const onSubmitGenerate = (data) => {
     if (selectedTemplate) {
       generateMutation.mutate({ id: selectedTemplate.id, data });
     }

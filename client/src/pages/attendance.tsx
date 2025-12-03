@@ -44,7 +44,7 @@ export default function AttendancePage() {
         const res = await fetch("/api/shift-attendance");
         if (!res.ok) return null;
         const allShifts = await res.json();
-        return allShifts.find((s: any) => !s.checkOutTime) || null;
+        return allShifts.find((s) => !s.checkOutTime) || null;
       } catch (error) {
         return null;
       }
@@ -59,7 +59,7 @@ export default function AttendancePage() {
       const res = await fetch("/api/shift-attendance");
       if (!res.ok) throw new Error(res.statusText);
       const allShifts = await res.json();
-      return allShifts.filter((s: any) => s.checkOutTime).slice(0, 10);
+      return allShifts.filter((s) => s.checkOutTime).slice(0, 10);
     },
     enabled: !!user,
   });
@@ -104,7 +104,7 @@ export default function AttendancePage() {
         photoUrl: uploadedPhotoUrl,
       });
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       const analysisResult = data.analysisDetails;
       const isCompliant = analysisResult?.isCompliant ?? true;
       
@@ -122,7 +122,7 @@ export default function AttendancePage() {
       }
       queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Giriş yapılamadı",
@@ -145,7 +145,7 @@ export default function AttendancePage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Çıkış yapılamadı",
@@ -168,7 +168,7 @@ export default function AttendancePage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Mola başlatılamadı",
@@ -191,7 +191,7 @@ export default function AttendancePage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Mola sonlandırılamadı",
@@ -255,7 +255,7 @@ export default function AttendancePage() {
                         <span className="text-sm text-muted-foreground">Dress Code</span>
                         {activeShift.analysisStatus === 'completed' ? (
                           activeShift.analysisDetails.isCompliant ? (
-                            <Badge variant="default" className="bg-green-600" data-testid="badge-dress-code-compliant">
+                            <Badge variant="default" className="bg-success" data-testid="badge-dress-code-compliant">
                               <CheckCircle className="mr-1 h-3 w-3" />
                               Uyumlu
                             </Badge>
@@ -511,7 +511,7 @@ export default function AttendancePage() {
                       <TableCell>
                         {record.analysisDetails ? (
                           record.analysisDetails.isCompliant ? (
-                            <Badge variant="default" className="bg-green-600" data-testid={`badge-compliant-${record.id}`}>
+                            <Badge variant="default" className="bg-success" data-testid={`badge-compliant-${record.id}`}>
                               <CheckCircle className="mr-1 h-3 w-3" />
                               Uyumlu
                             </Badge>

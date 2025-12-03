@@ -133,7 +133,7 @@ export default function VardiyaCheckin() {
       setCapturedPhoto(url);
       setIsCapturingPhoto(false);
       return url;
-    } catch (error: any) {
+    } catch (error) {
       setIsCapturingPhoto(false);
       
       // Normalize browser errors
@@ -188,7 +188,7 @@ export default function VardiyaCheckin() {
               // User has active attendance, so check out
               checkOutMutation.mutate({ qrCode: decodedText });
             }
-          } catch (error: any) {
+          } catch (error) {
             toast({
               title: "Hata",
               description: error.message || "QR kod işlenemedi",
@@ -199,7 +199,7 @@ export default function VardiyaCheckin() {
         (errorMessage) => {
         }
       );
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Kamera Hatası",
         description: "Kameraya erişilemedi. Lütfen izinleri kontrol edin.",
@@ -232,12 +232,12 @@ export default function VardiyaCheckin() {
           latitude: loc.latitude,
           longitude: loc.longitude,
         });
-      } catch (error: any) {
+      } catch (error) {
         // Re-throw with clear user message (errors already normalized in capturePhoto/getLocation)
         throw error;
       }
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       toast({
         title: "✅ Giriş Başarılı",
         description: "Vardiyaya giriş yapıldı. Dress code analizi yapılıyor...",
@@ -247,7 +247,7 @@ export default function VardiyaCheckin() {
       setCapturedPhoto(null);
       setLocation(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Giriş yapılamadı. QR kod geçersiz veya süresi dolmuş olabilir.",
@@ -274,7 +274,7 @@ export default function VardiyaCheckin() {
           latitude: loc.latitude,
           longitude: loc.longitude,
         });
-      } catch (error: any) {
+      } catch (error) {
         throw error;
       }
     },
@@ -286,7 +286,7 @@ export default function VardiyaCheckin() {
       queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
       setScannedQR(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Çıkış yapılamadı. QR kod geçersiz veya süresi dolmuş olabilir.",
@@ -343,13 +343,13 @@ export default function VardiyaCheckin() {
         <Card>
           <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             {capturedPhoto && (
-              <div className="flex items-center gap-2 text-sm text-green-600">
+              <div className="flex items-center gap-2 text-sm text-success">
                 <CheckCircle className="h-4 w-4" />
                 <span>Fotoğraf çekildi ✓</span>
               </div>
             )}
             {location && (
-              <div className="flex items-center gap-2 text-sm text-green-600">
+              <div className="flex items-center gap-2 text-sm text-success">
                 <MapPin className="h-4 w-4" />
                 <span>Konum alındı ✓</span>
               </div>
@@ -362,7 +362,7 @@ export default function VardiyaCheckin() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-success" />
               Aktif Vardiya
             </CardTitle>
             <CardDescription>

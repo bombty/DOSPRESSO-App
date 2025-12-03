@@ -60,7 +60,7 @@ export default function BranchFeedback() {
   };
 
   const statusColors: Record<string, string> = {
-    yeni: "bg-yellow-100 text-yellow-800",
+    yeni: "bg-warning/20 text-yellow-800",
     okundu: "bg-blue-100 text-blue-800",
     yanıtlandı: "bg-green-100 text-green-800",
   };
@@ -167,7 +167,7 @@ export default function BranchFeedback() {
                       </div>
                       <p className="text-sm text-foreground mb-2" data-testid={`text-feedback-message-${fb.id}`}>{fb.message}</p>
                       {fb.response && (
-                        <div className="mt-3 p-2 bg-green-50 rounded text-sm">
+                        <div className="mt-3 p-2 bg-success/10 rounded text-sm">
                           <p className="font-semibold text-green-900">Yanıt:</p>
                           <p className="text-green-800">{fb.response}</p>
                         </div>

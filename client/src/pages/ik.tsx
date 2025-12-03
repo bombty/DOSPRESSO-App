@@ -1057,7 +1057,7 @@ function AddEmployeeDialog({
       onOpenChange(false);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Personel eklenirken hata oluştu",
@@ -1365,7 +1365,7 @@ function EditEmployeeDialog({
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       return apiRequest(`/api/employees/${employee.id}`, "PUT", data);
     },
     onSuccess: () => {
@@ -1376,7 +1376,7 @@ function EditEmployeeDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
       onOpenChange(false);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Güncelleme sırasında hata oluştu",
@@ -1385,7 +1385,7 @@ function EditEmployeeDialog({
     },
   });
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data) => {
     updateMutation.mutate(data);
   };
 
@@ -1718,7 +1718,7 @@ function AddWarningDialog({
       onOpenChange(false);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Uyarı eklenirken hata oluştu",
@@ -1841,7 +1841,7 @@ function ResetPasswordDialog({
       onOpenChange(false);
       setNewPassword("");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Şifre sıfırlanırken hata oluştu",

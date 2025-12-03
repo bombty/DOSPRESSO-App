@@ -114,7 +114,7 @@ export default function DenetimlerPage() {
       // Navigate to audit execution page
       window.location.href = `/denetim/${newAudit.id}`;
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ 
         title: "Hata", 
         description: error.message || "Denetim oluşturulamadı",

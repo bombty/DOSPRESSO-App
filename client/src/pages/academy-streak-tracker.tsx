@@ -82,7 +82,7 @@ export default function AcademyStreakTracker() {
           </div>
           <p className="text-xs text-muted-foreground mb-2">Son: {lastActivityDay}</p>
           {streakDays > 0 ? (
-            <p className="text-green-600 text-xs font-semibold">✓ Bugünü tamamladın!</p>
+            <p className="text-success text-xs font-semibold">✓ Bugünü tamamladın!</p>
           ) : (
             <p className="text-amber-600 text-xs font-semibold">Sınav al</p>
           )}
@@ -158,7 +158,7 @@ export default function AcademyStreakTracker() {
                 key={idx}
                 className={`aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-all hover-elevate ${
                   day.isActive
-                    ? "bg-green-500 text-white"
+                    ? "bg-success/100 text-white"
                     : "bg-slate-200 dark:bg-slate-700 text-muted-foreground"
                 }`}
                 title={day.date}

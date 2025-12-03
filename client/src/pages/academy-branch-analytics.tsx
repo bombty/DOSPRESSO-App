@@ -23,19 +23,19 @@ export default function AcademyBranchAnalytics() {
 
   const totalBranches = branchMetrics.length;
   const avgCompletionRate = totalBranches > 0 
-    ? Math.round(branchMetrics.reduce((sum: number, b: any) => sum + (b.completionRate || 0), 0) / totalBranches)
+    ? Math.round(branchMetrics.reduce((sum: number, b) => sum + (b.completionRate || 0), 0) / totalBranches)
     : 0;
   const avgScore = totalBranches > 0
-    ? (branchMetrics.reduce((sum: number, b: any) => sum + (b.avgScore || 0), 0) / totalBranches).toFixed(1)
+    ? (branchMetrics.reduce((sum: number, b) => sum + (b.avgScore || 0), 0) / totalBranches).toFixed(1)
     : 0;
 
   // Sort branches by completion rate
-  const topBranches = [...branchMetrics].sort((a: any, b: any) => (b.completionRate || 0) - (a.completionRate || 0));
+  const topBranches = [...branchMetrics].sort((a, b) => (b.completionRate || 0) - (a.completionRate || 0));
 
   // Performance trend data
   const performanceTrend = branchMetrics
     .slice(0, 5)
-    .map((b: any) => ({
+    .map((b) => ({
       name: b.branchName?.substring(0, 12) || "Şube",
       completion: b.completionRate || 0,
       avgScore: b.avgScore || 0,
@@ -158,7 +158,7 @@ export default function AcademyBranchAnalytics() {
                 <CardDescription>Tamamlama oranına göre sıralanmış</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3 sm:gap-4">
-                {topBranches.map((branch: any, idx: number) => (
+                {topBranches.map((branch, idx: number) => (
                   <div key={branch.branchId} className="grid grid-cols-1 gap-2 p-3 border rounded-lg" data-testid={`branch-card-${branch.branchId}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 sm:gap-3">
@@ -205,7 +205,7 @@ export default function AcademyBranchAnalytics() {
                       </tr>
                     </thead>
                     <tbody>
-                      {branchMetrics.map((branch: any) => (
+                      {branchMetrics.map((branch) => (
                         <tr key={branch.branchId} className="border-b">
                           <td className="py-2">{branch.branchName}</td>
                           <td className="text-right">{branch.activeStudents || 0}</td>

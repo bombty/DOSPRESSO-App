@@ -191,7 +191,7 @@ export default function AcademyHQ() {
       quizForm.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/academy/quizzes"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -205,7 +205,7 @@ export default function AcademyHQ() {
       setIsAssignOpen(false);
       assignForm.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -249,7 +249,7 @@ export default function AcademyHQ() {
       trainingForm.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -262,7 +262,7 @@ export default function AcademyHQ() {
       toast({ title: "Eğitim modülü silindi" });
       queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -279,7 +279,7 @@ export default function AcademyHQ() {
       editTrainingForm.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -299,7 +299,7 @@ export default function AcademyHQ() {
       setAiWizardStep(2);
       toast({ title: "Modül başarıyla oluşturuldu! Önizlemeye geçiliyor..." });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "AI modül oluşturma başarısız",
@@ -322,7 +322,7 @@ export default function AcademyHQ() {
       resetAiWizard();
       queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Kaydetme Hatası",
         description: error.message || "Modül kaydedilemedi",
@@ -364,7 +364,7 @@ export default function AcademyHQ() {
       const result = await response.json();
       setAiInputText(result.extractedText);
       toast({ title: `Metin çıkarıldı: ${result.fileName}` });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Dosya İşleme Hatası",
         description: error.message || "Dosyadan metin çıkarılamadı",
@@ -629,7 +629,7 @@ export default function AcademyHQ() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-col gap-3 sm:gap-4">
-                        {quizzes.slice(0, 3).map((quiz: any) => (
+                        {quizzes.slice(0, 3).map((quiz) => (
                           <div key={quiz.id} className="p-2 border rounded text-sm">
                             <p className="font-medium">{quiz.title_tr}</p>
                             <p className="text-xs text-muted-foreground">{quiz.description_tr}</p>
@@ -690,7 +690,7 @@ export default function AcademyHQ() {
                   <p className="text-center py-8 text-muted-foreground text-sm">Talep yok</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
-                    {pendingExams.map((exam: any) => (
+                    {pendingExams.map((exam) => (
                       <div key={exam.id} className="p-3 border rounded text-sm">
                         <div className="flex items-start justify-between mb-2">
                           <div>
@@ -740,7 +740,7 @@ export default function AcademyHQ() {
                   <p className="text-center py-8 text-muted-foreground text-sm">Onay yok</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
-                    {approvedExams.map((exam: any) => (
+                    {approvedExams.map((exam) => (
                       <div key={exam.id} className="p-3 border rounded text-sm">
                         <p className="font-medium">{exam.userId}</p>
                         <p className="text-xs text-muted-foreground">Rol: {exam.targetRoleId}</p>
@@ -966,8 +966,8 @@ export default function AcademyHQ() {
                   {/* Step 2: Preview Generated Module */}
                   {aiWizardStep === 2 && generatedModule && (
                     <div className="w-full space-y-2 sm:space-y-3">
-                      <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
-                        <p className="text-sm font-medium text-green-700 dark:text-green-300">Modül başarıyla oluşturuldu!</p>
+                      <div className="bg-success/10 dark:bg-success/10 p-3 rounded-lg border border-success/30 dark:border-success/40">
+                        <p className="text-sm font-medium text-success dark:text-green-300">Modül başarıyla oluşturuldu!</p>
                       </div>
                       
                       <div className="grid grid-cols-1 gap-2 sm:gap-3 max-h-96 overflow-y-auto">
@@ -992,7 +992,7 @@ export default function AcademyHQ() {
                         <div>
                           <h5 className="font-medium text-sm mb-2">Eğitim Adımları ({generatedModule.steps?.length || 0})</h5>
                           <div className="flex flex-col gap-3 sm:gap-4">
-                            {generatedModule.steps?.map((step: any, i: number) => (
+                            {generatedModule.steps?.map((step, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{step.stepNumber}. {step.title}</p>
                                 <p className="text-muted-foreground text-xs mt-1 line-clamp-2">{step.content}</p>
@@ -1004,7 +1004,7 @@ export default function AcademyHQ() {
                         <div>
                           <h5 className="font-medium text-sm mb-2">Quiz Soruları ({generatedModule.quiz?.length || 0})</h5>
                           <div className="flex flex-col gap-3 sm:gap-4">
-                            {generatedModule.quiz?.map((q: any, i: number) => (
+                            {generatedModule.quiz?.map((q, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{q.questionText}</p>
                                 <div className="flex gap-1 mt-1 flex-wrap">
@@ -1022,7 +1022,7 @@ export default function AcademyHQ() {
                         <div>
                           <h5 className="font-medium text-sm mb-2">Senaryolar ({generatedModule.scenarioTasks?.length || 0})</h5>
                           <div className="flex flex-col gap-3 sm:gap-4">
-                            {generatedModule.scenarioTasks?.map((s: any, i: number) => (
+                            {generatedModule.scenarioTasks?.map((s, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{s.title}</p>
                                 <p className="text-muted-foreground text-xs">{s.description}</p>
@@ -1034,7 +1034,7 @@ export default function AcademyHQ() {
                         <div>
                           <h5 className="font-medium text-sm mb-2">Denetçi Kontrol Listesi ({generatedModule.supervisorChecklist?.length || 0})</h5>
                           <div className="flex flex-col gap-3 sm:gap-4">
-                            {generatedModule.supervisorChecklist?.map((c: any, i: number) => (
+                            {generatedModule.supervisorChecklist?.map((c, i: number) => (
                               <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                                 <p className="font-medium">{c.title}</p>
                                 <p className="text-muted-foreground text-xs">{c.description}</p>

@@ -50,7 +50,7 @@ export default function ForgotPassword() {
         description: "Şifre sıfırlama bağlantısı email adresinize gönderildi.",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Bir hata oluştu",

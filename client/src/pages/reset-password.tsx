@@ -62,7 +62,7 @@ export default function ResetPassword() {
         navigate("/login");
       }, 3000);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Şifre sıfırlanamadı",

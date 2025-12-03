@@ -36,7 +36,7 @@ const PRIORITY_VARIANTS = {
   'düşük': 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700',
   'orta': 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700',
   'yüksek': 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-700',
-  'kritik': 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-700',
+  'kritik': 'bg-destructive/10 border-destructive/30 dark:bg-red-900/20 dark:border-red-700',
 } as const;
 
 interface UnifiedRequest {
@@ -121,7 +121,7 @@ export default function EkipmanServis() {
   const unifiedRequests: UnifiedRequest[] = useMemo(() => {
     const combined: UnifiedRequest[] = [];
     
-    faults.forEach((fault: any) => {
+    faults.forEach((fault) => {
       combined.push({
         id: fault.id,
         type: 'fault',
@@ -138,7 +138,7 @@ export default function EkipmanServis() {
       });
     });
 
-    serviceRequests.forEach((req: any) => {
+    serviceRequests.forEach((req) => {
       combined.push({
         id: req.id,
         type: 'service',
@@ -175,7 +175,7 @@ export default function EkipmanServis() {
 
   const branchEquipment = useMemo(() => {
     if (!createBranch) return [];
-    return allEquipment.filter((eq: any) => eq.branchId === parseInt(createBranch));
+    return allEquipment.filter((eq) => eq.branchId === parseInt(createBranch));
   }, [createBranch, allEquipment]);
 
   // QR Scanner
@@ -346,7 +346,7 @@ export default function EkipmanServis() {
       setCreateDialogOpen(false);
       resetForm();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: 'Hata',
         description: error.message || 'İşlem başarısız',
@@ -392,7 +392,7 @@ export default function EkipmanServis() {
         title: 'Başarılı',
         description: 'AI arıza analizi tamamlandı',
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Hata',
         description: error.message || 'AI analiz başarısız',
@@ -440,7 +440,7 @@ export default function EkipmanServis() {
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
               <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertTriangle className="h-4 w-4 text-destructive" />
               </div>
               <p className="text-xs text-muted-foreground">Arıza</p>
               <p className="text-lg font-bold">{stats.faults}</p>
@@ -450,8 +450,8 @@ export default function EkipmanServis() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                <ClipboardList className="h-4 w-4 text-green-600" />
+              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                <ClipboardList className="h-4 w-4 text-success" />
               </div>
               <p className="text-xs text-muted-foreground">Servis</p>
               <p className="text-lg font-bold">{stats.services}</p>
@@ -609,7 +609,7 @@ export default function EkipmanServis() {
                 ) : (
                   <>
                     <div className="grid grid-cols-2 gap-2">
-                      {branchEquipment.map((eq: any) => (
+                      {branchEquipment.map((eq) => (
                         <button
                           key={eq.id}
                           onClick={() => setCreateEquipment(eq)}
@@ -646,7 +646,7 @@ export default function EkipmanServis() {
                     onClick={() => setCreateType('fault')}
                     className={`p-3 rounded-lg border-2 text-center hover-elevate transition-all ${
                       createType === 'fault'
-                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                        ? 'border-destructive bg-destructive/10 dark:bg-red-900/20'
                         : 'border-border'
                     }`}
                     data-testid="button-type-fault"
@@ -716,15 +716,15 @@ export default function EkipmanServis() {
                     )}
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="bg-white dark:bg-blue-900 p-2 rounded">
-                        <p className="text-gray-600 dark:text-gray-300">Ciddiyet</p>
+                        <p className="text-muted-foreground dark:text-gray-300">Ciddiyet</p>
                         <p className="font-semibold text-blue-900 dark:text-blue-100">{aiDiagnosis.estimatedSeverity}</p>
                       </div>
                       <div className="bg-white dark:bg-blue-900 p-2 rounded">
-                        <p className="text-gray-600 dark:text-gray-300">Süre</p>
+                        <p className="text-muted-foreground dark:text-gray-300">Süre</p>
                         <p className="font-semibold text-blue-900 dark:text-blue-100">{aiDiagnosis.estimatedRepairTime}</p>
                       </div>
                       <div className="bg-white dark:bg-blue-900 p-2 rounded">
-                        <p className="text-gray-600 dark:text-gray-300">Eylem</p>
+                        <p className="text-muted-foreground dark:text-gray-300">Eylem</p>
                         <p className="font-semibold text-blue-900 dark:text-blue-100 truncate">{aiDiagnosis.recommendedAction?.substring(0, 10)}</p>
                       </div>
                     </div>
@@ -763,7 +763,7 @@ export default function EkipmanServis() {
                   <Label>Öncelik</Label>
                   <Select value={priority} onValueChange={setPriority}>
                     <SelectTrigger className={
-                      priority === 'kritik' ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+                      priority === 'kritik' ? 'border-destructive bg-destructive/10 dark:bg-red-900/20' :
                       priority === 'yüksek' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' : ''
                     }>
                       <SelectValue />
@@ -801,7 +801,7 @@ export default function EkipmanServis() {
                       {photo1Preview ? (
                         <img src={photo1Preview} alt="Foto 1" className="w-full aspect-square object-cover rounded-lg border" />
                       ) : (
-                        <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed flex items-center justify-center">
+                        <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed flex items-center justify-center">
                           <ImageIcon className="w-6 h-6 text-gray-400" />
                         </div>
                       )}
@@ -827,7 +827,7 @@ export default function EkipmanServis() {
                       {photo2Preview ? (
                         <img src={photo2Preview} alt="Foto 2" className="w-full aspect-square object-cover rounded-lg border" />
                       ) : (
-                        <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed flex items-center justify-center">
+                        <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed flex items-center justify-center">
                           <ImageIcon className="w-6 h-6 text-gray-400" />
                         </div>
                       )}

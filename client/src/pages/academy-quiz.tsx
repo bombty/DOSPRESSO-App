@@ -68,7 +68,7 @@ export default function AcademyQuiz() {
   const handleSubmit = () => {
     // Calculate score
     let correctCount = 0;
-    quiz.questions.forEach((q: any, idx: number) => {
+    quiz.questions.forEach((q, idx: number) => {
       if (parseInt(answers[idx]) === q.correctAnswerIndex) {
         correctCount++;
       }
@@ -154,12 +154,12 @@ export default function AcademyQuiz() {
                   {/* Difficulty Progression Path */}
                   <div className="flex items-center justify-between mt-3 p-2 bg-white dark:bg-slate-900 rounded-lg">
                     <div className="text-xs text-center">
-                      <Badge variant="outline" className="bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200">Kolay</Badge>
+                      <Badge variant="outline" className="bg-green-100 dark:bg-success/5 text-green-800 dark:text-green-200">Kolay</Badge>
                       <p className="text-xs text-muted-foreground mt-1">Tamamlandı</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />
                     <div className="text-xs text-center">
-                      <Badge variant="outline" className={recommendation.nextDifficulty === 'medium' ? "bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200" : "bg-slate-100 dark:bg-slate-800"}>Orta</Badge>
+                      <Badge variant="outline" className={recommendation.nextDifficulty === 'medium' ? "bg-warning/20 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200" : "bg-slate-100 dark:bg-slate-800"}>Orta</Badge>
                       <p className="text-xs text-muted-foreground mt-1">{recommendation.nextDifficulty === 'medium' ? 'Sonraki' : 'Kilitli'}</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />

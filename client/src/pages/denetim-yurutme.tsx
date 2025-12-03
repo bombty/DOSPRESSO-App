@@ -92,7 +92,7 @@ export default function DenetimYurutmePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/audit-instances', auditId] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ 
         title: "Hata", 
         description: error.message || "Madde güncellenemedi",
@@ -114,7 +114,7 @@ export default function DenetimYurutmePage() {
       toast({ title: "Denetim tamamlandı", description: "Denetim başarıyla kaydedildi." });
       setLocation('/denetimler');
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ 
         title: "Hata", 
         description: error.message || "Denetim tamamlanamadı",
@@ -348,24 +348,24 @@ export default function DenetimYurutmePage() {
                     {isCompleted && item.response && item.templateItem.correctAnswer && (
                       <div className={`flex items-center gap-2 p-3 rounded-md ${
                         item.response === item.templateItem.correctAnswer 
-                          ? 'bg-green-50 dark:bg-green-950/20' 
-                          : 'bg-red-50 dark:bg-red-950/20'
+                          ? 'bg-success/10 dark:bg-success/5/20' 
+                          : 'bg-destructive/10 dark:bg-destructive/10'
                       }`} data-testid={`feedback-mc-${index}`}>
                         {item.response === item.templateItem.correctAnswer ? (
                           <>
-                            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />
-                            <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                            <CheckCircle2 className="h-4 w-4 text-success dark:text-green-500" />
+                            <span className="text-sm font-medium text-success dark:text-success">
                               Doğru cevap!
                             </span>
                           </>
                         ) : (
                           <>
-                            <XCircle className="h-4 w-4 text-red-600 dark:text-red-500" />
+                            <XCircle className="h-4 w-4 text-destructive dark:text-red-500" />
                             <div className="flex-1">
                               <span className="text-sm font-medium text-red-700 dark:text-red-400 block">
                                 Yanlış cevap
                               </span>
-                              <span className="text-sm text-red-600 dark:text-red-400">
+                              <span className="text-sm text-destructive dark:text-red-400">
                                 Doğru cevap: <strong>{item.templateItem.correctAnswer}</strong>
                               </span>
                             </div>
@@ -395,7 +395,7 @@ export default function DenetimYurutmePage() {
                         const data = await res.json();
                         return { method: "PUT" as const, url: data.url };
                       }}
-                      onComplete={(result: any) => {
+                      onComplete={(result) => {
                         const uploadURL = result.successful?.[0]?.uploadURL;
                         if (uploadURL) {
                           handlePhotoUpload(item.templateItemId, uploadURL);
@@ -409,7 +409,7 @@ export default function DenetimYurutmePage() {
                   </div>
                 )}
                 {requiresPhoto && item.photoUrl && (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
+                  <div className="flex items-center gap-2 text-sm text-success">
                     <CheckCircle2 className="h-4 w-4" />
                     Fotoğraf yüklendi
                   </div>

@@ -1041,7 +1041,7 @@ export default function EquipmentDetail() {
                             </Button>
                           </div>
                           <div className="flex flex-col gap-3 sm:gap-4">
-                            {request.timeline.slice(-3).reverse().map((entry: any) => (
+                            {request.timeline.slice(-3).reverse().map((entry) => (
                               <div key={entry.id} className="text-xs text-muted-foreground flex items-start gap-2">
                                 <Avatar className="h-4 w-4">
                                   <AvatarFallback className="text-xs">
@@ -1653,7 +1653,7 @@ export default function EquipmentDetail() {
           </DialogHeader>
           {selectedTimeline && selectedTimeline.timeline && selectedTimeline.timeline.length > 0 ? (
             <div className="w-full space-y-2 sm:space-y-3">
-              {[...selectedTimeline.timeline].reverse().map((entry: any) => (
+              {[...selectedTimeline.timeline].reverse().map((entry) => (
                 <div key={entry.id} className="flex items-start gap-2 sm:gap-3 pb-4 border-b last:border-0" data-testid={`timeline-entry-${entry.id}`}>
                   <Avatar className="h-10 w-10">
                     <AvatarFallback>
@@ -2042,7 +2042,7 @@ export default function EquipmentDetail() {
                           <div className="pt-2 border-t">
                             <p className="text-xs font-medium text-muted-foreground mb-1">Kaynaklar:</p>
                             <div className="flex flex-wrap gap-1">
-                              {aiAnswer.sources.map((source: any, idx: number) => (
+                              {aiAnswer.sources.map((source, idx: number) => (
                                 <Badge key={idx} variant="outline" className="text-xs" data-testid={`badge-ai-source-${idx}`}>
                                   {source.title || `Kaynak ${idx + 1}`}
                                 </Badge>

@@ -80,7 +80,7 @@ export default function Sikayetler() {
       setResolutionNotes("");
       setCustomerSatisfaction(undefined);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Şikayet çözümlenirken hata oluştu",
@@ -97,7 +97,7 @@ export default function Sikayetler() {
       case "high":
         return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100" data-testid={testId}><AlertTriangle className="w-3 h-3 mr-1" />Yüksek</Badge>;
       case "medium":
-        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" data-testid={testId}>Orta</Badge>;
+        return <Badge className="bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" data-testid={testId}>Orta</Badge>;
       default:
         return <Badge variant="outline" data-testid={testId}>Düşük</Badge>;
     }
@@ -162,7 +162,7 @@ export default function Sikayetler() {
             className={`${starSize} ${
               star <= rating
                 ? "text-yellow-400"
-                : "text-gray-200 dark:text-gray-700"
+                : "text-gray-200 dark:text-foreground"
             }`}
           >
             ★

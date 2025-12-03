@@ -262,7 +262,7 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
       onOpenChange(false);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "İzin talebi oluşturulamadı",
@@ -382,7 +382,7 @@ function ApproveButton({ requestId }: { requestId: number }) {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "İzin talebi onaylanamadı",
@@ -418,7 +418,7 @@ function RejectButton({ requestId }: { requestId: number }) {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "İzin talebi reddedilemedi",

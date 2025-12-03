@@ -169,7 +169,7 @@ export default function DenetimSablonlariPage() {
       toast({ title: "Şablon oluşturuldu", description: "Denetim şablonu başarıyla kaydedildi." });
       handleCloseDialog();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ 
         title: "Hata", 
         description: error.message || "Şablon oluşturulurken hata oluştu",
@@ -191,7 +191,7 @@ export default function DenetimSablonlariPage() {
       toast({ title: "Şablon güncellendi", description: "Değişiklikler kaydedildi." });
       handleCloseDialog();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ 
         title: "Hata", 
         description: error.message || "Şablon güncellenirken hata oluştu",
@@ -209,7 +209,7 @@ export default function DenetimSablonlariPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/audit-templates'] });
       toast({ title: "Şablon silindi", description: "Denetim şablonu başarıyla kaldırıldı." });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ 
         title: "Hata", 
         description: error.message || "Şablon silinirken hata oluştu",
@@ -294,7 +294,7 @@ export default function DenetimSablonlariPage() {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const handleUpdateItem = (index: number, field: keyof TemplateItemFormData, value: any) => {
+  const handleUpdateItem = (index: number, field: keyof TemplateItemFormData, value) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
     
@@ -785,7 +785,7 @@ export default function DenetimSablonlariPage() {
                                     variant="outline"
                                     size="icon"
                                     onClick={() => {
-                                      const newOptions = (item.options || []).filter((_: any, i: number) => i !== optionIndex);
+                                      const newOptions = (item.options || []).filter((_, i: number) => i !== optionIndex);
                                       handleUpdateItem(index, 'options', newOptions.length > 0 ? newOptions : null);
                                       // Clear correctAnswer if it was the removed option
                                       if (item.correctAnswer === option) {

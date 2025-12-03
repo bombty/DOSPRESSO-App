@@ -96,7 +96,7 @@ export default function KampanyaYonetimi() {
       setIsCreateDialogOpen(false);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Kampanya oluşturulurken hata oluştu",

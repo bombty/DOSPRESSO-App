@@ -97,7 +97,7 @@ export default function KaliteDenetimi() {
       setIsCreateDialogOpen(false);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Denetim oluşturulurken hata oluştu",

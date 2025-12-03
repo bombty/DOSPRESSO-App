@@ -170,7 +170,7 @@ export default function RolYetkileri() {
       });
       setHasChanges(false);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Rol yetkileri güncellenirken hata oluştu",

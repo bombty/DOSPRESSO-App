@@ -49,7 +49,7 @@ export default function AcademyAnalytics() {
 
   // Generate performance trend data from quiz stats
   const performanceData = quizStats?.quizHistory
-    ? quizStats.quizHistory.slice(-7).map((q: any, idx: number) => ({
+    ? quizStats.quizHistory.slice(-7).map((q, idx: number) => ({
         name: `Sınav ${idx + 1}`,
         score: q.score,
         date: new Date(q.completedAt).toLocaleDateString("tr-TR")
@@ -90,7 +90,7 @@ export default function AcademyAnalytics() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-yellow-900/20 flex items-center justify-center">
                 <Trophy className="h-4 w-4 text-yellow-600" />
               </div>
               <p className="text-xs text-muted-foreground">Kariyer</p>
@@ -126,8 +126,8 @@ export default function AcademyAnalytics() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                <Award className="h-4 w-4 text-green-600" />
+              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                <Award className="h-4 w-4 text-success" />
               </div>
               <p className="text-xs text-muted-foreground">Rozetler</p>
               <p className="text-lg font-bold">{userBadges.length}/6</p>
@@ -189,8 +189,8 @@ export default function AcademyAnalytics() {
                   <Progress value={(userBadges.length / 6) * 100} className="h-2" />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-6">
-                  {userBadges.map((badge: any) => (
-                    <div key={badge.id} className="p-3 border rounded-lg bg-green-50 dark:bg-green-950">
+                  {userBadges.map((badge) => (
+                    <div key={badge.id} className="p-3 border rounded-lg bg-success/10 dark:bg-success/5">
                       <p className="font-medium text-sm">{badge.titleTr}</p>
                       <p className="text-xs text-muted-foreground">{badge.points} puan</p>
                     </div>

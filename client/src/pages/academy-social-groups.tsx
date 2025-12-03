@@ -45,7 +45,7 @@ export default function AcademySocialGroups() {
       {/* Study Groups */}
       <div className="w-full space-y-2 sm:space-y-3 gap-2">
         {studyGroups.length > 0 ? (
-          studyGroups.map((group: any) => (
+          studyGroups.map((group) => (
             <Card key={group.id} className="cursor-pointer hover-elevate">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center justify-between gap-1">

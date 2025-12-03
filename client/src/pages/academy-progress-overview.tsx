@@ -22,7 +22,7 @@ export default function AcademyProgressOverview() {
   });
 
   const metrics = [
-    { label: "Kariyer Seviyesi", value: "Barista", color: "text-green-600" },
+    { label: "Kariyer Seviyesi", value: "Barista", color: "text-success" },
     { label: "Tamamlanan Sınavlar", value: "24", color: "text-blue-600" },
     { label: "Ortalama Puan", value: "82.5", color: "text-purple-600" },
     { label: "Başarı Rozeti", value: "4/6", color: "text-amber-600" },
@@ -125,14 +125,14 @@ export default function AcademyProgressOverview() {
         <CardContent>
           <div className="flex flex-col gap-3 sm:gap-4">
             <div className="flex gap-2 items-start">
-              <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-medium">Barista Rozeti Kazandı</p>
                 <p className="text-xs text-muted-foreground">2 gün önce</p>
               </div>
             </div>
             <div className="flex gap-2 items-start">
-              <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-medium">Zor Sınav Tamamlandı</p>
                 <p className="text-xs text-muted-foreground">5 gün önce</p>

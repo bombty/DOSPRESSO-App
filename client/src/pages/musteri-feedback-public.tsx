@@ -48,7 +48,7 @@ export default function MusteriFeedbackPublic() {
         description: "Geri bildiriminiz için teşekkür ederiz!" 
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Geri bildirim gönderilemedi",
@@ -67,7 +67,7 @@ export default function MusteriFeedbackPublic() {
       <div className="min-h-screen flex items-center justify-center p-3 bg-gradient-to-br from-background to-muted">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-            <CheckCircle className="w-16 h-16 text-green-600" data-testid="icon-success" />
+            <CheckCircle className="w-16 h-16 text-success" data-testid="icon-success" />
             <h2 className="text-2xl font-bold" data-testid="heading-thank-you">Teşekkür Ederiz!</h2>
             <p className="text-center text-muted-foreground" data-testid="text-success-message">
               Geri bildiriminiz başarıyla kaydedildi. Görüşleriniz bizim için çok değerli.

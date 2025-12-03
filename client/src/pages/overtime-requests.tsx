@@ -335,7 +335,7 @@ export default function OvertimeRequestsPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {shiftAttendances.map((attendance: any) => (
+                        {shiftAttendances.map((attendance) => (
                           <SelectItem key={attendance.id} value={attendance.id.toString()}>
                             {format(new Date(attendance.checkInTime), "dd.MM.yyyy HH:mm")}
                           </SelectItem>

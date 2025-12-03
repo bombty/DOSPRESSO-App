@@ -39,7 +39,7 @@ export default function TrainingAssign() {
   });
 
   const assignMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       return apiRequest("POST", "/api/training/assignments", data);
     },
     onSuccess: () => {
@@ -49,7 +49,7 @@ export default function TrainingAssign() {
       setDueDate("");
       queryClient.invalidateQueries({ queryKey: ["/api/training/assignments"] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });

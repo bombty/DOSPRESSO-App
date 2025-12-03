@@ -58,10 +58,10 @@ const PRIORITY_LABELS: Record<TicketPriorityType, string> = {
 };
 
 const PRIORITY_COLORS: Record<TicketPriorityType, string> = {
-  dusuk: "bg-gray-500",
+  dusuk: "bg-background0",
   normal: "bg-blue-500",
   yuksek: "bg-orange-500",
-  acil: "bg-red-500",
+  acil: "bg-destructive/100",
 };
 
 // Extended ticket type with relations
@@ -408,7 +408,7 @@ function CreateTicketDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {branches.map((branch: any) => (
+                        {branches.map((branch) => (
                           <SelectItem key={branch.id} value={branch.id.toString()} data-testid={`option-branch-${branch.id}`}>
                             {branch.name}
                           </SelectItem>

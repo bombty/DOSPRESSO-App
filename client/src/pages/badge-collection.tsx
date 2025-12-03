@@ -31,7 +31,7 @@ export default function BadgeCollection() {
 
   const badgeColors: Record<string, { bg: string; icon: any; text: string }> = {
     coffee_cherry: { bg: "bg-orange-100 dark:bg-orange-950", icon: Award, text: "Kahve Kirazı" },
-    green_bean: { bg: "bg-green-100 dark:bg-green-950", icon: Award, text: "Yeşil Çekirdek" },
+    green_bean: { bg: "bg-green-100 dark:bg-success/5", icon: Award, text: "Yeşil Çekirdek" },
     bean_expert: { bg: "bg-amber-100 dark:bg-amber-950", icon: Trophy, text: "Çekirdek Uzmanı" },
     roast_master: { bg: "bg-red-100 dark:bg-red-950", icon: Flame, text: "Kavurma Ustası" },
     coffee_pro: { bg: "bg-purple-100 dark:bg-purple-950", icon: Trophy, text: "Kahve Pro" },
@@ -63,7 +63,7 @@ export default function BadgeCollection() {
             <p className="text-muted-foreground text-center py-8">No badges yet. Complete modules to earn badges!</p>
           ) : (
             <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
-              {userBadges.map((userBadge: any) => {
+              {userBadges.map((userBadge) => {
                 const config = badgeColors[userBadge.badgeKey] || badgeColors.coffee_cherry;
                 const IconComponent = config.icon;
                 return (
@@ -95,16 +95,16 @@ export default function BadgeCollection() {
         </CardHeader>
         <CardContent>
           <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
-            {allBadges.map((badge: any) => {
-              const isEarned = userBadges.some((ub: any) => ub.id === badge.id);
+            {allBadges.map((badge) => {
+              const isEarned = userBadges.some((ub) => ub.id === badge.id);
               return (
-                <div key={badge.id} className={`p-3 rounded-lg border ${isEarned ? "border-green-500 bg-green-50 dark:bg-green-950/30" : "border-muted"}`}>
+                <div key={badge.id} className={`p-3 rounded-lg border ${isEarned ? "border-green-500 bg-success/10 dark:bg-success/5/30" : "border-muted"}`}>
                   <div className="flex items-start justify-between gap-2 sm:gap-3">
                     <div className="flex-1">
                       <h3 className="font-semibold">{badge.name}</h3>
                       <p className="text-sm text-muted-foreground">{badge.description}</p>
                     </div>
-                    {isEarned && <Badge className="bg-green-600">✓ Earned</Badge>}
+                    {isEarned && <Badge className="bg-success">✓ Earned</Badge>}
                   </div>
                 </div>
               );

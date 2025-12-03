@@ -64,7 +64,7 @@ export default function AcademyAdvancedAnalytics() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">85%</p>
-            <p className="text-xs text-green-600 mt-1">↑ 5% geçen haftaya göre</p>
+            <p className="text-xs text-success mt-1">↑ 5% geçen haftaya göre</p>
           </CardContent>
         </Card>
 

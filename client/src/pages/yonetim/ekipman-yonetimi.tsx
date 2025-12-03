@@ -58,7 +58,7 @@ const STATUS_COLORS: Record<string, string> = {
   'planlandı': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   'devam_ediyor': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   'tamamlandı': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  'iptal_edildi': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+  'iptal_edildi': 'bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-200',
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -88,7 +88,7 @@ const getPriority = (req: ServiceRequest, equipment: EquipmentType[]): string =>
 
 const getHealthStatus = (equipment: EquipmentType): { status: string; color: string; icon: React.ReactNode } => {
   if (!equipment.isActive) {
-    return { status: 'Pasif', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200', icon: <Clock className="w-4 h-4" /> };
+    return { status: 'Pasif', color: 'bg-secondary text-foreground dark:bg-gray-800 dark:text-gray-200', icon: <Clock className="w-4 h-4" /> };
   }
 
   if (equipment.warrantyEndDate) {
@@ -435,14 +435,14 @@ export default function EquipmentManagement() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-        <Card className={stats.critical > 0 ? 'border-red-200 dark:border-red-800' : ''}>
+        <Card className={stats.critical > 0 ? 'border-destructive/30 dark:border-red-800' : ''}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.pending}</div>
             {stats.critical > 0 && (
-              <div className="text-xs text-red-600 dark:text-red-400 mt-1 font-semibold">
+              <div className="text-xs text-destructive dark:text-red-400 mt-1 font-semibold">
                 ⚠️ {stats.critical} Kritik
               </div>
             )}
@@ -461,7 +461,7 @@ export default function EquipmentManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Tamamlanan (30gün)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+            <div className="text-2xl font-bold text-success">{stats.completed}</div>
           </CardContent>
         </Card>
         <Card>
@@ -606,7 +606,7 @@ export default function EquipmentManagement() {
                         <div className="text-xs text-muted-foreground mt-1">{hoursOld.toFixed(1)}s önce oluşturuldu</div>
                       </div>
                       <div className="text-right">
-                        <Badge className={STATUS_COLORS[req.status] || 'bg-gray-100'}>
+                        <Badge className={STATUS_COLORS[req.status] || 'bg-secondary'}>
                           {STATUS_LABELS[req.status] || req.status}
                         </Badge>
                         <div className="text-xs text-muted-foreground mt-2">
@@ -670,7 +670,7 @@ export default function EquipmentManagement() {
                         <div className="font-medium">{EQUIPMENT_TYPE_LABELS[eq?.equipmentType || ''] || eq?.equipmentType}</div>
                         <div className="text-sm text-muted-foreground">{branch?.name}</div>
                       </div>
-                      <Badge className={STATUS_COLORS[req.status] || 'bg-gray-100'}>
+                      <Badge className={STATUS_COLORS[req.status] || 'bg-secondary'}>
                         {STATUS_LABELS[req.status] || req.status}
                       </Badge>
                     </div>
@@ -824,7 +824,7 @@ export default function EquipmentManagement() {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium flex items-center gap-2">
                                 <span>Talep #{req.id}</span>
-                                <Badge variant="outline" className={STATUS_COLORS[req.status] || 'bg-gray-100'}>
+                                <Badge variant="outline" className={STATUS_COLORS[req.status] || 'bg-secondary'}>
                                   {STATUS_LABELS[req.status] || req.status}
                                 </Badge>
                               </div>

@@ -148,7 +148,7 @@ export default function ModuleDetail() {
       setObjectivesOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -167,7 +167,7 @@ export default function ModuleDetail() {
       objectivesForm.setValue("objectives", data.objectives);
       toast({ title: "Hedefler oluşturuldu", description: "AI ile öğrenme hedefleri oluşturuldu" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -188,7 +188,7 @@ export default function ModuleDetail() {
       setStepsOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -209,7 +209,7 @@ export default function ModuleDetail() {
       setQuizOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -230,7 +230,7 @@ export default function ModuleDetail() {
       setScenariosOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -251,7 +251,7 @@ export default function ModuleDetail() {
       setChecklistOpen(false);
       queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -317,7 +317,7 @@ export default function ModuleDetail() {
         </div>
 
         {/* Student Learning Tabs */}
-        <Tabs value={previewPhase} onValueChange={(v: any) => setPreviewPhase(v)} className="w-full">
+        <Tabs value={previewPhase} onValueChange={(v) => setPreviewPhase(v)} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="objectives">Hedefler</TabsTrigger>
             <TabsTrigger value="steps" disabled={previewPhase === 'objectives'}>İçerik</TabsTrigger>
@@ -339,7 +339,7 @@ export default function ModuleDetail() {
                   <ul className="flex flex-col gap-3 sm:gap-4">
                     {learningObjectives.map((objective: string, idx: number) => (
                       <li key={idx} className="flex gap-2 sm:gap-3 text-sm">
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <CheckCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                         <span>{objective}</span>
                       </li>
                     ))}
@@ -420,14 +420,14 @@ export default function ModuleDetail() {
                       setPreviewPhase('completed');
                       queryClient.invalidateQueries({ queryKey: ["/api/training/user-modules-stats"] });
                       queryClient.invalidateQueries({ queryKey: ["/api/academy/career-progress"] });
-                    } catch (err: any) {
+                    } catch (err) {
                       toast({ title: "Hata", description: err.message, variant: "destructive" });
                     } finally {
                       setIsMarkingComplete(false);
                     }
                   }}
                   disabled={isMarkingComplete}
-                  className="w-full bg-green-600 hover:bg-green-700"
+                  className="w-full bg-success hover:bg-green-700"
                 >
                   {isMarkingComplete ? "Kaydediliyor..." : "Sınavı Tamamla"} <CheckCircle className="w-4 h-4 ml-2" />
                 </Button>
@@ -443,9 +443,9 @@ export default function ModuleDetail() {
 
           {/* Completed Tab */}
           <TabsContent value="completed" className="w-full space-y-2 sm:space-y-3">
-            <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+            <Card className="bg-success/10 dark:bg-success/5 border-success/30 dark:border-success/40">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                <CardTitle className="flex items-center gap-2 text-success dark:text-success">
                   <Award className="w-6 h-6" />
                   Modül Tamamlandı!
                 </CardTitle>
@@ -571,7 +571,7 @@ export default function ModuleDetail() {
                         <ul className="flex flex-col gap-3 sm:gap-4">
                           {learningObjectives.map((objective: string, idx: number) => (
                             <li key={idx} className="flex gap-2 sm:gap-3 text-sm">
-                              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                              <CheckCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                               <span>{objective}</span>
                             </li>
                           ))}
@@ -690,7 +690,7 @@ export default function ModuleDetail() {
                   ) : (
                     <>
                       <div className="w-full space-y-2 sm:space-y-3">
-                        {module.quiz.map((q: any, idx: number) => (
+                        {module.quiz.map((q, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-green-500">
                             <CardContent className="pt-4">
                               <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
@@ -702,8 +702,8 @@ export default function ModuleDetail() {
                                     className={`w-full text-left p-3 rounded border-2 transition-colors ${
                                       previewQuizAnswers[idx] === optIdx
                                         ? optIdx === q.correct_option_index
-                                          ? "border-green-500 bg-green-50 dark:bg-green-950/20"
-                                          : "border-red-500 bg-red-50 dark:bg-red-950/20"
+                                          ? "border-green-500 bg-success/10 dark:bg-success/5/20"
+                                          : "border-destructive bg-destructive/10 dark:bg-destructive/10"
                                         : "border-muted hover:border-primary"
                                     }`}
                                     data-testid={`button-quiz-option-${idx}-${optIdx}`}
@@ -754,7 +754,7 @@ export default function ModuleDetail() {
                   ) : (
                     <>
                       <div className="flex flex-col gap-3 sm:gap-4">
-                        {scenarioTasks.map((scenario: any, idx: number) => (
+                        {scenarioTasks.map((scenario, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-purple-500">
                             <CardContent className="pt-4">
                               <div className="flex flex-col gap-3 sm:gap-4">
@@ -801,14 +801,14 @@ export default function ModuleDetail() {
                 <div className="grid grid-cols-1 gap-2 sm:gap-3 text-center py-8">
                   <div className="flex justify-center">
                     <div className="relative">
-                      <Award className="w-24 h-24 text-yellow-500" />
-                      <CheckCircle className="w-8 h-8 text-green-600 absolute bottom-0 right-0" />
+                      <Award className="w-24 h-24 text-warning" />
+                      <CheckCircle className="w-8 h-8 text-success absolute bottom-0 right-0" />
                     </div>
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold mb-2">Tebrikler!</h3>
                     <p className="text-muted-foreground mb-1">Modülü başarıyla tamamladınız</p>
-                    <Badge className="mt-3 bg-yellow-100 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-200">
+                    <Badge className="mt-3 bg-warning/20 text-warning dark:bg-yellow-950 dark:text-yellow-200">
                       <Award className="w-3 h-3 mr-1" />
                       Rozet Kazandı: {module.title}
                     </Badge>
@@ -964,7 +964,7 @@ export default function ModuleDetail() {
                     });
                     toast({ title: "Atamalar kaydedildi" });
                     queryClient.invalidateQueries({ queryKey: [`/api/training/modules/${moduleId}`] });
-                  } catch (err: any) {
+                  } catch (err) {
                     toast({ title: "Hata", description: err.message, variant: "destructive" });
                   }
                 }}
@@ -989,7 +989,7 @@ export default function ModuleDetail() {
               </CardHeader>
               <CardContent>
                 <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
-                  {module.galleryImages.map((img: any, idx: number) => (
+                  {module.galleryImages.map((img, idx: number) => (
                     <div key={idx} className="overflow-hidden rounded-lg bg-muted aspect-[6/4]">
                       <img
                         src={img.url}
@@ -1078,7 +1078,7 @@ export default function ModuleDetail() {
                 <ul className="flex flex-col gap-3 sm:gap-4">
                   {learningObjectives.map((objective: string, idx: number) => (
                     <li key={idx} className="flex gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
                       <span>{objective}</span>
                     </li>
                   ))}
@@ -1116,7 +1116,7 @@ export default function ModuleDetail() {
                         )}
                         className="grid grid-cols-1 gap-2 sm:gap-3 max-h-96 overflow-y-auto"
                       >
-                        {stepsForm.watch("steps").map((step: any, index) => (
+                        {stepsForm.watch("steps").map((step, index) => (
                           <div key={index} className="border p-3 rounded grid grid-cols-1 gap-2 sm:gap-3 bg-muted/30">
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
@@ -1139,7 +1139,7 @@ export default function ModuleDetail() {
                                 size="sm"
                                 onClick={() => {
                                   const current = stepsForm.watch("steps");
-                                  stepsForm.setValue("steps", current.filter((_: any, i: number) => i !== index));
+                                  stepsForm.setValue("steps", current.filter((_, i: number) => i !== index));
                                 }}
                                 data-testid={`button-delete-step-${index}`}
                               >
@@ -1199,9 +1199,9 @@ export default function ModuleDetail() {
                                         type="button"
                                         onClick={() => {
                                           const current = stepsForm.watch(`steps.${index}.photos`) || [];
-                                          stepsForm.setValue(`steps.${index}.photos`, current.filter((_: any, i: number) => i !== pidx));
+                                          stepsForm.setValue(`steps.${index}.photos`, current.filter((_, i: number) => i !== pidx));
                                         }}
-                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                        className="absolute -top-1 -right-1 bg-destructive/100 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                                         data-testid={`button-remove-photo-${index}-${pidx}`}
                                       >
                                         ×
@@ -1240,7 +1240,7 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Adım tanımlanmamış</p>
               ) : (
                 <div className="w-full space-y-2 sm:space-y-3">
-                  {steps.map((step: any, idx: number) => (
+                  {steps.map((step, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-blue-500">
                       <CardHeader className="pb-2">
                         <div className="flex items-center gap-2">
@@ -1331,7 +1331,7 @@ export default function ModuleDetail() {
                                 size="sm"
                                 onClick={() => {
                                   const current = quizForm.watch("quiz");
-                                  quizForm.setValue("quiz", current.filter((_: any, i: number) => i !== index));
+                                  quizForm.setValue("quiz", current.filter((_, i: number) => i !== index));
                                 }}
                                 data-testid={`button-delete-quiz-${index}`}
                               >
@@ -1382,7 +1382,7 @@ export default function ModuleDetail() {
                                     onClick={() => {
                                       const current = quizForm.watch(`quiz.${index}.options`) || [];
                                       if (current.length > 1) {
-                                        quizForm.setValue(`quiz.${index}.options`, current.filter((_: any, i: number) => i !== optIndex));
+                                        quizForm.setValue(`quiz.${index}.options`, current.filter((_, i: number) => i !== optIndex));
                                       }
                                     }}
                                     data-testid={`button-delete-option-${index}-${optIndex}`}
@@ -1434,14 +1434,14 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Quiz sorusu tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {module.quiz.map((q: any, idx: number) => (
+                  {module.quiz.map((q, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-green-500">
                       <CardContent className="pt-4">
                         <p className="font-medium text-sm">{q.question_text || `Soru ${idx + 1}`}</p>
                         {q.options && (
                           <ul className="text-sm space-y-1 mt-2 ml-4">
                             {q.options.map((opt: string, oidx: number) => (
-                              <li key={oidx} className={`list-disc ${oidx === q.correct_option_index ? "text-green-600 font-medium" : "text-muted-foreground"}`}>
+                              <li key={oidx} className={`list-disc ${oidx === q.correct_option_index ? "text-success font-medium" : "text-muted-foreground"}`}>
                                 {opt}
                               </li>
                             ))}
@@ -1537,7 +1537,7 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Senaryo görev tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {scenarioTasks.map((scenario: any, idx: number) => (
+                  {scenarioTasks.map((scenario, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-purple-500">
                       <CardContent className="pt-4">
                         <div className="flex flex-col gap-3 sm:gap-4">
@@ -1643,7 +1643,7 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Kontrol listesi maddesi tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {module.supervisorChecklist.map((item: any, idx: number) => (
+                  {module.supervisorChecklist.map((item, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-orange-500">
                       <CardContent className="pt-4">
                         <div className="w-full space-y-1 md:space-y-1">

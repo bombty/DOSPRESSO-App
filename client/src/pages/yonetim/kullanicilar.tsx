@@ -178,7 +178,7 @@ export default function UserCRM() {
   const bulkImportMutation = useMutation({
     mutationFn: async (csvUsers: any[]) =>
       apiRequest("POST", "/api/admin/users/bulk-import", { users: csvUsers }),
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({ 
         title: "Başarılı", 

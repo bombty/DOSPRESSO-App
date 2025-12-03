@@ -45,9 +45,9 @@ const updateFaultSchema = z.object({
 });
 
 const STAGE_COLORS: Record<string, string> = {
-  bekliyor: "bg-gray-100 text-gray-800 dark:bg-gray-900",
+  bekliyor: "bg-secondary text-foreground dark:bg-gray-900",
   isleme_alindi: "bg-blue-100 text-blue-800 dark:bg-blue-900",
-  devam_ediyor: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900",
+  devam_ediyor: "bg-warning/20 text-yellow-800 dark:bg-yellow-900",
   servis_cagrildi: "bg-orange-100 text-orange-800 dark:bg-orange-900",
   kargoya_verildi: "bg-purple-100 text-purple-800 dark:bg-purple-900",
   kapatildi: "bg-green-100 text-green-800 dark:bg-green-900",
@@ -179,7 +179,7 @@ export default function FaultDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge className={STAGE_COLORS[fault.currentStage] || "bg-gray-100"}>
+            <Badge className={STAGE_COLORS[fault.currentStage] || "bg-secondary"}>
               {STAGE_LABELS[fault.currentStage] || fault.currentStage}
             </Badge>
           </CardContent>

@@ -60,7 +60,7 @@ export default function MisafirGeriBildirim() {
       setReviewingFeedback(null);
       setReviewNotes("");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Geri bildirim güncellenirken hata oluştu",
@@ -79,7 +79,7 @@ export default function MisafirGeriBildirim() {
             className={`${starSize} ${
               star <= rating
                 ? "fill-yellow-400 text-yellow-400"
-                : "fill-gray-200 text-gray-200 dark:fill-gray-700 dark:text-gray-700"
+                : "fill-gray-200 text-gray-200 dark:fill-gray-700 dark:text-foreground"
             }`}
           />
         ))}
@@ -156,7 +156,7 @@ export default function MisafirGeriBildirim() {
                   return (
                     <div key={rating} className="flex items-center gap-2 sm:gap-3">
                       <span className="text-sm font-medium w-12">{rating} yıldız</span>
-                      <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 bg-accent dark:bg-gray-700 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-yellow-400"
                           style={{ width: `${percentage}%` }}

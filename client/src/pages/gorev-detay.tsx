@@ -77,7 +77,7 @@ export default function GorevDetay() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
       toast({ title: "Başarılı", description: "Görev tamamlandı olarak işaretlendi" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
     },
   });
@@ -91,7 +91,7 @@ export default function GorevDetay() {
       setNote("");
       toast({ title: "Başarılı", description: "Not eklendi" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message || "Not eklenemedi", variant: "destructive" });
     },
   });
@@ -266,7 +266,7 @@ export default function GorevDetay() {
             <CardContent>
               {checklistTasks && checklistTasks.length > 0 ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {checklistTasks.map((item: any) => (
+                  {checklistTasks.map((item) => (
                     <div
                       key={item.id}
                       className="flex items-center gap-2 sm:gap-3 p-3 rounded-lg border"
@@ -274,7 +274,7 @@ export default function GorevDetay() {
                     >
                       <div
                         className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                          item.isCompleted ? "bg-green-500 border-green-500" : "border-gray-300"
+                          item.isCompleted ? "bg-success/100 border-green-500" : "border-gray-300"
                         }`}
                       >
                         {item.isCompleted && <CheckCircle className="h-3 w-3 text-white" />}
@@ -323,7 +323,7 @@ export default function GorevDetay() {
                 </div>
                 {task.notes && task.notes.length > 0 ? (
                   <div className="grid grid-cols-1 gap-2 pt-4 border-t">
-                    {task.notes.map((n: any, idx: number) => (
+                    {task.notes.map((n, idx: number) => (
                       <div key={idx} className="p-3 rounded-lg bg-muted">
                         <p className="text-sm">{n.content}</p>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -369,11 +369,11 @@ export default function GorevDetay() {
                   </div>
                 )}
                 {task.status === "completed" && (
-                  <div className="flex items-start gap-2 sm:gap-3 p-3 rounded-lg border bg-green-50 dark:bg-green-950/20">
-                    <CheckCircle className="h-4 w-4 mt-1 text-green-600" />
+                  <div className="flex items-start gap-2 sm:gap-3 p-3 rounded-lg border bg-success/10 dark:bg-success/5/20">
+                    <CheckCircle className="h-4 w-4 mt-1 text-success" />
                     <div>
-                      <p className="text-sm font-medium text-green-700 dark:text-green-400">Görev tamamlandı</p>
-                      <p className="text-xs text-green-600/80">
+                      <p className="text-sm font-medium text-success dark:text-success">Görev tamamlandı</p>
+                      <p className="text-xs text-success/80">
                         {task.completedAt ? new Date(task.completedAt).toLocaleString("tr-TR") : "-"}
                       </p>
                     </div>

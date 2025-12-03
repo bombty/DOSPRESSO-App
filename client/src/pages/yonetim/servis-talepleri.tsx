@@ -33,21 +33,21 @@ const STATUS_VARIANTS = {
   'planlandi': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   'devam_ediyor': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   'tamamlandi': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  'iptal_edildi': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+  'iptal_edildi': 'bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-200',
 } as const;
 
 const PRIORITY_VARIANTS = {
   'düşük': 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700',
   'orta': 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700',
   'yüksek': 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-700',
-  'kritik': 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-700',
+  'kritik': 'bg-destructive/10 border-destructive/30 dark:bg-red-900/20 dark:border-red-700',
 } as const;
 
 const PRIORITY_COLORS = {
   'düşük': 'text-blue-600 dark:text-blue-400',
   'orta': 'text-amber-600 dark:text-amber-400',
   'yüksek': 'text-orange-600 dark:text-orange-400',
-  'kritik': 'text-red-600 dark:text-red-400',
+  'kritik': 'text-destructive dark:text-red-400',
 } as const;
 
 interface ServiceRequestWithEquipment {
@@ -134,7 +134,7 @@ export default function ServiceRequestsManagement() {
     queryKey: ['/api/service-requests', filterBranch !== 'all' ? parseInt(filterBranch) : undefined, filterStatus !== 'all' ? filterStatus : undefined],
   });
 
-  const branchEquipment = selectedEquipment ? [] : (createBranch ? allEquipment.filter((eq: any) => eq.branchId === parseInt(createBranch)) : []);
+  const branchEquipment = selectedEquipment ? [] : (createBranch ? allEquipment.filter((eq) => eq.branchId === parseInt(createBranch)) : []);
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ requestId, status, details }: { requestId: number; status: string; details?: any }) => {
@@ -156,7 +156,7 @@ export default function ServiceRequestsManagement() {
         description: 'Servis talebi durumu güncellendi',
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: 'Hata',
         description: error.message || 'Durum güncellenemedi',
@@ -197,10 +197,10 @@ export default function ServiceRequestsManagement() {
   };
 
   const createRequestMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       return await apiRequest('POST', '/api/service-requests/', data);
     },
-    onSuccess: (response: any) => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['/api/service-requests'] });
       setCreateDialogOpen(false);
       const newRequestId = response?.id;
@@ -221,7 +221,7 @@ export default function ServiceRequestsManagement() {
         description: 'Servis talebi oluşturuldu' + (createPhoto1File || createPhoto2File ? ' ve fotoğraflar yükleniyor' : ''),
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: 'Hata',
         description: error.message || 'Talep oluşturulamadı',
@@ -511,7 +511,7 @@ export default function ServiceRequestsManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Tamamlanan</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+            <div className="text-2xl font-bold text-success">{stats.completed}</div>
           </CardContent>
         </Card>
         <Card>
@@ -519,7 +519,7 @@ export default function ServiceRequestsManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">İptal Edilen</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{stats.cancelled}</div>
+            <div className="text-2xl font-bold text-muted-foreground">{stats.cancelled}</div>
           </CardContent>
         </Card>
         <Card>
@@ -527,7 +527,7 @@ export default function ServiceRequestsManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Kritik Öncelik</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.criticalPriority}</div>
+            <div className="text-2xl font-bold text-destructive">{stats.criticalPriority}</div>
           </CardContent>
         </Card>
       </div>
@@ -671,7 +671,7 @@ export default function ServiceRequestsManagement() {
                       </div>
                     )}
                     {request.completedDate && (
-                      <div className="flex items-center gap-2 text-green-600">
+                      <div className="flex items-center gap-2 text-success">
                         <CheckCircle2 className="w-4 h-4" />
                         <span>Tamamlandı: {format(new Date(request.completedDate), 'd MMM yyyy', { locale: tr })}</span>
                       </div>
@@ -797,7 +797,7 @@ export default function ServiceRequestsManagement() {
                     {selectedRequest.completedDate && (
                       <div className="w-full space-y-1 md:space-y-1">
                         <p className="text-sm text-muted-foreground">Tamamlanma Tarihi</p>
-                        <p className="font-medium text-green-600">{format(new Date(selectedRequest.completedDate), 'd MMM yyyy', { locale: tr })}</p>
+                        <p className="font-medium text-success">{format(new Date(selectedRequest.completedDate), 'd MMM yyyy', { locale: tr })}</p>
                       </div>
                     )}
                   </div>
@@ -1101,7 +1101,7 @@ export default function ServiceRequestsManagement() {
                 <Label className="text-base font-semibold">Adım 2: Cihaz Seçimi *</Label>
                 {branchEquipment.length > 0 ? (
                   <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
-                    {branchEquipment.map((eq: any) => (
+                    {branchEquipment.map((eq) => (
                       <button
                         key={eq.id}
                         onClick={() => setSelectedEquipment(eq)}
@@ -1176,7 +1176,7 @@ export default function ServiceRequestsManagement() {
                   {createPhoto1Preview ? (
                     <img src={createPhoto1Preview} alt="Fotoğraf 1" className="w-full aspect-square object-cover rounded-lg border" />
                   ) : (
-                    <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                    <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
                       <div className="text-center">
                         <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
                         <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 1</p>
@@ -1215,7 +1215,7 @@ export default function ServiceRequestsManagement() {
                   {createPhoto2Preview ? (
                     <img src={createPhoto2Preview} alt="Fotoğraf 2" className="w-full aspect-square object-cover rounded-lg border" />
                   ) : (
-                    <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                    <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
                       <div className="text-center">
                         <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
                         <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 2</p>

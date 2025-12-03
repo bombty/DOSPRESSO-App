@@ -46,13 +46,13 @@ export default function AcademyAdaptiveEngine() {
       <Card className="col-span-full">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-1">
-            <Zap className="w-4 h-4 text-yellow-500" />
+            <Zap className="w-4 h-4 text-warning" />
             Önerilen Yollar
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:gap-4">
           {recommendations.length > 0 ? (
-            recommendations.map((rec: any, idx: number) => (
+            recommendations.map((rec, idx: number) => (
               <div key={idx} className="p-2 border rounded-lg space-y-1">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

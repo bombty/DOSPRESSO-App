@@ -31,7 +31,7 @@ export default function AcademyCohortAnalytics() {
   ];
 
   // Career progression by branch
-  const branchProgression = cohortData.slice(0, 5).map((b: any) => ({
+  const branchProgression = cohortData.slice(0, 5).map((b) => ({
     branch: b.name?.substring(0, 10) || "Şube",
     stajyer: Math.floor(Math.random() * 30),
     buddy: Math.floor(Math.random() * 25),

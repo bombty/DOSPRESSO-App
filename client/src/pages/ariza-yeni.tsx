@@ -92,7 +92,7 @@ export default function NewFaultReport() {
       });
       return response;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
       toast({
         title: "Başarılı",
@@ -102,7 +102,7 @@ export default function NewFaultReport() {
         setLocation(`/ariza-detay/${data.id}`);
       }, 1000);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Arıza raporlama başarısız oldu",
@@ -163,12 +163,12 @@ export default function NewFaultReport() {
       </div>
 
       {/* Priority Warning */}
-      <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800">
+      <Card className="border-warning/30 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800">
         <CardContent className="pt-6">
           <div className="flex gap-2 sm:gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-yellow-900 dark:text-yellow-200">Acil Durum</p>
+              <p className="font-medium text-warning dark:text-yellow-200">Acil Durum</p>
               <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">
                 Eğer bu bir güvenlik tehlikesi veya üretim durması ise, lütfen "Yüksek" veya "Kritik" olarak işaretleyin.
               </p>
@@ -407,7 +407,7 @@ export default function NewFaultReport() {
                     <FormControl>
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
-                    <FormLabel className="font-normal cursor-pointer text-red-600 dark:text-red-400">
+                    <FormLabel className="font-normal cursor-pointer text-destructive dark:text-red-400">
                       Güvenlik tehlikesi oluşturuyor
                     </FormLabel>
                   </FormItem>

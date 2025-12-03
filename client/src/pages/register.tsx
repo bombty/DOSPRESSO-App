@@ -120,7 +120,7 @@ export default function Register() {
         navigate("/login");
       }, 2000);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Kayıt başarısız",
         description: error.message || "Bir hata oluştu",
@@ -316,7 +316,7 @@ export default function Register() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {branches?.map((branch: any) => (
+                          {branches?.map((branch) => (
                             <SelectItem
                               key={branch.id}
                               value={String(branch.id)}

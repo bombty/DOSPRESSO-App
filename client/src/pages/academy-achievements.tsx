@@ -77,7 +77,7 @@ export default function AcademyAchievements() {
     enabled: !!user?.id,
   });
 
-  const getProgress = (achievement: any) => {
+  const getProgress = (achievement) => {
     let current = 0;
     if (achievement.type === "quizzes") current = stats.completedQuizzes || 0;
     if (achievement.type === "score") current = stats.maxScore || 0;
@@ -87,7 +87,7 @@ export default function AcademyAchievements() {
     return Math.min(100, Math.round((current / achievement.requirement) * 100));
   };
 
-  const isUnlocked = (achievement: any) => getProgress(achievement) >= 100;
+  const isUnlocked = (achievement) => getProgress(achievement) >= 100;
   const unlockedCount = ACHIEVEMENTS.filter(a => isUnlocked(a)).length;
 
   if (isLoading) {
@@ -181,7 +181,7 @@ export default function AcademyAchievements() {
                 </div>
 
                 {unlocked && (
-                  <Badge className="w-full justify-center bg-green-500 hover:bg-green-600">
+                  <Badge className="w-full justify-center bg-success/100 hover:bg-success">
                     ✓ Açıldı
                   </Badge>
                 )}

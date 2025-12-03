@@ -220,7 +220,7 @@ export default function PersonelDetay() {
         description: "Personel için onboarding süreci başlatıldı",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Onboarding başlatılamadı. Lütfen tekrar deneyin.",
@@ -230,7 +230,7 @@ export default function PersonelDetay() {
   });
 
   const uploadDocumentMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       return apiRequest("POST", "/api/employee-documents", data);
     },
     onSuccess: () => {
@@ -245,7 +245,7 @@ export default function PersonelDetay() {
         description: "Belge başarıyla yüklendi",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Belge eklenirken hata oluştu",
@@ -265,7 +265,7 @@ export default function PersonelDetay() {
         description: "Belge başarıyla onaylandı",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Belge onaylanırken hata oluştu",
@@ -285,7 +285,7 @@ export default function PersonelDetay() {
         description: "Belge başarıyla silindi",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Belge silinirken hata oluştu",
@@ -306,7 +306,7 @@ export default function PersonelDetay() {
         description: "Görev başarıyla tamamlandı",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Görev tamamlanırken hata oluştu",
@@ -327,7 +327,7 @@ export default function PersonelDetay() {
         description: "Görev başarıyla doğrulandı",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Görev doğrulanırken hata oluştu",
@@ -470,12 +470,12 @@ export default function PersonelDetay() {
               <div>
                 <p className="text-sm text-muted-foreground">Durum</p>
                 {employee.isActive ? (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  <Badge variant="outline" className="bg-success/10 text-success border-success/30">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Aktif
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                  <Badge variant="outline" className="bg-background text-foreground border-gray-200">
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Pasif
                   </Badge>
@@ -649,12 +649,12 @@ export default function PersonelDetay() {
                           </TableCell>
                           <TableCell>
                             {doc.isVerified ? (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              <Badge variant="outline" className="bg-success/10 text-success border-success/30">
                                 <CheckCircle className="h-3 w-3 mr-1" />
                                 Onaylı
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                              <Badge variant="outline" className="bg-yellow-50 text-warning border-warning/30">
                                 <AlertCircle className="h-3 w-3 mr-1" />
                                 Bekliyor
                               </Badge>
@@ -692,7 +692,7 @@ export default function PersonelDetay() {
                                 disabled={deleteDocumentMutation.isPending}
                                 data-testid={`button-delete-document-${doc.id}`}
                               >
-                                <Trash2 className="h-4 w-4 text-red-600" />
+                                <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
                           </TableCell>
@@ -740,7 +740,7 @@ export default function PersonelDetay() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {attendanceHistory.slice(0, 20).map((record: any) => (
+                      {attendanceHistory.slice(0, 20).map((record) => (
                         <TableRow key={record.id} data-testid={`row-attendance-${record.id}`}>
                           <TableCell className="font-medium">
                             {new Date(record.date).toLocaleDateString("tr-TR")}
@@ -792,7 +792,7 @@ export default function PersonelDetay() {
               ) : performanceScores && performanceScores.length > 0 ? (
                 <div className="w-full space-y-2 sm:space-y-3">
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                    {performanceScores.slice(0, 4).map((score: any, idx: number) => (
+                    {performanceScores.slice(0, 4).map((score, idx: number) => (
                       <Card key={idx} className="text-center p-3">
                         <p className="text-2xl font-bold text-primary">{score.overallScore || score.score || 0}</p>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -812,13 +812,13 @@ export default function PersonelDetay() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {performanceScores.map((score: any) => (
+                        {performanceScores.map((score) => (
                           <TableRow key={score.id} data-testid={`row-performance-${score.id}`}>
                             <TableCell className="font-medium">
                               {new Date(score.periodStart || score.createdAt).toLocaleDateString("tr-TR")}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={score.overallScore >= 80 ? "outline" : "default"} className={score.overallScore >= 80 ? "bg-green-50 text-green-700" : ""}>
+                              <Badge variant={score.overallScore >= 80 ? "outline" : "default"} className={score.overallScore >= 80 ? "bg-success/10 text-success" : ""}>
                                 {score.overallScore || score.score || 0}/100
                               </Badge>
                             </TableCell>
@@ -861,8 +861,8 @@ export default function PersonelDetay() {
                 </div>
               ) : trainingProgress && trainingProgress.length > 0 ? (
                 <div className="w-full space-y-2 sm:space-y-3">
-                  {trainingProgress.map((progress: any) => {
-                    const module = trainingModules?.find((m: any) => m.id === progress.moduleId);
+                  {trainingProgress.map((progress) => {
+                    const module = trainingModules?.find((m) => m.id === progress.moduleId);
                     return (
                       <Card key={progress.id} data-testid={`training-progress-${progress.id}`}>
                         <CardContent className="p-3">
@@ -880,7 +880,7 @@ export default function PersonelDetay() {
                                 <span className="text-sm font-medium">{progress.progress || 0}%</span>
                               </div>
                             </div>
-                            <Badge variant={progress.status === "completed" ? "outline" : "default"} className={progress.status === "completed" ? "bg-green-50 text-green-700" : ""}>
+                            <Badge variant={progress.status === "completed" ? "outline" : "default"} className={progress.status === "completed" ? "bg-success/10 text-success" : ""}>
                               {progress.status === "completed" ? "Tamamlandı" : progress.status === "in_progress" ? "Devam Ediyor" : "Başlamadı"}
                             </Badge>
                           </div>
@@ -929,7 +929,7 @@ export default function PersonelDetay() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {leaveRequests.map((leave: any) => (
+                          {leaveRequests.map((leave) => (
                             <TableRow key={leave.id} data-testid={`row-leave-${leave.id}`}>
                               <TableCell className="font-medium">
                                 {new Date(leave.startDate).toLocaleDateString("tr-TR")} - {new Date(leave.endDate).toLocaleDateString("tr-TR")}
@@ -941,7 +941,7 @@ export default function PersonelDetay() {
                               </TableCell>
                               <TableCell>{leave.totalDays || 1} gün</TableCell>
                               <TableCell>
-                                <Badge variant={leave.status === "approved" ? "outline" : leave.status === "rejected" ? "destructive" : "default"} className={leave.status === "approved" ? "bg-green-50 text-green-700" : ""}>
+                                <Badge variant={leave.status === "approved" ? "outline" : leave.status === "rejected" ? "destructive" : "default"} className={leave.status === "approved" ? "bg-success/10 text-success" : ""}>
                                   {leave.status === "pending" ? "Bekliyor" : leave.status === "approved" ? "Onaylandı" : "Reddedildi"}
                                 </Badge>
                               </TableCell>
@@ -974,7 +974,7 @@ export default function PersonelDetay() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {overtimeRequests.map((ot: any) => (
+                          {overtimeRequests.map((ot) => (
                             <TableRow key={ot.id} data-testid={`row-overtime-${ot.id}`}>
                               <TableCell className="font-medium">
                                 {new Date(ot.date).toLocaleDateString("tr-TR")}
@@ -982,7 +982,7 @@ export default function PersonelDetay() {
                               <TableCell>{ot.hours || ot.totalHours} saat</TableCell>
                               <TableCell className="max-w-xs truncate">{ot.reason || "-"}</TableCell>
                               <TableCell>
-                                <Badge variant={ot.status === "approved" ? "outline" : ot.status === "rejected" ? "destructive" : "default"} className={ot.status === "approved" ? "bg-green-50 text-green-700" : ""}>
+                                <Badge variant={ot.status === "approved" ? "outline" : ot.status === "rejected" ? "destructive" : "default"} className={ot.status === "approved" ? "bg-success/10 text-success" : ""}>
                                   {ot.status === "pending" ? "Bekliyor" : ot.status === "approved" ? "Onaylandı" : "Reddedildi"}
                                 </Badge>
                               </TableCell>
@@ -1184,7 +1184,7 @@ export default function PersonelDetay() {
                                     </Button>
                                   )}
                                   {task.verifiedAt && (
-                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                    <Badge variant="outline" className="bg-success/10 text-success border-success/30">
                                       <CheckCircle className="h-3 w-3 mr-1" />
                                       Doğrulandı
                                     </Badge>
@@ -1244,7 +1244,7 @@ export default function PersonelDetay() {
                     </div>
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Tamamlanan</p>
-                      <p className="text-2xl font-bold text-green-600">{trainingProgress.summary?.completed || 0}</p>
+                      <p className="text-2xl font-bold text-success">{trainingProgress.summary?.completed || 0}</p>
                     </div>
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Devam Eden</p>
@@ -1260,7 +1260,7 @@ export default function PersonelDetay() {
                     <div className="border rounded-lg p-3 bg-blue-50">
                       <p className="text-sm text-muted-foreground mb-1">Ortalama Başarı Oranı</p>
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                        <div className="flex-1 bg-accent rounded-full h-2">
                           <div 
                             className="bg-blue-600 h-2 rounded-full" 
                             style={{width: `${trainingProgress.averageScore}%`}}
@@ -1275,7 +1275,7 @@ export default function PersonelDetay() {
                     <div>
                       <h4 className="font-semibold mb-3">Atanan Eğitimler</h4>
                       <div className="flex flex-col gap-3 sm:gap-4 gap-2">
-                        {trainingProgress.assignments.slice(0, 6).map((a: any) => (
+                        {trainingProgress.assignments.slice(0, 6).map((a) => (
                           <div key={a.id} className="p-2 border rounded-lg text-center">
                             <p className="font-medium text-xs line-clamp-1">{a.materialId}</p>
                             <Badge variant={a.status === 'completed' ? 'default' : 'outline'} className="mt-1 text-xs">
@@ -1361,7 +1361,7 @@ export default function PersonelDetay() {
                       setTaskDescription("");
                       setTaskDueDate("");
                       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-                    } catch (error: any) {
+                    } catch (error) {
                       toast({ title: "Hata", description: error.message || "Görev atanırken hata oluştu", variant: "destructive" });
                     }
                   }}
@@ -1413,7 +1413,7 @@ export default function PersonelDetay() {
                       toast({ title: "Başarılı", description: "Mesaj gönderildi" });
                       setMessageText("");
                       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
-                    } catch (error: any) {
+                    } catch (error) {
                       toast({ title: "Hata", description: error.message || "Mesaj gönderilemedi", variant: "destructive" });
                     }
                   }}

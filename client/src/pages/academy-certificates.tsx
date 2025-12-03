@@ -76,21 +76,21 @@ export default function AcademyCertificates() {
               {/* Certificate Preview */}
               <div className={`bg-gradient-to-br ${currentLevel.certificateColor} p-3 rounded-lg border-2 border-dashed border-gray-300 text-center min-h-40 flex flex-col justify-between text-xs`}>
                 <div>
-                  <p className="text-sm text-gray-600 uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-widest">DOSPRESSO AKADEMİ</p>
                   <p className="text-lg font-serif mt-2">Kariyer Sertifikası</p>
                 </div>
 
                 <div>
-                  <p className="text-3xl font-bold text-gray-800 mb-2">{currentLevel.titleTr}</p>
-                  <p className="text-sm text-gray-600">Seviye {currentLevel.levelNumber} / 5</p>
+                  <p className="text-3xl font-bold text-foreground mb-2">{currentLevel.titleTr}</p>
+                  <p className="text-sm text-muted-foreground">Seviye {currentLevel.levelNumber} / 5</p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-foreground">
                     <span className="font-semibold">{user?.firstName ? `${user.firstName} ${user.lastName || ""}` : "Kullanıcı"}</span> tarafından başarıyla tamamlanmış
                   </p>
-                  <p className="text-xs text-gray-600">{today}</p>
-                  <p className="text-xs text-gray-600 mt-3">Sertifika No: CERT-{user?.id?.substring(0, 8).toUpperCase()}</p>
+                  <p className="text-xs text-muted-foreground">{today}</p>
+                  <p className="text-xs text-muted-foreground mt-3">Sertifika No: CERT-{user?.id?.substring(0, 8).toUpperCase()}</p>
                 </div>
               </div>
 
@@ -178,7 +178,7 @@ export default function AcademyCertificates() {
                       <Badge variant="secondary">Kilitli</Badge>
                       <p className="text-sm text-muted-foreground">Seviye {level.levelNumber} / 5</p>
                       <p className="text-xs text-muted-foreground mt-2">Sonraki kariyer seviyesini geçmek için sınavı tamamla</p>
-                      <div className="mt-3 p-2 bg-gray-100 dark:bg-slate-800 rounded">
+                      <div className="mt-3 p-2 bg-secondary dark:bg-slate-800 rounded">
                         <p className="text-xs font-medium">İlerleme: {progress}%</p>
                       </div>
                     </div>

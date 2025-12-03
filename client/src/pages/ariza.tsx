@@ -52,9 +52,9 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const STAGE_COLORS: Record<string, string> = {
-  bekliyor: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+  bekliyor: "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-200",
   isleme_alindi: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  devam_ediyor: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  devam_ediyor: "bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   servis_cagrildi: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
   kargoya_verildi: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
   kapatildi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -64,9 +64,9 @@ const getPriorityColor = (priority: string | null): string =>
   PRIORITY_COLORS[priority as string] || PRIORITY_COLORS.default;
 
 const getStageColor = (stage: string | null): string => 
-  STAGE_COLORS[stage as string] || "bg-gray-100 text-gray-800";
+  STAGE_COLORS[stage as string] || "bg-secondary text-foreground";
 
-const getTimeSinceCreation = (createdAt: any): string => {
+const getTimeSinceCreation = (createdAt): string => {
   if (!createdAt) return "-";
   const hours = differenceInHours(new Date(), new Date(createdAt));
   if (hours < 1) return "< 1 saat";
@@ -89,10 +89,10 @@ function FaultSkeleton() {
   return (
     <div className="flex items-center justify-between p-3 border rounded animate-pulse">
       <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+        <div className="h-4 bg-accent dark:bg-gray-700 rounded w-3/4"></div>
+        <div className="h-3 bg-accent dark:bg-gray-700 rounded w-1/2"></div>
       </div>
-      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+      <div className="h-8 bg-accent dark:bg-gray-700 rounded w-24"></div>
     </div>
   );
 }
@@ -224,10 +224,10 @@ export default function FaultHub() {
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
                   <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
                   </div>
                   <p className="text-xs text-muted-foreground">Kritik</p>
-                  <p className="text-lg font-bold text-red-600" data-testid="text-critical-count">{metrics.critical.length}</p>
+                  <p className="text-lg font-bold text-destructive" data-testid="text-critical-count">{metrics.critical.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -247,11 +247,11 @@ export default function FaultHub() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
                   <p className="text-xs text-muted-foreground">Çözüldü</p>
-                  <p className="text-lg font-bold text-green-600" data-testid="text-resolved-count">{metrics.resolved.length}</p>
+                  <p className="text-lg font-bold text-success" data-testid="text-resolved-count">{metrics.resolved.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -274,7 +274,7 @@ export default function FaultHub() {
               <h3 className="text-sm font-medium mb-2">Kritik Arızalar</h3>
               <div className="flex flex-col gap-3 sm:gap-4">
                 {metrics.critical.map((fault: EquipmentFault) => (
-                  <Card key={fault.id} className="border-red-500 bg-red-50 dark:bg-red-950 hover-elevate" data-testid={`card-critical-fault-${fault.id}`}>
+                  <Card key={fault.id} className="border-destructive bg-destructive/10 dark:bg-red-950 hover-elevate" data-testid={`card-critical-fault-${fault.id}`}>
                     <CardContent className="p-3">
                       <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{fault.description}</p>
@@ -310,14 +310,14 @@ export default function FaultHub() {
         {/* TAB 2: Arıza Süreleri */}
         <TabsContent value="sla" className="w-full space-y-2 sm:space-y-3">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <Card className="border-red-500 bg-red-50 dark:bg-red-950">
+            <Card className="border-destructive bg-destructive/10 dark:bg-red-950">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
                   <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
                   </div>
-                  <p className="text-xs text-red-600">Zaman Aşımı</p>
-                  <p className="text-lg font-bold text-red-600" data-testid="text-breached-count">{metrics.breached.length}</p>
+                  <p className="text-xs text-destructive">Zaman Aşımı</p>
+                  <p className="text-lg font-bold text-destructive" data-testid="text-breached-count">{metrics.breached.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -334,14 +334,14 @@ export default function FaultHub() {
               </CardContent>
             </Card>
 
-            <Card className="border-green-500 bg-green-50 dark:bg-green-950">
+            <Card className="border-green-500 bg-success/10 dark:bg-success/5">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
-                  <p className="text-xs text-green-600">Sağlıklı</p>
-                  <p className="text-lg font-bold text-green-600" data-testid="text-healthy-count">{metrics.healthy.length}</p>
+                  <p className="text-xs text-success">Sağlıklı</p>
+                  <p className="text-lg font-bold text-success" data-testid="text-healthy-count">{metrics.healthy.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -349,10 +349,10 @@ export default function FaultHub() {
 
           {metrics.breached.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium mb-2 text-red-600">Zaman Aşımı Yapan</h3>
+              <h3 className="text-sm font-medium mb-2 text-destructive">Zaman Aşımı Yapan</h3>
               <div className="flex flex-col gap-3 sm:gap-4">
                 {metrics.breached.map((fault: EquipmentFault) => (
-                  <Card key={fault.id} className="border-red-500 bg-red-50 dark:bg-red-950 hover-elevate" data-testid={`card-breached-fault-${fault.id}`}>
+                  <Card key={fault.id} className="border-destructive bg-destructive/10 dark:bg-red-950 hover-elevate" data-testid={`card-breached-fault-${fault.id}`}>
                     <CardContent className="p-3">
                       <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
                       <p className="text-xs text-muted-foreground mt-1">{getTimeSinceCreation(fault.createdAt)} açık</p>
@@ -568,10 +568,10 @@ export default function FaultHub() {
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-red-600">Kritik</CardTitle>
+                  <CardTitle className="text-sm font-medium text-destructive">Kritik</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-red-600" data-testid="text-my-critical">{metrics.myFaults.filter((f: EquipmentFault) => f.priority === "kritik").length}</div>
+                  <div className="text-3xl font-bold text-destructive" data-testid="text-my-critical">{metrics.myFaults.filter((f: EquipmentFault) => f.priority === "kritik").length}</div>
                 </CardContent>
               </Card>
 

@@ -26,7 +26,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  bulunan: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  bulunan: "bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   teslim_edildi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
 };
 
@@ -54,8 +54,8 @@ function ItemSkeleton() {
   return (
     <Card className="animate-pulse">
       <CardContent className="p-3">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+        <div className="h-4 bg-accent dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+        <div className="h-3 bg-accent dark:bg-gray-700 rounded w-1/2"></div>
       </CardContent>
     </Card>
   );
@@ -114,7 +114,7 @@ export default function KayipEsyaPage() {
       setPhotoUrl(null);
       newItemForm.reset();
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Hata", description: err.message, variant: "destructive" });
     },
   });
@@ -132,7 +132,7 @@ export default function KayipEsyaPage() {
       setSelectedItem(null);
       handoverForm.reset();
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Hata", description: err.message, variant: "destructive" });
     },
   });
@@ -142,7 +142,7 @@ export default function KayipEsyaPage() {
     setIsHandoverDialogOpen(true);
   };
 
-  const formatDate = (date: any) => {
+  const formatDate = (date) => {
     if (!date) return "-";
     try {
       return format(new Date(date), "dd MMM yyyy HH:mm", { locale: tr });
@@ -185,7 +185,7 @@ export default function KayipEsyaPage() {
         <Card className="hover-elevate">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-yellow-100 dark:bg-yellow-900">
+              <div className="p-2 rounded-md bg-warning/20 dark:bg-yellow-900">
                 <Briefcase className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
               </div>
               <div>
@@ -200,7 +200,7 @@ export default function KayipEsyaPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-md bg-green-100 dark:bg-green-900">
-                <PackageCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <PackageCheck className="h-4 w-4 text-success dark:text-success" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Teslim Edildi</p>
@@ -346,7 +346,7 @@ export default function KayipEsyaPage() {
                       />
                     )}
 
-                    <div className="p-2 bg-green-50 dark:bg-green-950 rounded-md text-xs space-y-1">
+                    <div className="p-2 bg-success/10 dark:bg-success/5 rounded-md text-xs space-y-1">
                       <div className="flex items-center gap-1">
                         <User className="h-3 w-3" />
                         <span className="font-medium">Teslim Alan: {item.ownerName}</span>

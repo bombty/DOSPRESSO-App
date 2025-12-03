@@ -346,7 +346,7 @@ export default function Tasks() {
     // Sorting
     filtered.sort((a, b) => {
       const { key, direction } = sortConfig;
-      let aVal: any, bVal: any;
+      let aVal, bVal: any;
       
       if (key === 'createdAt' || key === 'dueDate') {
         aVal = a[key] ? new Date(a[key] as Date).getTime() : 0;
@@ -378,7 +378,7 @@ export default function Tasks() {
             <CardContent className="p-3">
               <div className="flex flex-col items-center text-center gap-1.5">
                 <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-500" />
+                  <AlertCircle className="h-4 w-4 text-destructive dark:text-red-500" />
                 </div>
                 <p className="text-xs text-muted-foreground">Gecikmiş</p>
                 <p className="text-lg font-bold text-destructive">{overdueTasks.length}</p>
@@ -390,8 +390,8 @@ export default function Tasks() {
         <Card data-testid="card-stat-beklemede">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+              <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-yellow-900/20 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-yellow-600 dark:text-warning" />
               </div>
               <p className="text-xs text-muted-foreground">Bekleyen</p>
               <p className="text-lg font-bold">{stats.beklemede}</p>
@@ -415,7 +415,7 @@ export default function Tasks() {
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
               <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-500" />
+                <AlertCircle className="h-4 w-4 text-destructive dark:text-red-500" />
               </div>
               <p className="text-xs text-muted-foreground">Tamamlanmayan</p>
               <p className="text-lg font-bold">{stats.tamamlanmayan}</p>
@@ -426,8 +426,8 @@ export default function Tasks() {
         <Card data-testid="card-stat-tamamlanan">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />
+              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4 text-success dark:text-green-500" />
               </div>
               <p className="text-xs text-muted-foreground">Tamamlanan</p>
               <p className="text-lg font-bold">{stats.tamamlanan}</p>

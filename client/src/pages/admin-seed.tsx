@@ -33,7 +33,7 @@ export default function AdminSeedPage() {
         title: "✅ Başarılı",
         description: "Ekipman, eğitim ve personel verileri eklendi",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "❌ Hata",
         description: error.message,
@@ -83,7 +83,7 @@ export default function AdminSeedPage() {
 
           {result && (
             <div className="p-3 rounded-lg bg-muted grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-              <p className="font-semibold text-green-600">✅ İşlem Başarılı</p>
+              <p className="font-semibold text-success">✅ İşlem Başarılı</p>
               <div className="text-sm space-y-1">
                 <p>
                   <strong>Ekipman:</strong> {result.data?.equipment?.created} eklendi,{' '}

@@ -94,7 +94,7 @@ export default function FranchiseAcilis() {
       setIsCreateDialogOpen(false);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Açılış süreci oluşturulurken hata oluştu",
@@ -113,7 +113,7 @@ export default function FranchiseAcilis() {
       case "training":
         return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Eğitim</Badge>;
       case "construction":
-        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" data-testid={testId}><AlertCircle className="w-3 h-3 mr-1" />İnşaat</Badge>;
+        return <Badge className="bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" data-testid={testId}><AlertCircle className="w-3 h-3 mr-1" />İnşaat</Badge>;
       default:
         return <Badge variant="outline" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Planlama</Badge>;
     }

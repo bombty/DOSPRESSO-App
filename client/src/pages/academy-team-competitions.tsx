@@ -31,8 +31,8 @@ export default function AcademyTeamCompetitions() {
     },
   });
 
-  const activeCompetition = competitions.find((c: any) => c.status === "active");
-  const completedCompetitions = competitions.filter((c: any) => c.status === "completed");
+  const activeCompetition = competitions.find((c) => c.status === "active");
+  const completedCompetitions = competitions.filter((c) => c.status === "completed");
 
   const chartData = activeCompetition?.leaderboard || [];
 
@@ -154,7 +154,7 @@ export default function AcademyTeamCompetitions() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-3 sm:gap-4">
-                {activeCompetition?.leaderboard?.map((entry: any, idx: number) => (
+                {activeCompetition?.leaderboard?.map((entry, idx: number) => (
                   <div key={entry.branchId} className="flex items-center gap-2 sm:gap-3 p-3 border rounded-lg hover-elevate transition" data-testid={`team-rank-${idx + 1}`}>
                     <div className="text-2xl font-bold text-primary w-12 text-center">
                       #{idx + 1}
@@ -184,7 +184,7 @@ export default function AcademyTeamCompetitions() {
             <CardContent>
               <div className="flex flex-col gap-3 sm:gap-4">
                 {completedCompetitions.length > 0 ? (
-                  completedCompetitions.map((comp: any) => (
+                  completedCompetitions.map((comp) => (
                     <div key={comp.id} className="p-3 border rounded-lg">
                       <div className="flex items-start justify-between mb-2">
                         <div>
@@ -196,7 +196,7 @@ export default function AcademyTeamCompetitions() {
                         <Badge variant="secondary">Tamamlandı</Badge>
                       </div>
                       <div className="flex items-center gap-2 mt-3">
-                        <Trophy className="w-4 h-4 text-yellow-500" />
+                        <Trophy className="w-4 h-4 text-warning" />
                         <span className="text-sm font-medium">Kazanan: {comp.winner}</span>
                         <Badge className="ml-auto">{comp.winnerScore} puan</Badge>
                       </div>

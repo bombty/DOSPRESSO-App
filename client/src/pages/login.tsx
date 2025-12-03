@@ -45,7 +45,7 @@ export default function Login() {
       const response = await apiRequest("POST", "/api/login", data);
       return response.json();
     },
-    onSuccess: async (data: any) => {
+    onSuccess: async (data) => {
       // Manually set user in cache to avoid race condition
       if (data.user) {
         queryClient.setQueryData(["/api/auth/user"], data.user);
@@ -61,7 +61,7 @@ export default function Login() {
         navigate("/");
       }, 100);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       setError(error.message || "Giriş başarısız");
       toast({
         title: "Giriş başarısız",

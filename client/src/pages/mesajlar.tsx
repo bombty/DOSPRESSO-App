@@ -359,7 +359,7 @@ export default function Mesajlar() {
                           {/* Attachments */}
                           {message.attachments && message.attachments.length > 0 && (
                             <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                              {message.attachments.map((att: any) => (
+                              {message.attachments.map((att) => (
                                 <a
                                   key={att.id}
                                   href={att.url}
@@ -462,7 +462,7 @@ function NewMessageForm({
 }: {
   users: User[];
   branches: any[];
-  onSubmit: (data: any) => void;
+  onSubmit: (data) => void;
   isLoading: boolean;
   currentUser: User | null;
 }) {
@@ -557,7 +557,7 @@ function NewMessageForm({
                 {branches.length === 0 ? (
                   <div className="p-2 text-sm text-muted-foreground">Şube bulunamadı</div>
                 ) : (
-                  branches.map((branch: any) => (
+                  branches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.id.toString()}>
                       {branch.name}
                     </SelectItem>

@@ -60,7 +60,7 @@ export default function AcademySupervisor() {
       toast({ title: "Sınav onaylandı", description: "Kullanıcı sınava başlayabilir." });
       queryClient.invalidateQueries({ queryKey: ["/api/academy/exam-requests-team", user?.id] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -75,7 +75,7 @@ export default function AcademySupervisor() {
       setRejectReason("");
       queryClient.invalidateQueries({ queryKey: ["/api/academy/exam-requests-team", user?.id] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
@@ -127,7 +127,7 @@ export default function AcademySupervisor() {
                 <div className="text-center py-8 text-muted-foreground">Ekip üyesi bulunamadı</div>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {teamMembers.map((member: any) => (
+                  {teamMembers.map((member) => (
                     <div key={member.id} className="flex flex-col items-center text-center p-3 border rounded-lg hover-elevate">
                       <div>
                         <p className="font-medium text-sm">{member.firstName} {member.lastName}</p>
@@ -160,7 +160,7 @@ export default function AcademySupervisor() {
                 <div className="text-center py-8 text-muted-foreground">Modül bulunamadı</div>
               ) : (
                 <div className="w-full space-y-2 sm:space-y-3">
-                  {modules.map((module: any) => (
+                  {modules.map((module) => (
                     <Link key={module.id} to={`/akademi-modul/${module.id}`}>
                       <Card className="cursor-pointer hover-elevate h-full flex flex-col">
                         <CardHeader className="pb-2 pt-2 px-2 flex-1">
@@ -195,7 +195,7 @@ export default function AcademySupervisor() {
                 <div className="text-center py-8 text-muted-foreground">Beklemede talep yok</div>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {pendingExams.map((exam: any) => (
+                  {pendingExams.map((exam) => (
                     <div key={exam.id} className="p-3 border rounded-lg grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <div className="flex items-center justify-between">
                         <div>

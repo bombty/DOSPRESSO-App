@@ -41,10 +41,10 @@ export default function AcademyBadges() {
     enabled: !!user?.id,
   });
 
-  const userBadgeIds = new Set(userBadges.map((b: any) => b.badgeId));
-  const unlockedBadges = allBadges.filter((b: any) => userBadgeIds.has(b.id));
-  const lockedBadges = allBadges.filter((b: any) => !userBadgeIds.has(b.id));
-  const totalPoints = unlockedBadges.reduce((sum: number, b: any) => sum + (b.points || 0), 0);
+  const userBadgeIds = new Set(userBadges.map((b) => b.badgeId));
+  const unlockedBadges = allBadges.filter((b) => userBadgeIds.has(b.id));
+  const lockedBadges = allBadges.filter((b) => !userBadgeIds.has(b.id));
+  const totalPoints = unlockedBadges.reduce((sum: number, b) => sum + (b.points || 0), 0);
 
   if (badgesLoading) {
     return <div className="p-6 text-center">Yükleniyor...</div>;
@@ -103,11 +103,11 @@ export default function AcademyBadges() {
       {unlockedBadges.length > 0 && (
         <div className="col-span-full">
           <h2 className="text-sm font-semibold mb-2 flex items-center gap-1">
-            <Trophy className="w-4 h-4 text-yellow-500" />
+            <Trophy className="w-4 h-4 text-warning" />
             Açılan ({unlockedBadges.length})
           </h2>
           <div className="flex flex-col gap-3 sm:gap-4 gap-2">
-            {unlockedBadges.map((badge: any) => {
+            {unlockedBadges.map((badge) => {
               const IconComponent = BADGE_ICONS[badge.iconName] || Star;
               return (
                 <Card key={badge.id} className="border-primary/50 bg-primary/5 hover-elevate">
@@ -141,15 +141,15 @@ export default function AcademyBadges() {
             Kilitli ({lockedBadges.length})
           </h2>
           <div className="flex flex-col gap-3 sm:gap-4 gap-2">
-            {lockedBadges.map((badge: any) => {
+            {lockedBadges.map((badge) => {
               const IconComponent = BADGE_ICONS[badge.iconName] || Star;
               return (
                 <Card key={badge.id} className="opacity-50">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-1">
                       <div className="flex items-center gap-1">
-                        <div className="p-1 bg-gray-200 dark:bg-gray-700 rounded">
-                          <IconComponent className="w-3 h-3 text-gray-400 dark:text-gray-600" />
+                        <div className="p-1 bg-accent dark:bg-gray-700 rounded">
+                          <IconComponent className="w-3 h-3 text-gray-400 dark:text-muted-foreground" />
                         </div>
                         <div>
                           <CardTitle className="text-xs text-gray-500">{badge.titleTr}</CardTitle>
