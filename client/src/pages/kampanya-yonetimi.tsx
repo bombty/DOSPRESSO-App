@@ -109,7 +109,7 @@ export default function KampanyaYonetimi() {
     const testId = campaignId ? `badge-status-${campaignId}` : "badge-status";
     switch (status) {
       case "active":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" data-testid={testId}>Aktif</Badge>;
+        return <Badge className="bg-success/10 text-success dark:bg-success/5 dark:text-green-100" data-testid={testId}>Aktif</Badge>;
       case "completed":
         return <Badge variant="outline" data-testid={testId}>Tamamlandı</Badge>;
       case "paused":

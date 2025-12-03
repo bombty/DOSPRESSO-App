@@ -115,7 +115,7 @@ export default function AcademyAIAssistant() {
                   <div
                     className={`max-w-xs md:max-w-md lg:max-w-lg px-3 py-3 rounded-lg ${
                       msg.role === "user"
-                        ? "bg-blue-500 text-white rounded-br-none"
+                        ? "bg-primary/100 text-white rounded-br-none"
                         : "bg-slate-100 dark:bg-slate-800 text-foreground rounded-bl-none"
                     }`}
                   >
@@ -190,7 +190,7 @@ export default function AcademyAIAssistant() {
       </div>
 
       {/* Info Card */}
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+      <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30 dark:border-primary/40">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Sparkles className="w-3 h-3" />

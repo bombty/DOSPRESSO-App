@@ -30,24 +30,24 @@ const STATUS_LABELS = {
 
 const STATUS_VARIANTS = {
   'talep_edildi': 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary',
-  'planlandi': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  'devam_ediyor': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  'tamamlandi': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  'planlandi': 'bg-secondary/10 text-secondary dark:bg-secondary/5 dark:text-secondary',
+  'devam_ediyor': 'bg-warning/10 text-warning dark:bg-warning/5 dark:text-warning',
+  'tamamlandi': 'bg-success/10 text-success dark:bg-success/5 dark:text-success',
   'iptal_edildi': 'bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-200',
 } as const;
 
 const PRIORITY_VARIANTS = {
   'düşük': 'bg-primary/10 border-primary/30 dark:bg-primary/5 dark:border-primary/40',
   'orta': 'bg-warning/10 border-warning/30 dark:bg-warning/5 dark:border-warning/40',
-  'yüksek': 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-700',
-  'kritik': 'bg-destructive/10 border-destructive/30 dark:bg-red-900/20 dark:border-red-700',
+  'yüksek': 'bg-warning/10 border-warning/30 dark:bg-warning/5/20 dark:border-warning/40',
+  'kritik': 'bg-destructive/10 border-destructive/30 dark:bg-destructive/5/20 dark:border-destructive/40',
 } as const;
 
 const PRIORITY_COLORS = {
-  'düşük': 'text-primary dark:text-blue-400',
-  'orta': 'text-amber-600 dark:text-amber-400',
-  'yüksek': 'text-orange-600 dark:text-orange-400',
-  'kritik': 'text-destructive dark:text-red-400',
+  'düşük': 'text-primary dark:text-primary',
+  'orta': 'text-warning dark:text-warning',
+  'yüksek': 'text-warning dark:text-warning',
+  'kritik': 'text-destructive dark:text-destructive',
 } as const;
 
 interface ServiceRequestWithEquipment {
@@ -503,7 +503,7 @@ export default function ServiceRequestsManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Açık Talep</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{stats.open}</div>
+            <div className="text-2xl font-bold text-warning">{stats.open}</div>
           </CardContent>
         </Card>
         <Card>
@@ -844,9 +844,9 @@ export default function ServiceRequestsManagement() {
                     {selectedRequest.timeline.map((entry, idx) => (
                       <div key={entry.id} className="flex gap-2 sm:gap-3">
                         <div className="flex flex-col items-center">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                          <div className="w-2 h-2 bg-primary/100 rounded-full mt-2"></div>
                           {idx < selectedRequest.timeline!.length - 1 && (
-                            <div className="w-0.5 h-8 bg-blue-200 mt-1"></div>
+                            <div className="w-0.5 h-8 bg-primary/20 mt-1"></div>
                           )}
                         </div>
                         <div className="flex-1 pb-2">

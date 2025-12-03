@@ -86,13 +86,13 @@ export default function Performance() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-secondary/10 dark:bg-secondary/5/20 flex items-center justify-center">
                     {aiScoreTrend > 0 ? (
                       <TrendingUp className="h-4 w-4 text-success" />
                     ) : aiScoreTrend < 0 ? (
                       <TrendingDown className="h-4 w-4 text-destructive" />
                     ) : (
-                      <CheckCircle className="h-4 w-4 text-purple-600" />
+                      <CheckCircle className="h-4 w-4 text-secondary" />
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">AI Skoru</p>
@@ -104,7 +104,7 @@ export default function Performance() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
                     <CheckCircle className="h-4 w-4 text-success" />
                   </div>
                   <p className="text-xs text-muted-foreground">Görevler</p>
@@ -116,8 +116,8 @@ export default function Performance() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <div className="h-4 w-4 rounded-full bg-warning/10 dark:bg-warning/5/20 flex items-center justify-center">
+                    <AlertTriangle className="h-4 w-4 text-warning" />
                   </div>
                   <p className="text-xs text-muted-foreground">Arıza Çözüm</p>
                   <p className="text-lg font-bold" data-testid="text-faults-resolved">{latestMetric?.faultsResolved || 0}/{latestMetric?.faultsReported || 0}</p>

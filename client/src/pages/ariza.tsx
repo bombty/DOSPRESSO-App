@@ -47,17 +47,17 @@ const updateFaultSchema = z.object({
 
 const PRIORITY_COLORS: Record<string, string> = {
   kritik: "bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive",
-  yuksek: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  yuksek: "bg-warning/10 text-warning dark:bg-warning/5 dark:text-warning",
   default: "bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary",
 };
 
 const STAGE_COLORS: Record<string, string> = {
   bekliyor: "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-200",
   isleme_alindi: "bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary",
-  devam_ediyor: "bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-warning",
-  servis_cagrildi: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  kargoya_verildi: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  kapatildi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  devam_ediyor: "bg-warning/20 text-warning dark:bg-warning/5 dark:text-warning",
+  servis_cagrildi: "bg-warning/10 text-warning dark:bg-warning/5 dark:text-warning",
+  kargoya_verildi: "bg-secondary/10 text-secondary dark:bg-secondary/5 dark:text-secondary",
+  kapatildi: "bg-success/10 text-success dark:bg-success/5 dark:text-success",
 };
 
 const getPriorityColor = (priority: string | null): string => 
@@ -223,7 +223,7 @@ export default function FaultHub() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
                     <AlertTriangle className="h-4 w-4 text-destructive" />
                   </div>
                   <p className="text-xs text-muted-foreground">Kritik</p>
@@ -235,11 +235,11 @@ export default function FaultHub() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-orange-600" />
+                  <div className="h-4 w-4 rounded-full bg-warning/10 dark:bg-warning/5/20 flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-warning" />
                   </div>
                   <p className="text-xs text-muted-foreground">Yüksek</p>
-                  <p className="text-lg font-bold text-orange-600" data-testid="text-high-count">{metrics.high.length}</p>
+                  <p className="text-lg font-bold text-warning" data-testid="text-high-count">{metrics.high.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -247,7 +247,7 @@ export default function FaultHub() {
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
                   <p className="text-xs text-muted-foreground">Çözüldü</p>
@@ -313,7 +313,7 @@ export default function FaultHub() {
             <Card className="border-destructive bg-destructive/10 dark:bg-red-950">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
                     <AlertTriangle className="h-4 w-4 text-destructive" />
                   </div>
                   <p className="text-xs text-destructive">Zaman Aşımı</p>
@@ -322,14 +322,14 @@ export default function FaultHub() {
               </CardContent>
             </Card>
 
-            <Card className="border-orange-500 bg-orange-50 dark:bg-orange-950">
+            <Card className="border-orange-500 bg-warning/10 dark:bg-orange-950">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-orange-600" />
+                  <div className="h-4 w-4 rounded-full bg-warning/10 dark:bg-warning/5/20 flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-warning" />
                   </div>
-                  <p className="text-xs text-orange-600">Risk Altında</p>
-                  <p className="text-lg font-bold text-orange-600" data-testid="text-atrisk-count">{metrics.atRisk.length}</p>
+                  <p className="text-xs text-warning">Risk Altında</p>
+                  <p className="text-lg font-bold text-warning" data-testid="text-atrisk-count">{metrics.atRisk.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -337,7 +337,7 @@ export default function FaultHub() {
             <Card className="border-success bg-success/10 dark:bg-success/5">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
                   <p className="text-xs text-success">Sağlıklı</p>
@@ -365,10 +365,10 @@ export default function FaultHub() {
 
           {metrics.atRisk.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium mb-2 text-orange-600">Risk Altında Olan</h3>
+              <h3 className="text-sm font-medium mb-2 text-warning">Risk Altında Olan</h3>
               <div className="flex flex-col gap-3 sm:gap-4">
                 {metrics.atRisk.map((fault: EquipmentFault) => (
-                  <Card key={fault.id} className="border-orange-500 bg-orange-50 dark:bg-orange-950 hover-elevate" data-testid={`card-atrisk-fault-${fault.id}`}>
+                  <Card key={fault.id} className="border-orange-500 bg-warning/10 dark:bg-orange-950 hover-elevate" data-testid={`card-atrisk-fault-${fault.id}`}>
                     <CardContent className="p-3">
                       <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
                       <p className="text-xs text-muted-foreground mt-1">{getTimeSinceCreation(fault.createdAt)} (sınıra yaklaşıyor)</p>

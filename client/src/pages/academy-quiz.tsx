@@ -141,10 +141,10 @@ export default function AcademyQuiz() {
 
             {/* Adaptive Progression */}
             {recommendation && (
-              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+              <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30 dark:border-primary/40">
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-1">
-                    <Zap className="w-4 h-4 text-primary dark:text-blue-400" />
+                    <Zap className="w-4 h-4 text-primary dark:text-primary" />
                     <CardTitle className="text-sm">Yol Önerisi</CardTitle>
                   </div>
                 </CardHeader>
@@ -154,17 +154,17 @@ export default function AcademyQuiz() {
                   {/* Difficulty Progression Path */}
                   <div className="flex items-center justify-between mt-3 p-2 bg-white dark:bg-slate-900 rounded-lg">
                     <div className="text-xs text-center">
-                      <Badge variant="outline" className="bg-green-100 dark:bg-success/5 text-green-800 dark:text-green-200">Kolay</Badge>
+                      <Badge variant="outline" className="bg-success/10 dark:bg-success/5 text-success dark:text-success">Kolay</Badge>
                       <p className="text-xs text-muted-foreground mt-1">Tamamlandı</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />
                     <div className="text-xs text-center">
-                      <Badge variant="outline" className={recommendation.nextDifficulty === 'medium' ? "bg-warning/20 dark:bg-warning/5 text-yellow-800 dark:text-warning" : "bg-slate-100 dark:bg-slate-800"}>Orta</Badge>
+                      <Badge variant="outline" className={recommendation.nextDifficulty === 'medium' ? "bg-warning/20 dark:bg-warning/5 text-warning dark:text-warning" : "bg-slate-100 dark:bg-slate-800"}>Orta</Badge>
                       <p className="text-xs text-muted-foreground mt-1">{recommendation.nextDifficulty === 'medium' ? 'Sonraki' : 'Kilitli'}</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />
                     <div className="text-xs text-center">
-                      <Badge variant="outline" className={recommendation.nextDifficulty === 'hard' ? "bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200" : "bg-slate-100 dark:bg-slate-800"}>Zor</Badge>
+                      <Badge variant="outline" className={recommendation.nextDifficulty === 'hard' ? "bg-destructive/10 dark:bg-red-950 text-destructive dark:text-destructive" : "bg-slate-100 dark:bg-slate-800"}>Zor</Badge>
                       <p className="text-xs text-muted-foreground mt-1">{recommendation.nextDifficulty === 'hard' ? 'Sonraki' : 'Kilitli'}</p>
                     </div>
                   </div>

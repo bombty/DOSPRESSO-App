@@ -689,14 +689,14 @@ export default function SubeDetayPage() {
             </div>
 
             {/* Bilgi Kartı */}
-            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+            <Card className="border-primary/30 bg-primary/10 dark:border-primary/40 dark:bg-blue-950/30">
               <CardContent className="pt-6">
                 <div className="flex gap-2 sm:gap-3">
                   <div className="p-2 bg-primary/10 dark:bg-primary/5 rounded-lg h-fit">
-                    <CheckCircle className="h-4 w-4 text-primary dark:text-blue-400" />
+                    <CheckCircle className="h-4 w-4 text-primary dark:text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-medium text-blue-900 dark:text-blue-100">Nasıl Çalışır?</h4>
+                    <h4 className="font-medium text-primary dark:text-primary">Nasıl Çalışır?</h4>
                     <ul className="mt-2 text-sm text-primary dark:text-blue-300 space-y-1">
                       <li>1. QR kodu oluşturun ve şubeye asın</li>
                       <li>2. GPS koordinatlarını ayarlayın (şubenin tam konumu)</li>

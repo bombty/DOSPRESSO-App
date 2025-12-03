@@ -163,13 +163,13 @@ export default function NewFaultReport() {
       </div>
 
       {/* Priority Warning */}
-      <Card className="border-warning/30 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800">
+      <Card className="border-warning/30 bg-warning/10 dark:bg-warning/5/20 dark:border-warning/40">
         <CardContent className="pt-6">
           <div className="flex gap-2 sm:gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-warning dark:text-warning">Acil Durum</p>
-              <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">
+              <p className="text-sm text-warning dark:text-yellow-300 mt-1">
                 Eğer bu bir güvenlik tehlikesi veya üretim durması ise, lütfen "Yüksek" veya "Kritik" olarak işaretleyin.
               </p>
             </div>
@@ -407,7 +407,7 @@ export default function NewFaultReport() {
                     <FormControl>
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
-                    <FormLabel className="font-normal cursor-pointer text-destructive dark:text-red-400">
+                    <FormLabel className="font-normal cursor-pointer text-destructive dark:text-destructive">
                       Güvenlik tehlikesi oluşturuyor
                     </FormLabel>
                   </FormItem>

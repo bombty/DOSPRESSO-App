@@ -90,8 +90,8 @@ export default function AcademyAnalytics() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-yellow-900/20 flex items-center justify-center">
-                <Trophy className="h-4 w-4 text-yellow-600" />
+              <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-warning/5/20 flex items-center justify-center">
+                <Trophy className="h-4 w-4 text-warning" />
               </div>
               <p className="text-xs text-muted-foreground">Kariyer</p>
               <p className="text-lg font-bold">{userProgress?.currentLevel || "—"}</p>
@@ -114,8 +114,8 @@ export default function AcademyAnalytics() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                <Zap className="h-4 w-4 text-purple-600" />
+              <div className="h-4 w-4 rounded-full bg-secondary/10 dark:bg-secondary/5/20 flex items-center justify-center">
+                <Zap className="h-4 w-4 text-secondary" />
               </div>
               <p className="text-xs text-muted-foreground">Sınavlar</p>
               <p className="text-lg font-bold">{quizStats?.completedQuizzes || 0}</p>
@@ -126,7 +126,7 @@ export default function AcademyAnalytics() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
                 <Award className="h-4 w-4 text-success" />
               </div>
               <p className="text-xs text-muted-foreground">Rozetler</p>
@@ -217,7 +217,7 @@ export default function AcademyAnalytics() {
                   </p>
                   <Progress value={userProgress?.completionPercent || 0} className="h-2 mt-2" />
                 </div>
-                <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                <div className="p-3 bg-primary/10 dark:bg-blue-950 rounded-lg">
                   <p className="text-sm font-medium mb-1">Tavsiyelenecek Sınavlar</p>
                   <p className="text-xs text-muted-foreground">
                     {userProgress?.nextSteps || "Kariyer hedeflerinize ulaşmak için sınavlara başlayın"}

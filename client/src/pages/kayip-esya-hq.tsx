@@ -15,8 +15,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  bulunan: "bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-warning",
-  teslim_edildi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  bulunan: "bg-warning/20 text-warning dark:bg-warning/5 dark:text-warning",
+  teslim_edildi: "bg-success/10 text-success dark:bg-success/5 dark:text-success",
 };
 
 type LostFoundItemEnriched = LostFoundItem & {
@@ -106,8 +106,8 @@ export default function KayipEsyaHQPage() {
         <Card className="hover-elevate">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-warning/20 dark:bg-yellow-900">
-                <Briefcase className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <div className="p-2 rounded-md bg-warning/20 dark:bg-warning/5">
+                <Briefcase className="h-4 w-4 text-warning dark:text-yellow-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Bekleyen</p>
@@ -120,7 +120,7 @@ export default function KayipEsyaHQPage() {
         <Card className="hover-elevate">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-green-100 dark:bg-green-900">
+              <div className="p-2 rounded-md bg-success/10 dark:bg-success/5">
                 <PackageCheck className="h-4 w-4 text-success dark:text-success" />
               </div>
               <div>
@@ -135,7 +135,7 @@ export default function KayipEsyaHQPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-md bg-primary/10 dark:bg-primary/5">
-                <Building2 className="h-4 w-4 text-primary dark:text-blue-400" />
+                <Building2 className="h-4 w-4 text-primary dark:text-primary" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Aktif Şube</p>
@@ -150,8 +150,8 @@ export default function KayipEsyaHQPage() {
         <Card className="hover-elevate hidden lg:block">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-purple-100 dark:bg-purple-900">
-                <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <div className="p-2 rounded-md bg-secondary/10 dark:bg-secondary/5">
+                <Clock className="h-4 w-4 text-secondary dark:text-purple-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Toplam</p>
@@ -164,8 +164,8 @@ export default function KayipEsyaHQPage() {
         <Card className="hover-elevate hidden lg:block">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-orange-100 dark:bg-orange-900">
-                <Filter className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              <div className="p-2 rounded-md bg-warning/10 dark:bg-warning/5">
+                <Filter className="h-4 w-4 text-warning dark:text-warning" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Filtrelenen</p>

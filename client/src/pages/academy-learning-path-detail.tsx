@@ -48,7 +48,7 @@ export default function AcademyLearningPathDetail() {
       </div>
       <div>
         <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
-          <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          <Brain className="w-5 h-5 text-secondary dark:text-purple-400" />
           {pathTitle}
         </h1>
         <p className="text-xs text-muted-foreground mt-1">AI tarafından önerilen sınavlar</p>
@@ -107,7 +107,7 @@ export default function AcademyLearningPathDetail() {
                         <div>
                           <h3 className="text-xs font-semibold flex items-center gap-1">
                             {quiz.status === "completed" && <CheckCircle2 className="w-4 h-4 text-success" />}
-                            {quiz.status === "recommended" && <Zap className="w-4 h-4 text-amber-600" />}
+                            {quiz.status === "recommended" && <Zap className="w-4 h-4 text-warning" />}
                             {quiz.status === "locked" && <Lock className="w-4 h-4 text-gray-400" />}
                             {(quiz.status === "available") && <Circle className="w-4 h-4 text-primary" />}
                             {quiz.title}
@@ -122,7 +122,7 @@ export default function AcademyLearningPathDetail() {
                           </div>
                         </div>
                         <div className="text-right text-xs">
-                          {quiz.status === "completed" && <Badge className="bg-green-100 text-green-800">Tamamlandı</Badge>}
+                          {quiz.status === "completed" && <Badge className="bg-success/10 text-success">Tamamlandı</Badge>}
                           {quiz.status === "recommended" && <Badge className="bg-amber-100 text-amber-800">Sırada</Badge>}
                           {quiz.status === "locked" && <Badge variant="outline">Kilitli</Badge>}
                         </div>
@@ -182,7 +182,7 @@ export default function AcademyLearningPathDetail() {
           </div>
 
           {/* Benefits Card */}
-          <Card className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800">
+          <Card className="bg-secondary/10 dark:bg-purple-950 border-secondary/30 dark:border-secondary/40">
             <CardHeader>
               <CardTitle className="text-base">Bu Yolun Faydaları</CardTitle>
             </CardHeader>

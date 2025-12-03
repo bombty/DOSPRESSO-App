@@ -55,15 +55,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   'talep_edildi': 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary',
-  'planlandı': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  'devam_ediyor': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  'tamamlandı': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  'planlandı': 'bg-secondary/10 text-secondary dark:bg-secondary/5 dark:text-secondary',
+  'devam_ediyor': 'bg-warning/10 text-warning dark:bg-warning/5 dark:text-warning',
+  'tamamlandı': 'bg-success/10 text-success dark:bg-success/5 dark:text-success',
   'iptal_edildi': 'bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-200',
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
   'kritik': 'bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive',
-  'yuksek': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  'yuksek': 'bg-warning/10 text-warning dark:bg-warning/5 dark:text-warning',
   'normal': 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary',
 };
 
@@ -98,11 +98,11 @@ const getHealthStatus = (equipment: EquipmentType): { status: string; color: str
       return { status: 'Garanti Sona Erdi', color: 'bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive', icon: <AlertCircle className="w-4 h-4" /> };
     }
     if (daysToWarrantyEnd < 30) {
-      return { status: 'Garanti Bitme Yakın', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200', icon: <AlertCircle className="w-4 h-4" /> };
+      return { status: 'Garanti Bitme Yakın', color: 'bg-warning/10 text-warning dark:bg-warning/5 dark:text-warning', icon: <AlertCircle className="w-4 h-4" /> };
     }
   }
 
-  return { status: 'Sağlıklı', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: <Zap className="w-4 h-4" /> };
+  return { status: 'Sağlıklı', color: 'bg-success/10 text-success dark:bg-success/5 dark:text-success', icon: <Zap className="w-4 h-4" /> };
 };
 
 export default function EquipmentManagement() {
@@ -435,14 +435,14 @@ export default function EquipmentManagement() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-        <Card className={stats.critical > 0 ? 'border-destructive/30 dark:border-red-800' : ''}>
+        <Card className={stats.critical > 0 ? 'border-destructive/30 dark:border-destructive/40' : ''}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.pending}</div>
             {stats.critical > 0 && (
-              <div className="text-xs text-destructive dark:text-red-400 mt-1 font-semibold">
+              <div className="text-xs text-destructive dark:text-destructive mt-1 font-semibold">
                 ⚠️ {stats.critical} Kritik
               </div>
             )}
@@ -453,7 +453,7 @@ export default function EquipmentManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Devam Eden</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.inProgress}</div>
+            <div className="text-2xl font-bold text-warning">{stats.inProgress}</div>
           </CardContent>
         </Card>
         <Card>
@@ -585,7 +585,7 @@ export default function EquipmentManagement() {
                 return (
                   <Card
                     key={req.id}
-                    className={`hover-elevate cursor-pointer p-3 ${priority === 'kritik' ? 'border-red-300 dark:border-red-700' : priority === 'yuksek' ? 'border-orange-200 dark:border-orange-700' : ''}`}
+                    className={`hover-elevate cursor-pointer p-3 ${priority === 'kritik' ? 'border-destructive/30 dark:border-destructive/40' : priority === 'yuksek' ? 'border-warning/30 dark:border-warning/40' : ''}`}
                     onClick={() => setSelectedRequest(req)}
                     data-testid={`card-request-${req.id}`}
                   >

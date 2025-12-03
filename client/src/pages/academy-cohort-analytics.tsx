@@ -271,7 +271,7 @@ export default function AcademyCohortAnalytics() {
       )}
 
       {/* Insights */}
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+      <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30 dark:border-primary/40">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5" />

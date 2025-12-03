@@ -240,7 +240,7 @@ export default function PersonelOnboardingPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Başlamadı</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{stats.notStarted}</div>
+            <div className="text-2xl font-bold text-warning">{stats.notStarted}</div>
           </CardContent>
         </Card>
         <Card>

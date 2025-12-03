@@ -153,7 +153,7 @@ export default function DenetimlerPage() {
       {inProgressAudits.length > 0 && (
         <div className="w-full space-y-2 sm:space-y-3">
           <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Clock className="h-4 w-4 text-orange-500" />
+            <Clock className="h-4 w-4 text-warning" />
             Devam Eden Denetimler ({inProgressAudits.length})
           </h2>
           <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">

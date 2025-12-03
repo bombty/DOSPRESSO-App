@@ -47,15 +47,15 @@ const updateFaultSchema = z.object({
 const STAGE_COLORS: Record<string, string> = {
   bekliyor: "bg-secondary text-foreground dark:bg-gray-900",
   isleme_alindi: "bg-primary/10 text-primary dark:bg-primary/5",
-  devam_ediyor: "bg-warning/20 text-yellow-800 dark:bg-yellow-900",
-  servis_cagrildi: "bg-orange-100 text-orange-800 dark:bg-orange-900",
-  kargoya_verildi: "bg-purple-100 text-purple-800 dark:bg-purple-900",
-  kapatildi: "bg-green-100 text-green-800 dark:bg-green-900",
+  devam_ediyor: "bg-warning/20 text-warning dark:bg-warning/5",
+  servis_cagrildi: "bg-warning/10 text-warning dark:bg-warning/5",
+  kargoya_verildi: "bg-secondary/10 text-secondary dark:bg-secondary/5",
+  kapatildi: "bg-success/10 text-success dark:bg-success/5",
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  kritik: "bg-red-100 text-red-800 dark:bg-red-900",
-  yuksek: "bg-orange-100 text-orange-800 dark:bg-orange-900",
+  kritik: "bg-destructive/10 text-destructive dark:bg-destructive/5",
+  yuksek: "bg-warning/10 text-warning dark:bg-warning/5",
   normal: "bg-primary/10 text-primary dark:bg-primary/5",
 };
 

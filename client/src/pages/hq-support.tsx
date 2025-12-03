@@ -59,8 +59,8 @@ const PRIORITY_LABELS: Record<TicketPriorityType, string> = {
 
 const PRIORITY_COLORS: Record<TicketPriorityType, string> = {
   dusuk: "bg-background0",
-  normal: "bg-blue-500",
-  yuksek: "bg-orange-500",
+  normal: "bg-primary/100",
+  yuksek: "bg-warning/100",
   acil: "bg-destructive/100",
 };
 
@@ -308,7 +308,7 @@ function TicketCard({
           </div>
           <Badge 
             variant={ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "default" : "secondary"}
-            className={ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "bg-yellow-500" : ""}
+            className={ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "bg-warning/100" : ""}
             data-testid={`badge-status-${ticket.id}`}
           >
             {ticket.status === HQ_SUPPORT_STATUS.AKTIF ? "Aktif" : "Kapatıldı"}
@@ -651,7 +651,7 @@ function TicketDetailDialog({
                 )}
                 <Badge 
                   variant={isTicketActive ? "default" : "secondary"}
-                  className={isTicketActive ? "bg-yellow-500" : ""}
+                  className={isTicketActive ? "bg-warning/100" : ""}
                   data-testid="badge-detail-status"
                 >
                   {isTicketActive ? "Aktif" : "Kapatıldı"}

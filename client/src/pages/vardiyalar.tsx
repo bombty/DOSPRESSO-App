@@ -61,8 +61,8 @@ const shiftTypeIcons: Record<string, any> = {
 
 const shiftTypeColors: Record<string, string> = {
   morning: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-warning/30 dark:border-amber-800",
-  evening: "bg-primary/10 text-primary dark:bg-primary/5/30 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-  night: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+  evening: "bg-primary/10 text-primary dark:bg-primary/5/30 dark:text-blue-300 border-primary/30 dark:border-primary/40",
+  night: "bg-secondary/10 text-secondary dark:bg-secondary/5/30 dark:text-purple-300 border-secondary/30 dark:border-secondary/40",
 };
 
 const statusLabels: Record<string, string> = {
@@ -75,10 +75,10 @@ const statusLabels: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   draft: "bg-secondary text-foreground dark:bg-gray-800 dark:text-gray-300",
-  pending_hq: "bg-warning/20 text-warning dark:bg-yellow-900/30 dark:text-yellow-300",
-  confirmed: "bg-green-100 text-success dark:bg-green-900/30 dark:text-green-300",
+  pending_hq: "bg-warning/20 text-warning dark:bg-warning/5/30 dark:text-yellow-300",
+  confirmed: "bg-success/10 text-success dark:bg-success/5/30 dark:text-green-300",
   completed: "bg-primary/10 text-primary dark:bg-primary/5/30 dark:text-blue-300",
-  cancelled: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  cancelled: "bg-destructive/10 text-destructive dark:bg-destructive/5/30 dark:text-red-300",
 };
 
 export default function Vardiyalar() {
@@ -495,7 +495,7 @@ export default function Vardiyalar() {
             <Card data-testid="card-confirmed">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
                   <p className="text-xs text-muted-foreground">Onaylı</p>
@@ -507,11 +507,11 @@ export default function Vardiyalar() {
             <Card data-testid="card-pending">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-yellow-900/20 flex items-center justify-center">
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-warning/5/20 flex items-center justify-center">
+                    <AlertCircle className="h-4 w-4 text-warning" />
                   </div>
                   <p className="text-xs text-muted-foreground">Bekleyen</p>
-                  <p className="text-lg font-bold text-yellow-600">{pendingCount}</p>
+                  <p className="text-lg font-bold text-warning">{pendingCount}</p>
                 </div>
               </CardContent>
             </Card>
@@ -519,8 +519,8 @@ export default function Vardiyalar() {
             <Card data-testid="card-coverage">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                    <Users className="h-4 w-4 text-purple-600" />
+                  <div className="h-4 w-4 rounded-full bg-secondary/10 dark:bg-secondary/5/20 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-secondary" />
                   </div>
                   <p className="text-xs text-muted-foreground">Doluluk</p>
                   <p className="text-lg font-bold">{coverageRate}%</p>
@@ -1387,7 +1387,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
           </Badge>
         )}
         {locationStatus === 'success' && (
-          <Badge className="bg-green-100 text-success dark:bg-green-900/30 dark:text-green-300">
+          <Badge className="bg-success/10 text-success dark:bg-success/5/30 dark:text-green-300">
             <CheckCircle2 className="w-4 h-4 mr-2" />
             Doğrulandı
           </Badge>
@@ -1432,7 +1432,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       )}
 
       {hasCompletedShift && (
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30" data-testid="card-completed">
+        <Card className="border-primary/30 dark:border-primary/40 bg-primary/10 dark:bg-blue-950/30" data-testid="card-completed">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-primary dark:text-blue-300">
               <CheckCircle2 className="h-4 w-4" />
@@ -1589,14 +1589,14 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
         </div>
       )}
 
-      <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+      <Card className="border-primary/30 bg-primary/10 dark:border-primary/40 dark:bg-blue-950/30">
         <CardContent className="pt-6">
           <div className="flex gap-2 sm:gap-3">
             <div className="p-2 bg-primary/10 dark:bg-primary/5 rounded-lg h-fit">
-              <CheckCircle2 className="h-4 w-4 text-primary dark:text-blue-400" />
+              <CheckCircle2 className="h-4 w-4 text-primary dark:text-primary" />
             </div>
             <div>
-              <h4 className="font-medium text-blue-900 dark:text-blue-100">Giriş/Çıkış Sistemi Hakkında</h4>
+              <h4 className="font-medium text-primary dark:text-primary">Giriş/Çıkış Sistemi Hakkında</h4>
               <ul className="mt-2 text-sm text-primary dark:text-blue-300 space-y-1">
                 <li>1. Şubenizde bulunan QR kodu okutun veya manuel giriş yapın</li>
                 <li>2. Konum bilginiz otomatik olarak doğrulanır</li>

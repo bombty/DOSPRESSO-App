@@ -25,7 +25,6 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
         try {
           scannerRef.current.clear();
         } catch (e) {
-          console.log("Scanner already cleared");
         }
         scannerRef.current = null;
       }
@@ -36,7 +35,6 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
     const timer = setTimeout(() => {
       const container = document.getElementById(containerId);
       if (!container) {
-        console.log("[QR Scanner] Container not ready yet");
         return;
       }
 
@@ -56,7 +54,6 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
 
         scanner.render(
           (decodedText) => {
-            console.log("[QR Scanner] Decoded:", decodedText);
             handleQRData(decodedText);
             scanner.pause();
           },
@@ -79,14 +76,12 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
         try {
           scannerRef.current.clear();
         } catch (e) {
-          console.log("Cleanup: Scanner already cleared");
         }
       }
     };
   }, [isOpen]);
 
   const handleQRData = (qrData: string) => {
-    console.log("[QR Handler] Processing:", qrData);
     
     // Parse QR code format: "type:id" or "type:id:extra"
     const parts = qrData.split(':');
@@ -108,7 +103,6 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
           try {
             scannerRef.current.resume();
           } catch (e) {
-            console.log("Already resumed");
           }
         }
       }, 2000);
@@ -158,7 +152,6 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
             try {
               scannerRef.current.resume();
             } catch (e) {
-              console.log("Already resumed");
             }
           }
         }, 2000);
@@ -182,7 +175,6 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
       try {
         scannerRef.current.resume();
       } catch (e) {
-        console.log("Already active");
       }
     }
   };

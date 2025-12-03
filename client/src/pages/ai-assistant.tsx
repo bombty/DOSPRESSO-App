@@ -102,7 +102,7 @@ export default function AIAssistant() {
                   <div className="flex-1">
                     <p className="font-medium text-sm text-muted-foreground mb-2">AI Cevabı:</p>
                     {item.noKnowledgeFound && (
-                      <Badge variant="outline" className="mb-2 bg-yellow-50 text-yellow-800 border-yellow-300">
+                      <Badge variant="outline" className="mb-2 bg-warning/10 text-warning border-warning/30">
                         Bilgi bulunamadı
                       </Badge>
                     )}

@@ -498,7 +498,7 @@ export default function Checklists() {
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
               {editingChecklist && !(editingChecklist.isEditable ?? true) && !isCoach && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-warning/30 dark:border-yellow-800 rounded-md p-3 text-sm text-yellow-800 dark:text-warning">
+                <div className="bg-warning/10 dark:bg-warning/5/20 border border-warning/30 dark:border-warning/40 rounded-md p-3 text-sm text-warning dark:text-warning">
                   ⚠️ Bu checklist düzenlenemez olarak işaretlenmiş. Sadece HQ Coach yetkisi ile düzenlenebilir.
                 </div>
               )}

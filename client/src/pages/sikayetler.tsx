@@ -95,9 +95,9 @@ export default function Sikayetler() {
       case "critical":
         return <Badge variant="destructive" data-testid={testId}><AlertCircle className="w-3 h-3 mr-1" />Kritik</Badge>;
       case "high":
-        return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100" data-testid={testId}><AlertTriangle className="w-3 h-3 mr-1" />Yüksek</Badge>;
+        return <Badge className="bg-warning/10 text-warning dark:bg-warning/5 dark:text-orange-100" data-testid={testId}><AlertTriangle className="w-3 h-3 mr-1" />Yüksek</Badge>;
       case "medium":
-        return <Badge className="bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" data-testid={testId}>Orta</Badge>;
+        return <Badge className="bg-warning/20 text-warning dark:bg-warning/5 dark:text-yellow-100" data-testid={testId}>Orta</Badge>;
       default:
         return <Badge variant="outline" data-testid={testId}>Düşük</Badge>;
     }
@@ -107,11 +107,11 @@ export default function Sikayetler() {
     const testId = complaintId ? `badge-status-${complaintId}` : "badge-status";
     switch (status) {
       case "resolved":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Çözüldü</Badge>;
+        return <Badge className="bg-success/10 text-success dark:bg-success/5 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Çözüldü</Badge>;
       case "in_progress":
-        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-blue-100" data-testid={testId}><Timer className="w-3 h-3 mr-1" />İşlemde</Badge>;
+        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary" data-testid={testId}><Timer className="w-3 h-3 mr-1" />İşlemde</Badge>;
       case "assigned":
-        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100" data-testid={testId}><MessageSquare className="w-3 h-3 mr-1" />Atandı</Badge>;
+        return <Badge className="bg-secondary/10 text-secondary dark:bg-secondary/5 dark:text-purple-100" data-testid={testId}><MessageSquare className="w-3 h-3 mr-1" />Atandı</Badge>;
       case "closed":
         return <Badge variant="secondary" data-testid={testId}>Kapalı</Badge>;
       default:
@@ -137,7 +137,7 @@ export default function Sikayetler() {
     
     if (hoursRemaining < 4) {
       return (
-        <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100" data-testid={`badge-sla-${complaint.id}`}>
+        <Badge className="bg-warning/10 text-warning dark:bg-warning/5 dark:text-orange-100" data-testid={`badge-sla-${complaint.id}`}>
           <AlertTriangle className="w-3 h-3 mr-1" />
           Süre Azalıyor ({Math.max(0, Math.round(hoursRemaining))}s)
         </Badge>
@@ -221,7 +221,7 @@ export default function Sikayetler() {
               <CardTitle className="text-sm font-medium">Kritik/Yüksek Öncelik</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600" data-testid="text-high-priority">
+              <div className="text-2xl font-bold text-warning" data-testid="text-high-priority">
                 {(stats.byPriority?.critical || 0) + (stats.byPriority?.high || 0)}
               </div>
             </CardContent>

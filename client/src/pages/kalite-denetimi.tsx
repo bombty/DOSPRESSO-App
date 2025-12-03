@@ -109,11 +109,11 @@ export default function KaliteDenetimi() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge data-testid={`badge-status-completed`} className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"><CheckCircle2 className="w-3 h-3 mr-1" />Tamamlandı</Badge>;
+        return <Badge data-testid={`badge-status-completed`} className="bg-success/10 text-success dark:bg-success/5 dark:text-green-100"><CheckCircle2 className="w-3 h-3 mr-1" />Tamamlandı</Badge>;
       case "failed":
         return <Badge data-testid={`badge-status-failed`} variant="destructive"><XCircle className="w-3 h-3 mr-1" />Başarısız</Badge>;
       case "in_progress":
-        return <Badge data-testid={`badge-status-in-progress`} className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-blue-100"><Clock className="w-3 h-3 mr-1" />Devam Ediyor</Badge>;
+        return <Badge data-testid={`badge-status-in-progress`} className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary"><Clock className="w-3 h-3 mr-1" />Devam Ediyor</Badge>;
       default:
         return <Badge data-testid={`badge-status-pending`} variant="outline"><Clock className="w-3 h-3 mr-1" />Bekliyor</Badge>;
     }

@@ -30,7 +30,7 @@ const getHealthScoreBadge = (score?: number) => {
     return { label: `${Math.round(score)} Sağlıklı`, variant: "default" as const, color: "text-success" };
   }
   if (score >= 50) {
-    return { label: `${Math.round(score)} Uyarı`, variant: "secondary" as const, color: "text-yellow-600" };
+    return { label: `${Math.round(score)} Uyarı`, variant: "secondary" as const, color: "text-warning" };
   }
   return { label: `${Math.round(score)} Kritik`, variant: "destructive" as const, color: "text-destructive" };
 };
@@ -292,18 +292,18 @@ export default function Equipment() {
       {criticalEquipment && criticalEquipment.length > 0 && (
         <Card className="border-destructive bg-destructive/10 dark:bg-red-950 col-span-full">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-destructive dark:text-red-400 flex items-center gap-2">
+            <CardTitle className="text-sm font-semibold text-destructive dark:text-destructive flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               Kritik Ekipmanlar ({criticalEquipment.length})
             </CardTitle>
-            <CardDescription className="text-xs text-red-700 dark:text-red-300">
+            <CardDescription className="text-xs text-destructive dark:text-red-300">
               Sağlık skoru 50'nin altında olan ekipmanlar acil bakım gerektiriyor
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 md:grid-cols-2">
               {criticalEquipment.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-md border border-destructive/30 dark:border-red-800">
+                <div key={item.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-md border border-destructive/30 dark:border-destructive/40">
                   <div className="flex-1">
                     <p className="font-semibold text-sm" data-testid={`text-critical-${item.id}`}>
                       {EQUIPMENT_METADATA[item.equipmentType as keyof typeof EQUIPMENT_METADATA]?.nameTr || item.equipmentType}

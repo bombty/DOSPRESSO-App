@@ -107,7 +107,7 @@ export default function EquipmentAnalytics() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Zap className="w-4 h-4 text-yellow-600" />
+              <Zap className="w-4 h-4 text-warning" />
               Ort. Çözüm Süresi
             </CardTitle>
           </CardHeader>

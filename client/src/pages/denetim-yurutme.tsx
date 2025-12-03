@@ -362,10 +362,10 @@ export default function DenetimYurutmePage() {
                           <>
                             <XCircle className="h-4 w-4 text-destructive dark:text-red-500" />
                             <div className="flex-1">
-                              <span className="text-sm font-medium text-red-700 dark:text-red-400 block">
+                              <span className="text-sm font-medium text-destructive dark:text-destructive block">
                                 Yanlış cevap
                               </span>
-                              <span className="text-sm text-destructive dark:text-red-400">
+                              <span className="text-sm text-destructive dark:text-destructive">
                                 Doğru cevap: <strong>{item.templateItem.correctAnswer}</strong>
                               </span>
                             </div>
@@ -508,7 +508,7 @@ export default function DenetimYurutmePage() {
       {answeredItems < totalItems && audit.status !== 'completed' && (
         <Card className="border-orange-500">
           <CardContent className="flex items-center gap-2 py-3">
-            <AlertCircle className="h-4 w-4 text-orange-500" />
+            <AlertCircle className="h-4 w-4 text-warning" />
             <p className="text-sm">
               Denetimi tamamlamak için tüm maddeleri cevaplamanız gerekiyor.
               ({totalItems - answeredItems} madde kaldı)

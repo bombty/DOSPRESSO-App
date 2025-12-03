@@ -30,7 +30,6 @@ export async function compressImage(
     
     const originalSizeKB = Math.round(file.size / 1024);
     const compressedSizeKB = Math.round(compressedFile.size / 1024);
-    console.log(`Fotoğraf sıkıştırıldı: ${originalSizeKB}KB → ${compressedSizeKB}KB (${Math.round((1 - compressedFile.size / file.size) * 100)}% azalma)`);
     
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -64,7 +63,6 @@ export async function compressImageFile(
 
   try {
     const compressedFile = await imageCompression(file, compressionOptions);
-    console.log(`Fotoğraf sıkıştırıldı: ${Math.round(file.size / 1024)}KB → ${Math.round(compressedFile.size / 1024)}KB`);
     return compressedFile;
   } catch (error) {
     console.error('Fotoğraf sıkıştırma hatası:', error);

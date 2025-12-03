@@ -107,13 +107,13 @@ export default function FranchiseAcilis() {
     const testId = onboardingId ? `badge-status-${onboardingId}` : "badge-status";
     switch (status) {
       case "opened":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Açıldı</Badge>;
+        return <Badge className="bg-success/10 text-success dark:bg-success/5 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Açıldı</Badge>;
       case "ready":
-        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-blue-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Hazır</Badge>;
+        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Hazır</Badge>;
       case "training":
-        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Eğitim</Badge>;
+        return <Badge className="bg-secondary/10 text-secondary dark:bg-secondary/5 dark:text-purple-100" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Eğitim</Badge>;
       case "construction":
-        return <Badge className="bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" data-testid={testId}><AlertCircle className="w-3 h-3 mr-1" />İnşaat</Badge>;
+        return <Badge className="bg-warning/20 text-warning dark:bg-warning/5 dark:text-yellow-100" data-testid={testId}><AlertCircle className="w-3 h-3 mr-1" />İnşaat</Badge>;
       default:
         return <Badge variant="outline" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Planlama</Badge>;
     }

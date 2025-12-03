@@ -439,7 +439,7 @@ export default function EkipmanServis() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
               </div>
               <p className="text-xs text-muted-foreground">Arıza</p>
@@ -450,7 +450,7 @@ export default function EkipmanServis() {
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
                 <ClipboardList className="h-4 w-4 text-success" />
               </div>
               <p className="text-xs text-muted-foreground">Servis</p>
@@ -530,7 +530,7 @@ export default function EkipmanServis() {
                       {req.type === 'fault' ? '⚠️ Arıza' : '📋 Talep'}
                     </Badge>
                     {req.type === 'fault' && (
-                      <Badge className={req.faultStatus === 'acik' ? 'bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}>
+                      <Badge className={req.faultStatus === 'acik' ? 'bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive' : 'bg-success/10 text-success dark:bg-success/5 dark:text-success'}>
                         {FAULT_STATUS_LABELS[req.faultStatus as keyof typeof FAULT_STATUS_LABELS]}
                       </Badge>
                     )}
@@ -600,7 +600,7 @@ export default function EkipmanServis() {
                 <Label>Ekipman Seçimi *</Label>
                 {qrScannerOpen ? (
                   <div className="flex flex-col gap-3 sm:gap-4">
-                    <div id="qr-reader-ekipman-servis" style={{ minHeight: '300px' }} className="rounded-lg border-2 border-blue-300" />
+                    <div id="qr-reader-ekipman-servis" style={{ minHeight: '300px' }} className="rounded-lg border-2 border-primary/30" />
                     <Button onClick={stopQRScanner} variant="outline" className="w-full">
                       <X className="w-4 h-4 mr-2" />
                       İptal
@@ -646,7 +646,7 @@ export default function EkipmanServis() {
                     onClick={() => setCreateType('fault')}
                     className={`p-3 rounded-lg border-2 text-center hover-elevate transition-all ${
                       createType === 'fault'
-                        ? 'border-destructive bg-destructive/10 dark:bg-red-900/20'
+                        ? 'border-destructive bg-destructive/10 dark:bg-destructive/5/20'
                         : 'border-border'
                     }`}
                     data-testid="button-type-fault"
@@ -701,12 +701,12 @@ export default function EkipmanServis() {
                 {aiDiagnosis && (
                   <div className="bg-primary/10 dark:bg-primary/5 border border-primary/30 dark:border-primary/40 rounded-lg p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div>
-                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">AI Tanısı</p>
+                      <p className="text-sm font-medium text-primary dark:text-primary">AI Tanısı</p>
                       <p className="text-sm text-primary dark:text-primary mt-1">{aiDiagnosis.diagnosis}</p>
                     </div>
                     {aiDiagnosis.troubleshootingSteps?.length > 0 && (
                       <div>
-                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Sorun Giderme Adımları</p>
+                        <p className="text-sm font-medium text-primary dark:text-primary">Sorun Giderme Adımları</p>
                         <ul className="text-sm text-primary dark:text-primary mt-1 list-disc list-inside space-y-1">
                           {aiDiagnosis.troubleshootingSteps.map((step: string, idx: number) => (
                             <li key={idx}>{step}</li>
@@ -717,15 +717,15 @@ export default function EkipmanServis() {
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="bg-white dark:bg-primary/5 p-2 rounded">
                         <p className="text-muted-foreground dark:text-gray-300">Ciddiyet</p>
-                        <p className="font-semibold text-blue-900 dark:text-blue-100">{aiDiagnosis.estimatedSeverity}</p>
+                        <p className="font-semibold text-primary dark:text-primary">{aiDiagnosis.estimatedSeverity}</p>
                       </div>
                       <div className="bg-white dark:bg-primary/5 p-2 rounded">
                         <p className="text-muted-foreground dark:text-gray-300">Süre</p>
-                        <p className="font-semibold text-blue-900 dark:text-blue-100">{aiDiagnosis.estimatedRepairTime}</p>
+                        <p className="font-semibold text-primary dark:text-primary">{aiDiagnosis.estimatedRepairTime}</p>
                       </div>
                       <div className="bg-white dark:bg-primary/5 p-2 rounded">
                         <p className="text-muted-foreground dark:text-gray-300">Eylem</p>
-                        <p className="font-semibold text-blue-900 dark:text-blue-100 truncate">{aiDiagnosis.recommendedAction?.substring(0, 10)}</p>
+                        <p className="font-semibold text-primary dark:text-primary truncate">{aiDiagnosis.recommendedAction?.substring(0, 10)}</p>
                       </div>
                     </div>
                   </div>
@@ -763,8 +763,8 @@ export default function EkipmanServis() {
                   <Label>Öncelik</Label>
                   <Select value={priority} onValueChange={setPriority}>
                     <SelectTrigger className={
-                      priority === 'kritik' ? 'border-destructive bg-destructive/10 dark:bg-red-900/20' :
-                      priority === 'yüksek' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' : ''
+                      priority === 'kritik' ? 'border-destructive bg-destructive/10 dark:bg-destructive/5/20' :
+                      priority === 'yüksek' ? 'border-orange-500 bg-warning/10 dark:bg-warning/5/20' : ''
                     }>
                       <SelectValue />
                     </SelectTrigger>
@@ -778,8 +778,8 @@ export default function EkipmanServis() {
                   {(priority === 'yüksek' || priority === 'kritik') && (
                     <div className={`text-xs p-2 rounded ${
                       priority === 'kritik' 
-                        ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200' 
-                        : 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
+                        ? 'bg-destructive/10 dark:bg-destructive/5/30 text-destructive dark:text-destructive' 
+                        : 'bg-warning/10 dark:bg-warning/5/30 text-warning dark:text-warning'
                     }`}>
                       ℹ️ HQ personeli otomatik olarak bilgilendirilecek
                     </div>

@@ -91,7 +91,7 @@ export default function AcademyAdaptiveEngine() {
       </Card>
 
       {/* Learning Style Analysis */}
-      <Card className="col-span-full bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+      <Card className="col-span-full bg-primary/10 dark:bg-blue-950 border-primary/30 dark:border-primary/40">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-1">
             <TrendingUp className="w-4 h-4" />

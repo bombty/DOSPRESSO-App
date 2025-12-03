@@ -654,7 +654,7 @@ export default function PersonelDetay() {
                                 Onaylı
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-yellow-50 text-warning border-warning/30">
+                              <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
                                 <AlertCircle className="h-3 w-3 mr-1" />
                                 Bekliyor
                               </Badge>
@@ -1252,12 +1252,12 @@ export default function PersonelDetay() {
                     </div>
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Geciken</p>
-                      <p className="text-2xl font-bold text-orange-600">{trainingProgress.summary?.overdue || 0}</p>
+                      <p className="text-2xl font-bold text-warning">{trainingProgress.summary?.overdue || 0}</p>
                     </div>
                   </div>
 
                   {trainingProgress.averageScore > 0 && (
-                    <div className="border rounded-lg p-3 bg-blue-50">
+                    <div className="border rounded-lg p-3 bg-primary/10">
                       <p className="text-sm text-muted-foreground mb-1">Ortalama Başarı Oranı</p>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-accent rounded-full h-2">

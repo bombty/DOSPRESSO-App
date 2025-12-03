@@ -64,19 +64,19 @@ export default function AcademyStreakTracker() {
       </div>
       <div>
         <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
-          <Flame className="w-5 h-5 text-orange-500" />
+          <Flame className="w-5 h-5 text-warning" />
           Öğrenme Serisi
         </h1>
         <p className="text-xs text-muted-foreground mt-1">Tutarlılık seni başarıya götürür</p>
       </div>
 
       {/* Main Streak Card */}
-      <Card className="bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900 dark:to-orange-950 border-orange-200 dark:border-orange-800">
+      <Card className="bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900 dark:to-orange-950 border-warning/30 dark:border-warning/40">
         <CardContent className="p-3 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Flame className="w-7 h-7 text-orange-500 animate-pulse" />
+            <Flame className="w-7 h-7 text-warning animate-pulse" />
             <div>
-              <p className="text-2xl font-bold text-orange-600">{streakDays}</p>
+              <p className="text-2xl font-bold text-warning">{streakDays}</p>
               <p className="text-xs text-muted-foreground">Gün</p>
             </div>
           </div>
@@ -84,7 +84,7 @@ export default function AcademyStreakTracker() {
           {streakDays > 0 ? (
             <p className="text-success text-xs font-semibold">✓ Bugünü tamamladın!</p>
           ) : (
-            <p className="text-amber-600 text-xs font-semibold">Sınav al</p>
+            <p className="text-warning text-xs font-semibold">Sınav al</p>
           )}
         </CardContent>
       </Card>
@@ -99,7 +99,7 @@ export default function AcademyStreakTracker() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-lg font-bold text-yellow-600">{bestStreak}</p>
+            <p className="text-lg font-bold text-warning">{bestStreak}</p>
             <p className="text-xs text-muted-foreground">gün</p>
           </CardContent>
         </Card>
@@ -177,7 +177,7 @@ export default function AcademyStreakTracker() {
       </Card>
 
       {/* Motivation Card */}
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+      <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30 dark:border-primary/40">
         <CardHeader>
           <CardTitle className="text-base">Seri Hakkında İpuçları</CardTitle>
         </CardHeader>

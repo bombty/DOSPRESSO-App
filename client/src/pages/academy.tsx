@@ -202,7 +202,7 @@ export default function Academy() {
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
             <CardTitle className="text-xs font-medium flex items-center gap-1">
-              <Trophy className="w-3 h-3 text-yellow-600" />
+              <Trophy className="w-3 h-3 text-warning" />
               <span className="truncate">Rozetler</span>
             </CardTitle>
           </CardHeader>
@@ -404,10 +404,10 @@ export default function Academy() {
           )}
 
           {recommendedQuizzes.length > 0 && (
-            <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+            <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30 dark:border-primary/40">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-primary dark:text-blue-400" />
+                  <Lightbulb className="w-4 h-4 text-primary dark:text-primary" />
                   Önerilen
                 </CardTitle>
               </CardHeader>
@@ -415,9 +415,9 @@ export default function Academy() {
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex flex-col gap-3 sm:gap-4 gap-2">
                     {recommendedQuizzes.map((quiz) => {
-                      const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-success/5 text-green-800 dark:text-green-200' 
-                        : quiz.difficulty === 'hard' ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200'
-                        : 'bg-warning/20 dark:bg-warning/5 text-yellow-800 dark:text-warning';
+                      const diffColor = quiz.difficulty === 'easy' ? 'bg-success/10 dark:bg-success/5 text-success dark:text-success' 
+                        : quiz.difficulty === 'hard' ? 'bg-destructive/10 dark:bg-red-950 text-destructive dark:text-destructive'
+                        : 'bg-warning/20 dark:bg-warning/5 text-warning dark:text-warning';
                       
                       const diffLabel = quiz.difficulty === 'easy' ? 'Kolay' 
                         : quiz.difficulty === 'hard' ? 'Zor' : 'Orta';
@@ -432,7 +432,7 @@ export default function Academy() {
                             <p className="text-xs text-muted-foreground line-clamp-1">{quiz.descriptionTr}</p>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-xs">{quiz.estimatedMinutes}dk</span>
-                              <span className="text-xs font-medium text-primary dark:text-blue-400">→</span>
+                              <span className="text-xs font-medium text-primary dark:text-primary">→</span>
                             </div>
                           </div>
                         </Link>
@@ -460,7 +460,7 @@ export default function Academy() {
             <Card className="cursor-pointer hover-elevate" data-testid="card-streak-tracker">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-orange-500" />
+                  <Flame className="w-4 h-4 text-warning" />
                   Öğrenme Serisi
                 </CardTitle>
               </CardHeader>
@@ -529,7 +529,7 @@ export default function Academy() {
             <Card className="cursor-pointer hover-elevate" data-testid="card-advanced-analytics">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-purple-600" />
+                  <BarChart3 className="w-4 h-4 text-secondary" />
                   İleri Analitikler
                 </CardTitle>
               </CardHeader>
@@ -541,7 +541,7 @@ export default function Academy() {
             <Card className="cursor-pointer hover-elevate" data-testid="card-branch-analytics">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Award className="w-4 h-4 text-amber-600" />
+                  <Award className="w-4 h-4 text-warning" />
                   Şube Analitikleri
                 </CardTitle>
               </CardHeader>
@@ -553,7 +553,7 @@ export default function Academy() {
             <Card className="cursor-pointer hover-elevate" data-testid="card-cohort-analytics">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-yellow-600" />
+                  <Zap className="w-4 h-4 text-warning" />
                   Kohort Analitikleri
                 </CardTitle>
               </CardHeader>

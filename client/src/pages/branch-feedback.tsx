@@ -60,9 +60,9 @@ export default function BranchFeedback() {
   };
 
   const statusColors: Record<string, string> = {
-    yeni: "bg-warning/20 text-yellow-800",
+    yeni: "bg-warning/20 text-warning",
     okundu: "bg-primary/10 text-primary",
-    yanıtlandı: "bg-green-100 text-green-800",
+    yanıtlandı: "bg-success/10 text-success",
   };
 
   return (
@@ -78,7 +78,7 @@ export default function BranchFeedback() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-blue-900" data-testid="text-page-title">Muhasebe Geribildirimi</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary" data-testid="text-page-title">Muhasebe Geribildirimi</h1>
           <p className="text-sm text-muted-foreground">Sipariş, fatura ve lojistik ile ilgili geribildirimleri gönderin</p>
         </div>
       </div>
@@ -168,8 +168,8 @@ export default function BranchFeedback() {
                       <p className="text-sm text-foreground mb-2" data-testid={`text-feedback-message-${fb.id}`}>{fb.message}</p>
                       {fb.response && (
                         <div className="mt-3 p-2 bg-success/10 rounded text-sm">
-                          <p className="font-semibold text-green-900">Yanıt:</p>
-                          <p className="text-green-800">{fb.response}</p>
+                          <p className="font-semibold text-success">Yanıt:</p>
+                          <p className="text-success">{fb.response}</p>
                         </div>
                       )}
                       <p className="text-xs text-muted-foreground mt-2">

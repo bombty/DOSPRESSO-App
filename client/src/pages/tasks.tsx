@@ -377,7 +377,7 @@ export default function Tasks() {
           <Card data-testid="card-stat-overdue" className="border-destructive">
             <CardContent className="p-3">
               <div className="flex flex-col items-center text-center gap-1.5">
-                <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
                   <AlertCircle className="h-4 w-4 text-destructive dark:text-red-500" />
                 </div>
                 <p className="text-xs text-muted-foreground">Gecikmiş</p>
@@ -390,8 +390,8 @@ export default function Tasks() {
         <Card data-testid="card-stat-beklemede">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-yellow-900/20 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-yellow-600 dark:text-warning" />
+              <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-warning/5/20 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-warning dark:text-warning" />
               </div>
               <p className="text-xs text-muted-foreground">Bekleyen</p>
               <p className="text-lg font-bold">{stats.beklemede}</p>
@@ -414,7 +414,7 @@ export default function Tasks() {
         <Card data-testid="card-stat-tamamlanmayan">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
                 <AlertCircle className="h-4 w-4 text-destructive dark:text-red-500" />
               </div>
               <p className="text-xs text-muted-foreground">Tamamlanmayan</p>
@@ -426,7 +426,7 @@ export default function Tasks() {
         <Card data-testid="card-stat-tamamlanan">
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-success/10 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
                 <CheckCircle2 className="h-4 w-4 text-success dark:text-green-500" />
               </div>
               <p className="text-xs text-muted-foreground">Tamamlanan</p>

@@ -26,8 +26,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  bulunan: "bg-warning/20 text-yellow-800 dark:bg-yellow-900 dark:text-warning",
-  teslim_edildi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  bulunan: "bg-warning/20 text-warning dark:bg-warning/5 dark:text-warning",
+  teslim_edildi: "bg-success/10 text-success dark:bg-success/5 dark:text-success",
 };
 
 const newItemSchema = z.object({
@@ -185,8 +185,8 @@ export default function KayipEsyaPage() {
         <Card className="hover-elevate">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-warning/20 dark:bg-yellow-900">
-                <Briefcase className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <div className="p-2 rounded-md bg-warning/20 dark:bg-warning/5">
+                <Briefcase className="h-4 w-4 text-warning dark:text-yellow-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Bulunan</p>
@@ -199,7 +199,7 @@ export default function KayipEsyaPage() {
         <Card className="hover-elevate">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-green-100 dark:bg-green-900">
+              <div className="p-2 rounded-md bg-success/10 dark:bg-success/5">
                 <PackageCheck className="h-4 w-4 text-success dark:text-success" />
               </div>
               <div>
@@ -214,7 +214,7 @@ export default function KayipEsyaPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-md bg-primary/10 dark:bg-primary/5">
-                <Clock className="h-4 w-4 text-primary dark:text-blue-400" />
+                <Clock className="h-4 w-4 text-primary dark:text-primary" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Toplam</p>

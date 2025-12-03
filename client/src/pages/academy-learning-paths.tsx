@@ -69,7 +69,7 @@ export default function AcademyLearningPaths() {
       </div>
       <div>
         <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
-          <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          <Brain className="w-5 h-5 text-secondary dark:text-purple-400" />
           Öğrenme Yolları
         </h1>
         <p className="text-xs text-muted-foreground mt-1">AI tarafından kişiselleştirilmiş rotalar</p>
@@ -88,7 +88,7 @@ export default function AcademyLearningPaths() {
                   <div>
                     <CardTitle className="text-sm">{path.title}</CardTitle>
                   </div>
-                  <Brain className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                  <Brain className="w-4 h-4 text-secondary flex-shrink-0" />
                 </div>
               </CardHeader>
               <CardContent className="w-full space-y-1 md:space-y-1">
@@ -135,7 +135,7 @@ export default function AcademyLearningPaths() {
       )}
 
       {/* Info */}
-      <Card className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800">
+      <Card className="bg-secondary/10 dark:bg-purple-950 border-secondary/30 dark:border-secondary/40">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-1">
             <Brain className="w-4 h-4" />

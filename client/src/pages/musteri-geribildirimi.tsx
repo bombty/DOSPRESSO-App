@@ -91,9 +91,9 @@ export default function MisafirGeriBildirim() {
     const testId = feedbackId ? `badge-status-${feedbackId}` : "badge-status";
     switch (status) {
       case "reviewed":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />İncelendi</Badge>;
+        return <Badge className="bg-success/10 text-success dark:bg-success/5 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />İncelendi</Badge>;
       case "responded":
-        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-blue-100" data-testid={testId}><MessageSquare className="w-3 h-3 mr-1" />Yanıtlandı</Badge>;
+        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary" data-testid={testId}><MessageSquare className="w-3 h-3 mr-1" />Yanıtlandı</Badge>;
       default:
         return <Badge variant="outline" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Bekliyor</Badge>;
     }

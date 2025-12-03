@@ -30,11 +30,11 @@ export default function BadgeCollection() {
   });
 
   const badgeColors: Record<string, { bg: string; icon: any; text: string }> = {
-    coffee_cherry: { bg: "bg-orange-100 dark:bg-orange-950", icon: Award, text: "Kahve Kirazı" },
-    green_bean: { bg: "bg-green-100 dark:bg-success/5", icon: Award, text: "Yeşil Çekirdek" },
+    coffee_cherry: { bg: "bg-warning/10 dark:bg-orange-950", icon: Award, text: "Kahve Kirazı" },
+    green_bean: { bg: "bg-success/10 dark:bg-success/5", icon: Award, text: "Yeşil Çekirdek" },
     bean_expert: { bg: "bg-amber-100 dark:bg-amber-950", icon: Trophy, text: "Çekirdek Uzmanı" },
-    roast_master: { bg: "bg-red-100 dark:bg-red-950", icon: Flame, text: "Kavurma Ustası" },
-    coffee_pro: { bg: "bg-purple-100 dark:bg-purple-950", icon: Trophy, text: "Kahve Pro" },
+    roast_master: { bg: "bg-destructive/10 dark:bg-red-950", icon: Flame, text: "Kavurma Ustası" },
+    coffee_pro: { bg: "bg-secondary/10 dark:bg-purple-950", icon: Trophy, text: "Kahve Pro" },
   };
 
   return (

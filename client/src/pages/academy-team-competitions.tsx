@@ -56,12 +56,12 @@ export default function AcademyTeamCompetitions() {
 
       {/* Monthly Challenge */}
       {monthlyChallenge && (
-        <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800">
+        <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-secondary/30 dark:border-secondary/40">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <CardTitle className="text-sm flex items-center gap-1">
-                  <Flame className="w-4 h-4 text-orange-500" />
+                  <Flame className="w-4 h-4 text-warning" />
                   Aylık Zorluk
                 </CardTitle>
               </div>
