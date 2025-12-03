@@ -279,6 +279,12 @@ export default function KayipEsyaHQPage() {
                           <Calendar className="h-3 w-3" />
                           <span>Teslim: {formatDate(item.handoverDate)}</span>
                         </div>
+                        {item.handoveredByName && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            <span>Teslim Eden: {item.handoveredByName}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </CardContent>
