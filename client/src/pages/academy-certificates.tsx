@@ -102,7 +102,7 @@ export default function AcademyCertificates() {
                   </div>
 
                   <div className="flex flex-col gap-2 relative z-10">
-                    <p className="text-xl text-amber-950 font-bold" style={{ fontFamily: "cursive" }}>
+                    <p className="text-4xl text-amber-950 font-bold leading-tight" style={{ fontFamily: "cursive" }}>
                       {user?.firstName ? `${user.firstName} ${user.lastName || ""}` : "Kullanıcı"}
                     </p>
                     <p className="text-xs text-amber-800">tarafından başarıyla tamamlanmış</p>
@@ -111,7 +111,7 @@ export default function AcademyCertificates() {
                   </div>
 
                   {/* Sertifika Damgası */}
-                  <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 z-30 pointer-events-none">
+                  <div className="absolute left-2 top-1/2 transform -translate-y-1/2 z-30 pointer-events-none">
                     <img 
                       src={certificationSeal} 
                       alt="Sertifika Damgası" 
