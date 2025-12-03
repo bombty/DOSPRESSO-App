@@ -6,6 +6,7 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { compressImage } from "@/lib/image-utils";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,15 @@ export default function NewFaultReport() {
 
     setIsUploading(true);
     try {
-      // Create preview
+      const compressed = await compressImage(file);
+      setPhotoPreview(compressed);
+      form.setValue("photoUrl", compressed);
+
+      toast({
+        title: "Başarılı",
+        description: "Fotoğraf sıkıştırılıp yüklendi",
+      });
+    } catch (error) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const preview = reader.result as string;
@@ -125,15 +134,9 @@ export default function NewFaultReport() {
         form.setValue("photoUrl", preview);
       };
       reader.readAsDataURL(file);
-
       toast({
-        title: "Başarılı",
-        description: "Fotoğraf yüklendi",
-      });
-    } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Fotoğraf yüklenemedi",
+        title: "Uyarı",
+        description: "Fotoğraf sıkıştırılamadı, orijinal yüklendi",
         variant: "destructive",
       });
     } finally {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { compressImage } from "@/lib/image-utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -1163,19 +1164,25 @@ export default function ModuleDetail() {
                                 <Input 
                                   type="file" 
                                   accept="image/*"
-                                  onChange={(e) => {
+                                  onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                      const reader = new FileReader();
-                                      reader.onload = (event) => {
-                                        const photoUrl = event.target?.result as string;
+                                      try {
+                                        const photoUrl = await compressImage(file);
                                         if (!step.photos) {
                                           stepsForm.setValue(`steps.${index}.photos`, []);
                                         }
                                         const current = stepsForm.watch(`steps.${index}.photos`) || [];
                                         stepsForm.setValue(`steps.${index}.photos`, [...current, photoUrl]);
-                                      };
-                                      reader.readAsDataURL(file);
+                                      } catch {
+                                        const reader = new FileReader();
+                                        reader.onload = (event) => {
+                                          const photoUrl = event.target?.result as string;
+                                          const current = stepsForm.watch(`steps.${index}.photos`) || [];
+                                          stepsForm.setValue(`steps.${index}.photos`, [...current, photoUrl]);
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
                                     }
                                   }}
                                   className="text-xs"
