@@ -210,7 +210,7 @@ export default function FaultHub() {
       <div className="p-3">
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
           <TabsTrigger value="sla">Arıza Süreleri</TabsTrigger>
           <TabsTrigger value="manage">Yönet</TabsTrigger>

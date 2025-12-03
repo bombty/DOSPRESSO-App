@@ -459,7 +459,7 @@ export default function Vardiyalar() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-xl">
+        <TabsList className="grid w-full grid-cols-4 max-w-xl">
           <TabsTrigger value="overview" data-testid="tab-overview">
             <TrendingUp className="w-4 h-4 mr-2" />
             Genel Bakış

@@ -479,7 +479,7 @@ export default function EquipmentManagement() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="pending">Bekleyen ({pendingRequests.length})</TabsTrigger>
           <TabsTrigger value="inprogress">Devam Eden ({stats.inProgress})</TabsTrigger>
           <TabsTrigger value="completed">Tamamlanan ({stats.completed})</TabsTrigger>
