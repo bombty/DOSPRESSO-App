@@ -32,11 +32,9 @@ export default function AIAssistant() {
     mutationFn: async (q: string) => {
       const response = await apiRequest("POST", "/api/knowledge-base/ask", { question: q });
       const data = await response.json() as QAResponse;
-      console.log("[AI Assistant] Response received:", data);
       return data;
     },
     onSuccess: (data: QAResponse) => {
-      console.log("[AI Assistant] onSuccess called with data:", data);
       setConversation(prev => [...prev, {
         question,
         answer: data.answer,

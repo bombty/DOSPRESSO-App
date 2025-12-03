@@ -221,13 +221,11 @@ export default function EkipmanServis() {
               }
             }
           } catch (error) {
-            console.error('QR parsing error:', error);
           }
         },
         () => {}
       );
     } catch (error) {
-      console.error('QR scanner error:', error);
       toast({
         title: 'Hata',
         description: 'Kamera başlatılamadı',
@@ -243,7 +241,6 @@ export default function EkipmanServis() {
         await qrScannerRef.current.stop();
         qrScannerRef.current = null;
       } catch (error) {
-        console.error('Error stopping scanner:', error);
       }
     }
     setQrScannerOpen(false);

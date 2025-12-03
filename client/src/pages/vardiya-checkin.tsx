@@ -197,11 +197,9 @@ export default function VardiyaCheckin() {
           }
         },
         (errorMessage) => {
-          console.log("Scanning...", errorMessage);
         }
       );
     } catch (error: any) {
-      console.error("Camera error:", error);
       toast({
         title: "Kamera Hatası",
         description: "Kameraya erişilemedi. Lütfen izinleri kontrol edin.",
@@ -218,7 +216,6 @@ export default function VardiyaCheckin() {
         setIsScanning(false);
       }
     } catch (error) {
-      console.error("Error stopping scanner:", error);
     }
   };
 

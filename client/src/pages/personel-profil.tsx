@@ -69,7 +69,6 @@ export default function PersonelProfilPage() {
       // Clear all queries and redirect
       window.location.href = '/';
     } catch (error) {
-      console.error('Logout error:', error);
       window.location.href = '/';
     }
   };

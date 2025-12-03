@@ -17,12 +17,9 @@ export default function QRScanner() {
   const [lastQRType, setLastQRType] = useState<'shift' | 'equipment' | 'inventory' | 'audit' | null>(null);
 
   useEffect(() => {
-    console.log("QR Scanner component mounted");
     return () => {
-      console.log("QR Scanner component unmounting");
       if (scannerRef.current) {
         scannerRef.current.stop().catch((err) => {
-          console.error("Error stopping scanner:", err);
         });
       }
     };
@@ -31,13 +28,11 @@ export default function QRScanner() {
   const startScanning = async () => {
     try {
       setError(null);
-      console.log("Starting QR scanner...");
       
       // Check if QR reader container exists
       const container = document.getElementById("qr-reader");
       if (!container) {
         const errMsg = "QR reader container not found in DOM";
-        console.error(errMsg);
         setError(errMsg);
         toast({
           title: "Hata",
@@ -53,14 +48,11 @@ export default function QRScanner() {
       const html5QrCode = new Html5Qrcode("qr-reader");
       scannerRef.current = html5QrCode;
 
-      console.log("Html5Qrcode instance created, starting camera...");
 
       const cameras = await Html5Qrcode.getCameras();
-      console.log("Available cameras:", cameras);
 
       if (!cameras || cameras.length === 0) {
         const errMsg = "Kamera bulunamadı";
-        console.error(errMsg);
         setError(errMsg);
         setHasPermission(false);
         toast({
@@ -78,7 +70,6 @@ export default function QRScanner() {
           qrbox: { width: 250, height: 250 },
         },
         (decodedText) => {
-          console.log("QR decoded:", decodedText);
           try {
             let pathname = decodedText;
             
@@ -90,13 +81,11 @@ export default function QRScanner() {
               // Relative URL or path - use as is
             }
             
-            console.log("Parsed pathname:", pathname);
 
             // Auto-detect QR type and route accordingly
             if (pathname.startsWith('/ekipman/') || pathname.startsWith('/equipment/')) {
               // Equipment fault report QR
               const equipmentId = pathname.split(/\/ekipman\/|\/equipment\//)[1];
-              console.log("Equipment ID extracted:", equipmentId);
               if (equipmentId && !isNaN(parseInt(equipmentId))) {
                 setLastQRType('equipment');
                 toast({
@@ -106,7 +95,6 @@ export default function QRScanner() {
                 html5QrCode.stop().then(() => {
                   setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
                 }).catch((err) => {
-                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -127,7 +115,6 @@ export default function QRScanner() {
                 html5QrCode.stop().then(() => {
                   setLocation(`/vardiya-checkin?shiftId=${shiftId}`);
                 }).catch((err) => {
-                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -148,7 +135,6 @@ export default function QRScanner() {
                 html5QrCode.stop().then(() => {
                   setLocation(`/checklistler?type=inventory&locationId=${locationId}`);
                 }).catch((err) => {
-                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -169,7 +155,6 @@ export default function QRScanner() {
                 html5QrCode.stop().then(() => {
                   setLocation(`/denetim/${auditId}`);
                 }).catch((err) => {
-                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -191,7 +176,6 @@ export default function QRScanner() {
                 html5QrCode.stop().then(() => {
                   setLocation(`/ariza-yeni?equipmentId=${equipmentId}`);
                 }).catch((err) => {
-                  console.error("Error stopping scanner:", err);
                 });
               } else {
                 toast({
@@ -201,7 +185,6 @@ export default function QRScanner() {
                 });
               }
             } else {
-              console.warn("Unknown QR type:", decodedText);
               toast({
                 title: "Hata",
                 description: "QR kod tipi tanınamadı",
@@ -209,7 +192,6 @@ export default function QRScanner() {
               });
             }
           } catch (error) {
-            console.error("Error processing QR:", error);
             toast({
               title: "Hata",
               description: "QR kod okunamadı",
@@ -224,10 +206,8 @@ export default function QRScanner() {
 
       setIsScanning(true);
       setHasPermission(true);
-      console.log("Scanner started successfully");
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "QR tarayıcı başlatılamadı";
-      console.error("QR scanner error:", err);
       setError(errMsg);
       setHasPermission(false);
       setIsScanning(false);
@@ -240,17 +220,14 @@ export default function QRScanner() {
   };
 
   const stopScanning = () => {
-    console.log("Stopping QR scanner...");
     if (scannerRef.current) {
       scannerRef.current
         .stop()
         .then(() => {
           setIsScanning(false);
           setError(null);
-          console.log("Scanner stopped");
         })
         .catch((err: Error) => {
-          console.error("Stop error:", err);
           setError(err.message);
         });
     }

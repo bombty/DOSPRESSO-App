@@ -157,7 +157,6 @@ export default function Mesajlar() {
       const { url } = await response.json();
       return { method: 'PUT' as const, url };
     } catch (error) {
-      console.error('Error getting upload URL:', error);
       toast({
         title: "Hata",
         description: "Dosya yükleme URL'si alınamadı",

@@ -141,7 +141,6 @@ export default function EquipmentManagement() {
         try {
           qrScannerRef.current.clear().catch(() => {});
         } catch (e) {
-          console.error('Error clearing QR scanner:', e);
         }
         qrScannerRef.current = null;
       }
@@ -192,11 +191,9 @@ export default function EquipmentManagement() {
               }
             },
             (error) => {
-              console.log('QR scan error:', error);
             }
           );
         } catch (error) {
-          console.error('QR scanner initialization error:', error);
         }
       };
       

@@ -193,7 +193,6 @@ export default function ServiceRequestsManagement() {
         reader.readAsDataURL(createPhoto2File);
       }
     } catch (error) {
-      console.error('Photo upload error:', error);
     }
   };
 
@@ -300,13 +299,11 @@ export default function ServiceRequestsManagement() {
               });
             }
           } catch (error) {
-            console.error('QR parsing error:', error);
           }
         },
         () => {} // Error callback (no-op)
       );
     } catch (error) {
-      console.error('QR scanner error:', error);
       toast({
         title: 'Hata',
         description: 'Kamera başlatılamadı',
@@ -322,7 +319,6 @@ export default function ServiceRequestsManagement() {
         await qrScannerRef.current.stop();
         qrScannerRef.current = null;
       } catch (error) {
-        console.error('Error stopping scanner:', error);
       }
     }
     setQrScannerOpen(false);

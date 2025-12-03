@@ -103,7 +103,6 @@ export default function NewFaultReport() {
       }, 1000);
     },
     onError: (error: any) => {
-      console.error("Fault creation error:", error);
       toast({
         title: "Hata",
         description: error.message || "Arıza raporlama başarısız oldu",
