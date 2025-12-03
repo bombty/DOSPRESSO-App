@@ -283,7 +283,7 @@ export default function Vardiyalar() {
   }
 
   return (
-    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3 sm:gap-4 p-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="text-page-title">
@@ -297,7 +297,7 @@ export default function Vardiyalar() {
         </div>
 
         {isSupervisor && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             <Link href="/vardiya-sablonlari">
               <Button variant="outline" data-testid="button-templates">
                 <FileText className="w-4 h-4 mr-2" />
@@ -458,8 +458,8 @@ export default function Vardiyalar() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col gap-3 sm:gap-4">
-        <TabsList className="grid w-full grid-cols-4 max-w-xl">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
           <TabsTrigger value="overview" data-testid="tab-overview">
             <TrendingUp className="w-4 h-4 mr-2" />
             Genel Bakış
@@ -478,8 +478,8 @@ export default function Vardiyalar() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
-          <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-4 gap-2 sm:gap-3">
+        <TabsContent value="overview" className="w-full space-y-2 sm:space-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
             <Card data-testid="card-total-shifts">
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
