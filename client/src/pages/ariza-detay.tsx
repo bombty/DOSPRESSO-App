@@ -125,7 +125,7 @@ export default function FaultDetail() {
   if (!fault) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-        <Button variant="outline" onClick={() => setLocation("/ekipman-arizalar")}>
+        <Button variant="outline" onClick={() => setLocation("/ariza")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Geri Dön
         </Button>
@@ -140,7 +140,7 @@ export default function FaultDetail() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-      <Button variant="outline" onClick={() => setLocation("/ekipman-arizalar")}>
+      <Button variant="outline" onClick={() => setLocation("/ariza")}>
         <ArrowLeft className="w-4 h-4 mr-2" />
         Geri Dön
       </Button>

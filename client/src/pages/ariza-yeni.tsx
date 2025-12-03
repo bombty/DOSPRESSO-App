@@ -151,7 +151,7 @@ export default function NewFaultReport() {
   return (
     <div className="grid grid-cols-1 gap-2 sm:gap-3 max-w-2xl mx-auto">
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setLocation("/ekipman-arizalar")}>
+        <Button variant="outline" size="sm" onClick={() => setLocation("/ariza")}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
@@ -462,7 +462,7 @@ export default function NewFaultReport() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setLocation("/ekipman-arizalar")}
+              onClick={() => setLocation("/ariza")}
             >
               İptal Et
             </Button>
