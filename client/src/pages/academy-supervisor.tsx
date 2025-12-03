@@ -159,7 +159,7 @@ export default function AcademySupervisor() {
               ) : modules.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">Modül bulunamadı</div>
               ) : (
-                <div className="w-full space-y-2 sm:space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 w-full">
                   {modules.map((module) => (
                     <Link key={module.id} to={`/akademi-modul/${module.id}`}>
                       <Card className="cursor-pointer hover-elevate h-full flex flex-col">
