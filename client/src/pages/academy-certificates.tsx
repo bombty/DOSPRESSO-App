@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Award, Download, Share2, Loader } from "lucide-react";
 import dospressoLogo from "@assets/old_board2_1764794942278.png";
+import certificationSeal from "@assets/IMG_6568_1764796600520.png";
 
 const CAREER_LEVELS = [
   { id: 1, roleId: "stajyer", titleTr: "Stajyer", levelNumber: 1, certificateColor: "from-blue-100 to-blue-50" },
@@ -109,29 +110,13 @@ export default function AcademyCertificates() {
                     <p className="text-xs text-amber-700 font-mono">Sertifika No: CERT-{user?.id?.substring(0, 8).toUpperCase()}</p>
                   </div>
 
-                  {/* Altın Kurdeleli Sertifika Damgası */}
-                  <div className="absolute -right-4 top-1/3 transform -translate-y-1/2 -rotate-45 z-30 pointer-events-none">
-                    <svg width="120" height="140" viewBox="0 0 120 140" className="drop-shadow-lg">
-                      {/* Sol Şerit */}
-                      <path d="M 35 50 L 25 85 Q 23 95 28 100 L 35 95 Q 30 90 32 85 Z" fill="#D4AF37" stroke="#C5A028" strokeWidth="1"/>
-                      {/* Sağ Şerit */}
-                      <path d="M 85 50 L 95 85 Q 97 95 92 100 L 85 95 Q 90 90 88 85 Z" fill="#D4AF37" stroke="#C5A028" strokeWidth="1"/>
-                      
-                      {/* Dış Daire */}
-                      <circle cx="60" cy="45" r="38" fill="#F4E4C1" stroke="#D4AF37" strokeWidth="2"/>
-                      {/* Ortası Daire */}
-                      <circle cx="60" cy="45" r="32" fill="#FFD700" stroke="#DAA520" strokeWidth="1.5"/>
-                      {/* İç Daire */}
-                      <circle cx="60" cy="45" r="28" fill="#FFF8DC" stroke="#D4AF37" strokeWidth="1"/>
-                      
-                      {/* Onay İşareti */}
-                      <g transform="translate(60, 45)">
-                        <path d="M -8 0 L -2 8 L 10 -6" stroke="#C5A028" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                      </g>
-                      
-                      {/* Dekoratif Kenarlık */}
-                      <circle cx="60" cy="45" r="35" fill="none" stroke="#D4AF37" strokeWidth="0.5" strokeDasharray="2,2" opacity="0.6"/>
-                    </svg>
+                  {/* Sertifika Damgası */}
+                  <div className="absolute -right-6 top-1/3 transform -translate-y-1/2 -rotate-45 z-30 pointer-events-none">
+                    <img 
+                      src={certificationSeal} 
+                      alt="Sertifika Damgası" 
+                      className="w-32 h-32 object-contain drop-shadow-lg"
+                    />
                   </div>
                 </div>
               </div>
