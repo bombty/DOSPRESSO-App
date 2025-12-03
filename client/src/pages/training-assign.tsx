@@ -67,7 +67,7 @@ export default function TrainingAssign() {
   }
 
   return (
-    <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="container mx-auto p-6 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center gap-4">
         <Link href="/hq">
           <Button variant="outline" size="icon">

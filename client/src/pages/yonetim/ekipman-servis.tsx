@@ -413,7 +413,7 @@ export default function EkipmanServis() {
   }), [unifiedRequests]);
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -576,9 +576,9 @@ export default function EkipmanServis() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             {/* Branch Selection */}
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <Label htmlFor="create-branch">Şube *</Label>
               <Select value={createBranch} onValueChange={(val) => {
                 setCreateBranch(val);
@@ -599,10 +599,10 @@ export default function EkipmanServis() {
 
             {/* Equipment Selection */}
             {createBranch && (
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <Label>Ekipman Seçimi *</Label>
                 {qrScannerOpen ? (
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div id="qr-reader-ekipman-servis" style={{ minHeight: '300px' }} className="rounded-lg border-2 border-blue-300" />
                     <Button onClick={stopQRScanner} variant="outline" className="w-full">
                       <X className="w-4 h-4 mr-2" />
@@ -642,7 +642,7 @@ export default function EkipmanServis() {
 
             {/* Type Selection */}
             {createEquipment && (
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <Label>Rapor Tipi *</Label>
                 <div className="grid grid-cols-2 gap-4">
                   <button
@@ -678,7 +678,7 @@ export default function EkipmanServis() {
             {/* Fault Fields */}
             {createType === 'fault' && (
               <div className="grid grid-cols-1 gap-4 border-t pt-4">
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label>Arıza Açıklaması *</Label>
                   <Textarea
                     placeholder="Sorunu detaylı açıklayın..."
@@ -702,7 +702,7 @@ export default function EkipmanServis() {
                 </div>
 
                 {aiDiagnosis && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div>
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-100">AI Tanısı</p>
                       <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">{aiDiagnosis.diagnosis}</p>
@@ -734,7 +734,7 @@ export default function EkipmanServis() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label>Ciddiyet Seviyesi</Label>
                   <Select value={faultSeverity} onValueChange={setFaultSeverity}>
                     <SelectTrigger>
@@ -754,7 +754,7 @@ export default function EkipmanServis() {
             {/* Service Fields */}
             {createType === 'service' && (
               <div className="grid grid-cols-1 gap-4 border-t pt-4">
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label>Servis Sağlayıcı *</Label>
                   <Input
                     placeholder="Technician veya şirket adı"
@@ -762,7 +762,7 @@ export default function EkipmanServis() {
                     onChange={(e) => setServiceProvider(e.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label>Öncelik</Label>
                   <Select value={priority} onValueChange={setPriority}>
                     <SelectTrigger className={
@@ -788,7 +788,7 @@ export default function EkipmanServis() {
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label>Notlar</Label>
                   <Textarea
                     placeholder="Ek bilgiler..."
@@ -902,7 +902,7 @@ export default function EkipmanServis() {
 
               {selectedRequest.type === 'fault' ? (
                 <>
-                  <div className="border-t pt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="border-t pt-4 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <p className="text-sm text-muted-foreground">Arıza Açıklaması</p>
                     <p>{selectedRequest.faultDescription}</p>
                   </div>
@@ -919,18 +919,18 @@ export default function EkipmanServis() {
                 </>
               ) : (
                 <>
-                  <div className="border-t pt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="border-t pt-4 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <p className="text-sm text-muted-foreground">Technician</p>
                     <p className="font-medium">{selectedRequest.serviceProvider}</p>
                   </div>
                   {selectedRequest.notes && (
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <p className="text-sm text-muted-foreground">Notlar</p>
                       <p>{selectedRequest.notes}</p>
                     </div>
                   )}
                   {(selectedRequest.photo1Url || selectedRequest.photo2Url) && (
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <p className="text-sm text-muted-foreground">Fotoğraflar</p>
                       <div className="grid grid-cols-2 gap-2">
                         {selectedRequest.photo1Url && <img src={selectedRequest.photo1Url} alt="Foto 1" className="w-full h-32 object-cover rounded-lg" />}

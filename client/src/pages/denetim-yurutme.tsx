@@ -214,7 +214,7 @@ export default function DenetimYurutmePage() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/denetimler">
@@ -378,7 +378,7 @@ export default function DenetimYurutmePage() {
 
                 {/* Photo Upload */}
                 {requiresPhoto && !isCompleted && (
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <Label>Fotoğraf {requiresPhoto && '*'}</Label>
                     <ObjectUploader
                       onGetUploadParameters={async () => {

@@ -273,7 +273,7 @@ export default function Vardiyalar() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4 sm:p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-10 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
@@ -283,7 +283,7 @@ export default function Vardiyalar() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="text-page-title">
@@ -458,7 +458,7 @@ export default function Vardiyalar() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <TabsList className="grid w-full grid-cols-4 max-w-xl">
           <TabsTrigger value="overview" data-testid="tab-overview">
             <TrendingUp className="w-4 h-4 mr-2" />
@@ -544,7 +544,7 @@ export default function Vardiyalar() {
                   <p className="text-muted-foreground text-center py-8">Bugün planlanmış vardiya yok</p>
                 ) : (
                   <ScrollArea className="h-[200px]">
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       {todayShifts.map((shift) => {
                         const ShiftIcon = shiftTypeIcons[shift.shiftType];
                         return (
@@ -590,7 +590,7 @@ export default function Vardiyalar() {
                   </div>
                 ) : (
                   <ScrollArea className="h-[200px]">
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       {tomorrowShifts.map((shift) => {
                         const ShiftIcon = shiftTypeIcons[shift.shiftType];
                         return (
@@ -739,7 +739,7 @@ export default function Vardiyalar() {
                 </div>
               ) : (
                 <ScrollArea className="h-[400px]">
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     {thisWeekShifts
                       .sort((a, b) => a.shiftDate.localeCompare(b.shiftDate) || a.startTime.localeCompare(b.startTime))
                       .map((shift) => {
@@ -857,7 +857,7 @@ export default function Vardiyalar() {
               </CardHeader>
               <CardContent>
                 {activeAttendances && activeAttendances.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     {activeAttendances.map((attendance: any) => {
                       const user = users?.find(u => u.id === attendance.userId);
                       const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
@@ -912,7 +912,7 @@ export default function Vardiyalar() {
                     if (typeShifts.length === 0) return null;
                     const ShiftIcon = shiftTypeIcons[type];
                     return (
-                      <div key={type} className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <div key={type} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                         <div className="flex items-center gap-2">
                           <div className={cn("p-1.5 rounded", shiftTypeColors[type])}>
                             <ShiftIcon className="h-4 w-4" />
@@ -1418,7 +1418,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <p className="text-sm text-muted-foreground">Çalışma Süresi</p>
                 <div className="font-mono text-3xl font-bold text-green-700 dark:text-green-300 tracking-wide">
                   {String(elapsedTime.hours).padStart(2, '0')}:{String(elapsedTime.minutes).padStart(2, '0')}:{String(elapsedTime.seconds).padStart(2, '0')}
@@ -1535,7 +1535,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               <CardHeader>
                 <CardTitle>Bugünkü Vardiyaları Seç</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {todayShifts.map((shift) => {
                   const ShiftIcon = shiftTypeIcons[shift.shiftType];
                   return (
@@ -1574,8 +1574,8 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               <CardHeader>
                 <CardTitle>Şube Seçerek Giriş Yap</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Button
                     onClick={() => {
                       if (user?.branchId) {

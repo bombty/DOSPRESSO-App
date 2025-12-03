@@ -181,7 +181,7 @@ export default function PersonelMusaitlik() {
   }
 
   return (
-    <div className="container mx-auto p-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-6 w-6" />
@@ -376,7 +376,7 @@ export default function PersonelMusaitlik() {
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Başlangıç:</span>
                   <span className="font-medium" data-testid={`text-start-${availability.id}`}>

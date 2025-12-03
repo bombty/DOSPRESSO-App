@@ -163,7 +163,7 @@ export default function Academy() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="p-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+      <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
 
       {/* 3-Hub Navigation - MOVED TO TOP */}
       <div className="flex gap-2 mb-2 sticky top-0 bg-background z-10 pb-1 border-b">
@@ -319,7 +319,7 @@ export default function Academy() {
               )}
             </div>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium">Mevcut: {currentLevel.titleTr}</span>
               <span className="text-muted-foreground">Seviye {currentLevel.levelNumber}/5</span>
@@ -359,7 +359,7 @@ export default function Academy() {
 
       {/* Learning Hub */}
       {activeHub === "learning" && (
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           {modules.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
@@ -412,7 +412,7 @@ export default function Academy() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {recommendedQuizzes.map((quiz: any) => {
                       const diffColor = quiz.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200' 

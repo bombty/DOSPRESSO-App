@@ -18,7 +18,7 @@ export default function Landing() {
           <p className="text-center text-muted-foreground">
             Şube operasyonlarınızı yönetin, görevleri takip edin, ekipman arızalarını raporlayın ve performansı analiz edin.
           </p>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <Link href="/login" className="block w-full">
               <Button className="w-full" size="lg" data-testid="button-login">
                 Giriş Yap

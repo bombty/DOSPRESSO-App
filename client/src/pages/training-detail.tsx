@@ -239,7 +239,7 @@ export default function TrainingDetail() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96" />
       </div>
@@ -263,7 +263,7 @@ export default function TrainingDetail() {
   const progressPercentage = progress?.progressPercentage || 0;
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
@@ -290,7 +290,7 @@ export default function TrainingDetail() {
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <CardTitle className="text-3xl" data-testid="text-module-title">
                 {module.title}
               </CardTitle>
@@ -328,7 +328,7 @@ export default function TrainingDetail() {
           </div>
 
           {progress && (
-            <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">İlerleme</span>
                 <span className="font-medium" data-testid="text-progress-percentage">
@@ -598,7 +598,7 @@ export default function TrainingDetail() {
                       <CardDescription>{quiz.description}</CardDescription>
                     )}
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div className="flex gap-4 text-sm text-muted-foreground">
                       {quiz.passingScore && (
                         <span>Geçme Puanı: {quiz.passingScore}%</span>
@@ -636,7 +636,7 @@ export default function TrainingDetail() {
                   data-testid={`flashcard-${card.id}`}
                 >
                   <CardContent className="pt-6 min-h-48 flex items-center justify-center">
-                    <div className="text-center grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div className="text-center grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <p className="text-sm text-muted-foreground uppercase tracking-wide">
                         {flippedCards.has(card.id) ? "Cevap" : "Soru"}
                       </p>

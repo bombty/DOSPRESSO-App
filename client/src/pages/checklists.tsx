@@ -249,7 +249,7 @@ export default function Checklists() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Checklistler</h1>
@@ -344,7 +344,7 @@ export default function Checklists() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-32 w-full" />
           ))}
@@ -422,12 +422,12 @@ export default function Checklists() {
                                 </div>
                                 
                                 <CollapsibleContent>
-                                  <div className="px-3 pb-3 pt-1 grid grid-cols-1 gap-3 border-t">
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                                     <p className="text-xs text-muted-foreground">
                                       En son Ece tarafından tarihinde işlem yapılmıştır.
                                     </p>
                                     
-                                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                                       <h5 className="text-sm font-medium">Fotoğraf Kanıtı</h5>
                                       <Button
                                         variant="outline"
@@ -441,7 +441,7 @@ export default function Checklists() {
                                       </Button>
                                       
                                       {taskStates[task.id]?.photo && (
-                                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                                           <div className="aspect-video bg-muted rounded-md overflow-hidden">
                                             <img 
                                               src={taskStates[task.id].photo} 
@@ -642,7 +642,7 @@ export default function Checklists() {
                 />
               </div>
 
-              <div className="border-t pt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium">Görevler</h3>
                   {(isCoach || (editingChecklist && editingChecklist.isEditable)) && (
@@ -659,9 +659,9 @@ export default function Checklists() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="border rounded-md p-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div key={field.id} className="border rounded-md p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <div className="flex gap-2">
                         <FormField
                           control={editForm.control}

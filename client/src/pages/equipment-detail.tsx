@@ -569,7 +569,7 @@ export default function EquipmentDetail() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-10 w-48" />
         <Card>
           <CardHeader>
@@ -586,7 +586,7 @@ export default function EquipmentDetail() {
 
   if (!equipment) {
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Link href="/ekipman" asChild>
           <Button variant="outline" data-testid="button-back">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -606,7 +606,7 @@ export default function EquipmentDetail() {
   const metadata = EQUIPMENT_METADATA[equipment.equipmentType as keyof typeof EQUIPMENT_METADATA];
 
   return (
-    <div className="max-w-full overflow-x-hidden grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="max-w-full overflow-x-hidden grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center gap-4">
         <Link href="/ekipman" asChild>
           <Button variant="outline" data-testid="button-back">
@@ -783,7 +783,7 @@ export default function EquipmentDetail() {
                           <Wrench className="h-4 w-4 text-primary" />
                         </div>
                       </div>
-                      <div className="flex-1 grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-medium" data-testid={`text-maintenance-type-${log.id}`}>
@@ -848,7 +848,7 @@ export default function EquipmentDetail() {
                           <AlertTriangle className="h-4 w-4 text-destructive" />
                         </div>
                       </div>
-                      <div className="flex-1 grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-medium" data-testid={`text-fault-equipment-${fault.id}`}>
@@ -938,7 +938,7 @@ export default function EquipmentDetail() {
                   {serviceRequests.map((request) => (
                     <div key={request.id} className="rounded-lg border p-4 grid grid-cols-1 gap-4" data-testid={`service-request-${request.id}`}>
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                           <div className="flex items-center gap-2 flex-wrap">
                             <Badge variant={
                               request.status === SERVICE_REQUEST_STATUS.CLOSED ? 'default' :
@@ -996,7 +996,7 @@ export default function EquipmentDetail() {
                             </div>
                           )}
                         </div>
-                        <div className="text-right grid grid-cols-1 gap-2 md:grid-cols-2">
+                        <div className="text-right grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                           <p className="text-sm text-muted-foreground">
                             {new Date(request.createdAt!).toLocaleDateString('tr-TR', {
                               year: 'numeric',
@@ -1024,7 +1024,7 @@ export default function EquipmentDetail() {
                         </div>
                       </div>
                       {request.timeline && request.timeline.length > 0 && (
-                        <div className="pt-4 border-t grid grid-cols-1 gap-2 md:grid-cols-2">
+                        <div className="pt-4 border-t grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium">Geçmiş (Son 3)</p>
                             <Button
@@ -1040,7 +1040,7 @@ export default function EquipmentDetail() {
                               Tümünü Gör
                             </Button>
                           </div>
-                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                             {request.timeline.slice(-3).reverse().map((entry: any) => (
                               <div key={entry.id} className="text-xs text-muted-foreground flex items-start gap-2">
                                 <Avatar className="h-6 w-6">
@@ -1173,7 +1173,7 @@ export default function EquipmentDetail() {
                       data-testid="img-qr-code"
                     />
                   </div>
-                  <div className="text-center grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="text-center grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <p className="text-sm text-muted-foreground">
                       QR kodu mobil cihazınızla tarayarak bu ekipmanı hızlıca tanımlayabilirsiniz
                     </p>
@@ -1215,7 +1215,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {maintenanceSchedules.filter(s => String(s.equipmentId) === equipmentId).length > 0 ? (
-                <div className="grid grid-cols-1 gap-3" data-testid="list-maintenance-schedules">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3" data-testid="list-maintenance-schedules">
                   {maintenanceSchedules.filter(s => String(s.equipmentId) === equipmentId).map((schedule) => (
                     <Card key={schedule.id} data-testid={`card-maintenance-schedule-${String(schedule.id)}`}>
                       <CardHeader className="pb-3">
@@ -1268,7 +1268,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {proactiveMaintenanceLogs.filter(l => String(l.equipmentId) === equipmentId).length > 0 ? (
-                <div className="grid grid-cols-1 gap-3" data-testid="list-maintenance-logs">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3" data-testid="list-maintenance-logs">
                   {proactiveMaintenanceLogs.filter(l => String(l.equipmentId) === equipmentId).map((log) => (
                     <Card key={log.id} data-testid={`card-maintenance-log-${String(log.id)}`}>
                       <CardHeader className="pb-3">
@@ -1323,7 +1323,7 @@ export default function EquipmentDetail() {
             </CardHeader>
             <CardContent>
               {troubleshootingSteps && troubleshootingSteps.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {troubleshootingSteps.map((step) => (
                     <div 
                       key={step.id} 
@@ -1564,7 +1564,7 @@ export default function EquipmentDetail() {
           {selectedServiceRequest && (
             <Form {...statusUpdateForm}>
               <form onSubmit={statusUpdateForm.handleSubmit((data) => updateStatusMutation.mutate({ ...data, requestId: selectedServiceRequest.id }))} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <p className="text-sm font-medium">Mevcut Durum</p>
                   <Badge variant="outline" data-testid="badge-current-status">
                     {statusLabels[selectedServiceRequest.status] || selectedServiceRequest.status}
@@ -1660,7 +1660,7 @@ export default function EquipmentDetail() {
                       {entry.actorId?.substring(0, 2).toUpperCase() || '??'}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium">
                         {entry.actorId}
@@ -1922,13 +1922,13 @@ export default function EquipmentDetail() {
                     Arıza raporu oluşturmadan önce aşağıdaki adımları tamamlayın:
                   </p>
                   {isLoadingSteps ? (
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       {[1, 2, 3].map((i) => (
                         <Skeleton key={i} className="h-12 w-full" />
                       ))}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       {troubleshootingSteps.map((step) => {
                         const isMissing = step.isRequired && !completedStepIds.has(step.id);
                         return (
@@ -1951,7 +1951,7 @@ export default function EquipmentDetail() {
                               }}
                               data-testid={`checkbox-troubleshooting-step-${step.id}`}
                             />
-                            <div className="flex-1 grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                               <div className="flex items-center gap-2">
                                 <span className={`font-medium ${isMissing ? 'text-destructive' : ''}`}>
                                   Adım {step.order}
@@ -2036,7 +2036,7 @@ export default function EquipmentDetail() {
                   <div className="bg-background rounded-lg p-3 grid grid-cols-1 gap-2 border" data-testid="ai-response-container">
                     <div className="flex items-start gap-2">
                       <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                         <p className="text-sm text-foreground whitespace-pre-wrap" data-testid="text-ai-answer">{aiAnswer.answer}</p>
                         {aiAnswer.sources && aiAnswer.sources.length > 0 && (
                           <div className="pt-2 border-t">

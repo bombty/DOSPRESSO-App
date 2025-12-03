@@ -309,7 +309,7 @@ export default function VardiyaCheckin() {
   }
 
   return (
-    <div className="container max-w-2xl mx-auto p-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="container max-w-2xl mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {/* Hidden video and canvas elements for photo capture */}
       <video ref={videoRef} className="hidden" autoPlay playsInline />
       <canvas ref={canvasRef} className="hidden" />
@@ -344,7 +344,7 @@ export default function VardiyaCheckin() {
       {/* Captured data display */}
       {(capturedPhoto || location) && (
         <Card>
-          <CardContent className="pt-6 grid grid-cols-1 gap-2 md:grid-cols-2">
+          <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             {capturedPhoto && (
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <CheckCircle className="h-4 w-4" />
@@ -393,7 +393,7 @@ export default function VardiyaCheckin() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <p className="text-sm text-muted-foreground">Çıkış yapmak için QR kodu okutun:</p>
               {!isScanning && (
                 <Button
@@ -491,7 +491,7 @@ export default function VardiyaCheckin() {
         <CardHeader>
           <CardTitle>Nasıl Kullanılır?</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <div className="flex items-start gap-2">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
               1

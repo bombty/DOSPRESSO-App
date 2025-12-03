@@ -50,7 +50,7 @@ export default function AcademyAdaptiveEngine() {
             Önerilen Yollar
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           {recommendations.length > 0 ? (
             recommendations.map((rec: any, idx: number) => (
               <div key={idx} className="p-2 border rounded-lg space-y-1">

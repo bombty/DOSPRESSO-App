@@ -45,7 +45,7 @@ export default function AdminSeedPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div>
         <h1 className="text-3xl font-bold">Veri Ekle (Seed)</h1>
         <p className="text-muted-foreground mt-1">
@@ -82,7 +82,7 @@ export default function AdminSeedPage() {
           </Button>
 
           {result && (
-            <div className="p-4 rounded-lg bg-muted grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="p-4 rounded-lg bg-muted grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <p className="font-semibold text-green-600">✅ İşlem Başarılı</p>
               <div className="text-sm space-y-1">
                 <p>

@@ -78,7 +78,7 @@ export default function AcademyProgressOverview() {
             Hedefler
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           {nextMilestones.map((m, idx) => (
             <div key={idx} className="space-y-0.5">
               <div className="flex justify-between text-xs">
@@ -123,7 +123,7 @@ export default function AcademyProgressOverview() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <div className="flex gap-2 items-start">
               <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
               <div>

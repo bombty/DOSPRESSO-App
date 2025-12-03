@@ -188,7 +188,7 @@ export default function Sikayetler() {
   }
 
   return (
-    <div className="p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div>
         <h1 className="text-3xl font-bold" data-testid="heading-sikayetler">Misafir Şikayetleri</h1>
         <p className="text-muted-foreground mt-1">SLA takipli şikayet yönetim sistemi</p>

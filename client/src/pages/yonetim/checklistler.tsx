@@ -25,7 +25,7 @@ export default function AdminChecklistManagement() {
     return (
       <Card>
         <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center text-center grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="flex flex-col items-center justify-center text-center grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <AlertCircle className="h-12 w-12 text-destructive" />
             <h3 className="font-semibold text-lg">Yetkisiz Erişim</h3>
             <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
@@ -149,7 +149,7 @@ export default function AdminChecklistManagement() {
           ) : filteredChecklists?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">Checklist bulunamadı</div>
           ) : (
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               {filteredChecklists?.map((checklist) => {
                 const tasks = getChecklistTasks(checklist.id);
                 const isExpanded = expandedChecklistId === checklist.id;
@@ -392,7 +392,7 @@ function ChecklistFormDialog({
         <DialogTitle>{mode === "create" ? "Yeni Checklist" : "Checklist Düzenle"}</DialogTitle>
       </DialogHeader>
       <div className="grid grid-cols-1 gap-4 py-4">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <Label htmlFor="title">Başlık *</Label>
           <Input
             id="title"
@@ -403,7 +403,7 @@ function ChecklistFormDialog({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <Label htmlFor="description">Açıklama</Label>
           <Textarea
             id="description"
@@ -416,7 +416,7 @@ function ChecklistFormDialog({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <Label>Sıklık *</Label>
             <Select value={frequency} onValueChange={setFrequency}>
               <SelectTrigger data-testid="select-frequency">
@@ -430,7 +430,7 @@ function ChecklistFormDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <Label>Kategori</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger data-testid="select-category">
@@ -448,7 +448,7 @@ function ChecklistFormDialog({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <Label htmlFor="timeWindowStart">Başlangıç Saati</Label>
             <Input
               id="timeWindowStart"
@@ -459,7 +459,7 @@ function ChecklistFormDialog({
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <Label htmlFor="timeWindowEnd">Bitiş Saati</Label>
             <Input
               id="timeWindowEnd"
@@ -495,7 +495,7 @@ function ChecklistFormDialog({
 
         <Separator />
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <div className="flex items-center justify-between">
             <Label className="text-base font-semibold">Görevler</Label>
             <Button
@@ -515,7 +515,7 @@ function ChecklistFormDialog({
               <CardContent className="py-3">
                 <div className="flex gap-2 items-start">
                   <span className="text-sm text-muted-foreground pt-2">{index + 1}.</span>
-                  <div className="flex-1 grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <Input
                       value={task.taskDescription}
                       onChange={(e) => updateTask(index, 'taskDescription', e.target.value)}

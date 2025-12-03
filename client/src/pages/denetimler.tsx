@@ -136,7 +136,7 @@ export default function DenetimlerPage() {
   const completedAudits = audits.filter(a => a.status === 'completed');
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
@@ -242,7 +242,7 @@ export default function DenetimlerPage() {
           </DialogHeader>
           
           <div className="grid grid-cols-1 gap-4 py-4">
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <Label htmlFor="template">Denetim Şablonu *</Label>
               <Select
                 value={selectedTemplateId?.toString()}
@@ -261,7 +261,7 @@ export default function DenetimlerPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <Label htmlFor="branch">Hedef Şube *</Label>
               <Select
                 value={selectedBranchId?.toString()}

@@ -355,7 +355,7 @@ export default function DenetimSablonlariPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
@@ -504,7 +504,7 @@ export default function DenetimSablonlariPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Template Info */}
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <FormField
                   control={form.control}
                   name="title"
@@ -663,7 +663,7 @@ export default function DenetimSablonlariPage() {
 
                 {items.map((item, index) => (
                   <Card key={index} data-testid={`card-item-${index}`}>
-                    <CardContent className="pt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <CardContent className="pt-4 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <div className="flex items-start justify-between gap-2">
                         <Label className="text-sm font-medium">Madde {index + 1}</Label>
                         <Button
@@ -764,7 +764,7 @@ export default function DenetimSablonlariPage() {
 
                       {/* Multiple Choice Options */}
                       {item.itemType === 'multiple_choice' && (
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                           <div>
                             <Label>Şıklar (En az 2 şık gerekli)</Label>
                             <div className="grid grid-cols-1 gap-2 mt-2">

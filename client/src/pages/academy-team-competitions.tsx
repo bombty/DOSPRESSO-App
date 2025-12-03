@@ -72,7 +72,7 @@ export default function AcademyTeamCompetitions() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <div className="flex justify-between text-sm">
                 <span>Genel İlerleme</span>
                 <span className="font-medium">{monthlyChallenge.progress}%</span>
@@ -153,7 +153,7 @@ export default function AcademyTeamCompetitions() {
               <CardDescription>Şubelerin mevcut performans puanları</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {activeCompetition?.leaderboard?.map((entry: any, idx: number) => (
                   <div key={entry.branchId} className="flex items-center gap-4 p-3 border rounded-lg hover-elevate transition" data-testid={`team-rank-${idx + 1}`}>
                     <div className="text-2xl font-bold text-primary w-12 text-center">
@@ -182,7 +182,7 @@ export default function AcademyTeamCompetitions() {
               <CardDescription>Tamamlanan yarışmaların sonuçları</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 {completedCompetitions.length > 0 ? (
                   completedCompetitions.map((comp: any) => (
                     <div key={comp.id} className="p-4 border rounded-lg">

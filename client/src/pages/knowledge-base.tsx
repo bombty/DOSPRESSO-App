@@ -109,7 +109,7 @@ export default function KnowledgeBase() {
   );
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Bilgi Bankası</h1>
@@ -248,7 +248,7 @@ export default function KnowledgeBase() {
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <p className="text-sm text-muted-foreground line-clamp-3">
                       {article.content}
                     </p>

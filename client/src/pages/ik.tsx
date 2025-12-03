@@ -372,7 +372,7 @@ export default function IKPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">İK Yönetimi</h1>
@@ -481,7 +481,7 @@ export default function IKPage() {
 
                 {/* Employee Table */}
                 {isLoading ? (
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     {[...Array(5)].map((_, i) => (
                       <Skeleton key={i} className="h-12 w-full" />
                     ))}
@@ -679,7 +679,7 @@ export default function IKPage() {
 
                 {/* Disciplinary Table */}
                 {isDisciplinaryLoading ? (
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     {[...Array(5)].map((_, i) => (
                       <Skeleton key={i} className="h-12 w-full" />
                     ))}
@@ -782,7 +782,7 @@ export default function IKPage() {
 
                 {/* Onboarding Table */}
                 {isOnboardingLoading ? (
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     {[...Array(5)].map((_, i) => (
                       <Skeleton key={i} className="h-12 w-full" />
                     ))}
@@ -885,7 +885,7 @@ export default function IKPage() {
 
                 {/* Documents Table */}
                 {isDocumentsLoading ? (
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     {[...Array(5)].map((_, i) => (
                       <Skeleton key={i} className="h-12 w-full" />
                     ))}
@@ -1890,7 +1890,7 @@ function ResetPasswordDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <label className="text-sm font-medium">Yeni Şifre</label>
             <Input
               type="password"

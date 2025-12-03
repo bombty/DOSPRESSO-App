@@ -91,7 +91,7 @@ export default function PersonelProfilPage() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-12 w-full" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Skeleton className="h-32" />
@@ -119,7 +119,7 @@ export default function PersonelProfilPage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="p-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         {/* Status badges */}
         <div className="flex items-center gap-2 flex-wrap justify-between">
           <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">

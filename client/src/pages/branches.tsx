@@ -147,7 +147,7 @@ export default function Branches() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Şubeler</h1>
@@ -252,7 +252,7 @@ export default function Branches() {
               <CardHeader>
                 <Skeleton className="h-6 w-3/4" />
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-2/3" />
               </CardContent>

@@ -98,7 +98,7 @@ export default function GorevDetay() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -135,7 +135,7 @@ export default function GorevDetay() {
   };
 
   return (
-    <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
@@ -265,7 +265,7 @@ export default function GorevDetay() {
             </CardHeader>
             <CardContent>
               {checklistTasks && checklistTasks.length > 0 ? (
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {checklistTasks.map((item: any) => (
                     <div
                       key={item.id}
@@ -347,7 +347,7 @@ export default function GorevDetay() {
               <CardDescription>Görev durum değişiklikleri ve aktivite</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex items-start gap-3 p-3 rounded-lg border">
                   <Clock className="h-4 w-4 mt-1 text-muted-foreground" />
                   <div>

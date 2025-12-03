@@ -140,7 +140,7 @@ export default function FranchiseAcilis() {
   }
 
   return (
-    <div className="p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" data-testid="heading-franchise-acilis">Franchise Açılış Yönetimi</h1>

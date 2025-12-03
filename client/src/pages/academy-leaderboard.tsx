@@ -138,7 +138,7 @@ export default function AcademyLeaderboard() {
               <CardTitle>Şube Performansı</CardTitle>
               <CardDescription>Her şubenin ortalama puanı ve tamamlama oranı</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               {branchLeaders.map((branch) => (
                 <div key={branch.branchName} className="grid grid-cols-1 gap-2 p-3 border rounded-lg">
                   <div className="flex items-center justify-between">

@@ -257,7 +257,7 @@ export default function QRScanner() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <QrCode className="h-8 w-8" />
@@ -337,7 +337,7 @@ export default function QRScanner() {
             )}
           </div>
 
-          <div className="border-t pt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="border-t pt-4 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             <p className="text-sm font-medium">Nasıl Kullanılır?</p>
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
               <li>"Taramaya Başla" butonuna tıklayın</li>

@@ -88,7 +88,7 @@ function useDebounce<T>(value: T, delay: number): T {
 function FaultSkeleton() {
   return (
     <div className="flex items-center justify-between p-3 border rounded animate-pulse">
-      <div className="flex-1 grid grid-cols-1 gap-2 md:grid-cols-2">
+      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
         <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
       </div>
@@ -99,7 +99,7 @@ function FaultSkeleton() {
 
 function FaultSkeletonList() {
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {Array.from({ length: 5 }).map((_, i) => (
         <FaultSkeleton key={i} />
       ))}
@@ -218,7 +218,7 @@ export default function FaultHub() {
         </TabsList>
 
         {/* TAB 1: Overview */}
-        <TabsContent value="overview" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="overview" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             <Card>
               <CardContent className="p-3">
@@ -308,7 +308,7 @@ export default function FaultHub() {
         </TabsContent>
 
         {/* TAB 2: Arıza Süreleri */}
-        <TabsContent value="sla" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabsContent value="sla" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Card className="border-red-500 bg-red-50 dark:bg-red-950">
               <CardContent className="p-3">
@@ -381,7 +381,7 @@ export default function FaultHub() {
         </TabsContent>
 
         {/* TAB 3: Manage Faults */}
-        <TabsContent value="manage" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="manage" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -592,7 +592,7 @@ export default function FaultHub() {
                 <CardTitle>Benim Arızalarım</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {metrics.myFaults.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">Size atanmış arıza yok</p>
                   ) : (

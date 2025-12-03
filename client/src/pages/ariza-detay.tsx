@@ -115,7 +115,7 @@ export default function FaultDetail() {
 
   if (faultLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-12 w-40" />
         <Skeleton className="h-40 w-full" />
       </div>
@@ -124,7 +124,7 @@ export default function FaultDetail() {
 
   if (!fault) {
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Button variant="outline" onClick={() => setLocation("/ekipman-arizalar")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Geri Dön
@@ -139,7 +139,7 @@ export default function FaultDetail() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <Button variant="outline" onClick={() => setLocation("/ekipman-arizalar")}>
         <ArrowLeft className="w-4 h-4 mr-2" />
         Geri Dön

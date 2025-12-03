@@ -104,8 +104,8 @@ export default function MusteriFeedbackPublic() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <form onSubmit={handleSubmit} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <Label htmlFor="branchId">Şube ID *</Label>
               <Input
                 id="branchId"
@@ -121,7 +121,7 @@ export default function MusteriFeedbackPublic() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <Label>Puanınız *</Label>
               <div className="flex gap-2" data-testid="rating-stars">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -151,7 +151,7 @@ export default function MusteriFeedbackPublic() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
               <Label htmlFor="comment">Yorumunuz (İsteğe bağlı)</Label>
               <Textarea
                 id="comment"
@@ -177,7 +177,7 @@ export default function MusteriFeedbackPublic() {
 
             {!isAnonymous && (
               <div className="grid grid-cols-1 gap-4 p-4 bg-muted rounded-lg">
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label htmlFor="name">Adınız (İsteğe bağlı)</Label>
                   <Input
                     id="name"
@@ -187,7 +187,7 @@ export default function MusteriFeedbackPublic() {
                     data-testid="input-customer-name"
                   />
                 </div>
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Label htmlFor="email">E-posta (İsteğe bağlı)</Label>
                   <Input
                     id="email"

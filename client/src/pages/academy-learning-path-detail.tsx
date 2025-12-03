@@ -59,7 +59,7 @@ export default function AcademyLearningPathDetail() {
           <Loader className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           {/* Overall Progress */}
           <Card>
             <CardHeader className="pb-2">

@@ -218,7 +218,7 @@ export default function SubeDetayPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/subeler">
@@ -337,7 +337,7 @@ export default function SubeDetayPage() {
             </CardHeader>
             <CardContent>
               {activeEmployees && activeEmployees.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {activeEmployees.map((attendance: any) => {
                     const emp = staff?.find(s => s.id === attendance.userId);
                     const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
@@ -388,7 +388,7 @@ export default function SubeDetayPage() {
               {staff.length === 0 ? (
                 <p className="text-muted-foreground">Henüz personel eklenmemiş</p>
               ) : (
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {staff.map((emp) => (
                     <Link key={emp.id} href={`/personel-detay/${emp.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`employee-${emp.id}`}>
@@ -435,7 +435,7 @@ export default function SubeDetayPage() {
               {recentTasks.length === 0 ? (
                 <p className="text-muted-foreground">Henüz görev yok</p>
               ) : (
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {recentTasks.slice(0, 10).map((task) => (
                     <div key={task.id} className="flex items-center justify-between p-3 rounded-lg border" data-testid={`task-${task.id}`}>
                       <div>
@@ -463,7 +463,7 @@ export default function SubeDetayPage() {
               {equipment.length === 0 ? (
                 <p className="text-muted-foreground">Henüz ekipman eklenmemiş</p>
               ) : (
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {equipment.map((equip) => (
                     <Link key={equip.id} href={`/ekipman/${equip.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`equipment-${equip.id}`}>
@@ -491,7 +491,7 @@ export default function SubeDetayPage() {
             </CardHeader>
             <CardContent>
               {branchData.recentFaults && branchData.recentFaults.length > 0 ? (
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   {branchData.recentFaults.slice(0, 10).map((fault: any) => (
                     <Link key={fault.id} href={`/ariza-detay/${fault.id}`}>
                       <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2" data-testid={`fault-${fault.id}`}>
@@ -609,7 +609,7 @@ export default function SubeDetayPage() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <Label htmlFor="latitude">Enlem (Latitude)</Label>
                       <Input 
                         id="latitude"
@@ -620,7 +620,7 @@ export default function SubeDetayPage() {
                         data-testid="input-latitude"
                       />
                     </div>
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <Label htmlFor="longitude">Boylam (Longitude)</Label>
                       <Input 
                         id="longitude"
@@ -643,7 +643,7 @@ export default function SubeDetayPage() {
                     Mevcut Konumu Al
                   </Button>
 
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <Label htmlFor="radius">İzin Yarıçapı (metre)</Label>
                     <Input 
                       id="radius"
@@ -658,7 +658,7 @@ export default function SubeDetayPage() {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <Label htmlFor="wifi" className="flex items-center gap-2">
                       <Wifi className="h-4 w-4" />
                       WiFi Ağ Adı (Opsiyonel)

@@ -359,7 +359,7 @@ export default function PersonelDetay() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -414,7 +414,7 @@ export default function PersonelDetay() {
   };
 
   return (
-    <div className="container mx-auto p-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button 
@@ -723,7 +723,7 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {attendanceLoading ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
@@ -785,7 +785,7 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {performanceLoading ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Skeleton className="h-20 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
@@ -855,7 +855,7 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {trainingLoading ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
@@ -909,7 +909,7 @@ export default function PersonelDetay() {
               <CardDescription>Personelin izin ve fazla mesai geçmişi</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <div>
                   <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
@@ -1013,7 +1013,7 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {disciplinaryLoading ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
@@ -1096,13 +1096,13 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {onboardingLoading ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Skeleton className="h-20 w-full" />
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : onboarding ? (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <div className="grid grid-cols-2 gap-4 p-4 rounded-lg border">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Durum</p>
@@ -1130,13 +1130,13 @@ export default function PersonelDetay() {
                       {onboarding && <OnboardingTaskDialog onboardingId={onboarding.id} userId={id!} />}
                     </div>
                     {onboardingTasksLoading ? (
-                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                         <Skeleton className="h-12 w-full" />
                         <Skeleton className="h-12 w-full" />
                         <Skeleton className="h-12 w-full" />
                       </div>
                     ) : onboardingTasks && onboardingTasks.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                         {onboardingTasks.map((task) => (
                           <Card key={task.id} data-testid={`onboarding-task-${task.id}`}>
                             <CardContent className="p-4">
@@ -1231,12 +1231,12 @@ export default function PersonelDetay() {
             </CardHeader>
             <CardContent>
               {trainingLoading ? (
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-3/4" />
                 </div>
               ) : trainingProgress ? (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                   <div className="grid grid-cols-4 gap-4">
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Toplam</p>
