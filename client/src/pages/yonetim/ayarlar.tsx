@@ -222,7 +222,7 @@ export default function Settings() {
               <CardTitle>Genel Ayarlar</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSaveGeneral} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <form onSubmit={handleSaveGeneral} className="w-full space-y-2 sm:space-y-3">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="site_title">Site Başlığı</Label>
                   <Input
@@ -333,7 +333,7 @@ export default function Settings() {
               <CardTitle>Mail Ayarları (SMTP)</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSaveSMTP} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <form onSubmit={handleSaveSMTP} className="w-full space-y-2 sm:space-y-3">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="smtp_host">SMTP Host</Label>
                   <Input
@@ -425,7 +425,7 @@ export default function Settings() {
               <CardTitle>Tema Ayarları</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSaveTheme} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <form onSubmit={handleSaveTheme} className="w-full space-y-2 sm:space-y-3">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="primary_color">Ana Renk (Primary Color)</Label>
                   <Input
@@ -521,7 +521,7 @@ export default function Settings() {
               <CardTitle>Görsel / Marka Ayarları</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSaveBranding} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <form onSubmit={handleSaveBranding} className="w-full space-y-2 sm:space-y-3">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="logo_url">Logo URL</Label>
                   <Input
@@ -598,7 +598,7 @@ export default function Settings() {
               <CardTitle>İçerik Sayfaları</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSaveContent} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <form onSubmit={handleSaveContent} className="w-full space-y-2 sm:space-y-3">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="about_us_content">Hakkımızda</Label>
                   <Textarea

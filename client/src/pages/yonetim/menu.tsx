@@ -663,7 +663,7 @@ export default function AdminMenuManagement() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <div className="w-full space-y-2 sm:space-y-3">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -722,7 +722,7 @@ export default function AdminMenuManagement() {
             </DialogTitle>
           </DialogHeader>
           <Form {...sectionForm}>
-            <form onSubmit={sectionForm.handleSubmit(onSectionSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <form onSubmit={sectionForm.handleSubmit(onSectionSubmit)} className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={sectionForm.control}
                 name="slug"
@@ -838,7 +838,7 @@ export default function AdminMenuManagement() {
             </DialogTitle>
           </DialogHeader>
           <Form {...itemForm}>
-            <form onSubmit={itemForm.handleSubmit(onItemSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <form onSubmit={itemForm.handleSubmit(onItemSubmit)} className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={itemForm.control}
                 name="sectionId"
@@ -1015,7 +1015,7 @@ export default function AdminMenuManagement() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <div className="w-full space-y-2 sm:space-y-3">
             {/* Existing Rules */}
             <div>
               <h3 className="text-sm font-medium mb-2">Mevcut Kurallar</h3>
@@ -1053,7 +1053,7 @@ export default function AdminMenuManagement() {
             <div>
               <h3 className="text-sm font-medium mb-2">Yeni Kural Ekle</h3>
               <Form {...ruleForm}>
-                <form onSubmit={ruleForm.handleSubmit(onRuleSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <form onSubmit={ruleForm.handleSubmit(onRuleSubmit)} className="w-full space-y-2 sm:space-y-3">
                   <FormField
                     control={ruleForm.control}
                     name="ruleType"

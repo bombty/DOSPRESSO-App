@@ -233,7 +233,7 @@ export default function CashReports() {
                 </DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="w-full space-y-2 sm:space-y-3">
                   <FormField
                     control={form.control}
                     name="reportDate"
@@ -463,7 +463,7 @@ export default function CashReports() {
           <CardHeader>
             <CardTitle className="text-lg">Filtreler</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <CardContent className="w-full space-y-2 sm:space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               <div>
                 <label className="text-xs font-medium mb-1 block">Şube</label>
@@ -560,7 +560,7 @@ export default function CashReports() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+      <div className="w-full space-y-2 sm:space-y-3">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}>
@@ -614,7 +614,7 @@ export default function CashReports() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <CardContent className="w-full space-y-2 sm:space-y-3">
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                     <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                       <p className="text-xs text-muted-foreground">Açılış Cashiersı</p>

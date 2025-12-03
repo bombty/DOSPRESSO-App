@@ -686,7 +686,7 @@ export default function EquipmentManagement() {
 
         {/* TAB 4: Ekipman Durumu */}
         <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+          <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
             {equipmentForDisplay.map(eq => {
               const health = getHealthStatus(eq);
               const branch = branches.find(b => b.id === eq.branchId);
@@ -950,7 +950,7 @@ export default function EquipmentManagement() {
               Ekipman QR kodunu kameraya gösteriniz
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <div className="w-full space-y-2 sm:space-y-3">
             <div 
               id="qr-reader" 
               className="w-full rounded-lg overflow-hidden bg-black"
@@ -1021,7 +1021,7 @@ export default function EquipmentManagement() {
 
             {/* Step 3: Form */}
             {createStep === 3 && (
-              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="w-full space-y-2 sm:space-y-3">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <label className="text-sm font-medium">Teknik / Sağlayıcı *</label>
                   <input

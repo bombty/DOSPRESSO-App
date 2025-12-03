@@ -293,7 +293,7 @@ export default function Sikayetler() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <CardContent className="w-full space-y-2 sm:space-y-3">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm font-medium">Misafir Memnuniyeti:</span>

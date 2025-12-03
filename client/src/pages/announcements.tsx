@@ -200,7 +200,7 @@ export default function Announcements() {
                 <DialogTitle>Yeni Duyuru Yayınla</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="w-full space-y-2 sm:space-y-3">
                   <FormField
                     control={form.control}
                     name="title"
@@ -368,7 +368,7 @@ export default function Announcements() {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                  <div className="w-full space-y-2 sm:space-y-3">
                     <div>
                       <FormLabel>Dosya Ekle (Opsiyonel)</FormLabel>
                       <div className="mt-2">
@@ -456,7 +456,7 @@ export default function Announcements() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <div className="w-full space-y-2 sm:space-y-3">
           {[...Array(3)].map((_, i) => (
             <Card key={i}>
               <CardContent className="p-3">
@@ -467,7 +467,7 @@ export default function Announcements() {
           ))}
         </div>
       ) : announcements && announcements.length > 0 ? (
-        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <div className="w-full space-y-2 sm:space-y-3">
           {announcements.map((announcement) => {
             const isUrgent = announcement.priority === 'urgent';
             const isActive = announcement.publishedAt && (!announcement.expiresAt || new Date(announcement.expiresAt) > new Date());
@@ -577,7 +577,7 @@ export default function Announcements() {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <div className="w-full space-y-2 sm:space-y-3">
             {readStatus ? (
               <>
                 <div className="flex items-center justify-between p-3 bg-muted rounded-lg">

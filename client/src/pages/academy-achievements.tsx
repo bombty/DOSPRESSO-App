@@ -199,7 +199,7 @@ export default function AcademyAchievements() {
             Başarıları Nasıl Açarsın?
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+        <CardContent className="w-full space-y-2 sm:space-y-3 gap-2 text-sm">
           <p>🎯 Düzenli olarak sınavlara katıl - her sınav ilerlemenizi arttırır</p>
           <p>⭐ Mükemmel puanlar almaya çalış - 100 puan başarısını açmak mümkün</p>
           <p>🔥 Tutarlı kal - haftada birden fazla sınav tamamla</p>

@@ -161,7 +161,7 @@ export default function Notifications() {
 
         <TabsContent value={activeTab} className="mt-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <div className="w-full space-y-2 sm:space-y-3">
               {[...Array(5)].map((_, i) => (
                 <Card key={i}>
                   <CardContent className="p-3">

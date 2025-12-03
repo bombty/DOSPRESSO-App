@@ -477,7 +477,7 @@ export default function AcademyHQ() {
                       <CardTitle>{ACADEMY_MODULES.find(m => m.id === selectedModuleId)?.name}</CardTitle>
                       <CardDescription>Modül yönetimi ve atama işlemleri</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                    <CardContent className="w-full space-y-2 sm:space-y-3">
                       <div>
                         <p className="text-sm text-muted-foreground mb-2">Yol:</p>
                         <p className="text-sm font-mono bg-muted p-2 rounded">
@@ -506,7 +506,7 @@ export default function AcademyHQ() {
                                 ...data,
                                 quizId: selectedModuleId.toString(),
                               });
-                            })} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                            })} className="w-full space-y-2 sm:space-y-3">
                               <FormField
                                 control={assignForm.control}
                                 name="assignTo"
@@ -577,7 +577,7 @@ export default function AcademyHQ() {
                             <Form {...quizForm}>
                               <form onSubmit={quizForm.handleSubmit((data) => {
                                 createQuizMutation.mutate(data);
-                              })} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                              })} className="w-full space-y-2 sm:space-y-3">
                                 <FormField
                                   control={quizForm.control}
                                   name="title"
@@ -792,7 +792,7 @@ export default function AcademyHQ() {
                   
                   {/* Step 1: Input Text or File */}
                   {aiWizardStep === 1 && (
-                    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                    <div className="w-full space-y-2 sm:space-y-3">
                       <div className="bg-muted/50 p-3 rounded-lg text-sm">
                         <p className="font-medium mb-1">Nasıl Çalışır?</p>
                         <p className="text-muted-foreground">Metin yapıştırın veya PDF/fotoğraf yükleyin. AI, içeriği otomatik olarak yapılandırılmış bir eğitim modülüne dönüştürecek.</p>
@@ -965,7 +965,7 @@ export default function AcademyHQ() {
                   
                   {/* Step 2: Preview Generated Module */}
                   {aiWizardStep === 2 && generatedModule && (
-                    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                    <div className="w-full space-y-2 sm:space-y-3">
                       <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
                         <p className="text-sm font-medium text-green-700 dark:text-green-300">Modül başarıyla oluşturuldu!</p>
                       </div>
@@ -1074,7 +1074,7 @@ export default function AcademyHQ() {
                   <DialogTitle>Yeni Eğitim Modülü Oluştur</DialogTitle>
                 </DialogHeader>
                 <Form {...trainingForm}>
-                  <form onSubmit={trainingForm.handleSubmit((data) => createTrainingMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                  <form onSubmit={trainingForm.handleSubmit((data) => createTrainingMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
                     <FormField
                       control={trainingForm.control}
                       name="title"
@@ -1152,7 +1152,7 @@ export default function AcademyHQ() {
               </DialogHeader>
               {editingModule && (
                 <Form {...editTrainingForm}>
-                  <form onSubmit={editTrainingForm.handleSubmit((data) => updateTrainingMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                  <form onSubmit={editTrainingForm.handleSubmit((data) => updateTrainingMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
                     <FormField
                       control={editTrainingForm.control}
                       name="title"

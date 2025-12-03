@@ -43,7 +43,7 @@ export default function AcademySocialGroups() {
       </div>
 
       {/* Study Groups */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="w-full space-y-2 sm:space-y-3 gap-2">
         {studyGroups.length > 0 ? (
           studyGroups.map((group: any) => (
             <Card key={group.id} className="cursor-pointer hover-elevate">

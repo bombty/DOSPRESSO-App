@@ -103,7 +103,7 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-3">
         <Card className="w-full max-w-md">
-          <CardHeader className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <CardHeader className="w-full space-y-2 sm:space-y-3">
             <div className="flex justify-center">
               <CheckCircle className="h-16 w-16 text-green-500" data-testid="icon-success" />
             </div>
@@ -120,7 +120,7 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-3">
       <Card className="w-full max-w-md">
-        <CardHeader className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <CardHeader className="w-full space-y-2 sm:space-y-3">
           <div className="flex justify-center">
             <img 
               src={logoUrl} 
@@ -136,7 +136,7 @@ export default function ResetPassword() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={form.control}
                 name="password"

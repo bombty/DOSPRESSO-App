@@ -62,7 +62,7 @@ export default function BadgeCollection() {
           ) : userBadges.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No badges yet. Complete modules to earn badges!</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+            <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
               {userBadges.map((userBadge: any) => {
                 const config = badgeColors[userBadge.badgeKey] || badgeColors.coffee_cherry;
                 const IconComponent = config.icon;
@@ -94,7 +94,7 @@ export default function BadgeCollection() {
           <CardDescription>All badges in the system and how to earn them</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+          <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
             {allBadges.map((badge: any) => {
               const isEarned = userBadges.some((ub: any) => ub.id === badge.id);
               return (

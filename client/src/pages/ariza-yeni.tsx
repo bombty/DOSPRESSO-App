@@ -186,7 +186,7 @@ export default function NewFaultReport() {
               <CardTitle>Temel Bilgiler</CardTitle>
               <CardDescription>Arıza hakkında temel bilgileri girin</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <CardContent className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={form.control}
                 name="branchId"
@@ -291,7 +291,7 @@ export default function NewFaultReport() {
               <CardTitle>Detaylı Açıklama</CardTitle>
               <CardDescription>Arıza hakkında ayrıntılı bilgi verin</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <CardContent className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={form.control}
                 name="description"
@@ -384,7 +384,7 @@ export default function NewFaultReport() {
             <CardHeader>
               <CardTitle>Etki Değerlendirmesi</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <CardContent className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={form.control}
                 name="immediateImpact"
@@ -423,7 +423,7 @@ export default function NewFaultReport() {
               <CardTitle>Fotoğraf (İsteğe Bağlı)</CardTitle>
               <CardDescription>Sorunu belgeleyen bir fotoğraf yükleyin</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <CardContent className="w-full space-y-2 sm:space-y-3">
               {photoPreview ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="relative w-full h-48 rounded-lg overflow-hidden bg-muted">

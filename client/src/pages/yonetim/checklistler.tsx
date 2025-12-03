@@ -91,7 +91,7 @@ export default function AdminChecklistManagement() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+    <div className="w-full space-y-2 sm:space-y-3">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

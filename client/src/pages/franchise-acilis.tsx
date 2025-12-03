@@ -160,7 +160,7 @@ export default function FranchiseAcilis() {
                 <DialogDescription>Yeni bir franchise açılış süreci başlatın</DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
                   <FormField
                     control={form.control}
                     name="branchId"
@@ -322,7 +322,7 @@ export default function FranchiseAcilis() {
                     {getStatusBadge(process.status, process.id)}
                   </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <CardContent className="w-full space-y-2 sm:space-y-3">
                   <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 text-sm">
                     <div>
                       <p className="text-muted-foreground mb-1">Şube ID</p>

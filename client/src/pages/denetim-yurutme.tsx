@@ -242,7 +242,7 @@ export default function DenetimYurutmePage() {
             İlerleme ve Skor
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <CardContent className="w-full space-y-2 sm:space-y-3">
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Tamamlanan Maddeler</p>
@@ -258,7 +258,7 @@ export default function DenetimYurutmePage() {
       </Card>
 
       {/* Audit Items */}
-      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+      <div className="w-full space-y-2 sm:space-y-3">
         <h2 className="text-xl font-semibold">Denetim Maddeleri</h2>
         
         {audit.items.map((item, index) => {
@@ -279,7 +279,7 @@ export default function DenetimYurutmePage() {
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <CardContent className="w-full space-y-2 sm:space-y-3">
                 {/* Response Input */}
                 {itemType === 'checkbox' && (
                   <RadioGroup
@@ -448,7 +448,7 @@ export default function DenetimYurutmePage() {
           <CardTitle>Genel Değerlendirme</CardTitle>
           <CardDescription>Denetim sonucu genel notlar ve aksiyon öğeleri</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <CardContent className="w-full space-y-2 sm:space-y-3">
           <div>
             <Label htmlFor="overall-notes">Genel Notlar</Label>
             <Textarea

@@ -333,7 +333,7 @@ export default function Mesajlar() {
 
             {/* Messages */}
             <ScrollArea className="flex-1 p-3" ref={scrollRef as any}>
-              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="w-full space-y-2 sm:space-y-3">
                 {threadData.messages.map((message, idx) => {
                   const isSent = message.senderId === user?.id;
                   const isLastInGroup = idx === threadData.messages.length - 1 || 

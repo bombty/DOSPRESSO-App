@@ -203,7 +203,7 @@ export default function PersonelMusaitlik() {
               </DialogDescription>
             </DialogHeader>
             <Form {...availabilityForm}>
-              <form onSubmit={availabilityForm.handleSubmit(onSubmitCreate)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <form onSubmit={availabilityForm.handleSubmit(onSubmitCreate)} className="w-full space-y-2 sm:space-y-3">
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <FormField
                     control={availabilityForm.control}
@@ -361,7 +361,7 @@ export default function PersonelMusaitlik() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+      <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
         {availabilities?.map((availability) => (
           <Card key={availability.id} data-testid={`card-availability-${availability.id}`}>
             <CardHeader>
@@ -375,7 +375,7 @@ export default function PersonelMusaitlik() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <CardContent className="w-full space-y-2 sm:space-y-3">
               <div className="flex flex-col gap-3 sm:gap-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Başlangıç:</span>
@@ -442,7 +442,7 @@ export default function PersonelMusaitlik() {
             </DialogDescription>
           </DialogHeader>
           <Form {...availabilityForm}>
-            <form onSubmit={availabilityForm.handleSubmit(onSubmitEdit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <form onSubmit={availabilityForm.handleSubmit(onSubmitEdit)} className="w-full space-y-2 sm:space-y-3">
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <FormField
                   control={availabilityForm.control}

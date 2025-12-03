@@ -278,7 +278,7 @@ export default function QRScanner() {
             QR kod taramak için kamera iznine ihtiyacınız var
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <CardContent className="w-full space-y-2 sm:space-y-3">
           {error && (
             <div className="bg-destructive/10 text-destructive p-3 rounded-md flex items-start gap-2">
               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />

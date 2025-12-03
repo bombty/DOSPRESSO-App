@@ -92,7 +92,7 @@ export default function BranchFeedback() {
               Yeni Geribildirim
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <CardContent className="w-full space-y-2 sm:space-y-3">
             <div>
               <label className="text-sm font-medium">Tür</label>
               <select

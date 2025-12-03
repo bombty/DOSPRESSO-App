@@ -258,7 +258,7 @@ export default function Academy() {
                       <DialogTitle>Sınav Talep Formu</DialogTitle>
                     </DialogHeader>
                     <Form {...form}>
-                      <form onSubmit={form.handleSubmit((data) => createExamMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                      <form onSubmit={form.handleSubmit((data) => createExamMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
                         <FormField
                           control={form.control}
                           name="userId"
@@ -455,7 +455,7 @@ export default function Academy() {
 
       {/* Achievements Hub - COMPACT */}
       {activeHub === "achievements" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <div className="w-full space-y-2 sm:space-y-3">
           <Link to="/akademi-streak-tracker" data-testid="link-streak-tracker">
             <Card className="cursor-pointer hover-elevate" data-testid="card-streak-tracker">
               <CardHeader className="pb-2">
@@ -488,7 +488,7 @@ export default function Academy() {
 
       {/* Analytics Hub - COMPACT */}
       {activeHub === "analytics" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <div className="w-full space-y-2 sm:space-y-3">
           <Link to="/akademi-adaptive-engine" data-testid="link-adaptive-engine">
             <Card className="cursor-pointer hover-elevate" data-testid="card-adaptive-engine">
               <CardHeader className="pb-2">

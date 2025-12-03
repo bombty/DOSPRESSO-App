@@ -241,7 +241,7 @@ export default function SubeDetayPage() {
           </CardTitle>
           <CardDescription>4 ana kategorinin ağırlıklı ortalaması</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <CardContent className="w-full space-y-2 sm:space-y-3">
           <div className="text-center">
             <div className="text-5xl font-bold text-primary" data-testid="composite-score">
               {scores.compositeScore.toFixed(1)}
@@ -253,7 +253,7 @@ export default function SubeDetayPage() {
       </Card>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Personel Performansı</CardTitle>
@@ -532,9 +532,9 @@ export default function SubeDetayPage() {
                     Bu QR kodu şubeye asarak personelin vardiya girişi yapmasını sağlayın
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <CardContent className="w-full space-y-2 sm:space-y-3">
                   {branch.qrCodeToken ? (
-                    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                    <div className="w-full space-y-2 sm:space-y-3">
                       <div className="flex flex-col items-center p-3 bg-white rounded-lg">
                         <QRCodeSVG 
                           id="branch-qr-code"
@@ -607,7 +607,7 @@ export default function SubeDetayPage() {
                     Personelin şubede olduğunu doğrulamak için GPS koordinatlarını ayarlayın
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <CardContent className="w-full space-y-2 sm:space-y-3">
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <div className="flex flex-col gap-3 sm:gap-4">
                       <Label htmlFor="latitude">Enlem (Latitude)</Label>

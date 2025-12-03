@@ -103,7 +103,7 @@ export default function AcademyTeamCompetitions() {
                 <CardTitle>{activeCompetition.title}</CardTitle>
                 <CardDescription>{activeCompetition.description}</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <CardContent className="w-full space-y-2 sm:space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
                   <div className="p-3 border rounded-lg">
                     <p className="text-xs text-muted-foreground">Başlama</p>

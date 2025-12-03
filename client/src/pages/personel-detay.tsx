@@ -550,7 +550,7 @@ export default function PersonelDetay() {
                         Personelin özlük dosyasına yeni belge ekleyin
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                    <div className="w-full space-y-2 sm:space-y-3">
                       <div>
                         <Label htmlFor="document-type">Belge Türü *</Label>
                         <Select value={documentType} onValueChange={setDocumentType}>
@@ -790,7 +790,7 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : performanceScores && performanceScores.length > 0 ? (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                     {performanceScores.slice(0, 4).map((score: any, idx: number) => (
                       <Card key={idx} className="text-center p-3">
@@ -860,7 +860,7 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : trainingProgress && trainingProgress.length > 0 ? (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   {trainingProgress.map((progress: any) => {
                     const module = trainingModules?.find((m: any) => m.id === progress.moduleId);
                     return (
@@ -1019,7 +1019,7 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : disciplinaryReports && disciplinaryReports.length > 0 ? (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   {disciplinaryReports.map((report) => (
                     <Card key={report.id} className="border-l-4" data-testid={`disciplinary-report-${report.id}`}>
                       <CardHeader className="pb-3">
@@ -1307,7 +1307,7 @@ export default function PersonelDetay() {
               <CardDescription>Bu personele yeni görev atayın</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="w-full space-y-2 sm:space-y-3">
                 <div>
                   <Label htmlFor="task-title">Görev Adı *</Label>
                   <Input
@@ -1384,7 +1384,7 @@ export default function PersonelDetay() {
               <CardDescription>Bu personele mesaj gönderin</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="w-full space-y-2 sm:space-y-3">
                 <div>
                   <Label htmlFor="message">Mesaj *</Label>
                   <Textarea

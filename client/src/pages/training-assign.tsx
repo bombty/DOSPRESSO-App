@@ -98,7 +98,7 @@ export default function TrainingAssign() {
               <CardTitle>Toplu Eğitim Ataması</CardTitle>
               <CardDescription>Rol grubuna eğitim materyali atayın</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <CardContent className="w-full space-y-2 sm:space-y-3">
               <div>
                 <Label htmlFor="material">Eğitim Materyali *</Label>
                 <Select value={selectedMaterial} onValueChange={setSelectedMaterial}>

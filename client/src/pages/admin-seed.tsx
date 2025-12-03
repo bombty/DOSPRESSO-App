@@ -64,7 +64,7 @@ export default function AdminSeedPage() {
             Her şubeye 1 supervisor, 2 barista ve 1 stajyer atanacak.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <CardContent className="w-full space-y-2 sm:space-y-3">
           <Button
             onClick={handleSeed}
             disabled={isSeeding}
@@ -107,7 +107,7 @@ export default function AdminSeedPage() {
         <CardHeader>
           <CardTitle>Eklenecek Veriler</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <CardContent className="w-full space-y-2 sm:space-y-3">
           <div>
             <h3 className="font-semibold mb-2">📦 Ekipman</h3>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">

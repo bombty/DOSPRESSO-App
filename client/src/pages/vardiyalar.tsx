@@ -316,7 +316,7 @@ export default function Vardiyalar() {
                   <DialogTitle>Yeni Vardiya Oluştur</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                  <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
                     <FormField
                       control={form.control}
                       name="shiftDate"
@@ -906,7 +906,7 @@ export default function Vardiyalar() {
                   <p className="text-muted-foreground">Bugün için planlanmış vardiya yok</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   {['morning', 'evening', 'night'].map((type) => {
                     const typeShifts = todayShifts.filter(s => s.shiftType === type);
                     if (typeShifts.length === 0) return null;
@@ -977,7 +977,7 @@ export default function Vardiyalar() {
             <DialogTitle>Vardiya Düzenle</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdateSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <form onSubmit={form.handleSubmit(handleUpdateSubmit)} className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={form.control}
                 name="shiftDate"
@@ -1379,7 +1379,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   }, [isCheckedIn, todayAttendance?.checkInTime]);
 
   return (
-    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+    <div className="w-full space-y-2 sm:space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Vardiya Giriş/Çıkış</h2>
         {locationStatus === 'idle' && (
@@ -1463,7 +1463,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
       )}
 
       {!isCheckedIn && !hasCompletedShift && (
-        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <div className="w-full space-y-2 sm:space-y-3">
           {/* Inline QR Scanner - Only show when active */}
           {scannerActive && (
             <Card className="border-primary/50 bg-card/80 backdrop-blur-sm" data-testid="card-qr-scan-inline">
@@ -1487,7 +1487,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
                 </Button>
               </CardHeader>
 
-              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <CardContent className="w-full space-y-2 sm:space-y-3">
                 {/* Scanner Container */}
                 <div className="border rounded-lg overflow-hidden bg-black/5">
                   <div id="qr-scanner-container" style={{ width: '100%' }} />

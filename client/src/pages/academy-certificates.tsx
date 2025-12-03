@@ -130,7 +130,7 @@ export default function AcademyCertificates() {
 
         {/* Earned Certificates */}
         <TabsContent value="earned">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <div className="w-full space-y-2 sm:space-y-3">
             {completedLevels.map((level, idx) => (
               <Card key={level.id} className="overflow-hidden">
                 <CardHeader className={`bg-gradient-to-r ${level.certificateColor} pb-3`}>
@@ -162,7 +162,7 @@ export default function AcademyCertificates() {
 
         {/* Upcoming Certificates */}
         <TabsContent value="upcoming">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <div className="w-full space-y-2 sm:space-y-3">
             {CAREER_LEVELS.filter(l => l.id > (userProgress?.currentCareerLevelId || 0)).map((level) => {
               const progress = Math.min(100, Math.round(((userProgress?.currentCareerLevelId || 0) / level.id) * 100));
               return (

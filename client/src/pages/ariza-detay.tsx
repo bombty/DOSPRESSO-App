@@ -218,8 +218,8 @@ export default function FaultDetail() {
         <CardHeader>
           <CardTitle>Detaylı Bilgiler</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <CardContent className="w-full space-y-2 sm:space-y-3">
+          <div className="w-full space-y-2 sm:space-y-3">
             <div>
               <p className="text-sm text-muted-foreground">Açıklama</p>
               <p className="text-sm font-medium">{fault.description || "-"}</p>
@@ -270,7 +270,7 @@ export default function FaultDetail() {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={form.control}
                 name="currentStage"

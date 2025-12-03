@@ -470,8 +470,8 @@ export default function Tasks() {
             </div>
           </CardHeader>
           <CollapsibleContent>
-            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+            <CardContent className="w-full space-y-2 sm:space-y-3">
+              <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <label className="text-sm font-medium">Arama</label>
                   <div className="relative">
@@ -640,7 +640,7 @@ export default function Tasks() {
               <DialogTitle>Yeni Görev Ekle</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
                 <FormField
                   control={form.control}
                   name="description"
@@ -763,7 +763,7 @@ export default function Tasks() {
         </div>
 
         {["all", "acilis", "kapanis", "gunluk"].map((tabValue) => (
-          <TabsContent key={tabValue} value={tabValue} className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <TabsContent key={tabValue} value={tabValue} className="w-full space-y-2 sm:space-y-3">
             {isLoading ? (
               <div className="flex flex-col gap-3 sm:gap-4">
                 {[1, 2, 3, 4, 5].map((i) => (

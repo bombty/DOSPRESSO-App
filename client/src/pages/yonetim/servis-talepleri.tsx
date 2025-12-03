@@ -629,7 +629,7 @@ export default function ServiceRequestsManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <div className="w-full space-y-2 sm:space-y-3">
           {filteredRequests.map(request => (
             <Card key={request.id} className="hover-elevate border-l-4" style={{ borderLeftColor: !request.priority ? '#3b82f6' : request.priority === 'kritik' ? '#ef4444' : request.priority === 'yüksek' ? '#f97316' : request.priority === 'orta' ? '#eab308' : '#3b82f6' }} data-testid={`card-service-request-${request.id}`}>
               <CardHeader>
@@ -655,7 +655,7 @@ export default function ServiceRequestsManagement() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   {/* Location and dates */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
@@ -1128,8 +1128,8 @@ export default function ServiceRequestsManagement() {
             )}
 
             {/* Form Fields */}
-            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+            <div className="w-full space-y-2 sm:space-y-3">
+              <div className="w-full space-y-2 sm:space-y-3">
 
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <Label htmlFor="create-priority">Öncelik</Label>

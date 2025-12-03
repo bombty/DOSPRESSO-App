@@ -86,7 +86,7 @@ export default function AIAssistant() {
 
           <div className="flex flex-col gap-3 sm:gap-4">
             {conversation.map((item, index) => (
-              <div key={index} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div key={index} className="w-full space-y-2 sm:space-y-3">
                 <div className="flex gap-2 sm:gap-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
                     S
@@ -137,7 +137,7 @@ export default function AIAssistant() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <form onSubmit={handleSubmit} className="w-full space-y-2 sm:space-y-3">
             <Textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}

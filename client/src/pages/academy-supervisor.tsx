@@ -114,7 +114,7 @@ export default function AcademySupervisor() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="team" className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <TabsContent value="team" className="w-full space-y-2 sm:space-y-3 gap-2">
           <Card>
             <CardHeader>
               <CardTitle>Ekip Üyeleri Eğitim Durumu</CardTitle>
@@ -159,7 +159,7 @@ export default function AcademySupervisor() {
               ) : modules.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">Modül bulunamadı</div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+                <div className="w-full space-y-2 sm:space-y-3">
                   {modules.map((module: any) => (
                     <Link key={module.id} to={`/akademi-modul/${module.id}`}>
                       <Card className="cursor-pointer hover-elevate h-full flex flex-col">
@@ -241,7 +241,7 @@ export default function AcademySupervisor() {
                             <DialogHeader>
                               <DialogTitle>Sınav Talebini Reddet</DialogTitle>
                             </DialogHeader>
-                            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                            <div className="w-full space-y-2 sm:space-y-3">
                               <p className="text-sm text-muted-foreground">
                                 {exam.userId} kullanıcısının {exam.targetRoleId} pozisyonuna geçiş talebini reddetmek üzeresin.
                               </p>

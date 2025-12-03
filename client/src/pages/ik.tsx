@@ -387,7 +387,7 @@ export default function IKPage() {
       </div>
 
       {/* Accordion Sections */}
-      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="w-full space-y-2 sm:space-y-3">
         {/* Section 1: Personel Listesi */}
         <AccordionItem value="personel" data-testid="accordion-personel">
           <Card>
@@ -399,7 +399,7 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <CardContent className="w-full space-y-2 sm:space-y-3">
                 {/* Filters */}
                 <Card>
                   <CardHeader>
@@ -657,7 +657,7 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <CardContent className="w-full space-y-2 sm:space-y-3">
                 {/* Disciplinary Filter */}
                 <div className="flex justify-between items-center">
                   <div className="flex gap-2 sm:gap-3">
@@ -761,7 +761,7 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <CardContent className="w-full space-y-2 sm:space-y-3">
                 {/* Onboarding Filter */}
                 <div className="flex gap-2 sm:gap-3">
                   <div className="w-[200px]">
@@ -863,7 +863,7 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <CardContent className="w-full space-y-2 sm:space-y-3">
                 {/* Documents Filter */}
                 <div className="flex gap-2 sm:gap-3">
                   <div className="w-[200px]">
@@ -1081,7 +1081,7 @@ function AddEmployeeDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-2 sm:space-y-3">
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <FormField
                 control={form.control}
@@ -1400,7 +1400,7 @@ function EditEmployeeDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-2 sm:space-y-3">
             {userRole === "admin" && (
               <>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -1742,7 +1742,7 @@ function AddWarningDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-2 sm:space-y-3">
             <FormField
               control={form.control}
               name="warningType"
@@ -1889,7 +1889,7 @@ function ResetPasswordDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <form onSubmit={handleSubmit} className="w-full space-y-2 sm:space-y-3">
           <div className="flex flex-col gap-3 sm:gap-4">
             <label className="text-sm font-medium">Yeni Şifre</label>
             <Input

@@ -174,7 +174,7 @@ export default function MisafirGeriBildirim() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+      <div className="w-full space-y-2 sm:space-y-3">
         {!feedbackList || feedbackList.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -236,7 +236,7 @@ export default function MisafirGeriBildirim() {
             <DialogTitle>Geri Bildirimi İncele</DialogTitle>
             <DialogDescription>Geri bildirim için inceleme notu ekleyin</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <div className="w-full space-y-2 sm:space-y-3">
             {reviewingFeedback && (
               <div className="flex flex-col gap-3 sm:gap-4">
                 {renderStars(reviewingFeedback.rating)}

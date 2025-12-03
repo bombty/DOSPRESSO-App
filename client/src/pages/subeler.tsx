@@ -169,7 +169,7 @@ export default function SubelerPage() {
             <DialogTitle>{editingBranch ? "Şube Düzenle" : "Yeni Şube Ekle"}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={form.control}
                 name="name"

@@ -155,7 +155,7 @@ export default function KaliteDenetimi() {
                 <DialogDescription>Şube için yeni bir kalite denetimi başlatın</DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
                   <FormField
                     control={form.control}
                     name="branchId"

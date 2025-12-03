@@ -284,7 +284,7 @@ function CreateLeaveRequestDialog({ open, onOpenChange }: { open: boolean; onOpe
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-2 sm:space-y-3">
             <FormField
               control={form.control}
               name="leaveType"

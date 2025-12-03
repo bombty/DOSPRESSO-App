@@ -372,7 +372,7 @@ export default function VardiyaCheckin() {
               Vardiyaya giriş yaptınız
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <CardContent className="w-full space-y-2 sm:space-y-3">
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <p className="text-sm text-muted-foreground">Başlangıç</p>
@@ -408,7 +408,7 @@ export default function VardiyaCheckin() {
               )}
 
               {isScanning && (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   <div 
                     id="qr-reader-checkin" 
                     className="rounded-lg overflow-hidden border"
@@ -447,7 +447,7 @@ export default function VardiyaCheckin() {
               Vardiyaya giriş yapmak için QR kodu okutun
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+          <CardContent className="w-full space-y-2 sm:space-y-3">
             {!isScanning && (
               <Button
                 onClick={startScanning}
@@ -460,7 +460,7 @@ export default function VardiyaCheckin() {
             )}
 
             {isScanning && (
-              <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="w-full space-y-2 sm:space-y-3">
                 <div 
                   id="qr-reader-checkin" 
                   className="rounded-lg overflow-hidden border"

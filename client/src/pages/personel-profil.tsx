@@ -93,7 +93,7 @@ export default function PersonelProfilPage() {
     return (
       <div className="flex flex-col gap-3 sm:gap-4">
         <Skeleton className="h-12 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-4 gap-2 sm:gap-3">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -145,8 +145,8 @@ export default function PersonelProfilPage() {
           </CardTitle>
           <CardDescription>Son 30 günlük performans özeti</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+        <CardContent className="w-full space-y-2 sm:space-y-3">
+          <div className="w-full space-y-2 sm:space-y-3">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Performans Skoru</span>
@@ -170,7 +170,7 @@ export default function PersonelProfilPage() {
       </Card>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Toplam Vardiya</CardTitle>
@@ -239,8 +239,8 @@ export default function PersonelProfilPage() {
             <CardHeader>
               <CardTitle>Personel Bilgileri</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+            <CardContent className="w-full space-y-2 sm:space-y-3">
+              <div className="w-full space-y-2 sm:space-y-3">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Kullanıcı Adı</p>
                   <p className="text-base" data-testid="info-username">{profile.username}</p>

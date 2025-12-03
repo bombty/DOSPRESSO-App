@@ -267,7 +267,7 @@ export default function Checklists() {
               <DialogTitle>Yeni Checklist Oluştur</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
                 <FormField
                   control={form.control}
                   name="title"
@@ -386,7 +386,7 @@ export default function Checklists() {
                 </CardHeader>
                 <CardContent>
                   {tasks.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                    <div className="w-full space-y-2 sm:space-y-3">
                       <div className="border-b pb-2">
                         <h3 className="text-sm font-medium text-muted-foreground">Çizelge Maddeleri</h3>
                       </div>
@@ -496,7 +496,7 @@ export default function Checklists() {
             <DialogTitle>Checklist Düzenle</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
               {editingChecklist && !(editingChecklist.isEditable ?? true) && !isCoach && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 text-sm text-yellow-800 dark:text-yellow-200">
                   ⚠️ Bu checklist düzenlenemez olarak işaretlenmiş. Sadece HQ Coach yetkisi ile düzenlenebilir.

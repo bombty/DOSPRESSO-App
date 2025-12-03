@@ -169,7 +169,7 @@ export default function AcademyAIAssistant() {
         {/* Suggested Questions */}
         <div>
           <p className="text-xs font-semibold text-muted-foreground mb-1">Örnek Sorular:</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+          <div className="w-full space-y-2 sm:space-y-3 gap-1">
             {suggestedQuestions.map((q, idx) => (
               <Button
                 key={idx}

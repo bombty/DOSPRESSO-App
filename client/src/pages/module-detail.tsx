@@ -559,7 +559,7 @@ export default function ModuleDetail() {
 
               {/* Objectives Phase */}
               {previewPhase === 'objectives' && (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-sm">Öğrenme Hedefleri</CardTitle>
@@ -603,7 +603,7 @@ export default function ModuleDetail() {
 
               {/* Steps Phase */}
               {previewPhase === 'steps' && (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   {steps.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Adım tanımlanmamış</p>
                   ) : (
@@ -621,7 +621,7 @@ export default function ModuleDetail() {
                           <div className="space-y-3">
                             <p className="text-sm whitespace-pre-wrap leading-relaxed">{steps[currentStepIndex]?.content}</p>
                             {steps[currentStepIndex]?.photos && steps[currentStepIndex].photos.length > 0 && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              <div className="w-full space-y-2 sm:space-y-3 gap-2">
                                 {steps[currentStepIndex].photos.map((photo: string, pidx: number) => (
                                   <div key={pidx} className="overflow-hidden rounded-lg bg-muted aspect-video">
                                     <img src={photo} alt={`Step photo ${pidx}`} className="w-full h-full object-cover" />
@@ -684,12 +684,12 @@ export default function ModuleDetail() {
 
               {/* Quiz Phase */}
               {previewPhase === 'quiz' && (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   {!module?.quiz || module.quiz.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Quiz sorusu tanımlanmamış</p>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                      <div className="w-full space-y-2 sm:space-y-3">
                         {module.quiz.map((q: any, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-green-500">
                             <CardContent className="pt-4">
@@ -748,7 +748,7 @@ export default function ModuleDetail() {
 
               {/* Scenarios Phase */}
               {previewPhase === 'scenarios' && (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   {scenarioTasks.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Senaryo tanımlanmamış</p>
                   ) : (
@@ -881,7 +881,7 @@ export default function ModuleDetail() {
               <CardTitle>Modül Bilgileri & Atama</CardTitle>
               <CardDescription>Temel modül özellikleri ve yapısı</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+            <CardContent className="w-full space-y-2 sm:space-y-3">
               <div className="grid md:grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Başlık</p>
@@ -988,7 +988,7 @@ export default function ModuleDetail() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
                   {module.galleryImages.map((img: any, idx: number) => (
                     <div key={idx} className="overflow-hidden rounded-lg bg-muted aspect-[6/4]">
                       <img
@@ -1239,7 +1239,7 @@ export default function ModuleDetail() {
               {steps.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-3">Adım tanımlanmamış</p>
               ) : (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+                <div className="w-full space-y-2 sm:space-y-3">
                   {steps.map((step: any, idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-blue-500">
                       <CardHeader className="pb-2">
