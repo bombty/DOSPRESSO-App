@@ -109,11 +109,29 @@ export default function AcademyCertificates() {
                     <p className="text-xs text-amber-700 font-mono">Sertifika No: CERT-{user?.id?.substring(0, 8).toUpperCase()}</p>
                   </div>
 
-                  {/* Damga Efekti */}
-                  <div className="absolute -right-6 top-1/2 transform -translate-y-1/2 -rotate-45 opacity-20 z-20 pointer-events-none">
-                    <div className="border-4 border-red-600 rounded-full px-6 py-3 text-center">
-                      <p className="text-xs font-bold text-red-600 tracking-widest">ONAYLANDI</p>
-                    </div>
+                  {/* Altın Kurdeleli Sertifika Damgası */}
+                  <div className="absolute -right-4 top-1/3 transform -translate-y-1/2 -rotate-45 z-30 pointer-events-none">
+                    <svg width="120" height="140" viewBox="0 0 120 140" className="drop-shadow-lg">
+                      {/* Sol Şerit */}
+                      <path d="M 35 50 L 25 85 Q 23 95 28 100 L 35 95 Q 30 90 32 85 Z" fill="#D4AF37" stroke="#C5A028" strokeWidth="1"/>
+                      {/* Sağ Şerit */}
+                      <path d="M 85 50 L 95 85 Q 97 95 92 100 L 85 95 Q 90 90 88 85 Z" fill="#D4AF37" stroke="#C5A028" strokeWidth="1"/>
+                      
+                      {/* Dış Daire */}
+                      <circle cx="60" cy="45" r="38" fill="#F4E4C1" stroke="#D4AF37" strokeWidth="2"/>
+                      {/* Ortası Daire */}
+                      <circle cx="60" cy="45" r="32" fill="#FFD700" stroke="#DAA520" strokeWidth="1.5"/>
+                      {/* İç Daire */}
+                      <circle cx="60" cy="45" r="28" fill="#FFF8DC" stroke="#D4AF37" strokeWidth="1"/>
+                      
+                      {/* Onay İşareti */}
+                      <g transform="translate(60, 45)">
+                        <path d="M -8 0 L -2 8 L 10 -6" stroke="#C5A028" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                      </g>
+                      
+                      {/* Dekoratif Kenarlık */}
+                      <circle cx="60" cy="45" r="35" fill="none" stroke="#D4AF37" strokeWidth="0.5" strokeDasharray="2,2" opacity="0.6"/>
+                    </svg>
                   </div>
                 </div>
               </div>
