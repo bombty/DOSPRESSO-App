@@ -290,13 +290,13 @@ export default function Equipment() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       {criticalEquipment && criticalEquipment.length > 0 && (
-        <Card className="border-red-500 bg-red-50 dark:bg-red-950">
-          <CardHeader>
-            <CardTitle className="text-red-600 dark:text-red-400 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
+        <Card className="border-red-500 bg-red-50 dark:bg-red-950 col-span-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
               Kritik Ekipmanlar ({criticalEquipment.length})
             </CardTitle>
-            <CardDescription className="text-red-700 dark:text-red-300">
+            <CardDescription className="text-xs text-red-700 dark:text-red-300">
               Sağlık skoru 50'nin altında olan ekipmanlar acil bakım gerektiriyor
             </CardDescription>
           </CardHeader>

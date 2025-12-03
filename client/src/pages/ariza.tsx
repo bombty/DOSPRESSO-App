@@ -382,12 +382,10 @@ export default function FaultHub() {
 
         {/* TAB 3: Manage Faults */}
         <TabsContent value="manage" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Tüm Arızalar ({manageFaults.length})</span>
-              </CardTitle>
-              <CardDescription>Arızaları atayın, durumlarını güncelleyin ve maliyeti takip edin</CardDescription>
+          <Card className="col-span-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Tüm Arızalar ({manageFaults.length})</CardTitle>
+              <CardDescription className="text-xs">Arızaları atayın, durumlarını güncelleyin ve maliyeti takip edin</CardDescription>
               <div className="relative mt-2">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
