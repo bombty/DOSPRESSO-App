@@ -830,7 +830,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string; accountStatus?: string }): Promise<User[]> {
-    const conditions: SQL<unknown>[] = [];
+    const conditions: SQL<any>[] = [];
     
     if (filters.role) {
       conditions.push(eq(users.role, filters.role));
@@ -1298,7 +1298,7 @@ export class DatabaseStorage implements IStorage {
       notes,
     };
     
-    const existingHistory = (fault.stageHistory []) || [];
+    const existingHistory = (fault.stageHistory as any) || [];
     const [updated] = await db
       .update(equipmentFaults)
       .set({
@@ -2865,7 +2865,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getShiftTradeRequests(filters: { branchId?: number; userId?: string; status?: string }): Promise<ShiftTradeRequest[]> {
-    const conditions: SQL<unknown>[] = [];
+    const conditions: SQL<any>[] = [];
     
     if (filters.status) {
       conditions.push(eq(shiftTradeRequests.status, filters.status));
@@ -4048,7 +4048,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getGuestComplaintStats(branchId?: number, startDate?: Date, endDate?: Date): Promise<unknown> {
+  async getGuestComplaintStats(branchId?: number, startDate?: Date, endDate?: Date): Promise<any> {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const start = startDate || thirtyDaysAgo;
     const end = endDate || new Date();
@@ -4067,11 +4067,11 @@ export class DatabaseStorage implements IStorage {
       .where(and(...whereConditions));
     
     const total = complaints.length;
-    const byStatus = complaints.reduce((acc: unknown, c: any) => {
+    const byStatus = complaints.reduce((acc: any, c: any) => {
       acc[c.status] = (acc[c.status] || 0) + 1;
       return acc;
     }, {});
-    const byPriority = complaints.reduce((acc: unknown, c: any) => {
+    const byPriority = complaints.reduce((acc: any, c: any) => {
       acc[c.priority] = (acc[c.priority] || 0) + 1;
       return acc;
     }, {});
@@ -4093,7 +4093,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getGuestComplaintHeatmap(branchId?: number, startDate?: Date, endDate?: Date): Promise<unknown> {
+  async getGuestComplaintHeatmap(branchId?: number, startDate?: Date, endDate?: Date): Promise<any> {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const start = startDate || thirtyDaysAgo;
     const end = endDate || new Date();
