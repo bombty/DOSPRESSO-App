@@ -65,6 +65,7 @@ const lucideIconMap: Record<string, any> = {
   "Award": LucideIcons.Award,
   "Circle": LucideIcons.Circle,
   "AlertTriangle": LucideIcons.AlertTriangle,
+  "Briefcase": LucideIcons.Briefcase,
 };
 
 const getIconComponent = (iconName: string | null | undefined) => {

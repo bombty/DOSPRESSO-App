@@ -97,6 +97,22 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "equipment",
         scope: "both",
       },
+      {
+        id: "lost-found",
+        titleTr: "Kayıp Eşya",
+        path: "/kayip-esya",
+        icon: "Briefcase",
+        moduleKey: "equipment",
+        scope: "branch",
+      },
+      {
+        id: "lost-found-hq",
+        titleTr: "Kayıp Eşya (Tüm Şubeler)",
+        path: "/kayip-esya-hq",
+        icon: "Briefcase",
+        moduleKey: "equipment",
+        scope: "hq",
+      },
     ],
   },
   // Both: Tasks
