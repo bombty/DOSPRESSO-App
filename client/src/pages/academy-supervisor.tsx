@@ -162,18 +162,18 @@ export default function AcademySupervisor() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {modules.map((module: any) => (
                     <Link key={module.id} to={`/akademi-modul/${module.id}`}>
-                      <Card className="cursor-pointer hover-elevate h-full">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base line-clamp-2">{module.title}</CardTitle>
-                          <div className="flex items-center gap-2 mt-2">
+                      <Card className="cursor-pointer hover-elevate h-full flex flex-col">
+                        <CardHeader className="pb-2 pt-2 px-2 flex-1">
+                          <CardTitle className="text-sm font-semibold line-clamp-2 leading-tight mb-1">{module.title}</CardTitle>
+                          <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-xs">
                               {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
                             </Badge>
                             <span className="text-xs text-muted-foreground">{module.estimatedDuration} dk</span>
                           </div>
                         </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground line-clamp-3">{module.description}</p>
+                        <CardContent className="pt-2 px-2 pb-2">
+                          <p className="text-xs text-muted-foreground line-clamp-2">{module.description}</p>
                         </CardContent>
                       </Card>
                     </Link>

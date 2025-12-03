@@ -1238,11 +1238,11 @@ export default function AcademyHQ() {
                 }}
                 className="cursor-pointer"
               >
-                <Card className="hover-elevate h-full">
-                  <CardHeader className="pb-2 pt-3 px-3">
-                    <div className="flex justify-between items-start gap-2">
+                <Card className="hover-elevate h-full flex flex-col">
+                  <CardHeader className="pb-2 pt-2 px-2 flex-1">
+                    <div className="flex justify-between items-start gap-2 mb-2">
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-sm line-clamp-2">{module.title}</CardTitle>
+                        <CardTitle className="text-xs font-semibold line-clamp-2 leading-tight">{module.title}</CardTitle>
                         <CardDescription className="text-xs mt-0.5">
                           {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
                         </CardDescription>
