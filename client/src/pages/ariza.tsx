@@ -502,7 +502,7 @@ export default function FaultHub() {
                         <FormLabel>Technician</FormLabel>
                         <FormControl>
                           <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="select-assigned-to">
                               <SelectValue placeholder="Seçin..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -525,7 +525,7 @@ export default function FaultHub() {
                       <FormItem>
                         <FormLabel>Maliyet (₺)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="0.00" {...field} />
+                          <Input type="number" placeholder="0.00" {...field} data-testid="input-actual-cost" />
                         </FormControl>
                       </FormItem>
                     )}
@@ -538,13 +538,13 @@ export default function FaultHub() {
                       <FormItem>
                         <FormLabel>Notlar</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Servis notları..." {...field} />
+                          <Textarea placeholder="Servis notları..." {...field} data-testid="textarea-fault-notes" />
                         </FormControl>
                       </FormItem>
                     )}
                   />
 
-                  <Button type="submit" disabled={updateMutation.isPending} className="w-full">
+                  <Button type="submit" disabled={updateMutation.isPending} className="w-full" data-testid="button-fault-save">
                     {updateMutation.isPending ? "Güncelleniyor..." : "Kaydet"}
                   </Button>
                 </form>

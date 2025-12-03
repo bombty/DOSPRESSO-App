@@ -514,7 +514,7 @@ export default function AcademyHQ() {
                                   <FormItem>
                                     <FormLabel>Atama Türü</FormLabel>
                                     <FormControl>
-                                      <select {...field} className="border rounded px-2 py-1 w-full">
+                                      <select {...field} className="border rounded px-2 py-1 w-full" data-testid="select-assign-to">
                                         <option value="user">Kullanıcı</option>
                                         <option value="branch">Şube</option>
                                         <option value="role">Rol</option>
@@ -538,13 +538,14 @@ export default function AcademyHQ() {
                                             ? "Şube ID'si"
                                             : "Rol Adı"
                                         }
-                                        {...field} 
+                                        {...field}
+                                        data-testid="input-target-id"
                                       />
                                     </FormControl>
                                   </FormItem>
                                 )}
                               />
-                              <Button type="submit" disabled={assignQuizMutation.isPending} className="w-full">
+                              <Button type="submit" disabled={assignQuizMutation.isPending} className="w-full" data-testid="button-assign-submit">
                                 Ata
                               </Button>
                             </form>
@@ -584,7 +585,7 @@ export default function AcademyHQ() {
                                     <FormItem>
                                       <FormLabel>Başlık</FormLabel>
                                       <FormControl>
-                                        <Input {...field} placeholder="Quiz başlığı" />
+                                        <Input {...field} placeholder="Quiz başlığı" data-testid="input-quiz-title" />
                                       </FormControl>
                                     </FormItem>
                                   )}
@@ -596,7 +597,7 @@ export default function AcademyHQ() {
                                     <FormItem>
                                       <FormLabel>Açıklama (İsteğe Bağlı)</FormLabel>
                                       <FormControl>
-                                        <Textarea {...field} placeholder="Quiz açıklaması" />
+                                        <Textarea {...field} placeholder="Quiz açıklaması" data-testid="textarea-quiz-description" />
                                       </FormControl>
                                     </FormItem>
                                   )}
@@ -608,7 +609,7 @@ export default function AcademyHQ() {
                                     <FormItem>
                                       <FormLabel>Zorluk</FormLabel>
                                       <FormControl>
-                                        <select {...field} className="border rounded px-2 py-1 w-full">
+                                        <select {...field} className="border rounded px-2 py-1 w-full" data-testid="select-difficulty">
                                           <option value="easy">Kolay</option>
                                           <option value="medium">Orta</option>
                                           <option value="hard">Zor</option>
@@ -617,7 +618,7 @@ export default function AcademyHQ() {
                                     </FormItem>
                                   )}
                                 />
-                                <Button type="submit" disabled={createQuizMutation.isPending} className="w-full">
+                                <Button type="submit" disabled={createQuizMutation.isPending} className="w-full" data-testid="button-quiz-create">
                                   Oluştur
                                 </Button>
                               </form>
@@ -845,7 +846,7 @@ export default function AcademyHQ() {
                             onChange={(e) => setAiEstimatedMinutes(Number(e.target.value) || 15)}
                             min={5}
                             max={120}
-                            data-testid="input-duration"
+                            data-testid="input-estimated-duration"
                           />
                         </div>
                       </div>
@@ -914,7 +915,7 @@ export default function AcademyHQ() {
                                 value={aiInputText}
                                 onChange={(e) => setAiInputText(e.target.value)}
                                 className="h-40"
-                                data-testid="textarea-extracted-text"
+                                data-testid="textarea-extracted-ai-text"
                               />
                               <p className="text-xs text-muted-foreground mt-1">
                                 {aiInputText.length} karakter
@@ -933,7 +934,7 @@ export default function AcademyHQ() {
                             value={aiInputText}
                             onChange={(e) => setAiInputText(e.target.value)}
                             className="h-64"
-                            data-testid="textarea-input-text"
+                            data-testid="textarea-ai-input"
                           />
                           <p className="text-xs text-muted-foreground mt-1">
                             {aiInputText.length} karakter {aiInputText.length < 50 && "(min. 50 karakter gerekli)"}
