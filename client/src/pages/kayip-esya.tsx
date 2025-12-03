@@ -98,7 +98,7 @@ export default function KayipEsyaPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof newItemSchema>) => {
-      return apiRequest("/api/lost-found", "POST", {
+      return apiRequest("POST", "/api/lost-found", {
         ...data,
         photoUrl,
       });
@@ -119,7 +119,7 @@ export default function KayipEsyaPage() {
   const handoverMutation = useMutation({
     mutationFn: async (data: z.infer<typeof handoverSchema>) => {
       if (!selectedItem) return;
-      return apiRequest(`/api/lost-found/${selectedItem.id}/handover`, "PATCH", data);
+      return apiRequest("PATCH", `/api/lost-found/${selectedItem.id}/handover`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lost-found"] });
