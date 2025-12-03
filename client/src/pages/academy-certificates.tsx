@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Award, Download, Share2, Loader } from "lucide-react";
 import dospressoLogo from "@assets/old_board2_1764794942278.png";
-import certificationSeal from "@assets/IMG_6568_1764796600520.png";
+import certificationSeal from "@assets/image_1764796739092.png";
 
 const CAREER_LEVELS = [
   { id: 1, roleId: "stajyer", titleTr: "Stajyer", levelNumber: 1, certificateColor: "from-blue-100 to-blue-50" },
