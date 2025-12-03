@@ -89,6 +89,8 @@ import DenetimSablonlari from "@/pages/denetim-sablonlari";
 import DenetimYurutme from "@/pages/denetim-yurutme";
 import Denetimler from "@/pages/denetimler";
 import BranchFeedback from "@/pages/branch-feedback";
+import KayipEsya from "@/pages/kayip-esya";
+import KayipEsyaHQ from "@/pages/kayip-esya-hq";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -206,6 +208,10 @@ function Router() {
           
           {/* Branch Feedback System */}
           <Route path="/muhasebe-geribildirimi" component={BranchFeedback} />
+
+          {/* Lost & Found System */}
+          <Route path="/kayip-esya" component={KayipEsya} />
+          <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />
         </>
       )}
       <Route component={NotFound} />
