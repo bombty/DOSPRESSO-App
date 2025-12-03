@@ -79,13 +79,13 @@ export default function EkipmanServis() {
   
   // Form states
   const [createBranch, setCreateBranch] = useState<string>('');
-  const [createEquipment, setCreateEquipment] = useState<any>(null);
+  const [createEquipment, setCreateEquipment] = useState<unknown>(null);
   const [createType, setCreateType] = useState<'fault' | 'service'>('fault');
   
   // Fault fields
   const [faultDescription, setFaultDescription] = useState<string>('');
   const [faultSeverity, setFaultSeverity] = useState<string>('medium');
-  const [aiDiagnosis, setAiDiagnosis] = useState<any>(null);
+  const [aiDiagnosis, setAiDiagnosis] = useState<unknown>(null);
   const [loadingAiDiagnosis, setLoadingAiDiagnosis] = useState(false);
   
   // Service fields

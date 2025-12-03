@@ -41,7 +41,7 @@ export function ModuleGallery({
       const data = await response.json();
       onImagesChange([...images, { url: data.url, alt: file.name, uploadedAt: Date.now() }]);
       toast({ title: "✓ Resim yüklendi", description: "Resim modül galerisine eklendi" });
-    } catch (error: any) {
+    } catch (error) {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     } finally {
       setUploading(false);
@@ -59,7 +59,7 @@ export function ModuleGallery({
       const updated = images.filter((_, i) => i !== index);
       onImagesChange(updated);
       toast({ title: "✓ Resim silindi" });
-    } catch (error: any) {
+    } catch (error) {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     }
   };

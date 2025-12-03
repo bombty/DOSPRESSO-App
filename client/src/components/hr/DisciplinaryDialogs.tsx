@@ -86,7 +86,7 @@ export function CreateDisciplinaryDialog({ userId, branchId }: CreateDisciplinar
         description: "Kayıt başarıyla eklendi",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Disiplin kaydı oluşturulamadı",
@@ -285,7 +285,7 @@ export function AddResponseDialog({ reportId, userId }: AddResponseDialogProps) 
         description: "Personel yanıtı başarıyla kaydedildi",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Yanıt eklenemedi",
@@ -387,7 +387,7 @@ export function ResolveDialog({ reportId, userId }: ResolveDialogProps) {
         description: "Disiplin kaydı başarıyla çözümlendi",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Kayıt çözümlenemedi",

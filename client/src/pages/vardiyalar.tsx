@@ -60,7 +60,7 @@ const shiftTypeIcons: Record<string, any> = {
 };
 
 const shiftTypeColors: Record<string, string> = {
-  morning: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-warning/30 dark:border-amber-800",
+  morning: "bg-amber-100 text-warning dark:bg-amber-900/30 dark:text-amber-300 border-warning/30 dark:border-amber-800",
   evening: "bg-primary/10 text-primary dark:bg-primary/5/30 dark:text-blue-300 border-primary/30 dark:border-primary/40",
   night: "bg-secondary/10 text-secondary dark:bg-secondary/5/30 dark:text-purple-300 border-secondary/30 dark:border-secondary/40",
 };
@@ -1182,7 +1182,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
   const [elapsedTime, setElapsedTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
-  const { data: todayAttendance, refetch: refetchAttendance } = useQuery<any>({
+  const { data: todayAttendance, refetch: refetchAttendance } = useQuery<unknown>({
     queryKey: ['/api/shift-attendance/today'],
   });
 

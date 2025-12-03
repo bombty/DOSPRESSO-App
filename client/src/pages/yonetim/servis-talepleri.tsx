@@ -118,7 +118,7 @@ export default function ServiceRequestsManagement() {
   const [createPhoto2File, setCreatePhoto2File] = useState<File | null>(null);
   const [uploadingCreatePhoto, setUploadingCreatePhoto] = useState<number | null>(null);
   const [createdRequestId, setCreatedRequestId] = useState<number | null>(null);
-  const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
+  const [selectedEquipment, setSelectedEquipment] = useState<unknown>(null);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
 

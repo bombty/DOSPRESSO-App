@@ -80,7 +80,7 @@ export function OnboardingTaskDialog({ onboardingId, userId }: OnboardingTaskDia
         description: "Onboarding görevi başarıyla eklendi",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Hata",
         description: error.message || "Görev oluşturulamadı",

@@ -117,7 +117,7 @@ export default function FaultHub() {
   const [managePage, setManagePage] = useState(1);
   const debouncedSearch = useDebounce(searchText, 300);
 
-  const { data: rawFaults } = useQuery<any>({
+  const { data: rawFaults } = useQuery<unknown>({
     queryKey: ["/api/faults"],
   });
   const faults = (Array.isArray(rawFaults) ? rawFaults : rawFaults?.data || []) as EquipmentFault[];

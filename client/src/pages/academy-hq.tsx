@@ -105,7 +105,7 @@ export default function AcademyHQ() {
   const [aiInputText, setAiInputText] = useState("");
   const [aiRoleLevel, setAiRoleLevel] = useState("Stajyer");
   const [aiEstimatedMinutes, setAiEstimatedMinutes] = useState(15);
-  const [generatedModule, setGeneratedModule] = useState<any>(null);
+  const [generatedModule, setGeneratedModule] = useState<unknown>(null);
   const [aiInputMode, setAiInputMode] = useState<"text" | "file">("text");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isExtractingText, setIsExtractingText] = useState(false);

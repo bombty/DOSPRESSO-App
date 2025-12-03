@@ -29,7 +29,7 @@ export default function GorevDetay() {
   const { toast } = useToast();
   const [note, setNote] = useState("");
 
-  const { data: task, isLoading } = useQuery<any>({
+  const { data: task, isLoading } = useQuery<unknown>({
     queryKey: ["/api/tasks", id],
     queryFn: async () => {
       const response = await fetch(`/api/tasks/${id}`);
@@ -39,7 +39,7 @@ export default function GorevDetay() {
     enabled: !!id,
   });
 
-  const { data: checklist } = useQuery<any>({
+  const { data: checklist } = useQuery<unknown>({
     queryKey: ["/api/checklists", task?.checklistId],
     queryFn: async () => {
       const response = await fetch(`/api/checklists/${task!.checklistId}`);
@@ -59,7 +59,7 @@ export default function GorevDetay() {
     enabled: !!task?.checklistId,
   });
 
-  const { data: assignedUser } = useQuery<any>({
+  const { data: assignedUser } = useQuery<unknown>({
     queryKey: ["/api/users", task?.assignedToId],
     queryFn: async () => {
       const response = await fetch(`/api/users/${task!.assignedToId}`);

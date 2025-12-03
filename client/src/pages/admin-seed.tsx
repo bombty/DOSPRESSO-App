@@ -6,7 +6,7 @@ import { Loader2, Database } from "lucide-react";
 
 export default function AdminSeedPage() {
   const [isSeeding, setIsSeeding] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<unknown>(null);
   const { toast } = useToast();
 
   const handleSeed = async () => {

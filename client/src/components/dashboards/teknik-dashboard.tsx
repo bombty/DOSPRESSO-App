@@ -26,12 +26,12 @@ export function TeknikDashboard({
   const systemHealth = Math.max(0, 100 - (openFaults * 5) - (criticalFaults.length * 15));
 
   // Equipment fault distribution
-  const equipmentStats = faults?.reduce((acc: any[], f: any) => {
-    const eq = acc.find((e: any) => e.name === (f.equipmentName || 'Unknown'));
+  const equipmentStats = faults?.reduce((acc: any[], f) => {
+    const eq = acc.find((e) => e.name === (f.equipmentName || 'Unknown'));
     if (eq) eq.faults++;
     else acc.push({ name: f.equipmentName || 'Unknown', faults: 1 });
     return acc;
-  }, [])?.sort((a: any, b: any) => b.faults - a.faults).slice(0, 5) || [];
+  }, [])?.sort((a, b) => b.faults - a.faults).slice(0, 5) || [];
 
   return (
     <div className="space-y-3 md:space-y-6">

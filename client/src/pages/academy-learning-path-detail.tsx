@@ -123,7 +123,7 @@ export default function AcademyLearningPathDetail() {
                         </div>
                         <div className="text-right text-xs">
                           {quiz.status === "completed" && <Badge className="bg-success/10 text-success">Tamamlandı</Badge>}
-                          {quiz.status === "recommended" && <Badge className="bg-amber-100 text-amber-800">Sırada</Badge>}
+                          {quiz.status === "recommended" && <Badge className="bg-amber-100 text-warning">Sırada</Badge>}
                           {quiz.status === "locked" && <Badge variant="outline">Kilitli</Badge>}
                         </div>
                       </div>

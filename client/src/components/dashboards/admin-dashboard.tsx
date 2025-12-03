@@ -15,7 +15,7 @@ interface AdminDashboardProps {
   totalFaults: number;
   openFaults: number;
   branchScoresTimeRange?: string;
-  onTimeRangeChange?: (range: any) => void;
+  onTimeRangeChange?: (range) => void;
   hqSupportTickets?: any[];
   hqTicketsLoading?: boolean;
 }
@@ -40,8 +40,8 @@ export function AdminDashboard({
   const slaScore = totalFaults > 0 ? Math.round(((totalFaults - openFaults) / totalFaults) * 100) : 100;
 
   // Calculate HQ Support statistics
-  const openTickets = hqSupportTickets?.filter((t: any) => t.status !== 'kapatildi').length || 0;
-  const unreadMessages = hqSupportTickets?.reduce((sum: number, t: any) => sum + (t.messageCount || 0), 0) || 0;
+  const openTickets = hqSupportTickets?.filter((t) => t.status !== 'kapatildi').length || 0;
+  const unreadMessages = hqSupportTickets?.reduce((sum: number, t) => sum + (t.messageCount || 0), 0) || 0;
 
   // Get critical alerts
   const criticalBranches = compositeBranchScores

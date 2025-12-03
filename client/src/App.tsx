@@ -263,7 +263,7 @@ function AppContent() {
 
   const getBranchName = (branchId: number | null | undefined) => {
     if (!branchId) return null;
-    const branch = branches?.find((b: any) => b.id === branchId);
+    const branch = branches?.find((b) => b.id === branchId);
     return branch?.name || `Şube ${branchId}`;
   };
 

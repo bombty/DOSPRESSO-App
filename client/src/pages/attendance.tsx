@@ -37,7 +37,7 @@ export default function AttendancePage() {
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
   const [photoQuota, setPhotoQuota] = useState({ remaining: 10, total: 10, used: 0 });
 
-  const { data: activeShift, isLoading: activeLoading } = useQuery<any>({
+  const { data: activeShift, isLoading: activeLoading } = useQuery<unknown>({
     queryKey: ["/api/shift-attendance/active"],
     queryFn: async () => {
       try {

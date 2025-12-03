@@ -57,9 +57,9 @@ export function CardGridHub() {
     queryKey: ["/api/notifications"],
   });
 
-  const openFaults = faults.filter((f: any) => f.currentStage !== "kapatildi").length;
-  const pendingTasks = tasks.filter((t: any) => t.status === "beklemede").length;
-  const unreadNotifications = notifications.filter((n: any) => !n.isRead).length;
+  const openFaults = faults.filter((f) => f.currentStage !== "kapatildi").length;
+  const pendingTasks = tasks.filter((t) => t.status === "beklemede").length;
+  const unreadNotifications = notifications.filter((n) => !n.isRead).length;
 
   // Module definitions - different for HQ vs Branch users
   const branchModules: ModuleCard[] = [

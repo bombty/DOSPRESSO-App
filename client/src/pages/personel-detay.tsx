@@ -154,7 +154,7 @@ export default function PersonelDetay() {
   });
 
   // Eğitim İlerlemesi
-  const { data: trainingProgress, isLoading: trainingLoading } = useQuery<any>({
+  const { data: trainingProgress, isLoading: trainingLoading } = useQuery<unknown>({
     queryKey: ["/api/training/progress", id],
     queryFn: async () => {
       const response = await fetch(`/api/training/progress/${id}`);
