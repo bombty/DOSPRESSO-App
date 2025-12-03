@@ -615,7 +615,7 @@ export default function CashReports() {
                   </div>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                     <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                       <p className="text-xs text-muted-foreground">Açılış Cashiersı</p>
                       <p className="text-lg font-semibold" data-testid={`text-opening-${report.id}`}>

@@ -791,7 +791,7 @@ export default function PersonelDetay() {
                 </div>
               ) : performanceScores && performanceScores.length > 0 ? (
                 <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                     {performanceScores.slice(0, 4).map((score: any, idx: number) => (
                       <Card key={idx} className="text-center p-3">
                         <p className="text-2xl font-bold text-primary">{score.overallScore || score.score || 0}</p>

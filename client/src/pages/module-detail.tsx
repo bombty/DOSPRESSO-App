@@ -318,11 +318,11 @@ export default function ModuleDetail() {
 
         {/* Student Learning Tabs */}
         <Tabs value={previewPhase} onValueChange={(v: any) => setPreviewPhase(v)} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="objectives">Hedefler</TabsTrigger>
             <TabsTrigger value="steps" disabled={previewPhase === 'objectives'}>İçerik</TabsTrigger>
             <TabsTrigger value="quiz" disabled={previewPhase !== 'quiz' && previewPhase !== 'completed'}>Sınav</TabsTrigger>
-            <TabsTrigger value="completed" disabled={previewPhase !== 'completed'}>✓ Tamamlandı</TabsTrigger>
+            <TabsTrigger value="completed" disabled={previewPhase !== 'completed'}>✓ Bitti</TabsTrigger>
           </TabsList>
 
           {/* Objectives Tab */}

@@ -90,7 +90,7 @@ export default function AcademyCohortAnalytics() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
         {stats.map((stat, idx) => (
           <Card key={idx}>
             <CardHeader className="pb-2">
@@ -112,7 +112,7 @@ export default function AcademyCohortAnalytics() {
         </div>
       ) : (
         <Tabs defaultValue="funnel" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="funnel">Huni</TabsTrigger>
             <TabsTrigger value="progression">İlerleme</TabsTrigger>
             <TabsTrigger value="scores">Puanlar</TabsTrigger>

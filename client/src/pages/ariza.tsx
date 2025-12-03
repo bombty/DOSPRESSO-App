@@ -210,7 +210,7 @@ export default function FaultHub() {
       <div className="p-3">
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
           <TabsTrigger value="sla">Arıza Süreleri</TabsTrigger>
           <TabsTrigger value="manage">Yönet</TabsTrigger>
@@ -219,7 +219,7 @@ export default function FaultHub() {
 
         {/* TAB 1: Overview */}
         <TabsContent value="overview" className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-col items-center text-center gap-1.5">

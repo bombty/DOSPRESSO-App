@@ -57,7 +57,7 @@ export default function AcademyAdvancedAnalytics() {
       </div>
 
       {/* Key Metrics */}
-      <div className="col-span-full grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="col-span-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Toplam Puan</CardTitle>

@@ -99,7 +99,7 @@ export default function AcademyAdaptiveEngine() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
             <div className="p-2 bg-white dark:bg-slate-900 rounded-lg">
               <p className="text-xs text-muted-foreground">Zorluk</p>
               <p className="text-sm font-semibold mt-0.5">Orta</p>

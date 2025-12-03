@@ -59,7 +59,7 @@ export default function AcademyProgressOverview() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
         {metrics.map((m, idx) => (
           <Card key={idx}>
             <CardContent className="pt-2">

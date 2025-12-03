@@ -275,7 +275,7 @@ export default function Vardiyalar() {
     return (
       <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <Skeleton className="h-10 w-64" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
         </div>
       </div>
@@ -459,7 +459,7 @@ export default function Vardiyalar() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-        <TabsList className="grid w-full grid-cols-4 max-w-xl">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-xl">
           <TabsTrigger value="overview" data-testid="tab-overview">
             <TrendingUp className="w-4 h-4 mr-2" />
             Genel Bakış

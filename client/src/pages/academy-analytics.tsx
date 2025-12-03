@@ -86,7 +86,7 @@ export default function AcademyAnalytics() {
         <p className="text-xs text-muted-foreground mt-1">Şube-çapı eğitim performansı ve ilerleme</p>
       </div>
 
-      <div className="col-span-full grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="col-span-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         <Card>
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">

@@ -156,7 +156,7 @@ export default function FaultDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">

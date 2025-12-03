@@ -221,7 +221,7 @@ export default function AcademyTeamCompetitions() {
           <CardDescription>Yarışmalarda kazanılan özel rozetler</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             <div className="p-3 text-center border rounded-lg">
               <p className="text-2xl mb-2">🥇</p>
               <p className="text-xs font-medium">1. Sıra Ustası</p>

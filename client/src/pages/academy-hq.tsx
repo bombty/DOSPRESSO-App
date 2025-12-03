@@ -652,7 +652,7 @@ export default function AcademyHQ() {
               <CardTitle>Modül İstatistikleri</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                 <div className="p-3 bg-muted rounded text-center">
                   <p className="text-2xl font-bold">12</p>
                   <p className="text-xs text-muted-foreground">Toplam Modül</p>

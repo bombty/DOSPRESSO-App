@@ -437,7 +437,7 @@ export default function EquipmentManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
         <Card className={stats.critical > 0 ? 'border-red-200 dark:border-red-800' : ''}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
@@ -479,7 +479,7 @@ export default function EquipmentManagement() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="pending">Bekleyen ({pendingRequests.length})</TabsTrigger>
           <TabsTrigger value="inprogress">Devam Eden ({stats.inProgress})</TabsTrigger>
           <TabsTrigger value="completed">Tamamlanan ({stats.completed})</TabsTrigger>
