@@ -113,6 +113,14 @@ export function CardGridHub() {
       color: "bg-gray-600",
       description: "Hızlı erişim"
     },
+    { 
+      id: "lost-found", 
+      icon: Briefcase, 
+      label: "Lost&Found", 
+      path: "/kayip-esya",
+      color: "bg-yellow-600",
+      description: "Bulunan eşyalar"
+    },
   ];
 
   const hqModules: ModuleCard[] = [
