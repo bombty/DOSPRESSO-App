@@ -186,7 +186,16 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
   const [formData, setFormData] = useState({
     shiftType: 'morning',
     assignedToId: '',
+    openingChecklistId: '',
+    closingChecklistId: '',
   });
+
+  const { data: checklists } = useQuery({
+    queryKey: ['/api/checklists'],
+  });
+
+  const openingChecklists = checklists?.filter((c: any) => c.type === 'opening' || !c.type) || [];
+  const closingChecklists = checklists?.filter((c: any) => c.type === 'closing' || !c.type) || [];
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -197,7 +206,7 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
       };
       const [start, end] = shiftTimes[formData.shiftType];
       
-      await apiRequest('POST', '/api/shifts', {
+      const payload: any = {
         branchId: user?.branchId,
         shiftDate: format(date, 'yyyy-MM-dd'),
         startTime: start,
@@ -206,7 +215,25 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
         status: 'draft',
         assignedToId: formData.assignedToId || null,
         createdById: user?.id,
-      });
+      };
+
+      const shiftRes = await apiRequest('POST', '/api/shifts', payload);
+      
+      // Attach checklists if selected
+      if ((formData.openingChecklistId || formData.closingChecklistId) && shiftRes?.id) {
+        if (formData.openingChecklistId) {
+          await apiRequest('POST', `/api/shifts/${shiftRes.id}/checklists`, {
+            checklistId: parseInt(formData.openingChecklistId),
+            type: 'opening',
+          });
+        }
+        if (formData.closingChecklistId) {
+          await apiRequest('POST', `/api/shifts/${shiftRes.id}/checklists`, {
+            checklistId: parseInt(formData.closingChecklistId),
+            type: 'closing',
+          });
+        }
+      }
     },
     onSuccess: () => {
       toast({ title: "Başarılı", description: "Vardiya oluşturuldu" });
@@ -236,6 +263,41 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
           </SelectContent>
         </Select>
       </div>
+
+      <div>
+        <label className="text-xs font-semibold">Açılış Çeklisti (Opsiyonel)</label>
+        <Select value={formData.openingChecklistId} onValueChange={(v) => setFormData({ ...formData, openingChecklistId: v })}>
+          <SelectTrigger data-testid="select-opening-checklist">
+            <SelectValue placeholder="Seçin..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Yok</SelectItem>
+            {openingChecklists.map((c: any) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.titleTr || c.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <label className="text-xs font-semibold">Kapanış Çeklisti (Opsiyonel)</label>
+        <Select value={formData.closingChecklistId} onValueChange={(v) => setFormData({ ...formData, closingChecklistId: v })}>
+          <SelectTrigger data-testid="select-closing-checklist">
+            <SelectValue placeholder="Seçin..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Yok</SelectItem>
+            {closingChecklists.map((c: any) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.titleTr || c.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <Button 
         onClick={() => createMutation.mutate()} 
         disabled={createMutation.isPending}

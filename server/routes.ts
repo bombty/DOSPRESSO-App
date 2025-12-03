@@ -5702,6 +5702,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Attach checklists to shift
+  app.post('/api/shifts/:id/checklists', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const shiftId = parseInt(req.params.id);
+      const { checklistId, type } = req.body;
+
+      if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Çekliste atama yetkiniz yok" });
+      }
+
+      const shift = await storage.getShift(shiftId);
+      if (!shift) return res.status(404).json({ message: "Vardiya bulunamadı" });
+
+      if (!user.branchId || shift.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu vardiyaya çekliste atayamazsınız" });
+      }
+
+      const result = await db.insert(shiftChecklists).values({
+        shiftId,
+        checklistId,
+        type: type || 'standard',
+      }).onConflictDoNothing().returning();
+
+      res.json(result[0] || { success: true });
+    } catch (error) {
+      console.error("Error attaching checklist:", error);
+      res.status(500).json({ message: "Çekliste atanamadı" });
+    }
+  });
+
   // AI-powered shift plan suggestions (supervisor + destek only)
   app.post('/api/shifts/ai-suggest', isAuthenticated, async (req: any, res) => {
     try {
