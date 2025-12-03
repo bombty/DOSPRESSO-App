@@ -109,9 +109,16 @@ export default function VardiyaPlanlama() {
                       onClick={() => setSelectedShift(shift)}
                       data-testid={`shift-card-${shift.id}`}
                     >
-                      <div className="font-semibold text-xs flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
+                      <div className="font-semibold text-xs flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
+                        </div>
+                        {shift.shiftChecklists && shift.shiftChecklists.length > 0 && (
+                          <Badge variant="secondary" className="text-xs h-4 py-0">
+                            {shift.shiftChecklists.length} 📋
+                          </Badge>
+                        )}
                       </div>
                       {shift.assignedTo?.fullName && (
                         <div className="text-xs text-muted-foreground mt-0.5">
@@ -264,39 +271,41 @@ function QuickAddShiftForm({ date, onSuccess }: { date: Date; onSuccess: () => v
         </Select>
       </div>
 
-      <div>
-        <label className="text-xs font-semibold">Açılış Çeklisti (Opsiyonel)</label>
-        <Select value={formData.openingChecklistId} onValueChange={(v) => setFormData({ ...formData, openingChecklistId: v })}>
-          <SelectTrigger data-testid="select-opening-checklist">
-            <SelectValue placeholder="Seçin..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">Yok</SelectItem>
-            {openingChecklists.map((c: any) => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.titleTr || c.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {openingChecklists.length > 0 && (
+        <div>
+          <label className="text-xs font-semibold">Açılış Çeklisti (Opsiyonel)</label>
+          <Select value={formData.openingChecklistId} onValueChange={(v) => setFormData({ ...formData, openingChecklistId: v })}>
+            <SelectTrigger data-testid="select-opening-checklist">
+              <SelectValue placeholder="Seçin..." />
+            </SelectTrigger>
+            <SelectContent>
+              {openingChecklists.map((c: any) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.titleTr || c.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
-      <div>
-        <label className="text-xs font-semibold">Kapanış Çeklisti (Opsiyonel)</label>
-        <Select value={formData.closingChecklistId} onValueChange={(v) => setFormData({ ...formData, closingChecklistId: v })}>
-          <SelectTrigger data-testid="select-closing-checklist">
-            <SelectValue placeholder="Seçin..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">Yok</SelectItem>
-            {closingChecklists.map((c: any) => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.titleTr || c.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {closingChecklists.length > 0 && (
+        <div>
+          <label className="text-xs font-semibold">Kapanış Çeklisti (Opsiyonel)</label>
+          <Select value={formData.closingChecklistId} onValueChange={(v) => setFormData({ ...formData, closingChecklistId: v })}>
+            <SelectTrigger data-testid="select-closing-checklist">
+              <SelectValue placeholder="Seçin..." />
+            </SelectTrigger>
+            <SelectContent>
+              {closingChecklists.map((c: any) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.titleTr || c.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <Button 
         onClick={() => createMutation.mutate()} 
