@@ -297,8 +297,8 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
             <SelectValue placeholder="Personel secin..." />
           </SelectTrigger>
           <SelectContent>
-            {employees.map((emp: any) => (
-              <SelectItem key={emp.id} value={emp.id}>
+            {employees.filter((emp: any) => emp.id).map((emp: any) => (
+              <SelectItem key={emp.id} value={String(emp.id)}>
                 <div className="flex items-center gap-2">
                   <span>{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
                   <Badge variant="outline" className="text-xs h-4">
@@ -336,7 +336,7 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
               <SelectValue placeholder="Secin..." />
             </SelectTrigger>
             <SelectContent>
-              {openingChecklists.map((c: any) => (
+              {openingChecklists.filter((c: any) => c.id).map((c: any) => (
                 <SelectItem key={c.id} value={String(c.id)}>
                   {c.titleTr || c.title}
                 </SelectItem>
@@ -354,7 +354,7 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
               <SelectValue placeholder="Secin..." />
             </SelectTrigger>
             <SelectContent>
-              {closingChecklists.map((c: any) => (
+              {closingChecklists.filter((c: any) => c.id).map((c: any) => (
                 <SelectItem key={c.id} value={String(c.id)}>
                   {c.titleTr || c.title}
                 </SelectItem>
@@ -399,9 +399,10 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     });
   }, [weekStart]);
 
-  const toggleOffDay = (employeeId: string, dateStr: string) => {
+  const toggleOffDay = (employeeId: string | number, dateStr: string) => {
+    const empId = String(employeeId);
     setOffDays(prev => {
-      const key = `${employeeId}-${dateStr}`;
+      const key = `${empId}-${dateStr}`;
       if (prev[key]) {
         const { [key]: _, ...rest } = prev;
         return rest;
@@ -508,7 +509,7 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
                 </p>
                 <ScrollArea className="h-[300px] border rounded-md p-2">
                   <div className="space-y-3">
-                    {employees.map((emp: any) => (
+                    {employees.filter((emp: any) => emp.id).map((emp: any) => (
                       <div key={emp.id} className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
@@ -516,15 +517,16 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
                         </div>
                         <div className="flex gap-1 flex-wrap">
                           {weekDays.map((day) => {
-                            const isOff = offDays[`${emp.id}-${day.dateStr}`];
+                            const empId = String(emp.id);
+                            const isOff = offDays[`${empId}-${day.dateStr}`];
                             return (
                               <Button
                                 key={day.dateStr}
                                 size="sm"
                                 variant={isOff ? "default" : "outline"}
                                 className={`text-xs px-2 h-7 ${isOff ? 'bg-destructive hover:bg-destructive/90' : ''}`}
-                                onClick={() => toggleOffDay(emp.id, day.dateStr)}
-                                data-testid={`off-${emp.id}-${day.dateStr}`}
+                                onClick={() => toggleOffDay(empId, day.dateStr)}
+                                data-testid={`off-${empId}-${day.dateStr}`}
                               >
                                 {day.dayName.substring(0, 3)}
                               </Button>
