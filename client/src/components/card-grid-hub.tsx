@@ -16,7 +16,8 @@ import {
   BookOpen,
   Trophy,
   QrCode,
-  Coffee
+  Coffee,
+  Briefcase
 } from "lucide-react";
 
 interface ModuleCard {
@@ -163,6 +164,14 @@ export function CardGridHub() {
       path: "/ekipman",
       color: "bg-amber-600",
       description: "Ekipman listesi"
+    },
+    { 
+      id: "lost-found", 
+      icon: Briefcase, 
+      label: "Kayıp Eşya", 
+      path: "/kayip-esya-hq",
+      color: "bg-yellow-600",
+      description: "Bulunan eşyalar"
     },
     { 
       id: "support", 
