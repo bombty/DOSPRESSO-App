@@ -27,8 +27,6 @@ import EquipmentDetail from "@/pages/equipment-detail";
 import QRScanner from "@/pages/qr-scanner";
 import NewFaultReport from "@/pages/ariza-yeni";
 import KnowledgeBase from "@/pages/knowledge-base";
-import Training from "@/pages/training";
-import TrainingDetail from "@/pages/training-detail";
 import TrainingAssign from "@/pages/training-assign";
 import Academy from "@/pages/academy";
 import AcademySupervisor from "@/pages/academy-supervisor";
