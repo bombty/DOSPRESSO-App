@@ -111,7 +111,7 @@ export default function AcademyCertificates() {
                   </div>
 
                   {/* Sertifika Damgası */}
-                  <div className="absolute -right-6 top-1/3 transform -translate-y-1/2 -rotate-45 z-30 pointer-events-none">
+                  <div className="absolute -right-6 top-1/3 transform -translate-y-1/2 z-30 pointer-events-none">
                     <img 
                       src={certificationSeal} 
                       alt="Sertifika Damgası" 
