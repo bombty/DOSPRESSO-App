@@ -5,6 +5,7 @@ import { isHQRole, isBranchRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuickTaskModal } from "@/components/quick-task-modal";
+import { ShiftStatusCard } from "@/components/shift-status-card";
 import { 
   GraduationCap, 
   Wrench, 
@@ -213,6 +214,9 @@ export function CardGridHub() {
 
   return (
     <div className="p-3 pb-24 space-y-4">
+      {/* Shift Status - Branch users only */}
+      {isBranch && <ShiftStatusCard />}
+
       {/* Equipment Health Alert */}
       {criticalEquipment.length > 0 && (
         <Card className="border-destructive bg-destructive/5 dark:bg-red-950/20">
