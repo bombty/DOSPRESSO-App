@@ -125,46 +125,76 @@ export default function VardiyaPlanlama() {
       </div>
 
       {/* Weekly Calendar Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 auto-rows-max">
-        {weekDays.map((day) => (
-          <Card 
-            key={day.dateStr}
-            className={`min-h-[300px] flex flex-col ${isToday(day.date) ? 'border-primary/50 bg-primary/5' : ''}`}
-          >
-            {/* Day Header */}
-            <div className="p-2 border-b bg-muted/50 sticky top-0 z-10">
-              <div className="text-center">
-                <div className="text-xs font-semibold text-muted-foreground">{day.shortName}</div>
-                <div className="text-sm font-bold">{day.dayNum}</div>
-              </div>
-            </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 auto-rows-max overflow-x-auto">
+        {weekDays.map((day) => {
+          // Calculate summary stats
+          const dayShifts = weekShifts[day.dateStr] || [];
+          const morningCount = dayShifts.filter((s: any) => {
+            const hour = parseInt(s.startTime?.split(':')[0] || '0');
+            return hour < 12;
+          }).length;
+          const eveningCount = dayShifts.filter((s: any) => {
+            const hour = parseInt(s.startTime?.split(':')[0] || '0');
+            return hour >= 12;
+          }).length;
+          const offCount = (employeesByDay[day.dateStr]?.length || 0) - dayShifts.length;
 
-            {/* Employees Grid */}
-            <CardContent className="flex-1 p-2 space-y-1 overflow-y-auto">
-              {employeesByDay[day.dateStr]?.map(({ hasShift, employee }) => {
-                const empName = employee.fullName || `${employee.firstName} ${employee.lastName}`;
-                
-                return (
-                  <div key={employee.id} className="text-xs">
-                    {hasShift ? (
-                      <button
-                        onClick={() => {
-                          setSelectedShift(hasShift);
-                          setEditingDate(day.dateStr);
-                          setEditingEmpId(employee.id);
-                        }}
-                        className={`w-full p-1.5 rounded-md text-left transition-all hover:shadow-md ${getShiftColor(hasShift)}`}
-                        data-testid={`shift-chip-${employee.id}-${day.dateStr}`}
-                      >
-                        <div className="font-semibold truncate">{empName}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {hasShift.startTime?.substring(0, 5)} - {hasShift.endTime?.substring(0, 5)}
-                        </div>
-                      </button>
-                    ) : (
-                      <Dialog>
+          return (
+            <Card 
+              key={day.dateStr}
+              className={`min-h-[350px] flex flex-col flex-shrink-0 w-full sm:w-auto ${isToday(day.date) ? 'border-primary/50 bg-primary/5' : ''}`}
+            >
+              {/* Day Header with Summary */}
+              <div className="p-2 border-b bg-muted/50 sticky top-0 z-10">
+                <div className="text-center mb-2">
+                  <div className="text-xs font-semibold text-muted-foreground">{day.shortName}</div>
+                  <div className="text-sm font-bold">{day.dayNum}</div>
+                </div>
+                {/* Summary Badges */}
+                <div className="flex gap-1 justify-center flex-wrap text-xs">
+                  {morningCount > 0 && (
+                    <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100 text-xs h-5 px-1.5">
+                      S:{morningCount}
+                    </Badge>
+                  )}
+                  {eveningCount > 0 && (
+                    <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 text-xs h-5 px-1.5">
+                      A:{eveningCount}
+                    </Badge>
+                  )}
+                  {offCount > 0 && (
+                    <Badge variant="secondary" className="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs h-5 px-1.5">
+                      X:{offCount}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Employees Grid */}
+              <CardContent className="flex-1 p-2 space-y-1 overflow-y-auto">
+                {employeesByDay[day.dateStr]?.map(({ hasShift, employee }) => {
+                  const empName = employee.fullName || `${employee.firstName} ${employee.lastName}`;
+                  
+                  return (
+                    <div key={employee.id} className="text-xs">
+                      {hasShift ? (
                         <button
-                          onClick={(e) => {
+                          onClick={() => {
+                            setSelectedShift(hasShift);
+                            setEditingDate(day.dateStr);
+                            setEditingEmpId(employee.id);
+                          }}
+                          className={`w-full p-1.5 rounded-md text-left transition-all hover:shadow-md ${getShiftColor(hasShift)}`}
+                          data-testid={`shift-chip-${employee.id}-${day.dateStr}`}
+                        >
+                          <div className="font-semibold truncate">{empName}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {hasShift.startTime?.substring(0, 5)} - {hasShift.endTime?.substring(0, 5)}
+                          </div>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
                             setEditingDate(day.dateStr);
                             setEditingEmpId(employee.id);
                           }}
@@ -174,14 +204,14 @@ export default function VardiyaPlanlama() {
                           <Plus className="w-3 h-3" />
                           <span className="text-xs truncate">{empName}</span>
                         </button>
-                      </Dialog>
-                    )}
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        ))}
+                      )}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Edit/Create Modal */}
