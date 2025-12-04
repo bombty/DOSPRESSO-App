@@ -232,6 +232,7 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
     breakEndTime: '12:00',
     openingChecklistId: '',
     closingChecklistId: '',
+    thirdChecklistId: '',
   });
 
   const handleStartTimeChange = (time: string) => {
@@ -282,7 +283,7 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
 
       const shiftRes = await apiRequest('POST', '/api/shifts', payload);
       
-      if ((formData.openingChecklistId || formData.closingChecklistId) && shiftRes?.id) {
+      if ((formData.openingChecklistId || formData.closingChecklistId || formData.thirdChecklistId) && shiftRes?.id) {
         if (formData.openingChecklistId) {
           await apiRequest('POST', `/api/shifts/${shiftRes.id}/checklists`, {
             checklistId: parseInt(formData.openingChecklistId),
@@ -293,6 +294,12 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
           await apiRequest('POST', `/api/shifts/${shiftRes.id}/checklists`, {
             checklistId: parseInt(formData.closingChecklistId),
             type: 'closing',
+          });
+        }
+        if (formData.thirdChecklistId) {
+          await apiRequest('POST', `/api/shifts/${shiftRes.id}/checklists`, {
+            checklistId: parseInt(formData.thirdChecklistId),
+            type: 'other',
           });
         }
       }
@@ -344,13 +351,13 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
             type="time"
             value={formData.startTime}
             onChange={(e) => handleStartTimeChange(e.target.value)}
-            className="w-full px-2 py-1 text-xs border rounded-md"
+            className="w-full px-2 py-0.5 text-xs border rounded-md h-8"
             data-testid="input-start-time"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-muted-foreground h-4">Çıkış (Oto)</label>
-          <div className="px-2 py-1 text-xs bg-muted rounded-md text-center">{formData.endTime}</div>
+          <div className="px-2 py-0.5 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center">{formData.endTime}</div>
         </div>
       </div>
 
@@ -368,13 +375,13 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
               const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
               setFormData({ ...formData, breakStartTime: breakStart, breakEndTime: breakEnd });
             }}
-            className="w-full px-2 py-1 text-xs border rounded-md"
+            className="w-full px-2 py-0.5 text-xs border rounded-md h-8"
             data-testid="input-break-start"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-muted-foreground h-4">Mola Bitişi (Oto)</label>
-          <div className="px-2 py-1 text-xs bg-muted rounded-md text-center">{formData.breakEndTime}</div>
+          <div className="px-2 py-0.5 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center">{formData.breakEndTime}</div>
         </div>
       </div>
 
@@ -405,6 +412,24 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
             </SelectTrigger>
             <SelectContent>
               {closingChecklists.filter((c: any) => c.id).map((c: any) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.titleTr || c.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {checklists && checklists.length > 0 && (
+        <div>
+          <label className="text-xs font-semibold">3. Checklist (Opsiyonel)</label>
+          <Select value={formData.thirdChecklistId} onValueChange={(v) => setFormData({ ...formData, thirdChecklistId: v })}>
+            <SelectTrigger data-testid="select-third-checklist">
+              <SelectValue placeholder="Secin..." />
+            </SelectTrigger>
+            <SelectContent>
+              {checklists.filter((c: any) => c.id).map((c: any) => (
                 <SelectItem key={c.id} value={String(c.id)}>
                   {c.titleTr || c.title}
                 </SelectItem>
