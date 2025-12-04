@@ -338,8 +338,8 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
 
       {/* Vardiya Saatleri (Başlama - Çıkış) */}
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-xs font-semibold">İşe Başlama Saati</label>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold h-4">İşe Başlama</label>
           <input
             type="time"
             value={formData.startTime}
@@ -348,16 +348,16 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
             data-testid="input-start-time"
           />
         </div>
-        <div>
-          <label className="text-xs font-semibold text-muted-foreground">Çıkış Saati (Otomatik)</label>
-          <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.endTime}</div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-muted-foreground h-4">Çıkış (Oto)</label>
+          <div className="px-2 py-1 text-xs bg-muted rounded-md text-center">{formData.endTime}</div>
         </div>
       </div>
 
       {/* Mola Saatleri */}
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-xs font-semibold">Mola Başlama (Manuel)</label>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold h-4">Mola Başlama</label>
           <input
             type="time"
             value={formData.breakStartTime}
@@ -372,9 +372,9 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
             data-testid="input-break-start"
           />
         </div>
-        <div>
-          <label className="text-xs font-semibold text-muted-foreground">Mola Bitişi (Otomatik)</label>
-          <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.breakEndTime}</div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-muted-foreground h-4">Mola Bitişi (Oto)</label>
+          <div className="px-2 py-1 text-xs bg-muted rounded-md text-center">{formData.breakEndTime}</div>
         </div>
       </div>
 
