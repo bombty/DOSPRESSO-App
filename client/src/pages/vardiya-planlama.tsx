@@ -556,48 +556,47 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
     setIsGenerating(true);
     
     const newShifts: any[] = [];
-    const employeeWorkDays: Record<string, number> = {};
     
     employees.forEach((emp: any) => {
-      let existingCount = 0;
+      const empId = String(emp.id);
+      
+      let existingDays: string[] = [];
       if (Array.isArray(existingShifts)) {
-        existingCount = existingShifts.filter((s: any) => 
-          String(s.assignedToId) === String(emp.id) &&
-          weekDays.some(d => d.dateStr === s.shiftDate)
-        ).length;
+        existingDays = existingShifts
+          .filter((s: any) => String(s.assignedToId) === empId && weekDays.some(d => d.dateStr === s.shiftDate))
+          .map((s: any) => s.shiftDate);
       }
-      employeeWorkDays[emp.id] = existingCount;
-    });
-
-    weekDays.forEach((day) => {
-      const availableEmps = employees.filter((emp: any) => 
-        !alreadyAssigned[day.dateStr].has(String(emp.id)) &&
-        employeeWorkDays[emp.id] < 5
-      );
-
-      availableEmps.forEach((emp: any) => {
-        if (employeeWorkDays[emp.id] < 5) {
+      
+      const availableDays = weekDays
+        .map(d => d.dateStr)
+        .filter(d => !existingDays.includes(d) && !alreadyAssigned[d]?.has(empId));
+      
+      const daysNeeded = Math.min(5 - existingDays.length, availableDays.length);
+      
+      if (daysNeeded > 0) {
+        const shuffled = [...availableDays].sort(() => Math.random() - 0.5);
+        const selectedDays = shuffled.slice(0, daysNeeded);
+        
+        selectedDays.forEach(dateStr => {
           const startHour = 8 + Math.floor(Math.random() * 4);
           const endHour = startHour + 8;
           const breakHour = startHour + 3;
           const shiftType = startHour < 12 ? 'morning' : 'evening';
 
           newShifts.push({
-            shiftDate: day.dateStr,
+            shiftDate: dateStr,
             startTime: `${String(startHour).padStart(2, '0')}:00:00`,
             endTime: `${String(endHour % 24).padStart(2, '0')}:30:00`,
             breakStartTime: `${String(breakHour).padStart(2, '0')}:30:00`,
             breakEndTime: `${String((breakHour + 1) % 24).padStart(2, '0')}:30:00`,
             shiftType,
-            assignedToId: String(emp.id),
+            assignedToId: empId,
             status: 'draft',
             branchId,
             employeeName: emp.fullName || `${emp.firstName} ${emp.lastName}`,
           });
-          
-          employeeWorkDays[emp.id]++;
-        }
-      });
+        });
+      }
     });
 
     setTimeout(() => {
