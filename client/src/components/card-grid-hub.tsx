@@ -2,6 +2,8 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { isHQRole, isBranchRole } from "@shared/schema";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { 
   GraduationCap, 
   Wrench, 
@@ -17,7 +19,9 @@ import {
   Trophy,
   QrCode,
   Coffee,
-  Briefcase
+  Briefcase,
+  Heart,
+  AlertCircle
 } from "lucide-react";
 
 interface ModuleCard {
@@ -55,6 +59,10 @@ export function CardGridHub() {
 
   const { data: notifications = [] } = useQuery<any[]>({
     queryKey: ["/api/notifications"],
+  });
+
+  const { data: criticalEquipment = [] } = useQuery<any[]>({
+    queryKey: ["/api/equipment/critical"],
   });
 
   const openFaults = faults.filter((f) => f.currentStage !== "kapatildi").length;
@@ -203,6 +211,39 @@ export function CardGridHub() {
 
   return (
     <div className="p-3 pb-24 space-y-4">
+      {/* Equipment Health Alert */}
+      {criticalEquipment.length > 0 && (
+        <Card className="border-destructive bg-destructive/5 dark:bg-red-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              Kritik Ekipmanlar ({criticalEquipment.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {criticalEquipment.slice(0, 3).map((eq: any) => (
+              <div key={eq.id} className="flex items-center justify-between text-xs p-2 bg-background/50 rounded border border-destructive/20">
+                <span className="font-medium truncate">{eq.equipmentType}</span>
+                <span className="text-destructive font-bold">{Math.round(eq.healthScore || 0)}%</span>
+              </div>
+            ))}
+            {criticalEquipment.length > 3 && (
+              <p className="text-xs text-muted-foreground">+{criticalEquipment.length - 3} daha...</p>
+            )}
+            <Button 
+              size="sm" 
+              variant="destructive" 
+              className="w-full mt-2 h-8"
+              onClick={() => setLocation("/ekipman")}
+              data-testid="button-equipment-critical"
+            >
+              <Heart className="h-3 w-3 mr-1" />
+              Ekipmanları Gözden Geçir
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Card Grid */}
       <div className="grid grid-cols-2 gap-3">
         {modules.map((module) => {
