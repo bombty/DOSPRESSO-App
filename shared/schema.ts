@@ -1881,6 +1881,8 @@ export const shiftChecklists = pgTable("shift_checklists", {
   id: serial("id").primaryKey(),
   shiftId: integer("shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
   checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   uniqueShiftChecklist: unique("unique_shift_checklist").on(table.shiftId, table.checklistId),
@@ -1891,10 +1893,36 @@ export const shiftChecklists = pgTable("shift_checklists", {
 export const insertShiftChecklistSchema = createInsertSchema(shiftChecklists).omit({
   id: true,
   createdAt: true,
+  isCompleted: true,
+  completedAt: true,
 });
 
 export type InsertShiftChecklist = z.infer<typeof insertShiftChecklistSchema>;
 export type ShiftChecklist = typeof shiftChecklists.$inferSelect;
+
+// Shift Tasks (many-to-many) - Assign tasks to shifts
+export const shiftTasks = pgTable("shift_tasks", {
+  id: serial("id").primaryKey(),
+  shiftId: integer("shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueShiftTask: unique("unique_shift_task").on(table.shiftId, table.taskId),
+  shiftIdx: index("shift_tasks_shift_idx").on(table.shiftId),
+  taskIdx: index("shift_tasks_task_idx").on(table.taskId),
+}));
+
+export const insertShiftTaskSchema = createInsertSchema(shiftTasks).omit({
+  id: true,
+  createdAt: true,
+  isCompleted: true,
+  completedAt: true,
+});
+
+export type InsertShiftTask = z.infer<typeof insertShiftTaskSchema>;
+export type ShiftTask = typeof shiftTasks.$inferSelect;
 
 // Bulk shift creation schema for shift planning
 export const bulkCreateShiftsSchema = z.object({

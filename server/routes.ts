@@ -5380,10 +5380,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const end = req.query.end as string | undefined;
       const myShifts = await storage.getShifts(undefined, user.id, start, end);
       
-      res.json(myShifts);
+      // Enrich each shift with tasks and checklists
+      const enrichedShifts = await Promise.all(myShifts.map(async (shift: any) => {
+        const tasks = await storage.getShiftTasks(shift.id);
+        const checklists = await storage.getShiftChecklists(shift.id);
+        return { ...shift, tasks, checklists };
+      }));
+      
+      res.json(enrichedShifts);
     } catch (error) {
       console.error("Error fetching my shifts:", error);
       res.status(500).json({ message: "Vardiyalar alınamadı" });
+    }
+  });
+
+  // PATCH /api/shift-tasks/:id - Update shift task completion status
+  app.patch('/api/shift-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+      
+      // Validate payload
+      const { isCompleted } = req.body;
+      if (typeof isCompleted !== 'boolean') {
+        return res.status(400).json({ message: "isCompleted boolean olmalı" });
+      }
+      
+      // Authorization: Check if the shift task belongs to user's shift
+      const shiftTask = await storage.getShiftTaskById(id);
+      if (!shiftTask) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      const shift = await storage.getShift(shiftTask.shiftId);
+      if (!shift || shift.assignedToId !== user.id) {
+        return res.status(403).json({ message: "Bu görevi güncelleme yetkiniz yok" });
+      }
+      
+      const completedAt = isCompleted ? new Date() : null;
+      const updatedTask = await storage.updateShiftTask(id, { isCompleted, completedAt });
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating shift task:", error);
+      res.status(500).json({ message: "Görev güncellenemedi" });
+    }
+  });
+
+  // PATCH /api/shift-checklists/:id - Update shift checklist completion status
+  app.patch('/api/shift-checklists/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Geçersiz checklist ID'si" });
+      }
+      
+      // Validate payload
+      const { isCompleted } = req.body;
+      if (typeof isCompleted !== 'boolean') {
+        return res.status(400).json({ message: "isCompleted boolean olmalı" });
+      }
+      
+      // Authorization: Check if the shift checklist belongs to user's shift
+      const shiftChecklist = await storage.getShiftChecklistById(id);
+      if (!shiftChecklist) {
+        return res.status(404).json({ message: "Checklist bulunamadı" });
+      }
+      
+      const shift = await storage.getShift(shiftChecklist.shiftId);
+      if (!shift || shift.assignedToId !== user.id) {
+        return res.status(403).json({ message: "Bu checklist'i güncelleme yetkiniz yok" });
+      }
+      
+      const completedAt = isCompleted ? new Date() : null;
+      const updatedChecklist = await storage.updateShiftChecklist(id, { isCompleted, completedAt });
+      res.json(updatedChecklist);
+    } catch (error) {
+      console.error("Error updating shift checklist:", error);
+      res.status(500).json({ message: "Checklist güncellenemedi" });
     }
   });
 

@@ -1,12 +1,40 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format, startOfWeek, addDays, isToday, differenceInDays } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Clock, MapPin, User } from "lucide-react";
+import { Clock, ChevronDown, ChevronUp, CheckCircle, ListTodo, ClipboardList, CheckSquare } from "lucide-react";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface ShiftTask {
+  id: number;
+  taskId: number;
+  isCompleted: boolean;
+  task: {
+    id: number;
+    title: string;
+    description?: string;
+    priority: string;
+  };
+}
+
+interface ShiftChecklist {
+  id: number;
+  checklistId: number;
+  isCompleted: boolean;
+  checklist: {
+    id: number;
+    name: string;
+    description?: string;
+    itemCount?: number;
+  };
+}
 
 interface MyShift {
   id: number;
@@ -18,11 +46,55 @@ interface MyShift {
   branch: { name: string };
   createdBy: { fullName: string };
   notes?: string;
+  tasks?: ShiftTask[];
+  checklists?: ShiftChecklist[];
 }
 
 export default function Vardiyalarim() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedWeekOffset, setSelectedWeekOffset] = useState(0);
+  const [expandedShifts, setExpandedShifts] = useState<Set<number>>(new Set());
+
+  const toggleShiftExpanded = (shiftId: number) => {
+    setExpandedShifts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(shiftId)) {
+        newSet.delete(shiftId);
+      } else {
+        newSet.add(shiftId);
+      }
+      return newSet;
+    });
+  };
+
+  // Task completion mutation
+  const completeTaskMutation = useMutation({
+    mutationFn: async ({ shiftTaskId, isCompleted }: { shiftTaskId: number; isCompleted: boolean }) => {
+      await apiRequest('PATCH', `/api/shift-tasks/${shiftTaskId}`, { isCompleted });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts/my'] });
+      toast({ title: "Başarılı", description: "Görev durumu güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Görev güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  // Checklist completion mutation
+  const completeChecklistMutation = useMutation({
+    mutationFn: async ({ shiftChecklistId, isCompleted }: { shiftChecklistId: number; isCompleted: boolean }) => {
+      await apiRequest('PATCH', `/api/shift-checklists/${shiftChecklistId}`, { isCompleted });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts/my'] });
+      toast({ title: "Başarılı", description: "Checklist durumu güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Checklist güncellenemedi", variant: "destructive" });
+    },
+  });
 
   const weekStart = useMemo(() => {
     const today = new Date();
@@ -32,11 +104,11 @@ export default function Vardiyalarim() {
 
   // Fetch shifts assigned to current user only
   const { data: myShifts, isLoading } = useQuery({
-    queryKey: ['/api/my-shifts', format(weekStart, 'yyyy-MM-dd')],
+    queryKey: ['/api/shifts/my', format(weekStart, 'yyyy-MM-dd')],
     queryFn: async () => {
       const startDate = format(weekStart, 'yyyy-MM-dd');
       const endDate = format(addDays(weekStart, 6), 'yyyy-MM-dd');
-      const res = await fetch(`/api/my-shifts?start=${startDate}&end=${endDate}`);
+      const res = await fetch(`/api/shifts/my?start=${startDate}&end=${endDate}`);
       if (!res.ok) throw new Error('Failed to fetch shifts');
       return res.json();
     },
@@ -172,29 +244,85 @@ export default function Vardiyalarim() {
                 {day.shifts.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-2">İzin günü</p>
                 ) : (
-                  day.shifts.map((shift) => (
-                    <div 
-                      key={shift.id}
-                      className={`p-1.5 rounded text-xs ${getShiftTypeColor(shift.shiftType)}`}
-                      data-testid={`shift-${shift.id}`}
-                    >
-                      <div className="font-semibold flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
-                      </div>
-                      <div className="text-xs opacity-75 mt-0.5">
-                        {getShiftTypeLabel(shift.shiftType)}
-                      </div>
-                      <Badge 
-                        variant="outline" 
-                        className="mt-1 text-xs h-4 font-normal"
+                  day.shifts.map((shift) => {
+                    const taskCount = shift.tasks?.length || 0;
+                    const checklistCount = shift.checklists?.length || 0;
+                    const completedTasks = shift.tasks?.filter(t => t.isCompleted).length || 0;
+                    const completedChecklists = shift.checklists?.filter(c => c.isCompleted).length || 0;
+                    const hasItems = taskCount > 0 || checklistCount > 0;
+                    const isExpanded = expandedShifts.has(shift.id);
+
+                    return (
+                      <div 
+                        key={shift.id}
+                        className={`p-1.5 rounded text-xs ${getShiftTypeColor(shift.shiftType)}`}
+                        data-testid={`shift-${shift.id}`}
                       >
-                        {shift.status === 'draft' ? 'Taslak' :
-                         shift.status === 'pending_hq' ? 'Beklemede' :
-                         shift.status === 'confirmed' ? 'Onaylı' : shift.status}
-                      </Badge>
-                    </div>
-                  ))
+                        <div className="font-semibold flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <Badge variant="outline" className="text-xs h-4 font-normal">
+                            {shift.status === 'draft' ? 'Taslak' :
+                             shift.status === 'pending_hq' ? 'Beklemede' :
+                             shift.status === 'confirmed' ? 'Onaylı' : shift.status}
+                          </Badge>
+                          {hasItems && (
+                            <button 
+                              onClick={() => toggleShiftExpanded(shift.id)}
+                              className="flex items-center gap-0.5 text-xs opacity-75 hover:opacity-100"
+                              data-testid={`toggle-shift-${shift.id}`}
+                            >
+                              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              <span>{taskCount + checklistCount}</span>
+                            </button>
+                          )}
+                        </div>
+                        {isExpanded && hasItems && (
+                          <div className="mt-2 pt-2 border-t border-current/20 space-y-1">
+                            {shift.tasks?.map((shiftTask) => (
+                              <div key={shiftTask.id} className="flex items-center gap-1.5">
+                                <Checkbox 
+                                  checked={shiftTask.isCompleted}
+                                  onCheckedChange={(checked) => 
+                                    completeTaskMutation.mutate({ 
+                                      shiftTaskId: shiftTask.id, 
+                                      isCompleted: !!checked 
+                                    })
+                                  }
+                                  className="h-3 w-3"
+                                  data-testid={`task-check-${shiftTask.id}`}
+                                />
+                                <span className={shiftTask.isCompleted ? "line-through opacity-50" : ""}>
+                                  {shiftTask.task?.title || `Görev #${shiftTask.taskId}`}
+                                </span>
+                              </div>
+                            ))}
+                            {shift.checklists?.map((shiftChecklist) => (
+                              <div key={shiftChecklist.id} className="flex items-center gap-1.5">
+                                <Checkbox 
+                                  checked={shiftChecklist.isCompleted}
+                                  onCheckedChange={(checked) => 
+                                    completeChecklistMutation.mutate({ 
+                                      shiftChecklistId: shiftChecklist.id, 
+                                      isCompleted: !!checked 
+                                    })
+                                  }
+                                  className="h-3 w-3"
+                                  data-testid={`checklist-check-${shiftChecklist.id}`}
+                                />
+                                <ClipboardList className="w-3 h-3" />
+                                <span className={shiftChecklist.isCompleted ? "line-through opacity-50" : ""}>
+                                  {shiftChecklist.checklist?.name || `Checklist #${shiftChecklist.checklistId}`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </CardContent>
             </Card>

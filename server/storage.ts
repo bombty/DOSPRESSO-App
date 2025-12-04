@@ -116,6 +116,8 @@ import type {
   InsertEmployeeOnboardingTask,
   AuditLog,
   InsertAuditLog,
+  ShiftChecklist,
+  ShiftTask,
 } from "@shared/schema";
 import {
   users,
@@ -154,6 +156,7 @@ import {
   dailyCashReports,
   shifts,
   shiftChecklists,
+  shiftTasks,
   leaveRequests,
   shiftAttendance,
   shiftTradeRequests,
@@ -501,7 +504,15 @@ export interface IStorage {
   
   // Shift-Checklist junction operations
   setShiftChecklists(shiftId: number, checklistIds: number[]): Promise<void>;
-  getShiftChecklists(shiftId: number): Promise<Checklist[]>;
+  getShiftChecklists(shiftId: number): Promise<ShiftChecklist[]>;
+  getShiftChecklistById(id: number): Promise<ShiftChecklist | undefined>;
+  updateShiftChecklist(id: number, updates: { isCompleted?: boolean; completedAt?: Date | null }): Promise<ShiftChecklist | undefined>;
+  
+  // Shift-Task junction operations
+  setShiftTasks(shiftId: number, taskIds: number[]): Promise<void>;
+  getShiftTasks(shiftId: number): Promise<ShiftTask[]>;
+  getShiftTaskById(id: number): Promise<ShiftTask | undefined>;
+  updateShiftTask(id: number, updates: { isCompleted?: boolean; completedAt?: Date | null }): Promise<ShiftTask | undefined>;
   
   // Leave Request operations
   getLeaveRequests(userId?: string, branchId?: number, status?: string): Promise<LeaveRequest[]>;
@@ -2728,18 +2739,97 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getShiftChecklists(shiftId: number): Promise<Checklist[]> {
-    const checklistIds = await db
-      .select({ checklistId: shiftChecklists.checklistId })
+  async getShiftChecklists(shiftId: number): Promise<ShiftChecklist[]> {
+    const shiftChecklistData = await db
+      .select()
       .from(shiftChecklists)
       .where(eq(shiftChecklists.shiftId, shiftId));
     
-    if (checklistIds.length === 0) return [];
+    if (shiftChecklistData.length === 0) return [];
     
-    return db
+    const checklistIds = shiftChecklistData.map(sc => sc.checklistId);
+    const checklistsData = await db
       .select()
       .from(checklists)
-      .where(sql`${checklists.id} IN ${sql.raw(`(${checklistIds.map((c: { checklistId: number }) => c.checklistId).join(',')})`)}`);
+      .where(inArray(checklists.id, checklistIds));
+    
+    const checklistMap = new Map(checklistsData.map(c => [c.id, c]));
+    
+    return shiftChecklistData.map(sc => ({
+      ...sc,
+      checklist: checklistMap.get(sc.checklistId)
+    })) as any;
+  }
+
+  async getShiftChecklistById(id: number): Promise<ShiftChecklist | undefined> {
+    const [result] = await db
+      .select()
+      .from(shiftChecklists)
+      .where(eq(shiftChecklists.id, id));
+    return result;
+  }
+
+  async updateShiftChecklist(id: number, updates: { isCompleted?: boolean; completedAt?: Date | null }): Promise<ShiftChecklist | undefined> {
+    const [updated] = await db
+      .update(shiftChecklists)
+      .set(updates)
+      .where(eq(shiftChecklists.id, id))
+      .returning();
+    return updated;
+  }
+
+  async setShiftTasks(shiftId: number, taskIds: number[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(shiftTasks).where(eq(shiftTasks.shiftId, shiftId));
+      
+      if (taskIds.length > 0) {
+        await tx.insert(shiftTasks).values(
+          taskIds.map((taskId: number) => ({
+            shiftId,
+            taskId,
+          }))
+        );
+      }
+    });
+  }
+
+  async getShiftTasks(shiftId: number): Promise<ShiftTask[]> {
+    const shiftTaskData = await db
+      .select()
+      .from(shiftTasks)
+      .where(eq(shiftTasks.shiftId, shiftId));
+    
+    if (shiftTaskData.length === 0) return [];
+    
+    const taskIds = shiftTaskData.map(st => st.taskId);
+    const tasksData = await db
+      .select()
+      .from(tasks)
+      .where(inArray(tasks.id, taskIds));
+    
+    const taskMap = new Map(tasksData.map(t => [t.id, t]));
+    
+    return shiftTaskData.map(st => ({
+      ...st,
+      task: taskMap.get(st.taskId)
+    })) as any;
+  }
+
+  async getShiftTaskById(id: number): Promise<ShiftTask | undefined> {
+    const [result] = await db
+      .select()
+      .from(shiftTasks)
+      .where(eq(shiftTasks.id, id));
+    return result;
+  }
+
+  async updateShiftTask(id: number, updates: { isCompleted?: boolean; completedAt?: Date | null }): Promise<ShiftTask | undefined> {
+    const [updated] = await db
+      .update(shiftTasks)
+      .set(updates)
+      .where(eq(shiftTasks.id, id))
+      .returning();
+    return updated;
   }
 
   // Leave Request operations
