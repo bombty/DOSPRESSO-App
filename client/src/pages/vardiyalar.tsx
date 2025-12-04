@@ -1555,7 +1555,7 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
             </Card>
           )}
 
-          {todayShifts.length === 0 && (
+          {todayShifts.length === 0 && user?.role === 'destek' && (
             <Card data-testid="card-no-shifts">
               <CardHeader>
                 <CardTitle>Şube Seçerek Giriş Yap</CardTitle>
@@ -1576,6 +1576,18 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
                   >
                     {checkInMutation.isPending ? "Giriş yapılıyor..." : "Şubeye Giriş Yap"}
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {todayShifts.length === 0 && user?.role !== 'destek' && (
+            <Card data-testid="card-no-shifts-info">
+              <CardContent className="pt-6">
+                <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
+                  <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-muted-foreground">Bugün için atanmış vardiya yok</p>
+                  <p className="text-xs text-muted-foreground">Vardiyaları planlama sekmesinden görüntüleyin</p>
                 </div>
               </CardContent>
             </Card>
