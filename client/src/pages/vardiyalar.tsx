@@ -839,7 +839,7 @@ export default function Vardiyalar() {
             </Card>
           </div>
 
-          {/* Active Check-ins */}
+          {/* Active Check-ins - Grid Layout */}
           {isSupervisor && (
             <Card data-testid="card-active-checkins">
               <CardHeader>
@@ -847,38 +847,36 @@ export default function Vardiyalar() {
                   <UserCheck className="h-4 w-4 text-green-500" />
                   Canlı Giriş Yapanlar
                 </CardTitle>
-                <CardDescription>Şu an faal olan personel listesi</CardDescription>
+                <CardDescription>{activeAttendances?.length || 0} personel şu an faal</CardDescription>
               </CardHeader>
               <CardContent>
                 {activeAttendances && activeAttendances.length > 0 ? (
-                  <div className="flex flex-col gap-3 sm:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                     {activeAttendances.map((attendance) => {
                       const user = users?.find(u => u.id === attendance.userId);
                       const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
                       const duration = checkInTime ? Math.floor((Date.now() - checkInTime.getTime()) / (60 * 1000)) : 0;
                       return (
-                        <div key={attendance.id} className="flex items-center justify-between p-3 rounded-lg border bg-success/10 dark:bg-success/5/20">
-                          <div className="flex items-center gap-2 sm:gap-3 flex-1">
-                            <div className="w-2 h-2 rounded-full bg-success/100 animate-pulse" />
-                            <div className="flex-1">
-                              <p className="font-medium">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || 'Bilinmeyen'}</p>
-                              <div className="flex gap-2 sm:gap-3 text-xs text-muted-foreground mt-1">
-                                <span>📍 {attendance.location_confidence ? Math.round(attendance.location_confidence) + '%' : 'Bilinmeyen'}</span>
-                                <span>⏱️ {duration} dakika</span>
+                        <div key={attendance.id} className="p-2 rounded border bg-success/10 dark:bg-success/5/20">
+                          <div className="flex items-start gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-success/100 animate-pulse mt-1 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || 'Bilinmeyen'}</p>
+                              <div className="text-xs text-muted-foreground space-y-0.5 mt-0.5">
+                                <p>📍 {attendance.location_confidence ? Math.round(attendance.location_confidence) + '%' : '-'}</p>
+                                <p>⏱️ {duration}m</p>
+                                <p className="text-success font-medium">{checkInTime ? format(checkInTime, 'HH:mm') : '-'}</p>
                               </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-success">{checkInTime ? format(checkInTime, 'HH:mm') : '-'}</p>
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <UserX className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground">Henüz kimse giriş yapmadı</p>
+                  <div className="text-center py-4">
+                    <UserX className="h-8 w-8 text-muted-foreground mx-auto mb-1" />
+                    <p className="text-sm text-muted-foreground">Henüz kimse giriş yapmadı</p>
                   </div>
                 )}
               </CardContent>
@@ -900,34 +898,31 @@ export default function Vardiyalar() {
                   <p className="text-muted-foreground">Bugün için planlanmış vardiya yok</p>
                 </div>
               ) : (
-                <div className="w-full space-y-2 sm:space-y-3">
+                <div className="w-full space-y-2">
                   {['morning', 'evening', 'night'].map((type) => {
                     const typeShifts = todayShifts.filter(s => s.shiftType === type);
                     if (typeShifts.length === 0) return null;
                     const ShiftIcon = shiftTypeIcons[type];
                     return (
-                      <div key={type} className="flex flex-col gap-3 sm:gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className={cn("p-1.5 rounded", shiftTypeColors[type])}>
-                            <ShiftIcon className="h-4 w-4" />
+                      <div key={type} className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5 px-1">
+                          <div className={cn("p-1 rounded", shiftTypeColors[type])}>
+                            <ShiftIcon className="h-3 w-3" />
                           </div>
-                          <span className="font-medium">{shiftTypeLabels[type]} Vardiyası</span>
-                          <Badge variant="secondary">{typeShifts.length} kişi</Badge>
+                          <span className="text-sm font-medium">{shiftTypeLabels[type]}</span>
+                          <Badge variant="secondary" className="text-xs">{typeShifts.length}</Badge>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 ml-8">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
                           {typeShifts.map((shift) => (
                             <div 
                               key={shift.id}
-                              className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                              className="p-2 rounded border bg-muted/30 text-center"
                               data-testid={`live-shift-${shift.id}`}
                             >
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-success/100" />
-                                <span className="font-medium">{shift.assignedTo?.fullName || "Atanmamış"}</span>
-                              </div>
-                              <span className="text-sm text-muted-foreground">
-                                {shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)}
-                              </span>
+                              <p className="text-xs font-medium truncate">{shift.assignedTo?.fullName || "—"}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {shift.startTime.slice(0, 5)}
+                              </p>
                             </div>
                           ))}
                         </div>
