@@ -1041,6 +1041,8 @@ function AddEmployeeDialog({
       emergencyContactName: "",
       emergencyContactPhone: "",
       notes: "",
+      employmentType: "fulltime",
+      weeklyHours: 45,
     },
   });
 
@@ -1271,6 +1273,59 @@ function AddEmployeeDialog({
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <FormField
+                control={form.control}
+                name="employmentType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Çalışma Tipi</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || "fulltime"}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-employment-type">
+                          <SelectValue placeholder="Çalışma tipi seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="fulltime">Tam Zamanlı (45 saat)</SelectItem>
+                        <SelectItem value="parttime">Yarı Zamanlı</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="weeklyHours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Haftalık Saat</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min={10} 
+                        max={45}
+                        {...field} 
+                        value={field.value || 45}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 45)}
+                        data-testid="input-weekly-hours" 
+                        disabled={form.watch("employmentType") === "fulltime"}
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Tam zamanlı: 45 saat, Yarı zamanlı: 10-30 saat
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <FormField
