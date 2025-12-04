@@ -927,42 +927,59 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
     
     // Main algorithm: For each day, fill each slot
     weekDays.forEach((day) => {
+      // Track who's been assigned to this day across all slots
+      const assignedTodaySet = new Set<string>();
+      
       slots.forEach((slot) => {
         let assigned = 0;
         const needed = slot.minPeople;
         
+        // Helper to check if employee can work (including today's assignments)
+        const canWorkThisSlot = (emp: any) => {
+          const empId = String(emp.id);
+          // Check daily limits
+          if (assignedTodaySet.has(empId)) return false; // Already assigned today
+          if (employeeWorkCount[empId] >= 5) return false; // Max days/week reached
+          if (employeeHoursCount[empId] >= getMaxHours(emp)) return false; // Max hours reached
+          return true;
+        };
+        
         // First, assign at least 1 strong employee
         const availableStrong = strongEmployees
-          .filter((e: any) => canWork(e, day.dateStr))
+          .filter((e: any) => canWorkThisSlot(e))
           .sort((a: any, b: any) => employeeWorkCount[String(a.id)] - employeeWorkCount[String(b.id)]);
         
         if (availableStrong.length > 0 && assigned < needed) {
-          assignToSlot(availableStrong[0], day, slot);
+          const emp = availableStrong[0];
+          assignToSlot(emp, day, slot);
+          assignedTodaySet.add(String(emp.id));
           assigned++;
         }
         
         // Then fill rest with weak/mixed employees
         const availableWeak = weakEmployees
-          .filter((e: any) => canWork(e, day.dateStr))
+          .filter((e: any) => canWorkThisSlot(e))
           .sort((a: any, b: any) => employeeWorkCount[String(a.id)] - employeeWorkCount[String(b.id)]);
         
-        while (assigned < needed && availableWeak.length > 0) {
-          const emp = availableWeak.shift();
-          if (emp && canWork(emp, day.dateStr)) {
+        for (const emp of availableWeak) {
+          if (assigned >= needed) break;
+          if (canWorkThisSlot(emp)) {
             assignToSlot(emp, day, slot);
+            assignedTodaySet.add(String(emp.id));
             assigned++;
           }
         }
         
         // If still need more, use remaining strong employees
         const remainingStrong = strongEmployees
-          .filter((e: any) => canWork(e, day.dateStr))
+          .filter((e: any) => canWorkThisSlot(e))
           .sort((a: any, b: any) => employeeWorkCount[String(a.id)] - employeeWorkCount[String(b.id)]);
         
-        while (assigned < needed && remainingStrong.length > 0) {
-          const emp = remainingStrong.shift();
-          if (emp && canWork(emp, day.dateStr)) {
+        for (const emp of remainingStrong) {
+          if (assigned >= needed) break;
+          if (canWorkThisSlot(emp)) {
             assignToSlot(emp, day, slot);
+            assignedTodaySet.add(String(emp.id));
             assigned++;
           }
         }
