@@ -297,7 +297,13 @@ export default function Vardiyalar() {
         </div>
 
         {isSupervisor && (
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap">
+            <Link href="/vardiya-planlama">
+              <Button variant="outline" data-testid="button-ai-planning">
+                <TrendingUp className="w-4 h-4 mr-2" />
+                AI Planlama
+              </Button>
+            </Link>
             <Link href="/vardiya-sablonlari">
               <Button variant="outline" data-testid="button-templates">
                 <FileText className="w-4 h-4 mr-2" />
