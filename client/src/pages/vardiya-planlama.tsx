@@ -302,6 +302,13 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [startTime, setStartTime] = useState('08:00');
   const [breakTime, setBreakTime] = useState('11:30');
+  const [checklist1, setChecklist1] = useState('');
+  const [checklist2, setChecklist2] = useState('');
+  const [checklist3, setChecklist3] = useState('');
+
+  const { data: checklists } = useQuery({
+    queryKey: ['/api/checklists'],
+  });
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -358,6 +365,9 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
     setSelectedDays([]);
     setStartTime('08:00');
     setBreakTime('11:30');
+    setChecklist1('');
+    setChecklist2('');
+    setChecklist3('');
   };
 
   const createMutation = useMutation({
@@ -378,6 +388,9 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
         assignedToId: selectedEmployee,
         status: 'draft',
         branchId,
+        checklistId: checklist1 && checklist1 !== 'none' ? parseInt(checklist1) : null,
+        checklist2Id: checklist2 && checklist2 !== 'none' ? parseInt(checklist2) : null,
+        checklist3Id: checklist3 && checklist3 !== 'none' ? parseInt(checklist3) : null,
       }));
 
       return apiRequest('POST', '/api/shifts/bulk-create', { shifts });
@@ -491,6 +504,58 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
                   return <option key={t} value={t}>{t}</option>;
                 })}
               </select>
+            </div>
+          </div>
+
+          {/* Checklist Selections */}
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">1. Checklist</label>
+              <Select value={checklist1} onValueChange={setChecklist1}>
+                <SelectTrigger className="mt-1" data-testid="select-checklist-1">
+                  <SelectValue placeholder="Checklist seçin (opsiyonel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seçilmedi</SelectItem>
+                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                    <SelectItem key={cl.id} value={String(cl.id)}>
+                      {cl.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">2. Checklist</label>
+              <Select value={checklist2} onValueChange={setChecklist2}>
+                <SelectTrigger className="mt-1" data-testid="select-checklist-2">
+                  <SelectValue placeholder="Checklist seçin (opsiyonel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seçilmedi</SelectItem>
+                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                    <SelectItem key={cl.id} value={String(cl.id)}>
+                      {cl.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">3. Checklist</label>
+              <Select value={checklist3} onValueChange={setChecklist3}>
+                <SelectTrigger className="mt-1" data-testid="select-checklist-3">
+                  <SelectValue placeholder="Checklist seçin (opsiyonel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seçilmedi</SelectItem>
+                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                    <SelectItem key={cl.id} value={String(cl.id)}>
+                      {cl.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

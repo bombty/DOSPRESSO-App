@@ -1839,6 +1839,8 @@ export const shifts = pgTable("shifts", {
   assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
   createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   checklistId: integer("checklist_id").references(() => checklists.id, { onDelete: "set null" }),
+  checklist2Id: integer("checklist2_id").references(() => checklists.id, { onDelete: "set null" }),
+  checklist3Id: integer("checklist3_id").references(() => checklists.id, { onDelete: "set null" }),
   shiftDate: date("shift_date").notNull(),
   startTime: time("start_time", { precision: 0 }).notNull(),
   endTime: time("end_time", { precision: 0 }).notNull(),
