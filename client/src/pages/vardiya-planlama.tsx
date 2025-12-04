@@ -457,6 +457,8 @@ interface ShiftAssignment {
   shiftType: 'morning' | 'evening' | 'off';
   startTime: string;
   endTime: string;
+  breakStartTime?: string;
+  breakEndTime?: string;
 }
 
 function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchId }: {
@@ -485,9 +487,9 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
   }, [weekStart]);
 
   const shiftPresets = {
-    morning: { startTime: '08:00', endTime: '16:30', label: 'Sabah' },
-    evening: { startTime: '14:00', endTime: '22:30', label: 'Aksam' },
-    off: { startTime: '', endTime: '', label: 'Off' },
+    morning: { startTime: '08:00', label: 'Sabah' },
+    evening: { startTime: '14:00', label: 'Aksam' },
+    off: { startTime: '', label: 'Off' },
   };
 
   const getAssignment = (empId: string, dateStr: string): ShiftAssignment | null => {
@@ -499,22 +501,56 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     if (shiftType === 'off') {
       setAssignments(prev => {
         const { [key]: _, ...rest } = prev;
-        return { ...rest, [key]: { employeeId: empId, dateStr, shiftType: 'off', startTime: '', endTime: '' } };
+        return { ...rest, [key]: { employeeId: empId, dateStr, shiftType: 'off', startTime: '', endTime: '', breakStartTime: '', breakEndTime: '' } };
       });
     } else {
       const preset = shiftPresets[shiftType];
+      const [hours, mins] = preset.startTime.split(':').map(Number);
+      const endHours = (hours + 8) % 24;
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+      const breakStartHours = (hours + 3) % 24;
+      const breakEndHours = (hours + 4) % 24;
+      const breakStart = `${String(breakStartHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+      const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+
       setAssignments(prev => ({
         ...prev,
-        [key]: { employeeId: empId, dateStr, shiftType, startTime: preset.startTime, endTime: preset.endTime }
+        [key]: { 
+          employeeId: empId, 
+          dateStr, 
+          shiftType, 
+          startTime: preset.startTime, 
+          endTime,
+          breakStartTime: breakStart,
+          breakEndTime: breakEnd,
+        }
       }));
     }
   };
 
-  const updateTime = (empId: string, dateStr: string, field: 'startTime' | 'endTime', value: string) => {
+  const updateTime = (empId: string, dateStr: string, value: string) => {
     const key = `${empId}-${dateStr}`;
+    const currentAssignment = assignments[key];
+    if (!currentAssignment) return;
+
+    const [hours, mins] = value.split(':').map(Number);
+    const endHours = (hours + 8) % 24;
+    const endTime = `${String(endHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+
+    const breakStartHours = (hours + 3) % 24;
+    const breakEndHours = (hours + 4) % 24;
+    const breakStart = `${String(breakStartHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+    const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+
     setAssignments(prev => ({
       ...prev,
-      [key]: { ...prev[key], [field]: value }
+      [key]: { 
+        ...prev[key], 
+        startTime: value,
+        endTime,
+        breakStartTime: breakStart,
+        breakEndTime: breakEnd,
+      }
     }));
   };
 
@@ -532,12 +568,8 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
       if (a.shiftType !== 'off' && a.startTime && a.endTime) {
         const startTime = a.startTime.length === 5 ? `${a.startTime}:00` : a.startTime;
         const endTime = a.endTime.length === 5 ? `${a.endTime}:00` : a.endTime;
-        
-        const [startHours, startMins] = a.startTime.split(':').map(Number);
-        const breakStartHours = (startHours + 3) % 24;
-        const breakEndHours = (startHours + 4) % 24;
-        const breakStartTime = `${String(breakStartHours).padStart(2, '0')}:${String(startMins).padStart(2, '0')}:00`;
-        const breakEndTime = `${String(breakEndHours).padStart(2, '0')}:${String(startMins).padStart(2, '0')}:00`;
+        const breakStartTime = a.breakStartTime ? (a.breakStartTime.length === 5 ? `${a.breakStartTime}:00` : a.breakStartTime) : `${a.breakStartTime}:00`;
+        const breakEndTime = a.breakEndTime ? (a.breakEndTime.length === 5 ? `${a.breakEndTime}:00` : a.breakEndTime) : `${a.breakEndTime}:00`;
         
         shifts.push({
           shiftDate: a.dateStr,
@@ -675,15 +707,13 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
                                     <input
                                       type="time"
                                       value={assignment?.startTime || ''}
-                                      onChange={(e) => updateTime(empId, day.dateStr, 'startTime', e.target.value)}
+                                      onChange={(e) => updateTime(empId, day.dateStr, e.target.value)}
                                       className="w-full text-xs px-0.5 py-0.5 border rounded text-center h-6"
+                                      title="Başlangıç saati (bitiş otomatik)"
                                     />
-                                    <input
-                                      type="time"
-                                      value={assignment?.endTime || ''}
-                                      onChange={(e) => updateTime(empId, day.dateStr, 'endTime', e.target.value)}
-                                      className="w-full text-xs px-0.5 py-0.5 border rounded text-center h-6"
-                                    />
+                                    <div className="text-xs text-muted-foreground text-center px-0.5 py-0.5 bg-muted rounded">
+                                      {assignment?.endTime || '--:--'}
+                                    </div>
                                   </div>
                                 )}
                               </div>
