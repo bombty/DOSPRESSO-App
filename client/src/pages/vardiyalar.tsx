@@ -825,7 +825,7 @@ export default function Vardiyalar() {
               </CardContent>
             </Card>
 
-            <Card data-testid="card-live-missing" className="sm:col-span-2">
+            <Card data-testid="card-live-missing">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Henüz Gelmedi</CardTitle>
                 <UserX className="h-4 w-4 text-red-500" />
@@ -835,6 +835,19 @@ export default function Vardiyalar() {
                   {(todayShifts.length - (activeAttendances?.length || 0)) > 0 ? todayShifts.length - (activeAttendances?.length || 0) : 0}
                 </div>
                 <p className="text-xs text-muted-foreground">eksik personel</p>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-live-completion">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Doldurulma</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-success" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-success">
+                  {todayShifts.length > 0 ? Math.round(((activeAttendances?.length || 0) / todayShifts.length) * 100) : 0}%
+                </div>
+                <p className="text-xs text-muted-foreground">giriş yapılmış</p>
               </CardContent>
             </Card>
           </div>
