@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { EQUIPMENT_METADATA, insertEquipmentCommentSchema, insertEquipmentServiceRequestSchema, insertEquipmentFaultSchema, insertEquipmentSchema, type InsertEquipment, type EquipmentMaintenanceLog, type EquipmentFault, type EquipmentComment, type EquipmentServiceRequest, type Branch, EQUIPMENT_TYPES, FAULT_STAGES, type FaultStageType, SERVICE_REQUEST_STATUS, SERVICE_DECISION, type EquipmentTroubleshootingStep } from "@shared/schema";
+import { EQUIPMENT_METADATA, insertEquipmentCommentSchema, insertEquipmentServiceRequestSchema, insertEquipmentFaultSchema, insertEquipmentSchema, type InsertEquipment, type EquipmentMaintenanceLog, type EquipmentFault, type EquipmentComment, type EquipmentServiceRequest, type Branch, EQUIPMENT_TYPES, FAULT_STAGES, type FaultStageType, SERVICE_REQUEST_STATUS, SERVICE_DECISION, type EquipmentTroubleshootingStep, isHQRole, isBranchRole } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -603,7 +603,28 @@ export default function EquipmentDetail() {
     );
   }
 
+  // Authorization: Branch users can only access their own branch equipment
+  if (user?.role && isBranchRole(user.role as any) && user.branchId && equipment.branchId !== user.branchId) {
+    return (
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <Link href="/ekipman" asChild>
+          <Button variant="outline" data-testid="button-back">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Geri Dön
+          </Button>
+        </Link>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Settings className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground text-center">Bu ekipmana erişim izniniz yok</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const metadata = EQUIPMENT_METADATA[equipment.equipmentType as keyof typeof EQUIPMENT_METADATA];
+  const canEdit = user?.role && (isHQRole(user.role as any) || user.role === 'supervisor');
 
   return (
     <div className="max-w-full overflow-x-hidden grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
@@ -632,15 +653,17 @@ export default function EquipmentDetail() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                onClick={() => openEditDialog()}
-                variant="outline"
-                data-testid={`button-edit-equipment-${equipment.id}`}
-                size="sm"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Düzenle
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => openEditDialog()}
+                  variant="outline"
+                  data-testid={`button-edit-equipment-${equipment.id}`}
+                  size="sm"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Düzenle
+                </Button>
+              )}
               <Button
                 onClick={() => {
                   // Reset troubleshooting and AI state when opening dialog
