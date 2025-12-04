@@ -9,13 +9,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfWeek, addDays, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Sparkles, X, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus } from "lucide-react";
 
 export default function VardiyaPlanlama() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const { data: shifts, isLoading: shiftsLoading } = useQuery({
@@ -75,10 +76,16 @@ export default function VardiyaPlanlama() {
           </p>
         </div>
         
-        <Button onClick={() => setAiModalOpen(true)} className="gap-2" data-testid="button-ai-plan">
-          <Sparkles className="w-4 h-4" />
-          Vardiya Ekle
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setAddModalOpen(true)} className="gap-2" data-testid="button-add-shift">
+            <UserPlus className="w-4 h-4" />
+            Vardiya Ekle
+          </Button>
+          <Button onClick={() => setAiModalOpen(true)} className="gap-2" data-testid="button-ai-plan">
+            <Wand2 className="w-4 h-4" />
+            AI Planla
+          </Button>
+        </div>
       </div>
 
       {/* Week Navigation */}
@@ -150,11 +157,22 @@ export default function VardiyaPlanlama() {
 
       {/* Add Shift Modal */}
       <AddShiftModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        weekStart={weekStart}
+        employees={branchEmployees}
+        branchId={user?.branchId || 0}
+        existingShifts={Array.isArray(shifts) ? shifts : []}
+      />
+
+      {/* AI Plan Modal */}
+      <AIPlanModal
         open={aiModalOpen}
         onClose={() => setAiModalOpen(false)}
         weekStart={weekStart}
         employees={branchEmployees}
         branchId={user?.branchId || 0}
+        existingShifts={Array.isArray(shifts) ? shifts : []}
       />
     </div>
   );
@@ -271,12 +289,13 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
   );
 }
 
-function AddShiftModal({ open, onClose, weekStart, employees, branchId }: {
+function AddShiftModal({ open, onClose, weekStart, employees, branchId, existingShifts }: {
   open: boolean;
   onClose: () => void;
   weekStart: Date;
   employees: any[];
   branchId: number;
+  existingShifts: any[];
 }) {
   const { toast } = useToast();
   const [selectedEmployee, setSelectedEmployee] = useState('');
@@ -296,12 +315,42 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId }: {
     });
   }, [weekStart]);
 
+  const availableEmployees = useMemo(() => {
+    if (!selectedDays.length) return employees;
+    
+    const assignedEmployeeIds = new Set<string>();
+    selectedDays.forEach(day => {
+      const dayShifts = Array.isArray(existingShifts) 
+        ? existingShifts.filter((s: any) => s.shiftDate === day)
+        : [];
+      dayShifts.forEach((s: any) => {
+        if (s.assignedToId) assignedEmployeeIds.add(String(s.assignedToId));
+      });
+    });
+
+    return employees.filter((emp: any) => !assignedEmployeeIds.has(String(emp.id)));
+  }, [employees, selectedDays, existingShifts]);
+
+  const getEmployeeAssignedDays = (employeeId: string) => {
+    if (!Array.isArray(existingShifts)) return [];
+    return existingShifts
+      .filter((s: any) => String(s.assignedToId) === employeeId)
+      .map((s: any) => s.shiftDate);
+  };
+
   const toggleDay = (dateStr: string) => {
-    setSelectedDays(prev => 
-      prev.includes(dateStr) 
-        ? prev.filter(d => d !== dateStr)
-        : [...prev, dateStr]
-    );
+    const newDays = selectedDays.includes(dateStr) 
+      ? selectedDays.filter(d => d !== dateStr)
+      : [...selectedDays, dateStr];
+    
+    setSelectedDays(newDays);
+    
+    if (selectedEmployee) {
+      const assignedDays = getEmployeeAssignedDays(selectedEmployee);
+      if (newDays.some(d => assignedDays.includes(d))) {
+        setSelectedEmployee('');
+      }
+    }
   };
 
   const resetForm = () => {
@@ -355,24 +404,7 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId }: {
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Employee Selection */}
-          <div>
-            <label className="text-sm font-medium">Personel</label>
-            <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-              <SelectTrigger className="mt-1" data-testid="select-employee">
-                <SelectValue placeholder="Personel seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((emp: any) => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.fullName || `${emp.firstName} ${emp.lastName}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Day Selection */}
+          {/* Day Selection First - so we can filter employees */}
           <div>
             <label className="text-sm font-medium">Günler</label>
             <div className="grid grid-cols-7 gap-1 mt-2">
@@ -396,6 +428,36 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId }: {
                 );
               })}
             </div>
+          </div>
+
+          {/* Employee Selection - filtered by selected days */}
+          <div>
+            <label className="text-sm font-medium">
+              Personel 
+              {selectedDays.length > 0 && availableEmployees.length < employees.length && (
+                <span className="text-muted-foreground font-normal ml-1">
+                  ({availableEmployees.length} müsait)
+                </span>
+              )}
+            </label>
+            <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+              <SelectTrigger className="mt-1" data-testid="select-employee">
+                <SelectValue placeholder={selectedDays.length ? "Müsait personel seçin" : "Önce gün seçin"} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableEmployees.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground text-center">
+                    Bu günlerde tüm personel dolu
+                  </div>
+                ) : (
+                  availableEmployees.map((emp: any) => (
+                    <SelectItem key={emp.id} value={String(emp.id)}>
+                      {emp.fullName || `${emp.firstName} ${emp.lastName}`}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Time Selection */}
@@ -447,6 +509,225 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId }: {
             ) : null}
             {selectedDays.length > 0 ? `${selectedDays.length} Gün Kaydet` : 'Kaydet'}
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingShifts }: {
+  open: boolean;
+  onClose: () => void;
+  weekStart: Date;
+  employees: any[];
+  branchId: number;
+  existingShifts: any[];
+}) {
+  const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [preview, setPreview] = useState<any[]>([]);
+
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(weekStart, i);
+      return {
+        date,
+        dateStr: format(date, 'yyyy-MM-dd'),
+        shortName: format(date, 'EEE', { locale: tr }),
+        dayNum: format(date, 'd'),
+      };
+    });
+  }, [weekStart]);
+
+  const alreadyAssigned = useMemo(() => {
+    const result: Record<string, Set<string>> = {};
+    weekDays.forEach(day => {
+      result[day.dateStr] = new Set();
+      if (Array.isArray(existingShifts)) {
+        existingShifts
+          .filter((s: any) => s.shiftDate === day.dateStr)
+          .forEach((s: any) => result[day.dateStr].add(String(s.assignedToId)));
+      }
+    });
+    return result;
+  }, [weekDays, existingShifts]);
+
+  const generateAIPlan = () => {
+    setIsGenerating(true);
+    
+    const newShifts: any[] = [];
+    const employeeWorkDays: Record<string, number> = {};
+    
+    employees.forEach((emp: any) => {
+      let existingCount = 0;
+      if (Array.isArray(existingShifts)) {
+        existingCount = existingShifts.filter((s: any) => 
+          String(s.assignedToId) === String(emp.id) &&
+          weekDays.some(d => d.dateStr === s.shiftDate)
+        ).length;
+      }
+      employeeWorkDays[emp.id] = existingCount;
+    });
+
+    weekDays.forEach((day) => {
+      const availableEmps = employees.filter((emp: any) => 
+        !alreadyAssigned[day.dateStr].has(String(emp.id)) &&
+        employeeWorkDays[emp.id] < 5
+      );
+
+      availableEmps.forEach((emp: any) => {
+        if (employeeWorkDays[emp.id] < 5) {
+          const startHour = 8 + Math.floor(Math.random() * 4);
+          const endHour = startHour + 8;
+          const breakHour = startHour + 3;
+          const shiftType = startHour < 12 ? 'morning' : 'evening';
+
+          newShifts.push({
+            shiftDate: day.dateStr,
+            startTime: `${String(startHour).padStart(2, '0')}:00:00`,
+            endTime: `${String(endHour % 24).padStart(2, '0')}:30:00`,
+            breakStartTime: `${String(breakHour).padStart(2, '0')}:30:00`,
+            breakEndTime: `${String((breakHour + 1) % 24).padStart(2, '0')}:30:00`,
+            shiftType,
+            assignedToId: String(emp.id),
+            status: 'draft',
+            branchId,
+            employeeName: emp.fullName || `${emp.firstName} ${emp.lastName}`,
+          });
+          
+          employeeWorkDays[emp.id]++;
+        }
+      });
+    });
+
+    setTimeout(() => {
+      setPreview(newShifts);
+      setIsGenerating(false);
+    }, 500);
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const shiftsToCreate = preview.map(s => ({
+        shiftDate: s.shiftDate,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        breakStartTime: s.breakStartTime,
+        breakEndTime: s.breakEndTime,
+        shiftType: s.shiftType,
+        assignedToId: s.assignedToId,
+        status: s.status,
+        branchId: s.branchId,
+      }));
+
+      return apiRequest('POST', '/api/shifts/bulk-create', { shifts: shiftsToCreate });
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: `${preview.length} vardiya oluşturuldu` });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      setPreview([]);
+      onClose();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleClose = () => {
+    setPreview([]);
+    onClose();
+  };
+
+  const previewByDay = useMemo(() => {
+    const result: Record<string, any[]> = {};
+    weekDays.forEach(day => {
+      result[day.dateStr] = preview.filter(s => s.shiftDate === day.dateStr);
+    });
+    return result;
+  }, [preview, weekDays]);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wand2 className="w-5 h-5" />
+            AI Haftalık Plan
+          </DialogTitle>
+          <DialogDescription>
+            Tüm personeli haftaya otomatik olarak dağıt (maks. 5 gün/kişi)
+          </DialogDescription>
+        </DialogHeader>
+
+        {preview.length === 0 ? (
+          <div className="text-center py-8">
+            <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-4">
+              {employees.length} personel için haftalık plan oluştur
+            </p>
+            <Button 
+              onClick={generateAIPlan} 
+              disabled={isGenerating || employees.length === 0}
+              className="gap-2"
+              data-testid="button-generate-ai"
+            >
+              {isGenerating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Wand2 className="w-4 h-4" />
+              )}
+              Plan Oluştur
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            <div className="text-sm font-medium text-green-600 dark:text-green-400">
+              {preview.length} vardiya oluşturulacak
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1">
+              {weekDays.map(day => (
+                <div key={day.dateStr} className="text-center">
+                  <div className="text-xs font-medium text-muted-foreground">{day.shortName}</div>
+                  <div className="text-sm font-bold">{day.dayNum}</div>
+                  <div className="mt-1 space-y-0.5">
+                    {previewByDay[day.dateStr].map((shift, idx) => (
+                      <div 
+                        key={idx}
+                        className="text-[10px] bg-primary/10 rounded px-1 py-0.5 truncate"
+                        title={shift.employeeName}
+                      >
+                        {shift.employeeName?.split(' ')[0]}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={handleClose}>
+            İptal
+          </Button>
+          {preview.length > 0 && (
+            <>
+              <Button variant="outline" onClick={generateAIPlan} disabled={isGenerating}>
+                Yeniden Oluştur
+              </Button>
+              <Button 
+                onClick={() => createMutation.mutate()}
+                disabled={createMutation.isPending}
+                data-testid="button-save-ai-plan"
+              >
+                {createMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                Kaydet
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
