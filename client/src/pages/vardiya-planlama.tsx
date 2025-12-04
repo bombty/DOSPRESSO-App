@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfWeek, addDays, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Plus, Sparkles, X } from "lucide-react";
@@ -275,11 +274,10 @@ function ShiftEditModal({ open, shiftId, onOpenChange }: { open: boolean; shiftI
 interface ShiftAssignment {
   employeeId: string;
   dateStr: string;
-  shiftType: 'morning' | 'evening' | 'off';
   startTime: string;
   endTime: string;
-  breakStartTime?: string;
-  breakEndTime?: string;
+  breakStartTime: string;
+  breakEndTime: string;
 }
 
 function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchId }: {
@@ -293,7 +291,9 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
   const [step, setStep] = useState<'config' | 'preview' | 'done'>('config');
   const [assignments, setAssignments] = useState<Record<string, ShiftAssignment>>({});
   const [generatedPlan, setGeneratedPlan] = useState<any[]>([]);
-  const { user } = useAuth();
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editStartTime, setEditStartTime] = useState('08:00');
+  const [editBreakStart, setEditBreakStart] = useState('11:30');
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -308,45 +308,46 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     });
   }, [weekStart]);
 
-  const shiftPresets = {
-    morning: { startTime: '08:00', label: 'Sabah' },
-    evening: { startTime: '14:00', label: 'Aksam' },
-    off: { startTime: '', label: 'Off' },
+  const calculateTimes = (startTime: string, breakStart: string) => {
+    const [sH, sM] = startTime.split(':').map(Number);
+    const endH = (sH + 8) % 24;
+    const endTime = `${String(endH).padStart(2, '0')}:30`;
+    
+    const [bH, bM] = breakStart.split(':').map(Number);
+    const breakEndH = (bH + 1) % 24;
+    const breakEnd = `${String(breakEndH).padStart(2, '0')}:30`;
+    
+    return { endTime, breakEnd };
   };
 
-  const setShiftType = (empId: string, dateStr: string, shiftType: 'morning' | 'evening' | 'off') => {
+  const openEditor = (empId: string, dateStr: string) => {
     const key = `${empId}-${dateStr}`;
-    if (shiftType === 'off') {
-      setAssignments(prev => {
-        const { [key]: _, ...rest } = prev;
-        return { ...rest, [key]: { employeeId: empId, dateStr, shiftType: 'off', startTime: '', endTime: '', breakStartTime: '', breakEndTime: '' } };
-      });
-    } else {
-      const preset = shiftPresets[shiftType];
-      const [hours, mins] = preset.startTime.split(':').map(Number);
-      const endHours = (hours + 8) % 24;
-      const endTime = `${String(endHours).padStart(2, '0')}:30`;
-      const breakStartHours = (hours + 3) % 24;
-      const breakEndHours = (hours + 4) % 24;
-      const breakStart = `${String(breakStartHours).padStart(2, '0')}:30`;
-      const breakEnd = `${String(breakEndHours).padStart(2, '0')}:30`;
-
-      setAssignments(prev => ({
-        ...prev,
-        [key]: { 
-          employeeId: empId, 
-          dateStr, 
-          shiftType, 
-          startTime: preset.startTime, 
-          endTime,
-          breakStartTime: breakStart,
-          breakEndTime: breakEnd,
-        }
-      }));
-    }
+    const existing = assignments[key];
+    setEditStartTime(existing?.startTime || '08:00');
+    setEditBreakStart(existing?.breakStartTime || '11:30');
+    setEditingKey(key);
   };
 
-  const clearAssignment = (empId: string, dateStr: string) => {
+  const saveShiftTime = () => {
+    if (!editingKey) return;
+    const [empId, dateStr] = editingKey.split('-');
+    const { endTime, breakEnd } = calculateTimes(editStartTime, editBreakStart);
+    
+    setAssignments(prev => ({
+      ...prev,
+      [editingKey]: {
+        employeeId: empId,
+        dateStr,
+        startTime: editStartTime,
+        endTime,
+        breakStartTime: editBreakStart,
+        breakEndTime: breakEnd,
+      }
+    }));
+    setEditingKey(null);
+  };
+
+  const toggleOff = (empId: string, dateStr: string) => {
     const key = `${empId}-${dateStr}`;
     setAssignments(prev => {
       const { [key]: _, ...rest } = prev;
@@ -354,31 +355,24 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     });
   };
 
-  const getAssignment = (empId: string, dateStr: string): ShiftAssignment | null => {
-    return assignments[`${empId}-${dateStr}`] || null;
+  const getAssignment = (empId: string, dateStr: string) => {
+    return assignments[`${empId}-${dateStr}`];
   };
 
   const generatePlan = () => {
     const shifts: any[] = [];
     Object.values(assignments).forEach((a) => {
-      if (a.shiftType !== 'off' && a.startTime && a.endTime) {
-        const startTime = a.startTime.length === 5 ? `${a.startTime}:00` : a.startTime;
-        const endTime = a.endTime.length === 5 ? `${a.endTime}:00` : a.endTime;
-        const breakStartTime = a.breakStartTime ? (a.breakStartTime.length === 5 ? `${a.breakStartTime}:00` : a.breakStartTime) : `${a.breakStartTime}:00`;
-        const breakEndTime = a.breakEndTime ? (a.breakEndTime.length === 5 ? `${a.breakEndTime}:00` : a.breakEndTime) : `${a.breakEndTime}:00`;
-        
-        shifts.push({
-          shiftDate: a.dateStr,
-          startTime,
-          endTime,
-          breakStartTime,
-          breakEndTime,
-          shiftType: a.shiftType,
-          assignedToId: a.employeeId,
-          status: 'draft',
-          branchId,
-        });
-      }
+      shifts.push({
+        shiftDate: a.dateStr,
+        startTime: `${a.startTime}:00`,
+        endTime: `${a.endTime}:00`,
+        breakStartTime: `${a.breakStartTime}:00`,
+        breakEndTime: `${a.breakEndTime}:00`,
+        shiftType: 'shift',
+        assignedToId: a.employeeId,
+        status: 'draft',
+        branchId,
+      });
     });
     
     if (shifts.length === 0) {
@@ -392,10 +386,7 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
 
   const applyPlanMutation = useMutation({
     mutationFn: async () => {
-      if (generatedPlan.length === 0) return;
-      await apiRequest('POST', '/api/shifts/bulk-create', {
-        shifts: generatedPlan,
-      });
+      await apiRequest('POST', '/api/shifts/bulk-create', { shifts: generatedPlan });
     },
     onSuccess: () => {
       toast({ title: "Basarili", description: `${generatedPlan.length} vardiya olusturuldu` });
@@ -414,9 +405,7 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
           <div className="py-6">
             <div className="text-3xl font-bold text-success mb-2">✓</div>
             <h2 className="text-lg font-bold">Tamamlandi!</h2>
-            <p className="text-sm text-muted-foreground mt-2">
-              {generatedPlan.length} vardiya basariyla olusturuldu.
-            </p>
+            <p className="text-sm text-muted-foreground mt-2">{generatedPlan.length} vardiya olusturuldu.</p>
             <Button
               className="w-full mt-4"
               onClick={() => {
@@ -435,120 +424,146 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {step === 'config' ? 'AI ile Haftalik Plan' : 'Onay'}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open && (step === 'config' || step === 'preview')} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{step === 'config' ? 'AI ile Haftalik Plan' : 'Onay'}</DialogTitle>
+          </DialogHeader>
 
-        {step === 'config' ? (
-          <div className="space-y-3 text-xs overflow-x-auto">
-            {/* Simple Table Grid */}
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="border p-1 text-left">Personel</th>
-                  {weekDays.map(day => (
-                    <th key={day.dateStr} className="border p-1 text-center">
-                      <div>{day.shortName}</div>
-                      <div className="text-muted-foreground">{day.dayNum}</div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((emp: any) => (
-                  <tr key={emp.id}>
-                    <td className="border p-1">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</td>
-                    {weekDays.map((day) => {
-                      const assignment = getAssignment(emp.id, day.dateStr);
-                      const isMorning = assignment?.shiftType === 'morning';
-                      const isEvening = assignment?.shiftType === 'evening';
-                      const isOff = assignment?.shiftType === 'off';
-
-                      return (
-                        <td key={`${emp.id}-${day.dateStr}`} className="border p-1 text-center">
-                          <div className="flex flex-col gap-0.5">
-                            {!isOff && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant={isMorning ? "default" : "outline"}
-                                  className={`text-xs h-5 px-1 ${isMorning ? 'bg-yellow-500' : ''}`}
-                                  onClick={() => isMorning ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'morning')}
-                                  data-testid={`btn-morning-${emp.id}-${day.dateStr}`}
-                                >
-                                  S
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant={isEvening ? "default" : "outline"}
-                                  className={`text-xs h-5 px-1 ${isEvening ? 'bg-blue-500' : ''}`}
-                                  onClick={() => isEvening ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'evening')}
-                                  data-testid={`btn-evening-${emp.id}-${day.dateStr}`}
-                                >
-                                  A
-                                </Button>
-                              </>
-                            )}
-                            <Button
-                              size="sm"
-                              variant={isOff ? "default" : "outline"}
-                              className={`text-xs h-5 px-1 ${isOff ? 'bg-destructive' : ''}`}
-                              onClick={() => isOff ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'off')}
-                              data-testid={`btn-off-${emp.id}-${day.dateStr}`}
-                            >
-                              X
-                            </Button>
-                          </div>
-                        </td>
-                      );
-                    })}
+          {step === 'config' ? (
+            <div className="space-y-3 text-xs overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="border p-1 text-left">Personel</th>
+                    {weekDays.map(day => (
+                      <th key={day.dateStr} className="border p-1 text-center">
+                        <div>{day.shortName}</div>
+                        <div className="text-muted-foreground text-xs">{day.dayNum}</div>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {employees.map((emp: any) => (
+                    <tr key={emp.id}>
+                      <td className="border p-1">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</td>
+                      {weekDays.map((day) => {
+                        const assignment = getAssignment(emp.id, day.dateStr);
+                        return (
+                          <td key={`${emp.id}-${day.dateStr}`} className="border p-1">
+                            <div className="flex gap-0.5 justify-center">
+                              <button
+                                onClick={() => openEditor(emp.id, day.dateStr)}
+                                className={`flex-1 px-2 py-1 rounded text-xs font-medium ${
+                                  assignment 
+                                    ? 'bg-blue-500 text-white' 
+                                    : 'bg-gray-200 dark:bg-gray-700'
+                                }`}
+                                data-testid={`shift-box-${emp.id}-${day.dateStr}`}
+                              >
+                                {assignment ? assignment.startTime : '+'}
+                              </button>
+                              <button
+                                onClick={() => toggleOff(emp.id, day.dateStr)}
+                                className={`px-2 py-1 rounded text-xs font-medium ${
+                                  !assignment
+                                    ? 'bg-red-500 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-700'
+                                }`}
+                                data-testid={`off-box-${emp.id}-${day.dateStr}`}
+                              >
+                                X
+                              </button>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Iptal
-              </Button>
-              <Button onClick={generatePlan} data-testid="button-preview">
-                Devam Et
-              </Button>
-            </DialogFooter>
-          </div>
-        ) : (
+              <DialogFooter>
+                <Button variant="outline" onClick={() => onOpenChange(false)}>Iptal</Button>
+                <Button onClick={generatePlan} data-testid="button-preview">Devam Et</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-sm space-y-2 max-h-[300px] overflow-y-auto">
+                {generatedPlan.map((shift, idx) => {
+                  const emp = employees.find((e: any) => e.id === shift.assignedToId);
+                  return (
+                    <div key={idx} className="p-2 bg-muted rounded text-xs">
+                      <div className="font-semibold">{emp?.fullName || `${emp?.firstName} ${emp?.lastName}`}</div>
+                      <div className="text-muted-foreground">
+                        {format(new Date(shift.shiftDate), 'd MMMM', { locale: tr })} - {shift.startTime?.substring(0, 5)}-{shift.endTime?.substring(0, 5)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setStep('config')}>Geri Don</Button>
+                <Button onClick={() => applyPlanMutation.mutate()} disabled={applyPlanMutation.isPending} data-testid="button-apply">
+                  {applyPlanMutation.isPending ? "Uygulanıyor..." : "Uygula"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Time Picker Dialog */}
+      <Dialog open={!!editingKey} onOpenChange={() => setEditingKey(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Saat Seç</DialogTitle>
+          </DialogHeader>
+
           <div className="space-y-3">
-            <div className="text-sm space-y-2 max-h-[300px] overflow-y-auto">
-              {generatedPlan.map((shift, idx) => {
-                const emp = employees.find((e: any) => e.id === shift.assignedToId);
-                return (
-                  <div key={idx} className="p-2 bg-muted rounded text-xs">
-                    <div className="font-semibold">
-                      {emp?.fullName || `${emp?.firstName} ${emp?.lastName}`}
-                    </div>
-                    <div className="text-muted-foreground">
-                      {format(new Date(shift.shiftDate), 'd MMMM', { locale: tr })} - {shift.startTime?.substring(0, 5)}-{shift.endTime?.substring(0, 5)}
-                    </div>
-                  </div>
-                );
-              })}
+            <div>
+              <label className="text-xs font-semibold">İşe Başlama</label>
+              <select
+                value={editStartTime}
+                onChange={(e) => setEditStartTime(e.target.value)}
+                className="w-full px-2 py-1 border rounded-md text-xs mt-1 h-8"
+                data-testid="select-start-time"
+              >
+                {Array.from({ length: 13 }, (_, i) => {
+                  const h = 7 + i;
+                  const time = `${String(h).padStart(2, '0')}:00`;
+                  return <option key={time} value={time}>{time}</option>;
+                })}
+              </select>
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setStep('config')}>
-                Geri Don
-              </Button>
-              <Button onClick={() => applyPlanMutation.mutate()} disabled={applyPlanMutation.isPending} data-testid="button-apply">
-                {applyPlanMutation.isPending ? "Uygulanıyor..." : "Uygula"}
-              </Button>
-            </DialogFooter>
+            <div>
+              <label className="text-xs font-semibold">Mola Başlama</label>
+              <select
+                value={editBreakStart}
+                onChange={(e) => setEditBreakStart(e.target.value)}
+                className="w-full px-2 py-1 border rounded-md text-xs mt-1 h-8"
+                data-testid="select-break-start"
+              >
+                {Array.from({ length: 11 }, (_, i) => {
+                  const h = 11 + i;
+                  const time = `${String(h).padStart(2, '0')}:30`;
+                  return <option key={time} value={time}>{time}</option>;
+                })}
+              </select>
+            </div>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+
+          <DialogFooter>
+            <Button size="sm" variant="outline" onClick={() => setEditingKey(null)}>İptal</Button>
+            <Button size="sm" onClick={saveShiftTime} data-testid="button-save-time">Kaydet</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
