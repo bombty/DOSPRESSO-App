@@ -225,11 +225,34 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
   const { user } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    shiftType: 'morning',
     assignedToId: '',
+    startTime: '08:00',
+    endTime: '16:30',
+    breakStartTime: '11:00',
+    breakEndTime: '12:00',
     openingChecklistId: '',
     closingChecklistId: '',
   });
+
+  const handleStartTimeChange = (time: string) => {
+    setFormData(prev => {
+      const [hours, mins] = time.split(':').map(Number);
+      const endHours = (hours + 6) % 24;
+      const endTime = `${String(endHours).padStart(2, '0')}:30`;
+      
+      const breakStartHours = (hours + 3) % 24;
+      const breakStartTime = `${String(breakStartHours).padStart(2, '0')}:00`;
+      const breakEndTime = `${String(breakStartHours + 1).padStart(2, '0')}:00`;
+      
+      return {
+        ...prev,
+        startTime: time,
+        endTime,
+        breakStartTime,
+        breakEndTime,
+      };
+    });
+  };
 
   const { data: checklists } = useQuery({
     queryKey: ['/api/checklists'],
@@ -240,19 +263,13 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const shiftTimes: Record<string, [string, string]> = {
-        morning: ['06:00:00', '14:00:00'],
-        evening: ['14:00:00', '22:00:00'],
-        night: ['22:00:00', '06:00:00'],
-      };
-      const [start, end] = shiftTimes[formData.shiftType];
-      
       const payload: any = {
         branchId: user?.branchId,
         shiftDate: format(date, 'yyyy-MM-dd'),
-        startTime: start,
-        endTime: end,
-        shiftType: formData.shiftType,
+        startTime: `${formData.startTime}:00`,
+        endTime: `${formData.endTime}:00`,
+        breakStartTime: `${formData.breakStartTime}:00`,
+        breakEndTime: `${formData.breakEndTime}:00`,
         status: 'draft',
         assignedToId: formData.assignedToId || null,
         createdById: user?.id,
@@ -314,19 +331,28 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
         </Select>
       </div>
 
-      {/* Vardiya Tipi */}
+      {/* Vardiya Saatleri */}
       <div>
-        <label className="text-xs font-semibold">Vardiya Tipi</label>
-        <Select value={formData.shiftType} onValueChange={(v) => setFormData({ ...formData, shiftType: v })}>
-          <SelectTrigger data-testid="select-shift-type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="morning">Sabah (06:00-14:00)</SelectItem>
-            <SelectItem value="evening">Aksam (14:00-22:00)</SelectItem>
-            <SelectItem value="night">Gece (22:00-06:00)</SelectItem>
-          </SelectContent>
-        </Select>
+        <label className="text-xs font-semibold">İşe Başlama Saati</label>
+        <input
+          type="time"
+          value={formData.startTime}
+          onChange={(e) => handleStartTimeChange(e.target.value)}
+          className="w-full px-2 py-1 text-xs border rounded-md"
+          data-testid="input-start-time"
+        />
+      </div>
+
+      {/* Otomatik Hesaplanan Saatler */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs font-semibold text-muted-foreground">Çıkış Saati</label>
+          <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.endTime}</div>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-muted-foreground">Mola</label>
+          <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.breakStartTime}-{formData.breakEndTime}</div>
+        </div>
       </div>
 
       {openingChecklists.length > 0 && (
