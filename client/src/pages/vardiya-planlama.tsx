@@ -337,13 +337,16 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     const shifts: any[] = [];
     Object.entries(week).forEach(([dateStr, times]) => {
       const { endTime, breakEnd } = calculateTimes(times.startTime, times.breakStart);
+      const hour = parseInt(times.startTime.split(':')[0]);
+      const shiftType = hour < 12 ? 'morning' : 'evening';
+      
       shifts.push({
         shiftDate: dateStr,
         startTime: `${times.startTime}:00`,
         endTime: `${endTime}:00`,
         breakStartTime: `${times.breakStart}:00`,
         breakEndTime: `${breakEnd}:00`,
-        shiftType: 'shift',
+        shiftType,
         assignedToId: selectedEmpId,
         status: 'draft',
         branchId,
