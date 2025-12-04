@@ -89,6 +89,7 @@ import {
   insertUserBadgeSchema,
   insertLostFoundItemSchema,
   handoverLostFoundItemSchema,
+  shifts,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -5537,7 +5538,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(shifts)
         .where(
           and(
-            sql`DATE(${shifts.shiftDate}) BETWEEN DATE(${weekStartStr}) AND DATE(${weekEndStr})`,
+            sql`${shifts.shiftDate} >= DATE(${weekStartStr})`,
+            sql`${shifts.shiftDate} <= DATE(${weekEndStr})`,
             eq(shifts.branchId, user.branchId)
           )
         );
@@ -5551,7 +5553,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .delete(shifts)
         .where(
           and(
-            sql`DATE(${shifts.shiftDate}) BETWEEN DATE(${weekStartStr}) AND DATE(${weekEndStr})`,
+            sql`${shifts.shiftDate} >= DATE(${weekStartStr})`,
+            sql`${shifts.shiftDate} <= DATE(${weekEndStr})`,
             eq(shifts.branchId, user.branchId)
           )
         );
