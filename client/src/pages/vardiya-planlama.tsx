@@ -237,12 +237,17 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
   const handleStartTimeChange = (time: string) => {
     setFormData(prev => {
       const [hours, mins] = time.split(':').map(Number);
-      const endHours = (hours + 6) % 24;
-      const endTime = `${String(endHours).padStart(2, '0')}:30`;
+      // 8.5 saat çalışma + 1 saat mola = 9.5 saat
+      let endHours = (hours + 8) % 24;
+      const endMins = 30;
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
       
-      const breakStartHours = (hours + 3) % 24;
-      const breakStartTime = `${String(breakStartHours).padStart(2, '0')}:00`;
-      const breakEndTime = `${String(breakStartHours + 1).padStart(2, '0')}:00`;
+      // Mola: başlangıçtan 3.5 saat sonra başlasın (12:30 ise 16:00, 09:00 ise 12:30)
+      let breakStartHours = (hours + 3) % 24;
+      const breakStartMins = 30;
+      let breakEndHours = (hours + 4) % 24;
+      const breakStartTime = `${String(breakStartHours).padStart(2, '0')}:${String(breakStartMins).padStart(2, '0')}`;
+      const breakEndTime = `${String(breakEndHours).padStart(2, '0')}:30`;
       
       return {
         ...prev,
