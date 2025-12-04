@@ -354,27 +354,27 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
         <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.endTime}</div>
       </div>
 
-      {/* Mola Saatleri (Manuel) */}
+      {/* Mola Saatleri */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs font-semibold">Mola Başlama</label>
+          <label className="text-xs font-semibold">Mola Başlama (Manuel)</label>
           <input
             type="time"
             value={formData.breakStartTime}
-            onChange={(e) => setFormData({ ...formData, breakStartTime: e.target.value })}
+            onChange={(e) => {
+              const breakStart = e.target.value;
+              const [hours, mins] = breakStart.split(':').map(Number);
+              const breakEndHours = (hours + 1) % 24;
+              const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+              setFormData({ ...formData, breakStartTime: breakStart, breakEndTime: breakEnd });
+            }}
             className="w-full px-2 py-1 text-xs border rounded-md"
             data-testid="input-break-start"
           />
         </div>
         <div>
-          <label className="text-xs font-semibold">Mola Bitişi</label>
-          <input
-            type="time"
-            value={formData.breakEndTime}
-            onChange={(e) => setFormData({ ...formData, breakEndTime: e.target.value })}
-            className="w-full px-2 py-1 text-xs border rounded-md"
-            data-testid="input-break-end"
-          />
+          <label className="text-xs font-semibold text-muted-foreground">Mola Bitişi (Otomatik)</label>
+          <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.breakEndTime}</div>
         </div>
       </div>
 
