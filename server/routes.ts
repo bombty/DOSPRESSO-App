@@ -5502,6 +5502,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reset weekly shifts (supervisor only)
+  app.delete('/api/shifts/reset-weekly', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+
+      if (role !== 'supervisor' && role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Vardiya sıfırlama yetkiniz yok" });
+      }
+
+      if (!user.branchId) {
+        return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+      }
+
+      const { weekStart } = req.query;
+      if (!weekStart) {
+        return res.status(400).json({ message: "Hafta başlangıcı belirtilmeli" });
+      }
+
+      // Parse week start and calculate week end (Sunday)
+      const weekStartDate = new Date(weekStart as string);
+      weekStartDate.setHours(0, 0, 0, 0);
+      const weekEndDate = new Date(weekStartDate);
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+      weekEndDate.setHours(23, 59, 59, 999);
+
+      const weekStartStr = weekStartDate.toISOString().split('T')[0];
+      const weekEndStr = weekEndDate.toISOString().split('T')[0];
+
+      // Get all shifts in this week for this branch
+      const shiftsToDelete = await db
+        .select()
+        .from(shifts)
+        .where(
+          and(
+            sql`DATE(${shifts.shiftDate}) BETWEEN DATE(${weekStartStr}) AND DATE(${weekEndStr})`,
+            eq(shifts.branchId, user.branchId)
+          )
+        );
+
+      if (shiftsToDelete.length === 0) {
+        return res.status(200).json({ message: "Silinecek vardiya yok", deletedCount: 0 });
+      }
+
+      // Delete all shifts in this week for this branch
+      await db
+        .delete(shifts)
+        .where(
+          and(
+            sql`DATE(${shifts.shiftDate}) BETWEEN DATE(${weekStartStr}) AND DATE(${weekEndStr})`,
+            eq(shifts.branchId, user.branchId)
+          )
+        );
+
+      res.json({ message: `${shiftsToDelete.length} vardiya silindi`, deletedCount: shiftsToDelete.length });
+    } catch (error: Error | unknown) {
+      console.error("Error resetting weekly shifts:", error);
+      res.status(500).json({ message: "Vardiyalar sıfırlanamadı" });
+    }
+  });
+
   // Bulk create shifts (supervisor only)
   app.post('/api/shifts/bulk', isAuthenticated, async (req: any, res) => {
     try {

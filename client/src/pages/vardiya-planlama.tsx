@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfWeek, addDays, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus, Trash2 } from "lucide-react";
 
 export default function VardiyaPlanlama() {
   const { user } = useAuth();
@@ -19,6 +19,7 @@ export default function VardiyaPlanlama() {
   const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
 
   const { data: shifts, isLoading: shiftsLoading } = useQuery({
     queryKey: ['/api/shifts'],
@@ -59,6 +60,21 @@ export default function VardiyaPlanlama() {
   const nextWeek = () => setWeekStart(addDays(weekStart, 7));
   const goToToday = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
+  const resetWeeklyMutation = useMutation({
+    mutationFn: () => {
+      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+      return apiRequest('DELETE', `/api/shifts/reset-weekly?weekStart=${weekStartStr}`);
+    },
+    onSuccess: (data: any) => {
+      toast({ title: "Başarılı", description: data.message || "Vardiyalar sıfırlandı" });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      setResetConfirmOpen(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
   const getShiftColor = (shift: any) => {
     const hour = parseInt(shift.startTime?.split(':')[0] || '0');
     return hour < 12 
@@ -77,7 +93,7 @@ export default function VardiyaPlanlama() {
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setAddModalOpen(true)} className="gap-2" data-testid="button-add-shift">
             <UserPlus className="w-4 h-4" />
             Vardiya Ekle
@@ -85,6 +101,15 @@ export default function VardiyaPlanlama() {
           <Button onClick={() => setAiModalOpen(true)} className="gap-2" data-testid="button-ai-plan">
             <Wand2 className="w-4 h-4" />
             AI Planla
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={() => setResetConfirmOpen(true)} 
+            className="gap-2" 
+            data-testid="button-reset-shifts"
+          >
+            <Trash2 className="w-4 h-4" />
+            Şiftleri Sıfırla
           </Button>
         </div>
       </div>
@@ -175,6 +200,38 @@ export default function VardiyaPlanlama() {
         branchId={user?.branchId || 0}
         existingShifts={Array.isArray(shifts) ? shifts : []}
       />
+
+      {/* Reset Confirmation Dialog */}
+      <Dialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Vardiyaları Sıfırla</DialogTitle>
+            <DialogDescription>
+              Bu işlem {format(weekStart, "d MMM", { locale: tr })} - {format(addDays(weekStart, 6), "d MMM", { locale: tr })} haftasının tüm vardiyalarını silecektir. Bu işlem geri alınamaz.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setResetConfirmOpen(false)}>
+              İptal
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => resetWeeklyMutation.mutate()}
+              disabled={resetWeeklyMutation.isPending}
+              data-testid="button-confirm-reset"
+            >
+              {resetWeeklyMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Siliniyor...
+                </>
+              ) : (
+                "Evet, Sıfırla"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
