@@ -556,35 +556,42 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
     setIsGenerating(true);
     
     const newShifts: any[] = [];
+    const employeeWorkCount: Record<string, number> = {};
     
+    // Count existing shifts for each employee
     employees.forEach((emp: any) => {
       const empId = String(emp.id);
-      
-      let existingDays: string[] = [];
+      let count = 0;
       if (Array.isArray(existingShifts)) {
-        existingDays = existingShifts
-          .filter((s: any) => String(s.assignedToId) === empId && weekDays.some(d => d.dateStr === s.shiftDate))
-          .map((s: any) => s.shiftDate);
+        count = existingShifts.filter((s: any) => 
+          String(s.assignedToId) === empId && 
+          weekDays.some(d => d.dateStr === s.shiftDate)
+        ).length;
       }
+      employeeWorkCount[empId] = count;
+    });
+    
+    // Shuffle employees
+    const shuffledEmployees = [...employees].sort(() => Math.random() - 0.5);
+    
+    // Round-robin assignment: for each day, assign to available employees
+    weekDays.forEach((day) => {
+      let empIndex = 0;
+      let assigned = false;
       
-      const availableDays = weekDays
-        .map(d => d.dateStr)
-        .filter(d => !existingDays.includes(d) && !alreadyAssigned[d]?.has(empId));
-      
-      const daysNeeded = Math.min(5 - existingDays.length, availableDays.length);
-      
-      if (daysNeeded > 0) {
-        const shuffled = [...availableDays].sort(() => Math.random() - 0.5);
-        const selectedDays = shuffled.slice(0, daysNeeded);
+      while (empIndex < shuffledEmployees.length && !assigned) {
+        const emp = shuffledEmployees[empIndex];
+        const empId = String(emp.id);
         
-        selectedDays.forEach(dateStr => {
+        // Check if employee can be assigned to this day
+        if (employeeWorkCount[empId] < 5 && !alreadyAssigned[day.dateStr]?.has(empId)) {
           const startHour = 8 + Math.floor(Math.random() * 4);
           const endHour = startHour + 8;
           const breakHour = startHour + 3;
           const shiftType = startHour < 12 ? 'morning' : 'evening';
 
           newShifts.push({
-            shiftDate: dateStr,
+            shiftDate: day.dateStr,
             startTime: `${String(startHour).padStart(2, '0')}:00:00`,
             endTime: `${String(endHour % 24).padStart(2, '0')}:30:00`,
             breakStartTime: `${String(breakHour).padStart(2, '0')}:30:00`,
@@ -595,7 +602,12 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
             branchId,
             employeeName: emp.fullName || `${emp.firstName} ${emp.lastName}`,
           });
-        });
+          
+          employeeWorkCount[empId]++;
+          assigned = true;
+        }
+        
+        empIndex++;
       }
     });
 
