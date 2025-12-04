@@ -673,24 +673,28 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
                                 </div>
                                 
                                 <div className="flex flex-col gap-0.5">
-                                  <Button
-                                    size="sm"
-                                    variant={isMorning ? "default" : "outline"}
-                                    className={`text-xs h-6 px-1 ${isMorning ? 'bg-yellow-500 hover:bg-yellow-600' : ''}`}
-                                    onClick={() => isMorning ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'morning')}
-                                    data-testid={`morning-${empId}-${day.dateStr}`}
-                                  >
-                                    S
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={isEvening ? "default" : "outline"}
-                                    className={`text-xs h-6 px-1 ${isEvening ? 'bg-indigo-500 hover:bg-indigo-600' : ''}`}
-                                    onClick={() => isEvening ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'evening')}
-                                    data-testid={`evening-${empId}-${day.dateStr}`}
-                                  >
-                                    A
-                                  </Button>
+                                  {!isOff && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant={isMorning ? "default" : "outline"}
+                                        className={`text-xs h-6 px-1 ${isMorning ? 'bg-yellow-500 hover:bg-yellow-600' : ''}`}
+                                        onClick={() => isMorning ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'morning')}
+                                        data-testid={`morning-${empId}-${day.dateStr}`}
+                                      >
+                                        S
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant={isEvening ? "default" : "outline"}
+                                        className={`text-xs h-6 px-1 ${isEvening ? 'bg-indigo-500 hover:bg-indigo-600' : ''}`}
+                                        onClick={() => isEvening ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'evening')}
+                                        data-testid={`evening-${empId}-${day.dateStr}`}
+                                      >
+                                        A
+                                      </Button>
+                                    </>
+                                  )}
                                   <Button
                                     size="sm"
                                     variant={isOff ? "default" : "outline"}
