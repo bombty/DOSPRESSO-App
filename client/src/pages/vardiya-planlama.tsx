@@ -823,49 +823,107 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
     setIsGenerating(true);
     
     const newShifts: any[] = [];
-    const employeeWorkCount: Record<string, number> = {};
-    const employeeHoursCount: Record<string, number> = {};
-    const dayAssignments: Record<string, Set<string>> = {};
+    const employeeShiftMap: Record<string, Set<string>> = {}; // empId -> Set<dateStr>
+    const employeeHoursMap: Record<string, number> = {}; // empId -> total hours
     
-    // Get branch opening/closing hours (default 07:00-01:00)
+    // Initialize employee maps with existing shifts
+    employees.forEach((emp: any) => {
+      const empId = String(emp.id);
+      employeeShiftMap[empId] = new Set();
+      employeeHoursMap[empId] = 0;
+      
+      if (Array.isArray(existingShifts)) {
+        existingShifts
+          .filter((s: any) => String(s.assignedToId) === empId && 
+            weekDays.some(d => d.dateStr === s.shiftDate))
+          .forEach((s: any) => {
+            employeeShiftMap[empId].add(s.shiftDate);
+            employeeHoursMap[empId] += 8; // Assume 8h per shift
+          });
+      }
+    });
+    
+    // Get branch hours
     const openingHour = branch?.openingHours ? parseInt(branch.openingHours.split(':')[0]) : 7;
     const closingHour = branch?.closingHours ? parseInt(branch.closingHours.split(':')[0]) : 1;
     
-    // Define slots based on branch hours
-    // Slot structure: { name, startHour, endHour, minPeople, shiftType }
-    const slots = [
-      { name: 'Açılış', startHour: openingHour, endHour: openingHour + 3, minPeople: 2, shiftType: 'morning' },
-      { name: 'Sabah', startHour: openingHour + 3, endHour: 14, minPeople: 2, shiftType: 'morning' },
-      { name: 'Öğle/Akşam', startHour: 14, endHour: 19, minPeople: 2, shiftType: 'afternoon' },
-      { name: 'Kapanış', startHour: 19, endHour: closingHour === 1 ? 25 : closingHour, minPeople: 3, shiftType: 'evening' },
-    ];
-    
-    // Initialize day assignments from existing shifts
-    weekDays.forEach((day) => {
-      dayAssignments[day.dateStr] = new Set(alreadyAssigned[day.dateStr]);
-    });
-    
-    // Count existing shifts and hours for each employee
-    employees.forEach((emp: any) => {
-      const empId = String(emp.id);
-      let dayCount = 0;
-      let hoursCount = 0;
-      if (Array.isArray(existingShifts)) {
-        const empShifts = existingShifts.filter((s: any) => 
-          String(s.assignedToId) === empId && 
-          weekDays.some(d => d.dateStr === s.shiftDate)
-        );
-        dayCount = empShifts.length;
-        hoursCount = empShifts.length * 8; // Assume 8 hours per shift
+    // Define 2 shifts per day: morning (7.5h) + evening (7.5h)
+    const getShiftsForDay = (dateStr: string, date: Date) => {
+      const dayOfWeek = date.getDay();
+      const isMorning = true;
+      const isEvening = true;
+      
+      const shifts = [];
+      if (isMorning) {
+        shifts.push({
+          name: 'Sabah',
+          startHour: openingHour,
+          endHour: openingHour + 8, // 8h shift ≈ 7.5h work + 0.5h break
+          minPeople: 2,
+          shiftType: 'morning',
+          durationHours: 7.5
+        });
       }
-      employeeWorkCount[empId] = dayCount;
-      employeeHoursCount[empId] = hoursCount;
-    });
+      if (isEvening) {
+        shifts.push({
+          name: 'Akşam',
+          startHour: openingHour + 8,
+          endHour: closingHour === 1 ? openingHour + 16 : closingHour, // Evening shift
+          minPeople: 2,
+          shiftType: 'evening',
+          durationHours: 7.5
+        });
+      }
+      return shifts;
+    };
     
-    // Calculate skill score for each employee
+    // Helper to check if employee can work
+    const canWorkShift = (empId: string, dateStr: string, emp: any) => {
+      const minDaysNeeded = 6;
+      const maxHours = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
+      
+      // Already assigned today
+      if (employeeShiftMap[empId].has(dateStr)) return false;
+      
+      // Haven't reached min days yet - prioritize
+      if (employeeShiftMap[empId].size < minDaysNeeded) return true;
+      
+      // Max days reached (6 days)
+      if (employeeShiftMap[empId].size >= 6) return false;
+      
+      // Max hours reached
+      if (employeeHoursMap[empId] >= maxHours) return false;
+      
+      return true;
+    };
+    
+    // Helper to assign shift
+    const assignShift = (emp: any, dateStr: string, shiftObj: any) => {
+      const empId = String(emp.id);
+      const endHour = shiftObj.endHour > 24 ? shiftObj.endHour - 24 : shiftObj.endHour;
+      const breakStartH = shiftObj.startHour + 4;
+      
+      newShifts.push({
+        shiftDate: dateStr,
+        startTime: `${String(shiftObj.startHour).padStart(2, '0')}:00:00`,
+        endTime: `${String(endHour).padStart(2, '0')}:00:00`,
+        breakStartTime: `${String(breakStartH).padStart(2, '0')}:00:00`,
+        breakEndTime: `${String(breakStartH + 1).padStart(2, '0')}:00:00`,
+        shiftType: shiftObj.shiftType,
+        assignedToId: empId,
+        status: 'draft',
+        branchId,
+        employeeName: emp.fullName || `${emp.firstName} ${emp.lastName}`,
+        slotName: shiftObj.name,
+      });
+      
+      employeeShiftMap[empId].add(dateStr);
+      employeeHoursMap[empId] += shiftObj.durationHours;
+    };
+    
+    // Calculate skill score
     const getSkillScore = (emp: any) => {
       let score = emp.skillScore || 50;
-      // Role-based bonus
       if (emp.role === 'supervisor') score += 30;
       else if (emp.role === 'supervisor_buddy') score += 20;
       else if (emp.role === 'barista') score += 10;
@@ -874,113 +932,46 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
       return Math.min(100, Math.max(0, score));
     };
     
-    // Separate employees into strong (>60) and weak (<60) groups
-    const strongEmployees = employees.filter((e: any) => getSkillScore(e) >= 60);
-    const weakEmployees = employees.filter((e: any) => getSkillScore(e) < 60);
+    // Sort by skill
+    const sortedEmployees = [...employees].sort((a, b) => getSkillScore(b) - getSkillScore(a));
     
-    // Get max weekly hours for employee
-    const getMaxHours = (emp: any) => {
-      return emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
-    };
-    
-    // Check if employee can work
-    const canWork = (emp: any, dateStr: string) => {
-      const empId = String(emp.id);
-      const maxDays = 5;
-      const maxHours = getMaxHours(emp);
+    // Main algorithm: 3 passes
+    // Pass 1: Ensure everyone gets min 6 days
+    weekDays.forEach((day, dayIdx) => {
+      const shiftsForDay = getShiftsForDay(day.dateStr, day.date);
       
-      // Already assigned today
-      if (dayAssignments[dateStr].has(empId)) return false;
-      // Max days reached
-      if (employeeWorkCount[empId] >= maxDays) return false;
-      // Max hours reached
-      if (employeeHoursCount[empId] >= maxHours) return false;
-      
-      return true;
-    };
-    
-    // Assign employee to slot
-    const assignToSlot = (emp: any, day: any, slot: any) => {
-      const empId = String(emp.id);
-      const endHour = slot.endHour > 24 ? slot.endHour - 24 : slot.endHour;
-      const shiftDuration = slot.endHour - slot.startHour;
-      const breakStartH = slot.startHour + Math.floor(shiftDuration / 2);
-      
-      newShifts.push({
-        shiftDate: day.dateStr,
-        startTime: `${String(slot.startHour).padStart(2, '0')}:00:00`,
-        endTime: `${String(endHour).padStart(2, '0')}:00:00`,
-        breakStartTime: `${String(breakStartH).padStart(2, '0')}:00:00`,
-        breakEndTime: `${String(breakStartH + 1).padStart(2, '0')}:00:00`,
-        shiftType: slot.shiftType,
-        assignedToId: empId,
-        status: 'draft',
-        branchId,
-        employeeName: emp.fullName || `${emp.firstName} ${emp.lastName}`,
-        slotName: slot.name,
-      });
-      
-      employeeWorkCount[empId]++;
-      employeeHoursCount[empId] += shiftDuration;
-      dayAssignments[day.dateStr].add(empId);
-    };
-    
-    // Main algorithm: For each day, fill each slot
-    weekDays.forEach((day) => {
-      // Track who's been assigned to this day across all slots
-      const assignedTodaySet = new Set<string>();
-      
-      slots.forEach((slot) => {
+      shiftsForDay.forEach((shiftObj) => {
+        const needed = shiftObj.minPeople;
         let assigned = 0;
-        const needed = slot.minPeople;
         
-        // Helper to check if employee can work (including today's assignments)
-        const canWorkThisSlot = (emp: any) => {
-          const empId = String(emp.id);
-          // Check daily limits
-          if (assignedTodaySet.has(empId)) return false; // Already assigned today
-          if (employeeWorkCount[empId] >= 5) return false; // Max days/week reached
-          if (employeeHoursCount[empId] >= getMaxHours(emp)) return false; // Max hours reached
-          return true;
-        };
-        
-        // First, assign at least 1 strong employee
-        const availableStrong = strongEmployees
-          .filter((e: any) => canWorkThisSlot(e))
-          .sort((a: any, b: any) => employeeWorkCount[String(a.id)] - employeeWorkCount[String(b.id)]);
-        
-        if (availableStrong.length > 0 && assigned < needed) {
-          const emp = availableStrong[0];
-          assignToSlot(emp, day, slot);
-          assignedTodaySet.add(String(emp.id));
-          assigned++;
-        }
-        
-        // Then fill rest with weak/mixed employees
-        const availableWeak = weakEmployees
-          .filter((e: any) => canWorkThisSlot(e))
-          .sort((a: any, b: any) => employeeWorkCount[String(a.id)] - employeeWorkCount[String(b.id)]);
-        
-        for (const emp of availableWeak) {
+        // Try to assign people who haven't reached 6 days yet
+        for (const emp of sortedEmployees) {
           if (assigned >= needed) break;
-          if (canWorkThisSlot(emp)) {
-            assignToSlot(emp, day, slot);
-            assignedTodaySet.add(String(emp.id));
+          if (canWorkShift(String(emp.id), day.dateStr, emp)) {
+            assignShift(emp, day.dateStr, shiftObj);
             assigned++;
           }
         }
+      });
+    });
+    
+    // Pass 2: Fill remaining slots (everyone now has at least 6 days)
+    weekDays.forEach((day) => {
+      const shiftsForDay = getShiftsForDay(day.dateStr, day.date);
+      
+      shiftsForDay.forEach((shiftObj) => {
+        const needed = shiftObj.minPeople;
+        let assignedInSlot = newShifts.filter(s => 
+          s.shiftDate === day.dateStr && s.slotName === shiftObj.name
+        ).length;
         
-        // If still need more, use remaining strong employees
-        const remainingStrong = strongEmployees
-          .filter((e: any) => canWorkThisSlot(e))
-          .sort((a: any, b: any) => employeeWorkCount[String(a.id)] - employeeWorkCount[String(b.id)]);
-        
-        for (const emp of remainingStrong) {
-          if (assigned >= needed) break;
-          if (canWorkThisSlot(emp)) {
-            assignToSlot(emp, day, slot);
-            assignedTodaySet.add(String(emp.id));
-            assigned++;
+        for (const emp of sortedEmployees) {
+          if (assignedInSlot >= needed) break;
+          const empId = String(emp.id);
+          
+          if (!employeeShiftMap[empId].has(day.dateStr) && employeeHoursMap[empId] < (emp.weeklyHours || 45)) {
+            assignShift(emp, day.dateStr, shiftObj);
+            assignedInSlot++;
           }
         }
       });
