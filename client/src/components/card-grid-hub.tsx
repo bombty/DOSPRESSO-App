@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { isHQRole, isBranchRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { QuickTaskModal } from "@/components/quick-task-modal";
 import { 
   GraduationCap, 
   Wrench, 
@@ -21,7 +22,8 @@ import {
   Coffee,
   Briefcase,
   Heart,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from "lucide-react";
 
 interface ModuleCard {
@@ -243,6 +245,16 @@ export function CardGridHub() {
           </CardContent>
         </Card>
       )}
+
+      {/* Quick Actions */}
+      <div className="flex gap-2">
+        <QuickTaskModal trigger={
+          <Button size="sm" variant="outline" className="flex-1" data-testid="button-quick-task-dashboard">
+            <Plus className="h-4 w-4 mr-1" />
+            Hızlı Görev
+          </Button>
+        } />
+      </div>
 
       {/* Card Grid */}
       <div className="grid grid-cols-2 gap-3">
