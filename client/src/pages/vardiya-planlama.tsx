@@ -186,6 +186,8 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
 }) {
   const { toast } = useToast();
   const { data: shifts } = useQuery({ queryKey: ['/api/shifts'] });
+  const { data: checklists } = useQuery({ queryKey: ['/api/checklists'] });
+  const { data: tasks } = useQuery({ queryKey: ['/api/tasks'] });
   
   const shift = useMemo(() => {
     if (!shifts || !Array.isArray(shifts) || !shiftId) return null;
@@ -193,11 +195,20 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
   }, [shifts, shiftId]);
 
   const [startTime, setStartTime] = useState('');
+  const [checklist1, setChecklist1] = useState('');
+  const [checklist2, setChecklist2] = useState('');
+  const [checklist3, setChecklist3] = useState('');
+  const [selectedTask, setSelectedTask] = useState('');
 
   const emp = useMemo(() => {
     if (!shift) return null;
     return employees.find((e: any) => e.id === shift.assignedToId);
   }, [shift, employees]);
+
+  const availableTasks = useMemo(() => {
+    if (!tasks || !Array.isArray(tasks)) return [];
+    return tasks.filter((t: any) => t.status === 'pending' || t.status === 'assigned');
+  }, [tasks]);
 
   const deleteMutation = useMutation({
     mutationFn: () => apiRequest('DELETE', `/api/shifts/${shiftId}`),
@@ -222,6 +233,9 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
         breakStartTime: `${String(breakStartH).padStart(2, '0')}:30:00`,
         breakEndTime: `${String(breakEndH).padStart(2, '0')}:30:00`,
         shiftType: h < 12 ? 'morning' : 'evening',
+        checklistId: checklist1 && checklist1 !== 'none' ? parseInt(checklist1) : null,
+        checklist2Id: checklist2 && checklist2 !== 'none' ? parseInt(checklist2) : null,
+        checklist3Id: checklist3 && checklist3 !== 'none' ? parseInt(checklist3) : null,
       });
     },
     onSuccess: () => {
@@ -232,18 +246,45 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
     onError: (err: Error) => toast({ title: "Hata", description: err.message, variant: "destructive" }),
   });
 
+  const assignTaskMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedTask || selectedTask === 'none' || !shift?.assignedToId) {
+        throw new Error("Görev veya personel seçilmedi");
+      }
+      return apiRequest('PATCH', `/api/tasks/${selectedTask}`, {
+        assignedToId: shift.assignedToId,
+        status: 'assigned',
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Görev Atandı", description: "Görev başarıyla atandı" });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      setSelectedTask('');
+    },
+    onError: (err: Error) => toast({ title: "Hata", description: err.message, variant: "destructive" }),
+  });
+
   if (!shift) return null;
 
   if (!startTime && shift.startTime) {
     setStartTime(shift.startTime.substring(0, 5));
   }
+  if (!checklist1 && shift.checklistId) {
+    setChecklist1(String(shift.checklistId));
+  }
+  if (!checklist2 && shift.checklist2Id) {
+    setChecklist2(String(shift.checklist2Id));
+  }
+  if (!checklist3 && shift.checklist3Id) {
+    setChecklist3(String(shift.checklist3Id));
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-xs">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Vardiya Düzenle</DialogTitle>
-          <DialogDescription>{emp?.fullName || emp?.firstName}</DialogDescription>
+          <DialogDescription>{emp?.fullName || emp?.firstName} - {shift.shiftDate}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -261,6 +302,73 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
                 return <option key={t} value={t}>{t}</option>;
               })}
             </select>
+          </div>
+
+          {/* Checklist Assignments */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium mb-3">Checklist Atamaları</p>
+            <div className="space-y-2">
+              <Select value={checklist1} onValueChange={setChecklist1}>
+                <SelectTrigger className="text-sm" data-testid="edit-checklist-1">
+                  <SelectValue placeholder="1. Checklist seç" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seçilmedi</SelectItem>
+                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                    <SelectItem key={cl.id} value={String(cl.id)}>{cl.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={checklist2} onValueChange={setChecklist2}>
+                <SelectTrigger className="text-sm" data-testid="edit-checklist-2">
+                  <SelectValue placeholder="2. Checklist seç" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seçilmedi</SelectItem>
+                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                    <SelectItem key={cl.id} value={String(cl.id)}>{cl.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={checklist3} onValueChange={setChecklist3}>
+                <SelectTrigger className="text-sm" data-testid="edit-checklist-3">
+                  <SelectValue placeholder="3. Checklist seç" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seçilmedi</SelectItem>
+                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                    <SelectItem key={cl.id} value={String(cl.id)}>{cl.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Task Assignment */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium mb-3">Görev Ata</p>
+            <div className="flex gap-2">
+              <Select value={selectedTask} onValueChange={setSelectedTask}>
+                <SelectTrigger className="text-sm flex-1" data-testid="edit-task-select">
+                  <SelectValue placeholder="Görev seç" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seçilmedi</SelectItem>
+                  {availableTasks.map((task: { id: number; title: string }) => (
+                    <SelectItem key={task.id} value={String(task.id)}>{task.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={() => assignTaskMutation.mutate()}
+                disabled={!selectedTask || selectedTask === 'none' || assignTaskMutation.isPending}
+                data-testid="button-assign-task"
+              >
+                {assignTaskMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ata"}
+              </Button>
+            </div>
           </div>
         </div>
 
