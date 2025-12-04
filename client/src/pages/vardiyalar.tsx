@@ -31,7 +31,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   Plus, Calendar as CalendarIcon, Clock, Users, CheckCircle2, 
-  AlertCircle, TrendingUp, FileText, QrCode, ArrowRight,
+  AlertCircle, TrendingUp, QrCode, ArrowRight,
   Sun, Moon, Sunset, UserCheck, UserX, Timer, Edit, Trash2, MoreHorizontal,
   MapPin
 } from "lucide-react";
@@ -302,12 +302,6 @@ export default function Vardiyalar() {
               <Button variant="outline" data-testid="button-ai-planning">
                 <TrendingUp className="w-4 h-4 mr-2" />
                 AI Planlama
-              </Button>
-            </Link>
-            <Link href="/vardiya-sablonlari">
-              <Button variant="outline" data-testid="button-templates">
-                <FileText className="w-4 h-4 mr-2" />
-                Şablonlar
               </Button>
             </Link>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -631,12 +625,6 @@ export default function Vardiyalar() {
                   <Button variant="outline" className="w-full h-24 flex-col gap-2" data-testid="button-checkin">
                     <QrCode className="h-4 w-4" />
                     <span>Giriş/Çıkış</span>
-                  </Button>
-                </Link>
-                <Link href="/vardiya-sablonlari">
-                  <Button variant="outline" className="w-full h-24 flex-col gap-2" data-testid="button-templates-quick">
-                    <FileText className="h-4 w-4" />
-                    <span>Şablonlar</span>
                   </Button>
                 </Link>
                 {isSupervisor && (

@@ -64,7 +64,6 @@ import Mesajlar from "@/pages/mesajlar";
 import CashReports from "@/pages/cash-reports";
 import Vardiyalar from "@/pages/vardiyalar";
 import VardiyaCheckin from "@/pages/vardiya-checkin";
-import VardiyaSablonlari from "@/pages/vardiya-sablonlari";
 import VardiyaPlanlama from "@/pages/vardiya-planlama";
 import Vardiyalarim from "@/pages/vardiyalarim";
 import PersonelMusaitlik from "@/pages/personel-musaitlik";
@@ -122,7 +121,6 @@ function Router() {
           <Route path="/vardiya-planlama" component={VardiyaPlanlama} />
           <Route path="/vardiyalarim" component={Vardiyalarim} />
           <Route path="/vardiya-checkin" component={VardiyaCheckin} />
-          <Route path="/vardiya-sablonlari" component={VardiyaSablonlari} />
           <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
           <Route path="/devam-takibi" component={Attendance} />
 
