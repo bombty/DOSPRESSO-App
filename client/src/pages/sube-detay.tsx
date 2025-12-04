@@ -31,6 +31,8 @@ type Branch = {
   wifiSsid?: string;
   shiftCornerLatitude?: string;
   shiftCornerLongitude?: string;
+  openingHours?: string;
+  closingHours?: string;
 };
 
 type User = {
@@ -73,6 +75,8 @@ export default function SubeDetayPage() {
   const [wifiSsid, setWifiSsid] = useState("");
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("personel");
+  const [openingHours, setOpeningHours] = useState("07:00");
+  const [closingHours, setClosingHours] = useState("01:00");
   
   const isAdmin = user?.role && isHQRole(user.role as any);
 
@@ -137,6 +141,20 @@ export default function SubeDetayPage() {
     },
   });
 
+  // Update working hours mutation
+  const updateWorkingHoursMutation = useMutation({
+    mutationFn: async (data: { openingHours?: string; closingHours?: string }) => {
+      await apiRequest('PATCH', `/api/branches/${branchId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/branches/${branchId}/detail`] });
+      toast({ title: "Başarılı", description: "Çalışma saatleri güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Saatler güncellenemedi", variant: "destructive" });
+    },
+  });
+
   // Initialize form values when data loads
   useEffect(() => {
     if (branchData?.branch) {
@@ -144,6 +162,8 @@ export default function SubeDetayPage() {
       setLongitude(branchData.branch.shiftCornerLongitude || "");
       setGeoRadius(branchData.branch.geoRadius?.toString() || "50");
       setWifiSsid(branchData.branch.wifiSsid || "");
+      setOpeningHours(branchData.branch.openingHours?.substring(0, 5) || "07:00");
+      setClosingHours(branchData.branch.closingHours?.substring(0, 5) || "01:00");
     }
   }, [branchData]);
 
@@ -687,6 +707,57 @@ export default function SubeDetayPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Çalışma Saatleri Kartı */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Çalışma Saatleri
+                </CardTitle>
+                <CardDescription>
+                  AI vardiya planlaması için şube açılış-kapanış saatlerini ayarlayın
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="openingHours">Açılış Saati</Label>
+                    <Input 
+                      id="openingHours"
+                      type="time"
+                      value={openingHours}
+                      onChange={(e) => setOpeningHours(e.target.value)}
+                      data-testid="input-opening-hours"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="closingHours">Kapanış Saati</Label>
+                    <Input 
+                      id="closingHours"
+                      type="time"
+                      value={closingHours}
+                      onChange={(e) => setClosingHours(e.target.value)}
+                      data-testid="input-closing-hours"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Bu saatler AI vardiya planlamasında slot oluşturmak için kullanılır
+                </p>
+                <Button 
+                  onClick={() => updateWorkingHoursMutation.mutate({ 
+                    openingHours: openingHours + ':00', 
+                    closingHours: closingHours + ':00' 
+                  })}
+                  disabled={updateWorkingHoursMutation.isPending}
+                  className="w-full"
+                  data-testid="button-save-hours"
+                >
+                  {updateWorkingHoursMutation.isPending ? "Kaydediliyor..." : "Saatleri Kaydet"}
+                </Button>
+              </CardContent>
+            </Card>
 
             {/* Bilgi Kartı */}
             <Card className="border-primary/30 bg-primary/10 dark:border-primary/40 dark:bg-blue-950/30">
