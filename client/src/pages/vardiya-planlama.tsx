@@ -6,13 +6,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfWeek, addDays, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Sparkles, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X } from "lucide-react";
 
 export default function VardiyaPlanlama() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
   const [aiModalOpen, setAiModalOpen] = useState(false);
@@ -156,7 +156,6 @@ export default function VardiyaPlanlama() {
 }
 
 function ShiftEditModal({ open, shiftId, onOpenChange }: { open: boolean; shiftId: number | null; onOpenChange: (open: boolean) => void }) {
-  const { user } = useAuth();
   const { toast } = useToast();
   const { data: shifts } = useQuery({ queryKey: ['/api/shifts'] });
   
@@ -271,15 +270,6 @@ function ShiftEditModal({ open, shiftId, onOpenChange }: { open: boolean; shiftI
   );
 }
 
-interface ShiftAssignment {
-  employeeId: string;
-  dateStr: string;
-  startTime: string;
-  endTime: string;
-  breakStartTime: string;
-  breakEndTime: string;
-}
-
 function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchId }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -288,19 +278,16 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
   branchId: number;
 }) {
   const { toast } = useToast();
-  const [step, setStep] = useState<'config' | 'preview' | 'done'>('config');
-  const [assignments, setAssignments] = useState<Record<string, ShiftAssignment>>({});
+  const [selectedEmpId, setSelectedEmpId] = useState<string>('');
+  const [week, setWeek] = useState<Record<string, { startTime: string; breakStart: string }>>({});
+  const [previewMode, setPreviewMode] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<any[]>([]);
-  const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [editStartTime, setEditStartTime] = useState('08:00');
-  const [editBreakStart, setEditBreakStart] = useState('11:30');
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
       const date = addDays(weekStart, i);
       return {
         date,
-        dayName: format(date, 'EEEE', { locale: tr }),
         shortName: format(date, 'EEE', { locale: tr }),
         dateStr: format(date, 'yyyy-MM-dd'),
         dayNum: format(date, 'd'),
@@ -320,68 +307,51 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     return { endTime, breakEnd };
   };
 
-  const openEditor = (empId: string, dateStr: string) => {
-    const key = `${empId}-${dateStr}`;
-    const existing = assignments[key];
-    setEditStartTime(existing?.startTime || '08:00');
-    setEditBreakStart(existing?.breakStartTime || '11:30');
-    setEditingKey(key);
+  const toggleShift = (dateStr: string) => {
+    const key = dateStr;
+    if (week[key]) {
+      const newWeek = { ...week };
+      delete newWeek[key];
+      setWeek(newWeek);
+    } else {
+      setWeek(prev => ({
+        ...prev,
+        [key]: { startTime: '08:00', breakStart: '11:30' }
+      }));
+    }
   };
 
-  const saveShiftTime = () => {
-    if (!editingKey) return;
-    const [empId, dateStr] = editingKey.split('-');
-    const { endTime, breakEnd } = calculateTimes(editStartTime, editBreakStart);
-    
-    setAssignments(prev => ({
+  const updateShiftTime = (dateStr: string, startTime: string, breakStart: string) => {
+    setWeek(prev => ({
       ...prev,
-      [editingKey]: {
-        employeeId: empId,
-        dateStr,
-        startTime: editStartTime,
-        endTime,
-        breakStartTime: editBreakStart,
-        breakEndTime: breakEnd,
-      }
+      [dateStr]: { startTime, breakStart }
     }));
-    setEditingKey(null);
-  };
-
-  const toggleOff = (empId: string, dateStr: string) => {
-    const key = `${empId}-${dateStr}`;
-    setAssignments(prev => {
-      const { [key]: _, ...rest } = prev;
-      return rest;
-    });
-  };
-
-  const getAssignment = (empId: string, dateStr: string) => {
-    return assignments[`${empId}-${dateStr}`];
   };
 
   const generatePlan = () => {
+    if (!selectedEmpId || Object.keys(week).length === 0) {
+      toast({ title: "Uyari", description: "Personel seç ve günleri işaretle", variant: "destructive" });
+      return;
+    }
+
     const shifts: any[] = [];
-    Object.values(assignments).forEach((a) => {
+    Object.entries(week).forEach(([dateStr, times]) => {
+      const { endTime, breakEnd } = calculateTimes(times.startTime, times.breakStart);
       shifts.push({
-        shiftDate: a.dateStr,
-        startTime: `${a.startTime}:00`,
-        endTime: `${a.endTime}:00`,
-        breakStartTime: `${a.breakStartTime}:00`,
-        breakEndTime: `${a.breakEndTime}:00`,
+        shiftDate: dateStr,
+        startTime: `${times.startTime}:00`,
+        endTime: `${endTime}:00`,
+        breakStartTime: `${times.breakStart}:00`,
+        breakEndTime: `${breakEnd}:00`,
         shiftType: 'shift',
-        assignedToId: a.employeeId,
+        assignedToId: selectedEmpId,
         status: 'draft',
         branchId,
       });
     });
-    
-    if (shifts.length === 0) {
-      toast({ title: "Uyari", description: "En az 1 vardiya atamasi yapin", variant: "destructive" });
-      return;
-    }
-    
+
     setGeneratedPlan(shifts);
-    setStep('preview');
+    setPreviewMode(true);
   };
 
   const applyPlanMutation = useMutation({
@@ -391,179 +361,158 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     onSuccess: () => {
       toast({ title: "Basarili", description: `${generatedPlan.length} vardiya olusturuldu` });
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      setStep('done');
+      onOpenChange(false);
+      setSelectedEmpId('');
+      setWeek({});
+      setGeneratedPlan([]);
+      setPreviewMode(false);
     },
     onError: (error: Error) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
 
-  if (step === 'done') {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-sm text-center">
-          <div className="py-6">
-            <div className="text-3xl font-bold text-success mb-2">✓</div>
-            <h2 className="text-lg font-bold">Tamamlandi!</h2>
-            <p className="text-sm text-muted-foreground mt-2">{generatedPlan.length} vardiya olusturuldu.</p>
-            <Button
-              className="w-full mt-4"
-              onClick={() => {
-                onOpenChange(false);
-                setStep('config');
-                setAssignments({});
-                setGeneratedPlan([]);
-              }}
-            >
-              Kapat
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  const selectedEmployee = employees.find(e => e.id === selectedEmpId);
 
   return (
-    <>
-      <Dialog open={open && (step === 'config' || step === 'preview')} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{step === 'config' ? 'AI ile Haftalik Plan' : 'Onay'}</DialogTitle>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{previewMode ? 'Onay' : 'AI ile Haftalik Plan'}</DialogTitle>
+        </DialogHeader>
 
-          {step === 'config' ? (
-            <div className="space-y-3 text-xs overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="border p-1 text-left">Personel</th>
-                    {weekDays.map(day => (
-                      <th key={day.dateStr} className="border p-1 text-center">
-                        <div>{day.shortName}</div>
-                        <div className="text-muted-foreground text-xs">{day.dayNum}</div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
+        {!previewMode ? (
+          <div className="space-y-4">
+            {/* Personel Seçimi */}
+            <div>
+              <label className="text-sm font-semibold">Personel</label>
+              <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
+                <SelectTrigger className="mt-2" data-testid="select-employee">
+                  <SelectValue placeholder="Personel seç" />
+                </SelectTrigger>
+                <SelectContent>
                   {employees.map((emp: any) => (
-                    <tr key={emp.id}>
-                      <td className="border p-1">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</td>
-                      {weekDays.map((day) => {
-                        const assignment = getAssignment(emp.id, day.dateStr);
-                        return (
-                          <td key={`${emp.id}-${day.dateStr}`} className="border p-1">
-                            <div className="flex gap-0.5 justify-center">
-                              <button
-                                onClick={() => openEditor(emp.id, day.dateStr)}
-                                className={`flex-1 px-2 py-1 rounded text-xs font-medium ${
-                                  assignment 
-                                    ? 'bg-blue-500 text-white' 
-                                    : 'bg-gray-200 dark:bg-gray-700'
-                                }`}
-                                data-testid={`shift-box-${emp.id}-${day.dateStr}`}
-                              >
-                                {assignment ? assignment.startTime : '+'}
-                              </button>
-                              <button
-                                onClick={() => toggleOff(emp.id, day.dateStr)}
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                  !assignment
-                                    ? 'bg-red-500 text-white'
-                                    : 'bg-gray-200 dark:bg-gray-700'
-                                }`}
-                                data-testid={`off-box-${emp.id}-${day.dateStr}`}
-                              >
-                                X
-                              </button>
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.fullName || `${emp.firstName} ${emp.lastName}`}
+                    </SelectItem>
                   ))}
-                </tbody>
-              </table>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Iptal</Button>
-                <Button onClick={generatePlan} data-testid="button-preview">Devam Et</Button>
-              </DialogFooter>
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="text-sm space-y-2 max-h-[300px] overflow-y-auto">
-                {generatedPlan.map((shift, idx) => {
-                  const emp = employees.find((e: any) => e.id === shift.assignedToId);
-                  return (
-                    <div key={idx} className="p-2 bg-muted rounded text-xs">
-                      <div className="font-semibold">{emp?.fullName || `${emp?.firstName} ${emp?.lastName}`}</div>
-                      <div className="text-muted-foreground">
-                        {format(new Date(shift.shiftDate), 'd MMMM', { locale: tr })} - {shift.startTime?.substring(0, 5)}-{shift.endTime?.substring(0, 5)}
+
+            {/* Hafta Gösterimi */}
+            {selectedEmpId && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold">Haftalık Planlama</p>
+                <div className="grid grid-cols-7 gap-2">
+                  {weekDays.map(day => {
+                    const hasShift = !!week[day.dateStr];
+                    const shift = week[day.dateStr];
+                    
+                    return (
+                      <div key={day.dateStr} className="flex flex-col gap-1">
+                        <button
+                          onClick={() => toggleShift(day.dateStr)}
+                          className={`p-2 rounded text-center text-xs font-medium transition-all ${
+                            hasShift
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                          }`}
+                          data-testid={`day-button-${day.dateStr}`}
+                        >
+                          <div>{day.shortName}</div>
+                          <div className="text-xs">{day.dayNum}</div>
+                        </button>
+                        
+                        {hasShift && shift && (
+                          <div className="text-xs text-muted-foreground text-center">
+                            {shift.startTime}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
+            )}
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setStep('config')}>Geri Don</Button>
-                <Button onClick={() => applyPlanMutation.mutate()} disabled={applyPlanMutation.isPending} data-testid="button-apply">
-                  {applyPlanMutation.isPending ? "Uygulanıyor..." : "Uygula"}
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            {/* Seçili Günler İçin Saat Ayarı */}
+            {selectedEmpId && Object.keys(week).length > 0 && (
+              <div className="bg-muted p-3 rounded space-y-3">
+                <p className="text-sm font-semibold">Seçili Günlerin Saatleri</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold">İşe Başlama</label>
+                    <select
+                      value={Object.values(week)[0]?.startTime || '08:00'}
+                      onChange={(e) => {
+                        const newVal = e.target.value;
+                        Object.keys(week).forEach(d => {
+                          updateShiftTime(d, newVal, week[d].breakStart);
+                        });
+                      }}
+                      className="w-full px-2 py-1 border rounded text-xs mt-1"
+                      data-testid="select-start-time"
+                    >
+                      {Array.from({ length: 13 }, (_, i) => {
+                        const h = 7 + i;
+                        const time = `${String(h).padStart(2, '0')}:00`;
+                        return <option key={time} value={time}>{time}</option>;
+                      })}
+                    </select>
+                  </div>
 
-      {/* Time Picker Dialog */}
-      <Dialog open={!!editingKey} onOpenChange={() => setEditingKey(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Saat Seç</DialogTitle>
-          </DialogHeader>
+                  <div>
+                    <label className="text-xs font-semibold">Mola Başlama</label>
+                    <select
+                      value={Object.values(week)[0]?.breakStart || '11:30'}
+                      onChange={(e) => {
+                        const newVal = e.target.value;
+                        Object.keys(week).forEach(d => {
+                          updateShiftTime(d, week[d].startTime, newVal);
+                        });
+                      }}
+                      className="w-full px-2 py-1 border rounded text-xs mt-1"
+                      data-testid="select-break-start"
+                    >
+                      {Array.from({ length: 11 }, (_, i) => {
+                        const h = 11 + i;
+                        const time = `${String(h).padStart(2, '0')}:30`;
+                        return <option key={time} value={time}>{time}</option>;
+                      })}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
 
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold">İşe Başlama</label>
-              <select
-                value={editStartTime}
-                onChange={(e) => setEditStartTime(e.target.value)}
-                className="w-full px-2 py-1 border rounded-md text-xs mt-1 h-8"
-                data-testid="select-start-time"
-              >
-                {Array.from({ length: 13 }, (_, i) => {
-                  const h = 7 + i;
-                  const time = `${String(h).padStart(2, '0')}:00`;
-                  return <option key={time} value={time}>{time}</option>;
-                })}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold">Mola Başlama</label>
-              <select
-                value={editBreakStart}
-                onChange={(e) => setEditBreakStart(e.target.value)}
-                className="w-full px-2 py-1 border rounded-md text-xs mt-1 h-8"
-                data-testid="select-break-start"
-              >
-                {Array.from({ length: 11 }, (_, i) => {
-                  const h = 11 + i;
-                  const time = `${String(h).padStart(2, '0')}:30`;
-                  return <option key={time} value={time}>{time}</option>;
-                })}
-              </select>
-            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
+              <Button onClick={generatePlan} data-testid="button-preview">Devam Et</Button>
+            </DialogFooter>
           </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="text-sm space-y-2 max-h-[300px] overflow-y-auto">
+              {generatedPlan.map((shift, idx) => (
+                <div key={idx} className="p-2 bg-muted rounded text-xs">
+                  <div className="font-semibold">{selectedEmployee?.fullName || `${selectedEmployee?.firstName} ${selectedEmployee?.lastName}`}</div>
+                  <div className="text-muted-foreground">
+                    {format(new Date(shift.shiftDate), 'd MMMM', { locale: tr })} - {shift.startTime?.substring(0, 5)}-{shift.endTime?.substring(0, 5)}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-          <DialogFooter>
-            <Button size="sm" variant="outline" onClick={() => setEditingKey(null)}>İptal</Button>
-            <Button size="sm" onClick={saveShiftTime} data-testid="button-save-time">Kaydet</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPreviewMode(false)}>Geri Don</Button>
+              <Button onClick={() => applyPlanMutation.mutate()} disabled={applyPlanMutation.isPending} data-testid="button-apply">
+                {applyPlanMutation.isPending ? "Uygulanıyor..." : "Uygula"}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
