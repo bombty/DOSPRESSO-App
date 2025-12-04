@@ -800,7 +800,7 @@ export default function Vardiyalar() {
         </TabsContent>
 
         <TabsContent value="live" className="w-full space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
             <Card data-testid="card-live-active">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Canlı Çalışanlar</CardTitle>
@@ -825,7 +825,7 @@ export default function Vardiyalar() {
               </CardContent>
             </Card>
 
-            <Card data-testid="card-live-missing">
+            <Card data-testid="card-live-missing" className="sm:col-span-2">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Henüz Gelmedi</CardTitle>
                 <UserX className="h-4 w-4 text-red-500" />
