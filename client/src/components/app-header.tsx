@@ -1,4 +1,4 @@
-import { Mail, LogOut } from "lucide-react";
+import { Mail, LogOut, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
@@ -16,9 +16,10 @@ interface AppHeaderProps {
   notificationCount?: number;
   user?: User | null;
   branchName?: string | null;
+  onQRClick?: () => void;
 }
 
-export function AppHeader({ notificationCount = 0, user, branchName }: AppHeaderProps) {
+export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }: AppHeaderProps) {
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -107,8 +108,18 @@ export function AppHeader({ notificationCount = 0, user, branchName }: AppHeader
           />
         </div>
 
-        {/* Right: Mailbox - Grows to fill space */}
-        <div className="flex-1 flex justify-end">
+        {/* Right: QR + Mailbox - Grows to fill space */}
+        <div className="flex-1 flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onQRClick}
+            data-testid="button-qr-scanner"
+            title="Hızlı QR Giriş"
+          >
+            <QrCode className="w-4 h-4" />
+          </Button>
           <div className="relative flex justify-end">
             <Button
               variant="ghost"

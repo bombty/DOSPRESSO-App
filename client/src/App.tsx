@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -6,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { BottomNav } from "@/components/bottom-nav";
 import { InboxDialog } from "@/components/inbox-dialog";
 import { AppHeader } from "@/components/app-header";
+import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { useAuth } from "@/hooks/useAuth";
 import logoPath from "@assets/IMG_5044_1764274022052.jpeg";
 import FaultHub from "@/pages/ariza";
@@ -224,6 +226,7 @@ function Router() {
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [location, setLocation] = useLocation();
+  const [qrModalOpen, setQrModalOpen] = useState(false);
   const { data: branches } = useQuery<any[]>({
     queryKey: ["/api/branches"],
     enabled: isAuthenticated && !!user,
@@ -280,7 +283,11 @@ function AppContent() {
         notificationCount={notificationData?.count || 0}
         user={user}
         branchName={branchName}
+        onQRClick={() => setQrModalOpen(true)}
       />
+      
+      {/* QR Scanner Modal */}
+      <QRScannerModal open={qrModalOpen} onOpenChange={setQrModalOpen} />
       
       {/* Main Content */}
       <main className="flex-1 overflow-auto pb-20">
