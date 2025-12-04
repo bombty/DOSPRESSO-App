@@ -348,15 +348,33 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
         />
       </div>
 
-      {/* Otomatik Hesaplanan Saatler */}
+      {/* Çıkış Saati (Otomatik Hesaplanan) */}
+      <div>
+        <label className="text-xs font-semibold text-muted-foreground">Çıkış Saati (Otomatik)</label>
+        <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.endTime}</div>
+      </div>
+
+      {/* Mola Saatleri (Manuel) */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs font-semibold text-muted-foreground">Çıkış Saati</label>
-          <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.endTime}</div>
+          <label className="text-xs font-semibold">Mola Başlama</label>
+          <input
+            type="time"
+            value={formData.breakStartTime}
+            onChange={(e) => setFormData({ ...formData, breakStartTime: e.target.value })}
+            className="w-full px-2 py-1 text-xs border rounded-md"
+            data-testid="input-break-start"
+          />
         </div>
         <div>
-          <label className="text-xs font-semibold text-muted-foreground">Mola</label>
-          <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.breakStartTime}-{formData.breakEndTime}</div>
+          <label className="text-xs font-semibold">Mola Bitişi</label>
+          <input
+            type="time"
+            value={formData.breakEndTime}
+            onChange={(e) => setFormData({ ...formData, breakEndTime: e.target.value })}
+            className="w-full px-2 py-1 text-xs border rounded-md"
+            data-testid="input-break-end"
+          />
         </div>
       </div>
 
