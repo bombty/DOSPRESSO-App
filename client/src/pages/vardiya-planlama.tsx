@@ -1024,29 +1024,52 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
       employeeHoursMap[empId] += slot.durationHours;
     };
     
-    // Core algorithm: Ensure each employee gets 6 days minimum
-    const minDaysPerEmployee = 6;
-    const maxHoursPerEmployee = (emp: any) => emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
+    // Core algorithm: Full-time 45h/week (6 days x 7.5h), 1 day off
+    const fullTimeHours = 45;
+    const fullTimeDays = 6;
+    const partTimeHours = 25;
     
-    // Step 1: Assign 6 days to each employee
+    const maxHoursPerEmployee = (emp: any) => {
+      if (emp.employmentType === 'parttime') return partTimeHours;
+      return emp.weeklyHours || fullTimeHours;
+    };
+    
+    const maxDaysPerEmployee = (emp: any) => {
+      if (emp.employmentType === 'parttime') return 3; // Part-time: 3 days
+      return fullTimeDays; // Full-time: 6 days
+    };
+    
+    // Step 1: Assign each employee exactly 6 days (or 3 for part-time) - 1 per day only
     for (const emp of sortedEmployees) {
       const empId = String(emp.id);
       let daysAssigned = employeeShiftMap[empId].size;
       let hoursAssigned = employeeHoursMap[empId];
       const maxHours = maxHoursPerEmployee(emp);
+      const maxDays = maxDaysPerEmployee(emp);
       
-      for (const slot of allSlots) {
-        if (daysAssigned >= minDaysPerEmployee) break;
+      // Process days in order, assign max 1 slot per day per employee
+      const daySlotMap: Record<string, any[]> = {};
+      allSlots.forEach(slot => {
+        if (!daySlotMap[slot.date]) daySlotMap[slot.date] = [];
+        daySlotMap[slot.date].push(slot);
+      });
+      
+      for (const dateStr of Object.keys(daySlotMap).sort()) {
+        if (daysAssigned >= maxDays) break;
         if (hoursAssigned >= maxHours) break;
-        if (employeeShiftMap[empId].has(slot.date)) continue; // Already assigned today
+        if (employeeShiftMap[empId].has(dateStr)) continue; // Already assigned this day
         
-        assignShift(emp, slot);
+        // Assign to first available slot of the day (sabah/morning preferred)
+        const daySlots = daySlotMap[dateStr];
+        const availableSlot = daySlots[0]; // Sabah vardiyası
+        
+        assignShift(emp, availableSlot);
         daysAssigned++;
-        hoursAssigned += slot.durationHours;
+        hoursAssigned += availableSlot.durationHours;
       }
     }
     
-    // Step 2: Fill slots that need minimum 2 people
+    // Step 2: Fill empty slots with second person (but not if employee already assigned that day)
     for (const slot of allSlots) {
       const peopleInSlot = newShifts.filter(s => s.shiftDate === slot.date && s.slotName === slot.name).length;
       
@@ -1055,8 +1078,12 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
         
         const empId = String(emp.id);
         const maxHours = maxHoursPerEmployee(emp);
+        const maxDays = maxDaysPerEmployee(emp);
         
-        if (!employeeShiftMap[empId].has(slot.date) && employeeHoursMap[empId] < maxHours) {
+        // CRITICAL: Do NOT assign if employee already assigned any shift on this day
+        if (!employeeShiftMap[empId].has(slot.date) && 
+            employeeShiftMap[empId].size < maxDays && 
+            employeeHoursMap[empId] < maxHours) {
           assignShift(emp, slot);
         }
       }
