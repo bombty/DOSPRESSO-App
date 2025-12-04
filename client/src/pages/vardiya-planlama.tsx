@@ -5,7 +5,6 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfWeek, addDays, isToday } from "date-fns";
@@ -16,9 +15,7 @@ export default function VardiyaPlanlama() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [selectedShift, setSelectedShift] = useState<any>(null);
-  const [editingDate, setEditingDate] = useState<string | null>(null);
-  const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
+  const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
   const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const { data: shifts } = useQuery({
@@ -31,7 +28,6 @@ export default function VardiyaPlanlama() {
 
   const branchEmployees = (Array.isArray(allEmployees) ? allEmployees : [])?.filter((emp: any) => emp.branchId === user?.branchId) || [];
 
-  // Generate week days
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
       const date = addDays(weekStart, i);
@@ -45,7 +41,6 @@ export default function VardiyaPlanlama() {
     });
   }, [weekStart]);
 
-  // Get shifts for the week
   const weekShifts = useMemo(() => {
     if (!shifts || !Array.isArray(shifts)) return {};
     const byDate: Record<string, any[]> = {};
@@ -55,37 +50,13 @@ export default function VardiyaPlanlama() {
     return byDate;
   }, [shifts, weekDays]);
 
-  // For each day, get which employees have shifts and which don't
-  const employeesByDay = useMemo(() => {
-    const result: Record<string, { hasShift: any; employee: any }[]> = {};
-    
-    weekDays.forEach(day => {
-      const dayShifts = weekShifts[day.dateStr] || [];
-      result[day.dateStr] = branchEmployees.map((emp: any) => {
-        const empShift = dayShifts.find((s: any) => s.assignedToId === emp.id);
-        return { hasShift: empShift, employee: emp };
-      });
-    });
-    
-    return result;
-  }, [weekDays, weekShifts, branchEmployees]);
-
   const previousWeek = () => setWeekStart(addDays(weekStart, -7));
   const nextWeek = () => setWeekStart(addDays(weekStart, 7));
   const goToToday = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
-  const getShiftColor = (shift: any) => {
-    if (!shift) return 'bg-gray-100 dark:bg-gray-800';
-    const start = parseInt(shift.startTime?.split(':')[0] || '0');
-    if (start < 12) return 'bg-yellow-100 dark:bg-yellow-900'; // Sabah - Sarı
-    return 'bg-blue-100 dark:bg-blue-900'; // Akşam - Mavi
-  };
-
-  const getShiftBadgeColor = (shift: any) => {
-    if (!shift) return 'secondary';
-    const start = parseInt(shift.startTime?.split(':')[0] || '0');
-    if (start < 12) return 'default'; // Sabah
-    return 'secondary'; // Akşam
+  const getShiftBgColor = (shift: any) => {
+    const hour = parseInt(shift.startTime?.split(':')[0] || '0');
+    return hour < 12 ? 'bg-yellow-100 dark:bg-yellow-900' : 'bg-blue-100 dark:bg-blue-900';
   };
 
   return (
@@ -124,108 +95,53 @@ export default function VardiyaPlanlama() {
         </Button>
       </div>
 
-      {/* Weekly Calendar Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 auto-rows-max overflow-x-auto">
-        {weekDays.map((day) => {
-          // Calculate summary stats
-          const dayShifts = weekShifts[day.dateStr] || [];
-          const morningCount = dayShifts.filter((s: any) => {
-            const hour = parseInt(s.startTime?.split(':')[0] || '0');
-            return hour < 12;
-          }).length;
-          const eveningCount = dayShifts.filter((s: any) => {
-            const hour = parseInt(s.startTime?.split(':')[0] || '0');
-            return hour >= 12;
-          }).length;
-          const offCount = (employeesByDay[day.dateStr]?.length || 0) - dayShifts.length;
+      {/* Weekly Calendar - Simple Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2">
+        {weekDays.map((day) => (
+          <Card 
+            key={day.dateStr}
+            className={`flex flex-col ${isToday(day.date) ? 'border-primary/50 bg-primary/5' : ''}`}
+          >
+            {/* Day Header */}
+            <div className="p-2 border-b text-center">
+              <div className="text-xs font-semibold text-muted-foreground">{day.shortName}</div>
+              <div className="text-sm font-bold">{day.dayNum}</div>
+            </div>
 
-          return (
-            <Card 
-              key={day.dateStr}
-              className={`min-h-[350px] flex flex-col flex-shrink-0 w-full sm:w-auto ${isToday(day.date) ? 'border-primary/50 bg-primary/5' : ''}`}
-            >
-              {/* Day Header with Summary */}
-              <div className="p-2 border-b bg-muted/50 sticky top-0 z-10">
-                <div className="text-center mb-2">
-                  <div className="text-xs font-semibold text-muted-foreground">{day.shortName}</div>
-                  <div className="text-sm font-bold">{day.dayNum}</div>
-                </div>
-                {/* Summary Badges */}
-                <div className="flex gap-1 justify-center flex-wrap text-xs">
-                  {morningCount > 0 && (
-                    <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100 text-xs h-5 px-1.5">
-                      S:{morningCount}
-                    </Badge>
-                  )}
-                  {eveningCount > 0 && (
-                    <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 text-xs h-5 px-1.5">
-                      A:{eveningCount}
-                    </Badge>
-                  )}
-                  {offCount > 0 && (
-                    <Badge variant="secondary" className="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-xs h-5 px-1.5">
-                      X:{offCount}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              {/* Employees Grid */}
-              <CardContent className="flex-1 p-2 space-y-1 overflow-y-auto">
-                {employeesByDay[day.dateStr]?.map(({ hasShift, employee }) => {
-                  const empName = employee.fullName || `${employee.firstName} ${employee.lastName}`;
+            {/* Shifts List */}
+            <CardContent className="flex-1 p-2 space-y-1.5 overflow-y-auto">
+              {(weekShifts[day.dateStr] || []).length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">-</p>
+              ) : (
+                (weekShifts[day.dateStr] || []).map((shift: any) => {
+                  const emp = branchEmployees.find((e: any) => e.id === shift.assignedToId);
+                  const empName = emp?.fullName || `${emp?.firstName} ${emp?.lastName}`;
                   
                   return (
-                    <div key={employee.id} className="text-xs">
-                      {hasShift ? (
-                        <button
-                          onClick={() => {
-                            setSelectedShift(hasShift);
-                            setEditingDate(day.dateStr);
-                            setEditingEmpId(employee.id);
-                          }}
-                          className={`w-full p-1.5 rounded-md text-left transition-all hover:shadow-md ${getShiftColor(hasShift)}`}
-                          data-testid={`shift-chip-${employee.id}-${day.dateStr}`}
-                        >
-                          <div className="font-semibold truncate">{empName}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {hasShift.startTime?.substring(0, 5)} - {hasShift.endTime?.substring(0, 5)}
-                          </div>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setEditingDate(day.dateStr);
-                            setEditingEmpId(employee.id);
-                          }}
-                          className="w-full p-1.5 rounded-md border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 flex items-center justify-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-                          data-testid={`add-shift-${employee.id}-${day.dateStr}`}
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span className="text-xs truncate">{empName}</span>
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      key={shift.id}
+                      onClick={() => setEditingShiftId(shift.id)}
+                      className={`w-full p-1.5 rounded-md text-left text-xs hover:shadow-sm transition-all ${getShiftBgColor(shift)}`}
+                      data-testid={`shift-${shift.id}`}
+                    >
+                      <div className="font-semibold truncate">{empName}</div>
+                      <div className="text-xs opacity-75">
+                        {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
+                      </div>
+                    </button>
                   );
-                })}
-              </CardContent>
-            </Card>
-          );
-        })}
+                })
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Edit/Create Modal */}
-      <ShiftModal
-        open={!!editingDate && !!editingEmpId}
-        onOpenChange={() => {
-          setEditingDate(null);
-          setEditingEmpId(null);
-          setSelectedShift(null);
-        }}
-        shift={selectedShift}
-        date={editingDate ? new Date(editingDate) : new Date()}
-        employeeId={editingEmpId}
-        employee={editingEmpId ? branchEmployees.find((e: any) => e.id === editingEmpId) : null}
+      {/* Edit Modal */}
+      <ShiftEditModal
+        open={!!editingShiftId}
+        shiftId={editingShiftId}
+        onOpenChange={() => setEditingShiftId(null)}
       />
 
       {/* AI Planlama Modal */}
@@ -240,57 +156,35 @@ export default function VardiyaPlanlama() {
   );
 }
 
-function ShiftModal({ 
-  open, 
-  onOpenChange, 
-  shift, 
-  date, 
-  employeeId,
-  employee
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  shift?: any;
-  date: Date;
-  employeeId?: string | null;
-  employee?: any;
-}) {
+function ShiftEditModal({ open, shiftId, onOpenChange }: { open: boolean; shiftId: number | null; onOpenChange: (open: boolean) => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: shifts } = useQuery({ queryKey: ['/api/shifts'] });
+  
+  const shift = (Array.isArray(shifts) ? shifts : []).find((s: any) => s.id === shiftId);
   const [formData, setFormData] = useState({
-    startTime: shift?.startTime?.substring(0, 5) || '08:00',
-    endTime: shift?.endTime?.substring(0, 5) || '16:30',
-    breakStartTime: shift?.breakStartTime?.substring(0, 5) || '11:00',
-    breakEndTime: shift?.breakEndTime?.substring(0, 5) || '12:00',
+    startTime: '',
+    endTime: '',
+    breakStartTime: '',
+    breakEndTime: '',
   });
 
   const handleStartTimeChange = (time: string) => {
-    setFormData(prev => {
-      const [hours, mins] = time.split(':').map(Number);
-      let endHours = (hours + 8) % 24;
-      const endMins = 30;
-      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
-      
-      let breakStartHours = (hours + 3) % 24;
-      const breakStartMins = 30;
-      let breakEndHours = (hours + 4) % 24;
-      const breakStartTime = `${String(breakStartHours).padStart(2, '0')}:${String(breakStartMins).padStart(2, '0')}`;
-      const breakEndTime = `${String(breakEndHours).padStart(2, '0')}:30`;
-      
-      return {
-        ...prev,
-        startTime: time,
-        endTime,
-        breakStartTime,
-        breakEndTime,
-      };
-    });
+    const [hours, mins] = time.split(':').map(Number);
+    const endHours = (hours + 8) % 24;
+    const endTime = `${String(endHours).padStart(2, '0')}:30`;
+    const breakStartHours = (hours + 3) % 24;
+    const breakEndHours = (hours + 4) % 24;
+    const breakStart = `${String(breakStartHours).padStart(2, '0')}:30`;
+    const breakEnd = `${String(breakEndHours).padStart(2, '0')}:30`;
+
+    setFormData({ startTime: time, endTime, breakStartTime: breakStart, breakEndTime: breakEnd });
   };
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (!shift?.id) return;
-      await apiRequest('DELETE', `/api/shifts/${shift.id}`);
+      if (!shiftId) return;
+      await apiRequest('DELETE', `/api/shifts/${shiftId}`);
     },
     onSuccess: () => {
       toast({ title: "Basarili", description: "Vardiya silindi" });
@@ -304,31 +198,16 @@ function ShiftModal({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (shift?.id) {
-        // Update
-        await apiRequest('PATCH', `/api/shifts/${shift.id}`, {
-          startTime: `${formData.startTime}:00`,
-          endTime: `${formData.endTime}:00`,
-          breakStartTime: `${formData.breakStartTime}:00`,
-          breakEndTime: `${formData.breakEndTime}:00`,
-        });
-      } else {
-        // Create
-        await apiRequest('POST', '/api/shifts', {
-          branchId: user?.branchId || 0,
-          shiftDate: format(date, 'yyyy-MM-dd'),
-          startTime: `${formData.startTime}:00`,
-          endTime: `${formData.endTime}:00`,
-          breakStartTime: `${formData.breakStartTime}:00`,
-          breakEndTime: `${formData.breakEndTime}:00`,
-          assignedToId: employeeId,
-          status: 'draft',
-          createdById: user?.id,
-        });
-      }
+      if (!shiftId) return;
+      await apiRequest('PATCH', `/api/shifts/${shiftId}`, {
+        startTime: `${formData.startTime}:00`,
+        endTime: `${formData.endTime}:00`,
+        breakStartTime: `${formData.breakStartTime}:00`,
+        breakEndTime: `${formData.breakEndTime}:00`,
+      });
     },
     onSuccess: () => {
-      toast({ title: "Basarili", description: shift?.id ? "Vardiya guncellendi" : "Vardiya olusturuldu" });
+      toast({ title: "Basarili", description: "Vardiya guncellendi" });
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
       onOpenChange(false);
     },
@@ -337,21 +216,29 @@ function ShiftModal({
     },
   });
 
+  if (!shift) return null;
+
+  if (!formData.startTime) {
+    setFormData({
+      startTime: shift.startTime?.substring(0, 5) || '08:00',
+      endTime: shift.endTime?.substring(0, 5) || '16:30',
+      breakStartTime: shift.breakStartTime?.substring(0, 5) || '11:30',
+      breakEndTime: shift.breakEndTime?.substring(0, 5) || '12:30',
+    });
+  }
+
+  const emp = shift.assignedTo;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>
-            {shift?.id ? `Vardiya Duzenle - ${employee?.fullName}` : `Vardiya Olustur - ${employee?.fullName}`}
-          </DialogTitle>
+          <DialogTitle>Vardiya Duzenle</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="text-xs text-muted-foreground">
-            {format(date, 'd MMMM yyyy', { locale: tr })}
-          </div>
+          <div className="text-sm font-semibold">{emp?.fullName}</div>
 
-          {/* Start Time */}
           <div>
             <label className="text-xs font-semibold">İşe Başlama</label>
             <input
@@ -363,62 +250,20 @@ function ShiftModal({
             />
           </div>
 
-          {/* End Time */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground">Çıkış (Otomatik)</label>
+            <label className="text-xs font-semibold text-muted-foreground">Çıkış (Oto)</label>
             <div className="w-full px-2 py-1 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center mt-1">
               {formData.endTime}
-            </div>
-          </div>
-
-          {/* Break Times */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs font-semibold">Mola Başlama</label>
-              <input
-                type="time"
-                value={formData.breakStartTime}
-                onChange={(e) => {
-                  const breakStart = e.target.value;
-                  const [hours, mins] = breakStart.split(':').map(Number);
-                  const breakEndHours = (hours + 1) % 24;
-                  const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-                  setFormData({ ...formData, breakStartTime: breakStart, breakEndTime: breakEnd });
-                }}
-                className="w-full px-2 py-1 text-xs border rounded-md h-8 mt-1"
-                data-testid="input-break-start"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground">Mola Bitişi (Oto)</label>
-              <div className="w-full px-2 py-1 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center mt-1">
-                {formData.breakEndTime}
-              </div>
             </div>
           </div>
         </div>
 
         <DialogFooter className="flex gap-2 justify-between">
-          <div>
-            {shift?.id && (
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => deleteMutation.mutate()}
-                disabled={deleteMutation.isPending}
-                data-testid="button-delete"
-              >
-                <X className="w-3 h-3 mr-1" />
-                Sil
-              </Button>
-            )}
-          </div>
-          <Button
-            size="sm"
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
-            data-testid="button-save"
-          >
+          <Button size="sm" variant="destructive" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending} data-testid="button-delete">
+            <X className="w-3 h-3 mr-1" />
+            Sil
+          </Button>
+          <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} data-testid="button-save">
             {saveMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
           </Button>
         </DialogFooter>
@@ -442,7 +287,7 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
   onOpenChange: (open: boolean) => void;
   weekStart: Date;
   employees: any[];
-  branchId?: number;
+  branchId: number;
 }) {
   const { toast } = useToast();
   const [step, setStep] = useState<'config' | 'preview' | 'done'>('config');
@@ -480,11 +325,11 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
       const preset = shiftPresets[shiftType];
       const [hours, mins] = preset.startTime.split(':').map(Number);
       const endHours = (hours + 8) % 24;
-      const endTime = `${String(endHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+      const endTime = `${String(endHours).padStart(2, '0')}:30`;
       const breakStartHours = (hours + 3) % 24;
       const breakEndHours = (hours + 4) % 24;
-      const breakStart = `${String(breakStartHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-      const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+      const breakStart = `${String(breakStartHours).padStart(2, '0')}:30`;
+      const breakEnd = `${String(breakEndHours).padStart(2, '0')}:30`;
 
       setAssignments(prev => ({
         ...prev,
@@ -591,83 +436,87 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {step === 'config' ? 'AI ile Otomatik Planla' : 'Onay - Vardiyal'}
+            {step === 'config' ? 'AI ile Haftalik Plan' : 'Onay'}
           </DialogTitle>
         </DialogHeader>
 
         {step === 'config' ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-7 gap-1 text-xs">
-              {/* Header Row */}
-              <div className="font-semibold text-center col-span-1 py-2">Personel</div>
-              {weekDays.map((day) => (
-                <div key={day.dateStr} className="font-semibold text-center text-xs">
-                  <div>{day.shortName}</div>
-                  <div className="text-muted-foreground">{day.dayNum}</div>
-                </div>
-              ))}
+          <div className="space-y-3 text-xs overflow-x-auto">
+            {/* Simple Table Grid */}
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="border p-1 text-left">Personel</th>
+                  {weekDays.map(day => (
+                    <th key={day.dateStr} className="border p-1 text-center">
+                      <div>{day.shortName}</div>
+                      <div className="text-muted-foreground">{day.dayNum}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((emp: any) => (
+                  <tr key={emp.id}>
+                    <td className="border p-1">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</td>
+                    {weekDays.map((day) => {
+                      const assignment = getAssignment(emp.id, day.dateStr);
+                      const isMorning = assignment?.shiftType === 'morning';
+                      const isEvening = assignment?.shiftType === 'evening';
+                      const isOff = assignment?.shiftType === 'off';
 
-              {/* Employee Rows */}
-              {employees.map((emp: any) => (
-                <div key={`row-${emp.id}`} className="contents">
-                  <div className="text-xs py-2 font-medium truncate pr-1">
-                    {emp.fullName || `${emp.firstName} ${emp.lastName}`}
-                  </div>
-                  {weekDays.map((day) => {
-                    const assignment = getAssignment(emp.id, day.dateStr);
-                    const isMorning = assignment?.shiftType === 'morning';
-                    const isEvening = assignment?.shiftType === 'evening';
-                    const isOff = assignment?.shiftType === 'off';
-
-                    return (
-                      <div key={`${emp.id}-${day.dateStr}`} className="flex flex-col gap-0.5 py-1">
-                        {!isOff && (
-                          <>
+                      return (
+                        <td key={`${emp.id}-${day.dateStr}`} className="border p-1 text-center">
+                          <div className="flex flex-col gap-0.5">
+                            {!isOff && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant={isMorning ? "default" : "outline"}
+                                  className={`text-xs h-5 px-1 ${isMorning ? 'bg-yellow-500' : ''}`}
+                                  onClick={() => isMorning ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'morning')}
+                                  data-testid={`btn-morning-${emp.id}-${day.dateStr}`}
+                                >
+                                  S
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant={isEvening ? "default" : "outline"}
+                                  className={`text-xs h-5 px-1 ${isEvening ? 'bg-blue-500' : ''}`}
+                                  onClick={() => isEvening ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'evening')}
+                                  data-testid={`btn-evening-${emp.id}-${day.dateStr}`}
+                                >
+                                  A
+                                </Button>
+                              </>
+                            )}
                             <Button
                               size="sm"
-                              variant={isMorning ? "default" : "outline"}
-                              className={`text-xs h-6 px-1 ${isMorning ? 'bg-yellow-500 hover:bg-yellow-600' : ''}`}
-                              onClick={() => isMorning ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'morning')}
-                              data-testid={`button-morning-${emp.id}-${day.dateStr}`}
+                              variant={isOff ? "default" : "outline"}
+                              className={`text-xs h-5 px-1 ${isOff ? 'bg-destructive' : ''}`}
+                              onClick={() => isOff ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'off')}
+                              data-testid={`btn-off-${emp.id}-${day.dateStr}`}
                             >
-                              S
+                              X
                             </Button>
-                            <Button
-                              size="sm"
-                              variant={isEvening ? "default" : "outline"}
-                              className={`text-xs h-6 px-1 ${isEvening ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
-                              onClick={() => isEvening ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'evening')}
-                              data-testid={`button-evening-${emp.id}-${day.dateStr}`}
-                            >
-                              A
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          size="sm"
-                          variant={isOff ? "default" : "outline"}
-                          className={`text-xs h-6 px-1 ${isOff ? 'bg-destructive hover:bg-destructive/90' : ''}`}
-                          onClick={() => isOff ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'off')}
-                          data-testid={`button-off-${emp.id}-${day.dateStr}`}
-                        >
-                          X
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Iptal
               </Button>
               <Button onClick={generatePlan} data-testid="button-preview">
-                Onayla
+                Devam Et
               </Button>
             </DialogFooter>
           </div>
