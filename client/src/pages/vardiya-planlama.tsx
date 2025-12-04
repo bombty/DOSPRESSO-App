@@ -34,10 +34,11 @@ export default function VardiyaPlanlama() {
     queryKey: ['/api/shifts', format(weekStart, 'yyyy-MM-dd')],
   });
 
-  const { data: branchEmployees } = useQuery({
-    queryKey: ['/api/employees', user?.branchId],
-    enabled: !!user?.branchId,
+  const { data: allEmployees } = useQuery({
+    queryKey: ['/api/employees'],
   });
+
+  const branchEmployees = allEmployees?.filter((emp: any) => emp.branchId === user?.branchId) || [];
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
