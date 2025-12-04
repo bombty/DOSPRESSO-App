@@ -336,22 +336,22 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
         </Select>
       </div>
 
-      {/* Vardiya Saatleri */}
-      <div>
-        <label className="text-xs font-semibold">İşe Başlama Saati</label>
-        <input
-          type="time"
-          value={formData.startTime}
-          onChange={(e) => handleStartTimeChange(e.target.value)}
-          className="w-full px-2 py-1 text-xs border rounded-md"
-          data-testid="input-start-time"
-        />
-      </div>
-
-      {/* Çıkış Saati (Otomatik Hesaplanan) */}
-      <div>
-        <label className="text-xs font-semibold text-muted-foreground">Çıkış Saati (Otomatik)</label>
-        <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.endTime}</div>
+      {/* Vardiya Saatleri (Başlama - Çıkış) */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs font-semibold">İşe Başlama Saati</label>
+          <input
+            type="time"
+            value={formData.startTime}
+            onChange={(e) => handleStartTimeChange(e.target.value)}
+            className="w-full px-2 py-1 text-xs border rounded-md"
+            data-testid="input-start-time"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-muted-foreground">Çıkış Saati (Otomatik)</label>
+          <div className="px-2 py-1 text-xs bg-muted rounded-md">{formData.endTime}</div>
+        </div>
       </div>
 
       {/* Mola Saatleri */}
