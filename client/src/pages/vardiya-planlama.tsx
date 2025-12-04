@@ -21,6 +21,10 @@ export default function VardiyaPlanlama() {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
 
+  // Role-based access: Only these roles can edit shifts
+  const editableRoles = ['supervisor', 'supervisor_buddy', 'destek', 'muhasebe', 'coach', 'teknik', 'satinalma', 'fabrika', 'yatirimci_hq', 'admin'];
+  const canEditShifts = user?.role && editableRoles.includes(user.role);
+
   const { data: shifts, isLoading: shiftsLoading } = useQuery({
     queryKey: ['/api/shifts'],
   });
@@ -94,23 +98,27 @@ export default function VardiyaPlanlama() {
         </div>
         
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => setAddModalOpen(true)} className="gap-2" data-testid="button-add-shift">
-            <UserPlus className="w-4 h-4" />
-            Vardiya Ekle
-          </Button>
-          <Button onClick={() => setAiModalOpen(true)} className="gap-2" data-testid="button-ai-plan">
-            <Wand2 className="w-4 h-4" />
-            AI Planla
-          </Button>
-          <Button 
-            variant="destructive" 
-            onClick={() => setResetConfirmOpen(true)} 
-            className="gap-2" 
-            data-testid="button-reset-shifts"
-          >
-            <Trash2 className="w-4 h-4" />
-            Şiftleri Sıfırla
-          </Button>
+          {canEditShifts && (
+            <>
+              <Button variant="outline" onClick={() => setAddModalOpen(true)} className="gap-2" data-testid="button-add-shift">
+                <UserPlus className="w-4 h-4" />
+                Vardiya Ekle
+              </Button>
+              <Button onClick={() => setAiModalOpen(true)} className="gap-2" data-testid="button-ai-plan">
+                <Wand2 className="w-4 h-4" />
+                AI Planla
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => setResetConfirmOpen(true)} 
+                className="gap-2" 
+                data-testid="button-reset-shifts"
+              >
+                <Trash2 className="w-4 h-4" />
+                Şiftleri Sıfırla
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -155,8 +163,9 @@ export default function VardiyaPlanlama() {
                     return (
                       <button
                         key={shift.id}
-                        onClick={() => setEditingShiftId(shift.id)}
-                        className={`w-full p-1.5 rounded border text-left text-xs transition-all hover:shadow ${getShiftColor(shift)}`}
+                        onClick={() => { if (canEditShifts) setEditingShiftId(shift.id); }}
+                        disabled={!canEditShifts}
+                        className={`w-full p-1.5 rounded border text-left text-xs transition-all ${getShiftColor(shift)} ${canEditShifts ? 'hover:shadow cursor-pointer' : 'opacity-60 cursor-not-allowed'}`}
                         data-testid={`shift-chip-${shift.id}`}
                       >
                         <div className="font-medium truncate">{name}</div>
@@ -174,12 +183,15 @@ export default function VardiyaPlanlama() {
       )}
 
       {/* Edit Shift Modal */}
-      <ShiftEditModal
-        open={!!editingShiftId}
-        shiftId={editingShiftId}
-        employees={branchEmployees}
-        onClose={() => setEditingShiftId(null)}
-      />
+      {editingShiftId && canEditShifts && (
+        <ShiftEditModal
+          open={true}
+          shiftId={editingShiftId}
+          employees={branchEmployees}
+          onClose={() => setEditingShiftId(null)}
+          canEdit={canEditShifts}
+        />
+      )}
 
       {/* Add Shift Modal */}
       <AddShiftModal
@@ -236,11 +248,12 @@ export default function VardiyaPlanlama() {
   );
 }
 
-function ShiftEditModal({ open, shiftId, employees, onClose }: {
+function ShiftEditModal({ open, shiftId, employees, onClose, canEdit = true }: {
   open: boolean;
   shiftId: number | null;
   employees: any[];
   onClose: () => void;
+  canEdit?: boolean;
 }) {
   const { toast } = useToast();
   const { data: shifts } = useQuery({ queryKey: ['/api/shifts'] });
@@ -517,24 +530,28 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
         </div>
 
         <DialogFooter className="gap-2">
-          <Button 
-            size="sm" 
-            variant="destructive" 
-            onClick={() => deleteMutation.mutate()}
-            disabled={deleteMutation.isPending}
-            data-testid="button-delete-shift"
-          >
-            {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-            Sil
-          </Button>
-          <Button 
-            size="sm"
-            onClick={() => updateMutation.mutate()}
-            disabled={updateMutation.isPending}
-            data-testid="button-update-shift"
-          >
-            {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Kaydet"}
-          </Button>
+          {canEdit && (
+            <>
+              <Button 
+                size="sm" 
+                variant="destructive" 
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                data-testid="button-delete-shift"
+              >
+                {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                Sil
+              </Button>
+              <Button 
+                size="sm"
+                onClick={() => updateMutation.mutate()}
+                disabled={updateMutation.isPending}
+                data-testid="button-update-shift"
+              >
+                {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Kaydet"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
