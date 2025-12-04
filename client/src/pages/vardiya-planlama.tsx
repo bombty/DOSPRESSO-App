@@ -5,6 +5,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfWeek, addDays, isToday } from "date-fns";
@@ -195,10 +196,14 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
   }, [shifts, shiftId]);
 
   const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [breakStartTime, setBreakStartTime] = useState('');
+  const [breakEndTime, setBreakEndTime] = useState('');
   const [checklist1, setChecklist1] = useState('');
   const [checklist2, setChecklist2] = useState('');
   const [checklist3, setChecklist3] = useState('');
   const [selectedTask, setSelectedTask] = useState('');
+  const [quickTaskText, setQuickTaskText] = useState('');
 
   const emp = useMemo(() => {
     if (!shift) return null;
@@ -223,15 +228,12 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
   const updateMutation = useMutation({
     mutationFn: () => {
       const [h] = startTime.split(':').map(Number);
-      const endH = (h + 8) % 24;
-      const breakStartH = (h + 3) % 24;
-      const breakEndH = (h + 4) % 24;
       
       return apiRequest('PATCH', `/api/shifts/${shiftId}`, {
         startTime: `${startTime}:00`,
-        endTime: `${String(endH).padStart(2, '0')}:30:00`,
-        breakStartTime: `${String(breakStartH).padStart(2, '0')}:30:00`,
-        breakEndTime: `${String(breakEndH).padStart(2, '0')}:30:00`,
+        endTime: `${endTime}:00`,
+        breakStartTime: `${breakStartTime}:00`,
+        breakEndTime: `${breakEndTime}:00`,
         shiftType: h < 12 ? 'morning' : 'evening',
         checklistId: checklist1 && checklist1 !== 'none' ? parseInt(checklist1) : null,
         checklist2Id: checklist2 && checklist2 !== 'none' ? parseInt(checklist2) : null,
@@ -242,6 +244,29 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
       toast({ title: "Güncellendi" });
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
       onClose();
+    },
+    onError: (err: Error) => toast({ title: "Hata", description: err.message, variant: "destructive" }),
+  });
+
+  const quickTaskMutation = useMutation({
+    mutationFn: () => {
+      if (!quickTaskText.trim() || !shift?.assignedToId) {
+        throw new Error("Görev açıklaması veya personel gerekli");
+      }
+      return apiRequest('POST', '/api/tasks', {
+        title: quickTaskText.trim(),
+        description: quickTaskText.trim(),
+        priority: 'medium',
+        branchId: shift.branchId,
+        assignedToId: shift.assignedToId,
+        dueDate: shift.shiftDate,
+        status: 'assigned',
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Hızlı Görev Oluşturuldu" });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      setQuickTaskText('');
     },
     onError: (err: Error) => toast({ title: "Hata", description: err.message, variant: "destructive" }),
   });
@@ -269,6 +294,15 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
   if (!startTime && shift.startTime) {
     setStartTime(shift.startTime.substring(0, 5));
   }
+  if (!endTime && shift.endTime) {
+    setEndTime(shift.endTime.substring(0, 5));
+  }
+  if (!breakStartTime && shift.breakStartTime) {
+    setBreakStartTime(shift.breakStartTime.substring(0, 5));
+  }
+  if (!breakEndTime && shift.breakEndTime) {
+    setBreakEndTime(shift.breakEndTime.substring(0, 5));
+  }
   if (!checklist1 && shift.checklistId) {
     setChecklist1(String(shift.checklistId));
   }
@@ -288,20 +322,50 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Başlangıç Saati</label>
-            <select
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-              data-testid="edit-start-time"
-            >
-              {Array.from({ length: 13 }, (_, i) => {
-                const h = 7 + i;
-                const t = `${String(h).padStart(2, '0')}:00`;
-                return <option key={t} value={t}>{t}</option>;
-              })}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">Başlangıç</label>
+              <Input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="mt-1"
+                data-testid="edit-start-time"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Bitiş</label>
+              <Input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="mt-1"
+                data-testid="edit-end-time"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">Mola Başlangıç</label>
+              <Input
+                type="time"
+                value={breakStartTime}
+                onChange={(e) => setBreakStartTime(e.target.value)}
+                className="mt-1"
+                data-testid="edit-break-start"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Mola Bitiş</label>
+              <Input
+                type="time"
+                value={breakEndTime}
+                onChange={(e) => setBreakEndTime(e.target.value)}
+                className="mt-1"
+                data-testid="edit-break-end"
+              />
+            </div>
           </div>
 
           {/* Checklist Assignments */}
@@ -347,10 +411,10 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
           {/* Task Assignment */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium mb-3">Görev Ata</p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-3">
               <Select value={selectedTask} onValueChange={setSelectedTask}>
                 <SelectTrigger className="text-sm flex-1" data-testid="edit-task-select">
-                  <SelectValue placeholder="Görev seç" />
+                  <SelectValue placeholder="Mevcut görev seç" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Seçilmedi</SelectItem>
@@ -367,6 +431,29 @@ function ShiftEditModal({ open, shiftId, employees, onClose }: {
                 data-testid="button-assign-task"
               >
                 {assignTaskMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ata"}
+              </Button>
+            </div>
+            
+            <div className="flex gap-2">
+              <Input
+                placeholder="Hızlı görev yaz..."
+                value={quickTaskText}
+                onChange={(e) => setQuickTaskText(e.target.value)}
+                className="text-sm"
+                data-testid="quick-task-input"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && quickTaskText.trim()) {
+                    quickTaskMutation.mutate();
+                  }
+                }}
+              />
+              <Button 
+                size="sm"
+                onClick={() => quickTaskMutation.mutate()}
+                disabled={!quickTaskText.trim() || quickTaskMutation.isPending}
+                data-testid="button-quick-task"
+              >
+                {quickTaskMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "+"}
               </Button>
             </div>
           </div>
