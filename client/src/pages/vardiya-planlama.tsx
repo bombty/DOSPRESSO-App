@@ -557,6 +557,12 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
     
     const newShifts: any[] = [];
     const employeeWorkCount: Record<string, number> = {};
+    const dayAssignments: Record<string, Set<string>> = {};
+    
+    // Initialize day assignments from existing shifts and create a copy
+    weekDays.forEach((day) => {
+      dayAssignments[day.dateStr] = new Set(alreadyAssigned[day.dateStr]);
+    });
     
     // Count existing shifts for each employee
     employees.forEach((emp: any) => {
@@ -584,7 +590,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
         const empId = String(emp.id);
         
         // Check if employee can be assigned to this day
-        if (employeeWorkCount[empId] < 5 && !alreadyAssigned[day.dateStr]?.has(empId)) {
+        if (employeeWorkCount[empId] < 5 && !dayAssignments[day.dateStr].has(empId)) {
           const startHour = 8 + Math.floor(Math.random() * 4);
           const endHour = startHour + 8;
           const breakHour = startHour + 3;
@@ -604,6 +610,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
           });
           
           employeeWorkCount[empId]++;
+          dayAssignments[day.dateStr].add(empId);
           assigned = true;
         }
         
