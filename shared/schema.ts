@@ -563,6 +563,10 @@ export const users = pgTable("users", {
   accountStatus: varchar("account_status", { length: 20 }).notNull().default("approved"), // pending, approved, rejected
   approvedBy: varchar("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
+  // Employment type and hours for shift planning
+  employmentType: varchar("employment_type", { length: 20 }).default("fulltime"), // fulltime, parttime
+  weeklyHours: integer("weekly_hours").default(45), // 45 for fulltime, custom for parttime
+  skillScore: integer("skill_score").default(50), // 0-100, for AI planning balance
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
