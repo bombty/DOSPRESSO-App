@@ -380,7 +380,7 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
 
       {openingChecklists.length > 0 && (
         <div>
-          <label className="text-xs font-semibold">Acilis Ceklisti (Opsiyonel)</label>
+          <label className="text-xs font-semibold">1. Checklist (Opsiyonel)</label>
           <Select value={formData.openingChecklistId} onValueChange={(v) => setFormData({ ...formData, openingChecklistId: v })}>
             <SelectTrigger data-testid="select-opening-checklist">
               <SelectValue placeholder="Secin..." />
@@ -398,7 +398,7 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
 
       {closingChecklists.length > 0 && (
         <div>
-          <label className="text-xs font-semibold">Kapanis Ceklisti (Opsiyonel)</label>
+          <label className="text-xs font-semibold">2. Checklist (Opsiyonel)</label>
           <Select value={formData.closingChecklistId} onValueChange={(v) => setFormData({ ...formData, closingChecklistId: v })}>
             <SelectTrigger data-testid="select-closing-checklist">
               <SelectValue placeholder="Secin..." />
