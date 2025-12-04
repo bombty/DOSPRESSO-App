@@ -451,6 +451,14 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
   );
 }
 
+interface ShiftAssignment {
+  employeeId: string;
+  dateStr: string;
+  shiftType: 'morning' | 'evening' | 'off';
+  startTime: string;
+  endTime: string;
+}
+
 function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchId }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -460,8 +468,8 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
 }) {
   const { toast } = useToast();
   const [step, setStep] = useState<'config' | 'preview' | 'done'>('config');
-  const [offDays, setOffDays] = useState<Record<string, string>>({});
-  const [generatedPlan, setGeneratedPlan] = useState<any>(null);
+  const [assignments, setAssignments] = useState<Record<string, ShiftAssignment>>({});
+  const [generatedPlan, setGeneratedPlan] = useState<any[]>([]);
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -469,53 +477,96 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
       return {
         date,
         dayName: format(date, 'EEEE', { locale: tr }),
+        shortName: format(date, 'EEE', { locale: tr }),
         dateStr: format(date, 'yyyy-MM-dd'),
+        dayNum: format(date, 'd'),
       };
     });
   }, [weekStart]);
 
-  const toggleOffDay = (employeeId: string | number, dateStr: string) => {
-    const empId = String(employeeId);
-    setOffDays(prev => {
-      const key = `${empId}-${dateStr}`;
-      if (prev[key]) {
+  const shiftPresets = {
+    morning: { startTime: '08:00', endTime: '16:30', label: 'Sabah' },
+    evening: { startTime: '14:00', endTime: '22:30', label: 'Aksam' },
+    off: { startTime: '', endTime: '', label: 'Off' },
+  };
+
+  const getAssignment = (empId: string, dateStr: string): ShiftAssignment | null => {
+    return assignments[`${empId}-${dateStr}`] || null;
+  };
+
+  const setShiftType = (empId: string, dateStr: string, shiftType: 'morning' | 'evening' | 'off') => {
+    const key = `${empId}-${dateStr}`;
+    if (shiftType === 'off') {
+      setAssignments(prev => {
         const { [key]: _, ...rest } = prev;
-        return rest;
-      }
-      return { ...prev, [key]: 'off' };
+        return { ...rest, [key]: { employeeId: empId, dateStr, shiftType: 'off', startTime: '', endTime: '' } };
+      });
+    } else {
+      const preset = shiftPresets[shiftType];
+      setAssignments(prev => ({
+        ...prev,
+        [key]: { employeeId: empId, dateStr, shiftType, startTime: preset.startTime, endTime: preset.endTime }
+      }));
+    }
+  };
+
+  const updateTime = (empId: string, dateStr: string, field: 'startTime' | 'endTime', value: string) => {
+    const key = `${empId}-${dateStr}`;
+    setAssignments(prev => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: value }
+    }));
+  };
+
+  const clearAssignment = (empId: string, dateStr: string) => {
+    const key = `${empId}-${dateStr}`;
+    setAssignments(prev => {
+      const { [key]: _, ...rest } = prev;
+      return rest;
     });
   };
 
-  const aiGenerateMutation = useMutation({
-    mutationFn: async () => {
-      const weekEnd = format(addDays(weekStart, 6), 'yyyy-MM-dd');
-      const result = await apiRequest('POST', '/api/shifts/ai-suggest', {
-        branchId,
-        weekStart: format(weekStart, 'yyyy-MM-dd'),
-        weekEnd,
-        offDays,
-      });
-      return result;
-    },
-    onSuccess: (data) => {
-      setGeneratedPlan(data);
-      setStep('preview');
-      toast({ title: "AI Plan Olusturuldu", description: "Onizleme icin hazir" });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Hata",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const generatePlan = () => {
+    const shifts: any[] = [];
+    Object.values(assignments).forEach((a) => {
+      if (a.shiftType !== 'off' && a.startTime && a.endTime) {
+        const startTime = a.startTime.length === 5 ? `${a.startTime}:00` : a.startTime;
+        const endTime = a.endTime.length === 5 ? `${a.endTime}:00` : a.endTime;
+        
+        const [startHours, startMins] = a.startTime.split(':').map(Number);
+        const breakStartHours = (startHours + 3) % 24;
+        const breakEndHours = (startHours + 4) % 24;
+        const breakStartTime = `${String(breakStartHours).padStart(2, '0')}:${String(startMins).padStart(2, '0')}:00`;
+        const breakEndTime = `${String(breakEndHours).padStart(2, '0')}:${String(startMins).padStart(2, '0')}:00`;
+        
+        shifts.push({
+          shiftDate: a.dateStr,
+          startTime,
+          endTime,
+          breakStartTime,
+          breakEndTime,
+          shiftType: a.shiftType,
+          assignedToId: a.employeeId,
+          status: 'draft',
+          branchId,
+        });
+      }
+    });
+    
+    if (shifts.length === 0) {
+      toast({ title: "Uyari", description: "En az 1 vardiya atamasi yapin", variant: "destructive" });
+      return;
+    }
+    
+    setGeneratedPlan(shifts);
+    setStep('preview');
+  };
 
   const applyPlanMutation = useMutation({
     mutationFn: async () => {
-      if (!generatedPlan?.shifts) return;
+      if (generatedPlan.length === 0) return;
       await apiRequest('POST', '/api/shifts/bulk-create', {
-        shifts: generatedPlan.shifts,
+        shifts: generatedPlan,
       });
     },
     onSuccess: () => {
@@ -525,7 +576,8 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
       setTimeout(() => {
         onOpenChange(false);
         setStep('config');
-        setGeneratedPlan(null);
+        setGeneratedPlan([]);
+        setAssignments({});
       }, 1500);
     },
     onError: (error: Error) => {
@@ -537,133 +589,150 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     },
   });
 
-  const getEmployeeRoleBadge = (role: string) => {
+  const getEmployeeName = (id: string) => {
+    const emp = employees.find((e: any) => String(e.id) === id);
+    return emp?.fullName || emp?.firstName || 'Bilinmiyor';
+  };
+
+  const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'barista': return <Badge className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20">Barista</Badge>;
-      case 'intern': return <Badge className="text-xs bg-orange-500/10 text-orange-600 border-orange-500/20">Stajyer</Badge>;
-      case 'supervisor': return <Badge className="text-xs bg-green-500/10 text-green-600 border-green-500/20">Supervisor</Badge>;
-      default: return <Badge variant="outline" className="text-xs">{role}</Badge>;
+      case 'barista': return <Badge className="text-xs h-5 bg-blue-500/10 text-blue-600 border-blue-500/20">B</Badge>;
+      case 'intern': return <Badge className="text-xs h-5 bg-orange-500/10 text-orange-600 border-orange-500/20">S</Badge>;
+      case 'supervisor': return <Badge className="text-xs h-5 bg-green-500/10 text-green-600 border-green-500/20">SV</Badge>;
+      default: return null;
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            AI ile Haftalik Vardiya Planlama
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="w-4 h-4 text-primary" />
+            Haftalik Vardiya Planlama
           </DialogTitle>
         </DialogHeader>
 
         {step === 'config' && (
           <>
-            <div className="space-y-4 flex-1 overflow-hidden">
-              {/* Kurallar Bilgisi */}
-              <Card className="bg-muted/50">
-                <CardContent className="py-3 space-y-1">
-                  <p className="text-sm font-semibold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    AI Planlama Kurallari:
-                  </p>
-                  <ul className="text-xs text-muted-foreground space-y-1 ml-6">
-                    <li>- Her stajyerin yaninda en az 1 barista olacak</li>
-                    <li>- Sabah vardiyalari daha az personel (yogun degil)</li>
-                    <li>- Aksam vardiyalari daha fazla personel (yogun)</li>
-                    <li>- Gucler ayriligi: Ayni kisi hem acilis hem kapanis yapmaz</li>
-                    <li>- Her personele haftada en az 1 gun off</li>
-                  </ul>
-                </CardContent>
-              </Card>
-
-              {/* Off Gunleri Secimi */}
-              <div>
-                <p className="text-sm font-semibold mb-2 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Off Gunlerini Isaretleyin:
-                </p>
-                <ScrollArea className="h-[300px] border rounded-md p-2">
-                  <div className="space-y-3">
-                    {employees.filter((emp: any) => emp.id).map((emp: any) => (
-                      <div key={emp.id} className="space-y-1">
-                        <div className="flex items-center gap-2">
+            <div className="flex-1 overflow-auto">
+              <ScrollArea className="h-[60vh]">
+                <div className="space-y-3 pr-2">
+                  {employees.filter((emp: any) => emp.id).map((emp: any) => {
+                    const empId = String(emp.id);
+                    return (
+                      <Card key={emp.id} className="p-2">
+                        <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm font-medium">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
-                          {getEmployeeRoleBadge(emp.role)}
+                          {getRoleBadge(emp.role)}
                         </div>
-                        <div className="flex gap-1 flex-wrap">
+                        
+                        <div className="grid grid-cols-7 gap-1">
                           {weekDays.map((day) => {
-                            const empId = String(emp.id);
-                            const isOff = offDays[`${empId}-${day.dateStr}`];
+                            const assignment = getAssignment(empId, day.dateStr);
+                            const isOff = assignment?.shiftType === 'off';
+                            const isMorning = assignment?.shiftType === 'morning';
+                            const isEvening = assignment?.shiftType === 'evening';
+                            
                             return (
-                              <Button
-                                key={day.dateStr}
-                                size="sm"
-                                variant={isOff ? "default" : "outline"}
-                                className={`text-xs px-2 h-7 ${isOff ? 'bg-destructive hover:bg-destructive/90' : ''}`}
-                                onClick={() => toggleOffDay(empId, day.dateStr)}
-                                data-testid={`off-${empId}-${day.dateStr}`}
-                              >
-                                {day.dayName.substring(0, 3)}
-                              </Button>
+                              <div key={day.dateStr} className="flex flex-col gap-0.5">
+                                <div className="text-center text-xs text-muted-foreground">
+                                  {day.shortName} {day.dayNum}
+                                </div>
+                                
+                                <div className="flex flex-col gap-0.5">
+                                  <Button
+                                    size="sm"
+                                    variant={isMorning ? "default" : "outline"}
+                                    className={`text-xs h-6 px-1 ${isMorning ? 'bg-yellow-500 hover:bg-yellow-600' : ''}`}
+                                    onClick={() => isMorning ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'morning')}
+                                    data-testid={`morning-${empId}-${day.dateStr}`}
+                                  >
+                                    S
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={isEvening ? "default" : "outline"}
+                                    className={`text-xs h-6 px-1 ${isEvening ? 'bg-indigo-500 hover:bg-indigo-600' : ''}`}
+                                    onClick={() => isEvening ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'evening')}
+                                    data-testid={`evening-${empId}-${day.dateStr}`}
+                                  >
+                                    A
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={isOff ? "default" : "outline"}
+                                    className={`text-xs h-6 px-1 ${isOff ? 'bg-destructive hover:bg-destructive/90' : ''}`}
+                                    onClick={() => isOff ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'off')}
+                                    data-testid={`off-${empId}-${day.dateStr}`}
+                                  >
+                                    X
+                                  </Button>
+                                </div>
+
+                                {(isMorning || isEvening) && (
+                                  <div className="flex flex-col gap-0.5 mt-0.5">
+                                    <input
+                                      type="time"
+                                      value={assignment?.startTime || ''}
+                                      onChange={(e) => updateTime(empId, day.dateStr, 'startTime', e.target.value)}
+                                      className="w-full text-xs px-0.5 py-0.5 border rounded text-center h-6"
+                                    />
+                                    <input
+                                      type="time"
+                                      value={assignment?.endTime || ''}
+                                      onChange={(e) => updateTime(empId, day.dateStr, 'endTime', e.target.value)}
+                                      className="w-full text-xs px-0.5 py-0.5 border rounded text-center h-6"
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
-                        <Separator className="mt-2" />
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="mt-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Iptal
               </Button>
-              <Button 
-                onClick={() => aiGenerateMutation.mutate()} 
-                disabled={aiGenerateMutation.isPending || !branchId}
-                className="gap-2"
-              >
-                {aiGenerateMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    AI Planiyor...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Plan Olustur
-                  </>
-                )}
+              <Button onClick={generatePlan} className="gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Plan Olustur ({Object.values(assignments).filter(a => a.shiftType !== 'off').length} vardiya)
               </Button>
             </DialogFooter>
           </>
         )}
 
-        {step === 'preview' && generatedPlan && (
+        {step === 'preview' && (
           <>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-semibold mb-2">Olusturulan Plan Onizlemesi:</p>
-              <ScrollArea className="h-[400px] border rounded-md p-2">
-                <div className="space-y-2">
-                  {generatedPlan.shifts?.map((shift: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-2 border rounded text-sm">
-                      <div>
-                        <span className="font-medium">{shift.shiftDate}</span>
-                        <span className="text-muted-foreground ml-2">
-                          {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
+              <p className="text-sm font-semibold mb-2">Plan Onizlemesi ({generatedPlan.length} vardiya):</p>
+              <ScrollArea className="h-[50vh] border rounded-md p-2">
+                <div className="space-y-1">
+                  {generatedPlan.map((shift: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-2 border rounded text-sm bg-card">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {shift.shiftDate}
+                        </Badge>
+                        <span className="text-muted-foreground">
+                          {shift.startTime} - {shift.endTime}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span>{employees.find(e => e.id === shift.assignedToId)?.fullName || 'Bilinmiyor'}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {shift.shiftType === 'morning' ? 'Sabah' : 
-                           shift.shiftType === 'evening' ? 'Aksam' : 'Gece'}
+                        <span className="font-medium">{getEmployeeName(shift.assignedToId)}</span>
+                        <Badge className={`text-xs ${shift.shiftType === 'morning' ? 'bg-yellow-500' : 'bg-indigo-500'}`}>
+                          {shift.shiftType === 'morning' ? 'Sabah' : 'Aksam'}
                         </Badge>
                       </div>
                     </div>
-                  )) || <p className="text-muted-foreground text-center py-4">Plan bos</p>}
+                  ))}
                 </div>
               </ScrollArea>
             </div>
@@ -685,7 +754,7 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    Plani Uygula
+                    Kaydet
                   </>
                 )}
               </Button>
