@@ -351,13 +351,13 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
             type="time"
             value={formData.startTime}
             onChange={(e) => handleStartTimeChange(e.target.value)}
-            className="max-w-24 px-2 py-0.5 text-xs border rounded-md h-8"
+            className="w-20 px-2 py-0.5 text-xs border rounded-md h-8"
             data-testid="input-start-time"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-muted-foreground h-4">Çıkış (Oto)</label>
-          <div className="max-w-24 px-2 py-0.5 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center">{formData.endTime}</div>
+          <div className="w-20 px-2 py-0.5 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center">{formData.endTime}</div>
         </div>
       </div>
 
@@ -375,13 +375,13 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
               const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
               setFormData({ ...formData, breakStartTime: breakStart, breakEndTime: breakEnd });
             }}
-            className="max-w-24 px-2 py-0.5 text-xs border rounded-md h-8"
+            className="w-20 px-2 py-0.5 text-xs border rounded-md h-8"
             data-testid="input-break-start"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-muted-foreground h-4">Mola Bitişi (Oto)</label>
-          <div className="max-w-24 px-2 py-0.5 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center">{formData.breakEndTime}</div>
+          <div className="w-20 px-2 py-0.5 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center">{formData.breakEndTime}</div>
         </div>
       </div>
 
