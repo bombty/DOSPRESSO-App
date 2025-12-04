@@ -3,31 +3,22 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { 
-  format, startOfWeek, addDays, isToday
-} from "date-fns";
+import { format, startOfWeek, addDays, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Clock, Sparkles, Users, Calendar, CheckCircle2, Loader2 } from "lucide-react";
-
-interface ShiftDay {
-  date: Date;
-  shifts: any[];
-  dayOfWeek: string;
-}
+import { ChevronLeft, ChevronRight, Plus, Sparkles, X } from "lucide-react";
 
 export default function VardiyaPlanlama() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selectedShift, setSelectedShift] = useState<any>(null);
+  const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
   const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const { data: shifts } = useQuery({
@@ -38,149 +29,174 @@ export default function VardiyaPlanlama() {
     queryKey: ['/api/employees'],
   });
 
-  const branchEmployees = allEmployees?.filter((emp: any) => emp.branchId === user?.branchId) || [];
+  const branchEmployees = (Array.isArray(allEmployees) ? allEmployees : [])?.filter((emp: any) => emp.branchId === user?.branchId) || [];
 
+  // Generate week days
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
       const date = addDays(weekStart, i);
-      const dayShifts = shifts?.filter((s: any) => s.shiftDate === format(date, 'yyyy-MM-dd')) || [];
       return {
         date,
-        shifts: dayShifts,
-        dayOfWeek: format(date, 'EEEE', { locale: tr })
+        dateStr: format(date, 'yyyy-MM-dd'),
+        dayName: format(date, 'EEEE', { locale: tr }),
+        shortName: format(date, 'EEE', { locale: tr }),
+        dayNum: format(date, 'd'),
       };
     });
-  }, [weekStart, shifts]);
+  }, [weekStart]);
+
+  // Get shifts for the week
+  const weekShifts = useMemo(() => {
+    if (!shifts || !Array.isArray(shifts)) return {};
+    const byDate: Record<string, any[]> = {};
+    weekDays.forEach(day => {
+      byDate[day.dateStr] = shifts.filter((s: any) => s.shiftDate === day.dateStr) || [];
+    });
+    return byDate;
+  }, [shifts, weekDays]);
+
+  // For each day, get which employees have shifts and which don't
+  const employeesByDay = useMemo(() => {
+    const result: Record<string, { hasShift: any; employee: any }[]> = {};
+    
+    weekDays.forEach(day => {
+      const dayShifts = weekShifts[day.dateStr] || [];
+      result[day.dateStr] = branchEmployees.map((emp: any) => {
+        const empShift = dayShifts.find((s: any) => s.assignedToId === emp.id);
+        return { hasShift: empShift, employee: emp };
+      });
+    });
+    
+    return result;
+  }, [weekDays, weekShifts, branchEmployees]);
 
   const previousWeek = () => setWeekStart(addDays(weekStart, -7));
   const nextWeek = () => setWeekStart(addDays(weekStart, 7));
   const goToToday = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
+  const getShiftColor = (shift: any) => {
+    if (!shift) return 'bg-gray-100 dark:bg-gray-800';
+    const start = parseInt(shift.startTime?.split(':')[0] || '0');
+    if (start < 12) return 'bg-yellow-100 dark:bg-yellow-900'; // Sabah - Sarı
+    return 'bg-blue-100 dark:bg-blue-900'; // Akşam - Mavi
+  };
+
+  const getShiftBadgeColor = (shift: any) => {
+    if (!shift) return 'secondary';
+    const start = parseInt(shift.startTime?.split(':')[0] || '0');
+    if (start < 12) return 'default'; // Sabah
+    return 'secondary'; // Akşam
+  };
+
   return (
-    <div className="flex flex-col gap-3 sm:gap-4 p-3">
+    <div className="flex flex-col gap-4 p-3">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Haftalık Vardiya Planlama
+            Haftalık Vardiya Takvimi
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             {format(weekStart, "d MMMM", { locale: tr })} - {format(addDays(weekStart, 6), "d MMMM yyyy", { locale: tr })}
           </p>
         </div>
         
-        {/* AI Planlama Butonu */}
         <Button 
           onClick={() => setAiModalOpen(true)} 
-          className="gap-2"
+          className="gap-2 w-fit"
           data-testid="button-ai-plan"
         >
           <Sparkles className="w-4 h-4" />
-          AI ile Otomatik Planla
+          AI Planla
         </Button>
       </div>
 
       {/* Week Navigation */}
-      <div className="flex items-center gap-2 justify-between sm:justify-start flex-wrap">
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={previousWeek} data-testid="button-prev-week">
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Önceki Hafta
-          </Button>
-          <Button size="sm" variant="outline" onClick={goToToday} data-testid="button-today">
-            Bugün
-          </Button>
-          <Button size="sm" variant="outline" onClick={nextWeek} data-testid="button-next-week">
-            Sonraki Hafta
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" onClick={previousWeek} data-testid="button-prev-week">
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <Button size="sm" variant="outline" onClick={goToToday} data-testid="button-today">
+          Bugün
+        </Button>
+        <Button size="sm" variant="outline" onClick={nextWeek} data-testid="button-next-week">
+          <ChevronRight className="w-4 h-4" />
+        </Button>
       </div>
 
-      {/* 7-Day Grid Calendar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-        {weekDays.map((day, idx) => (
+      {/* Weekly Calendar Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 auto-rows-max">
+        {weekDays.map((day) => (
           <Card 
-            key={idx}
-            className={`${isToday(day.date) ? "border-primary/50 bg-primary/5" : ""} hover-elevate`}
+            key={day.dateStr}
+            className={`min-h-[300px] flex flex-col ${isToday(day.date) ? 'border-primary/50 bg-primary/5' : ''}`}
           >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs sm:text-sm">
-                  {format(day.date, 'd MMM', { locale: tr })}
-                </CardTitle>
-                <Badge variant="secondary" className="text-xs">
-                  {day.dayOfWeek.substring(0, 3)}
-                </Badge>
+            {/* Day Header */}
+            <div className="p-2 border-b bg-muted/50 sticky top-0 z-10">
+              <div className="text-center">
+                <div className="text-xs font-semibold text-muted-foreground">{day.shortName}</div>
+                <div className="text-sm font-bold">{day.dayNum}</div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {/* Shifts List */}
-              <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
-                {day.shifts.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-2">
-                    Vardiya yok
-                  </p>
-                ) : (
-                  day.shifts.map((shift: any) => (
-                    <div 
-                      key={shift.id} 
-                      className="p-1.5 rounded border bg-card hover-elevate cursor-pointer text-xs"
-                      onClick={() => setSelectedShift(shift)}
-                      data-testid={`shift-card-${shift.id}`}
-                    >
-                      <div className="font-semibold text-xs flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {shift.startTime?.substring(0, 5)} - {shift.endTime?.substring(0, 5)}
-                        </div>
-                        {shift.shiftChecklists && shift.shiftChecklists.length > 0 && (
-                          <Badge variant="secondary" className="text-xs h-4 py-0">
-                            {shift.shiftChecklists.length}
-                          </Badge>
-                        )}
-                      </div>
-                      {shift.assignedTo?.fullName && (
-                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          {shift.assignedTo.fullName}
-                        </div>
-                      )}
-                      <Badge variant="outline" className="mt-1 text-xs h-4">
-                        {shift.status === 'draft' ? 'Taslak' : 
-                         shift.status === 'pending_hq' ? 'Onay Bekliyor' :
-                         shift.status === 'confirmed' ? 'Onayli' : shift.status}
-                      </Badge>
-                    </div>
-                  ))
-                )}
-              </div>
+            </div>
 
-              {/* Add Shift Button */}
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="w-full text-xs" data-testid={`button-add-shift-${idx}`}>
-                    <Plus className="w-3 h-3 mr-1" />
-                    Vardiya Ekle
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {format(day.date, 'd MMMM yyyy', { locale: tr })} Icin Vardiya
-                    </DialogTitle>
-                  </DialogHeader>
-                  <QuickAddShiftForm 
-                    date={day.date} 
-                    employees={branchEmployees || []}
-                    onSuccess={() => queryClient.invalidateQueries({ queryKey: ['/api/shifts'] })} 
-                  />
-                </DialogContent>
-              </Dialog>
+            {/* Employees Grid */}
+            <CardContent className="flex-1 p-2 space-y-1 overflow-y-auto">
+              {employeesByDay[day.dateStr]?.map(({ hasShift, employee }) => {
+                const empName = employee.fullName || `${employee.firstName} ${employee.lastName}`;
+                
+                return (
+                  <div key={employee.id} className="text-xs">
+                    {hasShift ? (
+                      <button
+                        onClick={() => {
+                          setSelectedShift(hasShift);
+                          setEditingDate(day.dateStr);
+                          setEditingEmpId(employee.id);
+                        }}
+                        className={`w-full p-1.5 rounded-md text-left transition-all hover:shadow-md ${getShiftColor(hasShift)}`}
+                        data-testid={`shift-chip-${employee.id}-${day.dateStr}`}
+                      >
+                        <div className="font-semibold truncate">{empName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {hasShift.startTime?.substring(0, 5)} - {hasShift.endTime?.substring(0, 5)}
+                        </div>
+                      </button>
+                    ) : (
+                      <Dialog>
+                        <button
+                          onClick={(e) => {
+                            setEditingDate(day.dateStr);
+                            setEditingEmpId(employee.id);
+                          }}
+                          className="w-full p-1.5 rounded-md border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50 flex items-center justify-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+                          data-testid={`add-shift-${employee.id}-${day.dateStr}`}
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span className="text-xs truncate">{empName}</span>
+                        </button>
+                      </Dialog>
+                    )}
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Edit/Create Modal */}
+      <ShiftModal
+        open={!!editingDate && !!editingEmpId}
+        onOpenChange={() => {
+          setEditingDate(null);
+          setEditingEmpId(null);
+          setSelectedShift(null);
+        }}
+        shift={selectedShift}
+        date={editingDate ? new Date(editingDate) : new Date()}
+        employeeId={editingEmpId}
+        employee={editingEmpId ? branchEmployees.find((e: any) => e.id === editingEmpId) : null}
+      />
 
       {/* AI Planlama Modal */}
       <AIShiftPlannerModal 
@@ -188,62 +204,43 @@ export default function VardiyaPlanlama() {
         onOpenChange={setAiModalOpen}
         weekStart={weekStart}
         employees={branchEmployees || []}
-        branchId={user?.branchId}
+        branchId={user?.branchId || 0}
       />
-
-      {/* Shift Details Modal */}
-      {selectedShift && (
-        <Dialog open={!!selectedShift} onOpenChange={() => setSelectedShift(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Vardiya Detaylari</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2 text-sm">
-              <div>
-                <p className="font-semibold">Saat</p>
-                <p>{selectedShift.startTime?.substring(0, 5)} - {selectedShift.endTime?.substring(0, 5)}</p>
-              </div>
-              {selectedShift.assignedTo?.fullName && (
-                <div>
-                  <p className="font-semibold">Personel</p>
-                  <p>{selectedShift.assignedTo.fullName}</p>
-                </div>
-              )}
-              <div>
-                <p className="font-semibold">Durum</p>
-                <Badge>{selectedShift.status}</Badge>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }
 
-function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employees: any[]; onSuccess: () => void }) {
+function ShiftModal({ 
+  open, 
+  onOpenChange, 
+  shift, 
+  date, 
+  employeeId,
+  employee
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  shift?: any;
+  date: Date;
+  employeeId?: string | null;
+  employee?: any;
+}) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    assignedToId: '',
-    startTime: '08:00',
-    endTime: '16:30',
-    breakStartTime: '11:00',
-    breakEndTime: '12:00',
-    openingChecklistId: '',
-    closingChecklistId: '',
-    thirdChecklistId: '',
+    startTime: shift?.startTime?.substring(0, 5) || '08:00',
+    endTime: shift?.endTime?.substring(0, 5) || '16:30',
+    breakStartTime: shift?.breakStartTime?.substring(0, 5) || '11:00',
+    breakEndTime: shift?.breakEndTime?.substring(0, 5) || '12:00',
   });
 
   const handleStartTimeChange = (time: string) => {
     setFormData(prev => {
       const [hours, mins] = time.split(':').map(Number);
-      // 8.5 saat çalışma + 1 saat mola = 9.5 saat
       let endHours = (hours + 8) % 24;
       const endMins = 30;
       const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
       
-      // Mola: başlangıçtan 3.5 saat sonra başlasın (12:30 ise 16:00, 09:00 ise 12:30)
       let breakStartHours = (hours + 3) % 24;
       const breakStartMins = 30;
       let breakEndHours = (hours + 4) % 24;
@@ -260,194 +257,143 @@ function QuickAddShiftForm({ date, employees, onSuccess }: { date: Date; employe
     });
   };
 
-  const { data: checklists } = useQuery({
-    queryKey: ['/api/checklists'],
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!shift?.id) return;
+      await apiRequest('DELETE', `/api/shifts/${shift.id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Basarili", description: "Vardiya silindi" });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
   });
 
-  const openingChecklists = checklists?.filter((c: any) => c.type === 'opening' || !c.type) || [];
-  const closingChecklists = checklists?.filter((c: any) => c.type === 'closing' || !c.type) || [];
-
-  const createMutation = useMutation({
+  const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload: any = {
-        branchId: user?.branchId,
-        shiftDate: format(date, 'yyyy-MM-dd'),
-        startTime: `${formData.startTime}:00`,
-        endTime: `${formData.endTime}:00`,
-        breakStartTime: `${formData.breakStartTime}:00`,
-        breakEndTime: `${formData.breakEndTime}:00`,
-        status: 'draft',
-        assignedToId: formData.assignedToId || null,
-        createdById: user?.id,
-      };
-
-      const shiftRes = await apiRequest('POST', '/api/shifts', payload);
-      
-      if ((formData.openingChecklistId || formData.closingChecklistId || formData.thirdChecklistId) && shiftRes?.id) {
-        if (formData.openingChecklistId) {
-          await apiRequest('POST', `/api/shifts/${shiftRes.id}/checklists`, {
-            checklistId: parseInt(formData.openingChecklistId),
-            type: 'opening',
-          });
-        }
-        if (formData.closingChecklistId) {
-          await apiRequest('POST', `/api/shifts/${shiftRes.id}/checklists`, {
-            checklistId: parseInt(formData.closingChecklistId),
-            type: 'closing',
-          });
-        }
-        if (formData.thirdChecklistId) {
-          await apiRequest('POST', `/api/shifts/${shiftRes.id}/checklists`, {
-            checklistId: parseInt(formData.thirdChecklistId),
-            type: 'other',
-          });
-        }
+      if (shift?.id) {
+        // Update
+        await apiRequest('PATCH', `/api/shifts/${shift.id}`, {
+          startTime: `${formData.startTime}:00`,
+          endTime: `${formData.endTime}:00`,
+          breakStartTime: `${formData.breakStartTime}:00`,
+          breakEndTime: `${formData.breakEndTime}:00`,
+        });
+      } else {
+        // Create
+        await apiRequest('POST', '/api/shifts', {
+          branchId: user?.branchId || 0,
+          shiftDate: format(date, 'yyyy-MM-dd'),
+          startTime: `${formData.startTime}:00`,
+          endTime: `${formData.endTime}:00`,
+          breakStartTime: `${formData.breakStartTime}:00`,
+          breakEndTime: `${formData.breakEndTime}:00`,
+          assignedToId: employeeId,
+          status: 'draft',
+          createdById: user?.id,
+        });
       }
     },
     onSuccess: () => {
-      toast({ title: "Basarili", description: "Vardiya olusturuldu" });
-      onSuccess();
+      toast({ title: "Basarili", description: shift?.id ? "Vardiya guncellendi" : "Vardiya olusturuldu" });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Hata",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
 
   return (
-    <div className="space-y-3">
-      {/* Personel Secici */}
-      <div>
-        <label className="text-xs font-semibold">Personel</label>
-        <Select value={formData.assignedToId} onValueChange={(v) => setFormData({ ...formData, assignedToId: v })}>
-          <SelectTrigger data-testid="select-employee">
-            <SelectValue placeholder="Personel secin..." />
-          </SelectTrigger>
-          <SelectContent>
-            {employees.filter((emp: any) => emp.id).map((emp: any) => (
-              <SelectItem key={emp.id} value={String(emp.id)}>
-                <div className="flex items-center gap-2">
-                  <span>{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
-                  <Badge variant="outline" className="text-xs h-4">
-                    {emp.role === 'barista' ? 'Barista' : 
-                     emp.role === 'intern' ? 'Stajyer' : 
-                     emp.role === 'supervisor' ? 'Supervisor' : emp.role}
-                  </Badge>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>
+            {shift?.id ? `Vardiya Duzenle - ${employee?.fullName}` : `Vardiya Olustur - ${employee?.fullName}`}
+          </DialogTitle>
+        </DialogHeader>
 
-      {/* Vardiya Saatleri (Başlama - Çıkış) */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold h-4">İşe Başlama</label>
-          <input
-            type="time"
-            value={formData.startTime}
-            onChange={(e) => handleStartTimeChange(e.target.value)}
-            className="w-20 px-2 py-0.5 text-xs border rounded-md h-8"
-            data-testid="input-start-time"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-muted-foreground h-4">Çıkış (Oto)</label>
-          <div className="w-20 px-2 py-0.5 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center">{formData.endTime}</div>
-        </div>
-      </div>
+        <div className="space-y-3">
+          <div className="text-xs text-muted-foreground">
+            {format(date, 'd MMMM yyyy', { locale: tr })}
+          </div>
 
-      {/* Mola Saatleri */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold h-4">Mola Başlama</label>
-          <input
-            type="time"
-            value={formData.breakStartTime}
-            onChange={(e) => {
-              const breakStart = e.target.value;
-              const [hours, mins] = breakStart.split(':').map(Number);
-              const breakEndHours = (hours + 1) % 24;
-              const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-              setFormData({ ...formData, breakStartTime: breakStart, breakEndTime: breakEnd });
-            }}
-            className="w-20 px-2 py-0.5 text-xs border rounded-md h-8"
-            data-testid="input-break-start"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-muted-foreground h-4">Mola Bitişi (Oto)</label>
-          <div className="w-20 px-2 py-0.5 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center">{formData.breakEndTime}</div>
-        </div>
-      </div>
+          {/* Start Time */}
+          <div>
+            <label className="text-xs font-semibold">İşe Başlama</label>
+            <input
+              type="time"
+              value={formData.startTime}
+              onChange={(e) => handleStartTimeChange(e.target.value)}
+              className="w-full px-2 py-1 text-xs border rounded-md h-8 mt-1"
+              data-testid="input-start-time"
+            />
+          </div>
 
-      {openingChecklists.length > 0 && (
-        <div>
-          <label className="text-xs font-semibold">1. Checklist (Opsiyonel)</label>
-          <Select value={formData.openingChecklistId} onValueChange={(v) => setFormData({ ...formData, openingChecklistId: v })}>
-            <SelectTrigger data-testid="select-opening-checklist">
-              <SelectValue placeholder="Secin..." />
-            </SelectTrigger>
-            <SelectContent>
-              {openingChecklists.filter((c: any) => c.id).map((c: any) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.titleTr || c.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+          {/* End Time */}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">Çıkış (Otomatik)</label>
+            <div className="w-full px-2 py-1 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center mt-1">
+              {formData.endTime}
+            </div>
+          </div>
 
-      {closingChecklists.length > 0 && (
-        <div>
-          <label className="text-xs font-semibold">2. Checklist (Opsiyonel)</label>
-          <Select value={formData.closingChecklistId} onValueChange={(v) => setFormData({ ...formData, closingChecklistId: v })}>
-            <SelectTrigger data-testid="select-closing-checklist">
-              <SelectValue placeholder="Secin..." />
-            </SelectTrigger>
-            <SelectContent>
-              {closingChecklists.filter((c: any) => c.id).map((c: any) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.titleTr || c.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Break Times */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold">Mola Başlama</label>
+              <input
+                type="time"
+                value={formData.breakStartTime}
+                onChange={(e) => {
+                  const breakStart = e.target.value;
+                  const [hours, mins] = breakStart.split(':').map(Number);
+                  const breakEndHours = (hours + 1) % 24;
+                  const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                  setFormData({ ...formData, breakStartTime: breakStart, breakEndTime: breakEnd });
+                }}
+                className="w-full px-2 py-1 text-xs border rounded-md h-8 mt-1"
+                data-testid="input-break-start"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground">Mola Bitişi (Oto)</label>
+              <div className="w-full px-2 py-1 text-xs bg-muted rounded-md text-center h-8 flex items-center justify-center mt-1">
+                {formData.breakEndTime}
+              </div>
+            </div>
+          </div>
         </div>
-      )}
 
-      {checklists && checklists.length > 0 && (
-        <div>
-          <label className="text-xs font-semibold">3. Checklist (Opsiyonel)</label>
-          <Select value={formData.thirdChecklistId} onValueChange={(v) => setFormData({ ...formData, thirdChecklistId: v })}>
-            <SelectTrigger data-testid="select-third-checklist">
-              <SelectValue placeholder="Secin..." />
-            </SelectTrigger>
-            <SelectContent>
-              {checklists.filter((c: any) => c.id).map((c: any) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.titleTr || c.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      <Button 
-        onClick={() => createMutation.mutate()} 
-        disabled={createMutation.isPending}
-        className="w-full"
-        data-testid="button-submit"
-      >
-        {createMutation.isPending ? "Ekleniyor..." : "Vardiya Ekle"}
-      </Button>
-    </div>
+        <DialogFooter className="flex gap-2 justify-between">
+          <div>
+            {shift?.id && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                data-testid="button-delete"
+              >
+                <X className="w-3 h-3 mr-1" />
+                Sil
+              </Button>
+            )}
+          </div>
+          <Button
+            size="sm"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            data-testid="button-save"
+          >
+            {saveMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -472,6 +418,7 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
   const [step, setStep] = useState<'config' | 'preview' | 'done'>('config');
   const [assignments, setAssignments] = useState<Record<string, ShiftAssignment>>({});
   const [generatedPlan, setGeneratedPlan] = useState<any[]>([]);
+  const { user } = useAuth();
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -490,10 +437,6 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     morning: { startTime: '08:00', label: 'Sabah' },
     evening: { startTime: '14:00', label: 'Aksam' },
     off: { startTime: '', label: 'Off' },
-  };
-
-  const getAssignment = (empId: string, dateStr: string): ShiftAssignment | null => {
-    return assignments[`${empId}-${dateStr}`] || null;
   };
 
   const setShiftType = (empId: string, dateStr: string, shiftType: 'morning' | 'evening' | 'off') => {
@@ -528,38 +471,16 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
     }
   };
 
-  const updateTime = (empId: string, dateStr: string, value: string) => {
-    const key = `${empId}-${dateStr}`;
-    const currentAssignment = assignments[key];
-    if (!currentAssignment) return;
-
-    const [hours, mins] = value.split(':').map(Number);
-    const endHours = (hours + 8) % 24;
-    const endTime = `${String(endHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-
-    const breakStartHours = (hours + 3) % 24;
-    const breakEndHours = (hours + 4) % 24;
-    const breakStart = `${String(breakStartHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-    const breakEnd = `${String(breakEndHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-
-    setAssignments(prev => ({
-      ...prev,
-      [key]: { 
-        ...prev[key], 
-        startTime: value,
-        endTime,
-        breakStartTime: breakStart,
-        breakEndTime: breakEnd,
-      }
-    }));
-  };
-
   const clearAssignment = (empId: string, dateStr: string) => {
     const key = `${empId}-${dateStr}`;
     setAssignments(prev => {
       const { [key]: _, ...rest } = prev;
       return rest;
     });
+  };
+
+  const getAssignment = (empId: string, dateStr: string): ShiftAssignment | null => {
+    return assignments[`${empId}-${dateStr}`] || null;
   };
 
   const generatePlan = () => {
@@ -602,206 +523,150 @@ function AIShiftPlannerModal({ open, onOpenChange, weekStart, employees, branchI
       });
     },
     onSuccess: () => {
+      toast({ title: "Basarili", description: `${generatedPlan.length} vardiya olusturuldu` });
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
       setStep('done');
-      toast({ title: "Basarili", description: "Vardiyalar olusturuldu" });
-      setTimeout(() => {
-        onOpenChange(false);
-        setStep('config');
-        setGeneratedPlan([]);
-        setAssignments({});
-      }, 1500);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Hata",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
 
-  const getEmployeeName = (id: string) => {
-    const emp = employees.find((e: any) => String(e.id) === id);
-    return emp?.fullName || emp?.firstName || 'Bilinmiyor';
-  };
-
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'barista': return <Badge className="text-xs h-5 bg-blue-500/10 text-blue-600 border-blue-500/20">B</Badge>;
-      case 'intern': return <Badge className="text-xs h-5 bg-orange-500/10 text-orange-600 border-orange-500/20">S</Badge>;
-      case 'supervisor': return <Badge className="text-xs h-5 bg-green-500/10 text-green-600 border-green-500/20">SV</Badge>;
-      default: return null;
-    }
-  };
+  if (step === 'done') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-sm text-center">
+          <div className="py-6">
+            <div className="text-3xl font-bold text-success mb-2">✓</div>
+            <h2 className="text-lg font-bold">Tamamlandi!</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              {generatedPlan.length} vardiya basariyla olusturuldu.
+            </p>
+            <Button
+              className="w-full mt-4"
+              onClick={() => {
+                onOpenChange(false);
+                setStep('config');
+                setAssignments({});
+                setGeneratedPlan([]);
+              }}
+            >
+              Kapat
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="w-4 h-4 text-primary" />
-            Haftalik Vardiya Planlama
+          <DialogTitle>
+            {step === 'config' ? 'AI ile Otomatik Planla' : 'Onay - Vardiyal'}
           </DialogTitle>
         </DialogHeader>
 
-        {step === 'config' && (
-          <>
-            <div className="flex-1 overflow-auto">
-              <ScrollArea className="h-[60vh]">
-                <div className="space-y-3 pr-2">
-                  {employees.filter((emp: any) => emp.id).map((emp: any) => {
-                    const empId = String(emp.id);
-                    return (
-                      <Card key={emp.id} className="p-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-medium">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
-                          {getRoleBadge(emp.role)}
-                        </div>
-                        
-                        <div className="grid grid-cols-7 gap-1">
-                          {weekDays.map((day) => {
-                            const assignment = getAssignment(empId, day.dateStr);
-                            const isOff = assignment?.shiftType === 'off';
-                            const isMorning = assignment?.shiftType === 'morning';
-                            const isEvening = assignment?.shiftType === 'evening';
-                            
-                            return (
-                              <div key={day.dateStr} className="flex flex-col gap-0.5">
-                                <div className="text-center text-xs text-muted-foreground">
-                                  {day.shortName} {day.dayNum}
-                                </div>
-                                
-                                <div className="flex flex-col gap-0.5">
-                                  {!isOff && (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        variant={isMorning ? "default" : "outline"}
-                                        className={`text-xs h-6 px-1 ${isMorning ? 'bg-yellow-500 hover:bg-yellow-600' : ''}`}
-                                        onClick={() => isMorning ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'morning')}
-                                        data-testid={`morning-${empId}-${day.dateStr}`}
-                                      >
-                                        S
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant={isEvening ? "default" : "outline"}
-                                        className={`text-xs h-6 px-1 ${isEvening ? 'bg-indigo-500 hover:bg-indigo-600' : ''}`}
-                                        onClick={() => isEvening ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'evening')}
-                                        data-testid={`evening-${empId}-${day.dateStr}`}
-                                      >
-                                        A
-                                      </Button>
-                                    </>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant={isOff ? "default" : "outline"}
-                                    className={`text-xs h-6 px-1 ${isOff ? 'bg-destructive hover:bg-destructive/90' : ''}`}
-                                    onClick={() => isOff ? clearAssignment(empId, day.dateStr) : setShiftType(empId, day.dateStr, 'off')}
-                                    data-testid={`off-${empId}-${day.dateStr}`}
-                                  >
-                                    X
-                                  </Button>
-                                </div>
+        {step === 'config' ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-7 gap-1 text-xs">
+              {/* Header Row */}
+              <div className="font-semibold text-center col-span-1 py-2">Personel</div>
+              {weekDays.map((day) => (
+                <div key={day.dateStr} className="font-semibold text-center text-xs">
+                  <div>{day.shortName}</div>
+                  <div className="text-muted-foreground">{day.dayNum}</div>
+                </div>
+              ))}
 
-                                {(isMorning || isEvening) && (
-                                  <div className="flex flex-col gap-0.5 mt-0.5">
-                                    <input
-                                      type="time"
-                                      value={assignment?.startTime || ''}
-                                      onChange={(e) => updateTime(empId, day.dateStr, e.target.value)}
-                                      className="w-full text-xs px-0.5 py-0.5 border rounded text-center h-6"
-                                      title="Başlangıç saati (bitiş otomatik)"
-                                    />
-                                    <div className="text-xs text-muted-foreground text-center px-0.5 py-0.5 bg-muted rounded">
-                                      {assignment?.endTime || '--:--'}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </Card>
+              {/* Employee Rows */}
+              {employees.map((emp: any) => (
+                <div key={`row-${emp.id}`} className="contents">
+                  <div className="text-xs py-2 font-medium truncate pr-1">
+                    {emp.fullName || `${emp.firstName} ${emp.lastName}`}
+                  </div>
+                  {weekDays.map((day) => {
+                    const assignment = getAssignment(emp.id, day.dateStr);
+                    const isMorning = assignment?.shiftType === 'morning';
+                    const isEvening = assignment?.shiftType === 'evening';
+                    const isOff = assignment?.shiftType === 'off';
+
+                    return (
+                      <div key={`${emp.id}-${day.dateStr}`} className="flex flex-col gap-0.5 py-1">
+                        {!isOff && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant={isMorning ? "default" : "outline"}
+                              className={`text-xs h-6 px-1 ${isMorning ? 'bg-yellow-500 hover:bg-yellow-600' : ''}`}
+                              onClick={() => isMorning ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'morning')}
+                              data-testid={`button-morning-${emp.id}-${day.dateStr}`}
+                            >
+                              S
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={isEvening ? "default" : "outline"}
+                              className={`text-xs h-6 px-1 ${isEvening ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
+                              onClick={() => isEvening ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'evening')}
+                              data-testid={`button-evening-${emp.id}-${day.dateStr}`}
+                            >
+                              A
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          size="sm"
+                          variant={isOff ? "default" : "outline"}
+                          className={`text-xs h-6 px-1 ${isOff ? 'bg-destructive hover:bg-destructive/90' : ''}`}
+                          onClick={() => isOff ? clearAssignment(emp.id, day.dateStr) : setShiftType(emp.id, day.dateStr, 'off')}
+                          data-testid={`button-off-${emp.id}-${day.dateStr}`}
+                        >
+                          X
+                        </Button>
+                      </div>
                     );
                   })}
                 </div>
-              </ScrollArea>
+              ))}
             </div>
 
-            <DialogFooter className="mt-2">
+            <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Iptal
               </Button>
-              <Button onClick={generatePlan} className="gap-2">
-                <CheckCircle2 className="w-4 h-4" />
-                Plan Olustur ({Object.values(assignments).filter(a => a.shiftType !== 'off').length} vardiya)
+              <Button onClick={generatePlan} data-testid="button-preview">
+                Onayla
               </Button>
             </DialogFooter>
-          </>
-        )}
-
-        {step === 'preview' && (
-          <>
-            <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-semibold mb-2">Plan Onizlemesi ({generatedPlan.length} vardiya):</p>
-              <ScrollArea className="h-[50vh] border rounded-md p-2">
-                <div className="space-y-1">
-                  {generatedPlan.map((shift: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-2 border rounded text-sm bg-card">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {shift.shiftDate}
-                        </Badge>
-                        <span className="text-muted-foreground">
-                          {shift.startTime} - {shift.endTime}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{getEmployeeName(shift.assignedToId)}</span>
-                        <Badge className={`text-xs ${shift.shiftType === 'morning' ? 'bg-yellow-500' : 'bg-indigo-500'}`}>
-                          {shift.shiftType === 'morning' ? 'Sabah' : 'Aksam'}
-                        </Badge>
-                      </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="text-sm space-y-2 max-h-[300px] overflow-y-auto">
+              {generatedPlan.map((shift, idx) => {
+                const emp = employees.find((e: any) => e.id === shift.assignedToId);
+                return (
+                  <div key={idx} className="p-2 bg-muted rounded text-xs">
+                    <div className="font-semibold">
+                      {emp?.fullName || `${emp?.firstName} ${emp?.lastName}`}
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                    <div className="text-muted-foreground">
+                      {format(new Date(shift.shiftDate), 'd MMMM', { locale: tr })} - {shift.startTime?.substring(0, 5)}-{shift.endTime?.substring(0, 5)}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep('config')}>
-                Geri
+                Geri Don
               </Button>
-              <Button 
-                onClick={() => applyPlanMutation.mutate()} 
-                disabled={applyPlanMutation.isPending}
-                className="gap-2"
-              >
-                {applyPlanMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Uygulanıyor...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    Kaydet
-                  </>
-                )}
+              <Button onClick={() => applyPlanMutation.mutate()} disabled={applyPlanMutation.isPending} data-testid="button-apply">
+                {applyPlanMutation.isPending ? "Uygulanıyor..." : "Uygula"}
               </Button>
             </DialogFooter>
-          </>
-        )}
-
-        {step === 'done' && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
-              <p className="text-lg font-semibold">Vardiyalar Basariyla Olusturuldu!</p>
-            </div>
           </div>
         )}
       </DialogContent>
