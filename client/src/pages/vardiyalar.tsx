@@ -644,7 +644,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="planning" className="w-full space-y-2 sm:space-y-3">
           <Card data-testid="card-week-view">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
@@ -799,7 +799,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="live" className="w-full space-y-2 sm:space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <Card data-testid="card-live-active">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -960,7 +960,7 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="checkin" className="w-full space-y-2 sm:space-y-3">
           <CheckInContent user={user} toast={toast} />
         </TabsContent>
       </Tabs>
