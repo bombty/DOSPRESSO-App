@@ -557,9 +557,15 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
   const [checklist1, setChecklist1] = useState('');
   const [checklist2, setChecklist2] = useState('');
   const [checklist3, setChecklist3] = useState('');
+  const [selectedTask, setSelectedTask] = useState('');
+  const [quickTaskText, setQuickTaskText] = useState('');
 
   const { data: checklists } = useQuery({
     queryKey: ['/api/checklists'],
+  });
+
+  const { data: tasks } = useQuery({
+    queryKey: ['/api/tasks'],
   });
 
   const weekDays = useMemo(() => {
@@ -612,6 +618,11 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
     }
   };
 
+  const availableTasks = useMemo(() => {
+    if (!tasks || !Array.isArray(tasks)) return [];
+    return tasks.filter((t: any) => t.status === 'pending' || t.status === 'assigned');
+  }, [tasks]);
+
   const resetForm = () => {
     setSelectedEmployee('');
     setSelectedDays([]);
@@ -620,6 +631,8 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
     setChecklist1('');
     setChecklist2('');
     setChecklist3('');
+    setSelectedTask('');
+    setQuickTaskText('');
   };
 
   const createMutation = useMutation({
@@ -645,11 +658,36 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
         checklist3Id: checklist3 && checklist3 !== 'none' ? parseInt(checklist3) : null,
       }));
 
-      return apiRequest('POST', '/api/shifts/bulk-create', { shifts });
+      const result = await apiRequest('POST', '/api/shifts/bulk-create', { shifts });
+
+      // Assign task if selected
+      if (selectedTask && selectedTask !== 'none') {
+        await apiRequest('PATCH', `/api/tasks/${selectedTask}`, {
+          assignedToId: parseInt(selectedEmployee),
+          status: 'assigned',
+          dueDate: selectedDays[0],
+        });
+      }
+
+      // Create quick task if text provided
+      if (quickTaskText.trim()) {
+        await apiRequest('POST', '/api/tasks', {
+          title: quickTaskText.trim(),
+          description: quickTaskText.trim(),
+          priority: 'medium',
+          branchId,
+          assignedToId: parseInt(selectedEmployee),
+          dueDate: selectedDays[0],
+          status: 'assigned',
+        });
+      }
+
+      return result;
     },
     onSuccess: () => {
       toast({ title: "Başarılı", description: `${selectedDays.length} vardiya oluşturuldu` });
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       resetForm();
       onClose();
     },
@@ -809,6 +847,31 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Task Assignment */}
+          <div className="border-t pt-3">
+            <p className="text-sm font-medium mb-2">Görev Ata</p>
+            <div className="flex gap-2 mb-3">
+              <Select value={selectedTask} onValueChange={setSelectedTask}>
+                <SelectTrigger className="text-sm flex-1" data-testid="add-task-select">
+                  <SelectValue placeholder="Mevcut görev seç" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seçilmedi</SelectItem>
+                  {availableTasks.map((task: { id: number; title: string }) => (
+                    <SelectItem key={task.id} value={String(task.id)}>{task.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Input
+              placeholder="Veya hızlıca görev yaz..."
+              value={quickTaskText}
+              onChange={(e) => setQuickTaskText(e.target.value)}
+              className="text-sm"
+              data-testid="input-quick-task"
+            />
           </div>
         </div>
 
