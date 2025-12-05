@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, and, sql, inArray, gte, lte, type SQL } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, inArray, gte, lte, type SQL } from "drizzle-orm";
 import type {
   User,
   UpsertUser,
@@ -253,6 +253,7 @@ export interface IStorage {
   bulkImportUsers(users: UpsertUser[]): Promise<User[]>;
   getUsersByRole(role: string): Promise<User[]>;
   getUsersByBranchAndRole(branchId: number, role: string): Promise<User[]>;
+  getHQAdmins(): Promise<User[]>;
   
   // Password Reset Tokens
   createPasswordResetToken(token: { userId: string; token: string; expiresAt: Date; usedAt: Date | null }): Promise<void>;
@@ -738,6 +739,13 @@ export class DatabaseStorage implements IStorage {
 
   async getUsersByBranchAndRole(branchId: number, role: string): Promise<User[]> {
     return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.role, role))) as Promise<User[]>;
+  }
+
+  async getHQAdmins(): Promise<User[]> {
+    // Get users with HQ admin roles (hq_admin, general_manager)
+    return db.select().from(users).where(
+      or(eq(users.role, 'hq_admin'), eq(users.role, 'general_manager'))
+    ) as Promise<User[]>;
   }
 
   async updateUserPassword(id: string, hashedPassword: string): Promise<void> {

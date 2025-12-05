@@ -6,27 +6,28 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 5, 2025 - TURN 12 Complete - Unified Analytics Dashboard)
-- ✅ **Unified Analytics Tabs**:
-  * Created CoreMetricsGrid component for consistent display
-  * All 3 tabs (Günlük/Haftalık/Aylık) now show same base metrics:
-    - Bekleyen (pending tasks)
-    - Tamamlanan (completed tasks)
-    - Aktif Arıza (active faults)
-    - Geciken Checklist (overdue checklists)
-    - Ekipman Sağlığı (equipment health %)
-  * Period-specific extras preserved:
-    - Weekly: Tamamlanma oranı bar + personel performansı
-    - Monthly: Toplam/Çözülen arıza + en çok arıza yapan ekipman
-- ✅ **Backend Updates**:
-  * Daily endpoint now includes completedTasks
-  * Monthly endpoint now includes pendingTasks + overdueChecklists
-  * Consistent data structure across all analytics endpoints
-- ✅ **Previous Achievements (TURN 11)**:
-  * Analytics Modal with 3 tabs
-  * Employee performance tracking (top 2 + bottom 2)
-  * Click-to-expand modal for AI summaries
-  * Role-based task assignment hierarchy
+## Recent Changes (December 5, 2025 - TURN 13 Complete - Task Notification System)
+- ✅ **Supervisor Task Visibility**:
+  * supervisor and supervisor_buddy roles can now see ALL tasks in their branch
+  * Other branch roles still only see tasks assigned to themselves
+  * Security maintained: branch users cannot access other branches
+- ✅ **Deep Link Navigation**:
+  * All task notifications include `/gorevler?taskId=X` link for direct access
+  * Tasks page reads URL param and auto-opens task drawer
+  * Smart fallback routing based on notification type when link is missing
+- ✅ **Branch Supervisor Notifications**:
+  * Supervisors and supervisor_buddies notified when tasks assigned to their branch
+  * Excludes assignee and assigner from duplicate notifications
+- ✅ **HQ Admin Review Notifications**:
+  * HQ admins (hq_admin, general_manager) notified when tasks are ready for review
+  * Added getHQAdmins() storage function
+- ✅ **Overdue Task Reminders**:
+  * Both assignee and assigner receive notifications with direct task links
+  * Scheduled job runs hourly to check overdue tasks
+- ✅ **Previous Achievements (TURN 12)**:
+  * Unified Analytics Tabs with CoreMetricsGrid
+  * Three-period dashboard (daily/weekly/monthly)
+  * AI-generated summaries
 
 ## System Architecture
 ### UI/UX Decisions

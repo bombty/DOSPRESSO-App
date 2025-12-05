@@ -102,6 +102,7 @@ async function checkOverdueTaskNotifications() {
             title: 'Geciken Görev Hatırlatması',
             message: `"${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
             data: { taskId: task.id, daysOverdue },
+            link: `/gorevler?taskId=${task.id}`,
           });
 
           // Send email to assignee
@@ -132,6 +133,7 @@ async function checkOverdueTaskNotifications() {
             title: 'Atadığınız Görev Gecikti',
             message: `${assigneeName}'a atadığınız "${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
             data: { taskId: task.id, assigneeId: task.assignedToId, daysOverdue },
+            link: `/gorevler?taskId=${task.id}`,
           });
 
           // Send email to assigner

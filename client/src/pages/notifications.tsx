@@ -129,8 +129,25 @@ export default function Notifications() {
     if (notification.link) {
       navigate(notification.link);
     } else {
-      // Fallback: go to home if no link
-      navigate("/");
+      // Smart fallback based on notification type
+      const typeFallbacks: Record<string, string> = {
+        'task_assigned': '/gorevler',
+        'task_started': '/gorevler',
+        'task_completed': '/gorevler',
+        'task_verified': '/gorevler',
+        'task_rejected': '/gorevler',
+        'task_overdue': '/gorevler',
+        'task_overdue_assigner': '/gorevler',
+        'fault_assigned': '/ariza',
+        'fault_updated': '/ariza',
+        'maintenance_reminder': '/ekipman',
+        'shift_change': '/vardiya',
+        'leave_request': '/ik',
+        'announcement': '/duyurular',
+      };
+      
+      const fallbackPath = typeFallbacks[notification.type] || '/';
+      navigate(fallbackPath);
     }
   };
 

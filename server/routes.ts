@@ -932,10 +932,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (requestedBranchId && requestedBranchId !== user.branchId) {
           return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
         }
-        // SECURITY: Branch users can ONLY see tasks assigned to themselves
-        // Ignore any assignedToId query parameter to prevent unauthorized data access
-        const tasks = await storage.getTasks(user.branchId, user.id); // Always user.id for branch users
-        return res.json(tasks);
+        
+        // Supervisor and supervisor_buddy can see ALL tasks in their branch
+        // Other branch roles can only see tasks assigned to themselves
+        const isSupervisorRole = user.role === 'supervisor' || user.role === 'supervisor_buddy';
+        if (isSupervisorRole) {
+          const tasks = await storage.getTasks(user.branchId); // All branch tasks for supervisors
+          return res.json(tasks);
+        } else {
+          // SECURITY: Regular branch users can ONLY see tasks assigned to themselves
+          const tasks = await storage.getTasks(user.branchId, user.id);
+          return res.json(tasks);
+        }
       }
       
       // HQ users can access all or filter by branch/assignedTo
@@ -1011,7 +1019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Yeni Görev Atandı',
             message: `${assignerName} size yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
             data: { taskId: task.id, assignedById: userId },
-            link: `/gorevler`,
+            link: `/gorevler?taskId=${task.id}`,
           });
           
           // Send email notification
@@ -1031,6 +1039,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("Error sending task assignment notification:", notifError);
           // Don't fail task creation if notification fails
         }
+      }
+      
+      // Also notify branch supervisors when a task is assigned to their branch
+      // (only if the supervisor is not the assignee or assigner)
+      try {
+        // Get both supervisors and supervisor_buddies
+        const branchSupervisors = await storage.getUsersByBranchAndRole(taskBranchId!, 'supervisor');
+        const branchSupervisorBuddies = await storage.getUsersByBranchAndRole(taskBranchId!, 'supervisor_buddy');
+        const allBranchSupervisors = [...branchSupervisors, ...branchSupervisorBuddies];
+        
+        const assigner = await storage.getUser(userId);
+        const assignerName = assigner?.firstName && assigner?.lastName 
+          ? `${assigner.firstName} ${assigner.lastName}` 
+          : 'Bir yönetici';
+        
+        for (const supervisor of allBranchSupervisors) {
+          // Skip if supervisor is the assignee or the assigner
+          if (supervisor.id === assigneeId || supervisor.id === userId) continue;
+          
+          await storage.createNotification({
+            userId: supervisor.id,
+            type: 'task_assigned',
+            title: 'Şubenize Yeni Görev',
+            message: `${assignerName} şubenize yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+            data: { taskId: task.id, assignedById: userId, forSupervisor: true },
+            link: `/gorevler?taskId=${task.id}`,
+          });
+        }
+      } catch (supervisorNotifError) {
+        console.error("Error sending supervisor notification:", supervisorNotifError);
       }
       
       res.json(task);
@@ -1089,7 +1127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Görev Tamamlandı',
             message: `${completerName} atadığınız görevi tamamladı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
             data: { taskId: task.id, completedById: userId },
-            link: `/gorevler`,
+            link: `/gorevler?taskId=${task.id}`,
           });
           
           // Send email notification
@@ -1104,6 +1142,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (notifError) {
           console.error("Error sending task completion notification:", notifError);
         }
+      }
+      
+      // Notify HQ admins that a task is ready for review (status = 'incelemede')
+      try {
+        const hqAdmins = await storage.getHQAdmins();
+        const completer = await storage.getUser(userId);
+        const completerName = completer?.firstName && completer?.lastName
+          ? `${completer.firstName} ${completer.lastName}`
+          : 'Bir çalışan';
+        const branch = existingTask.branchId ? await storage.getBranch(existingTask.branchId) : null;
+        const branchName = branch?.name || 'Bilinmeyen Şube';
+        
+        for (const admin of hqAdmins) {
+          // Skip if admin is the completer
+          if (admin.id === userId) continue;
+          
+          await storage.createNotification({
+            userId: admin.id,
+            type: 'task_completed',
+            title: 'Görev İnceleme Bekliyor',
+            message: `${completerName} (${branchName}) bir görevi tamamladı ve onayınızı bekliyor: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
+            data: { taskId: task.id, completedById: userId, branchId: existingTask.branchId },
+            link: `/gorevler?taskId=${task.id}`,
+          });
+        }
+      } catch (hqNotifError) {
+        console.error("Error sending HQ admin review notification:", hqNotifError);
       }
 
       if (photoUrl) {
@@ -1212,7 +1277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Görev Başlatıldı',
             message: `${starterName} atadığınız görevi başlattı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
             data: { taskId: task!.id, startedById: user.id },
-            link: `/gorevler`,
+            link: `/gorevler?taskId=${task!.id}`,
           });
           
           // Send email notification
@@ -1283,7 +1348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Görev Onaylandı ✓',
             message: `${verifierName} görevinizi onayladı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
             data: { taskId: task!.id, verifiedById: user.id },
-            link: `/gorevler`,
+            link: `/gorevler?taskId=${task!.id}`,
           });
           
           // Send email notification
@@ -1360,7 +1425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Görev Reddedildi',
             message: `${rejectorName} görevinizi reddetti: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"${reason ? ` - Neden: ${reason}` : ''}`,
             data: { taskId: task!.id, rejectedById: user.id, reason },
-            link: `/gorevler`,
+            link: `/gorevler?taskId=${task!.id}`,
           });
           
           // Send email notification

@@ -93,6 +93,7 @@ export default function Tasks() {
     enabled: isHQ === true,
   });
 
+  // Handle URL parameters for status filter
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const statusParam = params.get('status');
@@ -105,6 +106,24 @@ export default function Tasks() {
       }
     }
   }, []);
+
+  // Handle URL parameter for deep linking to specific task (from notifications)
+  useEffect(() => {
+    if (!tasks || tasks.length === 0) return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const taskIdParam = params.get('taskId');
+    
+    if (taskIdParam) {
+      const taskId = parseInt(taskIdParam);
+      const foundTask = tasks.find(t => t.id === taskId);
+      if (foundTask) {
+        setSelectedTask(foundTask);
+        // Clear the URL parameter after opening the drawer
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [tasks]);
 
   const clearAllFilters = () => {
     setSearchQuery("");
