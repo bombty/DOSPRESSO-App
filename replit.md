@@ -6,26 +6,29 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 5, 2025 - TURN 9 Complete - Fast Mode)
-- ✅ **Enhanced Analytics System**: Three-period dashboard (Günlük/Haftalık/Aylık)
-  * Component: `client/src/components/enhanced-analytics-card.tsx` (SEKMELI)
-  * Displays: Pending tasks, active faults, overdue checklists, critical equipment
-  * Integrates: Task tracking, fault monitoring, equipment health, AI summary reports
-  * AI Reports: Automatically generated summaries for each period
-- ✅ **API Endpoints Added**:
-  * `GET /api/analytics/daily` - Daily metrics (tasks, faults, checklists, equipment)
-  * `GET /api/analytics/weekly` - Weekly summary (hours, tasks, faults, AI summary)
-  * `GET /api/analytics/monthly` - Monthly overview (costs, resolved issues, completion rates)
-- ✅ **AI Summary Service**:
-  * Function: `generateBranchSummaryReport()` in server/ai.ts
-  * Generates kısa, işletmeci-focused summary reports
-  * Supports 3 periods: daily, weekly, monthly
-  * Fallback to non-AI summary if rate limited
-- ✅ **Dashboard Integration**:
-  * CardGridHub updated with EnhancedAnalyticsCard
-  * Only shown for branch supervisors
-  * Seamless tab switching between periods
-  * All data fields include data-testid attributes
+## Recent Changes (December 5, 2025 - TURN 10 Complete - Performance Analytics)
+- ✅ **Employee Performance Tracking**:
+  * Weekly analytics now shows top 2 and bottom 2 performers
+  * Performance score based on: task completion rate, absences, late arrivals
+  * Avatar display with click-to-navigate to profile page
+  * Role-based visibility (supervisors see team, HQ sees all)
+- ✅ **Analytics Improvements**:
+  * Weekly: Removed redundant hours/shift counts, added employee performance
+  * Monthly: Added equipment health trends, TOP 3 faulty equipment
+  * Click-to-expand modal for detailed AI summaries
+  * Trend arrows (TrendingUp/TrendingDown icons)
+  * Color coding: red (critical), yellow (warning), green (good)
+- ✅ **Quick Task Assignment Hierarchy**:
+  * Role-based assignee filtering in dropdown
+  * HQ → can assign to all branches
+  * Supervisor → branch staff only
+  * Supervisor Buddy → Barista/Bar Buddy/Intern
+  * Barista → Bar Buddy/Intern
+  * Bar Buddy → Intern only
+  * Avatar display in assignee dropdown
+- ✅ **Bug Fixes**:
+  * Fixed "Cannot access 'tasks2' before initialization" error
+  * Fixed schema mismatch: assignedTo → assignedToId alignment
 
 ## System Architecture
 ### UI/UX Decisions
@@ -93,18 +96,19 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Neon Database**: A serverless PostgreSQL instance used as the primary database.
 - **IONOS SMTP**: Employed for sending email notifications.
 
-## Code Quality Metrics (Current - TURN 9)
+## Code Quality Metrics (Current - TURN 10)
 - **Build Status**: ✅ Succeeds
 - **Runtime Status**: ✅ All systems operational
-- **LSP Diagnostics**: 398 warnings (pre-existing, type-safety, non-breaking)
+- **LSP Diagnostics**: 324 warnings (pre-existing, type-safety, non-breaking)
 - **Hardcoded Colors (Pages)**: 0 (100% migrated to semantic tokens)
 - **Console Logs (Pages)**: 0 (all cleaned)
 - **Responsive Layout**: 100% (flex-based, mobile-optimized)
 - **Component Count**: 
   * Core Dashboard: `CardGridHub`, `QuickTaskModal`, `ShiftStatusCard`, `ShiftChecklistCard`, `EnhancedAnalyticsCard`
   * QR System: `QRScannerModal` (global, accessible from all pages)
-  * Analytics: Enhanced tabbed three-period system with AI summaries
+  * Analytics: Enhanced tabbed three-period system with AI summaries and employee performance
   * All with data-testid attributes for testing
 - **Dashboard**: ✅ 100% complete with equipment monitoring, shift tracking, checklist management, quick task creation, real-time analytics (daily/weekly/monthly)
-- **API Endpoints**: ✅ 3 new analytics endpoints (`/api/analytics/daily`, `/api/analytics/weekly`, `/api/analytics/monthly`) fully functional
+- **API Endpoints**: ✅ 3 analytics endpoints with employee performance tracking
+- **Quick Task Modal**: ✅ Role-based task assignment hierarchy
 - **Services**: ✅ AI Summary service complete with smart fallback
