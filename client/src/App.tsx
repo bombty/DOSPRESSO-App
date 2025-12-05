@@ -301,12 +301,17 @@ function AppContent() {
 }
 
 export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AppContent />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+  try {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AppContent />
+          <Toaster />
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  } catch (e) {
+    console.error("App error:", e);
+    return <div style={{ padding: "20px", color: "red" }}>Hata: {String(e)}</div>;
+  }
 }
