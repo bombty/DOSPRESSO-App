@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { AlertCircle, TrendingUp, TrendingDown, Minus, ListTodo, Zap, Wrench, Award, AlertTriangle, User } from "lucide-react";
+import { AlertCircle, TrendingUp, TrendingDown, Minus, ListTodo, Zap, Wrench, Award, AlertTriangle, User, CheckCircle2, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -24,6 +24,7 @@ interface PerformerData {
 interface DailyAnalytics {
   period: string;
   pendingTasks: number;
+  completedTasks: number;
   activeFaults: number;
   overdueChecklists: number;
   criticalEquipment: number;
@@ -49,6 +50,8 @@ interface MonthlyAnalytics {
   period: string;
   totalTasks: number;
   completedTasks: number;
+  pendingTasks: number;
+  overdueChecklists: number;
   totalFaults: number;
   resolvedFaults: number;
   activeFaults: number;
@@ -98,6 +101,112 @@ function PerformerCard({ performer, isTop }: { performer: PerformerData; isTop: 
         <div className={`text-sm font-bold ${isTop ? 'text-green-600' : 'text-red-600'}`}>
           {performer.score}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CoreMetricsGrid({ 
+  pendingTasks, 
+  completedTasks, 
+  activeFaults, 
+  overdueChecklists,
+  avgHealth,
+  criticalEquipment,
+  inModal = false,
+  periodLabel = ""
+}: { 
+  pendingTasks: number;
+  completedTasks: number;
+  activeFaults: number;
+  overdueChecklists: number;
+  avgHealth: number;
+  criticalEquipment: number;
+  inModal?: boolean;
+  periodLabel?: string;
+}) {
+  const [, navigate] = useLocation();
+  
+  return (
+    <div className="space-y-3">
+      <div className={`grid ${inModal ? 'grid-cols-4' : 'grid-cols-2'} gap-2`}>
+        <div 
+          className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20 cursor-pointer hover-elevate" 
+          onClick={() => navigate('/tasks')} 
+          data-testid="card-pending-tasks"
+        >
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3" /> Bekleyen
+          </p>
+          <p className="text-lg font-bold text-yellow-600 dark:text-yellow-500" data-testid="text-pending-tasks">
+            {pendingTasks}
+          </p>
+        </div>
+
+        <div 
+          className="p-2 bg-green-500/10 rounded border border-green-500/20 cursor-pointer hover-elevate" 
+          onClick={() => navigate('/tasks')} 
+          data-testid="card-completed-tasks"
+        >
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" /> Tamamlanan
+          </p>
+          <p className="text-lg font-bold text-green-600 dark:text-green-500" data-testid="text-completed-tasks">
+            {completedTasks}
+          </p>
+        </div>
+
+        <div 
+          className={`p-2 rounded border cursor-pointer hover-elevate ${
+            activeFaults > 0 ? 'bg-destructive/10 border-destructive/20' : 'bg-green-500/10 border-green-500/20'
+          }`}
+          onClick={() => navigate('/faults')} 
+          data-testid="card-active-faults"
+        >
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Wrench className="h-3 w-3" /> Aktif Arıza
+          </p>
+          <p className={`text-lg font-bold ${activeFaults > 0 ? 'text-destructive' : 'text-green-600 dark:text-green-500'}`} data-testid="text-active-faults">
+            {activeFaults}
+          </p>
+        </div>
+
+        <div 
+          className={`p-2 rounded border cursor-pointer hover-elevate ${
+            overdueChecklists > 0 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-green-500/10 border-green-500/20'
+          }`}
+          onClick={() => navigate('/checklists')} 
+          data-testid="card-overdue-checklists"
+        >
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" /> Geciken
+          </p>
+          <p className={`text-lg font-bold ${overdueChecklists > 0 ? 'text-orange-600 dark:text-orange-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-overdue-checklists">
+            {overdueChecklists}
+          </p>
+        </div>
+      </div>
+
+      <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/equipment')} data-testid="card-avg-health">
+        <div className="flex justify-between items-center mb-1">
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Wrench className="h-3 w-3" /> Ekipman Sağlığı
+          </p>
+          <div className="flex items-center gap-2">
+            {criticalEquipment > 0 && (
+              <Badge variant="destructive" className="text-[10px] px-1 py-0">
+                {criticalEquipment} kritik
+              </Badge>
+            )}
+            <span className={`text-sm font-semibold ${
+              avgHealth >= 80 ? 'text-green-600' : 
+              avgHealth >= 50 ? 'text-yellow-600' : 'text-red-600'
+            }`}>
+              %{avgHealth}
+            </span>
+          </div>
+        </div>
+        <Progress value={avgHealth} className="h-1.5" />
       </div>
     </div>
   );
@@ -158,61 +267,16 @@ export function EnhancedAnalyticsCard() {
               </Alert>
             )}
 
-            <div className={`grid ${inModal ? 'grid-cols-4' : 'grid-cols-2'} gap-2`}>
-              {daily.activeFaults > 0 && (
-                <div className="p-2 bg-destructive/10 rounded border border-destructive/20 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-active-faults">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Wrench className="h-3 w-3" /> Aktif Arıza
-                  </p>
-                  <p className="text-lg font-bold text-destructive" data-testid="text-active-faults">
-                    {daily.activeFaults}
-                  </p>
-                </div>
-              )}
-
-              {daily.pendingTasks > 0 && (
-                <div className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-pending-tasks">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <ListTodo className="h-3 w-3" /> Bekleyen
-                  </p>
-                  <p className="text-lg font-bold text-yellow-600 dark:text-yellow-500" data-testid="text-pending-tasks">
-                    {daily.pendingTasks}
-                  </p>
-                </div>
-              )}
-
-              {daily.overdueChecklists > 0 && (
-                <div className="p-2 bg-orange-500/10 rounded border border-orange-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/checklists')} data-testid="card-overdue-checklists">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> Geciken
-                  </p>
-                  <p className="text-lg font-bold text-orange-600 dark:text-orange-500" data-testid="text-overdue-checklists">
-                    {daily.overdueChecklists}
-                  </p>
-                </div>
-              )}
-
-              {daily.criticalEquipment > 0 && (
-                <div className="p-2 bg-red-500/10 rounded border border-red-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/equipment')} data-testid="card-critical-equipment">
-                  <p className="text-xs text-muted-foreground">Kritik Ekipman</p>
-                  <p className="text-lg font-bold text-red-600 dark:text-red-500" data-testid="text-critical-equipment">
-                    {daily.criticalEquipment}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {daily.avgHealth >= 0 && (
-              <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/equipment')} data-testid="card-avg-health">
-                <div className="flex justify-between items-center mb-1">
-                  <p className="text-xs text-muted-foreground">Ekipman Sağlığı</p>
-                  <span className="text-sm font-semibold text-primary" data-testid="text-avg-health">
-                    %{daily.avgHealth}
-                  </span>
-                </div>
-                <Progress value={daily.avgHealth} className="h-1.5" />
-              </div>
-            )}
+            <CoreMetricsGrid
+              pendingTasks={daily.pendingTasks}
+              completedTasks={daily.completedTasks || 0}
+              activeFaults={daily.activeFaults}
+              overdueChecklists={daily.overdueChecklists}
+              avgHealth={daily.avgHealth}
+              criticalEquipment={daily.criticalEquipment}
+              inModal={inModal}
+              periodLabel="Bugün"
+            />
           </>
         )}
       </TabsContent>
@@ -230,46 +294,21 @@ export function EnhancedAnalyticsCard() {
               </Alert>
             )}
 
-            <div className={`grid ${inModal ? 'grid-cols-4' : 'grid-cols-2'} gap-2`}>
-              <div className="p-2 bg-green-500/10 rounded border border-green-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-weekly-completed">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  Tamamlanan <TrendIcon value={weekly.completedTasks} threshold={5} />
-                </p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-500" data-testid="text-completed-tasks">
-                  {weekly.completedTasks}
-                </p>
-              </div>
-
-              <div className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-weekly-pending">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  Bekleyen <TrendIcon value={-weekly.pendingTasks} threshold={-3} />
-                </p>
-                <p className="text-lg font-bold text-yellow-600 dark:text-yellow-500" data-testid="text-weekly-pending">
-                  {weekly.pendingTasks}
-                </p>
-              </div>
-
-              {weekly.activeFaults > 0 && (
-                <div className="p-2 bg-destructive/10 rounded border border-destructive/20 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-weekly-faults">
-                  <p className="text-xs text-muted-foreground">Aktif Arıza</p>
-                  <p className="text-lg font-bold text-destructive" data-testid="text-weekly-faults">
-                    {weekly.activeFaults}
-                  </p>
-                </div>
-              )}
-
-              <div className="p-2 bg-primary/10 rounded border border-primary/20 cursor-pointer hover-elevate" onClick={() => navigate('/checklists')} data-testid="card-weekly-checklist">
-                <p className="text-xs text-muted-foreground">Checklist</p>
-                <p className="text-lg font-bold text-primary" data-testid="text-checklist-rate">
-                  %{weekly.checklistCompletionRate}
-                </p>
-              </div>
-            </div>
+            <CoreMetricsGrid
+              pendingTasks={weekly.pendingTasks}
+              completedTasks={weekly.completedTasks}
+              activeFaults={weekly.activeFaults}
+              overdueChecklists={weekly.overdueChecklists}
+              avgHealth={weekly.avgHealth}
+              criticalEquipment={weekly.criticalEquipment}
+              inModal={inModal}
+              periodLabel="Bu Hafta"
+            />
 
             {/* Checklist completion bar */}
             <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/checklists')} data-testid="card-weekly-checklist-bar">
               <div className="flex justify-between items-center mb-1">
-                <p className="text-xs text-muted-foreground">Checklist Tamamlanma</p>
+                <p className="text-xs text-muted-foreground">Tamamlanma Oranı</p>
                 <span className={`text-xs font-medium ${
                   weekly.checklistCompletionRate >= 80 ? 'text-green-600' : 
                   weekly.checklistCompletionRate >= 50 ? 'text-yellow-600' : 'text-red-600'
@@ -330,23 +369,19 @@ export function EnhancedAnalyticsCard() {
               </Alert>
             )}
 
-            <div className={`grid ${inModal ? 'grid-cols-4' : 'grid-cols-2'} gap-2`}>
-              <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-monthly-total-tasks">
-                <p className="text-xs text-muted-foreground">Toplam Görev</p>
-                <p className="text-lg font-bold text-primary" data-testid="text-total-tasks">
-                  {monthly.totalTasks}
-                </p>
-              </div>
+            <CoreMetricsGrid
+              pendingTasks={monthly.pendingTasks || 0}
+              completedTasks={monthly.completedTasks}
+              activeFaults={monthly.activeFaults}
+              overdueChecklists={monthly.overdueChecklists || 0}
+              avgHealth={monthly.avgHealth}
+              criticalEquipment={monthly.criticalEquipment}
+              inModal={inModal}
+              periodLabel="Bu Ay"
+            />
 
-              <div className="p-2 bg-green-500/10 rounded border border-green-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-monthly-completed">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  Tamamlanan <TrendIcon value={monthly.completedTasks} threshold={10} />
-                </p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-500" data-testid="text-monthly-completed">
-                  {monthly.completedTasks}
-                </p>
-              </div>
-
+            {/* Fault Stats */}
+            <div className={`grid ${inModal ? 'grid-cols-2' : 'grid-cols-2'} gap-2`}>
               <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-monthly-total-faults">
                 <p className="text-xs text-muted-foreground">Toplam Arıza</p>
                 <p className="text-lg font-bold text-primary" data-testid="text-total-faults">
@@ -355,37 +390,13 @@ export function EnhancedAnalyticsCard() {
               </div>
 
               <div className="p-2 bg-green-500/10 rounded border border-green-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-monthly-resolved">
-                <p className="text-xs text-muted-foreground">Çözülen</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  Çözülen <TrendIcon value={monthly.resolvedFaults} threshold={5} />
+                </p>
                 <p className="text-lg font-bold text-green-600 dark:text-green-500" data-testid="text-resolved-faults">
                   {monthly.resolvedFaults}
                 </p>
               </div>
-            </div>
-
-            {/* Equipment Health */}
-            <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/equipment')} data-testid="card-monthly-equipment-health">
-              <div className="flex justify-between items-center mb-1">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Wrench className="h-3 w-3" /> Ekipman Sağlığı
-                </p>
-                <div className="flex items-center gap-2">
-                  {monthly.criticalEquipment > 0 && (
-                    <Badge variant="destructive" className="text-[10px] px-1 py-0">
-                      {monthly.criticalEquipment} kritik
-                    </Badge>
-                  )}
-                  <span className={`text-sm font-semibold ${
-                    monthly.avgHealth >= 80 ? 'text-green-600' : 
-                    monthly.avgHealth >= 50 ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
-                    %{monthly.avgHealth}
-                  </span>
-                </div>
-              </div>
-              <Progress 
-                value={monthly.avgHealth} 
-                className="h-1.5"
-              />
             </div>
 
             {/* Top Faulty Equipment */}
@@ -398,7 +409,8 @@ export function EnhancedAnalyticsCard() {
                   {monthly.topFaultyEquipment.map((eq, idx) => (
                     <div 
                       key={eq.id} 
-                      className="flex items-center justify-between p-2 bg-orange-500/10 rounded border border-orange-500/20"
+                      className="flex items-center justify-between p-2 bg-orange-500/10 rounded border border-orange-500/20 cursor-pointer hover-elevate"
+                      onClick={() => navigate(`/equipment`)}
                       data-testid={`faulty-equipment-${eq.id}`}
                     >
                       <div className="flex items-center gap-2">

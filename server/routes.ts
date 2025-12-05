@@ -12569,6 +12569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const today = new Date().toISOString().split('T')[0];
       const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
+      const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
       const pendingTasks = taskList.filter((t: any) => t.status !== 'completed').length;
       const overdueChecklists = taskList.filter((t: any) => t.dueDate && new Date(t.dueDate) < new Date(today) && t.status !== 'completed').length;
 
@@ -12581,7 +12582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const summary = await generateBranchSummary(pendingTasks, activeFaults, overdueChecklists, 0, criticalEquipment, avgHealth, 'daily', user.id);
 
-      res.json({ period: 'daily', pendingTasks, activeFaults, overdueChecklists, criticalEquipment, avgHealth, summary });
+      res.json({ period: 'daily', pendingTasks, completedTasks, activeFaults, overdueChecklists, criticalEquipment, avgHealth, summary });
     } catch (error: Error | unknown) {
       console.error("Error fetching daily analytics:", error);
       res.status(500).json({ message: "Günlük analitik alınamadı" });
@@ -12683,11 +12684,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
       }
 
+      const today = new Date();
       const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
       const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(100);
       const equips = await db.select().from(equipment).where(branchId ? eq(equipment.branchId, branchId) : undefined).limit(100);
 
       const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
+      const pendingTasks = taskList.filter((t: any) => t.status !== 'completed').length;
+      const overdueChecklists = taskList.filter((t: any) => t.dueDate && new Date(t.dueDate) < today && t.status !== 'completed').length;
       const resolvedFaults = faults.filter((f: any) => f.stage === 'resolved').length;
       const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
       
@@ -12713,12 +12717,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .sort((a, b) => b.count - a.count)
         .slice(0, 3);
 
-      const summary = await generateBranchSummary(taskList.length - completedTasks, activeFaults, 0, 0, criticalEquipment, avgHealth, 'monthly', user.id);
+      const summary = await generateBranchSummary(pendingTasks, activeFaults, overdueChecklists, 0, criticalEquipment, avgHealth, 'monthly', user.id);
 
       res.json({ 
         period: 'monthly', 
         totalTasks: taskList.length, 
-        completedTasks, 
+        completedTasks,
+        pendingTasks,
+        overdueChecklists,
         totalFaults: faults.length, 
         resolvedFaults,
         activeFaults,
