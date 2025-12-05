@@ -1189,6 +1189,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const task = await storage.updateTask(id, { status: "devam_ediyor" });
+      
+      // Send notification to assigner when task is started
+      if (existingTask.assignedById && existingTask.assignedById !== user.id) {
+        try {
+          const starter = await storage.getUser(user.id);
+          const starterName = starter?.firstName && starter?.lastName
+            ? `${starter.firstName} ${starter.lastName}`
+            : 'Bir çalışan';
+          
+          await storage.createNotification({
+            userId: existingTask.assignedById,
+            type: 'task_started',
+            title: 'Görev Başlatıldı',
+            message: `${starterName} atadığınız görevi başlattı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
+            data: { taskId: task!.id, startedById: user.id },
+          });
+          
+          // Send email notification
+          const assigner = await storage.getUser(existingTask.assignedById);
+          if (assigner?.email) {
+            await sendNotificationEmail(
+              assigner.email,
+              'Görev Başlatıldı - DOSPRESSO',
+              `Merhaba ${assigner.firstName || 'Değerli Yönetici'},\n\n${starterName} atadığınız görevi başlattı.\n\nGörev: ${existingTask.description}\nBaşlangıç Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\nGörevi takip etmek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+            );
+          }
+        } catch (notifError) {
+          console.error("Error sending task started notification:", notifError);
+        }
+      }
+      
       res.json(task);
     } catch (error) {
       console.error("Error starting task:", error);
@@ -1228,6 +1259,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update status to verified
       const task = await storage.updateTask(id, { status: "onaylandi" });
+      
+      // Send notification to assignee when task is approved
+      if (existingTask.assignedToId && existingTask.assignedToId !== user.id) {
+        try {
+          const verifier = await storage.getUser(user.id);
+          const verifierName = verifier?.firstName && verifier?.lastName
+            ? `${verifier.firstName} ${verifier.lastName}`
+            : 'Merkez yetkilisi';
+          
+          await storage.createNotification({
+            userId: existingTask.assignedToId,
+            type: 'task_verified',
+            title: 'Görev Onaylandı ✓',
+            message: `${verifierName} görevinizi onayladı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
+            data: { taskId: task!.id, verifiedById: user.id },
+          });
+          
+          // Send email notification
+          const assignee = await storage.getUser(existingTask.assignedToId);
+          if (assignee?.email) {
+            await sendNotificationEmail(
+              assignee.email,
+              'Görev Onaylandı - DOSPRESSO',
+              `Merhaba ${assignee.firstName || 'Değerli Çalışan'},\n\n${verifierName} tamamladığınız görevi onayladı.\n\nGörev: ${existingTask.description}\nOnay Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\nTebrikler! Başarılı çalışmanız için teşekkürler.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+            );
+          }
+        } catch (notifError) {
+          console.error("Error sending task verified notification:", notifError);
+        }
+      }
+      
       res.json(task);
     } catch (error) {
       console.error("Error verifying task:", error);
@@ -1273,6 +1335,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const task = await storage.updateTask(id, updates);
+      
+      // Send notification to assignee when task is rejected
+      if (existingTask.assignedToId && existingTask.assignedToId !== user.id) {
+        try {
+          const rejector = await storage.getUser(user.id);
+          const rejectorName = rejector?.firstName && rejector?.lastName
+            ? `${rejector.firstName} ${rejector.lastName}`
+            : 'Merkez yetkilisi';
+          
+          await storage.createNotification({
+            userId: existingTask.assignedToId,
+            type: 'task_rejected',
+            title: 'Görev Reddedildi',
+            message: `${rejectorName} görevinizi reddetti: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"${reason ? ` - Neden: ${reason}` : ''}`,
+            data: { taskId: task!.id, rejectedById: user.id, reason },
+          });
+          
+          // Send email notification
+          const assignee = await storage.getUser(existingTask.assignedToId);
+          if (assignee?.email) {
+            await sendNotificationEmail(
+              assignee.email,
+              'Görev Reddedildi - DOSPRESSO',
+              `Merhaba ${assignee.firstName || 'Değerli Çalışan'},\n\n${rejectorName} tamamladığınız görevi reddetti.\n\nGörev: ${existingTask.description}${reason ? `\n\nRed Nedeni: ${reason}` : ''}\n\nRed Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\nLütfen görevi tekrar gözden geçirin ve düzelterek tekrar gönderin.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+            );
+          }
+        } catch (notifError) {
+          console.error("Error sending task rejected notification:", notifError);
+        }
+      }
+      
       res.json(task);
     } catch (error) {
       console.error("Error rejecting task:", error);
