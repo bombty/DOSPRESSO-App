@@ -1,9 +1,11 @@
 import { storage } from "./storage";
 import type { Task, Equipment, User } from "@shared/schema";
+import { sendNotificationEmail } from "./email";
 
 const REMINDER_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 const MAINTENANCE_WARNING_DAYS = 7; // Notify 7 days before maintenance due
 const SLA_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
+const OVERDUE_REMINDER_INTERVAL = 60 * 60 * 1000; // 1 hour for overdue reminders
 
 let reminderInterval: NodeJS.Timeout | null = null;
 let slaInterval: NodeJS.Timeout | null = null;
@@ -11,6 +13,9 @@ let slaInterval: NodeJS.Timeout | null = null;
 // Track sent maintenance notifications to avoid duplicates
 // Map<equipmentId, nextMaintenanceDate> to handle maintenance date updates
 const sentMaintenanceNotifications = new Map<number, string>();
+
+// Track overdue task notifications to avoid spamming (taskId -> lastNotifiedAt timestamp)
+const sentOverdueNotifications = new Map<number, number>();
 
 export async function checkAndSendReminders() {
   try {
@@ -54,10 +59,109 @@ export async function checkAndSendReminders() {
       }
     }
 
+    // Check overdue tasks and send notifications to both assignee and assigner
+    await checkOverdueTaskNotifications();
+
     // Check equipment maintenance reminders
     await checkMaintenanceReminders();
   } catch (error) {
     console.error("Hatırlatma kontrolü hatası:", error);
+  }
+}
+
+// Check for overdue tasks and notify both assignee and assigner
+async function checkOverdueTaskNotifications() {
+  try {
+    const tasks = await storage.getTasks();
+    const now = new Date();
+    
+    // Find overdue tasks
+    const overdueTasks = tasks.filter((task: Task) => {
+      if (!task.dueDate) return false;
+      if (task.status === 'onaylandi' || task.status === 'tamamlandi') return false;
+      return new Date(task.dueDate) < now;
+    });
+
+    for (const task of overdueTasks) {
+      const taskKey = task.id;
+      const lastNotified = sentOverdueNotifications.get(taskKey);
+      
+      // Only send notification once per hour per task
+      if (lastNotified && (now.getTime() - lastNotified) < OVERDUE_REMINDER_INTERVAL) {
+        continue;
+      }
+
+      const daysOverdue = Math.ceil((now.getTime() - new Date(task.dueDate!).getTime()) / (24 * 60 * 60 * 1000));
+
+      // Notify assignee
+      if (task.assignedToId) {
+        try {
+          await storage.createNotification({
+            userId: task.assignedToId,
+            type: 'task_overdue',
+            title: 'Geciken Görev Hatırlatması',
+            message: `"${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
+            data: { taskId: task.id, daysOverdue },
+          });
+
+          // Send email to assignee
+          const assignee = await storage.getUser(task.assignedToId);
+          if (assignee?.email) {
+            await sendNotificationEmail(
+              assignee.email,
+              'Geciken Görev Hatırlatması - DOSPRESSO',
+              `Merhaba ${assignee.firstName || 'Değerli Çalışan'},\n\nAtanan göreviniz ${daysOverdue} gündür gecikmiş durumda:\n\nGörev: ${task.description}\nSon Tarih: ${new Date(task.dueDate!).toLocaleDateString('tr-TR')}\n\nLütfen en kısa sürede tamamlayın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+            );
+          }
+        } catch (err) {
+          console.error(`Assignee notification error for task ${task.id}:`, err);
+        }
+      }
+
+      // Notify assigner (if different from assignee)
+      if (task.assignedById && task.assignedById !== task.assignedToId) {
+        try {
+          const assignee = task.assignedToId ? await storage.getUser(task.assignedToId) : null;
+          const assigneeName = assignee?.firstName && assignee?.lastName 
+            ? `${assignee.firstName} ${assignee.lastName}` 
+            : 'Çalışan';
+
+          await storage.createNotification({
+            userId: task.assignedById,
+            type: 'task_overdue_assigner',
+            title: 'Atadığınız Görev Gecikti',
+            message: `${assigneeName}'a atadığınız "${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
+            data: { taskId: task.id, assigneeId: task.assignedToId, daysOverdue },
+          });
+
+          // Send email to assigner
+          const assigner = await storage.getUser(task.assignedById);
+          if (assigner?.email) {
+            await sendNotificationEmail(
+              assigner.email,
+              'Atadığınız Görev Gecikti - DOSPRESSO',
+              `Merhaba ${assigner.firstName || 'Değerli Yönetici'},\n\n${assigneeName}'a atadığınız görev ${daysOverdue} gündür gecikmiş durumda:\n\nGörev: ${task.description}\nSon Tarih: ${new Date(task.dueDate!).toLocaleDateString('tr-TR')}\n\nTakibi yapmanızı öneririz.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+            );
+          }
+        } catch (err) {
+          console.error(`Assigner notification error for task ${task.id}:`, err);
+        }
+      }
+
+      // Mark as notified
+      sentOverdueNotifications.set(taskKey, now.getTime());
+      console.log(`Gecikmiş görev bildirimi gönderildi: Görev ${task.id}, ${daysOverdue} gün gecikmiş`);
+    }
+
+    // Cleanup old tracking (tasks older than 30 days)
+    const thirtyDaysAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+    for (const [taskId, timestamp] of sentOverdueNotifications.entries()) {
+      if (timestamp < thirtyDaysAgo) {
+        sentOverdueNotifications.delete(taskId);
+      }
+    }
+  } catch (error) {
+    console.error("Gecikmiş görev bildirimi hatası:", error);
   }
 }
 

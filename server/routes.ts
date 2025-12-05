@@ -961,11 +961,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
         taskBranchId = branchId; // Override payload branchId
       }
       
+      // For HQ users creating tasks without a branch, get branch from assignee or use first branch
+      if (!taskBranchId && !isBranchRole(user.role as UserRoleType)) {
+        // Try to get assignee's branch
+        if (validatedData.assignedToId) {
+          const assignee = await storage.getUser(validatedData.assignedToId);
+          if (assignee?.branchId) {
+            taskBranchId = assignee.branchId;
+          }
+        }
+        // If still no branch, get first available branch
+        if (!taskBranchId) {
+          const branches = await storage.getBranches();
+          if (branches.length > 0) {
+            taskBranchId = branches[0].id;
+          } else {
+            return res.status(400).json({ message: "Görev oluşturmak için en az bir şube gerekli" });
+          }
+        }
+      }
+      
       const task = await storage.createTask({
         ...validatedData,
-        branchId: taskBranchId,
+        branchId: taskBranchId!,
         assignedToId: validatedData.assignedToId || userId,
+        assignedById: userId, // Track who assigned the task
       });
+      
+      // Send notification to assigned user if different from creator
+      const assigneeId = validatedData.assignedToId || userId;
+      if (assigneeId && assigneeId !== userId) {
+        try {
+          // Get assigner name for notification
+          const assigner = await storage.getUser(userId);
+          const assignerName = assigner?.firstName && assigner?.lastName 
+            ? `${assigner.firstName} ${assigner.lastName}` 
+            : 'Bir yönetici';
+          
+          // Create in-app notification
+          await storage.createNotification({
+            userId: assigneeId,
+            type: 'task_assigned',
+            title: 'Yeni Görev Atandı',
+            message: `${assignerName} size yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+            data: { taskId: task.id, assignedById: userId },
+          });
+          
+          // Send email notification
+          const assignee = await storage.getUser(assigneeId);
+          if (assignee?.email) {
+            const priorityLabels: Record<string, string> = { 'düşük': 'Düşük', 'orta': 'Orta', 'yüksek': 'Yüksek' };
+            const priorityLabel = priorityLabels[task.priority || 'orta'] || 'Orta';
+            const dueDateStr = task.dueDate ? new Date(task.dueDate).toLocaleDateString('tr-TR') : 'Belirtilmemiş';
+            
+            await sendNotificationEmail(
+              assignee.email,
+              'Yeni Görev Atandı - DOSPRESSO',
+              `Merhaba ${assignee.firstName || 'Değerli Çalışan'},\n\n${assignerName} size yeni bir görev atadı.\n\nGörev: ${task.description}\nÖncelik: ${priorityLabel}\nSon Tarih: ${dueDateStr}\n\nGörevi tamamlamak için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+            );
+          }
+        } catch (notifError) {
+          console.error("Error sending task assignment notification:", notifError);
+          // Don't fail task creation if notification fails
+        }
+      }
+      
       res.json(task);
     } catch (error: Error | unknown) {
       console.error("Error creating task:", error);
@@ -1004,6 +1064,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const task = await storage.completeTask(id, photoUrl);
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Send completion notification to the person who assigned the task
+      if (existingTask.assignedById && existingTask.assignedById !== userId) {
+        try {
+          // Get completer name
+          const completer = await storage.getUser(userId);
+          const completerName = completer?.firstName && completer?.lastName
+            ? `${completer.firstName} ${completer.lastName}`
+            : 'Bir çalışan';
+          
+          // Create in-app notification to assigner
+          await storage.createNotification({
+            userId: existingTask.assignedById,
+            type: 'task_completed',
+            title: 'Görev Tamamlandı',
+            message: `${completerName} atadığınız görevi tamamladı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
+            data: { taskId: task.id, completedById: userId },
+          });
+          
+          // Send email notification
+          const assigner = await storage.getUser(existingTask.assignedById);
+          if (assigner?.email) {
+            await sendNotificationEmail(
+              assigner.email,
+              'Görev Tamamlandı - DOSPRESSO',
+              `Merhaba ${assigner.firstName || 'Değerli Yönetici'},\n\n${completerName} atadığınız görevi tamamladı.\n\nGörev: ${existingTask.description}\nTamamlanma Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\nGörevi incelemek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+            );
+          }
+        } catch (notifError) {
+          console.error("Error sending task completion notification:", notifError);
+        }
       }
 
       if (photoUrl) {

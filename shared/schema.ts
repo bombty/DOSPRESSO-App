@@ -716,7 +716,7 @@ export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   checklistId: integer("checklist_id").references(() => checklists.id, { onDelete: "set null" }),
   checklistTaskId: integer("checklist_task_id").references(() => checklistTasks.id, { onDelete: "set null" }),
-  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }), // Nullable for HQ tasks
   assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
   assignedById: varchar("assigned_by_id").references(() => users.id, { onDelete: "set null" }), // Who assigned the task
   description: text("description").notNull(),
@@ -748,6 +748,11 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
 }).extend({
   status: z.enum(taskStatusEnum).optional(),
   priority: z.enum(taskPriorityEnum).optional(),
+  branchId: z.number().nullable().optional(),
+  dueDate: z.preprocess(
+    (val) => (val ? new Date(val as string | Date) : null),
+    z.date().nullable().optional()
+  ),
 });
 
 export const updateTaskSchema = createInsertSchema(tasks).omit({
@@ -757,6 +762,11 @@ export const updateTaskSchema = createInsertSchema(tasks).omit({
 }).extend({
   status: z.enum(taskStatusEnum).optional(),
   priority: z.enum(taskPriorityEnum).optional(),
+  branchId: z.number().nullable().optional(),
+  dueDate: z.preprocess(
+    (val) => (val ? new Date(val as string | Date) : null),
+    z.date().nullable().optional()
+  ),
 }).partial();
 
 export type InsertTask = z.infer<typeof insertTaskSchema>;
