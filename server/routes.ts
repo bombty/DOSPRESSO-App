@@ -1005,6 +1005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Yeni Görev Atandı',
             message: `${assignerName} size yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
             data: { taskId: task.id, assignedById: userId },
+            link: `/gorevler`,
           });
           
           // Send email notification
@@ -1082,6 +1083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Görev Tamamlandı',
             message: `${completerName} atadığınız görevi tamamladı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
             data: { taskId: task.id, completedById: userId },
+            link: `/gorevler`,
           });
           
           // Send email notification
@@ -1204,6 +1206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Görev Başlatıldı',
             message: `${starterName} atadığınız görevi başlattı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
             data: { taskId: task!.id, startedById: user.id },
+            link: `/gorevler`,
           });
           
           // Send email notification
@@ -1274,6 +1277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Görev Onaylandı ✓',
             message: `${verifierName} görevinizi onayladı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
             data: { taskId: task!.id, verifiedById: user.id },
+            link: `/gorevler`,
           });
           
           // Send email notification
@@ -1350,6 +1354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: 'Görev Reddedildi',
             message: `${rejectorName} görevinizi reddetti: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"${reason ? ` - Neden: ${reason}` : ''}`,
             data: { taskId: task!.id, rejectedById: user.id, reason },
+            link: `/gorevler`,
           });
           
           // Send email notification
