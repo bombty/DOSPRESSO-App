@@ -12587,7 +12587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/analytics/weekly - Get weekly analytics with trends
+  // GET /api/analytics/weekly - Get weekly analytics with trends and employee performance
   app.get('/api/analytics/weekly', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -12604,34 +12604,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const today = new Date();
       const weekStart = new Date(today);
       weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
 
-      const shifts = await storage.getShifts(branchId, undefined, weekStart.toISOString().split('T')[0]);
       const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
       const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(50);
-
-      const weeklyHours = shifts.reduce((acc: number, s: any) => {
-        if (!s.startTime || !s.endTime) return acc;
-        const [sh, sm] = s.startTime.split(':').map(Number);
-        const [eh, em] = s.endTime.split(':').map(Number);
-        return acc + (eh * 60 + em - (sh * 60 + sm)) / 60;
-      }, 0);
 
       const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
       const pendingTasks = taskList.filter((t: any) => t.status !== 'completed').length;
       const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
+      const checklistCompletionRate = taskList.length > 0 ? Math.round((completedTasks / taskList.length) * 100) : 100;
+
+      // Employee performance calculation
+      const employees = branchId 
+        ? await db.select().from(users).where(eq(users.branchId, branchId)).limit(50)
+        : await db.select().from(users).limit(100);
+      
+      const performanceData = await Promise.all(employees.map(async (emp: any) => {
+        const empTasks = taskList.filter((t: any) => t.assignedTo === emp.id);
+        const empCompleted = empTasks.filter((t: any) => t.status === 'completed').length;
+        const completionRate = empTasks.length > 0 ? (empCompleted / empTasks.length) * 100 : 100;
+        
+        const attendance = await storage.getUserAttendance(emp.id, weekStart.toISOString().split('T')[0], today.toISOString().split('T')[0]);
+        const absences = attendance.filter((a: any) => !a.checkInTime).length;
+        const lateArrivals = attendance.filter((a: any) => {
+          if (!a.checkInTime) return false;
+          const checkIn = new Date(`1970-01-01T${a.checkInTime}`);
+          return checkIn.getHours() > 9 || (checkIn.getHours() === 9 && checkIn.getMinutes() > 15);
+        }).length;
+        
+        const score = completionRate - (absences * 15) - (lateArrivals * 5);
+        return { 
+          id: emp.id, 
+          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.username, 
+          avatar: emp.profilePhoto,
+          score: Math.max(0, Math.round(score)), 
+          completionRate: Math.round(completionRate),
+          absences, 
+          lateArrivals 
+        };
+      }));
+
+      const sortedPerf = performanceData.sort((a, b) => b.score - a.score);
+      const topPerformers = sortedPerf.slice(0, 2);
+      const bottomPerformers = sortedPerf.slice(-2).reverse();
 
       const summary = await generateBranchSummary(pendingTasks, activeFaults, 0, 0, 0, 100, 'weekly', user.id);
 
-      res.json({ period: 'weekly', weeklyHours: parseFloat(weeklyHours.toFixed(1)), completedTasks, pendingTasks, activeFaults, shiftsCount: shifts.length, summary });
+      res.json({ 
+        period: 'weekly', 
+        completedTasks, 
+        pendingTasks, 
+        activeFaults, 
+        checklistCompletionRate,
+        topPerformers,
+        bottomPerformers,
+        summary 
+      });
     } catch (error: Error | unknown) {
       console.error("Error fetching weekly analytics:", error);
       res.status(500).json({ message: "Haftalık analitik alınamadı" });
     }
   });
 
-  // GET /api/analytics/monthly - Get monthly analytics with summaries
+  // GET /api/analytics/monthly - Get monthly analytics with equipment health and top faulty equipment
   app.get('/api/analytics/monthly', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -12651,11 +12685,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
       const resolvedFaults = faults.filter((f: any) => f.stage === 'resolved').length;
-      const totalCost = faults.reduce((acc: number, f: any) => acc + (f.repairCost || 0), 0);
+      const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
+      
+      // Equipment health metrics
+      const avgHealth = equips.length > 0 
+        ? Math.round(equips.reduce((acc: number, e: any) => acc + (e.healthScore || 100), 0) / equips.length) 
+        : 100;
+      const criticalEquipment = equips.filter((e: any) => e.healthScore && e.healthScore < 50).length;
+      
+      // Top 3 faulty equipment
+      const equipFaultCounts: Record<number, { name: string, count: number }> = {};
+      faults.forEach((f: any) => {
+        if (f.equipmentId) {
+          if (!equipFaultCounts[f.equipmentId]) {
+            const eq = equips.find((e: any) => e.id === f.equipmentId);
+            equipFaultCounts[f.equipmentId] = { name: eq?.name || `Ekipman #${f.equipmentId}`, count: 0 };
+          }
+          equipFaultCounts[f.equipmentId].count++;
+        }
+      });
+      const topFaultyEquipment = Object.entries(equipFaultCounts)
+        .map(([id, data]) => ({ id: Number(id), ...data }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
 
-      const summary = await generateBranchSummary(taskList.length - completedTasks, faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length, 0, 0, equips.filter((e: any) => e.healthScore && e.healthScore < 50).length, 100, 'monthly', user.id);
+      const summary = await generateBranchSummary(taskList.length - completedTasks, activeFaults, 0, 0, criticalEquipment, avgHealth, 'monthly', user.id);
 
-      res.json({ period: 'monthly', totalTasks: taskList.length, completedTasks, totalFaults: faults.length, resolvedFaults, totalCost: parseFloat(totalCost.toFixed(2)), summary });
+      res.json({ 
+        period: 'monthly', 
+        totalTasks: taskList.length, 
+        completedTasks, 
+        totalFaults: faults.length, 
+        resolvedFaults,
+        activeFaults,
+        avgHealth,
+        criticalEquipment,
+        topFaultyEquipment,
+        summary 
+      });
     } catch (error: Error | unknown) {
       console.error("Error fetching monthly analytics:", error);
       res.status(500).json({ message: "Aylık analitik alınamadı" });
