@@ -6,29 +6,28 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 5, 2025 - TURN 10 Complete - Performance Analytics)
-- ✅ **Employee Performance Tracking**:
-  * Weekly analytics now shows top 2 and bottom 2 performers
-  * Performance score based on: task completion rate, absences, late arrivals
-  * Avatar display with click-to-navigate to profile page
-  * Role-based visibility (supervisors see team, HQ sees all)
-- ✅ **Analytics Improvements**:
-  * Weekly: Removed redundant hours/shift counts, added employee performance
-  * Monthly: Added equipment health trends, TOP 3 faulty equipment
-  * Click-to-expand modal for detailed AI summaries
-  * Trend arrows (TrendingUp/TrendingDown icons)
-  * Color coding: red (critical), yellow (warning), green (good)
-- ✅ **Quick Task Assignment Hierarchy**:
-  * Role-based assignee filtering in dropdown
-  * HQ → can assign to all branches
-  * Supervisor → branch staff only
-  * Supervisor Buddy → Barista/Bar Buddy/Intern
-  * Barista → Bar Buddy/Intern
-  * Bar Buddy → Intern only
-  * Avatar display in assignee dropdown
-- ✅ **Bug Fixes**:
-  * Fixed "Cannot access 'tasks2' before initialization" error
-  * Fixed schema mismatch: assignedTo → assignedToId alignment
+## Recent Changes (December 5, 2025 - TURN 11 Complete - Analytics Fixes & Modal Refinement)
+- ✅ **Analytics Modal Refinement**:
+  * Summary card shows "Tıkla: Genişlet" badge + preview text
+  * Modal opens on card click with full details
+  * Only shows AI summaries inside modal (clean card view)
+  * Summaries have consistent headings: "Günlük Özet:", "Haftalık Özet:", "Aylık Özet:"
+- ✅ **Weekly Analytics Data Enrichment**:
+  * Added missing equipment data (avgHealth, criticalEquipment)
+  * Added overdue checklists calculation
+  * Fixed assignedToId schema alignment in weekly endpoint
+  * Performance data now calculates correctly with proper task filtering
+- ✅ **SelectItem Error Fixed**:
+  * Removed empty SelectItem value in Quick Task dropdown
+  * Dropdown now works without React hook warnings
+- ✅ **Backend Import Fixes**:
+  * Added missing `users` table import in routes
+  * Fixed weekly analytics endpoint execution
+- ✅ **Previous Achievements (TURN 10)**:
+  * Employee performance tracking (top 2 + bottom 2)
+  * Click-to-expand modal for AI summaries
+  * Role-based task assignment hierarchy
+  * Trend arrows and color coding (red/yellow/green)
 
 ## System Architecture
 ### UI/UX Decisions
@@ -96,10 +95,10 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Neon Database**: A serverless PostgreSQL instance used as the primary database.
 - **IONOS SMTP**: Employed for sending email notifications.
 
-## Code Quality Metrics (Current - TURN 10)
+## Code Quality Metrics (Current - TURN 11)
 - **Build Status**: ✅ Succeeds
 - **Runtime Status**: ✅ All systems operational
-- **LSP Diagnostics**: 324 warnings (pre-existing, type-safety, non-breaking)
+- **LSP Diagnostics**: 344 warnings (pre-existing, type-safety, non-breaking; 320 in routes, 24 in ai)
 - **Hardcoded Colors (Pages)**: 0 (100% migrated to semantic tokens)
 - **Console Logs (Pages)**: 0 (all cleaned)
 - **Responsive Layout**: 100% (flex-based, mobile-optimized)

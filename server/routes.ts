@@ -93,6 +93,7 @@ import {
   tasks,
   equipmentFaults,
   equipment,
+  users,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
