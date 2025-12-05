@@ -27,7 +27,12 @@ import { tr } from "date-fns/locale";
 
 const notificationTypeIcons: Record<string, any> = {
   task_assigned: CheckSquare,
+  task_started: Clock,
   task_complete: CheckCheck,
+  task_completed: CheckCheck,
+  task_verified: CheckCheck,
+  task_rejected: AlertTriangle,
+  task_overdue: AlertTriangle,
   fault_reported: AlertTriangle,
   fault_resolved: Wrench,
   training_assigned: GraduationCap,
@@ -37,7 +42,12 @@ const notificationTypeIcons: Record<string, any> = {
 
 const notificationTypeLabels: Record<string, string> = {
   task_assigned: "Görev Atandı",
+  task_started: "Görev Başladı",
   task_complete: "Görev Tamamlandı",
+  task_completed: "Görev Tamamlandı",
+  task_verified: "Görev Onaylandı",
+  task_rejected: "Görev Reddedildi",
+  task_overdue: "Gecikmiş Görev",
   fault_reported: "Arıza Raporu",
   fault_resolved: "Arıza Çözüldü",
   training_assigned: "Eğitim Atandı",

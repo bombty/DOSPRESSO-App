@@ -370,7 +370,7 @@ export default function Tasks() {
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
-      <h1 className="text-2xl font-semibold" data-testid="text-page-title">Açılış Çizelgeleri</h1>
+      <h1 className="text-2xl font-semibold" data-testid="text-page-title">Görevler</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         {overdueTasks.length > 0 && (
