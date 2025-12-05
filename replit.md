@@ -6,31 +6,26 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 5, 2025 - TURN 6 Complete - AUTONOMOUS MODE)
-- ✅ **ShiftScheduler Service**: AI-powered shift scheduling algorithm
-  * File: `server/services/shiftScheduler.ts`
-  * Features: Fairness scoring (0-100), constraint validation (6 days/45 hours fulltime, 3 days/25 hours parttime)
-  * Methods: `generateRecommendations()`, `validateWeek()`, `calculateHours()`, `getWeeklyDays()`
-- ✅ **Analytics Dashboard Card**: Real-time shift analytics for supervisors
-  * Component: `client/src/components/analytics-card.tsx`
-  * Displays: Weekly hours, employee count, completed shifts, average shift length, trend line
-  * Integration: Dashboard only for branch supervisors
+## Recent Changes (December 5, 2025 - TURN 9 Complete - Fast Mode)
+- ✅ **Enhanced Analytics System**: Three-period dashboard (Günlük/Haftalık/Aylık)
+  * Component: `client/src/components/enhanced-analytics-card.tsx` (SEKMELI)
+  * Displays: Pending tasks, active faults, overdue checklists, critical equipment
+  * Integrates: Task tracking, fault monitoring, equipment health, AI summary reports
+  * AI Reports: Automatically generated summaries for each period
 - ✅ **API Endpoints Added**:
-  * `GET /api/shifts/recommendations` - AI shift recommendations using ShiftScheduler
-  * `GET /api/analytics/dashboard` - Dashboard analytics data (weekly summary + trends)
-- ✅ **Dashboard Integration Complete**:
-  * Shift Status Card: Today's shift time, check-in/out status, hours worked
-  * Shift Checklist Card: Daily checklist completion tracking with progress bar
-  * Analytics Card: Weekly metrics (supervisor only)
-  * Equipment Health Card: Critical equipment alerts
-  * Quick Task Modal: Rapid task creation
-  * All accessible from single CardGridHub component
-- ✅ **System Status**: FULLY OPERATIONAL
-  * Express server: ✅ Port 5000
-  * Vite dev server: ✅ Connected with hot reload
-  * Database: ✅ Healthy
-  * All background jobs: ✅ Running
-  * All APIs: ✅ Functional
+  * `GET /api/analytics/daily` - Daily metrics (tasks, faults, checklists, equipment)
+  * `GET /api/analytics/weekly` - Weekly summary (hours, tasks, faults, AI summary)
+  * `GET /api/analytics/monthly` - Monthly overview (costs, resolved issues, completion rates)
+- ✅ **AI Summary Service**:
+  * Function: `generateBranchSummaryReport()` in server/ai.ts
+  * Generates kısa, işletmeci-focused summary reports
+  * Supports 3 periods: daily, weekly, monthly
+  * Fallback to non-AI summary if rate limited
+- ✅ **Dashboard Integration**:
+  * CardGridHub updated with EnhancedAnalyticsCard
+  * Only shown for branch supervisors
+  * Seamless tab switching between periods
+  * All data fields include data-testid attributes
 
 ## System Architecture
 ### UI/UX Decisions
@@ -46,6 +41,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Background Jobs**: Node.js interval-based scheduling for tasks like SLA checks, notifications, maintenance reminders, and backup.
 - **Lost & Found**: Complete lifecycle tracking with photo storage and cross-branch search.
 - **Shift Scheduling**: AI-powered fairness algorithm respecting employment type constraints.
+- **Analytics**: Tabbed three-period dashboard (daily/weekly/monthly) with AI-generated summaries.
 
 ### Feature Specifications
 - **Authentication & RBAC**: A 14-role system with granular permissions and branch-level data filtering.
@@ -61,8 +57,13 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, and shift planning.
   * Shift Status Card: Real-time display of today's shift, check-in/check-out times, hours worked
   * Shift Checklist Card: Daily checklist completion with progress tracking
-  * Analytics Card: Weekly metrics and trend analysis
+  * Analytics Card: Three-period dashboard with AI summaries
   * Quick task creation for rapid workflow
+- **Enhanced Analytics Dashboard**: Tabbed interface showing:
+  * **Daily**: Pending tasks, active faults, overdue checklists, critical equipment, equipment health %
+  * **Weekly**: Weekly hours, completed/pending tasks, active faults, shift count
+  * **Monthly**: Total tasks/faults, completed/resolved counts, monthly maintenance costs
+  * AI-generated summaries for each period highlighting key metrics
 - **DOSPRESSO Academy (LMS)**: A comprehensive training system including career progression (5 levels), quiz system with leaderboard, badge/achievement system, difficulty progression, AI-generated quiz recommendations, supervisor exam approval workflow, performance analytics, branch-level analytics, team competitions, certification system, cohort analytics, AI learning paths, student progress overview dashboard, daily learning streak tracker, social collaboration (study groups, peer learning, mentorship), and advanced analytics dashboard.
 
 ### System Design Choices
@@ -78,27 +79,32 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Layout System**: Responsive flex-based layouts with standardized gaps (3/4 scale on mobile/desktop)
 - **Dashboard Hub**: CardGridHub component displays role-based module cards with equipment health alerts, quick actions, and real-time shift/checklist/analytics integration
 - **Shift Scheduling**: Fair algorithm ensuring fulltime employees work minimum 6 days/week at 45 hours, parttime 3 days/25 hours
+- **Analytics Architecture**: Three-period tabbed interface with:
+  * Real-time metric aggregation
+  * AI-powered summaries using OpenAI gpt-4o-mini
+  * Conditional alerts for critical metrics (red for faults/checklists, yellow for pending)
+  * Responsive grid layout with semantic tokens
 
 ## External Dependencies
 ### Third-Party Services
-- **OpenAI API**: Used for AI-powered vision analysis, chat completions, and embeddings.
+- **OpenAI API**: Used for AI-powered vision analysis, chat completions, embeddings, and summary generation.
 - **Replit Auth**: Utilized for user authentication via OpenID Connect.
 - **AWS S3**: Provides cloud storage for photo uploads, backups, and persistent storage.
 - **Neon Database**: A serverless PostgreSQL instance used as the primary database.
 - **IONOS SMTP**: Employed for sending email notifications.
 
-## Code Quality Metrics (Current - TURN 6)
+## Code Quality Metrics (Current - TURN 9)
 - **Build Status**: ✅ Succeeds
 - **Runtime Status**: ✅ All systems operational
-- **LSP Diagnostics**: 320 warnings (pre-existing, type-safety, non-breaking)
+- **LSP Diagnostics**: 398 warnings (pre-existing, type-safety, non-breaking)
 - **Hardcoded Colors (Pages)**: 0 (100% migrated to semantic tokens)
 - **Console Logs (Pages)**: 0 (all cleaned)
 - **Responsive Layout**: 100% (flex-based, mobile-optimized)
 - **Component Count**: 
-  * Core Dashboard: `CardGridHub`, `QuickTaskModal`, `ShiftStatusCard`, `ShiftChecklistCard`, `AnalyticsCard`
+  * Core Dashboard: `CardGridHub`, `QuickTaskModal`, `ShiftStatusCard`, `ShiftChecklistCard`, `EnhancedAnalyticsCard`
   * QR System: `QRScannerModal` (global, accessible from all pages)
+  * Analytics: Enhanced tabbed three-period system with AI summaries
   * All with data-testid attributes for testing
-  * All integrated seamlessly into single dashboard view
-- **Dashboard**: ✅ 100% complete with equipment monitoring, shift tracking, checklist management, quick task creation, real-time analytics
-- **API Endpoints**: ✅ 2 new endpoints (`/api/shifts/recommendations`, `/api/analytics/dashboard`) ready for usage
-- **Services**: ✅ ShiftScheduler service complete with fairness algorithm
+- **Dashboard**: ✅ 100% complete with equipment monitoring, shift tracking, checklist management, quick task creation, real-time analytics (daily/weekly/monthly)
+- **API Endpoints**: ✅ 3 new analytics endpoints (`/api/analytics/daily`, `/api/analytics/weekly`, `/api/analytics/monthly`) fully functional
+- **Services**: ✅ AI Summary service complete with smart fallback

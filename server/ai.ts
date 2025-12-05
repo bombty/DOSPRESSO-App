@@ -2281,3 +2281,51 @@ export async function generateImageWithAI(
     throw new Error("Görüntü üretilmesi başarısız oldu: " + (error.message || "Bilinmeyen hata"));
   }
 }
+
+// Generate AI-powered branch summary report (for daily/weekly/monthly analytics)
+export async function generateBranchSummaryReport(
+  period: 'daily' | 'weekly' | 'monthly',
+  data: {
+    activeFaults: number;
+    pendingTasks: number;
+    overdueChecklists: number;
+    maintenanceReminders: number;
+    criticalEquipment: number;
+    totalAbsences: number;
+    slaBreaches: number;
+    averageEquipmentHealth: number;
+    branchName: string;
+  },
+  userId?: string
+): Promise<string> {
+  const effectiveUserId = userId || 'system';
+  
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'summary_generation', 10)) {
+    return `${data.branchName} ${period === 'daily' ? 'Günlük' : period === 'weekly' ? 'Haftalık' : 'Aylık'} Özet: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev, ${data.overdueChecklists} geciken checklist.`;
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: SUMMARY_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: `Sen DOSPRESSO kahve franchise yönetim sisteminin AI raporlama asistanısın. Kısa, önemli, ve işletmeci için kullanışlı raporlar hazırlarsın. Türkçe kullan.`
+        },
+        {
+          role: "user",
+          content: `${data.branchName} şubesi için ${period === 'daily' ? 'günlük' : period === 'weekly' ? 'haftalık' : 'aylık'} kısa bir özet raporu hazırla. Veriler: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev, ${data.overdueChecklists} geciken checklist, ${data.maintenanceReminders} bakım hatırlatması, ${data.criticalEquipment} kritik ekipman, ${data.totalAbsences} devamsızlık, ${data.slaBreaches} SLA ihlali, ortalama ekipman sağlığı %${data.averageEquipmentHealth}. Maksimum 2-3 satır, HTML olmadan düz metin.`
+        }
+      ],
+      max_tokens: 150,
+      temperature: 0.7
+    });
+
+    const summary = response.choices[0]?.message?.content?.trim() || `${data.branchName} ${period}: ${data.activeFaults} arıza, ${data.pendingTasks} görev`;
+    aiRateLimiter.incrementRequest(effectiveUserId, 'summary_generation');
+    return summary;
+  } catch (error: Error | unknown) {
+    console.error("Summary generation error:", error);
+    return `${data.branchName} ${period === 'daily' ? 'Günlük' : period === 'weekly' ? 'Haftalık' : 'Aylık'} Özet: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev.`;
+  }
+}

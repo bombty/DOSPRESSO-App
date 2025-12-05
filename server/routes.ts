@@ -93,7 +93,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
@@ -116,6 +116,25 @@ const trainingFileUpload = multer({
     }
   }
 });
+
+// Helper to generate branch summary report
+async function generateBranchSummary(pendingTasks: number, activeFaults: number, overdueChecklists: number, maintenanceReminders: number, criticalEquipment: number, avgHealth: number, period: 'daily' | 'weekly' | 'monthly', userId: string): Promise<string> {
+  try {
+    return await generateBranchSummaryReport(period, {
+      activeFaults,
+      pendingTasks,
+      overdueChecklists,
+      maintenanceReminders,
+      criticalEquipment,
+      totalAbsences: 0,
+      slaBreaches: 0,
+      averageEquipmentHealth: avgHealth,
+      branchName: "Şubemiz"
+    }, userId);
+  } catch (e) {
+    return `${period === 'daily' ? 'Günlük' : period === 'weekly' ? 'Haftalık' : 'Aylık'}: ${activeFaults} arıza, ${pendingTasks} görev`;
+  }
+}
 
 // Performance: Simple in-memory cache with TTL
 const responseCache = new Map<string, { data: any; expiresAt: number }>();
@@ -12481,7 +12500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/analytics/dashboard - Get analytics dashboard data
+  // GET /api/analytics/dashboard - Get analytics dashboard data (legacy)
   app.get('/api/analytics/dashboard', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -12527,6 +12546,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: Error | unknown) {
       console.error("Error fetching analytics:", error);
       res.status(500).json({ message: "Analitik verisi alınamadı" });
+    }
+  });
+
+  // GET /api/analytics/daily - Get daily analytics with tasks and equipment
+  app.get('/api/analytics/daily', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      let branchId: number | undefined;
+
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        if (!user.branchId) return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+        branchId = user.branchId;
+      } else if (!isHQRole(role)) {
+        return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const tasks = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
+      const pendingTasks = tasks.filter((t: any) => t.status !== 'completed').length;
+      const overdueChecklists = tasks.filter((t: any) => t.dueDate && new Date(t.dueDate) < new Date(today) && t.status !== 'completed').length;
+
+      const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(50);
+      const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
+
+      const equips = await db.select().from(equipment).where(branchId ? eq(equipment.branchId, branchId) : undefined).limit(100);
+      const criticalEquipment = equips.filter((e: any) => e.healthScore && e.healthScore < 50).length;
+      const avgHealth = equips.length > 0 ? Math.round(equips.reduce((acc: number, e: any) => acc + (e.healthScore || 100), 0) / equips.length) : 100;
+
+      const summary = await generateBranchSummary(pendingTasks, activeFaults, overdueChecklists, 0, criticalEquipment, avgHealth, 'daily', user.id);
+
+      res.json({ period: 'daily', pendingTasks, activeFaults, overdueChecklists, criticalEquipment, avgHealth, summary });
+    } catch (error: Error | unknown) {
+      console.error("Error fetching daily analytics:", error);
+      res.status(500).json({ message: "Günlük analitik alınamadı" });
+    }
+  });
+
+  // GET /api/analytics/weekly - Get weekly analytics with trends
+  app.get('/api/analytics/weekly', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      let branchId: number | undefined;
+
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        if (!user.branchId) return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+        branchId = user.branchId;
+      } else if (!isHQRole(role)) {
+        return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
+      }
+
+      const today = new Date();
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      const shifts = await storage.getShifts(branchId, undefined, weekStart.toISOString().split('T')[0]);
+      const tasks = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
+      const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(50);
+
+      const weeklyHours = shifts.reduce((acc: number, s: any) => {
+        if (!s.startTime || !s.endTime) return acc;
+        const [sh, sm] = s.startTime.split(':').map(Number);
+        const [eh, em] = s.endTime.split(':').map(Number);
+        return acc + (eh * 60 + em - (sh * 60 + sm)) / 60;
+      }, 0);
+
+      const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
+      const pendingTasks = tasks.filter((t: any) => t.status !== 'completed').length;
+      const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
+
+      const summary = await generateBranchSummary(pendingTasks, activeFaults, 0, 0, 0, 100, 'weekly', user.id);
+
+      res.json({ period: 'weekly', weeklyHours: parseFloat(weeklyHours.toFixed(1)), completedTasks, pendingTasks, activeFaults, shiftsCount: shifts.length, summary });
+    } catch (error: Error | unknown) {
+      console.error("Error fetching weekly analytics:", error);
+      res.status(500).json({ message: "Haftalık analitik alınamadı" });
+    }
+  });
+
+  // GET /api/analytics/monthly - Get monthly analytics with summaries
+  app.get('/api/analytics/monthly', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      let branchId: number | undefined;
+
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        if (!user.branchId) return res.status(403).json({ message: "Şube bilgisi bulunamadı" });
+        branchId = user.branchId;
+      } else if (!isHQRole(role)) {
+        return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
+      }
+
+      const tasks = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
+      const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(100);
+      const equips = await db.select().from(equipment).where(branchId ? eq(equipment.branchId, branchId) : undefined).limit(100);
+
+      const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
+      const resolvedFaults = faults.filter((f: any) => f.stage === 'resolved').length;
+      const totalCost = faults.reduce((acc: number, f: any) => acc + (f.repairCost || 0), 0);
+
+      const summary = await generateBranchSummary(tasks.length - completedTasks, faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length, 0, 0, equips.filter((e: any) => e.healthScore && e.healthScore < 50).length, 100, 'monthly', user.id);
+
+      res.json({ period: 'monthly', totalTasks: tasks.length, completedTasks, totalFaults: faults.length, resolvedFaults, totalCost: parseFloat(totalCost.toFixed(2)), summary });
+    } catch (error: Error | unknown) {
+      console.error("Error fetching monthly analytics:", error);
+      res.status(500).json({ message: "Aylık analitik alınamadı" });
     }
   });
 
