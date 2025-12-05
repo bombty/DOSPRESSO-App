@@ -12717,6 +12717,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .sort((a, b) => b.count - a.count)
         .slice(0, 3);
 
+      // Employee performance calculation
+      const employees = branchId 
+        ? await db.select().from(users).where(eq(users.branchId, branchId)).limit(50)
+        : await db.select().from(users).limit(100);
+      
+      const performanceData = employees.map((emp: any) => {
+        const empTasks = taskList.filter((t: any) => t.assignedToId === emp.id);
+        const empCompleted = empTasks.filter((t: any) => t.status === 'completed').length;
+        const completionRate = empTasks.length > 0 ? (empCompleted / empTasks.length) * 100 : 100;
+        
+        const absences = 0;
+        const lateArrivals = 0;
+        
+        const score = completionRate - (absences * 15) - (lateArrivals * 5);
+        return { 
+          id: emp.id, 
+          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.username, 
+          avatar: emp.profilePhoto,
+          score: Math.max(0, Math.round(score)), 
+          completionRate: Math.round(completionRate),
+          absences, 
+          lateArrivals 
+        };
+      });
+
+      const sortedPerf = performanceData.sort((a, b) => b.score - a.score);
+      const topPerformers = sortedPerf.slice(0, 2);
+      const bottomPerformers = sortedPerf.slice(-2).reverse();
+
       const summary = await generateBranchSummary(pendingTasks, activeFaults, overdueChecklists, 0, criticalEquipment, avgHealth, 'monthly', user.id);
 
       res.json({ 
@@ -12731,6 +12760,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         avgHealth,
         criticalEquipment,
         topFaultyEquipment,
+        topPerformers,
+        bottomPerformers,
         summary 
       });
     } catch (error: Error | unknown) {

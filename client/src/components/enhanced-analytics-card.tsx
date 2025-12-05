@@ -58,6 +58,8 @@ interface MonthlyAnalytics {
   avgHealth: number;
   criticalEquipment: number;
   topFaultyEquipment: { id: number; name: string; count: number }[];
+  topPerformers: PerformerData[];
+  bottomPerformers: PerformerData[];
   summary: string;
 }
 
@@ -432,6 +434,37 @@ export function EnhancedAnalyticsCard() {
                 className="h-1.5"
               />
             </div>
+
+            {/* Top & Bottom Performers - Only for supervisors/HQ */}
+            {(role === 'supervisor' || role === 'supervisor_buddy' || role === 'admin' || role === 'coach') && (
+              <>
+                {monthly.topPerformers?.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <Award className="h-3 w-3 text-green-500" /> En İyi Performans
+                    </p>
+                    <div className={`grid ${inModal ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+                      {monthly.topPerformers.map((p) => (
+                        <PerformerCard key={p.id} performer={p} isTop={true} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {monthly.bottomPerformers?.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <User className="h-3 w-3 text-red-500" /> Gelişim Gerekli
+                    </p>
+                    <div className={`grid ${inModal ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+                      {monthly.bottomPerformers.map((p) => (
+                        <PerformerCard key={p.id} performer={p} isTop={false} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Top Faulty Equipment */}
             {monthly.topFaultyEquipment?.length > 0 && (
