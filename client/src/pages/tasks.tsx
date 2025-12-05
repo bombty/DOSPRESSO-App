@@ -797,6 +797,46 @@ export default function Tasks() {
         </Dialog>
         </div>
 
+        {/* Dynamic filtered list header */}
+        {filterStatus && (
+          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg" data-testid="filter-header">
+            <div className={`h-6 w-6 rounded-full flex items-center justify-center ${
+              filterStatus === 'gecikmiş' ? 'bg-destructive/10' :
+              filterStatus === 'beklemede' ? 'bg-warning/20' :
+              filterStatus === 'devam_ediyor' ? 'bg-primary/10' :
+              filterStatus === 'reddedildi' ? 'bg-destructive/10' :
+              filterStatus === 'onaylandi' ? 'bg-success/10' :
+              'bg-muted'
+            }`}>
+              {filterStatus === 'gecikmiş' ? <AlertCircle className="h-4 w-4 text-destructive" /> :
+               filterStatus === 'beklemede' ? <Clock className="h-4 w-4 text-warning" /> :
+               filterStatus === 'devam_ediyor' ? <PlayCircle className="h-4 w-4 text-primary" /> :
+               filterStatus === 'reddedildi' ? <AlertCircle className="h-4 w-4 text-destructive" /> :
+               filterStatus === 'onaylandi' ? <CheckCircle2 className="h-4 w-4 text-success" /> :
+               <Filter className="h-4 w-4" />}
+            </div>
+            <span className="font-medium">
+              {filterStatus === 'gecikmiş' ? 'Gecikmiş Görevler' :
+               filterStatus === 'beklemede' ? 'Bekleyen Görevler' :
+               filterStatus === 'devam_ediyor' ? 'Devam Eden Görevler' :
+               filterStatus === 'reddedildi' ? 'Tamamlanmayan Görevler' :
+               filterStatus === 'onaylandi' ? 'Tamamlanan Görevler' :
+               'Filtrelenmiş Görevler'}
+            </span>
+            <Badge variant="outline">{filteredTasks.length}</Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilterStatus(null)}
+              className="ml-auto"
+              data-testid="button-clear-status-filter"
+            >
+              <XCircle className="h-4 w-4 mr-1" />
+              Temizle
+            </Button>
+          </div>
+        )}
+
         {["all", "acilis", "kapanis", "gunluk"].map((tabValue) => (
           <TabsContent key={tabValue} value={tabValue} className="w-full space-y-2 sm:space-y-3">
             {isLoading ? (
