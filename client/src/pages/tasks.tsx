@@ -374,7 +374,14 @@ export default function Tasks() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         {overdueTasks.length > 0 && (
-          <Card data-testid="card-stat-overdue" className="border-destructive">
+          <Card 
+            data-testid="card-stat-overdue" 
+            className={`border-destructive cursor-pointer hover-elevate transition-all ${filterStatus === 'gecikmiş' ? 'ring-2 ring-destructive' : ''}`}
+            onClick={() => {
+              setFilterStatus(filterStatus === 'gecikmiş' ? null : 'gecikmiş');
+              setFilterOpen(true);
+            }}
+          >
             <CardContent className="p-3">
               <div className="flex flex-col items-center text-center gap-1.5">
                 <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
@@ -387,7 +394,14 @@ export default function Tasks() {
           </Card>
         )}
         
-        <Card data-testid="card-stat-beklemede">
+        <Card 
+          data-testid="card-stat-beklemede"
+          className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'beklemede' ? 'ring-2 ring-warning' : ''}`}
+          onClick={() => {
+            setFilterStatus(filterStatus === 'beklemede' ? null : 'beklemede');
+            setFilterOpen(true);
+          }}
+        >
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
               <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-warning/5/20 flex items-center justify-center">
@@ -399,7 +413,14 @@ export default function Tasks() {
           </CardContent>
         </Card>
 
-        <Card data-testid="card-stat-devam-eden">
+        <Card 
+          data-testid="card-stat-devam-eden"
+          className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'devam_ediyor' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => {
+            setFilterStatus(filterStatus === 'devam_ediyor' ? null : 'devam_ediyor');
+            setFilterOpen(true);
+          }}
+        >
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
               <div className="h-4 w-4 rounded-full bg-primary/10 dark:bg-primary/5/20 flex items-center justify-center">
@@ -411,7 +432,14 @@ export default function Tasks() {
           </CardContent>
         </Card>
 
-        <Card data-testid="card-stat-tamamlanmayan">
+        <Card 
+          data-testid="card-stat-tamamlanmayan"
+          className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'reddedildi' ? 'ring-2 ring-destructive' : ''}`}
+          onClick={() => {
+            setFilterStatus(filterStatus === 'reddedildi' ? null : 'reddedildi');
+            setFilterOpen(true);
+          }}
+        >
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
               <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
@@ -423,7 +451,14 @@ export default function Tasks() {
           </CardContent>
         </Card>
 
-        <Card data-testid="card-stat-tamamlanan">
+        <Card 
+          data-testid="card-stat-tamamlanan"
+          className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'onaylandi' ? 'ring-2 ring-green-500' : ''}`}
+          onClick={() => {
+            setFilterStatus(filterStatus === 'onaylandi' ? null : 'onaylandi');
+            setFilterOpen(true);
+          }}
+        >
           <CardContent className="p-3">
             <div className="flex flex-col items-center text-center gap-1.5">
               <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
