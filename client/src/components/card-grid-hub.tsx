@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { QuickTaskModal } from "@/components/quick-task-modal";
 import { ShiftStatusCard } from "@/components/shift-status-card";
 import { ShiftChecklistCard } from "@/components/shift-checklist-card";
+import { AnalyticsCard } from "@/components/analytics-card";
 import { 
   GraduationCap, 
   Wrench, 
@@ -220,6 +221,9 @@ export function CardGridHub() {
 
       {/* Shift Checklists - Branch users only */}
       {isBranch && <ShiftChecklistCard />}
+
+      {/* Analytics Card - Branch supervisors only */}
+      {isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy') && <AnalyticsCard />}
 
       {/* Equipment Health Alert */}
       {criticalEquipment.length > 0 && (
