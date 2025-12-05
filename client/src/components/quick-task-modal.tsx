@@ -42,7 +42,7 @@ const HQ_ROLES = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek',
 const HQ_ASSIGNABLE_ROLES = ['muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika'];
 
 interface Employee {
-  id: number;
+  id: string;
   username: string;
   firstName?: string;
   lastName?: string;
@@ -317,7 +317,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                         {assignableEmployees.map((emp) => (
                           <SelectItem 
                             key={emp.id} 
-                            value={emp.id.toString()}
+                            value={emp.id}
                             data-testid={`option-assignee-${emp.id}`}
                           >
                             <div className="flex items-center gap-2">
