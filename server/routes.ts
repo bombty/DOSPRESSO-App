@@ -12607,11 +12607,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
       const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(50);
+      const equips = await db.select().from(equipment).where(branchId ? eq(equipment.branchId, branchId) : undefined).limit(100);
 
       const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
       const pendingTasks = taskList.filter((t: any) => t.status !== 'completed').length;
       const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
+      const overdueChecklists = taskList.filter((t: any) => t.dueDate && new Date(t.dueDate) < today && t.status !== 'completed').length;
       const checklistCompletionRate = taskList.length > 0 ? Math.round((completedTasks / taskList.length) * 100) : 100;
+      const avgHealth = equips.length > 0 ? Math.round(equips.reduce((acc: number, e: any) => acc + (e.healthScore || 100), 0) / equips.length) : 100;
+      const criticalEquipment = equips.filter((e: any) => e.healthScore && e.healthScore < 50).length;
 
       // Employee performance calculation
       const employees = branchId 
@@ -12619,7 +12623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : await db.select().from(users).limit(100);
       
       const performanceData = await Promise.all(employees.map(async (emp: any) => {
-        const empTasks = taskList.filter((t: any) => t.assignedTo === emp.id);
+        const empTasks = taskList.filter((t: any) => t.assignedToId === emp.id);
         const empCompleted = empTasks.filter((t: any) => t.status === 'completed').length;
         const completionRate = empTasks.length > 0 ? (empCompleted / empTasks.length) * 100 : 100;
         
@@ -12647,7 +12651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const topPerformers = sortedPerf.slice(0, 2);
       const bottomPerformers = sortedPerf.slice(-2).reverse();
 
-      const summary = await generateBranchSummary(pendingTasks, activeFaults, 0, 0, 0, 100, 'weekly', user.id);
+      const summary = await generateBranchSummary(pendingTasks, activeFaults, overdueChecklists, 0, criticalEquipment, avgHealth, 'weekly', user.id);
 
       res.json({ 
         period: 'weekly', 
