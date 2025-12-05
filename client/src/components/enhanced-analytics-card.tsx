@@ -36,7 +36,10 @@ interface WeeklyAnalytics {
   completedTasks: number;
   pendingTasks: number;
   activeFaults: number;
+  overdueChecklists: number;
   checklistCompletionRate: number;
+  avgHealth: number;
+  criticalEquipment: number;
   topPerformers: PerformerData[];
   bottomPerformers: PerformerData[];
   summary: string;
@@ -102,6 +105,7 @@ function PerformerCard({ performer, isTop }: { performer: PerformerData; isTop: 
 
 export function EnhancedAnalyticsCard() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   const role = user?.role;
 
@@ -156,7 +160,7 @@ export function EnhancedAnalyticsCard() {
 
             <div className={`grid ${inModal ? 'grid-cols-4' : 'grid-cols-2'} gap-2`}>
               {daily.activeFaults > 0 && (
-                <div className="p-2 bg-destructive/10 rounded border border-destructive/20">
+                <div className="p-2 bg-destructive/10 rounded border border-destructive/20 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-active-faults">
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Wrench className="h-3 w-3" /> Aktif Arıza
                   </p>
@@ -167,7 +171,7 @@ export function EnhancedAnalyticsCard() {
               )}
 
               {daily.pendingTasks > 0 && (
-                <div className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20">
+                <div className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-pending-tasks">
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <ListTodo className="h-3 w-3" /> Bekleyen
                   </p>
@@ -178,7 +182,7 @@ export function EnhancedAnalyticsCard() {
               )}
 
               {daily.overdueChecklists > 0 && (
-                <div className="p-2 bg-orange-500/10 rounded border border-orange-500/20">
+                <div className="p-2 bg-orange-500/10 rounded border border-orange-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/checklists')} data-testid="card-overdue-checklists">
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" /> Geciken
                   </p>
@@ -189,7 +193,7 @@ export function EnhancedAnalyticsCard() {
               )}
 
               {daily.criticalEquipment > 0 && (
-                <div className="p-2 bg-red-500/10 rounded border border-red-500/20">
+                <div className="p-2 bg-red-500/10 rounded border border-red-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/equipment')} data-testid="card-critical-equipment">
                   <p className="text-xs text-muted-foreground">Kritik Ekipman</p>
                   <p className="text-lg font-bold text-red-600 dark:text-red-500" data-testid="text-critical-equipment">
                     {daily.criticalEquipment}
@@ -199,7 +203,7 @@ export function EnhancedAnalyticsCard() {
             </div>
 
             {daily.avgHealth >= 0 && (
-              <div className="p-2 bg-background/50 rounded border border-primary/10">
+              <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/equipment')} data-testid="card-avg-health">
                 <div className="flex justify-between items-center mb-1">
                   <p className="text-xs text-muted-foreground">Ekipman Sağlığı</p>
                   <span className="text-sm font-semibold text-primary" data-testid="text-avg-health">
@@ -227,7 +231,7 @@ export function EnhancedAnalyticsCard() {
             )}
 
             <div className={`grid ${inModal ? 'grid-cols-4' : 'grid-cols-2'} gap-2`}>
-              <div className="p-2 bg-green-500/10 rounded border border-green-500/20">
+              <div className="p-2 bg-green-500/10 rounded border border-green-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-weekly-completed">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   Tamamlanan <TrendIcon value={weekly.completedTasks} threshold={5} />
                 </p>
@@ -236,7 +240,7 @@ export function EnhancedAnalyticsCard() {
                 </p>
               </div>
 
-              <div className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20">
+              <div className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-weekly-pending">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   Bekleyen <TrendIcon value={-weekly.pendingTasks} threshold={-3} />
                 </p>
@@ -246,7 +250,7 @@ export function EnhancedAnalyticsCard() {
               </div>
 
               {weekly.activeFaults > 0 && (
-                <div className="p-2 bg-destructive/10 rounded border border-destructive/20">
+                <div className="p-2 bg-destructive/10 rounded border border-destructive/20 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-weekly-faults">
                   <p className="text-xs text-muted-foreground">Aktif Arıza</p>
                   <p className="text-lg font-bold text-destructive" data-testid="text-weekly-faults">
                     {weekly.activeFaults}
@@ -254,7 +258,7 @@ export function EnhancedAnalyticsCard() {
                 </div>
               )}
 
-              <div className="p-2 bg-primary/10 rounded border border-primary/20">
+              <div className="p-2 bg-primary/10 rounded border border-primary/20 cursor-pointer hover-elevate" onClick={() => navigate('/checklists')} data-testid="card-weekly-checklist">
                 <p className="text-xs text-muted-foreground">Checklist</p>
                 <p className="text-lg font-bold text-primary" data-testid="text-checklist-rate">
                   %{weekly.checklistCompletionRate}
@@ -263,7 +267,7 @@ export function EnhancedAnalyticsCard() {
             </div>
 
             {/* Checklist completion bar */}
-            <div className="p-2 bg-background/50 rounded border border-primary/10">
+            <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/checklists')} data-testid="card-weekly-checklist-bar">
               <div className="flex justify-between items-center mb-1">
                 <p className="text-xs text-muted-foreground">Checklist Tamamlanma</p>
                 <span className={`text-xs font-medium ${
@@ -327,14 +331,14 @@ export function EnhancedAnalyticsCard() {
             )}
 
             <div className={`grid ${inModal ? 'grid-cols-4' : 'grid-cols-2'} gap-2`}>
-              <div className="p-2 bg-background/50 rounded border border-primary/10">
+              <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-monthly-total-tasks">
                 <p className="text-xs text-muted-foreground">Toplam Görev</p>
                 <p className="text-lg font-bold text-primary" data-testid="text-total-tasks">
                   {monthly.totalTasks}
                 </p>
               </div>
 
-              <div className="p-2 bg-green-500/10 rounded border border-green-500/20">
+              <div className="p-2 bg-green-500/10 rounded border border-green-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-monthly-completed">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   Tamamlanan <TrendIcon value={monthly.completedTasks} threshold={10} />
                 </p>
@@ -343,14 +347,14 @@ export function EnhancedAnalyticsCard() {
                 </p>
               </div>
 
-              <div className="p-2 bg-background/50 rounded border border-primary/10">
+              <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-monthly-total-faults">
                 <p className="text-xs text-muted-foreground">Toplam Arıza</p>
                 <p className="text-lg font-bold text-primary" data-testid="text-total-faults">
                   {monthly.totalFaults}
                 </p>
               </div>
 
-              <div className="p-2 bg-green-500/10 rounded border border-green-500/20">
+              <div className="p-2 bg-green-500/10 rounded border border-green-500/20 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-monthly-resolved">
                 <p className="text-xs text-muted-foreground">Çözülen</p>
                 <p className="text-lg font-bold text-green-600 dark:text-green-500" data-testid="text-resolved-faults">
                   {monthly.resolvedFaults}
@@ -359,7 +363,7 @@ export function EnhancedAnalyticsCard() {
             </div>
 
             {/* Equipment Health */}
-            <div className="p-2 bg-background/50 rounded border border-primary/10">
+            <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/equipment')} data-testid="card-monthly-equipment-health">
               <div className="flex justify-between items-center mb-1">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Wrench className="h-3 w-3" /> Ekipman Sağlığı

@@ -12659,7 +12659,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completedTasks, 
         pendingTasks, 
         activeFaults, 
+        overdueChecklists,
         checklistCompletionRate,
+        avgHealth,
+        criticalEquipment,
         topPerformers,
         bottomPerformers,
         summary 
