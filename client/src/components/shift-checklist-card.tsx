@@ -36,9 +36,16 @@ export function ShiftChecklistCard() {
     queryKey: ["/api/shifts/my"],
   });
 
-  const todayShift = shifts?.find(
-    (s) => s.date === today || new Date(s.date).toISOString().split("T")[0] === today
-  );
+  const todayShift = shifts?.find((s) => {
+    if (s.date === today) return true;
+    try {
+      const shiftDate = new Date(s.date);
+      if (isNaN(shiftDate.getTime())) return false;
+      return shiftDate.toISOString().split("T")[0] === today;
+    } catch {
+      return false;
+    }
+  });
 
   const shiftChecklists = todayShift?.checklists || [];
   const completedCount = shiftChecklists.filter((c) => c.isCompleted).length;
