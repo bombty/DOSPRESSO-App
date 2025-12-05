@@ -145,7 +145,7 @@ export function EnhancedAnalyticsCard() {
       <TabsContent value="daily" className="space-y-3">
         {daily && (
           <>
-            {inModal && daily.summary && (
+            {daily.summary && (
               <Alert className="bg-accent/10 border-accent/30">
                 <AlertCircle className="h-3 w-3" />
                 <AlertDescription className="text-xs font-semibold text-base" data-testid="text-daily-summary">
@@ -217,7 +217,7 @@ export function EnhancedAnalyticsCard() {
       <TabsContent value="weekly" className="space-y-3">
         {weekly && (
           <>
-            {inModal && weekly.summary && (
+            {weekly.summary && (
               <Alert className="bg-accent/10 border-accent/30">
                 <AlertCircle className="h-3 w-3" />
                 <AlertDescription className="text-xs font-semibold text-base" data-testid="text-weekly-summary">
@@ -317,7 +317,7 @@ export function EnhancedAnalyticsCard() {
       <TabsContent value="monthly" className="space-y-3">
         {monthly && (
           <>
-            {inModal && monthly.summary && (
+            {monthly.summary && (
               <Alert className="bg-accent/10 border-accent/30">
                 <AlertCircle className="h-3 w-3" />
                 <AlertDescription className="text-xs font-semibold text-base" data-testid="text-monthly-summary">
