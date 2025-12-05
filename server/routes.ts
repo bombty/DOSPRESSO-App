@@ -90,6 +90,9 @@ import {
   insertLostFoundItemSchema,
   handoverLostFoundItemSchema,
   shifts,
+  tasks,
+  equipmentFaults,
+  equipment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -12564,9 +12567,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const today = new Date().toISOString().split('T')[0];
-      const tasks = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
-      const pendingTasks = tasks.filter((t: any) => t.status !== 'completed').length;
-      const overdueChecklists = tasks.filter((t: any) => t.dueDate && new Date(t.dueDate) < new Date(today) && t.status !== 'completed').length;
+      const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
+      const pendingTasks = taskList.filter((t: any) => t.status !== 'completed').length;
+      const overdueChecklists = taskList.filter((t: any) => t.dueDate && new Date(t.dueDate) < new Date(today) && t.status !== 'completed').length;
 
       const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(50);
       const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
@@ -12605,7 +12608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       weekEnd.setDate(weekEnd.getDate() + 6);
 
       const shifts = await storage.getShifts(branchId, undefined, weekStart.toISOString().split('T')[0]);
-      const tasks = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
+      const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
       const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(50);
 
       const weeklyHours = shifts.reduce((acc: number, s: any) => {
@@ -12615,8 +12618,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return acc + (eh * 60 + em - (sh * 60 + sm)) / 60;
       }, 0);
 
-      const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
-      const pendingTasks = tasks.filter((t: any) => t.status !== 'completed').length;
+      const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
+      const pendingTasks = taskList.filter((t: any) => t.status !== 'completed').length;
       const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
 
       const summary = await generateBranchSummary(pendingTasks, activeFaults, 0, 0, 0, 100, 'weekly', user.id);
@@ -12642,17 +12645,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
       }
 
-      const tasks = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
+      const taskList = await db.select().from(tasks).where(branchId ? and(eq(tasks.branchId, branchId)) : undefined).limit(100);
       const faults = await db.select().from(equipmentFaults).where(branchId ? and(eq(equipmentFaults.branchId, branchId)) : undefined).limit(100);
       const equips = await db.select().from(equipment).where(branchId ? eq(equipment.branchId, branchId) : undefined).limit(100);
 
-      const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
+      const completedTasks = taskList.filter((t: any) => t.status === 'completed').length;
       const resolvedFaults = faults.filter((f: any) => f.stage === 'resolved').length;
       const totalCost = faults.reduce((acc: number, f: any) => acc + (f.repairCost || 0), 0);
 
-      const summary = await generateBranchSummary(tasks.length - completedTasks, faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length, 0, 0, equips.filter((e: any) => e.healthScore && e.healthScore < 50).length, 100, 'monthly', user.id);
+      const summary = await generateBranchSummary(taskList.length - completedTasks, faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length, 0, 0, equips.filter((e: any) => e.healthScore && e.healthScore < 50).length, 100, 'monthly', user.id);
 
-      res.json({ period: 'monthly', totalTasks: tasks.length, completedTasks, totalFaults: faults.length, resolvedFaults, totalCost: parseFloat(totalCost.toFixed(2)), summary });
+      res.json({ period: 'monthly', totalTasks: taskList.length, completedTasks, totalFaults: faults.length, resolvedFaults, totalCost: parseFloat(totalCost.toFixed(2)), summary });
     } catch (error: Error | unknown) {
       console.error("Error fetching monthly analytics:", error);
       res.status(500).json({ message: "Aylık analitik alınamadı" });
