@@ -399,6 +399,40 @@ export function EnhancedAnalyticsCard() {
               </div>
             </div>
 
+            {/* Task Completion Rate */}
+            <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/tasks')} data-testid="card-monthly-task-rate">
+              <div className="flex justify-between items-center mb-1">
+                <p className="text-xs text-muted-foreground">Görev Tamamlanma</p>
+                <span className={`text-xs font-medium ${
+                  monthly.totalTasks > 0 && (monthly.completedTasks / monthly.totalTasks * 100) >= 80 ? 'text-green-600' : 
+                  monthly.totalTasks > 0 && (monthly.completedTasks / monthly.totalTasks * 100) >= 50 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  %{monthly.totalTasks > 0 ? Math.round((monthly.completedTasks / monthly.totalTasks) * 100) : 0}
+                </span>
+              </div>
+              <Progress 
+                value={monthly.totalTasks > 0 ? (monthly.completedTasks / monthly.totalTasks) * 100 : 0} 
+                className="h-1.5"
+              />
+            </div>
+
+            {/* Fault Resolution Rate */}
+            <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/faults')} data-testid="card-monthly-resolution-rate">
+              <div className="flex justify-between items-center mb-1">
+                <p className="text-xs text-muted-foreground">Arıza Çözüm Oranı</p>
+                <span className={`text-xs font-medium ${
+                  monthly.totalFaults > 0 && (monthly.resolvedFaults / monthly.totalFaults * 100) >= 80 ? 'text-green-600' : 
+                  monthly.totalFaults > 0 && (monthly.resolvedFaults / monthly.totalFaults * 100) >= 50 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  %{monthly.totalFaults > 0 ? Math.round((monthly.resolvedFaults / monthly.totalFaults) * 100) : 0}
+                </span>
+              </div>
+              <Progress 
+                value={monthly.totalFaults > 0 ? (monthly.resolvedFaults / monthly.totalFaults) * 100 : 0} 
+                className="h-1.5"
+              />
+            </div>
+
             {/* Top Faulty Equipment */}
             {monthly.topFaultyEquipment?.length > 0 && (
               <div className="space-y-2">
