@@ -635,7 +635,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       
-      // Authorization: Branch users can only see their own branch
+      // Authorization: HQ users can see all branches (check HQ first!)
+      if (user.role && isHQRole(user.role as UserRoleType)) {
+        const branches = await storage.getBranches();
+        return res.json(branches);
+      }
+      
+      // Branch users can only see their own branch
       if (user.role && isBranchRole(user.role as UserRoleType)) {
         if (!user.branchId) {
           return res.status(403).json({ message: "Şube ataması yapılmamış" });
@@ -644,7 +650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(branch ? [branch] : []);
       }
       
-      // HQ users can see all branches
+      // Fallback: return all branches for unrecognized roles (safety)
       const branches = await storage.getBranches();
       res.json(branches);
     } catch (error) {

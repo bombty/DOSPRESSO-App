@@ -76,7 +76,15 @@ export default function Tasks() {
   }, [tasks]);
 
   const { data: employees, isLoading: isEmployeesLoading } = useQuery<User[]>({
-    queryKey: ["/api/employees", isHQ ? { branchId: selectedBranchId } : {}],
+    queryKey: ["/api/employees", selectedBranchId],
+    queryFn: async () => {
+      const url = isHQ && selectedBranchId 
+        ? `/api/employees?branchId=${selectedBranchId}` 
+        : "/api/employees";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch employees");
+      return res.json();
+    },
     enabled: isHQ ? !!selectedBranchId : true,
   });
 
@@ -668,7 +676,7 @@ export default function Tasks() {
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="button-add-task">Yeni Çizelge Ekle</Button>
+              <Button data-testid="button-add-task">Yeni Görev Ekle</Button>
             </DialogTrigger>
               <DialogContent>
             <DialogHeader>
