@@ -51,7 +51,7 @@ const quickTaskSchema = z.object({
   description: z.string().min(1, "Görev açıklaması gereklidir").max(500),
   priority: z.enum(["dusuk", "orta", "yuksek"]),
   dueDate: z.string().optional(),
-  assignedTo: z.string().optional(),
+  assignedToId: z.string().optional(),
 });
 
 type QuickTaskFormData = z.infer<typeof quickTaskSchema>;
@@ -98,7 +98,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
       description: "",
       priority: "orta",
       dueDate: "",
-      assignedTo: "",
+      assignedToId: "",
     },
   });
 
@@ -110,7 +110,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
         status: "beklemede",
         branchId: user?.branchId,
         dueDate: data.dueDate || null,
-        assignedTo: data.assignedTo ? parseInt(data.assignedTo) : null,
+        assignedToId: data.assignedToId || null,
       });
     },
     onSuccess: () => {
@@ -178,7 +178,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
             {canAssignTasks && assignableEmployees.length > 0 && (
               <FormField
                 control={form.control}
-                name="assignedTo"
+                name="assignedToId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Atanan Kişi</FormLabel>
