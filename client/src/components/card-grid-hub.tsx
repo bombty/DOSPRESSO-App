@@ -138,6 +138,15 @@ export function CardGridHub() {
 
   const hqModules: ModuleCard[] = [
     { 
+      id: "tasks-hq", 
+      icon: ClipboardList, 
+      label: "Görevler", 
+      path: "/gorevler",
+      color: "bg-green-500",
+      badge: pendingTasks,
+      description: "Görev yönetimi"
+    },
+    { 
       id: "academy-hq", 
       icon: GraduationCap, 
       label: "Akademi", 
