@@ -6,28 +6,27 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 5, 2025 - TURN 11 Complete - Analytics Fixes & Modal Refinement)
-- ✅ **Analytics Modal Refinement**:
-  * Summary card shows "Tıkla: Genişlet" badge + preview text
-  * Modal opens on card click with full details
-  * Only shows AI summaries inside modal (clean card view)
-  * Summaries have consistent headings: "Günlük Özet:", "Haftalık Özet:", "Aylık Özet:"
-- ✅ **Weekly Analytics Data Enrichment**:
-  * Added missing equipment data (avgHealth, criticalEquipment)
-  * Added overdue checklists calculation
-  * Fixed assignedToId schema alignment in weekly endpoint
-  * Performance data now calculates correctly with proper task filtering
-- ✅ **SelectItem Error Fixed**:
-  * Removed empty SelectItem value in Quick Task dropdown
-  * Dropdown now works without React hook warnings
-- ✅ **Backend Import Fixes**:
-  * Added missing `users` table import in routes
-  * Fixed weekly analytics endpoint execution
-- ✅ **Previous Achievements (TURN 10)**:
+## Recent Changes (December 5, 2025 - TURN 12 Complete - Unified Analytics Dashboard)
+- ✅ **Unified Analytics Tabs**:
+  * Created CoreMetricsGrid component for consistent display
+  * All 3 tabs (Günlük/Haftalık/Aylık) now show same base metrics:
+    - Bekleyen (pending tasks)
+    - Tamamlanan (completed tasks)
+    - Aktif Arıza (active faults)
+    - Geciken Checklist (overdue checklists)
+    - Ekipman Sağlığı (equipment health %)
+  * Period-specific extras preserved:
+    - Weekly: Tamamlanma oranı bar + personel performansı
+    - Monthly: Toplam/Çözülen arıza + en çok arıza yapan ekipman
+- ✅ **Backend Updates**:
+  * Daily endpoint now includes completedTasks
+  * Monthly endpoint now includes pendingTasks + overdueChecklists
+  * Consistent data structure across all analytics endpoints
+- ✅ **Previous Achievements (TURN 11)**:
+  * Analytics Modal with 3 tabs
   * Employee performance tracking (top 2 + bottom 2)
   * Click-to-expand modal for AI summaries
   * Role-based task assignment hierarchy
-  * Trend arrows and color coding (red/yellow/green)
 
 ## System Architecture
 ### UI/UX Decisions
