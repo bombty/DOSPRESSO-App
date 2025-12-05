@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus } from "lucide-react";
+import { Plus, Building2, Store } from "lucide-react";
 
 // Role hierarchy for task assignment
 const ROLE_HIERARCHY: Record<string, string[]> = {
@@ -30,12 +30,16 @@ const ROLE_HIERARCHY: Record<string, string[]> = {
   supervisor: ['supervisor_buddy', 'barista', 'bar_buddy', 'stajyer'],
   supervisor_buddy: ['barista', 'bar_buddy', 'stajyer'],
   barista: ['bar_buddy', 'stajyer'],
-  bar_buddy: ['stajyer'],
-  stajyer: [], // Cannot assign to anyone
-  yatirimci_branch: [], // Read-only
+  bar_buddy: [],
+  stajyer: [],
+  yatirimci_branch: [],
 };
 
+// HQ roles that can assign to HQ staff as well
 const HQ_ROLES = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+
+// HQ roles that HQ admin can assign tasks to
+const HQ_ASSIGNABLE_ROLES = ['muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika'];
 
 interface Employee {
   id: number;
@@ -47,9 +51,15 @@ interface Employee {
   profilePhoto?: string;
 }
 
+interface Branch {
+  id: number;
+  name: string;
+  shortName?: string;
+}
+
 const quickTaskSchema = z.object({
   description: z.string().min(1, "Görev açıklaması gereklidir").max(500),
-  priority: z.enum(["dusuk", "orta", "yuksek"]),
+  priority: z.enum(["düşük", "orta", "yüksek"]),
   dueDate: z.string().optional(),
   assignedToId: z.string().optional(),
 });
@@ -62,8 +72,12 @@ interface QuickTaskModalProps {
 
 export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
   const [open, setOpen] = useState(false);
+  const [assignmentCategory, setAssignmentCategory] = useState<"hq" | "branch" | "">("");
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const isHQUser = HQ_ROLES.includes(user?.role as string);
 
   // Fetch employees for assignment
   const { data: employees = [] } = useQuery<Employee[]>({
@@ -71,7 +85,13 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
     enabled: open,
   });
 
-  // Filter assignable employees based on role hierarchy
+  // Fetch branches for HQ users
+  const { data: branches = [], isLoading: branchesLoading } = useQuery<Branch[]>({
+    queryKey: ["/api/branches"],
+    enabled: open && isHQUser,
+  });
+
+  // Filter assignable employees based on role hierarchy and category selection
   const assignableEmployees = useMemo(() => {
     if (!user || !employees.length) return [];
     
@@ -80,23 +100,35 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
     
     if (allowedRoles.length === 0) return [];
 
+    // For HQ users with category selection
+    if (isHQUser) {
+      if (assignmentCategory === "hq") {
+        // Show only HQ staff (no branchId or branchId is null)
+        return employees.filter((emp) => {
+          return HQ_ASSIGNABLE_ROLES.includes(emp.role) && !emp.branchId;
+        });
+      } else if (assignmentCategory === "branch" && selectedBranchId) {
+        // Show only employees from selected branch
+        return employees.filter((emp) => {
+          if (!allowedRoles.includes(emp.role)) return false;
+          return emp.branchId === parseInt(selectedBranchId);
+        });
+      }
+      return [];
+    }
+
+    // For branch roles, can only assign within same branch
     return employees.filter((emp) => {
-      // Check if employee's role is in allowed roles
       if (!allowedRoles.includes(emp.role)) return false;
-      
-      // For HQ roles, can assign to any branch
-      if (HQ_ROLES.includes(userRole)) return true;
-      
-      // For branch roles, can only assign within same branch
       return emp.branchId === user.branchId;
     });
-  }, [user, employees]);
+  }, [user, employees, isHQUser, assignmentCategory, selectedBranchId]);
 
   const form = useForm<QuickTaskFormData>({
     resolver: zodResolver(quickTaskSchema),
     defaultValues: {
       description: "",
-      priority: "orta",
+      priority: "orta" as const,
       dueDate: "",
       assignedToId: "",
     },
@@ -104,12 +136,20 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
 
   const createMutation = useMutation({
     mutationFn: async (data: QuickTaskFormData) => {
+      // Determine branchId based on selection
+      let taskBranchId = user?.branchId;
+      if (isHQUser && assignmentCategory === "branch" && selectedBranchId) {
+        taskBranchId = parseInt(selectedBranchId);
+      } else if (isHQUser && assignmentCategory === "hq") {
+        taskBranchId = null;
+      }
+
       await apiRequest("POST", "/api/tasks", {
         description: data.description,
         priority: data.priority,
         status: "beklemede",
-        branchId: user?.branchId,
-        dueDate: data.dueDate || null,
+        branchId: taskBranchId,
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
         assignedToId: data.assignedToId || null,
       });
     },
@@ -121,6 +161,8 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
       form.reset();
+      setAssignmentCategory("");
+      setSelectedBranchId("");
       setOpen(false);
     },
     onError: (error: Error) => {
@@ -136,10 +178,29 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
     createMutation.mutate(data);
   });
 
-  const canAssignTasks = (ROLE_HIERARCHY[user?.role as string] || []).length > 0;
+  const canAssignTasks = (ROLE_HIERARCHY[user?.role as string] || []).length > 0 || isHQUser;
+
+  // Reset employee selection when category or branch changes
+  const handleCategoryChange = (value: "hq" | "branch") => {
+    setAssignmentCategory(value);
+    setSelectedBranchId("");
+    form.setValue("assignedToId", "");
+  };
+
+  const handleBranchChange = (value: string) => {
+    setSelectedBranchId(value);
+    form.setValue("assignedToId", "");
+  };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      setOpen(isOpen);
+      if (!isOpen) {
+        setAssignmentCategory("");
+        setSelectedBranchId("");
+        form.reset();
+      }
+    }}>
       <DialogTrigger asChild>
         {trigger || (
           <Button size="sm" variant="outline" data-testid="button-quick-task">
@@ -175,6 +236,70 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
               )}
             />
 
+            {/* HQ users: Category selection (HQ or Branch) */}
+            {canAssignTasks && isHQUser && (
+              <FormItem>
+                <FormLabel>Atama Kategorisi</FormLabel>
+                <Select value={assignmentCategory} onValueChange={handleCategoryChange}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-assignment-category">
+                      <SelectValue placeholder="Kategori seçin..." />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="hq" data-testid="option-category-hq">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        <span>HQ Personeli</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="branch" data-testid="option-category-branch">
+                      <div className="flex items-center gap-2">
+                        <Store className="h-4 w-4" />
+                        <span>Şube Personeli</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+
+            {/* Branch selection for HQ users when "branch" category selected */}
+            {isHQUser && assignmentCategory === "branch" && (
+              <FormItem>
+                <FormLabel>Şube</FormLabel>
+                <Select 
+                  value={selectedBranchId} 
+                  onValueChange={handleBranchChange}
+                  disabled={branchesLoading}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-branch">
+                      <SelectValue placeholder={branchesLoading ? "Yükleniyor..." : "Şube seçin..."} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {branches.length === 0 && !branchesLoading ? (
+                      <div className="py-2 px-3 text-sm text-muted-foreground">
+                        Şube bulunamadı
+                      </div>
+                    ) : (
+                      branches.map((branch) => (
+                        <SelectItem 
+                          key={branch.id} 
+                          value={branch.id.toString()}
+                          data-testid={`option-branch-${branch.id}`}
+                        >
+                          {branch.shortName || branch.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+
+            {/* Employee selection - shows after category/branch selection for HQ, or directly for branch users */}
             {canAssignTasks && assignableEmployees.length > 0 && (
               <FormField
                 control={form.control}
@@ -218,6 +343,21 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
               />
             )}
 
+            {/* Show message when no employees available after selection */}
+            {canAssignTasks && isHQUser && assignmentCategory && assignableEmployees.length === 0 && (
+              assignmentCategory === "branch" ? (
+                selectedBranchId && (
+                  <p className="text-sm text-muted-foreground">
+                    Bu şubede atanabilir personel bulunamadı.
+                  </p>
+                )
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  HQ'da atanabilir personel bulunamadı.
+                </p>
+              )
+            )}
+
             <FormField
               control={form.control}
               name="priority"
@@ -231,9 +371,9 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="dusuk">Düşük</SelectItem>
+                      <SelectItem value="düşük">Düşük</SelectItem>
                       <SelectItem value="orta">Orta</SelectItem>
-                      <SelectItem value="yuksek">Yüksek</SelectItem>
+                      <SelectItem value="yüksek">Yüksek</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
