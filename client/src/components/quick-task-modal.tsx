@@ -189,7 +189,6 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Atanmamış</SelectItem>
                         {assignableEmployees.map((emp) => (
                           <SelectItem 
                             key={emp.id} 

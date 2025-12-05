@@ -145,11 +145,11 @@ export function EnhancedAnalyticsCard() {
       <TabsContent value="daily" className="space-y-3">
         {daily && (
           <>
-            {daily.summary && (
+            {inModal && daily.summary && (
               <Alert className="bg-accent/10 border-accent/30">
                 <AlertCircle className="h-3 w-3" />
-                <AlertDescription className="text-xs" data-testid="text-daily-summary">
-                  {daily.summary}
+                <AlertDescription className="text-xs font-semibold text-base" data-testid="text-daily-summary">
+                  Günlük Özet: {daily.summary}
                 </AlertDescription>
               </Alert>
             )}
@@ -217,11 +217,11 @@ export function EnhancedAnalyticsCard() {
       <TabsContent value="weekly" className="space-y-3">
         {weekly && (
           <>
-            {weekly.summary && (
+            {inModal && weekly.summary && (
               <Alert className="bg-accent/10 border-accent/30">
                 <AlertCircle className="h-3 w-3" />
-                <AlertDescription className="text-xs" data-testid="text-weekly-summary">
-                  {weekly.summary}
+                <AlertDescription className="text-xs font-semibold text-base" data-testid="text-weekly-summary">
+                  Haftalık Özet: {weekly.summary}
                 </AlertDescription>
               </Alert>
             )}
@@ -317,11 +317,11 @@ export function EnhancedAnalyticsCard() {
       <TabsContent value="monthly" className="space-y-3">
         {monthly && (
           <>
-            {monthly.summary && (
+            {inModal && monthly.summary && (
               <Alert className="bg-accent/10 border-accent/30">
                 <AlertCircle className="h-3 w-3" />
-                <AlertDescription className="text-xs" data-testid="text-monthly-summary">
-                  {monthly.summary}
+                <AlertDescription className="text-xs font-semibold text-base" data-testid="text-monthly-summary">
+                  Aylık Özet: {monthly.summary}
                 </AlertDescription>
               </Alert>
             )}
@@ -436,7 +436,7 @@ export function EnhancedAnalyticsCard() {
           </div>
         </CardHeader>
         <CardContent>
-          {renderContent(false)}
+          <p className="text-xs text-muted-foreground">Detayları görmek için tıklayın...</p>
         </CardContent>
       </Card>
 
