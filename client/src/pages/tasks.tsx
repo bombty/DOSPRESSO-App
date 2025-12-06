@@ -654,7 +654,7 @@ export default function Tasks() {
         </Card>
       </Collapsible>
 
-      <Tabs className="w-full flex flex-col gap-3 sm:gap-4" ref={tasksContainerRef}>
+      <Tabs defaultValue="all" className="w-full flex flex-col gap-3 sm:gap-4" ref={tasksContainerRef}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
           <TabsList data-testid="tabs-task-filter">
             <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
