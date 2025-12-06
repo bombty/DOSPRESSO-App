@@ -7,6 +7,10 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
 ## Recent Changes (December 6, 2025)
+- ✅ **TURN 24 - Tüm Görevlerde Atayan/Atanan/Şube Bilgileri**:
+  * Tüm görevlerde (normal/tamamlanan) ortak olarak: Atanan Kişi, Atayan Kişi, Şube
+  * Sadece tamamlanan görevlerde ek: Tamamlanan Tarih, Aldığı Puan (X/5) + yıldız
+  * Tamamlanan görevler için border-top ile ayırma
 - ✅ **TURN 23 - Görev Detayında Yıldız Bilgisi**:
   * Tamamlanan görevlerin detay sayfasında: Aldığı Puan (X/5) + yıldız gösterimi
   * useQuery ile dinamik rating veri çekme (conditional render)

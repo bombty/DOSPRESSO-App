@@ -1052,7 +1052,39 @@ export default function Tasks() {
                     </div>
                   )}
                   
-                  {/* Tamamlanan görev bilgileri */}
+                  {/* Tüm görevler için ortak bilgiler */}
+                  <div className="space-y-2">
+                    {selectedTask.assignedToId && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Atanan Kişi</p>
+                        <p className="font-medium">
+                          {(() => {
+                            const assignee = allUsers?.find(u => u.id === selectedTask.assignedToId);
+                            return assignee ? `${assignee.firstName} ${assignee.lastName}` : "Bilinmiyor";
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                    {selectedTask.assignedById && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Atayan Kişi</p>
+                        <p className="font-medium">
+                          {(() => {
+                            const assigner = allUsers?.find(u => u.id === selectedTask.assignedById);
+                            return assigner ? `${assigner.firstName} ${assigner.lastName}` : "Bilinmiyor";
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                    {branches && selectedTask.branchId && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Şube</p>
+                        <p className="font-medium">{branches.find(b => b.id === selectedTask.branchId)?.name || `Şube ${selectedTask.branchId}`}</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Tamamlanan görev ek bilgileri */}
                   {selectedTask.status === "onaylandi" && (() => {
                     // eslint-disable-next-line react-hooks/rules-of-hooks
                     const { data: rating } = useQuery<any>({
@@ -1060,31 +1092,7 @@ export default function Tasks() {
                     });
                     
                     return (
-                      <div className="space-y-2">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Atanan Kişi</p>
-                          <p className="font-medium">
-                            {(() => {
-                              const assignee = allUsers?.find(u => u.id === selectedTask.assignedToId);
-                              return assignee ? `${assignee.firstName} ${assignee.lastName}` : "Bilinmiyor";
-                            })()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Atayan Kişi</p>
-                          <p className="font-medium">
-                            {(() => {
-                              const assigner = allUsers?.find(u => u.id === selectedTask.assignedById);
-                              return assigner ? `${assigner.firstName} ${assigner.lastName}` : "Bilinmiyor";
-                            })()}
-                          </p>
-                        </div>
-                        {branches && selectedTask.branchId && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Şube</p>
-                            <p className="font-medium">{branches.find(b => b.id === selectedTask.branchId)?.name || `Şube ${selectedTask.branchId}`}</p>
-                          </div>
-                        )}
+                      <div className="space-y-2 pt-2 border-t">
                         {selectedTask.completedAt && (
                           <div>
                             <p className="text-sm text-muted-foreground">Tamamlanan Tarih</p>
@@ -1110,34 +1118,6 @@ export default function Tasks() {
                       </div>
                     );
                   })()}
-                  
-                  {/* Normal görevler için bilgiler */}
-                  {selectedTask.status !== "onaylandi" && (
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedTask.assignedToId && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Atanan Kişi</p>
-                          <p className="font-medium">
-                            {(() => {
-                              const assignee = allUsers?.find(u => u.id === selectedTask.assignedToId);
-                              return assignee ? `${assignee.firstName} ${assignee.lastName}` : "Bilinmiyor";
-                            })()}
-                          </p>
-                        </div>
-                      )}
-                      {selectedTask.assignedById && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Atayan Kişi</p>
-                          <p className="font-medium">
-                            {(() => {
-                              const assigner = allUsers?.find(u => u.id === selectedTask.assignedById);
-                              return assigner ? `${assigner.firstName} ${assigner.lastName}` : "Bilinmiyor";
-                            })()}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Photo Preview */}
