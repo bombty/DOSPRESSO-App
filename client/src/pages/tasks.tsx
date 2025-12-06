@@ -320,20 +320,6 @@ export default function Tasks() {
       );
     }
     
-    // Tab category filter
-    if (activeTab !== 'all') {
-      const categoryMap: Record<string, string> = {
-        'acilis': 'açılış',
-        'kapanis': 'kapanış',
-        'gunluk': 'günlük kontrol'
-      };
-      const category = categoryMap[activeTab];
-      if (category) {
-        filtered = filtered.filter(task => 
-          task.description?.toLowerCase().includes(category)
-        );
-      }
-    }
     
     // Branch filter (HQ only)
     if (filterBranchId !== null) {
@@ -399,7 +385,7 @@ export default function Tasks() {
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
       <h1 className="text-2xl font-semibold" data-testid="text-page-title">Görevler</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {overdueTasks.length > 0 && (
           <Card 
             data-testid="card-stat-overdue" 
@@ -688,9 +674,6 @@ export default function Tasks() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
           <TabsList data-testid="tabs-task-filter">
             <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
-            <TabsTrigger value="acilis" data-testid="tab-acilis">Açılış</TabsTrigger>
-            <TabsTrigger value="kapanis" data-testid="tab-kapanis">Kapanış</TabsTrigger>
-            <TabsTrigger value="gunluk" data-testid="tab-gunluk">Günlük Kontrol</TabsTrigger>
           </TabsList>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -864,11 +847,11 @@ export default function Tasks() {
           </div>
         )}
 
-        {["all", "acilis", "kapanis", "gunluk"].map((tabValue) => (
+        {["all"].map((tabValue) => (
           <TabsContent key={tabValue} value={tabValue} className="w-full space-y-2 sm:space-y-3">
             {isLoading ? (
               <div className="flex flex-col gap-3 sm:gap-4">
-                {[1, 2, 3, 4, 5].map((i) => (
+                {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-24 w-full" />
                 ))}
               </div>
@@ -1093,7 +1076,12 @@ export default function Tasks() {
                       <UserIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div>
                         <p className="font-medium">Atanan Kişi</p>
-                        <p className="text-muted-foreground">ID: {selectedTask.assignedToId}</p>
+                        <p className="text-muted-foreground">
+                          {(() => {
+                            const assignee = allUsers?.find(u => u.id === selectedTask.assignedToId);
+                            return assignee ? `${assignee.firstName} ${assignee.lastName}` : selectedTask.assignedToId;
+                          })()}
+                        </p>
                       </div>
                     </div>
                   )}
