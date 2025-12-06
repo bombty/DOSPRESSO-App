@@ -6,7 +6,16 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 6, 2025 - TURN 17 Complete - Task Page Dynamic Stats & Branch Filter)
+## Recent Changes (December 6, 2025 - TURN 18 Complete - Task Workflow Refinement & Quick Actions)
+- ✅ **TURN 18 - Task Workflow Refinement & Quick Actions**:
+  * Removed task completion buttons from popup (only quick actions remain)
+  * Added auto-acknowledge logic: Tasks marked "Gördüm" automatically when popup/detail opened
+  * Added explicit "Not Ekle" button in popup for quick note submission
+  * Removed "Gördüm" button from detail page (auto-acknowledge on open)
+  * Photo upload fully independent - no longer triggers task completion
+  * Implemented clean workflow: Quick actions in popup → Completion only on detail page
+  * Auto-acknowledge checks: assignee verification, not already acknowledged, status validation
+- ✅ **Previous Changes (December 6, 2025 - TURN 17 Complete - Task Page Dynamic Stats & Branch Filter)**
 - ✅ **TURN 17 - Task Page Dynamic Statistics & Branch Filter** (/tasklar):
   * Stat cards (Gecikmiş, Bekleyen, Devam Eden, Tamamlanan, Tamamlanmayan) now update dynamically based on active filters
   * Stats respect: "Bana Atanan" filter, "Atadıklarım" filter, and "Şubeler" (branch) filter
