@@ -37,12 +37,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { StarRating } from "@/components/star-rating";
 import type { Task, User as UserType, TaskStatusHistory, TaskRating } from "@shared/schema";
 
-interface RatingResponse {
-  rating: TaskRating | null;
-  maxRating: number;
-  canRate: boolean;
-  isLate: boolean;
-}
+interface RatingResponse extends TaskRating {}
 
 export default function GorevDetay() {
   const { id } = useParams();
@@ -106,11 +101,11 @@ export default function GorevDetay() {
     enabled: !!id,
   });
 
-  const { data: ratingData } = useQuery<RatingResponse>({
+  const { data: ratingData } = useQuery<RatingResponse | undefined>({
     queryKey: ["/api/tasks", id, "rating"],
     queryFn: async () => {
       const response = await fetch(`/api/tasks/${id}/rating`);
-      if (!response.ok) return { rating: null, maxRating: 5, canRate: false, isLate: false };
+      if (!response.ok) return undefined;
       return response.json();
     },
     enabled: !!id,
@@ -560,20 +555,20 @@ export default function GorevDetay() {
                 </div>
                 
                 {/* Rating section - Compact */}
-                {ratingData?.rating ? (
+                {ratingData?.rawRating ? (
                   <div className="mt-1 flex items-center gap-1">
                     <span className="text-muted-foreground">Puan:</span>
                     <StarRating 
-                      value={ratingData.rating.finalRating} 
+                      value={ratingData.finalRating} 
                       readonly 
                       size="xs"
                     />
-                    <span className="font-medium">{ratingData.rating.finalRating}/5</span>
-                    {ratingData.rating.penaltyApplied === 1 && (
+                    <span className="font-medium">{ratingData.finalRating}/5</span>
+                    {ratingData.penaltyApplied === 1 && (
                       <span className="text-orange-500">⚠️</span>
                     )}
                   </div>
-                ) : ratingData?.canRate ? (
+                ) : (
                   <Button
                     variant="outline"
                     size="sm"
@@ -584,7 +579,7 @@ export default function GorevDetay() {
                     <Star className="h-3 w-3 mr-1" />
                     Puanla
                   </Button>
-                ) : null}
+                )}
               </div>
             </div>
           )}
@@ -683,7 +678,7 @@ export default function GorevDetay() {
               Görevin tamamlanma kalitesini değerlendirin (1-5 yıldız).
               {ratingData?.isLate && (
                 <span className="block mt-2 text-orange-500 text-sm">
-                  ⚠️ Görev geç teslim edildi. En fazla {ratingData.maxRating} yıldız verilebilir.
+                  ⚠️ Görev geç teslim edildi.
                 </span>
               )}
             </DialogDescription>
@@ -693,7 +688,7 @@ export default function GorevDetay() {
             <StarRating
               value={ratingValue}
               onChange={setRatingValue}
-              maxRating={ratingData?.maxRating ?? 5}
+              maxRating={5}
               size="lg"
               showValue
             />
