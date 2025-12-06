@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ObjectUploader } from "@/components/ObjectUploader";
 import type { Task, User as UserType, TaskStatusHistory } from "@shared/schema";
 
 export default function GorevDetay() {
@@ -39,6 +40,7 @@ export default function GorevDetay() {
   const { toast } = useToast();
   const [failureNote, setFailureNote] = useState("");
   const [showFailureDialog, setShowFailureDialog] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [newNote, setNewNote] = useState("");
 
   const { data: task, isLoading } = useQuery<Task>({
@@ -222,16 +224,16 @@ export default function GorevDetay() {
         )}
       </div>
 
-      {/* Action Buttons for Assignee */}
+      {/* Preview Section */}
       {isAssignee && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <PlayCircle className="h-4 w-4" />
-              Görev İşlemleri
+              Ön İzleme
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-2">
               {canAcknowledge && (
                 <Button
@@ -256,17 +258,76 @@ export default function GorevDetay() {
                   Başladım
                 </Button>
               )}
-              
-              {canComplete && (
-                <Button
-                  onClick={() => updateStatusMutation.mutate({ status: "onaylandi" })}
-                  disabled={updateStatusMutation.isPending}
-                  data-testid="button-complete-task"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Tamamlandı
-                </Button>
-              )}
+            </div>
+
+            {/* Note & Photo section - shows after task is started */}
+            {task.status === "devam_ediyor" && (
+              <div className="border-t pt-3 space-y-3">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Not Ekle</label>
+                  <Textarea
+                    placeholder="Görev hakkında bir not yazın..."
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    className="resize-none min-h-[60px]"
+                    data-testid="input-preview-note"
+                  />
+                  <Button
+                    onClick={handleAddNote}
+                    disabled={addNoteMutation.isPending || !newNote.trim()}
+                    className="w-full mt-2"
+                    size="sm"
+                    data-testid="button-add-preview-note"
+                  >
+                    <Send className="h-3 w-3 mr-2" />
+                    {addNoteMutation.isPending ? "Kaydediliyor..." : "Not Ekle"}
+                  </Button>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Fotoğraf Yükle</label>
+                  <ObjectUploader 
+                    maxNumberOfFiles={1}
+                    maxFileSize={10485760}
+                    onGetUploadParameters={async () => {
+                      const response = await fetch("/api/objects/upload", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                      });
+                      if (!response.ok) throw new Error("Upload başarısız");
+                      return response.json();
+                    }}
+                    onComplete={() => {
+                      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+                      toast({ title: "Başarılı", description: "Fotoğraf yüklendi" });
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Detail Section - Completion */}
+      {isAssignee && canComplete && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Görev Tamamla
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => setShowCompleteDialog(true)}
+                disabled={updateStatusMutation.isPending}
+                data-testid="button-complete-task"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Tamamlandı
+              </Button>
               
               {canMarkFailed && (
                 <Button
@@ -523,6 +584,37 @@ export default function GorevDetay() {
           )}
         </CardContent>
       </Card>
+
+      {/* Complete Confirmation Dialog */}
+      <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Görevi Tamamlamak Emin misin?</DialogTitle>
+            <DialogDescription>
+              Görevin tamamlandı olarak işaretlenecek. Bu işlem geri alınamaz.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCompleteDialog(false)}
+              data-testid="button-cancel-complete"
+            >
+              İptal
+            </Button>
+            <Button 
+              onClick={() => {
+                updateStatusMutation.mutate({ status: "onaylandi" });
+                setShowCompleteDialog(false);
+              }}
+              disabled={updateStatusMutation.isPending}
+              data-testid="button-confirm-complete"
+            >
+              {updateStatusMutation.isPending ? "Kaydediliyor..." : "Tamamlandı"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Failure Dialog */}
       <Dialog open={showFailureDialog} onOpenChange={setShowFailureDialog}>
