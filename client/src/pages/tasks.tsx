@@ -26,7 +26,8 @@ import { QuickTaskModal } from "@/components/quick-task-modal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
-import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send } from "lucide-react";
+import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send, Star } from "lucide-react";
+import { StarRating } from "@/components/star-rating";
 import { format } from "date-fns";
 
 export default function Tasks() {
@@ -906,59 +907,93 @@ export default function Tasks() {
                 </Card>
 
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {filteredTasks?.map((task) => (
-                  <Card 
-                    key={task.id} 
-                    data-testid={`card-task-${task.id}`}
-                    className="hover-elevate cursor-pointer"
-                    onClick={() => setSelectedTask(task)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="text-sm font-medium line-clamp-2 flex-1">{task.description}</h3>
-                          <Badge
-                            variant={
-                              task.status === "onaylandi"
-                                ? "default"
-                                : task.status === "reddedildi" || task.status === "gecikmiş" || task.status === "basarisiz"
-                                ? "destructive"
-                                : "secondary"
-                            }
-                            className="text-xs whitespace-nowrap"
-                            data-testid={`badge-task-status-${task.id}`}
-                          >
-                            {task.status === "beklemede" && "Beklemede"}
-                            {task.status === "devam_ediyor" && "Devam"}
-                            {task.status === "foto_bekleniyor" && "Foto"}
-                            {task.status === "incelemede" && "İncele"}
-                            {task.status === "onaylandi" && "Onaylı"}
-                            {task.status === "reddedildi" && "Reddedildi"}
-                            {task.status === "gecikmiş" && "Gecikmiş"}
-                            {task.status === "basarisiz" && "Başarısız"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-                          </p>
-                          {!task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz" && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <EyeOff className="h-3 w-3" />
-                              <span>Görülmedi</span>
+                  {filteredTasks?.map((task) => {
+                    const assigner = allUsers?.find(u => u.id === task.assignedById);
+                    const branch = branches?.find(b => b.id === task.branchId);
+                    const { data: rating } = useQuery<any>({
+                      queryKey: [`/api/tasks/${task.id}/rating`],
+                      enabled: task.status === "onaylandi",
+                    });
+                    
+                    return (
+                    <Card 
+                      key={task.id} 
+                      data-testid={`card-task-${task.id}`}
+                      className="hover-elevate cursor-pointer"
+                      onClick={() => setSelectedTask(task)}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-sm font-medium line-clamp-2 flex-1">{task.description}</h3>
+                            <Badge
+                              variant={
+                                task.status === "onaylandi"
+                                  ? "default"
+                                  : task.status === "reddedildi" || task.status === "gecikmiş" || task.status === "basarisiz"
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                              className="text-xs whitespace-nowrap"
+                              data-testid={`badge-task-status-${task.id}`}
+                            >
+                              {task.status === "beklemede" && "Beklemede"}
+                              {task.status === "devam_ediyor" && "Devam"}
+                              {task.status === "foto_bekleniyor" && "Foto"}
+                              {task.status === "incelemede" && "İncele"}
+                              {task.status === "onaylandi" && "Onaylı"}
+                              {task.status === "reddedildi" && "Reddedildi"}
+                              {task.status === "gecikmiş" && "Gecikmiş"}
+                              {task.status === "basarisiz" && "Başarısız"}
+                            </Badge>
+                          </div>
+                          
+                          {/* Tamamlanan görev bilgileri */}
+                          {task.status === "onaylandi" && (
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <div className="flex items-center gap-2 flex-wrap text-muted-foreground">
+                                {assigner && (
+                                  <span>Atayan: <span className="font-medium">{assigner.firstName} {assigner.lastName}</span></span>
+                                )}
+                                {branch && (
+                                  <span>({branch.name})</span>
+                                )}
+                              </div>
+                              {rating && (
+                                <div className="flex items-center gap-1">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`h-3 w-3 ${i < (rating.score || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
-                          {task.acknowledgedAt && (
-                            <div className="flex items-center gap-1 text-xs text-success">
-                              <Eye className="h-3 w-3" />
-                              <span>Görüldü</span>
-                            </div>
-                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                            </p>
+                            {!task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz" && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <EyeOff className="h-3 w-3" />
+                                <span>Görülmedi</span>
+                              </div>
+                            )}
+                            {task.acknowledgedAt && (
+                              <div className="flex items-center gap-1 text-xs text-success">
+                                <Eye className="h-3 w-3" />
+                                <span>Görüldü</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                    );
+                  })}
                 {(!filteredTasks || filteredTasks.length === 0) && !isLoading && (
                   <Card>
                     <CardContent className="py-8">
