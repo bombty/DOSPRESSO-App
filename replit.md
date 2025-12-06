@@ -6,7 +6,23 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 6, 2025 - TURN 18 Complete - Task Workflow Refinement & Quick Actions)
+## Recent Changes (December 6, 2025 - TURN 19 Complete - Task Rating System)
+- ✅ **TURN 19 - Dual Rating System for Tasks**:
+  * New database tables: task_ratings, checklist_ratings, employee_overall_performance
+  * Backend penalty logic: Late task completions automatically capped at 4 stars maximum
+  * StarRating component with interactive 1-5 star selection and hover effects
+  * Disabled stars for late tasks with tooltip explanation
+  * Task detail page: Rating dialog for assigners to rate completed tasks
+  * Personnel detail page: "Görev Memnuniyeti" card in Performance tab showing:
+    - Overall composite score (0-100)
+    - Task rating average with star display
+    - Checklist score average
+    - Total evaluation count
+    - Recent ratings table with task links
+  * New API endpoints: GET/POST /api/tasks/:id/rating, GET /api/users/:id/satisfaction-score
+  * Authorization: Only task assigners can rate completed tasks
+  * Unique constraint prevents duplicate ratings per task
+- ✅ **Previous Changes (December 6, 2025 - TURN 18 Complete)**
 - ✅ **TURN 18 - Task Workflow Refinement & Quick Actions**:
   * Removed task completion buttons from popup (only quick actions remain)
   * Added auto-acknowledge logic: Tasks marked "Gördüm" automatically when popup/detail opened
