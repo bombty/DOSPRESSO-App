@@ -277,6 +277,12 @@ export default function Tasks() {
     },
   });
 
+  // Rating query - always call at top level
+  const { data: selectedTaskRating } = useQuery<any>({
+    queryKey: selectedTask ? [`/api/tasks/${selectedTask.id}/rating`] : ["no-task"],
+    enabled: selectedTask?.status === "onaylandi",
+  });
+
   const handleGetUploadParams = async () => {
     const response = await fetch("/api/objects/upload", {
       method: "POST",
@@ -1085,39 +1091,32 @@ export default function Tasks() {
                   </div>
                   
                   {/* Tamamlanan görev ek bilgileri */}
-                  {selectedTask.status === "onaylandi" && (() => {
-                    // eslint-disable-next-line react-hooks/rules-of-hooks
-                    const { data: rating } = useQuery<any>({
-                      queryKey: [`/api/tasks/${selectedTask.id}/rating`],
-                    });
-                    
-                    return (
-                      <div className="space-y-2 pt-2 border-t">
-                        {selectedTask.completedAt && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Tamamlanan Tarih</p>
-                            <p className="font-medium">{new Date(selectedTask.completedAt).toLocaleDateString("tr-TR")}</p>
-                          </div>
-                        )}
-                        {rating && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Aldığı Puan</p>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{rating.score || 0}/5</span>
-                              <div className="flex items-center gap-0.5">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-4 w-4 ${i < (rating.score || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
-                                  />
-                                ))}
-                              </div>
+                  {selectedTask.status === "onaylandi" && (
+                    <div className="space-y-2 pt-2 border-t">
+                      {selectedTask.completedAt && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Tamamlanan Tarih</p>
+                          <p className="font-medium">{new Date(selectedTask.completedAt).toLocaleDateString("tr-TR")}</p>
+                        </div>
+                      )}
+                      {selectedTaskRating && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Aldığı Puan</p>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{selectedTaskRating.score || 0}/5</span>
+                            <div className="flex items-center gap-0.5">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${i < (selectedTaskRating.score || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                                />
+                              ))}
                             </div>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Photo Preview */}
