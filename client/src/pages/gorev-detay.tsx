@@ -413,12 +413,12 @@ export default function GorevDetay() {
               <AlertCircle className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium">
-                  {entry.previousStatus !== entry.newStatus 
+                  {entry.previousStatus && entry.previousStatus !== entry.newStatus 
                     ? `Durum: ${statusLabels[entry.previousStatus] || entry.previousStatus} → ${statusLabels[entry.newStatus] || entry.newStatus}`
                     : entry.note || "Güncelleme"
                   }
                 </p>
-                {entry.note && entry.previousStatus !== entry.newStatus && (
+                {entry.note && entry.previousStatus && entry.previousStatus !== entry.newStatus && (
                   <p className="text-xs text-muted-foreground mt-1">Not: {entry.note}</p>
                 )}
                 <p className="text-xs text-muted-foreground">

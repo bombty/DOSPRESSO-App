@@ -25,7 +25,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
-import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown } from "lucide-react";
+import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Tasks() {
@@ -989,7 +989,7 @@ export default function Tasks() {
                             variant={
                               task.status === "onaylandi"
                                 ? "default"
-                                : task.status === "reddedildi" || task.status === "gecikmiş"
+                                : task.status === "reddedildi" || task.status === "gecikmiş" || task.status === "basarisiz"
                                 ? "destructive"
                                 : "secondary"
                             }
@@ -1003,11 +1003,26 @@ export default function Tasks() {
                             {task.status === "onaylandi" && "Onaylı"}
                             {task.status === "reddedildi" && "Reddedildi"}
                             {task.status === "gecikmiş" && "Gecikmiş"}
+                            {task.status === "basarisiz" && "Başarısız"}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                          </p>
+                          {!task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz" && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <EyeOff className="h-3 w-3" />
+                              <span>Görülmedi</span>
+                            </div>
+                          )}
+                          {task.acknowledgedAt && (
+                            <div className="flex items-center gap-1 text-xs text-success">
+                              <Eye className="h-3 w-3" />
+                              <span>Görüldü</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
