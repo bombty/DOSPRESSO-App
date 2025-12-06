@@ -302,46 +302,6 @@ export default function GorevDetay() {
         <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
-              <CardTitle>Görev Notları</CardTitle>
-              <CardDescription>Bu göreve ait notlar ve yorumlar</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full space-y-2 sm:space-y-3">
-                <div>
-                  <Textarea
-                    placeholder="Not ekle..."
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="min-h-24"
-                    data-testid="textarea-note"
-                  />
-                  <Button
-                    className="mt-2"
-                    onClick={() => addNoteMutation.mutate()}
-                    disabled={!note || addNoteMutation.isPending}
-                    data-testid="button-add-note"
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Not Ekle
-                  </Button>
-                </div>
-                {task.notes ? (
-                  <div className="pt-4 border-t">
-                    <div className="p-3 rounded-lg bg-muted">
-                      <p className="text-sm whitespace-pre-wrap">{task.notes}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground py-3">Henüz not eklenmemiş</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
-          <Card>
-            <CardHeader>
               <CardTitle>Görev Geçmişi</CardTitle>
               <CardDescription>Görev durum değişiklikleri ve aktivite</CardDescription>
             </CardHeader>
@@ -367,7 +327,7 @@ export default function GorevDetay() {
                     </div>
                   </div>
                 )}
-                {task.status === "completed" && (
+                {task.status === "onaylandi" && (
                   <div className="flex items-start gap-2 sm:gap-3 p-3 rounded-lg border bg-success/10 dark:bg-success/5/20">
                     <CheckCircle className="h-4 w-4 mt-1 text-success" />
                     <div>
