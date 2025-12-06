@@ -629,7 +629,7 @@ export default function Tasks() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tüm kişiler</SelectItem>
-                    {(isHQ ? allUsers : employees)?.map((user) => (
+                    {allUsers?.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.firstName} {user.lastName}
                       </SelectItem>
@@ -1086,15 +1086,6 @@ export default function Tasks() {
                         className="resize-none"
                         data-testid="textarea-task-notes"
                       />
-                    </div>
-                  </>
-                )}
-                {selectedTask.notes && (
-                  <>
-                    <Separator />
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium">Mevcut Notlar</label>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted p-2 rounded">{selectedTask.notes}</p>
                     </div>
                   </>
                 )}

@@ -1056,18 +1056,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             link: `/gorevler?taskId=${task.id}`,
           });
           
-          // Send email notification
+          // Send email notification asynchronously (fire-and-forget)
           const assignee = await storage.getUser(assigneeId);
           if (assignee?.email) {
             const priorityLabels: Record<string, string> = { 'düşük': 'Düşük', 'orta': 'Orta', 'yüksek': 'Yüksek' };
             const priorityLabel = priorityLabels[task.priority || 'orta'] || 'Orta';
             const dueDateStr = task.dueDate ? new Date(task.dueDate).toLocaleDateString('tr-TR') : 'Belirtilmemiş';
             
-            await sendNotificationEmail(
+            // Fire-and-forget email (don't wait for response)
+            sendNotificationEmail(
               assignee.email,
               'Yeni Görev Atandı - DOSPRESSO',
               `Merhaba ${assignee.firstName || 'Değerli Çalışan'},\n\n${assignerName} size yeni bir görev atadı.\n\nGörev: ${task.description}\nÖncelik: ${priorityLabel}\nSon Tarih: ${dueDateStr}\n\nGörevi tamamlamak için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
-            );
+            ).catch(err => console.error("Background email error:", err));
           }
         } catch (notifError) {
           console.error("Error sending task assignment notification:", notifError);
@@ -1169,14 +1170,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             link: `/gorevler?taskId=${task.id}`,
           });
           
-          // Send email notification
+          // Send email notification asynchronously
           const assigner = await storage.getUser(existingTask.assignedById);
           if (assigner?.email) {
-            await sendNotificationEmail(
+            sendNotificationEmail(
               assigner.email,
               'Görev Tamamlandı - DOSPRESSO',
               `Merhaba ${assigner.firstName || 'Değerli Yönetici'},\n\n${completerName} atadığınız görevi tamamladı.\n\nGörev: ${existingTask.description}\nTamamlanma Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\nGörevi incelemek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
-            );
+            ).catch(err => console.error("Background email error:", err));
           }
         } catch (notifError) {
           console.error("Error sending task completion notification:", notifError);
@@ -1322,14 +1323,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             link: `/gorevler?taskId=${task!.id}`,
           });
           
-          // Send email notification
+          // Send email notification asynchronously
           const assigner = await storage.getUser(existingTask.assignedById);
           if (assigner?.email) {
-            await sendNotificationEmail(
+            sendNotificationEmail(
               assigner.email,
               'Görev Başlatıldı - DOSPRESSO',
               `Merhaba ${assigner.firstName || 'Değerli Yönetici'},\n\n${starterName} atadığınız görevi başlattı.\n\nGörev: ${existingTask.description}\nBaşlangıç Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\nGörevi takip etmek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
-            );
+            ).catch(err => console.error("Background email error:", err));
           }
         } catch (notifError) {
           console.error("Error sending task started notification:", notifError);
@@ -1393,14 +1394,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             link: `/gorevler?taskId=${task!.id}`,
           });
           
-          // Send email notification
+          // Send email notification asynchronously
           const assignee = await storage.getUser(existingTask.assignedToId);
           if (assignee?.email) {
-            await sendNotificationEmail(
+            sendNotificationEmail(
               assignee.email,
               'Görev Onaylandı - DOSPRESSO',
               `Merhaba ${assignee.firstName || 'Değerli Çalışan'},\n\n${verifierName} tamamladığınız görevi onayladı.\n\nGörev: ${existingTask.description}\nOnay Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\nTebrikler! Başarılı çalışmanız için teşekkürler.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
-            );
+            ).catch(err => console.error("Background email error:", err));
           }
         } catch (notifError) {
           console.error("Error sending task verified notification:", notifError);
