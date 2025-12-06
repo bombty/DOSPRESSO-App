@@ -1053,40 +1053,63 @@ export default function Tasks() {
                   )}
                   
                   {/* Tamamlanan görev bilgileri */}
-                  {selectedTask.status === "onaylandi" && (
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Atanan Kişi</p>
-                        <p className="font-medium">
-                          {(() => {
-                            const assignee = allUsers?.find(u => u.id === selectedTask.assignedToId);
-                            return assignee ? `${assignee.firstName} ${assignee.lastName}` : "Bilinmiyor";
-                          })()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Atayan Kişi</p>
-                        <p className="font-medium">
-                          {(() => {
-                            const assigner = allUsers?.find(u => u.id === selectedTask.assignedById);
-                            return assigner ? `${assigner.firstName} ${assigner.lastName}` : "Bilinmiyor";
-                          })()}
-                        </p>
-                      </div>
-                      {branches && selectedTask.branchId && (
+                  {selectedTask.status === "onaylandi" && (() => {
+                    // eslint-disable-next-line react-hooks/rules-of-hooks
+                    const { data: rating } = useQuery<any>({
+                      queryKey: [`/api/tasks/${selectedTask.id}/rating`],
+                    });
+                    
+                    return (
+                      <div className="space-y-2">
                         <div>
-                          <p className="text-sm text-muted-foreground">Şube</p>
-                          <p className="font-medium">{branches.find(b => b.id === selectedTask.branchId)?.name || `Şube ${selectedTask.branchId}`}</p>
+                          <p className="text-sm text-muted-foreground">Atanan Kişi</p>
+                          <p className="font-medium">
+                            {(() => {
+                              const assignee = allUsers?.find(u => u.id === selectedTask.assignedToId);
+                              return assignee ? `${assignee.firstName} ${assignee.lastName}` : "Bilinmiyor";
+                            })()}
+                          </p>
                         </div>
-                      )}
-                      {selectedTask.completedAt && (
                         <div>
-                          <p className="text-sm text-muted-foreground">Tamamlanan Tarih</p>
-                          <p className="font-medium">{new Date(selectedTask.completedAt).toLocaleDateString("tr-TR")}</p>
+                          <p className="text-sm text-muted-foreground">Atayan Kişi</p>
+                          <p className="font-medium">
+                            {(() => {
+                              const assigner = allUsers?.find(u => u.id === selectedTask.assignedById);
+                              return assigner ? `${assigner.firstName} ${assigner.lastName}` : "Bilinmiyor";
+                            })()}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  )}
+                        {branches && selectedTask.branchId && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Şube</p>
+                            <p className="font-medium">{branches.find(b => b.id === selectedTask.branchId)?.name || `Şube ${selectedTask.branchId}`}</p>
+                          </div>
+                        )}
+                        {selectedTask.completedAt && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Tamamlanan Tarih</p>
+                            <p className="font-medium">{new Date(selectedTask.completedAt).toLocaleDateString("tr-TR")}</p>
+                          </div>
+                        )}
+                        {rating && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Aldığı Puan</p>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{rating.score || 0}/5</span>
+                              <div className="flex items-center gap-0.5">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-4 w-4 ${i < (rating.score || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   
                   {/* Normal görevler için bilgiler */}
                   {selectedTask.status !== "onaylandi" && (
