@@ -92,7 +92,6 @@ export default function Tasks() {
 
   const { data: allUsers, isLoading: isAllUsersLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
-    enabled: isHQ === true,
   });
 
   // Handle URL parameters for status filter
@@ -1046,32 +1045,42 @@ export default function Tasks() {
                 <Separator />
 
                 {/* Task Info */}
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 text-sm">
+                <div className="space-y-3">
                   {selectedTask.dueDate && (
                     <div className="flex items-start gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div>
-                        <p className="font-medium">Teslim Tarihi</p>
-                        <p className="text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">Teslim Tarihi</p>
+                        <p className="font-medium">
                           {new Date(selectedTask.dueDate).toLocaleDateString("tr-TR")}
                         </p>
                       </div>
                     </div>
                   )}
-                  {selectedTask.assignedToId && (
-                    <div className="flex items-start gap-2">
-                      <UserIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedTask.assignedToId && (
                       <div>
-                        <p className="font-medium">Atanan Kişi</p>
-                        <p className="text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">Atanan Kişi</p>
+                        <p className="font-medium">
                           {(() => {
                             const assignee = allUsers?.find(u => u.id === selectedTask.assignedToId);
-                            return assignee ? `${assignee.firstName} ${assignee.lastName}` : selectedTask.assignedToId;
+                            return assignee ? `${assignee.firstName} ${assignee.lastName}` : "Bilinmiyor";
                           })()}
                         </p>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    {selectedTask.assignedById && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Atayan Kişi</p>
+                        <p className="font-medium">
+                          {(() => {
+                            const assigner = allUsers?.find(u => u.id === selectedTask.assignedById);
+                            return assigner ? `${assigner.firstName} ${assigner.lastName}` : "Bilinmiyor";
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Photo Preview */}
