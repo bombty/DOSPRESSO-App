@@ -48,6 +48,7 @@ export default function Tasks() {
   });
   const [filterOpen, setFilterOpen] = useState(false);
   const [taskNotes, setTaskNotes] = useState("");
+  const [assignmentFilter, setAssignmentFilter] = useState<"bana_atanan" | "atadiklarim" | null>(null);
   const tasksContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
@@ -344,6 +345,13 @@ export default function Tasks() {
       filtered = filtered.filter(t => t.priority === filterPriority);
     }
     
+    // Assignment direction filter (compare as strings due to type mismatch)
+    if (assignmentFilter === "bana_atanan") {
+      filtered = filtered.filter(t => t.assignedToId?.toString() === user?.id?.toString());
+    } else if (assignmentFilter === "atadiklarim") {
+      filtered = filtered.filter(t => t.assignedById?.toString() === user?.id?.toString());
+    }
+    
     // Date range filter (due date)
     if (filterDateFrom) {
       filtered = filtered.filter(t => {
@@ -382,11 +390,31 @@ export default function Tasks() {
     });
     
     return filtered;
-  }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig]);
+  }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig, assignmentFilter]);
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
-      <h1 className="text-2xl font-semibold" data-testid="text-page-title">Görevler</h1>
+      <h1 className="text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
+
+      {/* Assignment Direction Filter */}
+      <div className="flex gap-2">
+        <Button
+          variant={assignmentFilter === "bana_atanan" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAssignmentFilter(assignmentFilter === "bana_atanan" ? null : "bana_atanan")}
+          data-testid="button-filter-assigned-to-me"
+        >
+          Bana Atanan
+        </Button>
+        <Button
+          variant={assignmentFilter === "atadiklarim" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim")}
+          data-testid="button-filter-assigned-by-me"
+        >
+          Atadıklarım
+        </Button>
+      </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {overdueTasks.length > 0 && (
@@ -812,12 +840,12 @@ export default function Tasks() {
                <Filter className="h-4 w-4" />}
             </div>
             <span className="font-medium">
-              {filterStatus === 'gecikmiş' ? 'Gecikmiş Görevler' :
-               filterStatus === 'beklemede' ? 'Bekleyen Görevler' :
-               filterStatus === 'devam_ediyor' ? 'Devam Eden Görevler' :
-               filterStatus === 'reddedildi' ? 'Tamamlanmayan Görevler' :
-               filterStatus === 'onaylandi' ? 'Tamamlanan Görevler' :
-               'Filtrelenmiş Görevler'}
+              {filterStatus === 'gecikmiş' ? 'Gecikmiş Tasklar' :
+               filterStatus === 'beklemede' ? 'Bekleyen Tasklar' :
+               filterStatus === 'devam_ediyor' ? 'Devam Eden Tasklar' :
+               filterStatus === 'reddedildi' ? 'Tamamlanmayan Tasklar' :
+               filterStatus === 'onaylandi' ? 'Tamamlanan Tasklar' :
+               'Filtrelenmiş Tasklar'}
             </span>
             <Badge variant="outline">{filteredTasks.length}</Badge>
             <Button

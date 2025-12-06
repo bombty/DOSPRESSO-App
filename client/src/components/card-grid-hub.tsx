@@ -87,7 +87,7 @@ export function CardGridHub() {
     { 
       id: "tasks", 
       icon: ClipboardList, 
-      label: "Görevler", 
+      label: "Tasklar", 
       path: "/gorevler",
       color: "bg-green-500",
       badge: pendingTasks,
@@ -140,11 +140,11 @@ export function CardGridHub() {
     { 
       id: "tasks-hq", 
       icon: ClipboardList, 
-      label: "Görevler", 
+      label: "Tasklar", 
       path: "/gorevler",
       color: "bg-green-500",
       badge: pendingTasks,
-      description: "Görev yönetimi"
+      description: "Task yönetimi"
     },
     { 
       id: "academy-hq", 

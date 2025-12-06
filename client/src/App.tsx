@@ -126,7 +126,7 @@ function Router() {
           <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
           <Route path="/devam-takibi" component={Attendance} />
 
-          {/* Operasyon & Görevler */}
+          {/* Operasyon & Tasklar */}
           <Route path="/gorevler" component={Tasks} />
           <Route path="/gorev-detay/:id" component={GorevDetay} />
           <Route path="/checklistler" component={Checklists} />
