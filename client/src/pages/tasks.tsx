@@ -131,6 +131,18 @@ export default function Tasks() {
     }
   }, [tasks]);
 
+  // Auto-acknowledge task when drawer opens
+  useEffect(() => {
+    if (selectedTask && user) {
+      const isAssignee = user.id === selectedTask.assignedToId;
+      const canAutoAck = isAssignee && !selectedTask.acknowledgedAt && selectedTask.status !== "onaylandi" && selectedTask.status !== "basarisiz";
+      
+      if (canAutoAck) {
+        acknowledgeMutation.mutate(selectedTask.id);
+      }
+    }
+  }, [selectedTask?.id, user?.id]);
+
   const clearAllFilters = () => {
     setSearchQuery("");
     setFilterBranchId(null);
@@ -180,6 +192,18 @@ export default function Tasks() {
         description: "Görev tamamlanamadı",
         variant: "destructive",
       });
+    },
+  });
+
+  const acknowledgeMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      await apiRequest("PATCH", `/api/tasks/${taskId}/acknowledge`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onError: () => {
+      // Silently fail - don't interrupt user
     },
   });
 
