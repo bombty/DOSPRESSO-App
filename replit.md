@@ -6,28 +6,27 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 5, 2025 - TURN 13 Complete - Task Notification System)
-- ✅ **Supervisor Task Visibility**:
-  * supervisor and supervisor_buddy roles can now see ALL tasks in their branch
-  * Other branch roles still only see tasks assigned to themselves
-  * Security maintained: branch users cannot access other branches
-- ✅ **Deep Link Navigation**:
-  * All task notifications include `/gorevler?taskId=X` link for direct access
-  * Tasks page reads URL param and auto-opens task drawer
-  * Smart fallback routing based on notification type when link is missing
-- ✅ **Branch Supervisor Notifications**:
-  * Supervisors and supervisor_buddies notified when tasks assigned to their branch
-  * Excludes assignee and assigner from duplicate notifications
-- ✅ **HQ Admin Review Notifications**:
-  * HQ admins (hq_admin, general_manager) notified when tasks are ready for review
-  * Added getHQAdmins() storage function
-- ✅ **Overdue Task Reminders**:
-  * Both assignee and assigner receive notifications with direct task links
-  * Scheduled job runs hourly to check overdue tasks
-- ✅ **Previous Achievements (TURN 12)**:
-  * Unified Analytics Tabs with CoreMetricsGrid
-  * Three-period dashboard (daily/weekly/monthly)
-  * AI-generated summaries
+## Recent Changes (December 6, 2025 - TURN 14 Complete - Tasks Page UI Optimization)
+- ✅ **Assigned Person Name Display**:
+  * Task drawer now displays assignee's full name (firstName + lastName) instead of ID
+  * Uses allUsers lookup for clean, user-friendly display
+- ✅ **Clickable Status Filter Cards**:
+  * Stat cards (Bekleyen/Devam Eden/Tamamlanmayan/Gecikmiş) are fully clickable
+  * Clicking card toggles filterStatus and opens filter panel automatically
+  * Ring highlighting shows active filter status
+- ✅ **Compact Grid Layout**:
+  * Changed from responsive (1 SM:2 MD:3) to fixed 3-column grid layout
+  * Provides consistent, compact view across all screen sizes
+  * Improved visual hierarchy with consistent spacing
+- ✅ **Simplified Tab Navigation**:
+  * Removed category-based tabs (Açılış/Kapanış/Günlük Kontrol)
+  * Kept only "Tümü" (All) tab for cleaner interface
+  * Removed category filtering logic from TasksPage
+- ✅ **Previous Achievement (TURN 13)**:
+  * Complete task notification system with deep linking
+  * Supervisor task visibility (see all branch tasks)
+  * Branch supervisor and HQ admin notifications
+  * Overdue task reminders with direct task links
 
 ## System Architecture
 ### UI/UX Decisions
