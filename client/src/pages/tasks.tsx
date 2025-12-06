@@ -73,11 +73,37 @@ export default function Tasks() {
   const selectedBranchId = form.watch("branchId");
   const isHQ = user?.role && checkIsHQRole(user.role as any);
 
-  const overdueTasks = useMemo(() => {
+  const filteredTasksForStats = useMemo(() => {
     if (!tasks) return [];
+    
+    let filtered = [...tasks];
+    
+    // Branch-level filtering: non-HQ users only see their branch tasks
+    if (user?.role && !isHQRole(user.role as any)) {
+      if (user.branchId) {
+        filtered = filtered.filter(task => task.branchId === user.branchId);
+      }
+    }
+    
+    // Branch filter (HQ only)
+    if (filterBranchId !== null) {
+      filtered = filtered.filter(t => Number(t.branchId) === Number(filterBranchId));
+    }
+    
+    // Assignment direction filter (compare as strings due to type mismatch)
+    if (assignmentFilter === "bana_atanan") {
+      filtered = filtered.filter(t => t.assignedToId?.toString() === user?.id?.toString());
+    } else if (assignmentFilter === "atadiklarim") {
+      filtered = filtered.filter(t => t.assignedById?.toString() === user?.id?.toString());
+    }
+    
+    return filtered;
+  }, [tasks, user, filterBranchId, assignmentFilter]);
+
+  const overdueTasks = useMemo(() => {
     const now = new Date();
-    return tasks.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'onaylandi');
-  }, [tasks]);
+    return filteredTasksForStats.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'onaylandi');
+  }, [filteredTasksForStats]);
 
   const { data: employees, isLoading: isEmployeesLoading } = useQuery<User[]>({
     queryKey: ["/api/employees", selectedBranchId],
@@ -295,15 +321,15 @@ export default function Tasks() {
   };
 
   const stats = useMemo(() => {
-    if (!tasks) return { beklemede: 0, devamEden: 0, tamamlanmayan: 0, tamamlanan: 0 };
+    if (!filteredTasksForStats) return { beklemede: 0, devamEden: 0, tamamlanmayan: 0, tamamlanan: 0 };
     
     return {
-      beklemede: tasks.filter(t => t.status === 'beklemede').length,
-      devamEden: tasks.filter(t => t.status === 'devam_ediyor').length,
-      tamamlanmayan: tasks.filter(t => t.status === 'gecikmiş').length,
-      tamamlanan: tasks.filter(t => t.status === 'onaylandi').length,
+      beklemede: filteredTasksForStats.filter(t => t.status === 'beklemede').length,
+      devamEden: filteredTasksForStats.filter(t => t.status === 'devam_ediyor').length,
+      tamamlanmayan: filteredTasksForStats.filter(t => t.status === 'gecikmiş').length,
+      tamamlanan: filteredTasksForStats.filter(t => t.status === 'onaylandi').length,
     };
-  }, [tasks]);
+  }, [filteredTasksForStats]);
 
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
