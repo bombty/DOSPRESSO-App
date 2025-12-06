@@ -396,24 +396,49 @@ export default function Tasks() {
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
       <h1 className="text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
 
-      {/* Assignment Direction Filter */}
-      <div className="flex gap-2">
-        <Button
-          variant={assignmentFilter === "bana_atanan" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAssignmentFilter(assignmentFilter === "bana_atanan" ? null : "bana_atanan")}
-          data-testid="button-filter-assigned-to-me"
-        >
-          Bana Atanan
-        </Button>
-        <Button
-          variant={assignmentFilter === "atadiklarim" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim")}
-          data-testid="button-filter-assigned-by-me"
-        >
-          Atadıklarım
-        </Button>
+      {/* Branch Selector for HQ + Assignment Direction Filter */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        {isHQ && branches && branches.length > 0 && (
+          <div className="flex-1 sm:flex-initial">
+            <label className="text-xs text-muted-foreground block mb-1">Şube Seçin</label>
+            <Select
+              value={filterBranchId?.toString() || "all"}
+              onValueChange={(value) => setFilterBranchId(value === "all" ? null : Number(value))}
+            >
+              <SelectTrigger className="h-9 text-sm" data-testid="select-branch-main">
+                <SelectValue placeholder="Tüm Şubeler" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm Şubeler</SelectItem>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id.toString()}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
+        {/* Assignment Direction Filter */}
+        <div className="flex gap-2">
+          <Button
+            variant={assignmentFilter === "bana_atanan" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAssignmentFilter(assignmentFilter === "bana_atanan" ? null : "bana_atanan")}
+            data-testid="button-filter-assigned-to-me"
+          >
+            Bana Atanan
+          </Button>
+          <Button
+            variant={assignmentFilter === "atadiklarim" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim")}
+            data-testid="button-filter-assigned-by-me"
+          >
+            Atadıklarım
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
