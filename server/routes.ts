@@ -958,6 +958,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/tasks/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+      
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Authorization check - Branch users can only see tasks in their branch
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (task.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+        }
+        
+        // Regular users can only see tasks assigned to them, supervisors can see all
+        const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
+        if (!isSupervisor && task.assignedToId !== user.id) {
+          return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+        }
+      }
+      
+      res.json(task);
+    } catch (error) {
+      console.error("Error fetching task:", error);
+      res.status(500).json({ message: "Görev alınamadı" });
+    }
+  });
+
   app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
