@@ -910,10 +910,6 @@ export default function Tasks() {
                   {filteredTasks?.map((task) => {
                     const assigner = allUsers?.find(u => u.id === task.assignedById);
                     const branch = branches?.find(b => b.id === task.branchId);
-                    const { data: rating } = useQuery<any>({
-                      queryKey: [`/api/tasks/${task.id}/rating`],
-                      enabled: task.status === "onaylandi",
-                    });
                     
                     return (
                     <Card 
@@ -950,24 +946,12 @@ export default function Tasks() {
                           
                           {/* Tamamlanan görev bilgileri */}
                           {task.status === "onaylandi" && (
-                            <div className="flex items-center justify-between gap-2 text-xs">
-                              <div className="flex items-center gap-2 flex-wrap text-muted-foreground">
-                                {assigner && (
-                                  <span>Atayan: <span className="font-medium">{assigner.firstName} {assigner.lastName}</span></span>
-                                )}
-                                {branch && (
-                                  <span>({branch.name})</span>
-                                )}
-                              </div>
-                              {rating && (
-                                <div className="flex items-center gap-1">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star
-                                      key={i}
-                                      className={`h-3 w-3 ${i < (rating.score || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
-                                    />
-                                  ))}
-                                </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                              {assigner && (
+                                <span>Atayan: <span className="font-medium">{assigner.firstName} {assigner.lastName}</span></span>
+                              )}
+                              {branch && (
+                                <span>({branch.name})</span>
                               )}
                             </div>
                           )}
