@@ -427,199 +427,150 @@ export default function GorevDetay() {
         </Card>
       )}
 
-      {/* Task Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-        {/* Main Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Bilgiler</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4">
+      {/* Task Details - Compact 2-column grid */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {/* Durum */}
             <div>
-              <p className="text-xs text-muted-foreground">Durum</p>
+              <p className="text-xs text-muted-foreground mb-1">Durum</p>
               <Badge 
                 variant={
                   task.status === "onaylandi" ? "outline" : 
                   task.status === "basarisiz" ? "destructive" : 
                   "default"
-                } 
-                className="mt-1"
+                }
               >
                 {statusLabels[task.status] || task.status}
               </Badge>
             </div>
+
+            {/* Öncelik */}
             <div>
-              <p className="text-xs text-muted-foreground">Öncelik</p>
-              <Badge variant={task.priority === "yüksek" ? "destructive" : "outline"} className="mt-1">
-                {task.priority ? (priorityLabels[task.priority] || task.priority) : "Belirtilmemiş"}
+              <p className="text-xs text-muted-foreground mb-1">Öncelik</p>
+              <Badge variant={task.priority === "yüksek" ? "destructive" : "outline"}>
+                {task.priority ? (priorityLabels[task.priority] || task.priority) : "-"}
               </Badge>
             </div>
+
+            {/* Oluşturulma Tarihi */}
             <div>
-              <p className="text-xs text-muted-foreground">Oluşturulma Tarihi</p>
-              <p className="font-medium text-sm mt-1">
+              <p className="text-xs text-muted-foreground">Oluşturulma</p>
+              <p className="font-medium text-sm">
                 {task.createdAt ? new Date(task.createdAt).toLocaleDateString("tr-TR") : "-"}
               </p>
             </div>
-            {task.dueDate && (
-              <div>
-                <p className="text-xs text-muted-foreground">Teslim Tarihi</p>
-                <p className="font-medium text-sm mt-1">
-                  {new Date(task.dueDate).toLocaleDateString("tr-TR")}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Assignment Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Atama Bilgileri</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Assigned To */}
+            {/* Teslim Tarihi */}
             <div>
-              <p className="text-xs text-muted-foreground mb-2">Atanan Kişi</p>
+              <p className="text-xs text-muted-foreground">Teslim</p>
+              <p className="font-medium text-sm">
+                {task.dueDate ? new Date(task.dueDate).toLocaleDateString("tr-TR") : "-"}
+              </p>
+            </div>
+
+            {/* Atanan Kişi */}
+            <div>
+              <p className="text-xs text-muted-foreground">Atanan</p>
               {assignedUser ? (
                 <Link href={`/personel-detay/${assignedUser.id}`}>
-                  <div className="flex items-center gap-3 p-3 rounded-lg border hover-elevate cursor-pointer">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <User className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">
-                        {assignedUser.firstName} {assignedUser.lastName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{assignedUser.role}</p>
-                    </div>
-                    {isAssignee && <Badge variant="outline" className="ml-auto">Siz</Badge>}
-                  </div>
+                  <p className="font-medium text-sm hover:underline cursor-pointer text-primary">
+                    {assignedUser.firstName} {assignedUser.lastName}
+                  </p>
                 </Link>
               ) : (
-                <p className="text-sm text-muted-foreground">Atanmamış</p>
+                <p className="text-sm text-muted-foreground">-</p>
               )}
             </div>
 
-            {/* Assigned By */}
-            {assignedByUser && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">Atayan Kişi</p>
+            {/* Atayan Kişi */}
+            <div>
+              <p className="text-xs text-muted-foreground">Atayan</p>
+              {assignedByUser ? (
                 <Link href={`/personel-detay/${assignedByUser.id}`}>
-                  <div className="flex items-center gap-3 p-3 rounded-lg border hover-elevate cursor-pointer">
-                    <div className="h-10 w-10 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                      <User className="h-4 w-4 text-secondary-foreground" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">
-                        {assignedByUser.firstName} {assignedByUser.lastName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{assignedByUser.role}</p>
-                    </div>
-                    {isAssigner && <Badge variant="outline" className="ml-auto">Siz</Badge>}
-                  </div>
+                  <p className="font-medium text-sm hover:underline cursor-pointer text-primary">
+                    {assignedByUser.firstName} {assignedByUser.lastName}
+                  </p>
                 </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">-</p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Status History Timeline */}
+      {/* Status History - Compact Timeline */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
             <History className="h-4 w-4" />
             Durum Geçmişi
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 sm:space-y-4">
+        <CardContent className="space-y-2 text-xs">
           {/* Creation */}
-          <div className="flex items-start gap-3">
-            <Clock className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium">Görev oluşturuldu</p>
-              <p className="text-xs text-muted-foreground">
-                {task.createdAt ? new Date(task.createdAt).toLocaleString("tr-TR") : "-"}
-              </p>
-            </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <span>Oluşturuldu</span>
+            <span className="text-muted-foreground">
+              {task.createdAt ? new Date(task.createdAt).toLocaleDateString("tr-TR") : "-"}
+            </span>
           </div>
 
           {/* Acknowledgment */}
           {task.acknowledgedAt && (
-            <div className="flex items-start gap-3">
-              <Eye className="h-4 w-4 mt-1 text-primary flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium">Görev görüldü</p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(task.acknowledgedAt).toLocaleString("tr-TR")}
-                </p>
-              </div>
+            <div className="flex items-center gap-2">
+              <Eye className="h-3 w-3 text-primary flex-shrink-0" />
+              <span>Görüldü</span>
+              <span className="text-muted-foreground">
+                {new Date(task.acknowledgedAt).toLocaleDateString("tr-TR")}
+              </span>
             </div>
           )}
 
           {/* History from API */}
           {taskHistory && taskHistory.length > 0 && taskHistory.map((entry, idx) => (
-            <div key={entry.id || idx} className="flex items-start gap-3">
-              <AlertCircle className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium">
-                  {entry.previousStatus && entry.previousStatus !== entry.newStatus 
-                    ? `Durum: ${statusLabels[entry.previousStatus] || entry.previousStatus} → ${statusLabels[entry.newStatus] || entry.newStatus}`
-                    : entry.note || "Güncelleme"
-                  }
-                </p>
-                {entry.note && entry.previousStatus && entry.previousStatus !== entry.newStatus && (
-                  <p className="text-xs text-muted-foreground mt-1">Not: {entry.note}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  {entry.createdAt ? new Date(entry.createdAt).toLocaleString("tr-TR") : "-"}
-                </p>
-              </div>
+            <div key={entry.id || idx} className="flex items-center gap-2">
+              <AlertCircle className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+              <span>
+                {entry.previousStatus && entry.previousStatus !== entry.newStatus 
+                  ? `${statusLabels[entry.newStatus] || entry.newStatus}`
+                  : entry.note || "Güncelleme"
+                }
+              </span>
+              <span className="text-muted-foreground">
+                {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR") : "-"}
+              </span>
             </div>
           ))}
 
           {/* Completion status */}
           {task.status === "onaylandi" && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-success/10">
-              <CheckCircle className="h-4 w-4 mt-1 text-success flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-success">Görev tamamlandı</p>
-                
-                {/* Completion details */}
-                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+            <div className="flex items-start gap-2 p-2 rounded-lg bg-success/10 border-t border-muted mt-2 pt-2">
+              <CheckCircle className="h-3 w-3 text-success flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-success font-medium">Tamamlandı</span>
                   {task.completedAt && (
-                    <p>
-                      Tarih: {new Date(task.completedAt).toLocaleString("tr-TR")}
-                    </p>
-                  )}
-                  {completedByUser && (
-                    <p>
-                      Tamamlayan: <span className="font-medium">{completedByUser.fullName || completedByUser.username}</span>
-                      {completedByUser.branchId && (
-                        <span className="ml-2">({completedByUser.branch?.name || `Şube: ${completedByUser.branchId}`})</span>
-                      )}
-                    </p>
+                    <span className="text-muted-foreground">
+                      {new Date(task.completedAt).toLocaleDateString("tr-TR")}
+                    </span>
                   )}
                 </div>
                 
-                {/* Rating section */}
+                {/* Rating section - Compact */}
                 {ratingData?.rating ? (
-                  <div className="mt-2 pt-2 border-t border-success/20">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Aldığı Puan:</span>
-                      <StarRating 
-                        value={ratingData.rating.finalRating} 
-                        readonly 
-                        size="sm"
-                      />
-                      {ratingData.rating.penaltyApplied === 1 && (
-                        <span className="text-xs text-orange-500">⚠️ Geç</span>
-                      )}
-                    </div>
-                    {ratingData.rating.feedback && (
-                      <p className="text-xs text-muted-foreground mt-1 italic">
-                        Yorum: "{ratingData.rating.feedback}"
-                      </p>
+                  <div className="mt-1 flex items-center gap-1">
+                    <span className="text-muted-foreground">Puan:</span>
+                    <StarRating 
+                      value={ratingData.rating.finalRating} 
+                      readonly 
+                      size="xs"
+                    />
+                    <span className="font-medium">{ratingData.rating.finalRating}/5</span>
+                    {ratingData.rating.penaltyApplied === 1 && (
+                      <span className="text-orange-500">⚠️</span>
                     )}
                   </div>
                 ) : ratingData?.canRate ? (
@@ -627,7 +578,7 @@ export default function GorevDetay() {
                     variant="outline"
                     size="sm"
                     onClick={() => setShowRatingDialog(true)}
-                    className="mt-2"
+                    className="mt-1 h-6 px-2 text-[10px]"
                     data-testid="button-rate-task"
                   >
                     <Star className="h-3 w-3 mr-1" />
@@ -640,12 +591,12 @@ export default function GorevDetay() {
 
           {/* Failure status */}
           {task.status === "basarisiz" && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10">
-              <XCircle className="h-4 w-4 mt-1 text-destructive flex-shrink-0" />
+            <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10 border-t border-muted mt-2 pt-2">
+              <XCircle className="h-3 w-3 text-destructive flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-destructive">Görev tamamlanamadı</p>
+                <span className="font-medium text-destructive">Tamamlanamadı</span>
                 {task.failureNote && (
-                  <p className="text-xs text-muted-foreground mt-1">Neden: {task.failureNote}</p>
+                  <p className="text-muted-foreground mt-0.5 break-words">{task.failureNote}</p>
                 )}
               </div>
             </div>
