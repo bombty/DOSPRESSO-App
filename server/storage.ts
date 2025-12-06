@@ -118,6 +118,8 @@ import type {
   InsertAuditLog,
   ShiftChecklist,
   ShiftTask,
+  TaskStatusHistory,
+  InsertTaskStatusHistory,
 } from "@shared/schema";
 import {
   users,
@@ -231,6 +233,7 @@ import {
   announcementReadStatus,
   HQ_SUPPORT_CATEGORY,
   TICKET_PRIORITY,
+  taskStatusHistory,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -311,6 +314,9 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, updates: Partial<InsertTask>): Promise<Task | undefined>;
   completeTask(id: number, photoUrl?: string): Promise<Task | undefined>;
+  acknowledgeTask(id: number, userId: string): Promise<Task | undefined>;
+  updateTaskStatus(id: number, newStatus: string, userId: string, note?: string): Promise<Task | undefined>;
+  getTaskStatusHistory(taskId: number): Promise<TaskStatusHistory[]>;
   
   // Checklist operations
   getChecklists(): Promise<Checklist[]>;
@@ -976,6 +982,82 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tasks.id, id))
       .returning();
     return updated;
+  }
+
+  async acknowledgeTask(id: number, userId: string): Promise<Task | undefined> {
+    const task = await this.getTask(id);
+    if (!task) return undefined;
+    
+    const previousStatus = task.status;
+    const [updated] = await db
+      .update(tasks)
+      .set({
+        acknowledgedAt: new Date(),
+        acknowledgedById: userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    
+    // Log the acknowledgment in history
+    await db.insert(taskStatusHistory).values({
+      taskId: id,
+      previousStatus,
+      newStatus: previousStatus, // Status doesn't change, just acknowledged
+      changedById: userId,
+      note: "Görev görüldü olarak işaretlendi",
+    });
+    
+    return updated;
+  }
+
+  async updateTaskStatus(id: number, newStatus: string, userId: string, note?: string): Promise<Task | undefined> {
+    const task = await this.getTask(id);
+    if (!task) return undefined;
+    
+    const previousStatus = task.status;
+    const now = new Date();
+    
+    const updateData: any = {
+      status: newStatus,
+      statusUpdatedAt: now,
+      statusUpdatedById: userId,
+      updatedAt: now,
+    };
+    
+    // If marking as failed, require and store the failure note
+    if (newStatus === "basarisiz" && note) {
+      updateData.failureNote = note;
+    }
+    
+    // If marking as completed, set completedAt
+    if (newStatus === "onaylandi") {
+      updateData.completedAt = now;
+    }
+    
+    const [updated] = await db
+      .update(tasks)
+      .set(updateData)
+      .where(eq(tasks.id, id))
+      .returning();
+    
+    // Log the status change in history
+    await db.insert(taskStatusHistory).values({
+      taskId: id,
+      previousStatus,
+      newStatus,
+      changedById: userId,
+      note: note || null,
+    });
+    
+    return updated;
+  }
+
+  async getTaskStatusHistory(taskId: number): Promise<TaskStatusHistory[]> {
+    return db.select()
+      .from(taskStatusHistory)
+      .where(eq(taskStatusHistory.taskId, taskId))
+      .orderBy(desc(taskStatusHistory.createdAt));
   }
 
   // Checklist operations

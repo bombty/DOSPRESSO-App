@@ -734,6 +734,12 @@ export const tasks = pgTable("tasks", {
   recurrenceInterval: integer("recurrence_interval").default(1), // Every N days/weeks/months
   lastRecurredAt: timestamp("last_recurred_at"),
   nextRunAt: timestamp("next_run_at"), // When the next recurrence should trigger
+  // Task lifecycle fields
+  acknowledgedAt: timestamp("acknowledged_at"), // When assignee marked as "seen"
+  acknowledgedById: varchar("acknowledged_by_id").references(() => users.id, { onDelete: "set null" }),
+  failureNote: text("failure_note"), // Required when status is "basarisiz"
+  statusUpdatedAt: timestamp("status_updated_at"), // Last status change time
+  statusUpdatedById: varchar("status_updated_by_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -772,6 +778,27 @@ export const updateTaskSchema = createInsertSchema(tasks).omit({
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
+
+// Task Status History - tracks all status changes
+export const taskStatusHistory = pgTable("task_status_history", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  previousStatus: varchar("previous_status", { length: 50 }),
+  newStatus: varchar("new_status", { length: 50 }).notNull(),
+  changedById: varchar("changed_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  note: text("note"), // Optional note explaining the change
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  taskIdIdx: index("task_status_history_task_idx").on(table.taskId),
+}));
+
+export const insertTaskStatusHistorySchema = createInsertSchema(taskStatusHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTaskStatusHistory = z.infer<typeof insertTaskStatusHistorySchema>;
+export type TaskStatusHistory = typeof taskStatusHistory.$inferSelect;
 
 // ========================================
 // EQUIPMENT MANAGEMENT TABLES
