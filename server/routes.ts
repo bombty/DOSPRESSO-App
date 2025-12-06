@@ -1495,6 +1495,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/tasks/:id/rating - Get task rating
+  app.get('/api/tasks/:id/rating', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const rating = await storage.getTaskRating(id);
+      res.json(rating || {});
+    } catch (error) {
+      console.error("Error getting task rating:", error);
+      res.status(500).json({ message: "Rating alınamadı" });
+    }
+  });
+
+  // POST /api/tasks/:id/rate - Rate task
+  app.post('/api/tasks/:id/rate', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      const { score } = req.body;
+
+      if (!score || score < 1 || score > 5) {
+        return res.status(400).json({ message: "Puan 1-5 arasında olmalıdır" });
+      }
+
+      const rating = await storage.rateTask(id, score, user.id);
+      res.json(rating);
+    } catch (error) {
+      console.error("Error rating task:", error);
+      res.status(500).json({ message: "Görev değerlendirilemedi" });
+    }
+  });
+
   // Task lifecycle endpoints
   app.patch('/api/tasks/:id/acknowledge', isAuthenticated, async (req, res) => {
     try {

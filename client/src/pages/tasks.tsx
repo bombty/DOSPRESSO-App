@@ -51,6 +51,8 @@ export default function Tasks() {
   const [taskNotes, setTaskNotes] = useState("");
   const [assignmentFilter, setAssignmentFilter] = useState<"bana_atanan" | "atadiklarim" | null>(null);
   const [branchPopoverOpen, setBranchPopoverOpen] = useState(false);
+  const [ratingTaskId, setRatingTaskId] = useState<number | null>(null);
+  const [ratingScore, setRatingScore] = useState(0);
   const tasksContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
@@ -978,23 +980,24 @@ export default function Tasks() {
                           </div>
                           
                           
-                          {/* Tarih ve Görülme Durumu */}
-                          <div className="flex items-center justify-between text-xs">
+                          {/* Tarih ve Görülme Durumu / Rating */}
+                          <div className="flex items-center justify-between text-xs gap-2">
                             <p className="text-muted-foreground">
                               {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
                             </p>
-                            {!task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz" && (
+                            {task.status === "onaylandi" ? (
+                              <TaskCardRatingDisplay taskId={task.id} onRateClick={() => setRatingTaskId(task.id)} />
+                            ) : !task.acknowledgedAt && task.status !== "basarisiz" ? (
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <EyeOff className="h-3 w-3" />
                                 <span>Görülmedi</span>
                               </div>
-                            )}
-                            {task.acknowledgedAt && (
+                            ) : task.acknowledgedAt ? (
                               <div className="flex items-center gap-1 text-success">
                                 <Eye className="h-3 w-3" />
                                 <span>Görüldü</span>
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       </CardContent>
@@ -1296,6 +1299,100 @@ export default function Tasks() {
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* Rating Dialog */}
+      <Dialog open={!!ratingTaskId} onOpenChange={(open) => !open && setRatingTaskId(null)}>
+        <DialogContent data-testid="dialog-task-rating">
+          <DialogHeader>
+            <DialogTitle>Görev Değerlendir</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-3">Puanını seç (1-5)</p>
+              <div className="flex gap-2 justify-center">
+                {[1, 2, 3, 4, 5].map((score) => (
+                  <button
+                    key={score}
+                    onClick={() => setRatingScore(score)}
+                    className="p-2 hover-elevate"
+                    data-testid={`button-rating-star-${score}`}
+                  >
+                    <Star
+                      className={`h-6 w-6 ${score <= ratingScore ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  if (ratingTaskId && ratingScore > 0) {
+                    apiRequest("POST", `/api/tasks/${ratingTaskId}/rate`, { score: ratingScore })
+                      .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+                        toast({ title: "Başarılı", description: "Görev değerlendirildi" });
+                        setRatingTaskId(null);
+                        setRatingScore(0);
+                      })
+                      .catch(() => {
+                        toast({ title: "Hata", description: "Değerlendirme yapılamadı", variant: "destructive" });
+                      });
+                  }
+                }}
+                disabled={ratingScore === 0}
+                className="flex-1"
+                data-testid="button-confirm-rating"
+              >
+                Onayla
+              </Button>
+              <Button
+                onClick={() => setRatingTaskId(null)}
+                variant="outline"
+                className="flex-1"
+                data-testid="button-cancel-rating"
+              >
+                İptal
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function TaskCardRatingDisplay({ taskId, onRateClick }: { taskId: number; onRateClick: () => void }) {
+  const { data: taskRating } = useQuery({
+    queryKey: [`/api/tasks/${taskId}/rating`],
+  });
+
+  if (taskRating?.score) {
+    return (
+      <div className="flex items-center gap-1">
+        <span className="font-medium text-[10px]">{taskRating.score}/5</span>
+        {[...Array(5)].map((_, i) => (
+          <Star
+            key={i}
+            className={`h-2.5 w-2.5 ${i < taskRating.score ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      onClick={(e) => {
+        e.stopPropagation();
+        onRateClick();
+      }}
+      size="sm"
+      variant="outline"
+      className="h-6 px-2 text-[10px]"
+      data-testid="button-rate-now"
+    >
+      Rate Now
+    </Button>
   );
 }

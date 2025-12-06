@@ -6256,6 +6256,29 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getTaskRating(taskId: number): Promise<TaskRating | undefined> {
+    const [rating] = await db.select()
+      .from(taskRatings)
+      .where(eq(taskRatings.taskId, taskId));
+    return rating;
+  }
+
+  async rateTask(taskId: number, score: number, ratedBy: string): Promise<TaskRating> {
+    const [rating] = await db.insert(taskRatings)
+      .values({
+        taskId,
+        score,
+        ratedBy,
+        ratedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: taskRatings.taskId,
+        set: { score, ratedBy, ratedAt: new Date() },
+      })
+      .returning();
+    return rating;
+  }
+
   calculateCompositeScore(taskSatisfactionAvg: number, checklistScoreAvg: number, onTimeRate: number): number {
     const taskComponent = (taskSatisfactionAvg / 5) * 100 * 0.50;
     const checklistComponent = (checklistScoreAvg / 5) * 100 * 0.40;
