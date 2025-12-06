@@ -73,7 +73,20 @@ export function StarRating({
         if (isDisabled && !readonly) {
           return (
             <Tooltip key={starValue}>
-              <TooltipTrigger asChild>{star}</TooltipTrigger>
+              <TooltipTrigger asChild>
+                <span 
+                  className="inline-flex cursor-not-allowed opacity-40"
+                  onClick={(e) => e.preventDefault()}
+                  data-testid={`star-rating-disabled-${starValue}`}
+                >
+                  <Star
+                    className={cn(
+                      sizeClasses[size],
+                      "fill-transparent text-muted-foreground/40"
+                    )}
+                  />
+                </span>
+              </TooltipTrigger>
               <TooltipContent>
                 <p className="text-xs">Geç teslim nedeniyle en fazla {maxRating} yıldız verilebilir</p>
               </TooltipContent>
