@@ -6,27 +6,32 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 6, 2025 - TURN 14 Complete - Tasks Page UI Optimization)
-- ✅ **Assigned Person Name Display**:
-  * Task drawer now displays assignee's full name (firstName + lastName) instead of ID
-  * Uses allUsers lookup for clean, user-friendly display
-- ✅ **Clickable Status Filter Cards**:
-  * Stat cards (Bekleyen/Devam Eden/Tamamlanmayan/Gecikmiş) are fully clickable
-  * Clicking card toggles filterStatus and opens filter panel automatically
-  * Ring highlighting shows active filter status
-- ✅ **Compact Grid Layout**:
-  * Changed from responsive (1 SM:2 MD:3) to fixed 3-column grid layout
-  * Provides consistent, compact view across all screen sizes
-  * Improved visual hierarchy with consistent spacing
-- ✅ **Simplified Tab Navigation**:
-  * Removed category-based tabs (Açılış/Kapanış/Günlük Kontrol)
-  * Kept only "Tümü" (All) tab for cleaner interface
-  * Removed category filtering logic from TasksPage
-- ✅ **Previous Achievement (TURN 13)**:
-  * Complete task notification system with deep linking
-  * Supervisor task visibility (see all branch tasks)
-  * Branch supervisor and HQ admin notifications
-  * Overdue task reminders with direct task links
+## Recent Changes (December 6, 2025 - TURN 15 Complete - Task Lifecycle System)
+- ✅ **Complete Task Lifecycle Implementation**:
+  * Acknowledgment workflow: Assignees must mark tasks as "Gördüm" (Seen)
+  * Status progression: beklemede → devam_ediyor → onaylandi/basarisiz
+  * Failure notes: Required explanation when marking task as failed
+  * Status history: Complete audit trail with timestamps and actors
+- ✅ **New Database Schema**:
+  * tasks table: acknowledgedAt, acknowledgedById, failureNote, statusUpdatedAt, statusUpdatedById
+  * taskStatusHistory table: Complete audit trail for all status changes
+- ✅ **New API Endpoints**:
+  * PATCH /api/tasks/:id/acknowledge - Mark task as seen
+  * POST /api/tasks/:id/status - Update status with optional failure note
+  * GET /api/tasks/:id/history - Get complete status history
+- ✅ **Task Detail Page Enhancements**:
+  * Action buttons: Gördüm, Başladım, Tamamlandı, Tamamlanamadı
+  * Failure dialog with required note input
+  * Status timeline showing complete history
+  * Acknowledgment and failure state display with icons
+- ✅ **Task List Improvements**:
+  * Eye/EyeOff icons showing acknowledgment status
+  * "Başarısız" status with red destructive badge
+  * Görülmedi indicator for unacknowledged tasks
+- ✅ **Previous Achievement (TURN 14)**:
+  * Tasks page UI optimization with compact grid layout
+  * Clickable status filter cards
+  * Simplified tab navigation
 
 ## System Architecture
 ### UI/UX Decisions
