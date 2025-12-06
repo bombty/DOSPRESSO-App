@@ -1494,6 +1494,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Task lifecycle endpoints
+  app.patch('/api/tasks/:id/acknowledge', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+      
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Only the assigned user can acknowledge the task
+      if (task.assignedToId !== user.id) {
+        return res.status(403).json({ message: "Yalnızca atanan kişi görevi onaylayabilir" });
+      }
+      
+      // Check if already acknowledged
+      if (task.acknowledgedAt) {
+        return res.status(400).json({ message: "Bu görev zaten görüldü olarak işaretlenmiş" });
+      }
+      
+      const updated = await storage.acknowledgeTask(taskId, user.id);
+      
+      // Notify the assigner that task was acknowledged
+      if (task.assignedById && task.assignedById !== user.id) {
+        try {
+          const acknowledger = await storage.getUser(user.id);
+          const acknowledgerName = acknowledger?.firstName && acknowledger?.lastName 
+            ? `${acknowledger.firstName} ${acknowledger.lastName}` 
+            : 'Atanan kişi';
+          
+          await storage.createNotification({
+            userId: task.assignedById,
+            type: 'task_acknowledged',
+            title: 'Görev Görüldü',
+            message: `${acknowledgerName} atadığınız görevi gördü: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+            data: { taskId: task.id },
+            link: `/gorevler?taskId=${task.id}`,
+          });
+        } catch (notifError) {
+          console.error("Error sending task acknowledged notification:", notifError);
+        }
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error acknowledging task:", error);
+      res.status(500).json({ message: "Görev onaylanamadı" });
+    }
+  });
+
+  app.post('/api/tasks/:id/status', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { status, note } = req.body;
+      
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+      
+      const validStatuses = ['devam_ediyor', 'basarisiz', 'onaylandi', 'beklemede'];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Geçersiz durum. Geçerli durumlar: " + validStatuses.join(', ') });
+      }
+      
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Only the assigned user can update the status (except HQ users)
+      const isHQ = !isBranchRole(user.role as UserRoleType);
+      if (!isHQ && task.assignedToId !== user.id) {
+        return res.status(403).json({ message: "Yalnızca atanan kişi görevi güncelleyebilir" });
+      }
+      
+      // If marking as failed, require a note
+      if (status === 'basarisiz' && !note) {
+        return res.status(400).json({ message: "Başarısız durumu için bir not gereklidir" });
+      }
+      
+      const updated = await storage.updateTaskStatus(taskId, status, user.id, note);
+      
+      // Notify the assigner about status change
+      if (task.assignedById && task.assignedById !== user.id) {
+        try {
+          const updater = await storage.getUser(user.id);
+          const updaterName = updater?.firstName && updater?.lastName 
+            ? `${updater.firstName} ${updater.lastName}` 
+            : 'Atanan kişi';
+          
+          const statusLabels: Record<string, string> = {
+            'devam_ediyor': 'Devam Ediyor',
+            'basarisiz': 'Başarısız',
+            'onaylandi': 'Tamamlandı',
+            'beklemede': 'Beklemede',
+          };
+          
+          let message = `${updaterName} görev durumunu "${statusLabels[status]}" olarak güncelledi: "${task.description?.substring(0, 40)}..."`;
+          if (status === 'basarisiz' && note) {
+            message += ` Neden: ${note}`;
+          }
+          
+          await storage.createNotification({
+            userId: task.assignedById,
+            type: 'task_status_changed',
+            title: `Görev ${statusLabels[status]}`,
+            message,
+            data: { taskId: task.id, newStatus: status, note },
+            link: `/gorevler?taskId=${task.id}`,
+          });
+        } catch (notifError) {
+          console.error("Error sending task status notification:", notifError);
+        }
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      res.status(500).json({ message: "Görev durumu güncellenemedi" });
+    }
+  });
+
+  app.get('/api/tasks/:id/history', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+      
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Authorization check - Branch users can only see tasks in their branch
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (task.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+        }
+        
+        // Regular users can only see tasks assigned to them, supervisors can see all
+        const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
+        if (!isSupervisor && task.assignedToId !== user.id && task.assignedById !== user.id) {
+          return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+        }
+      }
+      
+      const history = await storage.getTaskStatusHistory(taskId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching task history:", error);
+      res.status(500).json({ message: "Görev geçmişi alınamadı" });
+    }
+  });
+
   app.get('/api/checklists', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
