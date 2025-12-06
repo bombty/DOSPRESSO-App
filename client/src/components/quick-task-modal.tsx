@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Building2, Store } from "lucide-react";
+import { Plus, Building2, Store, Camera } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 // Role hierarchy for task assignment
 const ROLE_HIERARCHY: Record<string, string[]> = {
@@ -62,6 +63,7 @@ const quickTaskSchema = z.object({
   priority: z.enum(["düşük", "orta", "yüksek"]),
   dueDate: z.string().optional(),
   assignedToId: z.string().optional(),
+  photoUrl: z.string().optional(),
 });
 
 type QuickTaskFormData = z.infer<typeof quickTaskSchema>;
@@ -74,6 +76,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
   const [open, setOpen] = useState(false);
   const [assignmentCategory, setAssignmentCategory] = useState<"hq" | "branch" | "">("");
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+  const [photoUrl, setPhotoUrl] = useState<string>("");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -131,6 +134,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
       priority: "orta" as const,
       dueDate: "",
       assignedToId: "",
+      photoUrl: "",
     },
   });
 
@@ -151,6 +155,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
         branchId: taskBranchId,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
         assignedToId: data.assignedToId || null,
+        photoUrl: data.photoUrl || null,
       });
     },
     onSuccess: () => {
@@ -163,6 +168,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
       form.reset();
       setAssignmentCategory("");
       setSelectedBranchId("");
+      setPhotoUrl("");
       setOpen(false);
     },
     onError: (error: Error) => {
@@ -198,6 +204,7 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
       if (!isOpen) {
         setAssignmentCategory("");
         setSelectedBranchId("");
+        setPhotoUrl("");
         form.reset();
       }
     }}>
@@ -398,6 +405,36 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                 </FormItem>
               )}
             />
+
+            <div>
+              <FormLabel className="mb-2 block">Fotoğraf (İsteğe Bağlı)</FormLabel>
+              <ObjectUploader
+                maxNumberOfFiles={1}
+                maxFileSize={10485760}
+                onGetUploadParameters={async () => {
+                  const response = await fetch("/api/objects/upload", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                  });
+                  const data = await response.json();
+                  return { method: "PUT" as const, url: data.url };
+                }}
+                onComplete={(result) => {
+                  if (result.successful && result.successful[0]) {
+                    const uploadedUrl = result.successful[0].uploadURL;
+                    setPhotoUrl(uploadedUrl);
+                    form.setValue("photoUrl", uploadedUrl);
+                  }
+                }}
+                buttonClassName="w-full"
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Fotoğraf Yükle
+              </ObjectUploader>
+              {photoUrl && (
+                <p className="text-xs text-success mt-1">✓ Fotoğraf yüklendi</p>
+              )}
+            </div>
 
             <div className="flex gap-2 pt-2">
               <Button
