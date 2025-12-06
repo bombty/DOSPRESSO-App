@@ -1622,6 +1622,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/tasks/:id/note', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { note } = req.body;
+      
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+      
+      if (!note || typeof note !== 'string') {
+        return res.status(400).json({ message: "Not girilmelidir" });
+      }
+      
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Both assigner and assignee can add notes
+      const isAssigner = task.assignedById === user.id;
+      const isAssignee = task.assignedToId === user.id;
+      const isHQ = !isBranchRole(user.role as UserRoleType);
+      
+      if (!isAssigner && !isAssignee && !isHQ) {
+        return res.status(403).json({ message: "Bu göreve not ekleyemezsiniz" });
+      }
+      
+      await storage.addNoteToTask(taskId, note.trim(), user.id);
+      
+      res.json({ success: true, message: "Not eklendi" });
+    } catch (error) {
+      console.error("Error adding note to task:", error);
+      res.status(500).json({ message: "Not eklenemedi" });
+    }
+  });
+
   app.get('/api/tasks/:id/history', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;

@@ -25,7 +25,9 @@ import {
   PlayCircle,
   XCircle,
   History,
-  AlertTriangle
+  AlertTriangle,
+  MessageSquare,
+  Send
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -37,6 +39,7 @@ export default function GorevDetay() {
   const { toast } = useToast();
   const [failureNote, setFailureNote] = useState("");
   const [showFailureDialog, setShowFailureDialog] = useState(false);
+  const [newNote, setNewNote] = useState("");
 
   const { data: task, isLoading } = useQuery<Task>({
     queryKey: ["/api/tasks", id],
@@ -109,6 +112,25 @@ export default function GorevDetay() {
       toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
     },
   });
+
+  const addNoteMutation = useMutation({
+    mutationFn: async (note: string) => {
+      return apiRequest("POST", `/api/tasks/${id}/note`, { note });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      setNewNote("");
+      toast({ title: "Başarılı", description: "Not eklendi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Not eklenemedi", variant: "destructive" });
+    },
+  });
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    addNoteMutation.mutate(newNote);
+  };
 
   const handleMarkFailed = () => {
     if (!failureNote.trim()) {
@@ -373,6 +395,50 @@ export default function GorevDetay() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Notes Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Notlar
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Textarea
+              placeholder="Not ekle..."
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              className="resize-none min-h-[80px]"
+              data-testid="input-task-note"
+            />
+            <Button
+              onClick={handleAddNote}
+              disabled={addNoteMutation.isPending || !newNote.trim()}
+              className="w-full"
+              size="sm"
+              data-testid="button-add-note"
+            >
+              <Send className="h-3 w-3 mr-2" />
+              {addNoteMutation.isPending ? "Kaydediliyor..." : "Not Ekle"}
+            </Button>
+          </div>
+
+          {taskHistory && taskHistory.filter(h => h.note && !h.previousStatus).length > 0 && (
+            <div className="space-y-2 border-t pt-3">
+              {taskHistory.filter(h => h.note && !h.previousStatus).map((entry, idx) => (
+                <div key={entry.id || idx} className="p-2 rounded-lg bg-muted/50 text-sm">
+                  <p className="font-medium text-foreground">{entry.note}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {entry.createdAt ? new Date(entry.createdAt).toLocaleString("tr-TR") : "-"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Status History Timeline */}
       <Card>

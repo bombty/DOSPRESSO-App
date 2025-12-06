@@ -1060,6 +1060,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(taskStatusHistory.createdAt));
   }
 
+  async addNoteToTask(taskId: number, note: string, userId: string): Promise<void> {
+    const task = await this.getTask(taskId);
+    if (!task) throw new Error("Görev bulunamadı");
+    
+    // Add note to history without changing status
+    await db.insert(taskStatusHistory).values({
+      taskId: taskId,
+      previousStatus: null,
+      newStatus: null,
+      changedById: userId,
+      note: note,
+    });
+  }
+
   // Checklist operations
   async getChecklists(): Promise<Checklist[]> {
     return db.select().from(checklists).orderBy(desc(checklists.createdAt));
