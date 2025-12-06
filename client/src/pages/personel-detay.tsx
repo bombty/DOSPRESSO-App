@@ -56,10 +56,12 @@ import {
   Award,
   Briefcase,
   CalendarDays,
+  Star,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { StarRating } from "@/components/star-rating";
 import type { User, EmployeeDocument, DisciplinaryReport, EmployeeOnboarding, EmployeeOnboardingTask } from "@shared/schema";
 import { isHQRole } from "@shared/schema";
 import { CreateDisciplinaryDialog, AddResponseDialog, ResolveDialog } from "@/components/hr/DisciplinaryDialogs";
@@ -198,6 +200,37 @@ export default function PersonelDetay() {
     queryFn: async () => {
       const response = await fetch(`/api/tasks?assignedToId=${id}`);
       if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  // Görev Memnuniyet Skoru
+  const { data: satisfactionScore, isLoading: satisfactionLoading } = useQuery<{
+    overallScore: number | null;
+    taskAverage: number | null;
+    taskCount: number;
+    checklistAverage: number | null;
+    checklistCount: number;
+    recentRatings: Array<{
+      id: number;
+      taskId: number;
+      finalRating: number;
+      feedback?: string;
+      createdAt: string;
+    }>;
+  }>({
+    queryKey: ["/api/users", id, "satisfaction-score"],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${id}/satisfaction-score`);
+      if (!response.ok) return { 
+        overallScore: null, 
+        taskAverage: null, 
+        taskCount: 0, 
+        checklistAverage: null, 
+        checklistCount: 0,
+        recentRatings: [] 
+      };
       return response.json();
     },
     enabled: !!id,
@@ -775,6 +808,116 @@ export default function PersonelDetay() {
         </TabsContent>
 
         <TabsContent value="performance" className="flex flex-col gap-3">
+          {/* Görev Memnuniyeti Kartı */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-amber-400" />
+                Görev Memnuniyeti
+              </CardTitle>
+              <CardDescription>Personelin tamamladığı görevlerin puanları</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {satisfactionLoading ? (
+                <div className="flex flex-col gap-3 sm:gap-4">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : satisfactionScore && (satisfactionScore.taskCount > 0 || satisfactionScore.checklistCount > 0) ? (
+                <div className="flex flex-col gap-4">
+                  {/* Özet Kartları */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                    {/* Genel Skor */}
+                    <Card className="text-center p-3">
+                      <p className="text-2xl font-bold text-primary">
+                        {satisfactionScore.overallScore !== null ? satisfactionScore.overallScore.toFixed(0) : "-"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Genel Skor / 100</p>
+                    </Card>
+                    
+                    {/* Görev Puanı */}
+                    <Card className="text-center p-3">
+                      <div className="flex items-center justify-center gap-1">
+                        {satisfactionScore.taskAverage !== null ? (
+                          <StarRating value={Math.round(satisfactionScore.taskAverage)} readonly size="sm" />
+                        ) : (
+                          <span className="text-2xl font-bold">-</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Görev Puanı ({satisfactionScore.taskCount})
+                      </p>
+                    </Card>
+                    
+                    {/* Checklist Puanı */}
+                    <Card className="text-center p-3">
+                      <div className="flex items-center justify-center gap-1">
+                        {satisfactionScore.checklistAverage !== null ? (
+                          <StarRating value={Math.round(satisfactionScore.checklistAverage)} readonly size="sm" />
+                        ) : (
+                          <span className="text-2xl font-bold">-</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Checklist ({satisfactionScore.checklistCount})
+                      </p>
+                    </Card>
+                    
+                    {/* Toplam Değerlendirme */}
+                    <Card className="text-center p-3">
+                      <p className="text-2xl font-bold text-muted-foreground">
+                        {satisfactionScore.taskCount + satisfactionScore.checklistCount}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Toplam Değerlendirme</p>
+                    </Card>
+                  </div>
+                  
+                  {/* Son Puanlamalar */}
+                  {satisfactionScore.recentRatings && satisfactionScore.recentRatings.length > 0 && (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Görev ID</TableHead>
+                            <TableHead>Puan</TableHead>
+                            <TableHead>Yorum</TableHead>
+                            <TableHead>Tarih</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {satisfactionScore.recentRatings.slice(0, 5).map((rating) => (
+                            <TableRow key={rating.id} data-testid={`row-rating-${rating.id}`}>
+                              <TableCell className="font-medium">
+                                <Link href={`/gorev/${rating.taskId}`} className="text-primary hover:underline">
+                                  #{rating.taskId}
+                                </Link>
+                              </TableCell>
+                              <TableCell>
+                                <StarRating value={rating.finalRating} readonly size="sm" />
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                                {rating.feedback || "-"}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {new Date(rating.createdAt).toLocaleDateString("tr-TR")}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Henüz görev puanlaması bulunmuyor</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Performans Skorları Kartı */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
