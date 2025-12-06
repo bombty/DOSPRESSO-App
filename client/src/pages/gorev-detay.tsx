@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Task, User as UserType } from "@shared/schema";
 
 export default function GorevDetay() {
   const { id } = useParams();
@@ -29,7 +30,7 @@ export default function GorevDetay() {
   const { toast } = useToast();
   const [note, setNote] = useState("");
 
-  const { data: task, isLoading } = useQuery<unknown>({
+  const { data: task, isLoading } = useQuery<Task>({
     queryKey: ["/api/tasks", id],
     queryFn: async () => {
       const response = await fetch(`/api/tasks/${id}`);
@@ -39,7 +40,7 @@ export default function GorevDetay() {
     enabled: !!id,
   });
 
-  const { data: checklist } = useQuery<unknown>({
+  const { data: checklist } = useQuery<any>({
     queryKey: ["/api/checklists", task?.checklistId],
     queryFn: async () => {
       const response = await fetch(`/api/checklists/${task!.checklistId}`);
@@ -59,7 +60,7 @@ export default function GorevDetay() {
     enabled: !!task?.checklistId,
   });
 
-  const { data: assignedUser } = useQuery<unknown>({
+  const { data: assignedUser } = useQuery<UserType>({
     queryKey: ["/api/users", task?.assignedToId],
     queryFn: async () => {
       const response = await fetch(`/api/users/${task!.assignedToId}`);
@@ -121,17 +122,20 @@ export default function GorevDetay() {
   }
 
   const statusLabels: Record<string, string> = {
-    pending: "Bekliyor",
-    in_progress: "Devam Ediyor",
-    completed: "Tamamlandı",
-    cancelled: "İptal",
+    beklemede: "Bekliyor",
+    devam_ediyor: "Devam Ediyor",
+    foto_bekleniyor: "Fotoğraf Bekleniyor",
+    incelemede: "İncelemede",
+    onaylandi: "Onaylandı",
+    reddedildi: "Reddedildi",
+    "gecikmiş": "Gecikmiş",
   };
 
   const priorityLabels: Record<string, string> = {
-    low: "Düşük",
-    medium: "Orta",
-    high: "Yüksek",
-    critical: "Kritik",
+    "düşük": "Düşük",
+    orta: "Orta",
+    "yüksek": "Yüksek",
+    kritik: "Kritik",
   };
 
   return (
@@ -147,11 +151,11 @@ export default function GorevDetay() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{task.title || `Görev #${task.id}`}</h1>
+            <h1 className="text-2xl font-bold">{task.description || `Görev #${task.id}`}</h1>
             <p className="text-muted-foreground mt-1">Görev Detayı</p>
           </div>
         </div>
-        {task.status !== "completed" && (
+        {task.status !== "onaylandi" && (
           <Button
             onClick={() => completeTaskMutation.mutate()}
             disabled={completeTaskMutation.isPending}
@@ -175,17 +179,17 @@ export default function GorevDetay() {
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <p className="text-sm text-muted-foreground">Durum</p>
-                <Badge variant={task.status === "completed" ? "outline" : "default"} className="mt-1">
+                <Badge variant={task.status === "onaylandi" ? "outline" : "default"} className="mt-1">
                   {statusLabels[task.status] || task.status}
                 </Badge>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Öncelik</p>
                 <Badge
-                  variant={task.priority === "critical" ? "destructive" : task.priority === "high" ? "destructive" : "outline"}
+                  variant={task.priority === "yüksek" ? "destructive" : "outline"}
                   className="mt-1"
                 >
-                  {priorityLabels[task.priority] || task.priority}
+                  {task.priority ? (priorityLabels[task.priority] || task.priority) : "Belirtilmemiş"}
                 </Badge>
               </div>
               <div>
@@ -321,16 +325,11 @@ export default function GorevDetay() {
                     Not Ekle
                   </Button>
                 </div>
-                {task.notes && task.notes.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-2 pt-4 border-t">
-                    {task.notes.map((n, idx: number) => (
-                      <div key={idx} className="p-3 rounded-lg bg-muted">
-                        <p className="text-sm">{n.content}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(n.createdAt).toLocaleString("tr-TR")}
-                        </p>
-                      </div>
-                    ))}
+                {task.notes ? (
+                  <div className="pt-4 border-t">
+                    <div className="p-3 rounded-lg bg-muted">
+                      <p className="text-sm whitespace-pre-wrap">{task.notes}</p>
+                    </div>
                   </div>
                 ) : (
                   <p className="text-center text-muted-foreground py-3">Henüz not eklenmemiş</p>
