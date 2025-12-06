@@ -372,18 +372,47 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Öncelik</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-priority">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="düşük">Düşük</SelectItem>
-                      <SelectItem value="orta">Orta</SelectItem>
-                      <SelectItem value="yüksek">Yüksek</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => field.onChange("düşük")}
+                      variant={field.value === "düşük" ? "default" : "outline"}
+                      className={`flex-1 ${
+                        field.value === "düşük"
+                          ? "bg-green-600 hover:bg-green-700 text-white"
+                          : "bg-green-50 dark:bg-green-950 text-green-900 dark:text-green-100 border-green-300 hover:bg-green-100 dark:hover:bg-green-900"
+                      }`}
+                      data-testid="button-priority-low"
+                    >
+                      Düşük
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => field.onChange("orta")}
+                      variant={field.value === "orta" ? "default" : "outline"}
+                      className={`flex-1 ${
+                        field.value === "orta"
+                          ? "bg-yellow-600 hover:bg-yellow-700 text-white"
+                          : "bg-yellow-50 dark:bg-yellow-950 text-yellow-900 dark:text-yellow-100 border-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900"
+                      }`}
+                      data-testid="button-priority-medium"
+                    >
+                      Orta
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => field.onChange("yüksek")}
+                      variant={field.value === "yüksek" ? "default" : "outline"}
+                      className={`flex-1 ${
+                        field.value === "yüksek"
+                          ? "bg-red-600 hover:bg-red-700 text-white"
+                          : "bg-red-50 dark:bg-red-950 text-red-900 dark:text-red-100 border-red-300 hover:bg-red-100 dark:hover:bg-red-900"
+                      }`}
+                      data-testid="button-priority-high"
+                    >
+                      Yüksek
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
