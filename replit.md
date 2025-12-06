@@ -6,7 +6,16 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 6, 2025 - TURN 16 Complete - HQ Branch Task Performance Dashboard)
+## Recent Changes (December 6, 2025 - TURN 17 Complete - Task Page Dynamic Stats & Branch Filter)
+- ✅ **TURN 17 - Task Page Dynamic Statistics & Branch Filter** (/tasklar):
+  * Stat cards (Gecikmiş, Bekleyen, Devam Eden, Tamamlanan, Tamamlanmayan) now update dynamically based on active filters
+  * Stats respect: "Bana Atanan" filter, "Atadıklarım" filter, and "Şubeler" (branch) filter
+  * Example: "Bana Atanan" + "Bekleyen" shows different count than "Atadıklarım" + "Bekleyen"
+  * New Popover + Command pattern for branch selection with Building2 icon
+  * Branch selector button shows "Şubeler" (default) or "Şube: {name}" when selected
+  * "Tümü" option to reset branch filter
+  * HQ-only visibility for branch selector
+  * Consistent button styling with assignment filter buttons
 - ✅ **HQ Branch Task Performance Dashboard** (/sube-gorevler/:id):
   * Performance score gauge (0-100) with color-coded status (Red/Amber/Green)
   * KPI grid showing: Total Tasks, On-Time Rate %, Failure Rate %, Overdue Tasks
