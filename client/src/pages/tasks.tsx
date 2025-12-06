@@ -926,6 +926,7 @@ export default function Tasks() {
                     >
                       <CardContent className="p-3">
                         <div className="flex flex-col gap-2">
+                          {/* Başlık ve Status */}
                           <div className="flex items-start justify-between gap-2">
                             <h3 className="text-sm font-medium line-clamp-2 flex-1">{task.description}</h3>
                             <Badge
@@ -950,32 +951,46 @@ export default function Tasks() {
                             </Badge>
                           </div>
                           
-                          {/* Tamamlanan görev bilgileri */}
-                          {task.status === "onaylandi" && (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                                {assigner && (
-                                  <span>Atayan: <span className="font-medium">{assigner.firstName} {assigner.lastName}</span></span>
-                                )}
-                                {branch && (
-                                  <span>({branch.name})</span>
-                                )}
+                          {/* Atanan/Atayan/Şube Bilgileri */}
+                          <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                            {task.assignedToId && (
+                              <div>
+                                <p className="text-xs font-medium text-foreground">
+                                  {allUsers?.find(u => u.id === task.assignedToId)?.firstName} {allUsers?.find(u => u.id === task.assignedToId)?.lastName}
+                                </p>
+                                <p className="text-xs">Atanan</p>
                               </div>
-                            </div>
-                          )}
+                            )}
+                            {assigner && (
+                              <div>
+                                <p className="text-xs font-medium text-foreground">
+                                  {assigner.firstName} {assigner.lastName}
+                                </p>
+                                <p className="text-xs">Atayan</p>
+                              </div>
+                            )}
+                            {branch && (
+                              <div className="col-span-2">
+                                <p className="text-xs font-medium text-foreground">{branch.name}</p>
+                                <p className="text-xs">Şube</p>
+                              </div>
+                            )}
+                          </div>
                           
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs text-muted-foreground">
+                          
+                          {/* Tarih ve Görülme Durumu */}
+                          <div className="flex items-center justify-between text-xs">
+                            <p className="text-muted-foreground">
                               {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
                             </p>
                             {!task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz" && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1 text-muted-foreground">
                                 <EyeOff className="h-3 w-3" />
                                 <span>Görülmedi</span>
                               </div>
                             )}
                             {task.acknowledgedAt && (
-                              <div className="flex items-center gap-1 text-xs text-success">
+                              <div className="flex items-center gap-1 text-success">
                                 <Eye className="h-3 w-3" />
                                 <span>Görüldü</span>
                               </div>
