@@ -27,7 +27,8 @@ import {
   History,
   AlertTriangle,
   MessageSquare,
-  Send
+  Send,
+  Image as ImageIcon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -301,7 +302,12 @@ export default function GorevDetay() {
                       queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
                       toast({ title: "Başarılı", description: "Fotoğraf yüklendi" });
                     }}
-                  />
+                  >
+                    <Button variant="outline" size="sm" type="button" className="w-full">
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      Fotoğraf Yükle
+                    </Button>
+                  </ObjectUploader>
                 </div>
               </div>
             )}
@@ -310,7 +316,7 @@ export default function GorevDetay() {
       )}
 
       {/* Detail Section - Completion */}
-      {isAssignee && canComplete && (
+      {isAssignee && task.status === "devam_ediyor" && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -329,17 +335,15 @@ export default function GorevDetay() {
                 Tamamlandı
               </Button>
               
-              {canMarkFailed && (
-                <Button
-                  variant="destructive"
-                  onClick={() => setShowFailureDialog(true)}
-                  disabled={updateStatusMutation.isPending}
-                  data-testid="button-mark-failed"
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Tamamlanamadı
-                </Button>
-              )}
+              <Button
+                variant="destructive"
+                onClick={() => setShowFailureDialog(true)}
+                disabled={updateStatusMutation.isPending}
+                data-testid="button-mark-failed"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Tamamlanamadı
+              </Button>
             </div>
           </CardContent>
         </Card>
