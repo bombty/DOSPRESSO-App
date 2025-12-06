@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -5,15 +6,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, User, Calendar, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Dialog,
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { 
+  ArrowLeft, 
+  User, 
+  Clock, 
+  CheckCircle, 
+  AlertCircle, 
+  Eye, 
+  PlayCircle,
+  XCircle,
+  History,
+  AlertTriangle
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Task, User as UserType } from "@shared/schema";
+import type { Task, User as UserType, TaskStatusHistory } from "@shared/schema";
 
 export default function GorevDetay() {
   const { id } = useParams();
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const [failureNote, setFailureNote] = useState("");
+  const [showFailureDialog, setShowFailureDialog] = useState(false);
 
   const { data: task, isLoading } = useQuery<Task>({
     queryKey: ["/api/tasks", id],
@@ -35,19 +58,65 @@ export default function GorevDetay() {
     enabled: !!task?.assignedToId,
   });
 
-  const completeTaskMutation = useMutation({
+  const { data: assignedByUser } = useQuery<UserType>({
+    queryKey: ["/api/users", task?.assignedById],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${task!.assignedById}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!task?.assignedById,
+  });
+
+  const { data: taskHistory } = useQuery<TaskStatusHistory[]>({
+    queryKey: ["/api/tasks", id, "history"],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks/${id}/history`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  const acknowledgeMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("PATCH", `/api/tasks/${id}`, { status: "onaylandi" });
+      return apiRequest("PATCH", `/api/tasks/${id}/acknowledge`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Başarılı", description: "Görev tamamlandı" });
+      toast({ title: "Başarılı", description: "Görev görüldü olarak işaretlendi" });
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
     },
   });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ status, note }: { status: string; note?: string }) => {
+      return apiRequest("POST", `/api/tasks/${id}/status`, { status, note });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setShowFailureDialog(false);
+      setFailureNote("");
+      toast({ title: "Başarılı", description: "Görev durumu güncellendi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "İşlem başarısız", variant: "destructive" });
+    },
+  });
+
+  const handleMarkFailed = () => {
+    if (!failureNote.trim()) {
+      toast({ title: "Hata", description: "Başarısızlık nedeni girilmelidir", variant: "destructive" });
+      return;
+    }
+    updateStatusMutation.mutate({ status: "basarisiz", note: failureNote });
+  };
 
   if (isLoading) {
     return (
@@ -78,8 +147,9 @@ export default function GorevDetay() {
     devam_ediyor: "Devam Ediyor",
     foto_bekleniyor: "Fotoğraf Bekleniyor",
     incelemede: "İncelemede",
-    onaylandi: "Onaylandı",
+    onaylandi: "Tamamlandı",
     reddedildi: "Reddedildi",
+    basarisiz: "Başarısız",
     "gecikmiş": "Gecikmiş",
   };
 
@@ -89,10 +159,17 @@ export default function GorevDetay() {
     "yüksek": "Yüksek",
   };
 
+  const isAssignee = currentUser?.id === task.assignedToId;
+  const isAssigner = currentUser?.id === task.assignedById;
+  const canAcknowledge = isAssignee && !task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz";
+  const canStartProgress = isAssignee && task.acknowledgedAt && task.status === "beklemede";
+  const canMarkFailed = isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz";
+  const canComplete = isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz";
+
   return (
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="outline"
@@ -103,21 +180,102 @@ export default function GorevDetay() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold" data-testid="text-task-title">{task.description || `Görev #${task.id}`}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold" data-testid="text-task-title">
+              {task.description || `Görev #${task.id}`}
+            </h1>
             <p className="text-sm text-muted-foreground">ID: {task.id}</p>
           </div>
         </div>
-        {task.status !== "onaylandi" && (
-          <Button
-            onClick={() => completeTaskMutation.mutate()}
-            disabled={completeTaskMutation.isPending}
-            data-testid="button-complete-task"
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            {completeTaskMutation.isPending ? "Kaydediliyor..." : "Tamamla"}
-          </Button>
+        
+        {/* Acknowledgment indicator */}
+        {task.acknowledgedAt ? (
+          <Badge variant="outline" className="gap-1">
+            <Eye className="h-3 w-3" />
+            Görüldü
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="gap-1">
+            Görülmedi
+          </Badge>
         )}
       </div>
+
+      {/* Action Buttons for Assignee */}
+      {isAssignee && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <PlayCircle className="h-4 w-4" />
+              Görev İşlemleri
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {canAcknowledge && (
+                <Button
+                  variant="outline"
+                  onClick={() => acknowledgeMutation.mutate()}
+                  disabled={acknowledgeMutation.isPending}
+                  data-testid="button-acknowledge-task"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  {acknowledgeMutation.isPending ? "İşleniyor..." : "Gördüm"}
+                </Button>
+              )}
+              
+              {canStartProgress && (
+                <Button
+                  variant="outline"
+                  onClick={() => updateStatusMutation.mutate({ status: "devam_ediyor" })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-start-progress"
+                >
+                  <PlayCircle className="h-4 w-4 mr-2" />
+                  Başladım
+                </Button>
+              )}
+              
+              {canComplete && (
+                <Button
+                  onClick={() => updateStatusMutation.mutate({ status: "onaylandi" })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-complete-task"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Tamamlandı
+                </Button>
+              )}
+              
+              {canMarkFailed && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowFailureDialog(true)}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-mark-failed"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Tamamlanamadı
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Failure Note Display */}
+      {task.failureNote && (
+        <Card className="border-destructive">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              Başarısızlık Nedeni
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">{task.failureNote}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Task Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
@@ -129,7 +287,14 @@ export default function GorevDetay() {
           <CardContent className="space-y-3 sm:space-y-4">
             <div>
               <p className="text-xs text-muted-foreground">Durum</p>
-              <Badge variant={task.status === "onaylandi" ? "outline" : "default"} className="mt-1">
+              <Badge 
+                variant={
+                  task.status === "onaylandi" ? "outline" : 
+                  task.status === "basarisiz" ? "destructive" : 
+                  "default"
+                } 
+                className="mt-1"
+              >
                 {statusLabels[task.status] || task.status}
               </Badge>
             </div>
@@ -156,39 +321,69 @@ export default function GorevDetay() {
           </CardContent>
         </Card>
 
-        {/* Assigned User */}
+        {/* Assignment Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Atanan Kişi</CardTitle>
+            <CardTitle className="text-lg">Atama Bilgileri</CardTitle>
           </CardHeader>
-          <CardContent>
-            {assignedUser ? (
-              <Link href={`/personel-detay/${assignedUser.id}`}>
-                <div className="flex items-center gap-3 p-3 rounded-lg border hover-elevate cursor-pointer">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <User className="h-4 w-4 text-primary" />
+          <CardContent className="space-y-4">
+            {/* Assigned To */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">Atanan Kişi</p>
+              {assignedUser ? (
+                <Link href={`/personel-detay/${assignedUser.id}`}>
+                  <div className="flex items-center gap-3 p-3 rounded-lg border hover-elevate cursor-pointer">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">
+                        {assignedUser.firstName} {assignedUser.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{assignedUser.role}</p>
+                    </div>
+                    {isAssignee && <Badge variant="outline" className="ml-auto">Siz</Badge>}
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">
-                      {assignedUser.firstName} {assignedUser.lastName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{assignedUser.role}</p>
+                </Link>
+              ) : (
+                <p className="text-sm text-muted-foreground">Atanmamış</p>
+              )}
+            </div>
+
+            {/* Assigned By */}
+            {assignedByUser && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Atayan Kişi</p>
+                <Link href={`/personel-detay/${assignedByUser.id}`}>
+                  <div className="flex items-center gap-3 p-3 rounded-lg border hover-elevate cursor-pointer">
+                    <div className="h-10 w-10 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4 text-secondary-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">
+                        {assignedByUser.firstName} {assignedByUser.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{assignedByUser.role}</p>
+                    </div>
+                    {isAssigner && <Badge variant="outline" className="ml-auto">Siz</Badge>}
                   </div>
-                </div>
-              </Link>
-            ) : (
-              <p className="text-sm text-muted-foreground">Atanmamış</p>
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Timeline */}
+      {/* Status History Timeline */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Geçmiş</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Durum Geçmişi
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 sm:space-y-4">
+          {/* Creation */}
           <div className="flex items-start gap-3">
             <Clock className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
             <div>
@@ -199,28 +394,105 @@ export default function GorevDetay() {
             </div>
           </div>
 
-          {task.updatedAt && task.updatedAt !== task.createdAt && (
+          {/* Acknowledgment */}
+          {task.acknowledgedAt && (
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
+              <Eye className="h-4 w-4 mt-1 text-primary flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium">Son güncelleme</p>
+                <p className="text-sm font-medium">Görev görüldü</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(task.updatedAt).toLocaleString("tr-TR")}
+                  {new Date(task.acknowledgedAt).toLocaleString("tr-TR")}
                 </p>
               </div>
             </div>
           )}
 
+          {/* History from API */}
+          {taskHistory && taskHistory.length > 0 && taskHistory.map((entry, idx) => (
+            <div key={entry.id || idx} className="flex items-start gap-3">
+              <AlertCircle className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium">
+                  {entry.previousStatus !== entry.newStatus 
+                    ? `Durum: ${statusLabels[entry.previousStatus] || entry.previousStatus} → ${statusLabels[entry.newStatus] || entry.newStatus}`
+                    : entry.note || "Güncelleme"
+                  }
+                </p>
+                {entry.note && entry.previousStatus !== entry.newStatus && (
+                  <p className="text-xs text-muted-foreground mt-1">Not: {entry.note}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {entry.createdAt ? new Date(entry.createdAt).toLocaleString("tr-TR") : "-"}
+                </p>
+              </div>
+            </div>
+          ))}
+
+          {/* Completion status */}
           {task.status === "onaylandi" && (
             <div className="flex items-start gap-3 p-3 rounded-lg bg-success/10">
               <CheckCircle className="h-4 w-4 mt-1 text-success flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-success">Görev tamamlandı</p>
+                {task.completedAt && (
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(task.completedAt).toLocaleString("tr-TR")}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Failure status */}
+          {task.status === "basarisiz" && (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10">
+              <XCircle className="h-4 w-4 mt-1 text-destructive flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-destructive">Görev tamamlanamadı</p>
+                {task.failureNote && (
+                  <p className="text-xs text-muted-foreground mt-1">Neden: {task.failureNote}</p>
+                )}
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Failure Dialog */}
+      <Dialog open={showFailureDialog} onOpenChange={setShowFailureDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Görev Neden Tamamlanamadı?</DialogTitle>
+            <DialogDescription>
+              Lütfen görevin neden tamamlanamadığını açıklayın. Bu bilgi atayan kişiye bildirilecektir.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Başarısızlık nedeni..."
+            value={failureNote}
+            onChange={(e) => setFailureNote(e.target.value)}
+            className="min-h-[100px]"
+            data-testid="input-failure-note"
+          />
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowFailureDialog(false)}
+              data-testid="button-cancel-failure"
+            >
+              İptal
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleMarkFailed}
+              disabled={updateStatusMutation.isPending || !failureNote.trim()}
+              data-testid="button-confirm-failure"
+            >
+              {updateStatusMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
