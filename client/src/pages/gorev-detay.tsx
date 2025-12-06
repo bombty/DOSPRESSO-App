@@ -431,7 +431,7 @@ export default function GorevDetay() {
                 <div key={entry.id || idx} className="p-2 rounded-lg bg-muted/50 text-sm">
                   <p className="font-medium text-foreground">{entry.note}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {entry.createdAt ? new Date(entry.createdAt).toLocaleString("tr-TR") : "-"}
+                    {currentUser?.id === entry.changedById ? "Siz" : "Diğer"} • {entry.createdAt ? new Date(entry.createdAt).toLocaleString("tr-TR") : "-"}
                   </p>
                 </div>
               ))}
