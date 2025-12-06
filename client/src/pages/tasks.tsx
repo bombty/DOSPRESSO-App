@@ -986,7 +986,7 @@ export default function Tasks() {
                               {new Date(task.createdAt!).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
                             </p>
                             {task.status === "onaylandi" ? (
-                              <TaskCardRatingDisplay taskId={task.id} onRateClick={() => setRatingTaskId(task.id)} />
+                              <RatingDisplay taskId={task.id} onRateClick={() => setRatingTaskId(task.id)} />
                             ) : !task.acknowledgedAt && task.status !== "basarisiz" ? (
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <EyeOff className="h-3 w-3" />
@@ -1362,19 +1362,19 @@ export default function Tasks() {
   );
 }
 
-function TaskCardRatingDisplay({ taskId, onRateClick }: { taskId: number; onRateClick: () => void }) {
+function RatingDisplay({ taskId, onRateClick }: { taskId: number; onRateClick: () => void }) {
   const { data: taskRating } = useQuery({
     queryKey: [`/api/tasks/${taskId}/rating`],
   });
 
-  if (taskRating?.score) {
+  if (taskRating?.rawRating) {
     return (
       <div className="flex items-center gap-1">
-        <span className="font-medium text-[10px]">{taskRating.score}/5</span>
+        <span className="font-medium text-[10px]">{taskRating.rawRating}/5</span>
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
-            className={`h-2.5 w-2.5 ${i < taskRating.score ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+            className={`h-2.5 w-2.5 ${i < taskRating.rawRating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
           />
         ))}
       </div>

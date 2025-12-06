@@ -6264,16 +6264,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async rateTask(taskId: number, score: number, ratedBy: string): Promise<TaskRating> {
+    const task = await this.getTask(taskId);
+    if (!task) throw new Error("Task not found");
+    
+    const existing = await db.select()
+      .from(taskRatings)
+      .where(eq(taskRatings.taskId, taskId));
+    
+    if (existing.length > 0) {
+      const [rating] = await db.update(taskRatings)
+        .set({ 
+          rawRating: score, 
+          finalRating: score, 
+          ratedById: ratedBy 
+        })
+        .where(eq(taskRatings.taskId, taskId))
+        .returning();
+      return rating;
+    }
+    
     const [rating] = await db.insert(taskRatings)
       .values({
         taskId,
-        score,
-        ratedBy,
-        ratedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: taskRatings.taskId,
-        set: { score, ratedBy, ratedAt: new Date() },
+        ratedById: ratedBy,
+        ratedUserId: task.assignedToId || '',
+        rawRating: score,
+        finalRating: score,
       })
       .returning();
     return rating;
