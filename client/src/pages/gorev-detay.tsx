@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -143,6 +143,18 @@ export default function GorevDetay() {
     updateStatusMutation.mutate({ status: "basarisiz", note: failureNote });
   };
 
+  // Auto-acknowledge task when opened
+  useEffect(() => {
+    if (task && currentUser) {
+      const isAssignee = currentUser.id === task.assignedToId;
+      const canAutoAck = isAssignee && !task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz";
+      
+      if (canAutoAck) {
+        acknowledgeMutation.mutate();
+      }
+    }
+  }, [task?.id, currentUser?.id]);
+
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3 sm:gap-4 p-3">
@@ -238,18 +250,6 @@ export default function GorevDetay() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
-                {canAcknowledge && (
-                  <Button
-                    variant="outline"
-                    onClick={() => acknowledgeMutation.mutate()}
-                    disabled={acknowledgeMutation.isPending}
-                    data-testid="button-acknowledge-task"
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    {acknowledgeMutation.isPending ? "İşleniyor..." : "Gördüm"}
-                  </Button>
-                )}
-                
                 {canStartProgress && (
                   <Button
                     variant="outline"

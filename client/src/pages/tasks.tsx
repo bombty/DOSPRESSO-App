@@ -1073,8 +1073,8 @@ export default function Tasks() {
                   </>
                 )}
 
-                {/* Notes Section */}
-                {(selectedTask.status === "beklemede" || selectedTask.status === "reddedildi" || selectedTask.status === "devam_ediyor" || selectedTask.status === "foto_bekleniyor") && (
+                {/* Notes Section - Quick action, no completion */}
+                {(selectedTask.status === "beklemede" || selectedTask.status === "devam_ediyor") && (
                   <>
                     <Separator />
                     <div className="flex flex-col gap-2">
@@ -1090,7 +1090,27 @@ export default function Tasks() {
                   </>
                 )}
 
-                {/* Action Buttons */}
+                {/* Photo Upload - Quick action only, not for completion */}
+                {selectedTask.status === "devam_ediyor" && (
+                  <>
+                    <Separator />
+                    <ObjectUploader
+                      maxNumberOfFiles={1}
+                      maxFileSize={10485760}
+                      onGetUploadParameters={handleGetUploadParams}
+                      onComplete={() => {
+                        queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+                        toast({ title: "Başarılı", description: "Fotoğraf yüklendi" });
+                      }}
+                      buttonClassName="w-full"
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      Fotoğraf Yükle
+                    </ObjectUploader>
+                  </>
+                )}
+
+                {/* Action Buttons - Start Task Only */}
                 <Separator />
                 <div className="flex flex-col gap-2">
                   {/* Start Task - Branch users can start tasks */}
@@ -1104,32 +1124,6 @@ export default function Tasks() {
                       <PlayCircle className="mr-2 h-4 w-4" />
                       {startTaskMutation.isPending ? "Başlatılıyor..." : "Görevi Başlat"}
                     </Button>
-                  )}
-
-                  {/* Photo Upload & Complete - For tasks in progress or waiting for photo */}
-                  {(selectedTask.status === "devam_ediyor" || selectedTask.status === "foto_bekleniyor") && (
-                    <div className="flex flex-col gap-3 sm:gap-4">
-                      <ObjectUploader
-                        maxNumberOfFiles={1}
-                        maxFileSize={10485760}
-                        onGetUploadParameters={handleGetUploadParams}
-                        onComplete={handleUploadComplete(selectedTask.id)}
-                        buttonClassName="w-full"
-                      >
-                        <Camera className="mr-2 h-4 w-4" />
-                        Fotoğraf Yükle ve Tamamla
-                      </ObjectUploader>
-                      <Button
-                        variant="outline"
-                        onClick={() => completeMutation.mutate({ taskId: selectedTask.id })}
-                        disabled={completeMutation.isPending}
-                        className="w-full"
-                        data-testid="button-complete-task"
-                      >
-                        <Check className="mr-2 h-4 w-4" />
-                        {completeMutation.isPending ? "Tamamlanıyor..." : "Fotoğrafsız Tamamla"}
-                      </Button>
-                    </div>
                   )}
 
                   {/* HQ Actions - Verify and Reject */}
