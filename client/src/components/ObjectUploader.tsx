@@ -89,6 +89,7 @@ export function ObjectUploader({
         onClick={(e) => e.stopPropagation()}
       />
       <Button
+        type="button"
         onClick={() => fileInputRef.current?.click()}
         className={buttonClassName}
         disabled={isUploading}
