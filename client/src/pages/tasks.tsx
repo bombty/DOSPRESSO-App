@@ -393,8 +393,7 @@ export default function Tasks() {
             className={`border-destructive cursor-pointer hover-elevate transition-all ${filterStatus === 'gecikmiş' ? 'ring-2 ring-destructive' : ''}`}
             onClick={() => {
               setFilterStatus(filterStatus === 'gecikmiş' ? null : 'gecikmiş');
-              setFilterOpen(true);
-              setTimeout(() => tasksContainerRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+              setFilterOpen(false);
             }}
           >
             <CardContent className="p-3">
@@ -414,8 +413,7 @@ export default function Tasks() {
           className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'beklemede' ? 'ring-2 ring-warning' : ''}`}
           onClick={() => {
             setFilterStatus(filterStatus === 'beklemede' ? null : 'beklemede');
-            setFilterOpen(true);
-            setTimeout(() => tasksContainerRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+            setFilterOpen(false);
           }}
         >
           <CardContent className="p-3">
@@ -434,8 +432,7 @@ export default function Tasks() {
           className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'devam_ediyor' ? 'ring-2 ring-primary' : ''}`}
           onClick={() => {
             setFilterStatus(filterStatus === 'devam_ediyor' ? null : 'devam_ediyor');
-            setFilterOpen(true);
-            setTimeout(() => tasksContainerRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+            setFilterOpen(false);
           }}
         >
           <CardContent className="p-3">
@@ -454,8 +451,7 @@ export default function Tasks() {
           className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'reddedildi' ? 'ring-2 ring-destructive' : ''}`}
           onClick={() => {
             setFilterStatus(filterStatus === 'reddedildi' ? null : 'reddedildi');
-            setFilterOpen(true);
-            setTimeout(() => tasksContainerRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+            setFilterOpen(false);
           }}
         >
           <CardContent className="p-3">
@@ -474,7 +470,7 @@ export default function Tasks() {
           className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'onaylandi' ? 'ring-2 ring-green-500' : ''}`}
           onClick={() => {
             setFilterStatus(filterStatus === 'onaylandi' ? null : 'onaylandi');
-            setFilterOpen(true);
+            setFilterOpen(false);
           }}
         >
           <CardContent className="p-3">
@@ -523,152 +519,135 @@ export default function Tasks() {
             </div>
           </CardHeader>
           <CollapsibleContent>
-            <CardContent className="w-full space-y-2 sm:space-y-3">
-              <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  <label className="text-sm font-medium">Arama</label>
+            <CardContent className="pt-0 pb-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="col-span-2">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                     <Input
                       placeholder="Görev ara..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
+                      className="pl-7 h-8 text-sm"
                       data-testid="input-filter-search"
                     />
                   </div>
                 </div>
 
                 {isHQ && (
-                  <div className="flex flex-col gap-3 sm:gap-4">
-                    <label className="text-sm font-medium">Şube</label>
-                    <Select
-                      value={filterBranchId?.toString() || "all"}
-                      onValueChange={(value) => setFilterBranchId(value === "all" ? null : Number(value))}
-                    >
-                      <SelectTrigger data-testid="select-filter-branch">
-                        <SelectValue placeholder="Tüm şubeler" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tüm şubeler</SelectItem>
-                        {branches?.map((branch) => (
-                          <SelectItem key={branch.id} value={branch.id.toString()}>
-                            {branch.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  <label className="text-sm font-medium">Atanan Kişi</label>
                   <Select
-                    value={filterAssigneeId || "all"}
-                    onValueChange={(value) => setFilterAssigneeId(value === "all" ? null : value)}
+                    value={filterBranchId?.toString() || "all"}
+                    onValueChange={(value) => setFilterBranchId(value === "all" ? null : Number(value))}
                   >
-                    <SelectTrigger data-testid="select-filter-assignee">
-                      <SelectValue placeholder="Tüm kişiler" />
+                    <SelectTrigger className="h-8 text-xs" data-testid="select-filter-branch">
+                      <SelectValue placeholder="Şube" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tüm kişiler</SelectItem>
-                      {(isHQ ? allUsers : employees)?.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.firstName} {user.lastName}
+                      <SelectItem value="all">Tüm şubeler</SelectItem>
+                      {branches?.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id.toString()}>
+                          {branch.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                )}
 
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  <label className="text-sm font-medium">Durum</label>
-                  <Select
-                    value={filterStatus || "all"}
-                    onValueChange={(value) => setFilterStatus(value === "all" ? null : (value as TaskStatus))}
-                  >
-                    <SelectTrigger data-testid="select-filter-status">
-                      <SelectValue placeholder="Tüm durumlar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tüm durumlar</SelectItem>
-                      <SelectItem value="beklemede">Beklemede</SelectItem>
-                      <SelectItem value="devam_ediyor">Devam Ediyor</SelectItem>
-                      <SelectItem value="foto_bekleniyor">Fotoğraf Bekleniyor</SelectItem>
-                      <SelectItem value="incelemede">İncelemede</SelectItem>
-                      <SelectItem value="onaylandi">Onaylandı</SelectItem>
-                      <SelectItem value="reddedildi">Reddedildi</SelectItem>
-                      <SelectItem value="gecikmiş">Gecikmiş</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select
+                  value={filterAssigneeId || "all"}
+                  onValueChange={(value) => setFilterAssigneeId(value === "all" ? null : value)}
+                >
+                  <SelectTrigger className="h-8 text-xs" data-testid="select-filter-assignee">
+                    <SelectValue placeholder="Kişi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm kişiler</SelectItem>
+                    {(isHQ ? allUsers : employees)?.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.firstName} {user.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  <label className="text-sm font-medium">Öncelik</label>
-                  <Select
-                    value={filterPriority || "all"}
-                    onValueChange={(value) => setFilterPriority(value === "all" ? null : (value as TaskPriority))}
-                  >
-                    <SelectTrigger data-testid="select-filter-priority">
-                      <SelectValue placeholder="Tüm öncelikler" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tüm öncelikler</SelectItem>
-                      <SelectItem value="low">Düşük</SelectItem>
-                      <SelectItem value="medium">Orta</SelectItem>
-                      <SelectItem value="high">Yüksek</SelectItem>
-                      <SelectItem value="critical">Kritik</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select
+                  value={filterStatus || "all"}
+                  onValueChange={(value) => setFilterStatus(value === "all" ? null : (value as TaskStatus))}
+                >
+                  <SelectTrigger className="h-8 text-xs" data-testid="select-filter-status">
+                    <SelectValue placeholder="Durum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm durumlar</SelectItem>
+                    <SelectItem value="beklemede">Beklemede</SelectItem>
+                    <SelectItem value="devam_ediyor">Devam Ediyor</SelectItem>
+                    <SelectItem value="foto_bekleniyor">Fotoğraf Bekleniyor</SelectItem>
+                    <SelectItem value="incelemede">İncelemede</SelectItem>
+                    <SelectItem value="onaylandi">Onaylandı</SelectItem>
+                    <SelectItem value="reddedildi">Reddedildi</SelectItem>
+                    <SelectItem value="gecikmiş">Gecikmiş</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  <label className="text-sm font-medium">Başlangıç Tarihi</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                        data-testid="button-filter-date-from"
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {filterDateFrom ? format(filterDateFrom, "dd/MM/yyyy") : "Seç"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={filterDateFrom}
-                        onSelect={setFilterDateFrom}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <Select
+                  value={filterPriority || "all"}
+                  onValueChange={(value) => setFilterPriority(value === "all" ? null : (value as TaskPriority))}
+                >
+                  <SelectTrigger className="h-8 text-xs" data-testid="select-filter-priority">
+                    <SelectValue placeholder="Öncelik" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm öncelikler</SelectItem>
+                    <SelectItem value="low">Düşük</SelectItem>
+                    <SelectItem value="medium">Orta</SelectItem>
+                    <SelectItem value="high">Yüksek</SelectItem>
+                    <SelectItem value="critical">Kritik</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  <label className="text-sm font-medium">Bitiş Tarihi</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                        data-testid="button-filter-date-to"
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {filterDateTo ? format(filterDateTo, "dd/MM/yyyy") : "Seç"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={filterDateTo}
-                        onSelect={setFilterDateTo}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs justify-start"
+                      data-testid="button-filter-date-from"
+                    >
+                      <Calendar className="mr-1 h-3 w-3" />
+                      {filterDateFrom ? format(filterDateFrom, "dd/MM") : "Başlangıç"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={filterDateFrom}
+                      onSelect={setFilterDateFrom}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs justify-start"
+                      data-testid="button-filter-date-to"
+                    >
+                      <Calendar className="mr-1 h-3 w-3" />
+                      {filterDateTo ? format(filterDateTo, "dd/MM") : "Bitiş"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={filterDateTo}
+                      onSelect={setFilterDateTo}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </CardContent>
           </CollapsibleContent>
