@@ -6,6 +6,12 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
+## Recent Changes (December 6, 2025)
+- ✅ **TURN 22 - Görev Detayında Atanan Kişi Bilgisi**:
+  * Tamamlanan görevlerin detay sayfasında atanan kişi, atayan kişi, şube ve tamamlanan tarih
+  * Görev listesinde tamamlanan görevler: atayan kişi, şube, yıldız sayısı
+  * Normal görevler: 2-sütun grid | Tamamlanan görevler: dikey liste format
+
 ## System Architecture
 ### UI/UX Decisions
 The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (New York variant, Radix UI-based) and Material Design 3 principles. Styling is managed with Tailwind CSS, including dark mode and Turkish localization. Typography is set to Inter for UI elements and Roboto for numeric data. The design prioritizes a mobile-first, responsive approach with compact, touch-friendly interactions optimized for vertical screens. All cards utilize semantic tokens for consistent theming.

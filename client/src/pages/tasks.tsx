@@ -1067,8 +1067,10 @@ export default function Tasks() {
                       </div>
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-3">
-                    {selectedTask.assignedToId && (
+                  
+                  {/* Tamamlanan görev bilgileri */}
+                  {selectedTask.status === "onaylandi" && (
+                    <div className="space-y-2">
                       <div>
                         <p className="text-sm text-muted-foreground">Atanan Kişi</p>
                         <p className="font-medium">
@@ -1078,8 +1080,6 @@ export default function Tasks() {
                           })()}
                         </p>
                       </div>
-                    )}
-                    {selectedTask.assignedById && (
                       <div>
                         <p className="text-sm text-muted-foreground">Atayan Kişi</p>
                         <p className="font-medium">
@@ -1089,8 +1089,48 @@ export default function Tasks() {
                           })()}
                         </p>
                       </div>
-                    )}
-                  </div>
+                      {branches && selectedTask.branchId && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Şube</p>
+                          <p className="font-medium">{branches.find(b => b.id === selectedTask.branchId)?.name || `Şube ${selectedTask.branchId}`}</p>
+                        </div>
+                      )}
+                      {selectedTask.completedAt && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Tamamlanan Tarih</p>
+                          <p className="font-medium">{new Date(selectedTask.completedAt).toLocaleDateString("tr-TR")}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Normal görevler için bilgiler */}
+                  {selectedTask.status !== "onaylandi" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedTask.assignedToId && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Atanan Kişi</p>
+                          <p className="font-medium">
+                            {(() => {
+                              const assignee = allUsers?.find(u => u.id === selectedTask.assignedToId);
+                              return assignee ? `${assignee.firstName} ${assignee.lastName}` : "Bilinmiyor";
+                            })()}
+                          </p>
+                        </div>
+                      )}
+                      {selectedTask.assignedById && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Atayan Kişi</p>
+                          <p className="font-medium">
+                            {(() => {
+                              const assigner = allUsers?.find(u => u.id === selectedTask.assignedById);
+                              return assigner ? `${assigner.firstName} ${assigner.lastName}` : "Bilinmiyor";
+                            })()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Photo Preview */}
