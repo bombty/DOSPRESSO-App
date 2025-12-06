@@ -801,6 +801,118 @@ export type InsertTaskStatusHistory = z.infer<typeof insertTaskStatusHistorySche
 export type TaskStatusHistory = typeof taskStatusHistory.$inferSelect;
 
 // ========================================
+// TASK RATINGS TABLE (Manual rating by assigner)
+// ========================================
+
+export const taskRatings = pgTable("task_ratings", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  ratedById: varchar("rated_by_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Assigner who rates
+  ratedUserId: varchar("rated_user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Assignee being rated
+  rawRating: integer("raw_rating").notNull(), // What assigner submitted (1-5)
+  finalRating: integer("final_rating").notNull(), // After penalty applied (1-5)
+  penaltyApplied: integer("penalty_applied").default(0), // 0 or 1 (late delivery penalty)
+  isLate: boolean("is_late").default(false), // Whether task was completed after deadline
+  feedback: text("feedback"), // Optional comment from assigner
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  taskIdUniqueIdx: uniqueIndex("task_ratings_task_id_unique_idx").on(table.taskId), // One rating per task
+  ratedUserIdx: index("task_ratings_rated_user_idx").on(table.ratedUserId),
+}));
+
+export const insertTaskRatingSchema = createInsertSchema(taskRatings).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  rawRating: z.number().min(1).max(5),
+  finalRating: z.number().min(1).max(5),
+  penaltyApplied: z.number().min(0).max(1).optional(),
+  isLate: z.boolean().optional(),
+  feedback: z.string().max(500).optional(),
+});
+
+export type InsertTaskRating = z.infer<typeof insertTaskRatingSchema>;
+export type TaskRating = typeof taskRatings.$inferSelect;
+
+// ========================================
+// CHECKLIST RATINGS TABLE (Automatic rating based on completion)
+// ========================================
+
+export const checklistRatings = pgTable("checklist_ratings", {
+  id: serial("id").primaryKey(),
+  checklistInstanceId: integer("checklist_instance_id").notNull(), // Reference to daily checklist assignment
+  checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Person being rated
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  completionRate: real("completion_rate").notNull(), // 0.0 - 1.0 (percentage of tasks completed)
+  isOnTime: boolean("is_on_time").default(true), // Completed before deadline?
+  rawScore: integer("raw_score").notNull(), // Score before penalty (1-5)
+  finalScore: integer("final_score").notNull(), // After penalty applied (1-5)
+  penaltyApplied: integer("penalty_applied").default(0), // 0 or 1 (late penalty)
+  totalTasks: integer("total_tasks").notNull(), // How many tasks in checklist
+  completedTasks: integer("completed_tasks").notNull(), // How many completed
+  checklistDate: date("checklist_date").notNull(), // Which day's checklist
+  scoredAt: timestamp("scored_at").defaultNow(),
+}, (table) => ({
+  userDateIdx: index("checklist_ratings_user_date_idx").on(table.userId, table.checklistDate),
+  branchDateIdx: index("checklist_ratings_branch_date_idx").on(table.branchId, table.checklistDate),
+}));
+
+export const insertChecklistRatingSchema = createInsertSchema(checklistRatings).omit({
+  id: true,
+  scoredAt: true,
+}).extend({
+  completionRate: z.number().min(0).max(1),
+  rawScore: z.number().min(1).max(5),
+  finalScore: z.number().min(1).max(5),
+  penaltyApplied: z.number().min(0).max(1).optional(),
+});
+
+export type InsertChecklistRating = z.infer<typeof insertChecklistRatingSchema>;
+export type ChecklistRating = typeof checklistRatings.$inferSelect;
+
+// ========================================
+// EMPLOYEE SATISFACTION SCORES (Aggregated task/checklist ratings)
+// ========================================
+
+export const employeeSatisfactionScores = pgTable("employee_satisfaction_scores", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  // Task satisfaction metrics
+  taskRatingCount: integer("task_rating_count").default(0), // Total rated tasks
+  taskRatingSum: real("task_rating_sum").default(0), // Sum of finalRatings
+  taskSatisfactionAvg: real("task_satisfaction_avg").default(0), // Average 1-5
+  taskOnTimeCount: integer("task_on_time_count").default(0), // Tasks completed on time
+  taskLateCount: integer("task_late_count").default(0), // Tasks completed late
+  // Checklist discipline metrics
+  checklistRatingCount: integer("checklist_rating_count").default(0), // Total rated checklists
+  checklistRatingSum: real("checklist_rating_sum").default(0), // Sum of finalScores
+  checklistScoreAvg: real("checklist_score_avg").default(0), // Average 1-5
+  checklistOnTimeCount: integer("checklist_on_time_count").default(0),
+  checklistLateCount: integer("checklist_late_count").default(0),
+  // Composite score (100 üzerinden)
+  onTimeRate: real("on_time_rate").default(0), // Percentage of on-time completions
+  compositeScore: real("composite_score").default(0), // 0-100 weighted score
+  // Metadata
+  lastCalculatedAt: timestamp("last_calculated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdUniqueIdx: uniqueIndex("employee_satisfaction_scores_user_unique_idx").on(table.userId),
+  branchIdx: index("employee_satisfaction_scores_branch_idx").on(table.branchId),
+  compositeScoreIdx: index("employee_satisfaction_scores_composite_idx").on(table.compositeScore),
+}));
+
+export const insertEmployeeSatisfactionScoreSchema = createInsertSchema(employeeSatisfactionScores).omit({
+  id: true,
+  lastCalculatedAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeSatisfactionScore = z.infer<typeof insertEmployeeSatisfactionScoreSchema>;
+export type EmployeeSatisfactionScore = typeof employeeSatisfactionScores.$inferSelect;
+
+// ========================================
 // EQUIPMENT MANAGEMENT TABLES
 // ========================================
 
