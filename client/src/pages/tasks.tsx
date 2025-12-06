@@ -25,7 +25,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
-import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff } from "lucide-react";
+import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Tasks() {
@@ -49,6 +49,7 @@ export default function Tasks() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [taskNotes, setTaskNotes] = useState("");
   const [assignmentFilter, setAssignmentFilter] = useState<"bana_atanan" | "atadiklarim" | null>(null);
+  const [branchPopoverOpen, setBranchPopoverOpen] = useState(false);
   const tasksContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
@@ -396,49 +397,75 @@ export default function Tasks() {
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
       <h1 className="text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
 
-      {/* Branch Selector for HQ + Assignment Direction Filter */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        {isHQ && branches && branches.length > 0 && (
-          <div className="flex-1 sm:flex-initial">
-            <label className="text-xs text-muted-foreground block mb-1">Şube Seçin</label>
-            <Select
-              value={filterBranchId?.toString() || "all"}
-              onValueChange={(value) => setFilterBranchId(value === "all" ? null : Number(value))}
-            >
-              <SelectTrigger className="h-9 text-sm" data-testid="select-branch-main">
-                <SelectValue placeholder="Tüm Şubeler" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tüm Şubeler</SelectItem>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id.toString()}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+      {/* Assignment Direction Filter + Branch Selector */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={assignmentFilter === "bana_atanan" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAssignmentFilter(assignmentFilter === "bana_atanan" ? null : "bana_atanan")}
+          data-testid="button-filter-assigned-to-me"
+        >
+          Bana Atanan
+        </Button>
+        <Button
+          variant={assignmentFilter === "atadiklarim" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim")}
+          data-testid="button-filter-assigned-by-me"
+        >
+          Atadıklarım
+        </Button>
         
-        {/* Assignment Direction Filter */}
-        <div className="flex gap-2">
-          <Button
-            variant={assignmentFilter === "bana_atanan" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAssignmentFilter(assignmentFilter === "bana_atanan" ? null : "bana_atanan")}
-            data-testid="button-filter-assigned-to-me"
-          >
-            Bana Atanan
-          </Button>
-          <Button
-            variant={assignmentFilter === "atadiklarim" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim")}
-            data-testid="button-filter-assigned-by-me"
-          >
-            Atadıklarım
-          </Button>
-        </div>
+        {isHQ && branches && branches.length > 0 && (
+          <Popover open={branchPopoverOpen} onOpenChange={setBranchPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant={filterBranchId !== null ? "default" : "outline"}
+                size="sm"
+                data-testid="button-branch-filter"
+              >
+                <Building2 className="h-4 w-4 mr-1" />
+                {filterBranchId !== null
+                  ? `Şube: ${branches.find(b => b.id === filterBranchId)?.name || ''}`
+                  : 'Şubeler'}
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant={filterBranchId === null ? "secondary" : "ghost"}
+                  size="sm"
+                  className="justify-start"
+                  onClick={() => {
+                    setFilterBranchId(null);
+                    setBranchPopoverOpen(false);
+                  }}
+                  data-testid="command-branch-all"
+                >
+                  <Check className={`h-4 w-4 mr-2 ${filterBranchId === null ? 'opacity-100' : 'opacity-0'}`} />
+                  Tümü
+                </Button>
+                {branches.map((branch) => (
+                  <Button
+                    key={branch.id}
+                    variant={filterBranchId === branch.id ? "secondary" : "ghost"}
+                    size="sm"
+                    className="justify-start"
+                    onClick={() => {
+                      setFilterBranchId(branch.id);
+                      setBranchPopoverOpen(false);
+                    }}
+                    data-testid={`command-branch-${branch.id}`}
+                  >
+                    <Check className={`h-4 w-4 mr-2 ${filterBranchId === branch.id ? 'opacity-100' : 'opacity-0'}`} />
+                    {branch.name}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
