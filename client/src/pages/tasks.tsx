@@ -1123,12 +1123,12 @@ export default function Tasks() {
                         <div>
                           <p className="text-sm text-muted-foreground">Aldığı Puan</p>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{selectedTaskRating.score || 0}/5</span>
+                            <span className="font-medium">{selectedTaskRating.finalRating || 0}/5</span>
                             <div className="flex items-center gap-0.5">
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
-                                  className={`h-4 w-4 ${i < (selectedTaskRating.score || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                                  className={`h-4 w-4 ${i < (selectedTaskRating.finalRating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
                                 />
                               ))}
                             </div>

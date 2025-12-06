@@ -491,43 +491,43 @@ export default function PersonelDetay() {
           <CardTitle>Genel Bilgiler</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-start gap-2 sm:gap-3">
-            <Avatar className="h-24 w-24">
+          <div className="flex items-start gap-3">
+            <Avatar className="h-20 w-20 flex-shrink-0">
               <AvatarImage src={employee.profileImageUrl || undefined} />
-              <AvatarFallback className="text-2xl">
+              <AvatarFallback className="text-xl">
                 {getInitials(employee.firstName || "", employee.lastName || "")}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+            <div className="flex-1 grid grid-cols-2 gap-2 text-sm">
               <div>
-                <p className="text-sm text-muted-foreground">Ad Soyad</p>
+                <p className="text-muted-foreground text-xs">Ad Soyad</p>
                 <p className="font-medium">{employee.firstName} {employee.lastName}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Rol</p>
-                <Badge>{roleLabels[employee.role] || employee.role}</Badge>
+                <p className="text-muted-foreground text-xs">Rol</p>
+                <Badge className="text-xs">{roleLabels[employee.role] || employee.role}</Badge>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">E-posta</p>
-                <p className="font-medium">{employee.email}</p>
+                <p className="text-muted-foreground text-xs">E-posta</p>
+                <p className="font-medium text-xs">{employee.email}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Telefon</p>
-                <p className="font-medium">{employee.phoneNumber || "-"}</p>
+                <p className="text-muted-foreground text-xs">Telefon</p>
+                <p className="font-medium text-xs">{employee.phoneNumber || "-"}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Acil Durum İletişim</p>
-                <p className="font-medium">{employee.emergencyContactName || "-"}</p>
+                <p className="text-muted-foreground text-xs">Acil Durum</p>
+                <p className="font-medium text-xs">{employee.emergencyContactName || "-"}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Durum</p>
+                <p className="text-muted-foreground text-xs">Durum</p>
                 {employee.isActive ? (
-                  <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+                  <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs h-6">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Aktif
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="bg-background text-foreground border-gray-200">
+                  <Badge variant="outline" className="bg-background text-foreground border-gray-200 text-xs h-6">
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Pasif
                   </Badge>
