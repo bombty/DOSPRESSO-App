@@ -428,7 +428,10 @@ export default function Tasks() {
         <Button
           variant={assignmentFilter === "bana_atanan" ? "default" : "outline"}
           size="sm"
-          onClick={() => setAssignmentFilter(assignmentFilter === "bana_atanan" ? null : "bana_atanan")}
+          onClick={() => {
+            setAssignmentFilter(assignmentFilter === "bana_atanan" ? null : "bana_atanan");
+            setFilterBranchId(null);
+          }}
           data-testid="button-filter-assigned-to-me"
         >
           Bana Atanan
@@ -436,7 +439,10 @@ export default function Tasks() {
         <Button
           variant={assignmentFilter === "atadiklarim" ? "default" : "outline"}
           size="sm"
-          onClick={() => setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim")}
+          onClick={() => {
+            setAssignmentFilter(assignmentFilter === "atadiklarim" ? null : "atadiklarim");
+            setFilterBranchId(null);
+          }}
           data-testid="button-filter-assigned-by-me"
         >
           Atadıklarım
@@ -465,6 +471,7 @@ export default function Tasks() {
                   className="justify-start"
                   onClick={() => {
                     setFilterBranchId(null);
+                    setAssignmentFilter(null);
                     setBranchPopoverOpen(false);
                   }}
                   data-testid="command-branch-all"
@@ -480,6 +487,7 @@ export default function Tasks() {
                     className="justify-start"
                     onClick={() => {
                       setFilterBranchId(branch.id);
+                      setAssignmentFilter(null);
                       setBranchPopoverOpen(false);
                     }}
                     data-testid={`command-branch-${branch.id}`}
