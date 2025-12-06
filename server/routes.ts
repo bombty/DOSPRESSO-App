@@ -1088,7 +1088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
-      const { photoUrl } = req.body;
+      const { photoUrl, notes } = req.body;
       const userId = req.user.id; // For rate limiting
       
       // Permission check
@@ -1109,6 +1109,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const task = await storage.completeTask(id, photoUrl);
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
+      }
+      
+      // Update notes if provided
+      if (notes) {
+        await storage.updateTask(id, { notes });
       }
 
       // Send completion notification to the person who assigned the task
@@ -1237,6 +1242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
+      const { notes } = req.body;
       
       // Permission check
       ensurePermission(user, 'tasks', 'edit');
@@ -1261,7 +1267,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const task = await storage.updateTask(id, { status: "devam_ediyor" });
+      const updateData: any = { status: "devam_ediyor" };
+      if (notes) updateData.notes = notes;
+      const task = await storage.updateTask(id, updateData);
       
       // Send notification to assigner when task is started
       if (existingTask.assignedById && existingTask.assignedById !== user.id) {

@@ -47,6 +47,7 @@ export default function Tasks() {
     direction: 'desc',
   });
   const [filterOpen, setFilterOpen] = useState(false);
+  const [taskNotes, setTaskNotes] = useState("");
   const tasksContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
@@ -179,11 +180,12 @@ export default function Tasks() {
 
   const completeMutation = useMutation({
     mutationFn: async ({ taskId, photoUrl }: { taskId: number; photoUrl?: string }) => {
-      await apiRequest(`/api/tasks/${taskId}/complete`, "POST", { photoUrl });
+      await apiRequest("POST", `/api/tasks/${taskId}/complete`, { photoUrl, notes: taskNotes || undefined });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({ title: "Başarılı", description: "Görev tamamlandı olarak işaretlendi" });
+      setTaskNotes("");
       setSelectedTask(null);
     },
     onError: (error: Error) => {
@@ -208,7 +210,7 @@ export default function Tasks() {
 
   const startTaskMutation = useMutation({
     mutationFn: async (taskId: number) => {
-      await apiRequest("POST", `/api/tasks/${taskId}/start`, {});
+      await apiRequest("POST", `/api/tasks/${taskId}/start`, { notes: taskNotes || undefined });
     },
     onSuccess: async (_data, taskId) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -217,6 +219,7 @@ export default function Tasks() {
       if (updatedTask) {
         setSelectedTask(updatedTask);
       }
+      setTaskNotes("");
       toast({ title: "Başarılı", description: "Görev başlatıldı" });
     },
     onError: (error: Error) => {
@@ -1106,6 +1109,32 @@ export default function Tasks() {
                           {selectedTask.aiAnalysis}
                         </p>
                       </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Notes Section */}
+                {(selectedTask.status === "beklemede" || selectedTask.status === "reddedildi" || selectedTask.status === "devam_ediyor" || selectedTask.status === "foto_bekleniyor") && (
+                  <>
+                    <Separator />
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">Not Ekle</label>
+                      <Textarea
+                        placeholder="Bu görev için bir not yazınız..."
+                        value={taskNotes}
+                        onChange={(e) => setTaskNotes(e.target.value)}
+                        className="resize-none"
+                        data-testid="textarea-task-notes"
+                      />
+                    </div>
+                  </>
+                )}
+                {selectedTask.notes && (
+                  <>
+                    <Separator />
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">Mevcut Notlar</label>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted p-2 rounded">{selectedTask.notes}</p>
                     </div>
                   </>
                 )}
