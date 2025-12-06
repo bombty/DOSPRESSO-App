@@ -86,6 +86,7 @@ export function ObjectUploader({
         onChange={handleFileSelect}
         className="hidden"
         data-testid="input-file-upload"
+        onClick={(e) => e.stopPropagation()}
       />
       <Button
         onClick={() => fileInputRef.current?.click()}
