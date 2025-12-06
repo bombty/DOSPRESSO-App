@@ -225,45 +225,53 @@ export default function GorevDetay() {
         )}
       </div>
 
-      {/* Preview Section */}
-      {isAssignee && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <PlayCircle className="h-4 w-4" />
-              Ön İzleme
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              {canAcknowledge && (
-                <Button
-                  variant="outline"
-                  onClick={() => acknowledgeMutation.mutate()}
-                  disabled={acknowledgeMutation.isPending}
-                  data-testid="button-acknowledge-task"
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  {acknowledgeMutation.isPending ? "İşleniyor..." : "Gördüm"}
-                </Button>
-              )}
-              
-              {canStartProgress && (
-                <Button
-                  variant="outline"
-                  onClick={() => updateStatusMutation.mutate({ status: "devam_ediyor" })}
-                  disabled={updateStatusMutation.isPending}
-                  data-testid="button-start-progress"
-                >
-                  <PlayCircle className="h-4 w-4 mr-2" />
-                  Başladım
-                </Button>
-              )}
-            </div>
+      {/* Preview & Action Section */}
+      {isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz" && (
+        <>
+          {/* Gördüm / Başladım Buttons */}
+          {(canAcknowledge || canStartProgress) && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <PlayCircle className="h-4 w-4" />
+                  Ön İzleme
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                {canAcknowledge && (
+                  <Button
+                    variant="outline"
+                    onClick={() => acknowledgeMutation.mutate()}
+                    disabled={acknowledgeMutation.isPending}
+                    data-testid="button-acknowledge-task"
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    {acknowledgeMutation.isPending ? "İşleniyor..." : "Gördüm"}
+                  </Button>
+                )}
+                
+                {canStartProgress && (
+                  <Button
+                    variant="outline"
+                    onClick={() => updateStatusMutation.mutate({ status: "devam_ediyor" })}
+                    disabled={updateStatusMutation.isPending}
+                    data-testid="button-start-progress"
+                  >
+                    <PlayCircle className="h-4 w-4 mr-2" />
+                    Başladım
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-            {/* Note & Photo section - shows after task is started */}
-            {task.status === "devam_ediyor" && (
-              <div className="border-t pt-3 space-y-3">
+          {/* Note & Photo Section - shows after task is started */}
+          {task.status === "devam_ediyor" && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Not ve Fotoğraf</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Not Ekle</label>
                   <Textarea
@@ -309,44 +317,42 @@ export default function GorevDetay() {
                     </Button>
                   </ObjectUploader>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+          )}
 
-      {/* Detail Section - Completion */}
-      {isAssignee && task.status === "devam_ediyor" && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Görev Tamamla
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={() => setShowCompleteDialog(true)}
-                disabled={updateStatusMutation.isPending}
-                data-testid="button-complete-task"
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Tamamlandı
-              </Button>
-              
-              <Button
-                variant="destructive"
-                onClick={() => setShowFailureDialog(true)}
-                disabled={updateStatusMutation.isPending}
-                data-testid="button-mark-failed"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Tamamlanamadı
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Completion Section */}
+          {task.status === "devam_ediyor" && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Görev Tamamla
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => setShowCompleteDialog(true)}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-complete-task"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Tamamlandı
+                </Button>
+                
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowFailureDialog(true)}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-mark-failed"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Tamamlanamadı
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Failure Note Display */}
