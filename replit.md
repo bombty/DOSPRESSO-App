@@ -6,8 +6,24 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 6, 2025 - TURN 15 Complete - Task Lifecycle System)
-- ✅ **Complete Task Lifecycle Implementation**:
+## Recent Changes (December 6, 2025 - TURN 16 Complete - HQ Branch Task Performance Dashboard)
+- ✅ **HQ Branch Task Performance Dashboard** (/sube-gorevler/:id):
+  * Performance score gauge (0-100) with color-coded status (Red/Amber/Green)
+  * KPI grid showing: Total Tasks, On-Time Rate %, Failure Rate %, Overdue Tasks
+  * Time metrics: Avg acknowledgment time (minutes), Avg completion time (hours)
+  * Status summary: Pending, In Progress, Completed, Failed counts
+  * 4-week trend chart showing weekly completions and failures
+  * Transparent score calculation info (40% on-time, 20% overdue, 15% failure, 15% ack time, 10% completion speed)
+- ✅ **New API Endpoint**: GET /api/branches/:id/task-stats
+  * HQ role-based authorization
+  * Calculates all performance metrics from branch tasks
+- ✅ **Storage Method**: getBranchTaskStats(branchId)
+  * Comprehensive metrics calculation with weighted scoring algorithm
+- ✅ **Navigation Integration**:
+  * New route /sube-gorevler/:id in App.tsx
+  * "Görev Performansı" button in branch detail page (visible to HQ only)
+- ✅ **Previous Achievement (TURN 15)**:
+  * Complete Task Lifecycle Implementation:
   * Acknowledgment workflow: Assignees must mark tasks as "Gördüm" (Seen)
   * Status progression: beklemede → devam_ediyor → onaylandi/basarisiz
   * Failure notes: Required explanation when marking task as failed

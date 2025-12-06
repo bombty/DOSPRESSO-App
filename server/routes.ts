@@ -13236,6 +13236,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // BRANCH TASK PERFORMANCE STATISTICS
+  // ========================================
+
+  app.get('/api/branches/:id/task-stats', isAuthenticated, async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      if (!user || !isHQRole(user.role)) {
+        return res.status(403).json({ message: 'Bu işlem için HQ yetkisi gerekli' });
+      }
+
+      const stats = await storage.getBranchTaskStats(branchId);
+      res.json(stats);
+    } catch (error: Error | unknown) {
+      console.error('Error fetching branch task stats:', error);
+      res.status(500).json({ message: 'Görev istatistikleri alınamadı' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

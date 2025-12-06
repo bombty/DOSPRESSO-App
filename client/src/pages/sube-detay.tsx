@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { 
   ArrowLeft, Users, CheckCircle2, Clock, Wrench, TrendingUp, 
   Star, Award, ClipboardCheck, ThumbsUp, QrCode, MapPin, 
-  Wifi, Download, RefreshCw, Copy, CheckCircle
+  Wifi, Download, RefreshCw, Copy, CheckCircle, BarChart3
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { isHQRole } from "@shared/schema";
@@ -322,6 +322,18 @@ export default function SubeDetayPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Action Buttons */}
+      {isAdmin && (
+        <div className="flex gap-2">
+          <Link href={`/sube-gorevler/${branchId}`}>
+            <Button variant="outline" size="sm" data-testid="button-task-performance">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Görev Performansı
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs className="w-full flex flex-col gap-3 sm:gap-4">

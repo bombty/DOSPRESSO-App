@@ -5978,6 +5978,83 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions));
     return result[0]?.count || 0;
   }
+
+  // ========================================
+  // BRANCH TASK PERFORMANCE STATISTICS
+  // ========================================
+
+  async getBranchTaskStats(branchId: number): Promise<any> {
+    const allTasks = await db.select().from(tasks).where(eq(tasks.branchId, branchId));
+    
+    const total = allTasks.length;
+    const completed = allTasks.filter(t => t.status === 'onaylandi').length;
+    const failed = allTasks.filter(t => t.status === 'basarisiz').length;
+    const inProgress = allTasks.filter(t => t.status === 'devam_ediyor').length;
+    const pending = allTasks.filter(t => t.status === 'beklemede').length;
+
+    const now = new Date();
+    const overdue = allTasks.filter(t => {
+      if (t.status === 'onaylandi' || t.status === 'basarisiz') return false;
+      return t.dueDate && new Date(t.dueDate) < now;
+    }).length;
+
+    // Calculate on-time completion rate
+    const completedOnTime = allTasks.filter(t => 
+      t.status === 'onaylandi' && t.dueDate && new Date(t.statusUpdatedAt || now) <= new Date(t.dueDate)
+    ).length;
+
+    const onTimeRate = total > 0 ? Math.round((completedOnTime / completed) * 100) || 0 : 100;
+    const overdueRate = total > 0 ? Math.round((overdue / total) * 100) : 0;
+    const failureRate = total > 0 ? Math.round((failed / total) * 100) : 0;
+
+    // Acknowledgment time (average time from creation to acknowledgment)
+    const acknowledgedTasks = allTasks.filter(t => t.acknowledgedAt);
+    let avgAckTime = 0;
+    if (acknowledgedTasks.length > 0) {
+      const ackTimes = acknowledgedTasks.map(t => {
+        const createdTime = new Date(t.createdAt || now).getTime();
+        const ackTime = new Date(t.acknowledgedAt!).getTime();
+        return (ackTime - createdTime) / (1000 * 60); // in minutes
+      });
+      avgAckTime = Math.round(ackTimes.reduce((a, b) => a + b, 0) / ackTimes.length);
+    }
+
+    // Completion speed (average time from start to completion)
+    const completedTasksWithDates = allTasks.filter(t => t.status === 'onaylandi' && t.statusUpdatedAt);
+    let avgCompletionTime = 0;
+    if (completedTasksWithDates.length > 0) {
+      const completionTimes = completedTasksWithDates.map(t => {
+        const startTime = t.startedAt ? new Date(t.startedAt).getTime() : new Date(t.createdAt || now).getTime();
+        const endTime = new Date(t.statusUpdatedAt!).getTime();
+        return (endTime - startTime) / (1000 * 60 * 60); // in hours
+      });
+      avgCompletionTime = Math.round(completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length * 10) / 10;
+    }
+
+    // Performance score calculation (0-100)
+    const score = Math.round(
+      (onTimeRate * 0.40) +
+      ((100 - overdueRate) * 0.20) +
+      ((100 - failureRate) * 0.15) +
+      (Math.min(avgAckTime === 0 ? 100 : Math.max(0, 100 - (avgAckTime / 60)), 100) * 0.15) +
+      (Math.min(avgCompletionTime === 0 ? 100 : Math.max(0, 100 - (avgCompletionTime / 24)), 100) * 0.10)
+    );
+
+    return {
+      totalTasks: total,
+      completed,
+      failed,
+      inProgress,
+      pending,
+      overdue,
+      onTimeRate,
+      overdueRate,
+      failureRate,
+      avgAckTime,
+      avgCompletionTime,
+      performanceScore: Math.max(0, Math.min(100, score))
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();

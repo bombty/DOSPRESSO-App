@@ -53,6 +53,7 @@ import AcademySocialGroups from "@/pages/academy-social-groups";
 import AcademyAdvancedAnalytics from "@/pages/academy-advanced-analytics";
 import BadgeCollection from "@/pages/badge-collection";
 import GorevDetay from "@/pages/gorev-detay";
+import SubeGorevler from "@/pages/sube-gorevler";
 import IK from "@/pages/ik";
 import PersonelOnboarding from "@/pages/personel-onboarding";
 import LeaveRequests from "@/pages/leave-requests";
@@ -129,6 +130,7 @@ function Router() {
           {/* Operasyon & Tasklar */}
           <Route path="/gorevler" component={Tasks} />
           <Route path="/gorev-detay/:id" component={GorevDetay} />
+          <Route path="/sube-gorevler/:id" component={SubeGorevler} />
           <Route path="/checklistler" component={Checklists} />
 
           {/* Ekipman & Bakım */}
