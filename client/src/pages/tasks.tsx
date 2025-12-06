@@ -208,7 +208,7 @@ export default function Tasks() {
 
   const startTaskMutation = useMutation({
     mutationFn: async (taskId: number) => {
-      await apiRequest(`/api/tasks/${taskId}/start`, "POST", {});
+      await apiRequest("POST", `/api/tasks/${taskId}/start`, {});
     },
     onSuccess: async (_data, taskId) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
