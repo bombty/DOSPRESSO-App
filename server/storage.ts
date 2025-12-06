@@ -6103,6 +6103,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(taskRatings.createdAt));
   }
 
+  async getReceivedRatings(userId: string): Promise<any[]> {
+    return db.select()
+      .from(taskRatings)
+      .innerJoin(tasks, eq(taskRatings.taskId, tasks.id))
+      .where(eq(tasks.completedById, userId))
+      .orderBy(desc(taskRatings.createdAt));
+  }
+
   computeMaxRating(task: Task): number {
     if (!task.dueDate || !task.completedAt) {
       return 5;

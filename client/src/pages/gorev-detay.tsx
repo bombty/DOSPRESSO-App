@@ -86,6 +86,16 @@ export default function GorevDetay() {
     enabled: !!task?.assignedById,
   });
 
+  const { data: completedByUser } = useQuery<UserType>({
+    queryKey: ["/api/users", task?.completedById],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${task!.completedById}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!task?.completedById,
+  });
+
   const { data: taskHistory } = useQuery<TaskStatusHistory[]>({
     queryKey: ["/api/tasks", id, "history"],
     queryFn: async () => {
@@ -574,29 +584,41 @@ export default function GorevDetay() {
               <CheckCircle className="h-4 w-4 mt-1 text-success flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-success">Görev tamamlandı</p>
-                {task.completedAt && (
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(task.completedAt).toLocaleString("tr-TR")}
-                  </p>
-                )}
+                
+                {/* Completion details */}
+                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {task.completedAt && (
+                    <p>
+                      Tarih: {new Date(task.completedAt).toLocaleString("tr-TR")}
+                    </p>
+                  )}
+                  {completedByUser && (
+                    <p>
+                      Tamamlayan: <span className="font-medium">{completedByUser.fullName || completedByUser.username}</span>
+                      {completedByUser.branchId && (
+                        <span className="ml-2">({completedByUser.branch?.name || `Şube: ${completedByUser.branchId}`})</span>
+                      )}
+                    </p>
+                  )}
+                </div>
                 
                 {/* Rating section */}
                 {ratingData?.rating ? (
                   <div className="mt-2 pt-2 border-t border-success/20">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Puan:</span>
+                      <span className="text-xs text-muted-foreground">Aldığı Puan:</span>
                       <StarRating 
                         value={ratingData.rating.finalRating} 
                         readonly 
                         size="sm"
                       />
                       {ratingData.rating.penaltyApplied === 1 && (
-                        <span className="text-xs text-orange-500">⚠️ Geç teslim</span>
+                        <span className="text-xs text-orange-500">⚠️ Geç</span>
                       )}
                     </div>
                     {ratingData.rating.feedback && (
                       <p className="text-xs text-muted-foreground mt-1 italic">
-                        "{ratingData.rating.feedback}"
+                        Yorum: "{ratingData.rating.feedback}"
                       </p>
                     )}
                   </div>

@@ -236,6 +236,25 @@ export default function PersonelDetay() {
     enabled: !!id,
   });
 
+  // Kendine Verilen Yıldızlar
+  const { data: receivedRatings, isLoading: receivedRatingsLoading } = useQuery<Array<{
+    id: number;
+    taskId: number;
+    finalRating: number;
+    feedback?: string;
+    createdAt: string;
+    raterUser?: { id: string; fullName?: string; username: string };
+    task?: { id: number; description?: string };
+  }>>({
+    queryKey: ["/api/users", id, "received-ratings"],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${id}/received-ratings`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
   const createOnboardingMutation = useMutation({
     mutationFn: async () => {
       if (!employee?.branchId) {
@@ -808,6 +827,63 @@ export default function PersonelDetay() {
         </TabsContent>
 
         <TabsContent value="performance" className="flex flex-col gap-3">
+          {/* Aldığı Yıldızlar Kartı */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-amber-400" />
+                Kendine Verilen Yıldızlar
+              </CardTitle>
+              <CardDescription>Diğer personeller tarafından verilen puanlar</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {receivedRatingsLoading ? (
+                <div className="flex flex-col gap-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : receivedRatings && receivedRatings.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Görev</TableHead>
+                        <TableHead>Puan</TableHead>
+                        <TableHead>Puanlayan</TableHead>
+                        <TableHead>Tarih</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {receivedRatings.map((rating) => (
+                        <TableRow key={rating.id} data-testid={`row-received-rating-${rating.id}`}>
+                          <TableCell className="font-medium text-sm">
+                            <Link href={`/gorev/${rating.taskId}`} className="text-primary hover:underline">
+                              {rating.task?.description || `Görev #${rating.taskId}`}
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <StarRating value={rating.finalRating} readonly size="sm" />
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {rating.raterUser?.fullName || rating.raterUser?.username || "-"}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(rating.createdAt).toLocaleDateString("tr-TR")}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Henüz puanlama alınmadı</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Görev Memnuniyeti Kartı */}
           <Card>
             <CardHeader>

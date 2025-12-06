@@ -6,7 +6,19 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 6, 2025 - TURN 19 Complete - Task Rating System)
+## Recent Changes (December 6, 2025 - TURN 20 Complete - Enhanced Task Rating UI)
+- ✅ **TURN 20 - Task Rating UI Enhancements**:
+  * Görev detay sayfasında tamamlanan görevlerde:
+    - Tamamlanan tarih gösterimi
+    - Tamamlayan personel adı ve şube bilgisi
+    - Aldığı yıldız gösterimi
+  * Personel detay sayfasında "Kendine Verilen Yıldızlar" kartı:
+    - Diğer personeller tarafından verilen puanları listeler
+    - Görev açıklaması, puan, puanlayan kişi, tarih bilgileri
+    - Görev detay sayfasına link
+  * Yeni API endpoint: GET /api/users/:id/received-ratings
+  * Storage method: getReceivedRatings(userId)
+  * Hızlı detay: Sadece frontend ve API layer değişiklikleri
 - ✅ **TURN 19 - Dual Rating System for Tasks**:
   * New database tables: task_ratings, checklist_ratings, employee_overall_performance
   * Backend penalty logic: Late task completions automatically capped at 4 stars maximum

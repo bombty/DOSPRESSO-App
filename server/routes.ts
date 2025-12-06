@@ -1883,6 +1883,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/users/:id/received-ratings', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const targetUserId = req.params.id;
+      
+      // Users can see their own ratings, HQ/supervisors can see branch employees
+      const isHQ = !isBranchRole(user.role as UserRoleType);
+      if (!isHQ && user.id !== targetUserId) {
+        const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
+        if (!isSupervisor) {
+          return res.status(403).json({ message: "Bu puanlara erişim yetkiniz yok" });
+        }
+        
+        const targetUser = await storage.getUser(targetUserId);
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu puanlara erişim yetkiniz yok" });
+        }
+      }
+      
+      const ratings = await storage.getReceivedRatings(targetUserId);
+      res.json(ratings);
+    } catch (error) {
+      console.error("Error fetching received ratings:", error);
+      res.status(500).json({ message: "Alınan puanlar getirilemedi" });
+    }
+  });
+
   app.get('/api/branches/:branchId/top-performers', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
