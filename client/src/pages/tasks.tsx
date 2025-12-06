@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -47,6 +47,7 @@ export default function Tasks() {
     direction: 'desc',
   });
   const [filterOpen, setFilterOpen] = useState(false);
+  const tasksContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -393,6 +394,7 @@ export default function Tasks() {
             onClick={() => {
               setFilterStatus(filterStatus === 'gecikmiş' ? null : 'gecikmiş');
               setFilterOpen(true);
+              setTimeout(() => tasksContainerRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
             }}
           >
             <CardContent className="p-3">
@@ -413,6 +415,7 @@ export default function Tasks() {
           onClick={() => {
             setFilterStatus(filterStatus === 'beklemede' ? null : 'beklemede');
             setFilterOpen(true);
+            setTimeout(() => tasksContainerRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
           }}
         >
           <CardContent className="p-3">
@@ -432,6 +435,7 @@ export default function Tasks() {
           onClick={() => {
             setFilterStatus(filterStatus === 'devam_ediyor' ? null : 'devam_ediyor');
             setFilterOpen(true);
+            setTimeout(() => tasksContainerRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
           }}
         >
           <CardContent className="p-3">
@@ -451,6 +455,7 @@ export default function Tasks() {
           onClick={() => {
             setFilterStatus(filterStatus === 'reddedildi' ? null : 'reddedildi');
             setFilterOpen(true);
+            setTimeout(() => tasksContainerRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
           }}
         >
           <CardContent className="p-3">
@@ -670,7 +675,7 @@ export default function Tasks() {
         </Card>
       </Collapsible>
 
-      <Tabs className="w-full flex flex-col gap-3 sm:gap-4">
+      <Tabs className="w-full flex flex-col gap-3 sm:gap-4" ref={tasksContainerRef}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
           <TabsList data-testid="tabs-task-filter">
             <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
