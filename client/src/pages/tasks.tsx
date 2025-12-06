@@ -952,13 +952,15 @@ export default function Tasks() {
                           
                           {/* Tamamlanan görev bilgileri */}
                           {task.status === "onaylandi" && (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                              {assigner && (
-                                <span>Atayan: <span className="font-medium">{assigner.firstName} {assigner.lastName}</span></span>
-                              )}
-                              {branch && (
-                                <span>({branch.name})</span>
-                              )}
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                                {assigner && (
+                                  <span>Atayan: <span className="font-medium">{assigner.firstName} {assigner.lastName}</span></span>
+                                )}
+                                {branch && (
+                                  <span>({branch.name})</span>
+                                )}
+                              </div>
                             </div>
                           )}
                           
@@ -1011,7 +1013,7 @@ export default function Tasks() {
             </DrawerHeader>
             
             {selectedTask && (
-              <div className="px-3 pb-4 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+              <div className="px-3 pb-4 flex flex-col gap-2 sm:gap-3">
                 {/* Task Description */}
                 <div>
                   <h3 className="font-semibold text-lg mb-2">{selectedTask.description}</h3>
