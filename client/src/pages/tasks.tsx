@@ -26,7 +26,7 @@ import { QuickTaskModal } from "@/components/quick-task-modal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
-import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2 } from "lucide-react";
+import { Camera, Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, ThumbsUp, ThumbsDown, Calendar, User as UserIcon, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Tasks() {
@@ -1110,6 +1110,26 @@ export default function Tasks() {
                         className="resize-none"
                         data-testid="textarea-task-notes"
                       />
+                      <Button
+                        onClick={() => {
+                          if (taskNotes.trim()) {
+                            apiRequest("POST", `/api/tasks/${selectedTask.id}/note`, { note: taskNotes }).then(() => {
+                              queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+                              setTaskNotes("");
+                              toast({ title: "Başarılı", description: "Not eklendi" });
+                            }).catch(() => {
+                              toast({ title: "Hata", description: "Not eklenemedi", variant: "destructive" });
+                            });
+                          }
+                        }}
+                        disabled={!taskNotes.trim()}
+                        size="sm"
+                        className="w-full"
+                        data-testid="button-add-drawer-note"
+                      >
+                        <Send className="h-3 w-3 mr-2" />
+                        Not Ekle
+                      </Button>
                     </div>
                   </>
                 )}
