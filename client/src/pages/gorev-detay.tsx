@@ -495,12 +495,12 @@ export default function GorevDetay() {
         </CardContent>
       </Card>
 
-      {/* Status History - Compact Timeline */}
+      {/* Status History & Notes - Compact Timeline */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <History className="h-4 w-4" />
-            Durum Geçmişi
+            Durum Geçmişi & Notlar
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-xs">
@@ -524,19 +524,26 @@ export default function GorevDetay() {
             </div>
           )}
 
-          {/* History from API */}
+          {/* History from API with notes */}
           {taskHistory && taskHistory.length > 0 && taskHistory.map((entry, idx) => (
-            <div key={entry.id || idx} className="flex items-center gap-2">
-              <AlertCircle className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-              <span>
-                {entry.previousStatus && entry.previousStatus !== entry.newStatus 
-                  ? `${statusLabels[entry.newStatus] || entry.newStatus}`
-                  : entry.note || "Güncelleme"
-                }
-              </span>
-              <span className="text-muted-foreground">
-                {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR") : "-"}
-              </span>
+            <div key={entry.id || idx} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <span>
+                  {entry.previousStatus && entry.previousStatus !== entry.newStatus 
+                    ? `${statusLabels[entry.newStatus] || entry.newStatus}`
+                    : entry.note || "Güncelleme"
+                  }
+                </span>
+                <span className="text-muted-foreground">
+                  {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("tr-TR") : "-"}
+                </span>
+              </div>
+              {entry.note && entry.previousStatus && entry.previousStatus !== entry.newStatus && (
+                <div className="ml-5 text-xs text-muted-foreground italic border-l border-muted-foreground/30 pl-2 py-0.5">
+                  "{entry.note}"
+                </div>
+              )}
             </div>
           ))}
 
@@ -598,6 +605,26 @@ export default function GorevDetay() {
           )}
         </CardContent>
       </Card>
+
+      {/* Photos Section */}
+      {task.photoUrl && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ImageIcon className="h-4 w-4" />
+              Yüklenen Fotoğraf
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <img 
+              src={task.photoUrl} 
+              alt="Görev fotoğrafı" 
+              className="w-full h-auto rounded-md border"
+              data-testid="img-task-photo"
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Complete Confirmation Dialog */}
       <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
