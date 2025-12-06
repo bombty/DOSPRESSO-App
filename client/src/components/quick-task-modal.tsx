@@ -169,7 +169,8 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
       setAssignmentCategory("");
       setSelectedBranchId("");
       setPhotoUrl("");
-      setOpen(false);
+      // Modal'ı state update'ten sonra kapat
+      setTimeout(() => setOpen(false), 0);
     },
     onError: (error: Error) => {
       toast({
