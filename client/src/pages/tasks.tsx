@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { QuickTaskModal } from "@/components/quick-task-modal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type Task, type InsertTask, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority } from "@shared/schema";
@@ -32,7 +33,6 @@ export default function Tasks() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   
@@ -60,17 +60,6 @@ export default function Tasks() {
     queryKey: ["/api/branches"],
   });
 
-  const form = useForm<InsertTask>({
-    resolver: zodResolver(insertTaskSchema),
-    defaultValues: {
-      description: "",
-      status: "beklemede",
-      branchId: user?.branchId || undefined,
-      assignedToId: undefined,
-    },
-  });
-
-  const selectedBranchId = form.watch("branchId");
   const isHQ = user?.role && checkIsHQRole(user.role as any);
 
   const filteredTasksForStats = useMemo(() => {
@@ -105,18 +94,6 @@ export default function Tasks() {
     return filteredTasksForStats.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'onaylandi');
   }, [filteredTasksForStats]);
 
-  const { data: employees, isLoading: isEmployeesLoading } = useQuery<User[]>({
-    queryKey: ["/api/employees", selectedBranchId],
-    queryFn: async () => {
-      const url = isHQ && selectedBranchId 
-        ? `/api/employees?branchId=${selectedBranchId}` 
-        : "/api/employees";
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch employees");
-      return res.json();
-    },
-    enabled: isHQ ? !!selectedBranchId : true,
-  });
 
   const { data: allUsers, isLoading: isAllUsersLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -175,35 +152,6 @@ export default function Tasks() {
     return count;
   }, [searchQuery, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo]);
 
-  const createMutation = useMutation({
-    mutationFn: async (data: InsertTask) => {
-      await apiRequest("POST", "/api/tasks", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Başarılı", description: "Görev oluşturuldu" });
-      setIsAddDialogOpen(false);
-      form.reset();
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Yetkisiz",
-          description: "Oturumunuz sonlandı. Tekrar giriş yapılıyor...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Hata",
-        description: "Görev oluşturulamadı",
-        variant: "destructive",
-      });
-    },
-  });
 
   const completeMutation = useMutation({
     mutationFn: async ({ taskId, photoUrl }: { taskId: number; photoUrl?: string }) => {
@@ -421,7 +369,10 @@ export default function Tasks() {
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
-      <h1 className="text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
+        <QuickTaskModal trigger={<Button size="sm" data-testid="button-add-task">Yeni Görev Ekle</Button>} />
+      </div>
 
       {/* Assignment Direction Filter + Branch Selector */}
       <div className="flex flex-wrap gap-2">
