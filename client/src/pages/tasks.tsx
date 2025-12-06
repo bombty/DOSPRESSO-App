@@ -1004,16 +1004,16 @@ export default function Tasks() {
 
       {/* Task Detail Drawer */}
       <Drawer open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
-        <DrawerContent data-testid="drawer-task-detail">
-          <div className="mx-auto w-full max-w-2xl">
-            <DrawerHeader>
+        <DrawerContent data-testid="drawer-task-detail" className="max-h-[90vh] flex flex-col">
+          <div className="mx-auto w-full max-w-2xl flex flex-col flex-1 overflow-y-auto">
+            <DrawerHeader className="sticky top-0 bg-background z-10">
               <DrawerTitle className="text-left" data-testid="text-task-detail-title">
                 Görev Detayları
               </DrawerTitle>
             </DrawerHeader>
             
             {selectedTask && (
-              <div className="px-3 pb-4 flex flex-col gap-2 sm:gap-3">
+              <div className="px-3 pb-4 flex flex-col gap-2 sm:gap-3 flex-1">
                 {/* Task Description */}
                 <div>
                   <h3 className="font-semibold text-lg mb-2">{selectedTask.description}</h3>
