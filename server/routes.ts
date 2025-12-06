@@ -1695,6 +1695,232 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // TASK RATING ENDPOINTS (Manual rating by assigner)
+  // ========================================
+
+  app.post('/api/tasks/:id/rating', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { rating, feedback } = req.body;
+      
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+      
+      if (!rating || typeof rating !== 'number' || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Puan 1-5 arasında bir sayı olmalıdır" });
+      }
+      
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Only the assigner can rate
+      if (task.assignedById !== user.id) {
+        return res.status(403).json({ message: "Sadece görevi atayan kişi puanlayabilir" });
+      }
+      
+      // Check if task is completed (onaylandi status)
+      if (task.status !== 'onaylandi') {
+        return res.status(400).json({ message: "Sadece tamamlanan görevler puanlanabilir" });
+      }
+      
+      // Check if already rated
+      const existingRating = await storage.getTaskRating(taskId);
+      if (existingRating) {
+        return res.status(400).json({ message: "Bu görev zaten puanlanmış" });
+      }
+      
+      // Calculate max rating based on late delivery
+      const maxRating = storage.computeMaxRating(task);
+      const isLate = task.dueDate && task.completedAt && new Date(task.completedAt) > new Date(task.dueDate);
+      
+      // Apply penalty if raw rating exceeds max
+      const rawRating = rating;
+      const finalRating = Math.min(rating, maxRating);
+      const penaltyApplied = rawRating > maxRating ? 1 : 0;
+      
+      const taskRating = await storage.createTaskRating({
+        taskId,
+        ratedById: user.id,
+        ratedUserId: task.assignedToId!,
+        rawRating,
+        finalRating,
+        penaltyApplied,
+        isLate: !!isLate,
+        feedback: feedback || null,
+      });
+      
+      // Update employee satisfaction score
+      if (task.assignedToId) {
+        const assignee = await storage.getUser(task.assignedToId);
+        await storage.upsertEmployeeSatisfactionScore(
+          task.assignedToId,
+          assignee?.branchId || null
+        );
+      }
+      
+      res.json({
+        ...taskRating,
+        maxRating,
+        message: penaltyApplied ? 'Geç teslim nedeniyle puan sınırlandırıldı (max: ' + maxRating + ')' : undefined,
+      });
+    } catch (error) {
+      console.error("Error rating task:", error);
+      res.status(500).json({ message: "Görev puanlanamadı" });
+    }
+  });
+
+  app.get('/api/tasks/:id/rating', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+      
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Authorization check
+      if (user.role && isBranchRole(user.role as UserRoleType)) {
+        if (task.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+        }
+      }
+      
+      const rating = await storage.getTaskRating(taskId);
+      const maxRating = storage.computeMaxRating(task);
+      
+      res.json({
+        rating: rating || null,
+        maxRating,
+        canRate: task.assignedById === user.id && task.status === 'onaylandi' && !rating,
+        isLate: task.dueDate && task.completedAt && new Date(task.completedAt) > new Date(task.dueDate),
+      });
+    } catch (error) {
+      console.error("Error fetching task rating:", error);
+      res.status(500).json({ message: "Görev puanı alınamadı" });
+    }
+  });
+
+  // ========================================
+  // EMPLOYEE SATISFACTION SCORE ENDPOINTS
+  // ========================================
+
+  app.get('/api/users/:id/satisfaction-score', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const targetUserId = req.params.id;
+      
+      // Users can see their own score, HQ can see all
+      const isHQ = !isBranchRole(user.role as UserRoleType);
+      if (!isHQ && user.id !== targetUserId) {
+        // Check if user is a supervisor viewing their branch employee
+        const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
+        if (!isSupervisor) {
+          return res.status(403).json({ message: "Bu skora erişim yetkiniz yok" });
+        }
+        
+        const targetUser = await storage.getUser(targetUserId);
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu skora erişim yetkiniz yok" });
+        }
+      }
+      
+      const score = await storage.getEmployeeSatisfactionScore(targetUserId);
+      
+      if (!score) {
+        // Return default scores if no data yet
+        return res.json({
+          userId: targetUserId,
+          taskSatisfactionAvg: 0,
+          checklistScoreAvg: 0,
+          compositeScore: 0,
+          taskRatingCount: 0,
+          checklistRatingCount: 0,
+          onTimeRate: 0,
+        });
+      }
+      
+      res.json(score);
+    } catch (error) {
+      console.error("Error fetching satisfaction score:", error);
+      res.status(500).json({ message: "Performans skoru alınamadı" });
+    }
+  });
+
+  app.get('/api/users/:id/task-ratings', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const targetUserId = req.params.id;
+      
+      // Users can see their own ratings, HQ/supervisors can see branch employees
+      const isHQ = !isBranchRole(user.role as UserRoleType);
+      if (!isHQ && user.id !== targetUserId) {
+        const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
+        if (!isSupervisor) {
+          return res.status(403).json({ message: "Bu puanlara erişim yetkiniz yok" });
+        }
+        
+        const targetUser = await storage.getUser(targetUserId);
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu puanlara erişim yetkiniz yok" });
+        }
+      }
+      
+      const ratings = await storage.getUserTaskRatings(targetUserId);
+      res.json(ratings);
+    } catch (error) {
+      console.error("Error fetching user task ratings:", error);
+      res.status(500).json({ message: "Görev puanları alınamadı" });
+    }
+  });
+
+  app.get('/api/branches/:branchId/top-performers', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const branchId = parseInt(req.params.branchId);
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      // Only HQ or branch supervisors can view
+      const isHQ = !isBranchRole(user.role as UserRoleType);
+      if (!isHQ) {
+        const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
+        if (!isSupervisor || user.branchId !== branchId) {
+          return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+        }
+      }
+      
+      const topPerformers = await storage.getTopPerformingEmployees(branchId, limit);
+      
+      // Enrich with user details
+      const enriched = await Promise.all(topPerformers.map(async (perf) => {
+        const employee = await storage.getUser(perf.userId);
+        return {
+          ...perf,
+          employee: employee ? {
+            id: employee.id,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            role: employee.role,
+          } : null,
+        };
+      }));
+      
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching top performers:", error);
+      res.status(500).json({ message: "En iyi performanslar alınamadı" });
+    }
+  });
+
   app.get('/api/checklists', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;

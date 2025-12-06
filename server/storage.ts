@@ -120,6 +120,12 @@ import type {
   ShiftTask,
   TaskStatusHistory,
   InsertTaskStatusHistory,
+  TaskRating,
+  InsertTaskRating,
+  ChecklistRating,
+  InsertChecklistRating,
+  EmployeeSatisfactionScore,
+  InsertEmployeeSatisfactionScore,
 } from "@shared/schema";
 import {
   users,
@@ -234,6 +240,9 @@ import {
   HQ_SUPPORT_CATEGORY,
   TICKET_PRIORITY,
   taskStatusHistory,
+  taskRatings,
+  checklistRatings,
+  employeeSatisfactionScores,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -6068,6 +6077,199 @@ export class DatabaseStorage implements IStorage {
       avgCompletionTime,
       performanceScore: Math.max(0, Math.min(100, score))
     };
+  }
+
+  // ========================================
+  // TASK RATING METHODS (Manual rating by assigner)
+  // ========================================
+
+  async createTaskRating(rating: InsertTaskRating): Promise<TaskRating> {
+    const [created] = await db.insert(taskRatings).values(rating).returning();
+    return created;
+  }
+
+  async getTaskRating(taskId: number): Promise<TaskRating | undefined> {
+    const [rating] = await db.select()
+      .from(taskRatings)
+      .where(eq(taskRatings.taskId, taskId))
+      .limit(1);
+    return rating;
+  }
+
+  async getUserTaskRatings(userId: string): Promise<TaskRating[]> {
+    return db.select()
+      .from(taskRatings)
+      .where(eq(taskRatings.ratedUserId, userId))
+      .orderBy(desc(taskRatings.createdAt));
+  }
+
+  computeMaxRating(task: Task): number {
+    if (!task.dueDate || !task.completedAt) {
+      return 5;
+    }
+    const dueTime = new Date(task.dueDate).getTime();
+    const completedTime = new Date(task.completedAt).getTime();
+    if (completedTime > dueTime) {
+      return 4;
+    }
+    return 5;
+  }
+
+  // ========================================
+  // CHECKLIST RATING METHODS (Automatic scoring)
+  // ========================================
+
+  async createChecklistRating(rating: InsertChecklistRating): Promise<ChecklistRating> {
+    const [created] = await db.insert(checklistRatings).values(rating).returning();
+    return created;
+  }
+
+  async getChecklistRating(checklistInstanceId: number): Promise<ChecklistRating | undefined> {
+    const [rating] = await db.select()
+      .from(checklistRatings)
+      .where(eq(checklistRatings.checklistInstanceId, checklistInstanceId))
+      .limit(1);
+    return rating;
+  }
+
+  async getUserChecklistRatings(userId: string): Promise<ChecklistRating[]> {
+    return db.select()
+      .from(checklistRatings)
+      .where(eq(checklistRatings.userId, userId))
+      .orderBy(desc(checklistRatings.scoredAt));
+  }
+
+  computeChecklistScore(completionRate: number, isOnTime: boolean): { rawScore: number; finalScore: number; penaltyApplied: number } {
+    let rawScore: number;
+    if (completionRate >= 1.0) {
+      rawScore = 5;
+    } else if (completionRate >= 0.9) {
+      rawScore = 4;
+    } else if (completionRate >= 0.75) {
+      rawScore = 3;
+    } else if (completionRate >= 0.5) {
+      rawScore = 2;
+    } else {
+      rawScore = 1;
+    }
+
+    let penaltyApplied = 0;
+    let finalScore = rawScore;
+    if (!isOnTime && finalScore > 4) {
+      finalScore = 4;
+      penaltyApplied = 1;
+    }
+
+    return { rawScore, finalScore, penaltyApplied };
+  }
+
+  // ========================================
+  // EMPLOYEE SATISFACTION SCORES (Composite performance)
+  // ========================================
+
+  async getEmployeeSatisfactionScore(userId: string): Promise<EmployeeSatisfactionScore | undefined> {
+    const [score] = await db.select()
+      .from(employeeSatisfactionScores)
+      .where(eq(employeeSatisfactionScores.userId, userId))
+      .limit(1);
+    return score;
+  }
+
+  async upsertEmployeeSatisfactionScore(userId: string, branchId: number | null): Promise<EmployeeSatisfactionScore> {
+    const taskRatingResults = await db.select()
+      .from(taskRatings)
+      .where(eq(taskRatings.ratedUserId, userId));
+
+    const checklistRatingResults = await db.select()
+      .from(checklistRatings)
+      .where(eq(checklistRatings.userId, userId));
+
+    const taskRatingCount = taskRatingResults.length;
+    const taskRatingSum = taskRatingResults.reduce((sum, r) => sum + r.finalRating, 0);
+    const taskSatisfactionAvg = taskRatingCount > 0 ? taskRatingSum / taskRatingCount : 0;
+    const taskOnTimeCount = taskRatingResults.filter(r => !r.isLate).length;
+    const taskLateCount = taskRatingResults.filter(r => r.isLate).length;
+
+    const checklistRatingCount = checklistRatingResults.length;
+    const checklistRatingSum = checklistRatingResults.reduce((sum, r) => sum + r.finalScore, 0);
+    const checklistScoreAvg = checklistRatingCount > 0 ? checklistRatingSum / checklistRatingCount : 0;
+    const checklistOnTimeCount = checklistRatingResults.filter(r => r.isOnTime).length;
+    const checklistLateCount = checklistRatingResults.filter(r => !r.isOnTime).length;
+
+    const totalOnTime = taskOnTimeCount + checklistOnTimeCount;
+    const totalItems = taskRatingCount + checklistRatingCount;
+    const onTimeRate = totalItems > 0 ? totalOnTime / totalItems : 0;
+
+    const compositeScore = this.calculateCompositeScore(taskSatisfactionAvg, checklistScoreAvg, onTimeRate);
+
+    const existing = await this.getEmployeeSatisfactionScore(userId);
+    if (existing) {
+      const [updated] = await db.update(employeeSatisfactionScores)
+        .set({
+          branchId,
+          taskRatingCount,
+          taskRatingSum,
+          taskSatisfactionAvg,
+          taskOnTimeCount,
+          taskLateCount,
+          checklistRatingCount,
+          checklistRatingSum,
+          checklistScoreAvg,
+          checklistOnTimeCount,
+          checklistLateCount,
+          onTimeRate,
+          compositeScore,
+          lastCalculatedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(employeeSatisfactionScores.userId, userId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(employeeSatisfactionScores)
+        .values({
+          userId,
+          branchId,
+          taskRatingCount,
+          taskRatingSum,
+          taskSatisfactionAvg,
+          taskOnTimeCount,
+          taskLateCount,
+          checklistRatingCount,
+          checklistRatingSum,
+          checklistScoreAvg,
+          checklistOnTimeCount,
+          checklistLateCount,
+          onTimeRate,
+          compositeScore,
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  calculateCompositeScore(taskSatisfactionAvg: number, checklistScoreAvg: number, onTimeRate: number): number {
+    const taskComponent = (taskSatisfactionAvg / 5) * 100 * 0.50;
+    const checklistComponent = (checklistScoreAvg / 5) * 100 * 0.40;
+    const onTimeComponent = onTimeRate * 100 * 0.10;
+    return Math.round(taskComponent + checklistComponent + onTimeComponent);
+  }
+
+  async getTopPerformingEmployees(branchId?: number, limit = 10): Promise<EmployeeSatisfactionScore[]> {
+    let query = db.select()
+      .from(employeeSatisfactionScores)
+      .orderBy(desc(employeeSatisfactionScores.compositeScore))
+      .limit(limit);
+
+    if (branchId) {
+      query = db.select()
+        .from(employeeSatisfactionScores)
+        .where(eq(employeeSatisfactionScores.branchId, branchId))
+        .orderBy(desc(employeeSatisfactionScores.compositeScore))
+        .limit(limit);
+    }
+
+    return query;
   }
 }
 

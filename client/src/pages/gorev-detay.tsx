@@ -28,12 +28,21 @@ import {
   AlertTriangle,
   MessageSquare,
   Send,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Star
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import type { Task, User as UserType, TaskStatusHistory } from "@shared/schema";
+import { StarRating } from "@/components/star-rating";
+import type { Task, User as UserType, TaskStatusHistory, TaskRating } from "@shared/schema";
+
+interface RatingResponse {
+  rating: TaskRating | null;
+  maxRating: number;
+  canRate: boolean;
+  isLate: boolean;
+}
 
 export default function GorevDetay() {
   const { id } = useParams();
@@ -43,6 +52,9 @@ export default function GorevDetay() {
   const [showFailureDialog, setShowFailureDialog] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [newNote, setNewNote] = useState("");
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingFeedback, setRatingFeedback] = useState("");
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
 
   const { data: task, isLoading } = useQuery<Task>({
     queryKey: ["/api/tasks", id],
@@ -83,6 +95,41 @@ export default function GorevDetay() {
     },
     enabled: !!id,
   });
+
+  const { data: ratingData } = useQuery<RatingResponse>({
+    queryKey: ["/api/tasks", id, "rating"],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks/${id}/rating`);
+      if (!response.ok) return { rating: null, maxRating: 5, canRate: false, isLate: false };
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  const ratingMutation = useMutation({
+    mutationFn: async ({ rating, feedback }: { rating: number; feedback?: string }) => {
+      return apiRequest("POST", `/api/tasks/${id}/rating`, { rating, feedback });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "rating"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      setShowRatingDialog(false);
+      setRatingValue(0);
+      setRatingFeedback("");
+      toast({ title: "Başarılı", description: "Görev puanlandı" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Puanlama başarısız", variant: "destructive" });
+    },
+  });
+
+  const handleSubmitRating = () => {
+    if (ratingValue < 1) {
+      toast({ title: "Hata", description: "Lütfen bir puan seçin (1-5)", variant: "destructive" });
+      return;
+    }
+    ratingMutation.mutate({ rating: ratingValue, feedback: ratingFeedback || undefined });
+  };
 
   const acknowledgeMutation = useMutation({
     mutationFn: async () => {
@@ -525,13 +572,46 @@ export default function GorevDetay() {
           {task.status === "onaylandi" && (
             <div className="flex items-start gap-3 p-3 rounded-lg bg-success/10">
               <CheckCircle className="h-4 w-4 mt-1 text-success flex-shrink-0" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-success">Görev tamamlandı</p>
                 {task.completedAt && (
                   <p className="text-xs text-muted-foreground">
                     {new Date(task.completedAt).toLocaleString("tr-TR")}
                   </p>
                 )}
+                
+                {/* Rating section */}
+                {ratingData?.rating ? (
+                  <div className="mt-2 pt-2 border-t border-success/20">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Puan:</span>
+                      <StarRating 
+                        value={ratingData.rating.finalRating} 
+                        readonly 
+                        size="sm"
+                      />
+                      {ratingData.rating.penaltyApplied === 1 && (
+                        <span className="text-xs text-orange-500">⚠️ Geç teslim</span>
+                      )}
+                    </div>
+                    {ratingData.rating.feedback && (
+                      <p className="text-xs text-muted-foreground mt-1 italic">
+                        "{ratingData.rating.feedback}"
+                      </p>
+                    )}
+                  </div>
+                ) : ratingData?.canRate ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowRatingDialog(true)}
+                    className="mt-2"
+                    data-testid="button-rate-task"
+                  >
+                    <Star className="h-3 w-3 mr-1" />
+                    Puanla
+                  </Button>
+                ) : null}
               </div>
             </div>
           )}
@@ -613,6 +693,65 @@ export default function GorevDetay() {
               data-testid="button-confirm-failure"
             >
               {updateStatusMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rating Dialog */}
+      <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-amber-400" />
+              Görevi Puanla
+            </DialogTitle>
+            <DialogDescription>
+              Görevin tamamlanma kalitesini değerlendirin (1-5 yıldız).
+              {ratingData?.isLate && (
+                <span className="block mt-2 text-orange-500 text-sm">
+                  ⚠️ Görev geç teslim edildi. En fazla {ratingData.maxRating} yıldız verilebilir.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center gap-4 py-4">
+            <StarRating
+              value={ratingValue}
+              onChange={setRatingValue}
+              maxRating={ratingData?.maxRating ?? 5}
+              size="lg"
+              showValue
+            />
+            
+            <Textarea
+              placeholder="Yorum ekle (isteğe bağlı)..."
+              value={ratingFeedback}
+              onChange={(e) => setRatingFeedback(e.target.value)}
+              className="min-h-[80px]"
+              data-testid="input-rating-feedback"
+            />
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowRatingDialog(false);
+                setRatingValue(0);
+                setRatingFeedback("");
+              }}
+              data-testid="button-cancel-rating"
+            >
+              İptal
+            </Button>
+            <Button 
+              onClick={handleSubmitRating}
+              disabled={ratingMutation.isPending || ratingValue < 1}
+              data-testid="button-confirm-rating"
+            >
+              {ratingMutation.isPending ? "Kaydediliyor..." : "Puanla"}
             </Button>
           </DialogFooter>
         </DialogContent>
