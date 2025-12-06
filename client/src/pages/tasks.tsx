@@ -951,28 +951,28 @@ export default function Tasks() {
                             </Badge>
                           </div>
                           
-                          {/* Atanan/Atayan/Şube Bilgileri */}
-                          <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          {/* Atanan/Atayan/Şube Bilgileri - Kompakt 3-4 Sütun */}
+                          <div className="grid grid-cols-3 gap-1 text-xs text-muted-foreground">
                             {task.assignedToId && (
-                              <div>
-                                <p className="text-xs font-medium text-foreground">
-                                  {allUsers?.find(u => u.id === task.assignedToId)?.firstName} {allUsers?.find(u => u.id === task.assignedToId)?.lastName}
+                              <div className="min-w-0">
+                                <p className="font-medium text-foreground truncate text-[10px]">
+                                  {allUsers?.find(u => u.id === task.assignedToId)?.firstName}
                                 </p>
-                                <p className="text-xs">Atanan</p>
+                                <p className="text-[9px] text-muted-foreground">Atanan</p>
                               </div>
                             )}
                             {assigner && (
-                              <div>
-                                <p className="text-xs font-medium text-foreground">
-                                  {assigner.firstName} {assigner.lastName}
+                              <div className="min-w-0">
+                                <p className="font-medium text-foreground truncate text-[10px]">
+                                  {assigner.firstName}
                                 </p>
-                                <p className="text-xs">Atayan</p>
+                                <p className="text-[9px] text-muted-foreground">Atayan</p>
                               </div>
                             )}
                             {branch && (
-                              <div className="col-span-2">
-                                <p className="text-xs font-medium text-foreground">{branch.name}</p>
-                                <p className="text-xs">Şube</p>
+                              <div className="min-w-0">
+                                <p className="font-medium text-foreground truncate text-[10px]">{branch.name}</p>
+                                <p className="text-[9px] text-muted-foreground">Şube</p>
                               </div>
                             )}
                           </div>
