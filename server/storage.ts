@@ -1064,11 +1064,11 @@ export class DatabaseStorage implements IStorage {
     const task = await this.getTask(taskId);
     if (!task) throw new Error("Görev bulunamadı");
     
-    // Add note to history without changing status
+    // Add note to history without changing status (use current status for both fields)
     await db.insert(taskStatusHistory).values({
       taskId: taskId,
-      previousStatus: null,
-      newStatus: null,
+      previousStatus: task.status,
+      newStatus: task.status,
       changedById: userId,
       note: note,
     });
