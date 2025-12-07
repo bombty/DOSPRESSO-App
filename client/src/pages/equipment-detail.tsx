@@ -627,84 +627,82 @@ export default function EquipmentDetail() {
   const canEdit = user?.role && (isHQRole(user.role as any) || user.role === 'supervisor');
 
   return (
-    <div className="max-w-full overflow-x-hidden grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-      <div className="flex items-center gap-2 sm:gap-3">
-        <Link href="/ekipman" asChild>
-          <Button variant="outline" data-testid="button-back">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Geri Dön
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
+      {/* Header with Back Button */}
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link href="/ekipman" asChild>
+            <Button variant="outline" size="icon" data-testid="button-back">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              {metadata?.nameTr || equipment.equipmentType}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Seri No: {equipment.serialNumber || "Belirtilmemiş"}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {canEdit && (
+            <Button
+              onClick={() => openEditDialog()}
+              variant="outline"
+              data-testid={`button-edit-equipment-${equipment.id}`}
+              size="sm"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Düzenle
+            </Button>
+          )}
+          <Button
+            onClick={() => {
+              setCompletedStepIds(new Set());
+              setStepNotes({});
+              setAiQuestion("");
+              setAiAnswer(null);
+              setIsFaultDialogOpen(true);
+            }}
+            variant="destructive"
+            data-testid="button-fault-create"
+            size="sm"
+          >
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Arıza Kaydı
           </Button>
-        </Link>
+          <Button
+            onClick={() => {
+              serviceRequestForm.reset({
+                serviceProvider: "",
+                contactInfo: "",
+                serviceDecision: equipment.maintenanceResponsible,
+                estimatedCost: "",
+                notes: "",
+              });
+              setServiceRequestDialogOpen(true);
+            }}
+            data-testid="button-start-maintenance"
+            size="sm"
+          >
+            <Wrench className="mr-2 h-4 w-4" />
+            Bakım
+          </Button>
+          <Badge variant="outline" data-testid="badge-equipment-type">
+            {equipment.equipmentType}
+          </Badge>
+        </div>
       </div>
 
+      {/* Equipment Info Card */}
       <Card data-testid="card-equipment-header">
-        <CardHeader>
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2 sm:gap-3">
-            <div className="flex-1">
-              <CardTitle className="text-2xl flex items-center gap-2 sm:gap-3">
-                <Settings className="h-4 w-4" />
-                {metadata?.nameTr || equipment.equipmentType}
-              </CardTitle>
-              <CardDescription className="mt-2 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Seri No:</span>
-                  <span data-testid="text-serial-number">{equipment.serialNumber || "Belirtilmemiş"}</span>
-                </div>
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {canEdit && (
-                <Button
-                  onClick={() => openEditDialog()}
-                  variant="outline"
-                  data-testid={`button-edit-equipment-${equipment.id}`}
-                  size="sm"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Düzenle
-                </Button>
-              )}
-              <Button
-                onClick={() => {
-                  // Reset troubleshooting and AI state when opening dialog
-                  setCompletedStepIds(new Set());
-                  setStepNotes({});
-                  setAiQuestion("");
-                  setAiAnswer(null);
-                  setIsFaultDialogOpen(true);
-                }}
-                variant="destructive"
-                data-testid="button-fault-create"
-                size="sm"
-              >
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Arıza Kaydı Aç
-              </Button>
-              <Button
-                onClick={() => {
-                  serviceRequestForm.reset({
-                    serviceProvider: "",
-                    contactInfo: "",
-                    serviceDecision: equipment.maintenanceResponsible,
-                    estimatedCost: "",
-                    notes: "",
-                  });
-                  setServiceRequestDialogOpen(true);
-                }}
-                data-testid="button-start-maintenance"
-                size="sm"
-              >
-                <Wrench className="mr-2 h-4 w-4" />
-                Bakım Başlat
-              </Button>
-              <Badge variant="outline" data-testid="badge-equipment-type">
-                {equipment.equipmentType}
-              </Badge>
-            </div>
-          </div>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Ekipman Bilgileri</CardTitle>
         </CardHeader>
-        <CardContent className="w-full space-y-2 sm:space-y-3">
-          <div className="grid gap-2 sm:gap-3 md:grid-cols-2">
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {equipment.purchaseDate && (
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />

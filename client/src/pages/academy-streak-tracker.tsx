@@ -50,8 +50,8 @@ export default function AcademyStreakTracker() {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-2 p-3">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 space-y-4">
+      <div className="flex items-center gap-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -90,7 +90,7 @@ export default function AcademyStreakTracker() {
       </Card>
 
       {/* Best Streak & Stats */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-1">
@@ -124,7 +124,7 @@ export default function AcademyStreakTracker() {
           <CardTitle className="text-sm">Başarı Mileleri</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {streakMilestones.map((m, idx) => (
               <div
                 key={idx}

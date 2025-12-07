@@ -47,8 +47,8 @@ export default function AcademyCertificates() {
   const today = new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <div className="grid grid-cols-1 gap-2 p-3">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 space-y-4">
+      <div className="flex items-center gap-2">
         <Button
           onClick={() => window.history.back()}
           variant="outline"
@@ -134,7 +134,7 @@ export default function AcademyCertificates() {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 gap-2 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                 <div className="p-3 bg-white rounded-lg border">
                   <p className="text-xs text-muted-foreground">Tamamlanan Sınavlar</p>
                   <p className="text-2xl font-bold">{quizStats?.completedQuizzes || 0}</p>

@@ -152,13 +152,13 @@ export default function Notifications() {
   };
 
   return (
-    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-      <div className="flex items-center justify-between">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
             Bildirimler
           </h1>
-          <p className="text-muted-foreground mt-1" data-testid="text-page-description">
+          <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-description">
             Size gönderilen bildirimler ve güncellemeler
           </p>
         </div>
@@ -166,6 +166,7 @@ export default function Notifications() {
         {unreadCount > 0 && (
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => markAllAsReadMutation.mutate()}
             disabled={markAllAsReadMutation.isPending}
             data-testid="button-mark-all-read"
@@ -186,11 +187,11 @@ export default function Notifications() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="mt-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
+        <TabsContent value={activeTab} className="mt-4">
           {isLoading ? (
-            <div className="w-full space-y-2 sm:space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Card key={i}>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="h-full">
                   <CardContent className="p-3">
                     <Skeleton className="h-6 w-3/4 mb-2" />
                     <Skeleton className="h-4 w-1/2" />
@@ -199,7 +200,7 @@ export default function Notifications() {
               ))}
             </div>
           ) : filteredNotifications.length > 0 ? (
-            <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {filteredNotifications.map((notification) => {
                 const Icon = notificationTypeIcons[notification.type] || Bell;
                 const typeLabel = notificationTypeLabels[notification.type] || "Bildirim";
@@ -207,7 +208,7 @@ export default function Notifications() {
                 return (
                   <Card 
                     key={notification.id}
-                    className={`cursor-pointer transition-all hover-elevate ${
+                    className={`cursor-pointer transition-all hover-elevate h-full ${
                       !notification.isRead ? 'border-primary bg-primary/5' : ''
                     }`}
                     onClick={() => handleNotificationClick(notification)}

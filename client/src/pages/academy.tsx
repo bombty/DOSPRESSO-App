@@ -198,7 +198,7 @@ export default function Academy() {
 
       {/* Quick Stats Dashboard - COMPACT */}
       {!isHQRole(user?.role as any) && user?.role !== 'admin' && (
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         <Card>
           <CardHeader className="pb-2 pt-3 px-3">
             <CardTitle className="text-xs font-medium flex items-center gap-1">
