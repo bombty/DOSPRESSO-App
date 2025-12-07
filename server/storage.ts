@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { eq, desc, asc, and, or, sql, inArray, gte, lte, type SQL } from "drizzle-orm";
+import { randomBytes } from "crypto";
 import type {
   User,
   UpsertUser,
@@ -922,8 +923,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBranch(branch: Omit<Branch, "id" | "createdAt" | "isActive">): Promise<Branch> {
-    const crypto = require('crypto');
-    const token = branch.qrCodeToken || crypto.randomBytes(32).toString('hex');
+    const token = branch.qrCodeToken || randomBytes(32).toString('hex');
     const [newBranch] = await db.insert(branches).values({ ...branch, qrCodeToken: token }).returning();
     return newBranch;
   }
