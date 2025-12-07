@@ -118,7 +118,7 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
             data-testid="button-qr-scanner"
             title="Hızlı QR Giriş"
           >
-            <QrCode className="w-4 h-4" />
+            <QrCode className="w-4 h-4 text-white" />
           </Button>
           <div className="relative flex justify-end">
             <Button
@@ -128,7 +128,7 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
               onClick={handleMailboxClick}
               data-testid="button-mailbox"
             >
-              <Mail className="w-4 h-4" />
+              <Mail className="w-4 h-4 text-white" />
             </Button>
             {notificationCount > 0 && (
               <Badge 
