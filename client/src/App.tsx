@@ -9,7 +9,7 @@ import { InboxDialog } from "@/components/inbox-dialog";
 import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { useAuth } from "@/hooks/useAuth";
-import logoPath from "@assets/IMG_5044_1764274022052.jpeg";
+import logoPath from "@assets/IMG_6637_1765138781125.png";
 import FaultHub from "@/pages/ariza";
 import FaultDetail from "@/pages/ariza-detay";
 import EquipmentAnalytics from "@/pages/ekipman-analitics";

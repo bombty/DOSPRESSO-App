@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
 import { type SidebarMenuResponse, type SidebarMenuSection, type SidebarMenuItem as SidebarMenuItemType } from "@shared/schema";
-import dospressoLogo from "@assets/IMG_5044_1762707935781.png";
+import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 

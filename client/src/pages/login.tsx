@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import logoUrl from "@assets/IMG_5044_1762851115459.png";
+import logoUrl from "@assets/IMG_6637_1765138781125.png";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Kullanıcı adı zorunludur"),

@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft } from "lucide-react";
-import logoUrl from "@assets/IMG_5044_1762851115459.png";
+import logoUrl from "@assets/IMG_6637_1765138781125.png";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Geçerli bir email adresi girin"),

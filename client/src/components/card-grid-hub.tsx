@@ -278,14 +278,14 @@ export function CardGridHub() {
       </div>
 
       {/* Card Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {modules.map((module) => {
           const Icon = module.icon;
           return (
             <button
               key={module.id}
               onClick={() => setLocation(module.path)}
-              className="relative flex flex-col items-center justify-center p-4 rounded-xl bg-card border border-border hover:border-primary/50 hover:shadow-md transition-all active:scale-[0.98] min-h-[100px]"
+              className="relative flex flex-col items-center justify-center p-3 rounded-lg bg-card border border-border hover:border-primary/50 hover:shadow-sm transition-all active:scale-[0.98] min-h-[80px]"
               data-testid={`module-card-${module.id}`}
             >
               {/* Badge */}
@@ -296,16 +296,16 @@ export function CardGridHub() {
               )}
               
               {/* Icon */}
-              <div className={`w-12 h-12 rounded-xl ${module.color} flex items-center justify-center mb-2`}>
-                <Icon className="w-6 h-6 text-white" />
+              <div className={`w-10 h-10 rounded-lg ${module.color} flex items-center justify-center mb-1`}>
+                <Icon className="w-5 h-5 text-white" />
               </div>
               
               {/* Label */}
-              <span className="text-sm font-semibold">{module.label}</span>
+              <span className="text-xs font-semibold text-center leading-tight">{module.label}</span>
               
-              {/* Description */}
+              {/* Description - Hidden on compact */}
               {module.description && (
-                <span className="text-[10px] text-muted-foreground mt-0.5">
+                <span className="hidden text-[9px] text-muted-foreground mt-0.5">
                   {module.description}
                 </span>
               )}

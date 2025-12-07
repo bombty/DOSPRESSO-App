@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Award, Download, Share2, Loader } from "lucide-react";
-import dospressoLogo from "@assets/old_board2_1764794942278.png";
+import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import certificationSeal from "@assets/image_1764796739092.png";
 
 const CAREER_LEVELS = [

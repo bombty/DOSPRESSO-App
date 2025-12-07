@@ -2,7 +2,7 @@ import { ArrowLeft, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import dospressoLogo from "@assets/IMG_5044_1764674613097.jpeg";
+import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import { useState, useEffect } from "react";
 
 interface PageHeaderProps {
@@ -39,7 +39,7 @@ export function PageHeader({
   return (
     <div className="sticky top-0 z-40 bg-background border-b">
       {/* Logo Bar - Centered */}
-      <div className="px-3 py-2 border-b bg-white dark:bg-slate-950 flex items-center justify-center">
+      <div className="px-3 py-2 border-b bg-[#1e3a5f] dark:bg-[#1e3a5f] flex items-center justify-center">
         <img 
           src={dospressoLogo} 
           alt="DOSPRESSO" 
