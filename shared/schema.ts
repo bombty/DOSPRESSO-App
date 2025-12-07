@@ -525,6 +525,7 @@ export const branches = pgTable("branches", {
   qrCodeToken: varchar("qr_code_token", { length: 64 }),
   geoRadius: integer("geo_radius").default(50),
   wifiSsid: varchar("wifi_ssid", { length: 100 }),
+  checkInMethod: varchar("check_in_method", { length: 20 }).default("both"), // rfid, qr, or both
 });
 
 export const insertBranchSchema = createInsertSchema(branches).omit({

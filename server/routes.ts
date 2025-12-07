@@ -13579,6 +13579,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/shift-attendance/check-in/nfc - NFC check-in
+  app.post('/api/shift-attendance/check-in/nfc', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { location } = req.body;
+      
+      if (!location || !location.latitude || !location.longitude) {
+        return res.status(400).json({ message: "Konum gereklidir" });
+      }
+
+      const userShifts = await db.query.shifts.findMany({
+        where: eq(shifts.assignedToId, user.id),
+      });
+
+      if (!userShifts || userShifts.length === 0) {
+        return res.status(400).json({ message: "Atanmış vardiya bulunamadı" });
+      }
+
+      const shift = userShifts[0];
+      const now = new Date();
+
+      const existingAttendances = await storage.getShiftAttendances(shift.id);
+      const userAttendance = existingAttendances.find(a => a.userId === user.id);
+
+      const attendanceData: any = {
+        checkInTime: now,
+        status: 'checked_in',
+        checkInLatitude: location.latitude.toString(),
+        checkInLongitude: location.longitude.toString(),
+        checkInMethod: 'nfc',
+      };
+
+      let attendance;
+      if (userAttendance) {
+        attendance = await storage.updateShiftAttendance(userAttendance.id, attendanceData);
+      } else {
+        attendance = await storage.createShiftAttendance({
+          shiftId: shift.id,
+          userId: user.id,
+          ...attendanceData,
+        });
+      }
+
+      res.status(201).json(attendance);
+    } catch (error: Error | unknown) {
+      console.error("Error NFC check-in:", error);
+      res.status(500).json({ message: "NFC giriş yapılamadı" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
+

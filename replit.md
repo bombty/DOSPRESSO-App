@@ -6,18 +6,15 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 6, 2025)
-- ✅ **TURN 24 - Tüm Görevlerde Atayan/Atanan/Şube Bilgileri**:
-  * Tüm görevlerde (normal/tamamlanan) ortak olarak: Atanan Kişi, Atayan Kişi, Şube
-  * Sadece tamamlanan görevlerde ek: Tamamlanan Tarih, Aldığı Puan (X/5) + yıldız
-  * Tamamlanan görevler için border-top ile ayırma
-- ✅ **TURN 23 - Görev Detayında Yıldız Bilgisi**:
-  * Tamamlanan görevlerin detay sayfasında: Aldığı Puan (X/5) + yıldız gösterimi
-  * useQuery ile dinamik rating veri çekme (conditional render)
-- ✅ **TURN 22 - Görev Detayında Atanan Kişi Bilgisi**:
-  * Tamamlanan görevlerin detay sayfasında atanan kişi, atayan kişi, şube ve tamamlanan tarih
-  * Görev listesinde tamamlanan görevler: atayan kişi, şube
-  * Normal görevler: 2-sütun grid | Tamamlanan görevler: dikey liste format
+## Recent Changes (December 7, 2025)
+- ✅ **TURN 25 - Hybrid NFC/QR Shift Check-in System (COMPLETED)**:
+  * Schema: Added `checkInMethod` enum field to branches table (rfid/qr/both)
+  * Frontend: Created `/nfc-giris` page with Web NFC API for Android, URL-based NFC tags for iOS
+  * Routing: Updated App.tsx with /nfc-giris route, vardiya-checkin method selection UI
+  * Backend: Added POST /api/shift-attendance/check-in/nfc endpoint (location-based, minimal schema)
+  * UX: Method selection page (QR/NFC) in vardiya-checkin with conditional routing
+  * NFC Technology: NTAG213 cards recommended - works on iOS/Android via URL-based approach
+  * Status: App running, all LSP diagnostics clear, workflow stable
 
 ## System Architecture
 ### UI/UX Decisions

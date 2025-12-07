@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { QrCode, Camera, CheckCircle, XCircle, Clock, MapPin, User } from "lucide-react";
+import { QrCode, Camera, CheckCircle, XCircle, Clock, MapPin, User, Smartphone } from "lucide-react";
 import type { ShiftAttendance } from "@shared/schema";
 import Uppy from "@uppy/core";
 import AwsS3 from "@uppy/aws-s3";
 
 export default function VardiyaCheckin() {
+  const [method, setMethod] = useState<"qr" | "nfc" | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scannedQR, setScannedQR] = useState<string | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null); // S3 URL
@@ -303,6 +304,47 @@ export default function VardiyaCheckin() {
         <p className="text-muted-foreground">Yükleniyor...</p>
       </div>
     );
+  }
+
+  // Method seçim UI
+  if (!method) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Giriş Yöntemi Seçin</CardTitle>
+            <CardDescription>Vardiyaya başlamak için bir yöntem seçin</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button 
+              className="w-full h-12 text-base"
+              onClick={() => setMethod("qr")}
+              data-testid="button-qr-method"
+            >
+              <QrCode className="mr-2 h-5 w-5" />
+              QR Kod ile Giriş
+            </Button>
+            <Button 
+              variant="outline"
+              className="w-full h-12 text-base"
+              onClick={() => setMethod("nfc")}
+              data-testid="button-nfc-method"
+            >
+              <Smartphone className="mr-2 h-5 w-5" />
+              NFC ile Giriş
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // NFC yöntemi seçilmişse NFC sayfasına yönlendir
+  if (method === "nfc") {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/nfc-giris';
+    }
+    return null;
   }
 
   return (
