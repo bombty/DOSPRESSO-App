@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, RotateCcw, QrCode, Link as LinkIcon } from "lucide-react";
-import QRCodeLib from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function SubeNFCDetay() {
   const { id: idStr } = useParams();
@@ -89,7 +89,7 @@ export default function SubeNFCDetay() {
         </CardHeader>
         <CardContent className="space-y-3 flex flex-col items-center">
           <div className="bg-white p-4 rounded-md">
-            <QRCodeLib
+            <QRCodeSVG
               value={nfcUrl}
               size={200}
               level="H"
