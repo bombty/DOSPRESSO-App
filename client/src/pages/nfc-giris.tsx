@@ -23,8 +23,8 @@ export default function NFCGiris() {
   });
 
   const checkInMutation = useMutation({
-    mutationFn: async (data: { method: string; location: {latitude: number; longitude: number} }) =>
-      apiRequest("POST", "/api/shift-attendance/check-in", data),
+    mutationFn: async (data: { location: {latitude: number; longitude: number} }) =>
+      apiRequest("POST", "/api/shift-attendance/check-in/nfc", data),
     onSuccess: (result) => {
       toast({ title: "Başarılı", description: "Vardiya başladı ✓" });
       setScannedData(null);
@@ -69,7 +69,6 @@ export default function NFCGiris() {
             
             // Check in with location
             await checkInMutation.mutateAsync({
-              method: "nfc",
               location: { latitude: position.latitude, longitude: position.longitude },
             });
           } catch (err) {
