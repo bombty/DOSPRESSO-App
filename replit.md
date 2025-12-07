@@ -16,6 +16,16 @@ Preferred communication style: Simple, everyday language. Turkish language commu
   * NFC Technology: NTAG213 cards recommended - works on iOS/Android via URL-based approach
   * Status: App running, all LSP diagnostics clear, workflow stable
 
+- ✅ **TURN 26 - Admin NFC/QR Management Panel (COMPLETED)**:
+  * Feature: Created `/subeler/:id/nfc` page showing NFC URL + QR code for each branch
+  * Token Generation: Auto-generate 64-char hex tokens for new branches, retroactively applied to 20 existing branches
+  * Database: Added `check_in_method` column to branches table, synced schema to production DB
+  * Admin UI: NFC button in `/subeler/:id` detail page (isAdmin guard), links to management panel
+  * Security: NFC URL format: `https://app.dospresso.com/nfc?b={branchId}&t={token}` with token validation
+  * Features: Copy URL, Download QR, Token display with security notes
+  * Type Safety: Fixed imports (randomBytes crypto), resolved all TypeScript errors
+  * Status: ✅ FULLY OPERATIONAL - All 20 branches have tokens, database synced, APIs working, frontend rendering
+
 ## System Architecture
 ### UI/UX Decisions
 The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (New York variant, Radix UI-based) and Material Design 3 principles. Styling is managed with Tailwind CSS, including dark mode and Turkish localization. Typography is set to Inter for UI elements and Roboto for numeric data. The design prioritizes a mobile-first, responsive approach with compact, touch-friendly interactions optimized for vertical screens. All cards utilize semantic tokens for consistent theming.

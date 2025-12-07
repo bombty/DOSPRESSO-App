@@ -8,6 +8,13 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Smartphone, CheckCircle, AlertCircle, Loader2, MapPin } from "lucide-react";
 import type { ShiftAttendance, Branch } from "@shared/schema";
 
+// Web NFC API types
+declare global {
+  interface Window {
+    NDEFReader: any;
+  }
+}
+
 interface NDEFReading {
   message: {records: {data: string}[]};
   serialNumber: string;
@@ -53,7 +60,7 @@ export default function NFCGiris() {
     const startNFCScan = async () => {
       try {
         setIsScanning(true);
-        const reader = new NDEFReader();
+        const reader = new (window as any).NDEFReader();
         
         await reader.scan();
 
