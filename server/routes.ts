@@ -745,6 +745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         managerName: validatedData.managerName ?? null,
         openingHours: validatedData.openingHours ?? '08:00',
         closingHours: validatedData.closingHours ?? '22:00',
+        checkInMethod: validatedData.checkInMethod ?? 'both',
         qrCodeToken: undefined, // Let storage.createBranch generate it
       };
       const branch = await storage.createBranch(branchData);

@@ -3,12 +3,18 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Smartphone, CheckCircle, AlertCircle, Loader2, MapPin } from "lucide-react";
 import type { ShiftAttendance, Branch } from "@shared/schema";
 
+interface NDEFReading {
+  message: {records: {data: string}[]};
+  serialNumber: string;
+}
+
 export default function NFCGiris() {
+  const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
   const [location, setLocation] = useState<{latitude: number; longitude: number} | null>(null);
   const [nfcSupported, setNfcSupported] = useState(true);
@@ -51,7 +57,7 @@ export default function NFCGiris() {
         
         await reader.scan();
 
-        reader.addEventListener("reading", async ({ message, serialNumber }) => {
+        reader.addEventListener("reading", async ({ message, serialNumber }: NDEFReading) => {
           console.log("NFC Tag detected:", serialNumber);
           setScannedData(serialNumber);
           
