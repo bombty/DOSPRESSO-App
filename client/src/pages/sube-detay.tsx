@@ -628,6 +628,28 @@ export default function SubeDetayPage() {
                 </CardContent>
               </Card>
 
+              {/* NFC/RFID Yönetimi */}
+              {isAdmin && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <QrCode className="h-4 w-4" />
+                      NFC/RFID Yönetimi
+                    </CardTitle>
+                    <CardDescription>
+                      NFC etiketleri ve QR kodları yönetin
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href={`/subeler/${branchId}/nfc`}>
+                      <Button className="w-full" data-testid="button-nfc-details">
+                        NFC Linki ve QR Kod İle Git
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Lokasyon Ayarları */}
               <Card>
                 <CardHeader>

@@ -20,6 +20,7 @@ import ResetPassword from "@/pages/reset-password";
 import Dashboard from "@/pages/dashboard";
 import Subeler from "@/pages/subeler";
 import SubeDetay from "@/pages/sube-detay";
+import SubeNFCDetay from "@/pages/sube-nfc-detay";
 import PersonelProfil from "@/pages/personel-profil";
 import PersonelDetay from "@/pages/personel-detay";
 import Tasks from "@/pages/tasks";
@@ -116,6 +117,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
 
           {/* Personel & Vardiya */}
+          <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
           <Route path="/subeler/:id" component={SubeDetay} />
           <Route path="/subeler" component={Subeler} />
           <Route path="/personel/:id" component={PersonelProfil} />

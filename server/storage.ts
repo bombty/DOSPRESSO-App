@@ -922,7 +922,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBranch(branch: Omit<Branch, "id" | "createdAt" | "isActive">): Promise<Branch> {
-    const [newBranch] = await db.insert(branches).values(branch).returning();
+    const crypto = require('crypto');
+    const token = branch.qrCodeToken || crypto.randomBytes(32).toString('hex');
+    const [newBranch] = await db.insert(branches).values({ ...branch, qrCodeToken: token }).returning();
     return newBranch;
   }
 
