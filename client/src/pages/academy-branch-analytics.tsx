@@ -55,12 +55,12 @@ export default function AcademyBranchAnalytics() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Şube Akademi Analitikleri</h1>
-        <p className="text-muted-foreground mt-2">Tüm şubelerin eğitim performansı ve ilerlemesi</p>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Şube Akademi Analitikleri</h1>
+        <p className="text-sm text-muted-foreground mt-1">Tüm şubelerin eğitim performansı ve ilerlemesi</p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">

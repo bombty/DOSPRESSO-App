@@ -447,7 +447,7 @@ export default function Tasks() {
                 <ChevronDown className="h-3 w-3 ml-1" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-56 p-2" align="start">
+            <PopoverContent className="w-full max-w-56 p-2" align="start">
               <div className="flex flex-col gap-1">
                 <Button
                   variant={filterBranchId === null ? "secondary" : "ghost"}
