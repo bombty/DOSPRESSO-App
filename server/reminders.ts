@@ -153,8 +153,8 @@ async function checkOverdueTaskNotifications() {
             type: 'task_overdue',
             title: 'Geciken Görev Hatırlatması',
             message: `"${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
-            );
-          }
+            link: `/gorevler?taskId=${task.id}`,
+          });
         } catch (err) {
           console.error(`Assignee notification error for task ${task.id}:`, err);
         }
@@ -173,8 +173,8 @@ async function checkOverdueTaskNotifications() {
             type: 'task_overdue_assigner',
             title: 'Atadığınız Görev Gecikti',
             message: `${assigneeName}'a atadığınız "${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
-            );
-          }
+            link: `/gorevler?taskId=${task.id}`,
+          });
         } catch (err) {
           console.error(`Assigner notification error for task ${task.id}:`, err);
         }

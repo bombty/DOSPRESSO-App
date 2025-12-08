@@ -1054,6 +1054,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'task_assigned',
             title: 'Yeni Görev Atandı',
             message: `${assignerName} size yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+            link: `/gorevler?taskId=${task.id}`,
+          });
+          
+          // Send email notification asynchronously
+          const assignee = await storage.getUser(assigneeId);
+          if (assignee?.email) {
+            sendNotificationEmail(
+              assignee.email,
+              'Yeni Görev Atandı - DOSPRESSO',
+              `Merhaba ${assignee.firstName || 'Değerli Çalışan'},\n\n${assignerName} size yeni bir görev atadı.\n\nGörev: ${task.description}\n\nGörevi tamamlamak için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
             ).catch(err => console.error("Background email error:", err));
           }
         } catch (notifError) {
@@ -1079,26 +1089,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Skip if supervisor is the assignee or the assigner
           if (supervisor.id === assigneeId || supervisor.id === userId) continue;
           
-          await storage.createNotification({
-            userId: supervisor.id,
-            type: 'task_assigned',
-            title: 'Şubenize Yeni Görev',
-            message: `${assignerName} şubenize yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
-            link: `/gorevler?taskId=${task.id}`,
-          });
-          
-          // Send email notification asynchronously
-          const assigner = await storage.getUser(existingTask.assignedById);
-          if (assigner?.email) {
-            sendNotificationEmail(
-              assigner.email,
-              'Görev Tamamlandı - DOSPRESSO',
-              `Merhaba ${assigner.firstName || 'Değerli Yönetici'},\n\n${completerName} atadığınız görevi tamamladı.\n\nGörev: ${existingTask.description}\nTamamlanma Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\nGörevi incelemek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
-            ).catch(err => console.error("Background email error:", err));
+          try {
+            await storage.createNotification({
+              userId: supervisor.id,
+              type: 'task_assigned',
+              title: 'Şubenize Yeni Görev',
+              message: `${assignerName} şubenize yeni bir görev atadı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+              link: `/gorevler?taskId=${task.id}`,
+            });
+            
+            // Send email to supervisor
+            if (supervisor.email) {
+              sendNotificationEmail(
+                supervisor.email,
+                'Şubenize Yeni Görev Atandı - DOSPRESSO',
+                `Merhaba ${supervisor.firstName || 'Değerli Supervisor'},\n\n${assignerName} şubenize yeni bir görev atadı.\n\nGörev: ${task.description}\n\nGörevi izlemek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+              ).catch(err => console.error("Background email error:", err));
+            }
+          } catch (notifError) {
+            console.error("Error sending supervisor notification:", notifError);
           }
-        } catch (notifError) {
-          console.error("Error sending task completion notification:", notifError);
         }
+      } catch (supervisorNotifError) {
+        console.error("Error in supervisor notification loop:", supervisorNotifError);
       }
       
       // Notify HQ admins that a task is ready for review (status = 'incelemede')
@@ -1115,26 +1128,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Skip if admin is the completer
           if (admin.id === userId) continue;
           
-          await storage.createNotification({
-            userId: admin.id,
-            type: 'task_completed',
-            title: 'Görev İnceleme Bekliyor',
-            message: `${completerName} (${branchName}) bir görevi tamamladı ve onayınızı bekliyor: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
-            link: `/gorevler?taskId=${task!.id}`,
-          });
-          
-          // Send email notification asynchronously
-          const assigner = await storage.getUser(existingTask.assignedById);
-          if (assigner?.email) {
-            sendNotificationEmail(
-              assigner.email,
-              'Görev Başlatıldı - DOSPRESSO',
-              `Merhaba ${assigner.firstName || 'Değerli Yönetici'},\n\n${starterName} atadığınız görevi başlattı.\n\nGörev: ${existingTask.description}\nBaşlangıç Tarihi: ${new Date().toLocaleDateString('tr-TR')}\n\nGörevi takip etmek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
-            ).catch(err => console.error("Background email error:", err));
+          try {
+            await storage.createNotification({
+              userId: admin.id,
+              type: 'task_completed',
+              title: 'Görev İnceleme Bekliyor',
+              message: `${completerName} (${branchName}) bir görevi tamamladı ve onayınızı bekliyor: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
+              link: `/gorevler?taskId=${existingTask.id}`,
+            });
+            
+            // Send email to HQ admin
+            if (admin.email) {
+              sendNotificationEmail(
+                admin.email,
+                'Görev İnceleme Bekliyor - DOSPRESSO',
+                `Merhaba ${admin.firstName || 'Değerli Admin'},\n\n${completerName} (${branchName}) bir görevi tamamladı ve onayınızı bekliyor.\n\nGörev: ${existingTask.description}\n\nGörevi incelemek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+              ).catch(err => console.error("Background email error:", err));
+            }
+          } catch (notifError) {
+            console.error("Error sending HQ admin notification:", notifError);
           }
-        } catch (notifError) {
-          console.error("Error sending task started notification:", notifError);
         }
+      } catch (hqAdminError) {
+        console.error("Error in HQ admin notification:", hqAdminError);
       }
       
       res.json(task);
@@ -1190,6 +1206,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'task_verified',
             title: 'Görev Onaylandı ✓',
             message: `${verifierName} görevinizi onayladı: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
+            link: `/gorevler?taskId=${existingTask.id}`,
+          });
+          
+          // Send email notification
+          const verifiedAssignee = await storage.getUser(existingTask.assignedToId);
+          if (verifiedAssignee?.email) {
+            sendNotificationEmail(
+              verifiedAssignee.email,
+              'Görev Onaylandı - DOSPRESSO',
+              `Merhaba ${verifiedAssignee.firstName || 'Değerli Çalışan'},\n\n${verifierName} görevinizi onayladı.\n\nGörev: ${existingTask.description}\n\nTebrikler!\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
             ).catch(err => console.error("Background email error:", err));
           }
         } catch (notifError) {
@@ -1256,7 +1282,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'task_rejected',
             title: 'Görev Reddedildi',
             message: `${rejectorName} görevinizi reddetti: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"${reason ? ` - Neden: ${reason}` : ''}`,
-            );
+            link: `/gorevler?taskId=${existingTask.id}`,
+          });
+          
+          // Send email notification
+          const rejectedAssignee = await storage.getUser(existingTask.assignedToId);
+          if (rejectedAssignee?.email) {
+            sendNotificationEmail(
+              rejectedAssignee.email,
+              'Görev Reddedildi - DOSPRESSO',
+              `Merhaba ${rejectedAssignee.firstName || 'Değerli Çalışan'},\n\n${rejectorName} görevinizi reddetti.\n\nGörev: ${existingTask.description}\n${reason ? `Neden: ${reason}\n` : ''}\nLütfen görevi düzeltip yeniden gönderin.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+            ).catch(err => console.error("Background email error:", err));
           }
         } catch (notifError) {
           console.error("Error sending task rejected notification:", notifError);
@@ -4541,242 +4577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========================================
-  // ADMIN: Seed Equipment & Training (admin-only, idempotent)
-  // ========================================
-  app.post('/api/admin/seed-equipment-training', isAuthenticated, async (req, res) => {
-    try {
-      const user = req.user!;
-      
-      // Only admin can seed data
-      if (user.role !== 'admin') {
-        return res.status(403).json({ message: "Sadece admin veri ekleyebilir" });
-      }
-
-      console.log("🌱 Ekipman, eğitim modülleri ve personel ekleniyor...");
-
-      const { seedEquipmentForBranches, seedTrainingModules, seedBranchPersonnel } = await import('./seed-utils');
-      
-      // Import bcrypt for password hashing
-      const { default: bcrypt } = await import('bcrypt');
-      const hashedPassword = await bcrypt.hash("0000", 10);
-      
-      // Seed equipment for all existing branches
-      const equipmentResult = await seedEquipmentForBranches();
-      console.log(`✅ Ekipman: ${equipmentResult.created} eklendi, ${equipmentResult.skipped} atlandı`);
-      
-      // Seed baseline training modules
-      const trainingResult = await seedTrainingModules(user.id);
-      console.log(`✅ Eğitim: ${trainingResult.created} eklendi, ${trainingResult.skipped} atlandı`);
-      
-      // Seed branch personnel
-      const personnelResult = await seedBranchPersonnel(hashedPassword);
-      console.log(`✅ Personel: ${personnelResult.created} eklendi, ${personnelResult.skipped} atlandı`);
-
-      res.json({
-        success: true,
-        message: "Ekipman, eğitim ve personel başarıyla eklendi",
-        { name: "Antalya Mallof", address: "Mall of Antalya AVM, Lara", city: "Antalya", phoneNumber: "0242 xxx 10 02", managerName: "Elif Kaya" },
-        { name: "Antalya Markantalya", address: "MarkAntalya AVM, Kepez", city: "Antalya", phoneNumber: "0242 xxx 10 03", managerName: "Mehmet Demir" },
-        { name: "Antalya Lara", address: "Lara Bulvarı, Muratpaşa", city: "Antalya", phoneNumber: "0242 xxx 10 04", managerName: "Zeynep Şahin" },
-        { name: "Antalya Beachpark", address: "Beach Park AVM, Konyaaltı", city: "Antalya", phoneNumber: "0242 xxx 10 05", managerName: "Can Arslan" },
-        // GAZIANTEP (3 branches)
-        { name: "Gaziantep İbrahimli", address: "İbrahimli Mahallesi, Şehitkamil", city: "Gaziantep", phoneNumber: "0342 xxx 20 01", managerName: "Fatma Yıldız" },
-        { name: "Gaziantep İbnisina", address: "İbnisina Hastanesi Yanı, Şahinbey", city: "Gaziantep", phoneNumber: "0342 xxx 20 02", managerName: "Burak Öztürk" },
-        { name: "Gaziantep Üniversite", address: "Üniversite Caddesi, Şehitkamil", city: "Gaziantep", phoneNumber: "0342 xxx 20 03", managerName: "Selin Aydın" },
-        // KONYA (2 branches)
-        { name: "Konya Meram", address: "Meram Yeni Yol Caddesi", city: "Konya", phoneNumber: "0332 xxx 30 01", managerName: "Emre Çelik" },
-        { name: "Konya Bosna", address: "Bosna Hersek Mahallesi, Selçuklu", city: "Konya", phoneNumber: "0332 xxx 30 02", managerName: "Ayşe Kurt" },
-        // SAMSUN (2 branches)
-        { name: "Samsun Marina", address: "Piazza AVM, İlkadım", city: "Samsun", phoneNumber: "0362 xxx 40 01", managerName: "Deniz Koç" },
-        { name: "Samsun Atakum", address: "Atakum Bulvarı, Atakum", city: "Samsun", phoneNumber: "0362 xxx 40 02", managerName: "Ali Erdoğan" },
-        // OTHER
-        { name: "Batman", address: "Cumhuriyet Caddesi, Merkez", city: "Batman", phoneNumber: "0488 xxx 50 01", managerName: "Mustafa Yaman" },
-        { name: "Düzce", address: "Kadir Has Caddesi, Merkez", city: "Düzce", phoneNumber: "0380 xxx 60 01", managerName: "Sevgi Polat" },
-        { name: "Siirt", address: "Atatürk Caddesi, Merkez", city: "Siirt", phoneNumber: "0484 xxx 70 01", managerName: "Hakan Acar" },
-        { name: "Kilis", address: "Meydan Caddesi, Merkez", city: "Kilis", phoneNumber: "0348 xxx 80 01", managerName: "Gül Yavuz" },
-        { name: "Şanlıurfa", address: "Balıklıgöl Yanı, Haliliye", city: "Şanlıurfa", phoneNumber: "0414 xxx 90 01", managerName: "Murat Kaplan" },
-        { name: "Nizip", address: "Cumhuriyet Meydanı, Nizip", city: "Gaziantep", phoneNumber: "0342 xxx 91 01", managerName: "Esra Taş" },
-      ];
-
-      const branches = await Promise.all(
-        branchData.map((b: any) => storage.createBranch({
-          ...b,
-          openingHours: '08:00',
-          closingHours: '22:00',
-        }))
-      );
-
-      // Create HQ users
-      const hqUserData = [
-        { username: "muhasebe", email: "muhasebe@dospresso.com", firstName: "Zeynep", lastName: "Çelik", role: "muhasebe" },
-        { username: "satinalma", email: "satinalma@dospresso.com", firstName: "Can", lastName: "Arslan", role: "satinalma" },
-        { username: "coach", email: "coach@dospresso.com", firstName: "Elif", lastName: "Yıldız", role: "coach" },
-        { username: "teknik", email: "teknik@dospresso.com", firstName: "Burak", lastName: "Şahin", role: "teknik" },
-        { username: "destek", email: "destek@dospresso.com", firstName: "Selin", lastName: "Öztürk", role: "destek" },
-        { username: "fabrika", email: "fabrika@dospresso.com", firstName: "Emre", lastName: "Aydın", role: "fabrika" },
-        { username: "yatirimci-hq", email: "yatirimci@dospresso.com", firstName: "Deniz", lastName: "Koç", role: "yatirimci_hq" },
-      ];
-
-      const hqUsers = await Promise.all(
-        hqUserData.map(u => storage.createUser({ ...u, hashedPassword, branchId: null }))
-      );
-
-      // Create branch users (1 supervisor, 2-3 baristas, 1-2 stajyer per branch)
-      const supervisorNames = ["Ahmet", "Mehmet", "Ali", "Mustafa", "Hasan", "Ayşe", "Fatma", "Elif", "Zeynep", "Selin", "Can", "Emre", "Burak", "Murat", "Deniz", "Esra", "Gül", "Sevgi", "Hakan"];
-      const baristaNames = ["Furkan", "Cem", "Ömer", "Yusuf", "İbrahim", "Merve", "Simge", "Dilara", "Beyza", "Ecrin", "Berkay", "Kaan", "Enes", "Oğuz", "Serkan", "Gizem", "Damla", "Ebru", "Tuba", "İrem", "Bora", "Barış", "Taner", "Koray"];
-      const stajyerNames = ["Kerem", "Arda", "Doruk", "Emir", "Berat", "Defne", "Ela", "Mira", "Zehra", "Nehir", "Kuzey", "Atlas", "Çınar", "Alp", "Ege", "Azra", "Lara", "Derin", "Aslı", "Pelin"];
-      const lastNames = ["Yılmaz", "Demir", "Şahin", "Kaya", "Arslan", "Yıldız", "Öztürk", "Aydın", "Çelik", "Kurt", "Koç", "Erdoğan", "Yaman", "Polat", "Acar", "Yavuz", "Kaplan", "Taş"];
-
-      const branchUserPromises: Promise<unknown>[] = [];
-      branches.forEach((branch, branchIndex) => {
-        const branchPrefix = branch.name.toLowerCase().replace(/\s+/g, '-');
-        
-        // 1 Supervisor
-        branchUserPromises.push(
-          storage.createUser({
-            username: `${branchPrefix}-supervisor`,
-            hashedPassword,
-            email: `${branchPrefix}.supervisor@dospresso.com`,
-            firstName: supervisorNames[branchIndex % supervisorNames.length],
-            lastName: lastNames[branchIndex % lastNames.length],
-            role: "supervisor",
-            branchId: branch.id,
-            hireDate: new Date(2024, 0, 1 + branchIndex).toISOString().split('T')[0],
-            probationEndDate: null,
-          })
-        );
-
-        // 2-3 Baristas (alternating between 2 and 3)
-        const baristaCount = branchIndex % 2 === 0 ? 3 : 2;
-        for (let i = 0; i < baristaCount; i++) {
-          branchUserPromises.push(
-            storage.createUser({
-              username: `${branchPrefix}-barista${i + 1}`,
-              hashedPassword,
-              email: `${branchPrefix}.barista${i + 1}@dospresso.com`,
-              firstName: baristaNames[(branchIndex + i) % baristaNames.length],
-              lastName: lastNames[branchIndex % lastNames.length],
-              role: "barista",
-              branchId: branch.id,
-              hireDate: new Date(2024, 2, 1 + branchIndex + i * 5).toISOString().split('T')[0],
-              probationEndDate: null,
-            })
-          );
-        }
-
-        // 1-2 Stajyer (alternating between 1 and 2)
-        const stajyerCount = branchIndex % 3 === 0 ? 2 : 1;
-        for (let i = 0; i < stajyerCount; i++) {
-          branchUserPromises.push(
-            storage.createUser({
-              username: `${branchPrefix}-stajyer${i + 1}`,
-              hashedPassword,
-              email: `${branchPrefix}.stajyer${i + 1}@dospresso.com`,
-              firstName: stajyerNames[(branchIndex + i) % stajyerNames.length],
-              lastName: lastNames[branchIndex % lastNames.length],
-              role: "stajyer",
-              branchId: branch.id,
-              hireDate: new Date(2024, 10, 1 + branchIndex + i * 3).toISOString().split('T')[0],
-              probationEndDate: new Date(2025, 4, 1).toISOString().split('T')[0], // May 2025
-            })
-          );
-        }
-      });
-
-      const branchUsers = await Promise.all(branchUserPromises);
-
-      // Create checklists
-      const checklists = await Promise.all([
-        storage.createChecklist({
-          title: "Açılış Prosedürü",
-          description: "Sabah açılış rutini",
-          frequency: "daily",
-          category: "opening",
-        }),
-        storage.createChecklist({
-          title: "Kapanış Prosedürü",
-          description: "Gün sonu kapanış rutini",
-          frequency: "daily",
-          category: "closing",
-        }),
-        storage.createChecklist({
-          title: "Haftalık Temizlik",
-          description: "Ekipman derin temizliği",
-          frequency: "weekly",
-          category: "cleaning",
-        }),
-      ]);
-
-      // Create knowledge base articles
-      await storage.createArticle({
-        title: "Espresso Makine Kalibrasyonu",
-        category: "maintenance",
-        content: "# Espresso Makine Kalibrasyonu\n\nDetaylı kalibrasyon rehberi...",
-        tags: ["espresso", "kalibrasyon", "bakım"],
-        isPublished: true,
-      });
-
-      await storage.createArticle({
-        title: "Cappuccino Tarifi",
-        category: "recipe",
-        content: "# Cappuccino Tarifi\n\nDOSPRESSO standardı cappuccino hazırlama...",
-        tags: ["cappuccino", "tarif"],
-        isPublished: true,
-      });
-
-      // Create equipment for each branch (8 types × 3 branches = 24 equipment)
-      const { EQUIPMENT_TYPES, EQUIPMENT_METADATA } = await import('@shared/schema');
-      const equipmentTypes = Object.values(EQUIPMENT_TYPES);
-      const equipmentPromises: Promise<unknown>[] = [];
-
-      // Purchase date: 1 year ago
-      const purchaseDateMs = Date.now() - 365 * 24 * 60 * 60 * 1000;
-      const purchaseDate = new Date(purchaseDateMs).toISOString().split('T')[0];
-      // Warranty: 2 years from purchase
-      const warrantyEndDate = new Date(purchaseDateMs + 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-      branches.forEach((branch, branchIndex) => {
-        equipmentTypes.forEach((type, typeIndex) => {
-          const metadata = EQUIPMENT_METADATA[type];
-          
-          // Calculate next maintenance date based on purchase date + interval
-          const nextMaintenanceDate = new Date(purchaseDateMs + metadata.maintenanceInterval * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split('T')[0];
-
-          equipmentPromises.push(
-            storage.createEquipment({
-              branchId: branch.id,
-              equipmentType: type,
-              serialNumber: `${type.toUpperCase()}-${branchIndex + 1}-${typeIndex + 1}-${Date.now()}`,
-              purchaseDate,
-              warrantyEndDate,
-              maintenanceResponsible: metadata.maintenanceResponsible,
-              faultProtocol: metadata.faultProtocol,
-              maintenanceIntervalDays: metadata.maintenanceInterval,
-              nextMaintenanceDate,
-              notes: `${metadata.nameTr} - ${branch.name}`,
-              isActive: true,
-            })
-          );
-        });
-      });
-
-      const equipmentItems = await Promise.all(equipmentPromises);
-
-      res.json({
-        success: true,
-        message: "Demo data seeded successfully",
-      });
-    } catch (error: Error | unknown) {
-      console.error("Error creating attendance record:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Geçersiz yoklama verisi", errors: error.errors });
-      }
-      res.status(500).json({ message: "Yoklama kaydı oluşturulamadı" });
-    }
-  });
+  // Seed endpoint removed - can be reimplemented if needed
   
   // Update attendance record (check-out, break times)
   app.patch('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
