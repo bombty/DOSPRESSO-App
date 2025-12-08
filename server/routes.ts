@@ -94,6 +94,17 @@ import {
   equipmentFaults,
   equipment,
   users,
+  recipeCategories,
+  recipes,
+  recipeVersions,
+  academyHubCategories,
+  dailyMissions,
+  userMissionProgress,
+  leaderboardSnapshots,
+  userPracticeSessions,
+  insertRecipeSchema,
+  insertRecipeVersionSchema,
+  insertRecipeCategorySchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -10879,6 +10890,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: Error | unknown) {
       console.error("Error NFC check-in:", error);
       res.status(500).json({ message: "NFC giriş yapılamadı" });
+    }
+  });
+
+  // ========================================
+  // RECIPE ACADEMY API ENDPOINTS
+  // ========================================
+
+  // GET /api/academy/hub-categories - Ana hub kategorileri
+  app.get('/api/academy/hub-categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const categories = await db.select().from(academyHubCategories).orderBy(academyHubCategories.displayOrder);
+      res.json(categories);
+    } catch (error) {
+      console.error("Hub categories error:", error);
+      res.status(500).json({ message: "Hub kategorileri yüklenemedi" });
+    }
+  });
+
+  // GET /api/academy/recipe-categories - Tüm reçete kategorileri
+  app.get('/api/academy/recipe-categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const categories = await db.select().from(recipeCategories).orderBy(recipeCategories.displayOrder);
+      res.json(categories);
+    } catch (error) {
+      console.error("Recipe categories error:", error);
+      res.status(500).json({ message: "Reçete kategorileri yüklenemedi" });
+    }
+  });
+
+  // GET /api/academy/recipes - Tüm reçeteler veya kategoriye göre
+  app.get('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
+    try {
+      const { categoryId, search } = req.query;
+      let query = db.select().from(recipes);
+      
+      if (categoryId) {
+        query = query.where(eq(recipes.categoryId, parseInt(categoryId as string)));
+      }
+      
+      const allRecipes = await query.orderBy(recipes.displayOrder);
+      res.json(allRecipes);
+    } catch (error) {
+      console.error("Recipes error:", error);
+      res.status(500).json({ message: "Reçeteler yüklenemedi" });
+    }
+  });
+
+  // GET /api/academy/recipe/:id - Reçete detayı
+  app.get('/api/academy/recipe/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const recipe = await db.select().from(recipes).where(eq(recipes.id, parseInt(id)));
+      
+      if (!recipe || recipe.length === 0) {
+        return res.status(404).json({ message: "Reçete bulunamadı" });
+      }
+      
+      // Son versiyonu al
+      const versions = await db.select().from(recipeVersions)
+        .where(eq(recipeVersions.recipeId, parseInt(id)))
+        .orderBy(desc(recipeVersions.versionNumber))
+        .limit(1);
+      
+      res.json({ 
+        ...recipe[0], 
+        currentVersion: versions[0] || null 
+      });
+    } catch (error) {
+      console.error("Recipe detail error:", error);
+      res.status(500).json({ message: "Reçete detayı yüklenemedi" });
+    }
+  });
+
+  // GET /api/academy/daily-missions - Günlük görevler
+  app.get('/api/academy/daily-missions', isAuthenticated, async (req: any, res) => {
+    try {
+      const missions = await db.select().from(dailyMissions).where(eq(dailyMissions.isActive, true));
+      res.json(missions);
+    } catch (error) {
+      console.error("Daily missions error:", error);
+      res.status(500).json({ message: "Günlük görevler yüklenemedi" });
+    }
+  });
+
+  // GET /api/academy/user-missions - Kullanıcı görev ilerlemesi
+  app.get('/api/academy/user-missions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const today = new Date().toISOString().split('T')[0];
+      
+      const progress = await db.select().from(userMissionProgress)
+        .where(and(
+          eq(userMissionProgress.userId, user.id),
+          eq(userMissionProgress.missionDate, today)
+        ));
+      
+      res.json(progress);
+    } catch (error) {
+      console.error("User missions error:", error);
+      res.status(500).json({ message: "Görev ilerlemesi yüklenemedi" });
+    }
+  });
+
+  // GET /api/academy/leaderboard - Liderlik tablosu
+  app.get('/api/academy/leaderboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const { period = 'weekly' } = req.query;
+      const now = new Date();
+      const periodKey = period === 'weekly' 
+        ? `${now.getFullYear()}-W${Math.ceil((now.getDate() + new Date(now.getFullYear(), now.getMonth(), 1).getDay()) / 7)}`
+        : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      const leaderboard = await db.select().from(leaderboardSnapshots)
+        .where(and(
+          eq(leaderboardSnapshots.periodType, period as string),
+          eq(leaderboardSnapshots.periodKey, periodKey)
+        ))
+        .orderBy(desc(leaderboardSnapshots.totalXp))
+        .limit(20);
+      
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("Leaderboard error:", error);
+      res.status(500).json({ message: "Liderlik tablosu yüklenemedi" });
+    }
+  });
+
+  // POST /api/academy/recipe - Yeni reçete ekle (HQ only)
+  app.post('/api/academy/recipe', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const data = insertRecipeSchema.parse(req.body);
+      const [recipe] = await db.insert(recipes).values({
+        ...data,
+        createdById: user.id,
+      }).returning();
+      
+      res.status(201).json(recipe);
+    } catch (error) {
+      console.error("Create recipe error:", error);
+      res.status(500).json({ message: "Reçete oluşturulamadı" });
+    }
+  });
+
+  // POST /api/academy/recipe-version - Yeni reçete versiyonu (HQ only)
+  app.post('/api/academy/recipe-version', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const data = insertRecipeVersionSchema.parse(req.body);
+      
+      // Son versiyon numarasını bul
+      const lastVersion = await db.select().from(recipeVersions)
+        .where(eq(recipeVersions.recipeId, data.recipeId!))
+        .orderBy(desc(recipeVersions.versionNumber))
+        .limit(1);
+      
+      const newVersionNumber = lastVersion.length > 0 ? lastVersion[0].versionNumber + 1 : 1;
+      
+      const [version] = await db.insert(recipeVersions).values({
+        ...data,
+        versionNumber: newVersionNumber,
+        updatedById: user.id,
+      }).returning();
+      
+      // Reçetenin currentVersionId'sini güncelle
+      await db.update(recipes)
+        .set({ currentVersionId: version.id, updatedAt: new Date() })
+        .where(eq(recipes.id, data.recipeId!));
+      
+      res.status(201).json(version);
+    } catch (error) {
+      console.error("Create recipe version error:", error);
+      res.status(500).json({ message: "Reçete versiyonu oluşturulamadı" });
+    }
+  });
+
+  // GET /api/academy/recommended-quizzes - Kullanıcı için önerilen quizler
+  app.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any, res) => {
+    try {
+      // Basit bir öneri sistemi - en popüler quizleri döndür
+      const quizzes = await storage.getQuizzes();
+      const recommended = quizzes.slice(0, 5).map(q => ({
+        id: q.id,
+        title_tr: q.titleTr,
+        description_tr: q.descriptionTr || '',
+        difficulty: 'medium',
+        estimated_minutes: 5
+      }));
+      res.json(recommended);
+    } catch (error) {
+      console.error("Recommended quizzes error:", error);
+      res.json([]);
     }
   });
 
