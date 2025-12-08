@@ -142,7 +142,7 @@ export default function Academy() {
   });
 
   const createExamMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data: { userId: string; targetRoleId: string; supervisorId: string; supervisorNotes: string; status: string }) => {
       return apiRequest("POST", "/api/academy/exam-request", data);
     },
     onSuccess: () => {
@@ -370,7 +370,7 @@ export default function Academy() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                  {modules.map((module) => {
+                  {modules.map((module: { id: number; title: string; level: string; estimatedDuration: number }) => {
                     const completed = isModuleCompleted(module.id);
                     return (
                       <Link 
@@ -414,7 +414,7 @@ export default function Academy() {
               <CardContent>
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex flex-col gap-3 sm:gap-4 gap-2">
-                    {recommendedQuizzes.map((quiz) => {
+                    {recommendedQuizzes.map((quiz: { id: number; title_tr: string; description_tr: string; difficulty: string; estimated_minutes: number }) => {
                       const diffColor = quiz.difficulty === 'easy' ? 'bg-success/10 dark:bg-success/5 text-success dark:text-success' 
                         : quiz.difficulty === 'hard' ? 'bg-destructive/10 dark:bg-red-950 text-destructive dark:text-destructive'
                         : 'bg-warning/20 dark:bg-warning/5 text-warning dark:text-warning';

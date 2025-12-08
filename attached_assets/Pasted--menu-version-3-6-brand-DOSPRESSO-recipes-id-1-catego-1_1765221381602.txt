@@ -1,0 +1,289 @@
+{
+  "menu_version": "3.6",
+  "brand": "DOSPRESSO",
+  "recipes": [
+    {
+      "id": 1,
+      "category": "HOT",
+      "name": "Americano",
+      "code": "A",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "Bardak içerisine logo başlangıç yerine kadar sıcak su eklenir.",
+            "Üzerine Double Espresso eklenir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "Bardak içerisine logo başlangıç yerine kadar sıcak su eklenir.",
+            "Üzerine Double Espresso ve Single Espresso eklenir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "category": "HOT",
+      "name": "Latte",
+      "code": "L",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "Bardak içerisine Single Espresso eklenir.",
+            "Pitcher içerisine ilk çizgisine kadar süt eklenir.",
+            "Süt ısıtılır.",
+            "Isıtılan süt bardak içerisine ilave edilir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "Bardak içerisine Double Espresso eklenir.",
+            "Pitcher içerisine ilk çizgisine kadar süt eklenir.",
+            "Süt ısıtılır.",
+            "Isıtılan süt bardak içerisine ilave edilir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "category": "HOT",
+      "name": "Flat White",
+      "code": "FW",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "Bardak içerisine Double Espresso eklenir.",
+            "Pitcher içerisine ilk çizgisine kadar süt eklenir.",
+            "Süt ısıtılır.",
+            "Isıtılan süt, espresso hacmini çok fazla bozmadan bardağa ilave edilir (daha az süt, daha yoğun kahve).",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "Bardak içerisine Double Espresso eklenir.",
+            "Pitcher içerisine ilk çizgisine kadar süt eklenir.",
+            "Süt ısıtılır.",
+            "Isıtılan süt, bardağa ilave edilir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "category": "HOT",
+      "name": "Cortado",
+      "code": "—",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "Bardak içerisine Double Espresso eklenir.",
+            "Üzerine yaklaşık 80 ml sıcak süt eklenir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "Bardak içerisine Double Espresso eklenir.",
+            "Üzerine yaklaşık 80 ml sıcak süt eklenir (uzun bardakta, hacim arttırılabilir).",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "category": "HOT",
+      "name": "Creamy Latte",
+      "code": "—",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "Bardak içerisine Single Espresso eklenir.",
+            "Özel krema karışımı (100 ml krema, 400 ml laktozsuz süt) pitcher ilk çizgisine kadar eklenir.",
+            "Krema karışımı ısıtılır.",
+            "Isıtılan krema karışımı bardağa ilave edilir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "Bardak içerisine Double Espresso eklenir.",
+            "Özel krema karışımı (100 ml krema, 400 ml laktozsuz süt) pitcher ilk çizgisine kadar eklenir.",
+            "Krema karışımı ısıtılır.",
+            "Isıtılan krema karışımı bardağa ilave edilir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 6,
+      "category": "HOT",
+      "name": "Bull Eye",
+      "code": "BE",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "Single Espresso bardağa ilave edilir.",
+            "Üzerine sunum çizgisine kadar filtre kahve eklenir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "Double Espresso bardağa ilave edilir.",
+            "Üzerine sunum çizgisine kadar filtre kahve eklenir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 7,
+      "category": "HOT",
+      "name": "Matcha Latte",
+      "code": "MC",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "1 ölçek (2,5 g) matcha tozu bardağa eklenir.",
+            "Üzerine 30 ml arıtma suyu ve 30 ml sıcak su eklenir, mikslenir.",
+            "1 pump istenen aroma eklenir.",
+            "200 ml ısıtılmış süt eklenir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "1 ölçek (2,5 g) matcha tozu bardağa eklenir.",
+            "Üzerine 30 ml arıtma suyu ve 30 ml sıcak su eklenir, mikslenir.",
+            "2 pump istenen aroma eklenir.",
+            "260 ml ısıtılmış süt eklenir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 8,
+      "category": "HOT",
+      "name": "Bombty Latte",
+      "code": "BL",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "1 pump beyaz çikolata eklenir.",
+            "1 ölçek Bombty latte tozu eklenir.",
+            "Single Espresso eklenir ve mikslenir.",
+            "Pitcher ilk çizgisine kadar süt eklenir, ısıtılır.",
+            "Isıtılan süt bardağa ilave edilir.",
+            "Kremasızdır.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "1,5 pump beyaz çikolata eklenir.",
+            "2 ölçek Bombty latte tozu eklenir.",
+            "Double Espresso eklenir ve mikslenir.",
+            "Pitcher ilk çizgisine kadar süt eklenir, ısıtılır.",
+            "Isıtılan süt bardağa ilave edilir.",
+            "Kremasızdır.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 9,
+      "category": "HOT",
+      "name": "Pecan Nutty Latte",
+      "code": "—",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "2 pump pecan şurup eklenir.",
+            "Single Espresso eklenir ve mikslenir.",
+            "Pitcher ilk çizgisine kadar süt eklenir, ısıtılır ve bardağa ilave edilir.",
+            "Üzerine 1,5 numarada krema ve pecan şurup eklenir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "3 pump pecan şurup eklenir.",
+            "Double Espresso eklenir ve mikslenir.",
+            "Pitcher ilk çizgisine kadar süt eklenir, ısıtılır ve bardağa ilave edilir.",
+            "Üzerine 1,5 numarada krema ve pecan şurup eklenir.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 10,
+      "category": "HOT",
+      "name": "Power Brown",
+      "code": "PB",
+      "variants": {
+        "massivo": {
+          "cup_size_ml": 200,
+          "steps": [
+            "1 pump tarçın ve 1 pump karamel şurup eklenir.",
+            "1 ölçek Bombty latte tozu eklenir.",
+            "Single Espresso eklenir ve mikslenir.",
+            "Pitcher ilk çizgisine kadar süt eklenir, ısıtılır ve bardağa ilave edilir.",
+            "Kremasızdır.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_size_ml": 280,
+          "steps": [
+            "1 pump tarçın ve 1 pump karamel şurup eklenir.",
+            "2 ölçek Bombty latte tozu eklenir.",
+            "Double Espresso eklenir ve mikslenir.",
+            "Pitcher ilk çizgisine kadar süt eklenir, ısıtılır ve bardağa ilave edilir.",
+            "Kremasızdır.",
+            "Sıcak kapak ile servis edilir."
+          ]
+        }
+      }
+    }
+
+    /* Buradan sonra tüm diğer HOT (11–24) ve ICED / CREAMICE / GOURMET SHAKE
+       ürünleri için aynı yapıyı kullanarak:
+       - id
+       - category (HOT / ICED / CREAMICE / GOURMET_SHAKE / vb.)
+       - name, code
+       - variants.massivo.steps[]
+       - variants.long_diva.steps[]
+       şeklinde devam edebilirsin. */
+  ]
+}

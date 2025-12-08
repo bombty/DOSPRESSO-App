@@ -1295,9 +1295,12 @@ export const trainingModules = pgTable("training_modules", {
   code: varchar("code", { length: 50 }), // e.g., "S1", "BB2", for JSON mapping
   slug: varchar("slug", { length: 100 }), // URL-friendly slug
   category: varchar("category", { length: 100 }), // "barista", "supervisor", "hygiene", etc.
+  moduleType: varchar("module_type", { length: 50 }).default("skill"), // skill, recipe, onboarding, general
+  recipeCategoryId: integer("recipe_category_id"), // Link to recipe_categories for recipe modules
   level: varchar("level", { length: 50 }).default("beginner"), // beginner, intermediate, advanced
   estimatedDuration: integer("estimated_duration").default(30), // minutes
   isPublished: boolean("is_published").default(false),
+  isRequired: boolean("is_required").default(false), // Zorunlu modül mü?
   requiredForRole: varchar("required_for_role", { length: 100 }).array(), // ["barista", "supervisor"]
   prerequisiteModuleIds: integer("prerequisite_module_ids").array(), // Must complete these first
   heroImageUrl: text("hero_image_url"), // Module banner image
@@ -4038,3 +4041,289 @@ export const handoverLostFoundItemSchema = z.object({
 export type InsertLostFoundItem = z.infer<typeof insertLostFoundItemSchema>;
 export type HandoverLostFoundItem = z.infer<typeof handoverLostFoundItemSchema>;
 export type LostFoundItem = typeof lostFoundItems.$inferSelect;
+
+// ========================================
+// RECIPE MANAGEMENT SYSTEM - Reçete Yönetimi
+// ========================================
+
+// Recipe Categories (HOT, ICED, CREAMICE, FRESHESS, etc.)
+export const recipeCategories = pgTable("recipe_categories", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 50 }).notNull().unique(), // hot, iced, creamice, freshess
+  titleTr: varchar("title_tr", { length: 100 }).notNull(), // Sıcak Kahve
+  titleEn: varchar("title_en", { length: 100 }), // Hot Coffee
+  description: text("description"),
+  iconName: varchar("icon_name", { length: 50 }), // lucide-react icon name
+  colorHex: varchar("color_hex", { length: 7 }), // #FF5733
+  displayOrder: integer("display_order").default(0),
+  bannerImageUrl: text("banner_image_url"), // Category banner
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("recipe_categories_slug_idx").on(table.slug),
+  index("recipe_categories_order_idx").on(table.displayOrder),
+]);
+
+export const insertRecipeCategorySchema = createInsertSchema(recipeCategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRecipeCategory = z.infer<typeof insertRecipeCategorySchema>;
+export type RecipeCategory = typeof recipeCategories.$inferSelect;
+
+// Recipes - Ana reçete tablosu
+export const recipes = pgTable("recipes", {
+  id: serial("id").primaryKey(),
+  categoryId: integer("category_id").notNull().references(() => recipeCategories.id, { onDelete: "cascade" }),
+  code: varchar("code", { length: 20 }).notNull(), // A, L, FW, BL, etc.
+  nameTr: varchar("name_tr", { length: 150 }).notNull(), // Iced Americano
+  nameEn: varchar("name_en", { length: 150 }), // Iced Americano
+  description: text("description"),
+  coffeeType: varchar("coffee_type", { length: 50 }), // espresso, filter, none
+  hasCoffee: boolean("has_coffee").default(true),
+  hasMilk: boolean("has_milk").default(false),
+  difficulty: varchar("difficulty", { length: 20 }).default("easy"), // easy, medium, hard
+  estimatedMinutes: integer("estimated_minutes").default(3),
+  requiredRole: varchar("required_role", { length: 50 }), // Minimum rol gereksinimi
+  photoUrl: text("photo_url"), // Reçete fotoğrafı
+  isActive: boolean("is_active").default(true),
+  isFeatured: boolean("is_featured").default(false), // Öne çıkan reçete
+  displayOrder: integer("display_order").default(0),
+  tags: varchar("tags", { length: 50 }).array(), // ["seasonal", "signature", "new"]
+  currentVersionId: integer("current_version_id"), // En güncel versiyon
+  aiEmbedding: vector("ai_embedding"), // pgvector for AI search
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("recipes_category_idx").on(table.categoryId),
+  index("recipes_code_idx").on(table.code),
+  index("recipes_active_idx").on(table.isActive),
+  unique("recipes_category_code_unique").on(table.categoryId, table.code),
+]);
+
+export const insertRecipeSchema = createInsertSchema(recipes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  aiEmbedding: true,
+  currentVersionId: true,
+});
+
+export type InsertRecipe = z.infer<typeof insertRecipeSchema>;
+export type Recipe = typeof recipes.$inferSelect;
+
+// Recipe Versions - Versiyon takibi
+export const recipeVersions = pgTable("recipe_versions", {
+  id: serial("id").primaryKey(),
+  recipeId: integer("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+  versionNumber: integer("version_number").notNull().default(1),
+  effectiveFrom: timestamp("effective_from").defaultNow(),
+  updatedById: varchar("updated_by_id").references(() => users.id),
+  changeLog: text("change_log"), // Değişiklik açıklaması
+  changedFields: jsonb("changed_fields").$type<string[]>().default([]), // ["steps", "syrups"] - highlighted fields
+  // Size variants
+  sizes: jsonb("sizes").$type<{
+    massivo?: {
+      cupMl: number;
+      steps: string[];
+      liquids?: Record<string, number>;
+      syrups?: Record<string, number>;
+      powders?: Record<string, number>;
+      garnish?: string[];
+      ice?: string;
+    };
+    longDiva?: {
+      cupMl: number;
+      steps: string[];
+      liquids?: Record<string, number>;
+      syrups?: Record<string, number>;
+      powders?: Record<string, number>;
+      garnish?: string[];
+      ice?: string;
+    };
+  }>(),
+  // Common fields
+  ingredients: jsonb("ingredients").$type<Array<{name: string; amount: string; unit?: string}>>().default([]),
+  notes: text("notes"),
+  seasonInfo: varchar("season_info", { length: 100 }), // "Sonbahar-Kış sezon ürünü"
+  isApproved: boolean("is_approved").default(false),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("recipe_versions_recipe_idx").on(table.recipeId),
+  index("recipe_versions_version_idx").on(table.versionNumber),
+  unique("recipe_versions_unique").on(table.recipeId, table.versionNumber),
+]);
+
+export const insertRecipeVersionSchema = createInsertSchema(recipeVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRecipeVersion = z.infer<typeof insertRecipeVersionSchema>;
+export type RecipeVersion = typeof recipeVersions.$inferSelect;
+
+// Recipe Notifications - Güncelleme bildirimleri
+export const recipeNotifications = pgTable("recipe_notifications", {
+  id: serial("id").primaryKey(),
+  recipeId: integer("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+  versionId: integer("version_id").notNull().references(() => recipeVersions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("recipe_notifications_user_idx").on(table.userId),
+  index("recipe_notifications_recipe_idx").on(table.recipeId),
+  unique("recipe_notifications_unique").on(table.recipeId, table.versionId, table.userId),
+]);
+
+export const insertRecipeNotificationSchema = createInsertSchema(recipeNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRecipeNotification = z.infer<typeof insertRecipeNotificationSchema>;
+export type RecipeNotification = typeof recipeNotifications.$inferSelect;
+
+// ========================================
+// GAMIFICATION EXTENSIONS - Oyunlaştırma
+// ========================================
+
+// Daily Missions - Günlük görevler
+export const dailyMissions = pgTable("daily_missions", {
+  id: serial("id").primaryKey(),
+  missionKey: varchar("mission_key", { length: 50 }).notNull(), // learn_recipe, complete_quiz, etc.
+  titleTr: varchar("title_tr", { length: 150 }).notNull(),
+  descriptionTr: text("description_tr"),
+  xpReward: integer("xp_reward").default(10),
+  targetCount: integer("target_count").default(1), // Kaç kez yapılmalı
+  missionType: varchar("mission_type", { length: 30 }).notNull(), // daily, weekly, special
+  condition: jsonb("condition"), // {type: "quiz_complete", categoryId: 1}
+  iconName: varchar("icon_name", { length: 50 }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("daily_missions_type_idx").on(table.missionType),
+  index("daily_missions_active_idx").on(table.isActive),
+]);
+
+export const insertDailyMissionSchema = createInsertSchema(dailyMissions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDailyMission = z.infer<typeof insertDailyMissionSchema>;
+export type DailyMission = typeof dailyMissions.$inferSelect;
+
+// User Mission Progress - Kullanıcı görev ilerlemesi
+export const userMissionProgress = pgTable("user_mission_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  missionId: integer("mission_id").notNull().references(() => dailyMissions.id, { onDelete: "cascade" }),
+  currentCount: integer("current_count").default(0),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  xpEarned: integer("xp_earned").default(0),
+  missionDate: date("mission_date").notNull(), // Hangi gün için
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("user_mission_progress_user_idx").on(table.userId),
+  index("user_mission_progress_date_idx").on(table.missionDate),
+  unique("user_mission_progress_unique").on(table.userId, table.missionId, table.missionDate),
+]);
+
+export const insertUserMissionProgressSchema = createInsertSchema(userMissionProgress).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUserMissionProgress = z.infer<typeof insertUserMissionProgressSchema>;
+export type UserMissionProgress = typeof userMissionProgress.$inferSelect;
+
+// Leaderboard Snapshots - Liderlik tablosu anlık görüntüleri
+export const leaderboardSnapshots = pgTable("leaderboard_snapshots", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  periodType: varchar("period_type", { length: 20 }).notNull(), // weekly, monthly, all_time
+  periodKey: varchar("period_key", { length: 20 }).notNull(), // 2025-W01, 2025-01
+  totalXp: integer("total_xp").default(0),
+  quizCount: integer("quiz_count").default(0),
+  perfectQuizCount: integer("perfect_quiz_count").default(0),
+  streakDays: integer("streak_days").default(0),
+  rank: integer("rank"),
+  branchId: integer("branch_id").references(() => branches.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("leaderboard_snapshots_user_idx").on(table.userId),
+  index("leaderboard_snapshots_period_idx").on(table.periodType, table.periodKey),
+  index("leaderboard_snapshots_rank_idx").on(table.rank),
+  unique("leaderboard_snapshots_unique").on(table.userId, table.periodType, table.periodKey),
+]);
+
+export const insertLeaderboardSnapshotSchema = createInsertSchema(leaderboardSnapshots).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLeaderboardSnapshot = z.infer<typeof insertLeaderboardSnapshotSchema>;
+export type LeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
+
+// User Practice Sessions - Pratik oturum takibi
+export const userPracticeSessions = pgTable("user_practice_sessions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sessionDate: date("session_date").notNull(),
+  quizzesCompleted: integer("quizzes_completed").default(0),
+  recipesViewed: integer("recipes_viewed").default(0),
+  modulesCompleted: integer("modules_completed").default(0),
+  xpEarned: integer("xp_earned").default(0),
+  timeSpentMinutes: integer("time_spent_minutes").default(0),
+  streakDay: integer("streak_day").default(1), // Seri günü
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("user_practice_sessions_user_idx").on(table.userId),
+  index("user_practice_sessions_date_idx").on(table.sessionDate),
+  unique("user_practice_sessions_unique").on(table.userId, table.sessionDate),
+]);
+
+export const insertUserPracticeSessionSchema = createInsertSchema(userPracticeSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUserPracticeSession = z.infer<typeof insertUserPracticeSessionSchema>;
+export type UserPracticeSession = typeof userPracticeSessions.$inferSelect;
+
+// Academy Hub Categories - Akademi ana sayfa kategorileri
+export const academyHubCategories = pgTable("academy_hub_categories", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 50 }).notNull().unique(), // career, recipes, general, practice
+  titleTr: varchar("title_tr", { length: 100 }).notNull(),
+  titleEn: varchar("title_en", { length: 100 }),
+  description: text("description"),
+  iconName: varchar("icon_name", { length: 50 }), // lucide-react icon
+  colorHex: varchar("color_hex", { length: 7 }),
+  displayOrder: integer("display_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("academy_hub_categories_order_idx").on(table.displayOrder),
+]);
+
+export const insertAcademyHubCategorySchema = createInsertSchema(academyHubCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAcademyHubCategory = z.infer<typeof insertAcademyHubCategorySchema>;
+export type AcademyHubCategory = typeof academyHubCategories.$inferSelect;

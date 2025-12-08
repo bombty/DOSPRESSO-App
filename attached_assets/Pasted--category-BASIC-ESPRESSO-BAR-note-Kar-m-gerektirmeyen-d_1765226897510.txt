@@ -1,0 +1,110 @@
+{
+  "category": "BASIC_ESPRESSO_BAR",
+  "note": "Karışım gerektirmeyen, doğrudan espresso makinesinden çıkan veya tek adımlı ürünler.",
+  "items": [
+    {
+      "code": "ESP",
+      "name_tr": "Espresso",
+      "name_en": "Espresso",
+      "coffee_free": false,
+      "sizes": [
+        {
+          "size": "single",
+          "espresso_ml": 30,
+          "steps": [
+            "Öğütmeyi espresso için ayarlı değirmenden 1 shot öğüt.",
+            "Portafiltreyi doldur, tamper ile sıkıştır.",
+            "Makinede yaklaşık 25–30 sn’de 30 ml espresso al.",
+            "Isıtılmış espresso fincanında servis et."
+          ]
+        },
+        {
+          "size": "double",
+          "espresso_ml": 60,
+          "steps": [
+            "Double basket kullanarak iki shot espresso hazırla.",
+            "25–30 sn demleme süresini koru.",
+            "Isıtılmış double espresso fincanında servis et."
+          ]
+        }
+      ]
+    },
+    {
+      "code": "RSTR",
+      "name_tr": "Ristretto",
+      "name_en": "Ristretto",
+      "coffee_free": false,
+      "sizes": [
+        {
+          "size": "single",
+          "espresso_ml": 20,
+          "steps": [
+            "Espresso ile aynı gramajda kahve kullan.",
+            "Demleme süresini kısaltarak veya suyu azaltarak yaklaşık 20 ml’de shot’ı durdur.",
+            "Küçük fincanda servis et."
+          ]
+        }
+      ]
+    },
+    {
+      "code": "MACC",
+      "name_tr": "Espresso Macchiato",
+      "name_en": "Espresso Macchiato",
+      "coffee_free": false,
+      "sizes": [
+        {
+          "size": "single",
+          "steps": [
+            "Tek shot espresso hazırla.",
+            "Sütü küçük bir pitcher’da ısıtıp mikroköpük oluştur.",
+            "Espressonun üzerine bir tatlı kaşığı kadar süt köpüğü koy.",
+            "Küçük fincanda servis et."
+          ]
+        }
+      ]
+    },
+    {
+      "code": "AM_HOT",
+      "name_tr": "Americano (Sıcak)",
+      "name_en": "Hot Americano",
+      "coffee_free": false,
+      "sizes": [
+        {
+          "size": "MASSIVO",
+          "cup_ml": 300,
+          "steps": [
+            "Bardağı espresso makinesinden sıcak su ile sunum çizgisine yakın olacak şekilde doldur.",
+            "Üzerine single more espresso ekle.",
+            "Karıştırmadan servis et (üst koyu layer korunabilir)."
+          ]
+        },
+        {
+          "size": "LONG_DIVA",
+          "cup_ml": 550,
+          "steps": [
+            "Long Diva bardağı sıcak su ile doldur.",
+            "Üzerine double more espresso ekle.",
+            "İstenirse karıştır, sıcak servis et."
+          ]
+        }
+      ]
+    },
+    {
+      "code": "FLT_HOT",
+      "name_tr": "Flat White (Sıcak)",
+      "name_en": "Flat White",
+      "coffee_free": false,
+      "sizes": [
+        {
+          "size": "MASSIVO",
+          "cup_ml": 300,
+          "steps": [
+            "Massivo bardağa double espresso al.",
+            "Sütü 60–65°C’ye kadar ısıt ve mikroköpük oluştur.",
+            "Espresso üzerine sütü ince akışla dök (latte art mümkün)."
+          ]
+        }
+      ]
+    }
+  ]
+}
