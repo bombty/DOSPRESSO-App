@@ -9676,8 +9676,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const questions = await storage.getQuizQuestions(req.params.quizId);
       res.json(questions);
-    } catch (error: Error | unknown) {
-      res.status(500).json({ message: error.message });
+    } catch (error: any) {
+      console.error("Quiz questions error:", error);
+      res.status(500).json({ message: error?.message || "Quiz sorgusu başarısız" });
     }
   });
 

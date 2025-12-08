@@ -405,7 +405,7 @@ export interface IStorage {
   createModuleQuiz(quiz: InsertModuleQuiz): Promise<ModuleQuiz>;
   
   // Quiz Question operations
-  getQuizQuestions(quizId: number): Promise<QuizQuestion[]>;
+  getQuizQuestions(quizId: string | number): Promise<QuizQuestion[]>;
   createQuizQuestion(question: InsertQuizQuestion): Promise<QuizQuestion>;
   
   // Flashcard operations
@@ -1643,8 +1643,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Quiz Question operations
-  async getQuizQuestions(quizId: number): Promise<QuizQuestion[]> {
-    return db.select().from(quizQuestions).where(eq(quizQuestions.quizId, quizId));
+  async getQuizQuestions(quizId: string | number): Promise<QuizQuestion[]> {
+    const numericId = typeof quizId === 'string' ? parseInt(quizId, 10) : quizId;
+    if (isNaN(numericId)) {
+      throw new Error(`Invalid quiz ID: ${quizId}`);
+    }
+    return db.select().from(quizQuestions).where(eq(quizQuestions.quizId, numericId));
   }
 
   async createQuizQuestion(question: InsertQuizQuestion): Promise<QuizQuestion> {
