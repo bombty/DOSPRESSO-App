@@ -1234,9 +1234,9 @@ export default function EquipmentDetail() {
               <CardDescription>Periyodik bakım programı ve hatırlatıcılar</CardDescription>
             </CardHeader>
             <CardContent>
-              {maintenanceSchedules.filter(s => String(s.equipmentId) === equipmentId).length > 0 ? (
+              {maintenanceSchedules.filter(s => s.equipmentId === parseInt(equipmentId || "0")).length > 0 ? (
                 <div className="flex flex-col gap-3 sm:gap-4" data-testid="list-maintenance-schedules">
-                  {maintenanceSchedules.filter(s => String(s.equipmentId) === equipmentId).map((schedule) => (
+                  {maintenanceSchedules.filter(s => s.equipmentId === parseInt(equipmentId || "0")).map((schedule) => (
                     <Card key={schedule.id} data-testid={`card-maintenance-schedule-${String(schedule.id)}`}>
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
@@ -1287,9 +1287,9 @@ export default function EquipmentDetail() {
               <CardDescription>Yapılan bakım kayıtları</CardDescription>
             </CardHeader>
             <CardContent>
-              {proactiveMaintenanceLogs.filter(l => String(l.equipmentId) === equipmentId).length > 0 ? (
+              {proactiveMaintenanceLogs.filter(l => l.equipmentId === parseInt(equipmentId || "0")).length > 0 ? (
                 <div className="flex flex-col gap-3 sm:gap-4" data-testid="list-maintenance-logs">
-                  {proactiveMaintenanceLogs.filter(l => String(l.equipmentId) === equipmentId).map((log) => (
+                  {proactiveMaintenanceLogs.filter(l => l.equipmentId === parseInt(equipmentId || "0")).map((log) => (
                     <Card key={log.id} data-testid={`card-maintenance-log-${String(log.id)}`}>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base">{log.maintenanceType}</CardTitle>
