@@ -206,11 +206,9 @@ export default function FaultHub() {
   }, [form]);
 
   return (
-    <div className="min-h-screen pb-20">
-      <div className="p-3">
-
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 overflow-x-auto">
           <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
           <TabsTrigger value="sla">Arıza Süreleri</TabsTrigger>
           <TabsTrigger value="manage">Yönet</TabsTrigger>
@@ -615,7 +613,6 @@ export default function FaultHub() {
           </TabsContent>
         )}
       </Tabs>
-      </div>
     </div>
   );
 }

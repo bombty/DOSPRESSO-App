@@ -69,7 +69,7 @@ export default function AcademyAnalytics() {
   const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 space-y-4">
       <div className="flex items-center gap-2 mb-2 col-span-full">
         <Button
           onClick={() => window.history.back()}

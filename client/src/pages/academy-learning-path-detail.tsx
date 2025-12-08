@@ -34,7 +34,7 @@ export default function AcademyLearningPathDetail() {
   const totalCompletion = Math.round(recommendedQuizzes.reduce((sum, q) => sum + q.completion, 0) / recommendedQuizzes.length);
 
   return (
-    <div className="grid grid-cols-1 gap-2 p-3">
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 space-y-4">
       <div className="flex items-center gap-2 mb-2">
         <Button
           onClick={() => window.history.back()}

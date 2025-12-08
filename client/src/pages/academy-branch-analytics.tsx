@@ -42,7 +42,7 @@ export default function AcademyBranchAnalytics() {
     }));
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 p-3">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
       <div className="flex items-center gap-2 mb-4">
         <Button
           onClick={() => window.history.back()}
