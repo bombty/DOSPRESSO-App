@@ -2167,6 +2167,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const taskId = parseInt(req.params.taskId);
       const { insertChecklistTaskSchema } = await import('@shared/schema');
       const validatedData = insertChecklistTaskSchema.partial().parse(req.body);
+      
+      // Time window validation: warn if outside task time window
+      if (validatedData.taskTimeStart && validatedData.taskTimeEnd) {
+        const now = new Date();
+        const currentTime = now.toTimeString().slice(0, 5);
+        if (currentTime < validatedData.taskTimeStart || currentTime > validatedData.taskTimeEnd) {
+          return res.status(400).json({ 
+            message: `⚠️ Görev saat penceresinin dışında (${validatedData.taskTimeStart} - ${validatedData.taskTimeEnd})`,
+            code: 'TIME_WINDOW_VIOLATION'
+          });
+        }
+      }
+      
       const task = await storage.updateChecklistTask(taskId, validatedData);
       if (!task) {
         return res.status(404).json({ message: "Task bulunamadı" });
@@ -6275,6 +6288,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const completedAt = isCompleted ? new Date() : null;
       const updatedChecklist = await storage.updateShiftChecklist(id, { isCompleted, completedAt });
+      
+      // Manager notification on completion
+      if (isCompleted) {
+        const branch = await storage.getBranch(shift.branchId);
+        const checklist = await storage.getChecklist(shiftChecklist.checklistId);
+        const checklistTasks = await storage.getChecklistTasks(shiftChecklist.checklistId);
+        
+        // Get supervisors for this branch
+        const managers = await db.select().from(users).where(
+          and(
+            eq(users.branchId, shift.branchId),
+            inArray(users.role as any, ['supervisor', 'supervisor_buddy', 'coach'])
+          )
+        );
+        
+        for (const manager of managers) {
+          await storage.createNotification({
+            userId: manager.id,
+            type: 'checklist_completed',
+            title: `✅ Checklist Tamamlandı: ${checklist?.title || 'Bilinmeyen'}`,
+            message: `${user.fullName} vardiyasında ${checklist?.title || 'checklist'}'ı tamamladı (${checklistTasks.length} görev)`,
+            actionUrl: `/vardiya/${shift.id}/checklists`,
+            branchId: shift.branchId,
+            isRead: false,
+          });
+        }
+      }
+      
       res.json(updatedChecklist);
     } catch (error) {
       console.error("Error updating shift checklist:", error);

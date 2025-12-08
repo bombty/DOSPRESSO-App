@@ -6,34 +6,16 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 7, 2025)
-- ✅ **TURN 25 - Hybrid NFC/QR Shift Check-in System (COMPLETED)**:
-  * Schema: Added `checkInMethod` enum field to branches table (rfid/qr/both)
-  * Frontend: Created `/nfc-giris` page with Web NFC API for Android, URL-based NFC tags for iOS
-  * Routing: Updated App.tsx with /nfc-giris route, vardiya-checkin method selection UI
-  * Backend: Added POST /api/shift-attendance/check-in/nfc endpoint (location-based, minimal schema)
-  * UX: Method selection page (QR/NFC) in vardiya-checkin with conditional routing
-  * NFC Technology: NTAG213 cards recommended - works on iOS/Android via URL-based approach
-  * Status: App running, all LSP diagnostics clear, workflow stable
-
-- ✅ **TURN 26 - Admin NFC/QR Management Panel (COMPLETED)**:
-  * Feature: Created `/subeler/:id/nfc` page showing NFC URL + QR code for each branch
-  * Token Generation: Auto-generate 64-char hex tokens for new branches, retroactively applied to 20 existing branches
-  * Database: Added `check_in_method` column to branches table, synced schema to production DB
-  * Admin UI: NFC button in `/subeler/:id` detail page (isAdmin guard), links to management panel
-  * Security: NFC URL format: `https://app.dospresso.com/nfc?b={branchId}&t={token}` with token validation
-  * Features: Copy URL, Download QR, Token display with security notes
-  * Type Safety: Fixed imports (randomBytes crypto), resolved all TypeScript errors
-  * Status: ✅ FULLY OPERATIONAL - All 20 branches have tokens, database synced, APIs working, frontend rendering
-
-- ✅ **TURN 27 - UI/UX Design Overhaul (COMPLETED)**:
-  * Header Redesign: Navy Blue background (#1e3a5f) with white text on ALL pages (app-header, page-header, login, register, password pages)
-  * Logo Standardization: Replaced DOSPRESSO logo with new "DOSPRESSO Donut Coffee" logo across 9 files
-  * Dashboard Layout: Converted from 2-column to 3-column compact grid with minimal spacing
-  * Dashboard Icons: Reduced sizes (w-10 h-10 icons, text-xs labels), hidden descriptions for compact view
-  * Card Spacing: Reduced padding (p-4→p-3), reduced gap (gap-3→gap-2), min-height compact (100px→80px)
-  * Updated Files: app-header, page-header, app-sidebar, login, register, forgot-password, reset-password, App.tsx, academy-certificates, card-grid-hub
-  * Status: ✅ FULLY IMPLEMENTED - All headers Navy Blue, logo consistent, dashboard compact 3-column layout, workflow running
+## Recent Changes (December 8, 2025)
+- ✅ **TURN 28 - Checklist Manual Time Slots & Manager Notifications (COMPLETED)**:
+  * **Schema Enhancement**: Added `taskTimeStart` & `taskTimeEnd` (TIME type) to `checklistTasks` table
+  * **Frontend**: Manual time input fields in checklist edit form (HQ/Supervisor editable)
+  * **Backend API**: POST/PATCH handlers process time slot parameters for new/updated tasks
+  * **Storage Layer**: All CRUD methods (createChecklistWithTasks, updateChecklistWithTasks) handle time fields
+  * **Manager Notifications**: Auto-notify supervisors/coaches on shift checklist completion
+  * **Time Window Validation**: PATCH endpoint warns if task update outside time window (TIME_WINDOW_VIOLATION)
+  * **Photo Validation Ready**: Schema supports requiresPhoto, enforcement in frontend validation logic
+  * **Status**: ✅ Schema + API complete, Manager notifications live, Time window validation active
 
 ## System Architecture
 ### UI/UX Decisions
@@ -60,11 +42,12 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **HR & Shift Management**: Personnel management, leave requests, overtime, attendance, and AI-powered fair shift planning.
 - **Enhanced Analytics Dashboard**: Tabbed interface showing daily/weekly/monthly metrics with AI-generated summaries.
 - **DOSPRESSO Academy (LMS)**: A comprehensive training system including career progression, quiz system, gamification (leaderboard, badges), certification, AI learning paths, and advanced analytics.
+- **Checklist Management System (NEW)**: Time-windowed checklist tasks with HQ/Supervisor editable time slots (taskTimeStart/taskTimeEnd), photo validation (requiresPhoto field), manager notifications on completion, 40% performance weight in composite scoring, and daily reminders.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
 - **SLA Calculation**: Dynamic, time-based calculation varying by fault priority.
-- **Notifications**: Automatic in-app alerts and email notifications.
+- **Notifications**: Automatic in-app alerts and email notifications; manager notifications on checklist completion.
 - **State Management**: TanStack Query for server state and localStorage for theme persistence.
 - **Photo Upload**: Persistent storage on AWS S3 via an ObjectUploader component.
 - **Backup System**: Daily automatic backups to object storage.
@@ -75,6 +58,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Dashboard Hub**: `CardGridHub` displays role-based module cards with alerts and quick actions.
 - **Shift Scheduling**: Fair algorithm ensuring fulltime employees work minimum 6 days/week at 45 hours, parttime 3 days/25 hours.
 - **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries (OpenAI gpt-4o-mini), and conditional alerts.
+- **Checklist Scoring**: 40% weight in compositeScore, max score 4/5 if not on-time, scored by supervisor.
 
 ## External Dependencies
 ### Third-Party Services
