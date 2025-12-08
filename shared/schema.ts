@@ -1371,11 +1371,13 @@ export const moduleQuizzes = pgTable("module_quizzes", {
 // Quiz Questions
 export const quizQuestions = pgTable("quiz_questions", {
   id: serial("id").primaryKey(),
-  quizId: integer("quiz_id").notNull().references(() => moduleQuizzes.id, { onDelete: "cascade" }),
+  quizId: integer("quiz_id").references(() => moduleQuizzes.id, { onDelete: "cascade" }),
+  careerQuizId: integer("career_quiz_id").references(() => quizzes.id, { onDelete: "cascade" }),
   question: text("question").notNull(),
   questionType: varchar("question_type", { length: 50 }).default("multiple_choice"), // multiple_choice, true_false, short_answer
   options: text("options").array(), // JSON array for multiple choice
   correctAnswer: text("correct_answer").notNull(),
+  correctAnswerIndex: integer("correct_answer_index").default(0),
   explanation: text("explanation"),
   points: integer("points").default(1),
   createdAt: timestamp("created_at").defaultNow(),

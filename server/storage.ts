@@ -1642,13 +1642,29 @@ export class DatabaseStorage implements IStorage {
     return newQuiz;
   }
 
-  // Quiz Question operations
+  // Quiz Question operations - supports both module quizzes and career quizzes
   async getQuizQuestions(quizId: string | number): Promise<QuizQuestion[]> {
     const numericId = typeof quizId === 'string' ? parseInt(quizId, 10) : quizId;
-    if (isNaN(numericId)) {
-      throw new Error(`Invalid quiz ID: ${quizId}`);
+    
+    // If numeric ID, try both module quiz and career quiz
+    if (!isNaN(numericId)) {
+      // First try module quiz questions
+      const moduleQuestions = await db.select().from(quizQuestions).where(eq(quizQuestions.quizId, numericId));
+      if (moduleQuestions.length > 0) {
+        return moduleQuestions;
+      }
+      // Then try career quiz questions
+      const careerQuestions = await db.select().from(quizQuestions).where(eq(quizQuestions.careerQuizId, numericId));
+      return careerQuestions;
     }
-    return db.select().from(quizQuestions).where(eq(quizQuestions.quizId, numericId));
+    
+    // If string (slug like "espresso-101"), look up quizzes table first
+    const [quiz] = await db.select().from(quizzes).where(eq(quizzes.quizId, quizId as string));
+    if (quiz) {
+      return db.select().from(quizQuestions).where(eq(quizQuestions.careerQuizId, quiz.id));
+    }
+    
+    return [];
   }
 
   async createQuizQuestion(question: InsertQuizQuestion): Promise<QuizQuestion> {

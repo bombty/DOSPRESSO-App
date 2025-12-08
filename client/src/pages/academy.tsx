@@ -423,8 +423,8 @@ export default function Academy() {
                         : quiz.difficulty === 'hard' ? 'Zor' : 'Orta';
 
                       return (
-                        <Link key={quiz.id} to={`/akademi-quiz/${quiz.quizId}`}>
-                          <div className="p-2 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer" data-testid={`quiz-card-${quiz.quizId}`}>
+                        <Link key={quiz.id} to={`/akademi-quiz/${quiz.id}`}>
+                          <div className="p-2 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer" data-testid={`quiz-card-${quiz.id}`}>
                             <div className="flex items-start justify-between mb-1">
                               <p className="font-medium text-xs line-clamp-1 flex-1">{quiz.titleTr}</p>
                               <Badge className={`text-xs ml-1 ${diffColor}`}>{diffLabel}</Badge>
