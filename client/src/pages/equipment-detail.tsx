@@ -569,15 +569,16 @@ export default function EquipmentDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-3 sm:gap-4">
-        <Skeleton className="h-10 w-48" />
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
+        <Skeleton className="h-10 w-32" />
         <Card>
           <CardHeader>
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-32" />
           </CardHeader>
-          <CardContent>
-            <Skeleton className="h-64 w-full" />
+          <CardContent className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
           </CardContent>
         </Card>
       </div>
@@ -586,11 +587,10 @@ export default function EquipmentDetail() {
 
   if (!equipment) {
     return (
-      <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
         <Link href="/ekipman" asChild>
-          <Button variant="outline" data-testid="button-back">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Geri Dön
+          <Button variant="outline" size="icon" data-testid="button-back">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <Card>
@@ -606,11 +606,10 @@ export default function EquipmentDetail() {
   // Authorization: Branch users can only access their own branch equipment
   if (user?.role && isBranchRole(user.role as any) && user.branchId && equipment.branchId !== user.branchId) {
     return (
-      <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
         <Link href="/ekipman" asChild>
-          <Button variant="outline" data-testid="button-back">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Geri Dön
+          <Button variant="outline" size="icon" data-testid="button-back">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <Card>
@@ -761,8 +760,8 @@ export default function EquipmentDetail() {
         </CardContent>
       </Card>
 
-      <Tabs className="w-full flex flex-col gap-3 sm:gap-4">
-        <TabsList data-testid="tabs-equipment-detail">
+      <Tabs className="w-full" defaultValue="maintenance">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" data-testid="tabs-equipment-detail">
           <TabsTrigger value="maintenance" data-testid="tab-maintenance">
             Bakım Geçmişi
           </TabsTrigger>
@@ -786,10 +785,10 @@ export default function EquipmentDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="maintenance" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Bakım Geçmişi</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Bakım Geçmişi</CardTitle>
               <CardDescription>
                 Bu ekipmana yapılan tüm bakım kayıtları
               </CardDescription>
@@ -804,7 +803,7 @@ export default function EquipmentDetail() {
                           <Wrench className="h-4 w-4 text-primary" />
                         </div>
                       </div>
-                      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="flex-1 space-y-2">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-medium" data-testid={`text-maintenance-type-${log.id}`}>
@@ -851,10 +850,10 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="faults" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Arıza Kayıtları</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Arıza Kayıtları</CardTitle>
               <CardDescription>
                 Bu ekipmana bildirilen arızalar
               </CardDescription>
@@ -869,7 +868,7 @@ export default function EquipmentDetail() {
                           <AlertTriangle className="h-4 w-4 text-destructive" />
                         </div>
                       </div>
-                      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="flex-1 space-y-2">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-medium" data-testid={`text-fault-equipment-${fault.id}`}>
@@ -925,12 +924,12 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="service-requests" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-2 sm:gap-3">
                 <div className="flex-1">
-                  <CardTitle>Servis Talepleri</CardTitle>
+                  <CardTitle className="text-base">Servis Talepleri</CardTitle>
                   <CardDescription>
                     Bu ekipman için oluşturulan servis talepleri
                   </CardDescription>
@@ -959,7 +958,7 @@ export default function EquipmentDetail() {
                   {serviceRequests.map((request) => (
                     <div key={request.id} className="rounded-lg border p-3 grid grid-cols-1 gap-2 sm:gap-3" data-testid={`service-request-${request.id}`}>
                       <div className="flex items-start justify-between gap-2 sm:gap-3">
-                        <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                        <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2 flex-wrap">
                             <Badge variant={
                               request.status === SERVICE_REQUEST_STATUS.CLOSED ? 'default' :
@@ -1098,10 +1097,10 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="comments" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Yorumlar</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Yorumlar</CardTitle>
               <CardDescription>
                 Bu ekipman hakkında yorumlar
               </CardDescription>
@@ -1172,10 +1171,10 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="qr" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
                 <QrCode className="h-4 w-4" />
                 QR Kod
               </CardTitle>
@@ -1228,10 +1227,10 @@ export default function EquipmentDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="maintenance-schedule" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Bakım Planı</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Bakım Planı</CardTitle>
               <CardDescription>Periyodik bakım programı ve hatırlatıcılar</CardDescription>
             </CardHeader>
             <CardContent>
@@ -1972,7 +1971,7 @@ export default function EquipmentDetail() {
                               }}
                               data-testid={`checkbox-troubleshooting-step-${step.id}`}
                             />
-                            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                            <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-2">
                                 <span className={`font-medium ${isMissing ? 'text-destructive' : ''}`}>
                                   Adım {step.order}
@@ -2057,7 +2056,7 @@ export default function EquipmentDetail() {
                   <div className="bg-background rounded-lg p-3 grid grid-cols-1 gap-2 border" data-testid="ai-response-container">
                     <div className="flex items-start gap-2">
                       <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="flex-1 space-y-2">
                         <p className="text-sm text-foreground whitespace-pre-wrap" data-testid="text-ai-answer">{aiAnswer.answer}</p>
                         {aiAnswer.sources && aiAnswer.sources.length > 0 && (
                           <div className="pt-2 border-t">
