@@ -304,8 +304,8 @@ function ChecklistFormDialog({
     }
   }, [mode, existingTasks, checklist]);
 
-  const createMutation = useMutation({
-    mutationFn: async (data) => {
+  const createMutation = useMutation<any, Error, any>({
+    mutationFn: async (data: any) => {
       const res = await fetch('/api/checklists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -328,8 +328,8 @@ function ChecklistFormDialog({
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async (data) => {
+  const updateMutation = useMutation<any, Error, any>({
+    mutationFn: async (data: any) => {
       const res = await fetch(`/api/checklists/${checklist!.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -382,7 +382,7 @@ function ChecklistFormDialog({
     setTasks(tasks.filter((_, i) => i !== index));
   };
 
-  const updateTask = (index: number, field: string, value) => {
+  const updateTask = (index: number, field: string, value: any) => {
     const updated = [...tasks];
     updated[index] = { ...updated[index], [field]: value };
     setTasks(updated);

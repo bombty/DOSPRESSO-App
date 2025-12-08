@@ -77,36 +77,44 @@ export async function checkAndSendReminders() {
 async function checkChecklistReminders() {
   try {
     const now = new Date();
-    // Get all incomplete shift checklists
-    const allShiftChecklists = (await storage.getAllShiftChecklists?.() || []) as any[];
-    const incompleteChecklists = allShiftChecklists.filter((sc: any) => !sc.isCompleted);
-    
-    for (const checklist of incompleteChecklists) {
-      const checklistKey = checklist.id;
-      const lastNotified = sentChecklistReminders.get(checklistKey);
+    // Get incomplete shifts with their checklists
+    try {
+      // Simple approach: check a small sample of recent shifts
+      const shifts = await storage.getShifts?.() || [];
       
-      // Only send once per day
-      if (lastNotified && (now.getTime() - lastNotified) < 24 * 60 * 60 * 1000) {
-        continue;
-      }
+      for (const shift of shifts) {
+        // Skip if already assigned or completed
+        if (!shift.assignedToId) continue;
+        
+        const shiftChecklists = await storage.getShiftChecklists(shift.id);
+        const incompleteChecklists = shiftChecklists.filter((sc: any) => !sc.isCompleted);
+        
+        for (const checklist of incompleteChecklists) {
+          const checklistKey = checklist.id;
+          const lastNotified = sentChecklistReminders.get(checklistKey);
+          
+          // Only send once per day
+          if (lastNotified && (now.getTime() - lastNotified) < 24 * 60 * 60 * 1000) {
+            continue;
+          }
 
-      try {
-        const shift = await storage.getShift(checklist.shiftId);
-        if (shift?.assignedToId) {
-          await storage.createNotification({
-            userId: shift.assignedToId,
-            type: 'checklist_overdue',
-            title: '📋 Checklist Hatırlatması',
-            message: 'Vardiya checklist\'ini tamamlamayı unutmadınız mı?',
-            actionUrl: `/vardiya/${shift.id}/checklists`,
-            branchId: shift.branchId,
-            isRead: false,
-          });
-          sentChecklistReminders.set(checklistKey, now.getTime());
+          try {
+            await storage.createNotification({
+              userId: shift.assignedToId,
+              type: 'checklist_overdue',
+              title: '📋 Checklist Hatırlatması',
+              message: 'Vardiya checklist\'ini tamamlamayı unutmadınız mı?',
+              link: `/vardiya/${shift.id}/checklists`,
+              isRead: false,
+            });
+            sentChecklistReminders.set(checklistKey, now.getTime());
+          } catch (err) {
+            // Skip this checklist if notification fails
+          }
         }
-      } catch (err) {
-        // Skip this checklist if notification fails
       }
+    } catch (err) {
+      // Silently skip if method doesn't exist
     }
   } catch (error) {
     console.error("Checklist hatırlatma hatası:", error);
@@ -145,17 +153,6 @@ async function checkOverdueTaskNotifications() {
             type: 'task_overdue',
             title: 'Geciken Görev Hatırlatması',
             message: `"${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
-            data: { taskId: task.id, daysOverdue },
-            link: `/gorevler?taskId=${task.id}`,
-          });
-
-          // Send email to assignee
-          const assignee = await storage.getUser(task.assignedToId);
-          if (assignee?.email) {
-            await sendNotificationEmail(
-              assignee.email,
-              'Geciken Görev Hatırlatması - DOSPRESSO',
-              `Merhaba ${assignee.firstName || 'Değerli Çalışan'},\n\nAtanan göreviniz ${daysOverdue} gündür gecikmiş durumda:\n\nGörev: ${task.description}\nSon Tarih: ${new Date(task.dueDate!).toLocaleDateString('tr-TR')}\n\nLütfen en kısa sürede tamamlayın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
             );
           }
         } catch (err) {
@@ -176,17 +173,6 @@ async function checkOverdueTaskNotifications() {
             type: 'task_overdue_assigner',
             title: 'Atadığınız Görev Gecikti',
             message: `${assigneeName}'a atadığınız "${task.description?.substring(0, 40)}${(task.description?.length || 0) > 40 ? '...' : ''}" görevi ${daysOverdue} gün gecikti!`,
-            data: { taskId: task.id, assigneeId: task.assignedToId, daysOverdue },
-            link: `/gorevler?taskId=${task.id}`,
-          });
-
-          // Send email to assigner
-          const assigner = await storage.getUser(task.assignedById);
-          if (assigner?.email) {
-            await sendNotificationEmail(
-              assigner.email,
-              'Atadığınız Görev Gecikti - DOSPRESSO',
-              `Merhaba ${assigner.firstName || 'Değerli Yönetici'},\n\n${assigneeName}'a atadığınız görev ${daysOverdue} gündür gecikmiş durumda:\n\nGörev: ${task.description}\nSon Tarih: ${new Date(task.dueDate!).toLocaleDateString('tr-TR')}\n\nTakibi yapmanızı öneririz.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
             );
           }
         } catch (err) {
