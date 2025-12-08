@@ -653,6 +653,8 @@ export const checklistTasks = pgTable("checklist_tasks", {
   checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
   taskDescription: text("task_description").notNull(),
   requiresPhoto: boolean("requires_photo").default(false),
+  taskTimeStart: time("task_time_start", { precision: 0 }),
+  taskTimeEnd: time("task_time_end", { precision: 0 }),
   order: integer("order").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -665,6 +667,14 @@ export const insertChecklistTaskSchema = createInsertSchema(checklistTasks).omit
     return data.order > 0;
   },
   { message: "Order must be a positive integer" }
+).refine(
+  (data) => {
+    if (data.taskTimeStart && data.taskTimeEnd) {
+      return data.taskTimeStart < data.taskTimeEnd;
+    }
+    return true;
+  },
+  { message: "Task time start must be before end" }
 );
 
 export type InsertChecklistTask = z.infer<typeof insertChecklistTaskSchema>;
@@ -684,6 +694,8 @@ export const updateChecklistSchema = z.object({
       id: z.number().nullable().optional(),
       taskDescription: z.string().min(1),
       requiresPhoto: z.boolean().default(false),
+      taskTimeStart: z.string().nullable().optional(),
+      taskTimeEnd: z.string().nullable().optional(),
       order: z.number(),
       _action: z.enum(['delete']).optional(),
     })

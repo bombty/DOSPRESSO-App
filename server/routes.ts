@@ -2017,6 +2017,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           insertChecklistTaskSchema.parse({
             taskDescription: task.taskDescription,
             requiresPhoto: task.requiresPhoto,
+            taskTimeStart: task.taskTimeStart || null,
+            taskTimeEnd: task.taskTimeEnd || null,
             order: task.order,
             checklistId: 0,
           })

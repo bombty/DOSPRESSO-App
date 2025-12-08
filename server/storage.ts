@@ -1184,6 +1184,8 @@ export class DatabaseStorage implements IStorage {
               checklistId: id,
               taskDescription: t.taskDescription,
               requiresPhoto: t.requiresPhoto ?? false,
+              taskTimeStart: t.taskTimeStart || null,
+              taskTimeEnd: t.taskTimeEnd || null,
               order: t.order,
             }))
           );
@@ -1197,6 +1199,8 @@ export class DatabaseStorage implements IStorage {
                 .set({
                   taskDescription: t.taskDescription,
                   requiresPhoto: t.requiresPhoto ?? false,
+                  taskTimeStart: t.taskTimeStart || null,
+                  taskTimeEnd: t.taskTimeEnd || null,
                   order: t.order,
                 })
                 .where(eq(checklistTasks.id, t.id as number))

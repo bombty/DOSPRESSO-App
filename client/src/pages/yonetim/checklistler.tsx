@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,7 +25,7 @@ export default function AdminChecklistManagement() {
     return (
       <Card>
         <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center text-center grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="flex flex-col items-center justify-center text-center">
             <AlertCircle className="h-12 w-12 text-destructive" />
             <h3 className="font-semibold text-lg">Yetkisiz Erişim</h3>
             <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz yok.</p>
@@ -107,6 +107,7 @@ export default function AdminChecklistManagement() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogDescription className="sr-only">Yeni bir checklist oluşturun</DialogDescription>
                 <ChecklistFormDialog
                   mode="create"
                   onClose={() => setCreateDialogOpen(false)}
@@ -252,6 +253,7 @@ export default function AdminChecklistManagement() {
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogDescription className="sr-only">Checklist'i düzenleyin</DialogDescription>
           {selectedChecklist && (
             <ChecklistFormDialog
               mode="edit"
@@ -286,21 +288,21 @@ function ChecklistFormDialog({
   const [isActive, setIsActive] = useState(checklist?.isActive ?? true);
   const [timeWindowStart, setTimeWindowStart] = useState(checklist?.timeWindowStart || "");
   const [timeWindowEnd, setTimeWindowEnd] = useState(checklist?.timeWindowEnd || "");
-  const [tasks, setTasks] = useState<Array<{ taskDescription: string; requiresPhoto: boolean; order: number }>>([]);
+  const [tasks, setTasks] = useState<Array<{ taskDescription: string; requiresPhoto: boolean; order: number; taskTimeStart?: string; taskTimeEnd?: string }>>([]);
 
   const { data: existingTasks } = useQuery<ChecklistTask[]>({
     queryKey: ['/api/checklist-tasks'],
     enabled: mode === "edit" && !!checklist,
   });
 
-  useState(() => {
+  useEffect(() => {
     if (mode === "edit" && existingTasks && checklist) {
       const checklistTasks = existingTasks
         .filter((t) => t.checklistId === checklist.id)
-        .map((t) => ({ taskDescription: t.taskDescription, requiresPhoto: t.requiresPhoto || false, order: t.order }));
+        .map((t) => ({ taskDescription: t.taskDescription, requiresPhoto: t.requiresPhoto || false, order: t.order, taskTimeStart: t.taskTimeStart || "", taskTimeEnd: t.taskTimeEnd || "" }));
       setTasks(checklistTasks);
     }
-  });
+  }, [mode, existingTasks, checklist]);
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
@@ -515,13 +517,35 @@ function ChecklistFormDialog({
               <CardContent className="py-3">
                 <div className="flex gap-2 items-start">
                   <span className="text-sm text-muted-foreground pt-2">{index + 1}.</span>
-                  <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="flex-1 flex flex-col gap-3">
                     <Input
                       value={task.taskDescription}
                       onChange={(e) => updateTask(index, 'taskDescription', e.target.value)}
                       placeholder="Görev açıklaması..."
                       data-testid={`input-task-desc-${index}`}
                     />
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor={`task-time-start-${index}`} className="text-xs">Başlangıç Saati</Label>
+                        <Input
+                          id={`task-time-start-${index}`}
+                          type="time"
+                          value={task.taskTimeStart || ""}
+                          onChange={(e) => updateTask(index, 'taskTimeStart', e.target.value)}
+                          data-testid={`input-task-time-start-${index}`}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor={`task-time-end-${index}`} className="text-xs">Bitiş Saati</Label>
+                        <Input
+                          id={`task-time-end-${index}`}
+                          type="time"
+                          value={task.taskTimeEnd || ""}
+                          onChange={(e) => updateTask(index, 'taskTimeEnd', e.target.value)}
+                          data-testid={`input-task-time-end-${index}`}
+                        />
+                      </div>
+                    </div>
                     <div className="flex items-center gap-2">
                       <Checkbox
                         checked={task.requiresPhoto}
