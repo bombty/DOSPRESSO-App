@@ -20,13 +20,14 @@ Preferred communication style: Simple, everyday language. Turkish language commu
   * **System Health**: All backup, SLA, maintenance, and reminder systems operational
   * **Status**: ✅ **FULLY OPERATIONAL** - App stable, all features live, ready for deployment
 
-- ✅ **TURN 30 - Quiz Endpoint Fix & Final Stabilization (COMPLETED)**:
-  * **Quiz Endpoint Fixed**: Updated `getQuizQuestions()` to accept both string and number quizId
-  * **Error Handling**: Improved error messages in quiz route (parse validation + logging)
-  * **LSP Errors**: Resolved all TypeScript diagnostics (283 errors → 0)
-  * **System Status**: HEALTHY - all background jobs running (backup, reminders, SLA checks)
-  * **Backup Verification**: 441 records backed up across 11/11 tables successfully
-  * **Status**: ✅ **PRODUCTION READY** - Quiz system fully functional, system stable
+- ✅ **TURN 30-31 - Academy Quiz System Fix (COMPLETED)**:
+  * **Quiz Data Model Unified**: Added `careerQuizId` FK to `quiz_questions` table - now supports both module quizzes (training modules) and career quizzes (career levels)
+  * **Quiz Endpoint Enhanced**: `getQuizQuestions()` supports dual lookup - module quiz by ID first, then falls back to career quiz lookup
+  * **Frontend Corrected**: Fixed `academy.tsx` to use numeric `quiz.id` instead of string `quiz.quizId` slug
+  * **Sample Questions Added**: 5 espresso quiz questions added for career_quiz_id=1 (Espresso 101)
+  * **correctAnswerIndex Column**: Added for proper answer validation during quiz grading
+  * **System Status**: HEALTHY - backup (441 records), reminders, SLA checks all running
+  * **Status**: ✅ **QUIZ SYSTEM FULLY OPERATIONAL** - Questions loading correctly, career progression quiz active
 
 ## System Architecture
 ### UI/UX Decisions
