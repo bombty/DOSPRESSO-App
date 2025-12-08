@@ -2166,7 +2166,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ensurePermission(user, 'checklists', 'update');
       const taskId = parseInt(req.params.taskId);
       const { insertChecklistTaskSchema } = await import('@shared/schema');
-      const validatedData = insertChecklistTaskSchema.partial().parse(req.body);
+      const validatedData = insertChecklistTaskSchema.pick({
+        taskDescription: true,
+        requiresPhoto: true,
+        taskTimeStart: true,
+        taskTimeEnd: true,
+        order: true,
+      }).partial().parse(req.body);
+      
+      // Get task to check photo requirement
+      const existingTask = await storage.getChecklistTask?.(taskId);
+      
+      // Photo validation: if photo required, ensure provided
+      if (existingTask?.requiresPhoto && !req.body.photoUrl) {
+        return res.status(400).json({ 
+          message: '📸 Bu görev fotoğraf gerektirir',
+          code: 'PHOTO_REQUIRED'
+        });
+      }
       
       // Time window validation: warn if outside task time window
       if (validatedData.taskTimeStart && validatedData.taskTimeEnd) {

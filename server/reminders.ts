@@ -17,6 +17,8 @@ const sentMaintenanceNotifications = new Map<number, string>();
 // Track overdue task notifications to avoid spamming (taskId -> lastNotifiedAt timestamp)
 const sentOverdueNotifications = new Map<number, number>();
 
+const sentChecklistReminders = new Map<number, number>();
+
 export async function checkAndSendReminders() {
   try {
     // Check task reminders
@@ -59,6 +61,9 @@ export async function checkAndSendReminders() {
       }
     }
 
+    // Check checklist reminders - daily overdue checklists
+    await checkChecklistReminders();
+
     // Check overdue tasks and send notifications to both assignee and assigner
     await checkOverdueTaskNotifications();
 
@@ -66,6 +71,45 @@ export async function checkAndSendReminders() {
     await checkMaintenanceReminders();
   } catch (error) {
     console.error("Hatırlatma kontrolü hatası:", error);
+  }
+}
+
+async function checkChecklistReminders() {
+  try {
+    const now = new Date();
+    // Get all incomplete shift checklists
+    const allShiftChecklists = (await storage.getAllShiftChecklists?.() || []) as any[];
+    const incompleteChecklists = allShiftChecklists.filter((sc: any) => !sc.isCompleted);
+    
+    for (const checklist of incompleteChecklists) {
+      const checklistKey = checklist.id;
+      const lastNotified = sentChecklistReminders.get(checklistKey);
+      
+      // Only send once per day
+      if (lastNotified && (now.getTime() - lastNotified) < 24 * 60 * 60 * 1000) {
+        continue;
+      }
+
+      try {
+        const shift = await storage.getShift(checklist.shiftId);
+        if (shift?.assignedToId) {
+          await storage.createNotification({
+            userId: shift.assignedToId,
+            type: 'checklist_overdue',
+            title: '📋 Checklist Hatırlatması',
+            message: 'Vardiya checklist\'ini tamamlamayı unutmadınız mı?',
+            actionUrl: `/vardiya/${shift.id}/checklists`,
+            branchId: shift.branchId,
+            isRead: false,
+          });
+          sentChecklistReminders.set(checklistKey, now.getTime());
+        }
+      } catch (err) {
+        // Skip this checklist if notification fails
+      }
+    }
+  } catch (error) {
+    console.error("Checklist hatırlatma hatası:", error);
   }
 }
 
