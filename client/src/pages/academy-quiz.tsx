@@ -68,8 +68,8 @@ export default function AcademyQuiz() {
   const handleSubmit = () => {
     // Calculate score
     let correctCount = 0;
-    quiz.questions.forEach((q, idx: number) => {
-      if (parseInt(answers[idx]) === q.correctAnswerIndex) {
+    quiz.questions.forEach((q: any, idx: number) => {
+      if (parseInt(answers[idx]) === q.correct_answer_index) {
         correctCount++;
       }
     });
@@ -201,7 +201,7 @@ export default function AcademyQuiz() {
 
         <CardContent className="flex flex-col gap-3 sm:gap-4">
           <div>
-            <p className="text-sm font-medium mb-2">{question.questionText}</p>
+            <p className="text-sm font-medium mb-2">{question.question}</p>
 
             <RadioGroup value={answers[currentQuestion] || ""} onValueChange={(value) => setAnswers({ ...answers, [currentQuestion]: value })}>
               {question.options.map((option: string, idx: number) => (

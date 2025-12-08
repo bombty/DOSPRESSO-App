@@ -426,12 +426,12 @@ export default function Academy() {
                         <Link key={quiz.id} to={`/akademi-quiz/${quiz.id}`}>
                           <div className="p-2 bg-white dark:bg-slate-900 rounded-lg border hover:border-blue-500 transition cursor-pointer" data-testid={`quiz-card-${quiz.id}`}>
                             <div className="flex items-start justify-between mb-1">
-                              <p className="font-medium text-xs line-clamp-1 flex-1">{quiz.titleTr}</p>
+                              <p className="font-medium text-xs line-clamp-1 flex-1">{quiz.title_tr}</p>
                               <Badge className={`text-xs ml-1 ${diffColor}`}>{diffLabel}</Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground line-clamp-1">{quiz.descriptionTr}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-1">{quiz.description_tr}</p>
                             <div className="flex items-center justify-between mt-1">
-                              <span className="text-xs">{quiz.estimatedMinutes}dk</span>
+                              <span className="text-xs">{quiz.estimated_minutes}dk</span>
                               <span className="text-xs font-medium text-primary dark:text-primary">→</span>
                             </div>
                           </div>
