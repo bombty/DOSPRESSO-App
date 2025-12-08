@@ -97,6 +97,7 @@ import Denetimler from "@/pages/denetimler";
 import BranchFeedback from "@/pages/branch-feedback";
 import KayipEsya from "@/pages/kayip-esya";
 import KayipEsyaHQ from "@/pages/kayip-esya-hq";
+import ReceteDetay from "@/pages/recete-detay";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -170,6 +171,7 @@ function Router() {
           <Route path="/akademi-social-groups" component={AcademySocialGroups} />
           <Route path="/akademi-advanced-analytics" component={AcademyAdvancedAnalytics} />
           <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
+          <Route path="/recete/:id" component={ReceteDetay} />
           {/* DEPRECATED: Training moved to /akademi-hq - these routes redirect */}
           <Route path="/egitim/:id" component={ModuleDetail} />
           <Route path="/egitim-ata" component={TrainingAssign} />

@@ -33,21 +33,32 @@ const CAREER_LEVELS = [
 type HubCategory = {
   id: number;
   slug: string;
-  title_tr: string;
-  icon_name: string;
-  color_hex: string;
+  titleTr: string;
+  iconName: string;
+  colorHex: string;
   description?: string;
 };
 
 type RecipeCategory = {
   id: number;
   slug: string;
-  title_tr: string;
-  title_en?: string;
-  icon_name: string;
-  color_hex: string;
+  titleTr: string;
+  titleEn?: string;
+  iconName: string;
+  colorHex: string;
   description?: string;
-  display_order: number;
+  displayOrder: number;
+};
+
+type Recipe = {
+  id: number;
+  categoryId: number;
+  nameTr: string;
+  nameEn?: string;
+  code: string;
+  estimatedMinutes: number;
+  difficulty: string;
+  isActive: boolean;
 };
 
 const ICON_MAP: Record<string, any> = {
@@ -231,7 +242,7 @@ export default function Academy() {
 
   // Recipe Category Card
   const RecipeCategoryCard = ({ category }: { category: RecipeCategory }) => {
-    const Icon = getIcon(category.icon_name);
+    const Icon = getIcon(category.iconName);
     return (
       <Card 
         className="cursor-pointer hover-elevate"
@@ -241,11 +252,11 @@ export default function Academy() {
         <CardContent className="p-3 flex flex-col items-center text-center gap-2">
           <div 
             className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: `${category.color_hex || '#8B4513'}15` }}
+            style={{ backgroundColor: `${category.colorHex || '#8B4513'}15` }}
           >
-            <Icon className="w-5 h-5" style={{ color: category.color_hex || '#8B4513' }} />
+            <Icon className="w-5 h-5" style={{ color: category.colorHex || '#8B4513' }} />
           </div>
-          <span className="text-xs font-medium line-clamp-1">{category.title_tr}</span>
+          <span className="text-xs font-medium line-clamp-1">{category.titleTr}</span>
         </CardContent>
       </Card>
     );
@@ -397,19 +408,19 @@ export default function Academy() {
               <ArrowLeft className="w-4 h-4 mr-1" />
               Kategoriler
             </Button>
-            <Card style={{ borderColor: `${selectedCategory.color_hex}30` }} className="border-2">
+            <Card style={{ borderColor: `${selectedCategory.colorHex}30` }} className="border-2">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  {(() => { const Icon = getIcon(selectedCategory.icon_name); return <Icon className="w-6 h-6" style={{ color: selectedCategory.color_hex }} />; })()}
+                  {(() => { const Icon = getIcon(selectedCategory.iconName); return <Icon className="w-6 h-6" style={{ color: selectedCategory.colorHex }} />; })()}
                   <div>
-                    <h2 className="font-bold">{selectedCategory.title_tr}</h2>
+                    <h2 className="font-bold">{selectedCategory.titleTr}</h2>
                     <p className="text-xs text-muted-foreground">{categoryRecipes.length} reçete</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {categoryRecipes.map((recipe: any) => (
+              {categoryRecipes.map((recipe: Recipe) => (
                 <Link key={recipe.id} to={`/recete/${recipe.id}`}>
                   <Card className="cursor-pointer hover-elevate" data-testid={`recipe-${recipe.id}`}>
                     <CardContent className="p-3 flex items-center gap-3">
@@ -417,10 +428,10 @@ export default function Academy() {
                         <Coffee className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm truncate">{recipe.name_tr}</h3>
+                        <h3 className="font-medium text-sm truncate">{recipe.nameTr}</h3>
                         <div className="flex items-center gap-2 mt-0.5">
                           <Badge variant="outline" className="text-xs">{recipe.code}</Badge>
-                          <span className="text-xs text-muted-foreground">{recipe.estimated_minutes}dk</span>
+                          <span className="text-xs text-muted-foreground">{recipe.estimatedMinutes}dk</span>
                         </div>
                       </div>
                     </CardContent>
