@@ -7,6 +7,16 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
 ## Recent Changes (December 9, 2025)
+- ✅ **Recipe Management System (COMPLETED)**:
+  * **14 Recipe Categories**: HOT (10), ICED (5), CREAMICE (4), CREAMSHAKE (4), GOURMET SHAKE (3), FROZEN YOGURT (3), HOT TEA (4), COLD TEA (3), CREAMICE FRUIT (3), FREDDO (3), FRESHESS variants (5+)
+  * **55+ Recipes**: Bulk seeded from PDF specifications with proper category mapping
+  * **RecipeDialog Component**: Sekmeli form (Temel Bilgi, MASSIVO, LONG DIVA) with react-hook-form + Zod
+  * **MASSIVO/LONG DIVA Sizes**: Each recipe supports two cup sizes with separate measurements (ml capacity, prep steps)
+  * **Recipe Versions**: Automatic version tracking when sizes/specs updated
+  * **RecipesTab UI**: Grid display (lg:grid-cols-3) with category filter, icons, difficulty/duration badges, edit/delete buttons
+  * **API Endpoints**: GET /api/academy/recipes (with categoryId filter), POST/PATCH/DELETE with sizes JSON handling
+  * **Status**: ✅ **RECIPE MANAGEMENT ACTIVE - 14 CATEGORIES, 55+ RECIPES**
+
 - ✅ **Admin Academy Control Center (COMPLETED)**:
   * **New Route**: `/yonetim/akademi` - HQ-only Academy management panel
   * **Tab Interface**: 5 tabs - Genel Bakış, Kategoriler, Modüller, Quizler, Gamification
