@@ -996,6 +996,10 @@ const recipeFormSchema = z.object({
   estimatedMinutes: z.coerce.number().min(1).default(5),
   categoryId: z.coerce.number().optional(),
   coffeeType: z.string().optional(),
+  massivoCupMl: z.coerce.number().optional(),
+  massivoSteps: z.string().optional(),
+  longDivaCupMl: z.coerce.number().optional(),
+  longDivaSteps: z.string().optional(),
 });
 
 type RecipeFormValues = z.infer<typeof recipeFormSchema>;
@@ -1007,6 +1011,7 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
   categories: RecipeCategory[];
 }) {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("temel");
   
   const form = useForm<RecipeFormValues>({
     resolver: zodResolver(recipeFormSchema),
@@ -1019,6 +1024,10 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
       estimatedMinutes: 5,
       categoryId: undefined,
       coffeeType: "",
+      massivoCupMl: 350,
+      massivoSteps: "",
+      longDivaCupMl: 550,
+      longDivaSteps: "",
     },
   });
 
@@ -1033,6 +1042,10 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
         estimatedMinutes: recipe?.estimatedMinutes || 5,
         categoryId: recipe?.categoryId || undefined,
         coffeeType: recipe?.coffeeType || "",
+        massivoCupMl: 350,
+        massivoSteps: "",
+        longDivaCupMl: 550,
+        longDivaSteps: "",
       });
     }
   }, [open, recipe, form]);
@@ -1046,15 +1059,31 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
       
       const code = data.code || data.nameTr.toUpperCase().substring(0, 3) + String(Date.now()).slice(-3);
       
+      const sizes = {
+        massivo: {
+          cupMl: data.massivoCupMl || 350,
+          steps: (data.massivoSteps || "").split('\n').filter(s => s.trim()),
+        },
+        longDiva: {
+          cupMl: data.longDivaCupMl || 550,
+          steps: (data.longDivaSteps || "").split('\n').filter(s => s.trim()),
+        },
+      };
+      
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ 
-          ...data, 
+          nameTr: data.nameTr,
+          nameEn: data.nameEn,
           code,
-          categoryId: data.categoryId ? Number(data.categoryId) : null,
+          description: data.description,
+          difficulty: data.difficulty,
           estimatedMinutes: Number(data.estimatedMinutes),
+          categoryId: data.categoryId ? Number(data.categoryId) : null,
+          coffeeType: data.coffeeType,
+          sizes,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -1076,141 +1105,200 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{recipe ? 'Reçete Düzenle' : 'Yeni Reçete'}</DialogTitle>
-          <DialogDescription>Reçete bilgilerini girin</DialogDescription>
+          <DialogDescription>Reçete bilgilerini girin ve bardak boylarını tanımlayın</DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="nameTr"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reçete Adı (TR)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field}
-                      placeholder="örn: Espresso"
-                      data-testid="input-recipe-name"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="nameEn"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reçete Adı (EN)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field}
-                      placeholder="örn: Espresso"
-                      data-testid="input-recipe-name-en"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="difficulty"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Zorluk</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="temel">Temel Bilgi</TabsTrigger>
+            <TabsTrigger value="massivo">MASSIVO</TabsTrigger>
+            <TabsTrigger value="longdiva">LONG DIVA</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="temel" className="space-y-4">
+            <Form {...form}>
+              <form className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="nameTr"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reçete Adı (TR)</FormLabel>
                       <FormControl>
-                        <SelectTrigger data-testid="select-recipe-difficulty">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <Input {...field} placeholder="örn: Espresso" data-testid="input-recipe-name" />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="easy">Kolay</SelectItem>
-                        <SelectItem value="medium">Orta</SelectItem>
-                        <SelectItem value="hard">Zor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="estimatedMinutes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Süre (dk)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number"
-                        {...field}
-                        min={1}
-                        data-testid="input-recipe-duration"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="categoryId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Kategori</FormLabel>
-                  <Select value={field.value?.toString() || ""} onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-recipe-category">
-                        <SelectValue placeholder="Kategori seç" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                          {cat.titleTr}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Açıklama</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field}
-                      placeholder="Reçete açıklaması..."
-                      rows={3}
-                      data-testid="input-recipe-description"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                İptal
-              </Button>
-              <Button type="submit" disabled={mutation.isPending} data-testid="button-save-recipe">
-                {mutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="nameEn"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reçete Adı (EN)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="örn: Espresso" data-testid="input-recipe-name-en" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="difficulty"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Zorluk</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-recipe-difficulty">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="easy">Kolay</SelectItem>
+                            <SelectItem value="medium">Orta</SelectItem>
+                            <SelectItem value="hard">Zor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="estimatedMinutes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Süre (dk)</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} min={1} data-testid="input-recipe-duration" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kategori</FormLabel>
+                      <Select value={field.value?.toString() || ""} onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-recipe-category">
+                            <SelectValue placeholder="Kategori seç" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id.toString()}>
+                              {cat.titleTr}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Açıklama</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Reçete açıklaması..." rows={3} data-testid="input-recipe-description" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
+          </TabsContent>
+
+          <TabsContent value="massivo" className="space-y-4">
+            <Form {...form}>
+              <form className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="massivoCupMl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bardak Kapasitesi (ml)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} min={1} placeholder="350" data-testid="input-massivo-cup" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="massivoSteps"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hazırlama Adımları</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Adımları satır satır girin..." rows={6} data-testid="input-massivo-steps" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
+          </TabsContent>
+
+          <TabsContent value="longdiva" className="space-y-4">
+            <Form {...form}>
+              <form className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="longDivaCupMl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bardak Kapasitesi (ml)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} min={1} placeholder="550" data-testid="input-longdiva-cup" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="longDivaSteps"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hazırlama Adımları</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Adımları satır satır girin..." rows={6} data-testid="input-longdiva-steps" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            İptal
+          </Button>
+          <Button type="submit" disabled={mutation.isPending} onClick={() => form.handleSubmit(onSubmit)()} data-testid="button-save-recipe">
+            {mutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

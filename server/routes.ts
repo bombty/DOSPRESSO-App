@@ -11187,11 +11187,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
       
-      const data = insertRecipeSchema.parse(req.body);
+      const { sizes, ...recipeData } = req.body;
+      const data = insertRecipeSchema.parse(recipeData);
+      
       const [recipe] = await db.insert(recipes).values({
         ...data,
         createdById: user.id,
       }).returning();
+      
+      // Reçete versiyonu oluştur (sizes JSON'ını içerir)
+      if (sizes && (sizes.massivo || sizes.longDiva)) {
+        const [version] = await db.insert(recipeVersions).values({
+          recipeId: recipe.id,
+          versionNumber: 1,
+          sizes,
+          updatedById: user.id,
+        }).returning();
+        
+        await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipe.id));
+      }
       
       res.status(201).json(recipe);
     } catch (error) {
@@ -11212,7 +11226,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { id } = req.params;
-      const data = insertRecipeSchema.partial().parse(req.body);
+      const { sizes, ...recipeData } = req.body;
+      const data = insertRecipeSchema.partial().parse(recipeData);
       
       const [recipe] = await db.update(recipes)
         .set({ ...data, updatedAt: new Date() })
@@ -11221,6 +11236,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!recipe) {
         return res.status(404).json({ message: "Reçete bulunamadı" });
+      }
+      
+      // Sizes değiştirilmişse, yeni versyon oluştur
+      if (sizes && (sizes.massivo || sizes.longDiva)) {
+        const lastVersion = await db.select().from(recipeVersions)
+          .where(eq(recipeVersions.recipeId, recipe.id))
+          .orderBy(desc(recipeVersions.versionNumber))
+          .limit(1);
+        
+        const newVersionNumber = lastVersion.length > 0 ? lastVersion[0].versionNumber + 1 : 1;
+        
+        const [version] = await db.insert(recipeVersions).values({
+          recipeId: recipe.id,
+          versionNumber: newVersionNumber,
+          sizes,
+          updatedById: user.id,
+        }).returning();
+        
+        await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipe.id));
       }
       
       res.json(recipe);
