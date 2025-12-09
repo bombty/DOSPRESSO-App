@@ -587,7 +587,7 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
             <CardTitle className="text-base">Eğitim Modülleri</CardTitle>
             <CardDescription>{modules.length} modül mevcut</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Select value={filterLevel} onValueChange={setFilterLevel}>
               <SelectTrigger className="w-32" data-testid="filter-level">
                 <SelectValue placeholder="Seviye" />
@@ -602,6 +602,10 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
             <Button size="sm" onClick={onAdd} data-testid="button-add-module">
               <Plus className="w-4 h-4 mr-1" />
               Yeni Modül
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => {/* AI dialog açılacak */}} data-testid="button-ai-module">
+              <Sparkles className="w-4 h-4 mr-1" />
+              AI ile Oluştur
             </Button>
           </div>
         </div>

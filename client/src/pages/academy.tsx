@@ -18,7 +18,7 @@ import {
   BookOpen, Plus, Lightbulb, Trophy, BarChart3, Award, TrendingUp, Zap, Target, 
   CheckCircle, Flame, Sparkles, Coffee, GraduationCap, Brain, ChevronRight,
   Snowflake, IceCream, Citrus, Droplets, Leaf, Package, CircleDot, Flower2,
-  Clock, Star, Users, ArrowLeft
+  Clock, Star, Users, ArrowLeft, Eye
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -75,6 +75,7 @@ export default function Academy() {
   const [isExamDialogOpen, setIsExamDialogOpen] = useState(false);
   const [activeView, setActiveView] = useState<"hub" | "recipes" | "career" | "modules" | "practice">("hub");
   const [selectedCategory, setSelectedCategory] = useState<RecipeCategory | null>(null);
+  const [selectedModuleForPreview, setSelectedModuleForPreview] = useState<any>(null);
 
   // Get hub categories
   const { data: hubCategories = [] } = useQuery({
@@ -525,29 +526,74 @@ export default function Academy() {
               </CardContent>
             </Card>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {modules.map((module: { id: number; title: string; level: string; estimatedDuration: number }) => {
+              {modules.map((module: { id: number; title: string; level: string; estimatedDuration: number; description?: string; content?: string }) => {
                 const completed = isModuleCompleted(module.id);
                 return (
-                  <Link 
-                    key={module.id} 
-                    to={`/akademi-modul/${module.id}`}
-                    onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
-                  >
-                    <Card className={`cursor-pointer hover-elevate h-full ${completed ? 'border-green-500' : ''}`} data-testid={`card-module-${module.id}`}>
-                      <CardContent className="p-3">
-                        <div className="flex items-start gap-1 mb-2">
-                          <h3 className="text-xs font-semibold line-clamp-2 flex-1">{module.title}</h3>
-                          {completed && <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />}
+                  <div key={module.id}>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Card 
+                          className={`cursor-pointer hover-elevate h-full ${completed ? 'border-green-500' : ''}`} 
+                          data-testid={`card-module-${module.id}`}
+                          onClick={() => setSelectedModuleForPreview(module)}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-start gap-1 mb-2">
+                              <h3 className="text-xs font-semibold line-clamp-2 flex-1">{module.title}</h3>
+                              {completed && <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />}
+                            </div>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <Badge variant="outline" className="text-xs px-1 py-0">
+                                {module.level === 'beginner' ? 'B' : module.level === 'intermediate' ? 'O' : 'İ'}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">{module.estimatedDuration}dk</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid={`dialog-module-preview-${module.id}`}>
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center justify-between">
+                            <span>{module.title}</span>
+                            <Badge variant="outline">{module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}</Badge>
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm">{module.estimatedDuration} dakika</span>
+                            </div>
+                            {completed && (
+                              <Badge className="bg-green-500">Tamamlandı</Badge>
+                            )}
+                          </div>
+                          {module.description && (
+                            <div>
+                              <h4 className="font-semibold text-sm mb-1">Açıklama</h4>
+                              <p className="text-sm text-muted-foreground">{module.description}</p>
+                            </div>
+                          )}
+                          {module.content && (
+                            <div>
+                              <h4 className="font-semibold text-sm mb-2">İçerik</h4>
+                              <div className="bg-muted/50 rounded-lg p-3 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
+                                {module.content}
+                              </div>
+                            </div>
+                          )}
+                          <Link 
+                            to={`/akademi-modul/${module.id}`}
+                            onClick={() => sessionStorage.setItem('academyReferrer', '/akademi')}
+                          >
+                            <Button className="w-full" data-testid={`button-start-module-${module.id}`}>
+                              Modülü Başlat
+                            </Button>
+                          </Link>
                         </div>
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <Badge variant="outline" className="text-xs px-1 py-0">
-                            {module.level === 'beginner' ? 'B' : module.level === 'intermediate' ? 'O' : 'İ'}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">{module.estimatedDuration}dk</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 );
               })}
             </div>
