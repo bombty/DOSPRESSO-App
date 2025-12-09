@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -63,6 +66,22 @@ type Quiz = {
   questionCount?: number;
 };
 
+type RecipeSizeDetail = {
+  cupMl?: number;
+  espresso?: string;
+  syrups?: { name: string; pumps: number }[];
+  milk?: { type: string; ml: number };
+  powders?: { name: string; scoops: number }[];
+  ice?: string;
+  garnish?: string[];
+  steps?: string[];
+};
+
+type RecipeSizes = {
+  massivo?: RecipeSizeDetail;
+  longDiva?: RecipeSizeDetail;
+};
+
 type Recipe = {
   id: number;
   code: string;
@@ -76,6 +95,7 @@ type Recipe = {
   photoUrl?: string;
   isActive: boolean;
   tags?: string[];
+  sizes?: RecipeSizes;
 };
 
 const ICON_MAP: Record<string, any> = {
@@ -117,7 +137,7 @@ export default function AdminAcademy() {
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<TrainingModule | null>(null);
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
-  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [editingRecipeId, setEditingRecipeId] = useState<number | null>(null);
 
   if (!user || !isHQRole(user.role as UserRoleType)) {
     return (
@@ -223,8 +243,8 @@ export default function AdminAcademy() {
           <RecipesTab 
             recipes={recipes}
             recipeCategories={recipeCategories}
-            onEdit={(rec) => { setEditingRecipe(rec); setRecipeDialogOpen(true); }}
-            onAdd={() => { setEditingRecipe(null); setRecipeDialogOpen(true); }}
+            onEdit={(rec) => { setEditingRecipeId(rec.id); setRecipeDialogOpen(true); }}
+            onAdd={() => { setEditingRecipeId(null); setRecipeDialogOpen(true); }}
           />
         </TabsContent>
 
@@ -271,7 +291,7 @@ export default function AdminAcademy() {
       <RecipeDialog 
         open={recipeDialogOpen} 
         onOpenChange={setRecipeDialogOpen}
-        recipe={editingRecipe}
+        recipeId={editingRecipeId}
         categories={recipeCategories}
       />
     </div>
@@ -848,19 +868,190 @@ function GamificationTab() {
   );
 }
 
+function RecipeDetailDialog({ recipeId, category, open, onOpenChange }: {
+  recipeId: number | null;
+  category: RecipeCategory | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { data: recipe, isLoading } = useQuery<Recipe>({
+    queryKey: ['/api/academy/recipe', recipeId],
+    enabled: open && !!recipeId,
+  });
+  
+  if (!recipeId) return null;
+  
+  const sizes = recipe?.sizes || {};
+  const Icon = category ? getIcon(category.iconName) : Coffee;
+  
+  const renderSizeDetail = (sizeKey: 'massivo' | 'longDiva', label: string, defaultCupMl: number) => {
+    const size = sizes[sizeKey];
+    if (!size) return null;
+    
+    return (
+      <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="font-semibold">{label}</Badge>
+          <span className="text-sm text-muted-foreground">({size.cupMl || defaultCupMl}ml)</span>
+        </div>
+        
+        {size.espresso && (
+          <div className="flex items-center gap-2">
+            <Coffee className="w-4 h-4 text-amber-600" />
+            <span className="text-sm font-medium">Espresso:</span>
+            <span className="text-sm">{size.espresso}</span>
+          </div>
+        )}
+        
+        {size.syrups && size.syrups.length > 0 && (
+          <div className="flex items-start gap-2">
+            <Droplets className="w-4 h-4 text-pink-500 mt-0.5" />
+            <div>
+              <span className="text-sm font-medium">Şurup:</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {size.syrups.map((s, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">{s.name} ({s.pumps} pump)</Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {size.milk && (
+          <div className="flex items-center gap-2">
+            <Package className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-medium">Süt:</span>
+            <span className="text-sm">{size.milk.type} ({size.milk.ml}ml)</span>
+          </div>
+        )}
+        
+        {size.powders && size.powders.length > 0 && (
+          <div className="flex items-start gap-2">
+            <CircleDot className="w-4 h-4 text-orange-500 mt-0.5" />
+            <div>
+              <span className="text-sm font-medium">Toz:</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {size.powders.map((p, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">{p.name} ({p.scoops} scoop)</Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {size.ice && (
+          <div className="flex items-center gap-2">
+            <Snowflake className="w-4 h-4 text-cyan-500" />
+            <span className="text-sm font-medium">Buz:</span>
+            <span className="text-sm">{size.ice}</span>
+          </div>
+        )}
+        
+        {size.garnish && size.garnish.length > 0 && (
+          <div className="flex items-start gap-2">
+            <Flower2 className="w-4 h-4 text-green-500 mt-0.5" />
+            <div>
+              <span className="text-sm font-medium">Garnitür:</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {size.garnish.map((g, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">{g}</Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {size.steps && size.steps.length > 0 && (
+          <div className="mt-3 pt-3 border-t">
+            <span className="text-sm font-medium flex items-center gap-1 mb-2">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              Hazırlama Adımları:
+            </span>
+            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+              {size.steps.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : recipe ? (
+          <>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg" style={{ backgroundColor: (category?.colorHex || '#1e3a5f') + '20' }}>
+                  <Icon className="w-6 h-6" style={{ color: category?.colorHex || '#1e3a5f' }} />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl">{recipe.nameTr}</DialogTitle>
+                  <DialogDescription className="flex items-center gap-2 mt-1">
+                    {category && <Badge variant="secondary">{category.titleTr}</Badge>}
+                    {recipe.difficulty && (
+                      <Badge variant="outline">
+                        {recipe.difficulty === 'easy' ? 'Kolay' : recipe.difficulty === 'medium' ? 'Orta' : 'Zor'}
+                      </Badge>
+                    )}
+                    {recipe.estimatedMinutes && (
+                      <span className="text-xs flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {recipe.estimatedMinutes} dk
+                      </span>
+                    )}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            
+            <ScrollArea className="flex-1 pr-4">
+              <div className="space-y-4">
+                {recipe.description && (
+                  <p className="text-sm text-muted-foreground">{recipe.description}</p>
+                )}
+                
+                <Separator />
+                
+                <div className="grid gap-4">
+                  {renderSizeDetail('massivo', 'MASSIVO', 350)}
+                  {renderSizeDetail('longDiva', 'LONG DIVA', 550)}
+                </div>
+                
+                {(!sizes.massivo && !sizes.longDiva) && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Bu reçete için henüz detaylı bilgi girilmemiş
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function RecipesTab({ recipes, recipeCategories, onEdit, onAdd }: {
   recipes: Recipe[];
   recipeCategories: RecipeCategory[];
   onEdit: (rec: Recipe) => void;
   onAdd: () => void;
 }) {
-  const [filterCategory, setFilterCategory] = useState("all");
   const { toast } = useToast();
-
-  const filteredRecipes = recipes.filter((r) => {
-    if (filterCategory !== "all" && r.categoryId !== parseInt(filterCategory)) return false;
-    return true;
-  });
+  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  
+  const categoriesWithRecipes = recipeCategories
+    .filter(cat => recipes.some(r => r.categoryId === cat.id))
+    .sort((a, b) => a.displayOrder - b.displayOrder);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -880,110 +1071,128 @@ function RecipesTab({ recipes, recipeCategories, onEdit, onAdd }: {
     },
   });
 
+  const handleViewDetail = (recipe: Recipe) => {
+    setSelectedRecipeId(recipe.id);
+    setSelectedCategoryId(recipe.categoryId || null);
+    setDetailOpen(true);
+  };
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div>
-            <CardTitle className="text-base">Reçeteler</CardTitle>
-            <CardDescription>{recipes.length} reçete mevcut</CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-40" data-testid="filter-category">
-                <SelectValue placeholder="Kategori Seç" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tümü</SelectItem>
-                {recipeCategories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id.toString()}>
-                    {cat.titleTr}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <>
+      <RecipeDetailDialog 
+        recipeId={selectedRecipeId} 
+        category={selectedCategoryId ? recipeCategories.find(c => c.id === selectedCategoryId) || null : null}
+        open={detailOpen} 
+        onOpenChange={setDetailOpen} 
+      />
+      
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <CardTitle className="text-base">Reçeteler</CardTitle>
+              <CardDescription>{recipes.length} reçete, {categoriesWithRecipes.length} kategori</CardDescription>
+            </div>
             <Button size="sm" onClick={onAdd} data-testid="button-add-recipe">
               <Plus className="w-4 h-4 mr-1" />
               Yeni Reçete
             </Button>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {filteredRecipes.map((recipe) => {
-            const category = recipeCategories.find(c => c.id === recipe.categoryId);
-            const Icon = category ? getIcon(category.iconName) : Coffee;
-            return (
-              <Card key={recipe.id} className="hover-elevate" data-testid={`recipe-card-${recipe.id}`}>
-                <CardContent className="p-3">
-                  <div className="flex items-start gap-3">
-                    {recipe.photoUrl && (
-                      <img 
-                        src={recipe.photoUrl} 
-                        alt={recipe.nameTr}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
-                    )}
-                    {!recipe.photoUrl && (
-                      <div className="p-2 rounded-lg bg-muted">
-                        <Icon className="w-5 h-5" style={{ color: category?.colorHex || '#1e3a5f' }} />
+        </CardHeader>
+        <CardContent>
+          {categoriesWithRecipes.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Henüz reçete bulunmuyor
+            </div>
+          ) : (
+            <Accordion type="multiple" defaultValue={categoriesWithRecipes.slice(0, 2).map(c => c.id.toString())} className="space-y-2">
+              {categoriesWithRecipes.map((category) => {
+                const categoryRecipes = recipes.filter(r => r.categoryId === category.id);
+                const Icon = getIcon(category.iconName);
+                
+                return (
+                  <AccordionItem key={category.id} value={category.id.toString()} className="border rounded-lg px-4">
+                    <AccordionTrigger className="hover:no-underline py-3" data-testid={`accordion-category-${category.id}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg" style={{ backgroundColor: category.colorHex + '20' }}>
+                          <Icon className="w-5 h-5" style={{ color: category.colorHex }} />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="font-semibold text-sm">{category.titleTr}</h3>
+                          <p className="text-xs text-muted-foreground">{categoryRecipes.length} reçete</p>
+                        </div>
                       </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm line-clamp-1">{recipe.nameTr}</h3>
-                      {category && <p className="text-xs text-muted-foreground">{category.titleTr}</p>}
-                      <div className="flex items-center gap-1 mt-1 flex-wrap">
-                        {recipe.difficulty && (
-                          <Badge variant="outline" className="text-xs">
-                            {recipe.difficulty === 'easy' ? 'Kolay' : recipe.difficulty === 'medium' ? 'Orta' : 'Zor'}
-                          </Badge>
-                        )}
-                        {recipe.estimatedMinutes && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                            <Clock className="w-3 h-3" />
-                            {recipe.estimatedMinutes}dk
-                          </span>
-                        )}
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid sm:grid-cols-2 gap-2 pb-2">
+                        {categoryRecipes.map((recipe) => (
+                          <div 
+                            key={recipe.id} 
+                            className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate cursor-pointer"
+                            onClick={() => handleViewDetail(recipe)}
+                            data-testid={`recipe-card-${recipe.id}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm line-clamp-1">{recipe.nameTr}</h4>
+                              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                {recipe.difficulty && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {recipe.difficulty === 'easy' ? 'Kolay' : recipe.difficulty === 'medium' ? 'Orta' : 'Zor'}
+                                  </Badge>
+                                )}
+                                {recipe.estimatedMinutes && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                    <Clock className="w-3 h-3" />
+                                    {recipe.estimatedMinutes}dk
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-7 w-7"
+                                onClick={() => handleViewDetail(recipe)}
+                                data-testid={`button-view-recipe-${recipe.id}`}
+                              >
+                                <Eye className="w-3 h-3" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-7 w-7"
+                                onClick={() => onEdit(recipe)}
+                                data-testid={`button-edit-recipe-${recipe.id}`}
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-7 w-7 text-destructive"
+                                onClick={() => {
+                                  if (confirm("Bu reçeteyi silmek istediğinize emin misiniz?")) {
+                                    deleteMutation.mutate(recipe.id);
+                                  }
+                                }}
+                                data-testid={`button-delete-recipe-${recipe.id}`}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-7 w-7"
-                        onClick={() => onEdit(recipe)}
-                        data-testid={`button-edit-recipe-${recipe.id}`}
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </Button>
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => {
-                          if (confirm("Bu reçeteyi silmek istediğinize emin misiniz?")) {
-                            deleteMutation.mutate(recipe.id);
-                          }
-                        }}
-                        data-testid={`button-delete-recipe-${recipe.id}`}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-        {filteredRecipes.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            Bu filtreyle eşleşen reçete bulunamadı
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
@@ -996,22 +1205,71 @@ const recipeFormSchema = z.object({
   estimatedMinutes: z.coerce.number().min(1).default(5),
   categoryId: z.coerce.number().optional(),
   coffeeType: z.string().optional(),
+  // MASSIVO fields
   massivoCupMl: z.coerce.number().optional(),
+  massivoEspresso: z.string().optional(),
+  massivoSyrups: z.string().optional(),
+  massivoMilkType: z.string().optional(),
+  massivoMilkMl: z.coerce.number().optional(),
+  massivoPowders: z.string().optional(),
+  massivoIce: z.string().optional(),
+  massivoGarnish: z.string().optional(),
   massivoSteps: z.string().optional(),
+  // LONG DIVA fields
   longDivaCupMl: z.coerce.number().optional(),
+  longDivaEspresso: z.string().optional(),
+  longDivaSyrups: z.string().optional(),
+  longDivaMilkType: z.string().optional(),
+  longDivaMilkMl: z.coerce.number().optional(),
+  longDivaPowders: z.string().optional(),
+  longDivaIce: z.string().optional(),
+  longDivaGarnish: z.string().optional(),
   longDivaSteps: z.string().optional(),
 });
 
 type RecipeFormValues = z.infer<typeof recipeFormSchema>;
 
-function RecipeDialog({ open, onOpenChange, recipe, categories }: {
+const ESPRESSO_OPTIONS = ["Single Shot", "Double Shot", "Triple Shot", "Yok"];
+const ICE_OPTIONS = ["Küp Buz", "Kırık Buz", "Blender Buz", "Yok"];
+const MILK_OPTIONS = ["%3 Süt", "Yağsız Süt", "Badem Sütü", "Yulaf Sütü", "Hindistan Cevizi Sütü", "Yok"];
+
+function parseSyrups(text: string): { name: string; pumps: number }[] {
+  return text.split('\n').filter(s => s.trim()).map(line => {
+    const [name, pumps] = line.split(':');
+    return { name: name?.trim() || line.trim(), pumps: parseInt(pumps) || 1 };
+  });
+}
+
+function parsePowders(text: string): { name: string; scoops: number }[] {
+  return text.split('\n').filter(s => s.trim()).map(line => {
+    const [name, scoops] = line.split(':');
+    return { name: name?.trim() || line.trim(), scoops: parseInt(scoops) || 1 };
+  });
+}
+
+function formatSyrups(syrups?: { name: string; pumps: number }[]): string {
+  if (!syrups || syrups.length === 0) return "";
+  return syrups.map(s => `${s.name}:${s.pumps}`).join('\n');
+}
+
+function formatPowders(powders?: { name: string; scoops: number }[]): string {
+  if (!powders || powders.length === 0) return "";
+  return powders.map(p => `${p.name}:${p.scoops}`).join('\n');
+}
+
+function RecipeDialog({ open, onOpenChange, recipeId, categories }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  recipe: Recipe | null;
+  recipeId: number | null;
   categories: RecipeCategory[];
 }) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("temel");
+  
+  const { data: recipe, isLoading } = useQuery<Recipe>({
+    queryKey: ['/api/academy/recipe', recipeId],
+    enabled: open && !!recipeId,
+  });
   
   const form = useForm<RecipeFormValues>({
     resolver: zodResolver(recipeFormSchema),
@@ -1025,18 +1283,31 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
       categoryId: undefined,
       coffeeType: "",
       massivoCupMl: 350,
+      massivoEspresso: "",
+      massivoSyrups: "",
+      massivoMilkType: "",
+      massivoMilkMl: undefined,
+      massivoPowders: "",
+      massivoIce: "",
+      massivoGarnish: "",
       massivoSteps: "",
       longDivaCupMl: 550,
+      longDivaEspresso: "",
+      longDivaSyrups: "",
+      longDivaMilkType: "",
+      longDivaMilkMl: undefined,
+      longDivaPowders: "",
+      longDivaIce: "",
+      longDivaGarnish: "",
       longDivaSteps: "",
     },
   });
 
   useEffect(() => {
     if (open && recipe) {
-      // Load sizes from recipe's currentVersion if editing
-      const sizes = (recipe as any).sizes || { massivo: { cupMl: 350, steps: [] }, longDiva: { cupMl: 550, steps: [] } };
-      const massivoSteps = sizes.massivo?.steps?.join('\n') || "";
-      const longDivaSteps = sizes.longDiva?.steps?.join('\n') || "";
+      const sizes = recipe.sizes || { massivo: {}, longDiva: {} };
+      const m = sizes.massivo || {};
+      const l = sizes.longDiva || {};
       
       form.reset({
         nameTr: recipe.nameTr || "",
@@ -1047,13 +1318,26 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
         estimatedMinutes: recipe.estimatedMinutes || 5,
         categoryId: recipe.categoryId || undefined,
         coffeeType: recipe.coffeeType || "",
-        massivoCupMl: sizes.massivo?.cupMl || 350,
-        massivoSteps,
-        longDivaCupMl: sizes.longDiva?.cupMl || 550,
-        longDivaSteps,
+        massivoCupMl: m.cupMl || 350,
+        massivoEspresso: m.espresso || "",
+        massivoSyrups: formatSyrups(m.syrups),
+        massivoMilkType: m.milk?.type || "",
+        massivoMilkMl: m.milk?.ml,
+        massivoPowders: formatPowders(m.powders),
+        massivoIce: m.ice || "",
+        massivoGarnish: m.garnish?.join('\n') || "",
+        massivoSteps: m.steps?.join('\n') || "",
+        longDivaCupMl: l.cupMl || 550,
+        longDivaEspresso: l.espresso || "",
+        longDivaSyrups: formatSyrups(l.syrups),
+        longDivaMilkType: l.milk?.type || "",
+        longDivaMilkMl: l.milk?.ml,
+        longDivaPowders: formatPowders(l.powders),
+        longDivaIce: l.ice || "",
+        longDivaGarnish: l.garnish?.join('\n') || "",
+        longDivaSteps: l.steps?.join('\n') || "",
       });
-    } else if (open && !recipe) {
-      // New recipe - default values
+    } else if (open && !recipeId) {
       form.reset({
         nameTr: "",
         nameEn: "",
@@ -1064,29 +1348,55 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
         categoryId: undefined,
         coffeeType: "",
         massivoCupMl: 350,
+        massivoEspresso: "",
+        massivoSyrups: "",
+        massivoMilkType: "",
+        massivoMilkMl: undefined,
+        massivoPowders: "",
+        massivoIce: "",
+        massivoGarnish: "",
         massivoSteps: "",
         longDivaCupMl: 550,
+        longDivaEspresso: "",
+        longDivaSyrups: "",
+        longDivaMilkType: "",
+        longDivaMilkMl: undefined,
+        longDivaPowders: "",
+        longDivaIce: "",
+        longDivaGarnish: "",
         longDivaSteps: "",
       });
     }
-  }, [open, recipe, form]);
+  }, [open, recipe, recipeId, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: RecipeFormValues) => {
-      const url = recipe 
-        ? `/api/academy/recipes/${recipe.id}`
+      const url = recipeId 
+        ? `/api/academy/recipes/${recipeId}`
         : '/api/academy/recipes';
-      const method = recipe ? 'PATCH' : 'POST';
+      const method = recipeId ? 'PATCH' : 'POST';
       
       const code = data.code || data.nameTr.toUpperCase().substring(0, 3) + String(Date.now()).slice(-3);
       
       const sizes = {
         massivo: {
           cupMl: data.massivoCupMl || 350,
+          espresso: data.massivoEspresso || undefined,
+          syrups: parseSyrups(data.massivoSyrups || ""),
+          milk: data.massivoMilkType ? { type: data.massivoMilkType, ml: data.massivoMilkMl || 0 } : undefined,
+          powders: parsePowders(data.massivoPowders || ""),
+          ice: data.massivoIce || undefined,
+          garnish: (data.massivoGarnish || "").split('\n').filter(s => s.trim()),
           steps: (data.massivoSteps || "").split('\n').filter(s => s.trim()),
         },
         longDiva: {
           cupMl: data.longDivaCupMl || 550,
+          espresso: data.longDivaEspresso || undefined,
+          syrups: parseSyrups(data.longDivaSyrups || ""),
+          milk: data.longDivaMilkType ? { type: data.longDivaMilkType, ml: data.longDivaMilkMl || 0 } : undefined,
+          powders: parsePowders(data.longDivaPowders || ""),
+          ice: data.longDivaIce || undefined,
+          garnish: (data.longDivaGarnish || "").split('\n').filter(s => s.trim()),
           steps: (data.longDivaSteps || "").split('\n').filter(s => s.trim()),
         },
       };
@@ -1112,7 +1422,8 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/academy/recipes'] });
-      toast({ title: "Başarılı", description: recipe ? "Reçete güncellendi" : "Reçete oluşturuldu" });
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/recipe', recipeId] });
+      toast({ title: "Başarılı", description: recipeId ? "Reçete güncellendi" : "Reçete oluşturuldu" });
       onOpenChange(false);
     },
     onError: (error: Error) => {
@@ -1127,8 +1438,14 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {isLoading && recipeId ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : (
+          <>
         <DialogHeader>
-          <DialogTitle>{recipe ? 'Reçete Düzenle' : 'Yeni Reçete'}</DialogTitle>
+          <DialogTitle>{recipeId ? 'Reçete Düzenle' : 'Yeni Reçete'}</DialogTitle>
           <DialogDescription>Reçete bilgilerini girin ve bardak boylarını tanımlayın</DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -1244,14 +1561,136 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
               </TabsContent>
 
               <TabsContent value="massivo" className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="massivoCupMl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bardak (ml)</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} min={1} placeholder="350" data-testid="input-massivo-cup" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="massivoEspresso"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Espresso</FormLabel>
+                        <Select value={field.value || ""} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-massivo-espresso">
+                              <SelectValue placeholder="Seç..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {ESPRESSO_OPTIONS.map(opt => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="massivoMilkType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Süt Tipi</FormLabel>
+                        <Select value={field.value || ""} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-massivo-milk">
+                              <SelectValue placeholder="Seç..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {MILK_OPTIONS.map(opt => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="massivoMilkMl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Süt (ml)</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} min={0} placeholder="200" data-testid="input-massivo-milk-ml" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={form.control}
-                  name="massivoCupMl"
+                  name="massivoIce"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bardak Kapasitesi (ml)</FormLabel>
+                      <FormLabel>Buz</FormLabel>
+                      <Select value={field.value || ""} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-massivo-ice">
+                            <SelectValue placeholder="Seç..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ICE_OPTIONS.map(opt => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="massivoSyrups"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Şuruplar (isim:pump)</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} min={1} placeholder="350" data-testid="input-massivo-cup" />
+                        <Textarea {...field} placeholder="Vanilya:2&#10;Karamel:1" rows={2} data-testid="input-massivo-syrups" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="massivoPowders"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tozlar (isim:scoop)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Çikolata:2&#10;Tarçın:1" rows={2} data-testid="input-massivo-powders" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="massivoGarnish"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Garnitür</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Çikolata sosu&#10;Krema" rows={2} data-testid="input-massivo-garnish" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1264,7 +1703,7 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
                     <FormItem>
                       <FormLabel>Hazırlama Adımları</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Adımları satır satır girin..." rows={6} data-testid="input-massivo-steps" />
+                        <Textarea {...field} placeholder="1. Shot çek&#10;2. Süt ekle&#10;3. Karıştır" rows={4} data-testid="input-massivo-steps" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1273,14 +1712,136 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
               </TabsContent>
 
               <TabsContent value="longdiva" className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="longDivaCupMl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bardak (ml)</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} min={1} placeholder="550" data-testid="input-longdiva-cup" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="longDivaEspresso"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Espresso</FormLabel>
+                        <Select value={field.value || ""} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-longdiva-espresso">
+                              <SelectValue placeholder="Seç..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {ESPRESSO_OPTIONS.map(opt => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="longDivaMilkType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Süt Tipi</FormLabel>
+                        <Select value={field.value || ""} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-longdiva-milk">
+                              <SelectValue placeholder="Seç..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {MILK_OPTIONS.map(opt => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="longDivaMilkMl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Süt (ml)</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} min={0} placeholder="300" data-testid="input-longdiva-milk-ml" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={form.control}
-                  name="longDivaCupMl"
+                  name="longDivaIce"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bardak Kapasitesi (ml)</FormLabel>
+                      <FormLabel>Buz</FormLabel>
+                      <Select value={field.value || ""} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-longdiva-ice">
+                            <SelectValue placeholder="Seç..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ICE_OPTIONS.map(opt => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="longDivaSyrups"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Şuruplar (isim:pump)</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} min={1} placeholder="550" data-testid="input-longdiva-cup" />
+                        <Textarea {...field} placeholder="Vanilya:3&#10;Karamel:2" rows={2} data-testid="input-longdiva-syrups" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="longDivaPowders"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tozlar (isim:scoop)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Çikolata:3&#10;Tarçın:1" rows={2} data-testid="input-longdiva-powders" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="longDivaGarnish"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Garnitür</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Çikolata sosu&#10;Krema" rows={2} data-testid="input-longdiva-garnish" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1293,7 +1854,7 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
                     <FormItem>
                       <FormLabel>Hazırlama Adımları</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Adımları satır satır girin..." rows={6} data-testid="input-longdiva-steps" />
+                        <Textarea {...field} placeholder="1. Shot çek&#10;2. Süt ekle&#10;3. Karıştır" rows={4} data-testid="input-longdiva-steps" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1312,6 +1873,8 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
             </DialogFooter>
           </form>
         </Form>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
