@@ -491,7 +491,15 @@ export default function IKPage() {
         </div>
 
       {/* Accordion Sections */}
-      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="w-full space-y-3 sm:space-y-4">
+      <Accordion 
+        type="multiple" 
+        defaultValue={
+          canViewAttendance 
+            ? ["personel", "disiplin", "onboarding", "documents", "mesai"]
+            : ["personel", "disiplin", "onboarding", "documents"]
+        } 
+        className="w-full space-y-3 sm:space-y-4"
+      >
         {/* Section 1: Personel Listesi */}
         <AccordionItem value="personel" data-testid="accordion-personel">
           <Card>
