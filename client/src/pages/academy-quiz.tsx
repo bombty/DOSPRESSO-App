@@ -32,7 +32,6 @@ export default function AcademyQuiz() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
-  const [showRetryInfo, setShowRetryInfo] = useState(false);
 
   // Fetch attempt info to check if retry is allowed
   const { data: attemptInfo, isLoading: attemptsLoading } = useQuery<AttemptInfo>({
@@ -96,6 +95,8 @@ export default function AcademyQuiz() {
     onSuccess: () => {
       toast({ title: "Quiz tamamlandı", description: "Sonuçlarınız kaydedildi" });
       queryClient.invalidateQueries({ queryKey: ["/api/academy/quiz-results"] });
+      // Invalidate attempts to refresh gating status
+      queryClient.invalidateQueries({ queryKey: [`/api/academy/quiz/${quizId}/attempts`] });
     },
   });
 

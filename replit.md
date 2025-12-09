@@ -6,28 +6,19 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 8, 2025)
-- ✅ **TURN 28-29 - Notification System Full Recovery (COMPLETED)**:
-  * **Emergency Recovery**: Fixed 1057 LSP errors caused by sed command corruption
-  * **Notification Schema**: Standardized to use `link` field (removed broken `data` & `actionUrl`)
-  * **Supervisor Notifications**: Fixed task assignment notifications to supervisors/supervisor_buddies
-  * **Manager Alerts**: HQ admin notifications on task completion ready for review
-  * **Task Status Notifications**: Verified/rejected task notifications with email async support
-  * **Reminders System**: Fixed overdue task & maintenance reminder notifications (server/reminders.ts)
-  * **Time Window Validation**: Active (TIME_WINDOW_VIOLATION check in place)
-  * **Photo Requirements**: Schema support ready (requiresPhoto field + validation logic)
-  * **Checklist Reminders**: Daily checklist completion reminders implemented & active
-  * **System Health**: All backup, SLA, maintenance, and reminder systems operational
-  * **Status**: ✅ **FULLY OPERATIONAL** - App stable, all features live, ready for deployment
+## Recent Changes (December 9, 2025)
+- ✅ **Quiz Failure Gating & Retry System (COMPLETED)**:
+  * **24-Hour Cooldown**: Failed quiz attempts trigger 24-hour retry cooldown
+  * **Attempt Tracking**: `/api/academy/quiz/:quizId/attempts` endpoint tracks user attempts
+  * **Locked State UI**: Clear UI showing remaining cooldown time + attempt count
+  * **Success State**: Passed quizzes show "completed" trophy state - no re-entry needed
+  * **Result Page Enhanced**: Shows retry info, remaining attempts, and next steps
+  * **Max Attempts**: 3 attempts configured per quiz (configurable)
+  * **Status**: ✅ **QUIZ GATING SYSTEM ACTIVE**
 
-- ✅ **TURN 30-31 - Academy Quiz System Fix (COMPLETED)**:
-  * **Quiz Data Model Unified**: Added `careerQuizId` FK to `quiz_questions` table - now supports both module quizzes (training modules) and career quizzes (career levels)
-  * **Quiz Endpoint Enhanced**: `getQuizQuestions()` supports dual lookup - module quiz by ID first, then falls back to career quiz lookup
-  * **Frontend Corrected**: Fixed `academy.tsx` to use numeric `quiz.id` instead of string `quiz.quizId` slug
-  * **Sample Questions Added**: 5 espresso quiz questions added for career_quiz_id=1 (Espresso 101)
-  * **correctAnswerIndex Column**: Added for proper answer validation during quiz grading
-  * **System Status**: HEALTHY - backup (441 records), reminders, SLA checks all running
-  * **Status**: ✅ **QUIZ SYSTEM FULLY OPERATIONAL** - Questions loading correctly, career progression quiz active
+## Previous Changes (December 8, 2025)
+- ✅ **Notification System Full Recovery**: Fixed 1057 LSP errors, standardized `link` field, all notifications working
+- ✅ **Academy Quiz System Fix**: Unified quiz data model, career quiz support, sample questions added
 
 ## System Architecture
 ### UI/UX Decisions
