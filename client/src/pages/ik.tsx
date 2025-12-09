@@ -117,6 +117,7 @@ export default function IKPage() {
   const { toast } = useToast();
 
   // Filters - Section 1: Employee List
+  const [categoryFilter, setCategoryFilter] = useState<string>("all"); // Şubeler, HQ, Fabrika
   const [branchFilter, setBranchFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [probationFilter, setProbationFilter] = useState<string>("all");
@@ -249,6 +250,17 @@ export default function IKPage() {
 
   // Filter employees (branchFilter handled by backend via query params)
   const filteredEmployees = employees.filter((emp) => {
+    // Category filter (Şubeler/HQ/Fabrika)
+    if (categoryFilter !== "all") {
+      const isHQ = isHQRole(emp.role as any);
+      const isFabrika = emp.role === "fabrika";
+      const isSubeler = !isHQ && !isFabrika;
+      
+      if (categoryFilter === "hq" && !isHQ) return false;
+      if (categoryFilter === "fabrika" && !isFabrika) return false;
+      if (categoryFilter === "subeler" && !isSubeler) return false;
+    }
+    
     // Role filter
     if (roleFilter !== "all" && emp.role !== roleFilter) return false;
     
@@ -409,6 +421,22 @@ export default function IKPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-wrap gap-2 sm:gap-3">
+                    {/* Category filter - Şubeler/HQ/Fabrika */}
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="text-sm font-medium">Kategori</label>
+                      <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <SelectTrigger data-testid="select-category-filter">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tümü</SelectItem>
+                          <SelectItem value="subeler">Şubeler</SelectItem>
+                          <SelectItem value="hq">HQ</SelectItem>
+                          <SelectItem value="fabrika">Fabrika</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     {/* Branch filter - only for HQ users */}
                     {user?.role && isHQRole(user.role as any) && (
                       <div className="flex-1 min-w-[200px]">

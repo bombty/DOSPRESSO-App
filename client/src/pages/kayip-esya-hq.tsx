@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Briefcase, PackageCheck, Building2, MapPin, User, Calendar, Phone, Clock, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -40,6 +41,7 @@ export default function KayipEsyaHQPage() {
   const { user } = useAuth();
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedItem, setSelectedItem] = useState<LostFoundItemEnriched | null>(null);
 
   const { data: items = [], isLoading } = useQuery<LostFoundItemEnriched[]>({
     queryKey: ["/api/lost-found/all"],
@@ -223,8 +225,9 @@ export default function KayipEsyaHQPage() {
               {filteredItems.map((item) => (
                 <Card
                   key={item.id}
-                  className={`hover-elevate ${item.status === "teslim_edildi" ? "opacity-70" : ""}`}
+                  className={`hover-elevate cursor-pointer ${item.status === "teslim_edildi" ? "opacity-70" : ""}`}
                   data-testid={`card-item-${item.id}`}
+                  onClick={() => setSelectedItem(item)}
                 >
                   <CardContent className="p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
@@ -325,6 +328,75 @@ export default function KayipEsyaHQPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Eşya Detayları</DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Açıklama</label>
+                <p className="text-sm text-muted-foreground">{selectedItem.itemDescription}</p>
+              </div>
+
+              {selectedItem.photoUrl && (
+                <div>
+                  <label className="text-sm font-medium">Fotoğraf</label>
+                  <img
+                    src={selectedItem.photoUrl}
+                    alt="Eşya"
+                    className="w-full h-40 object-cover rounded-md"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-medium">Bulunduğu Yer</label>
+                <p className="text-sm text-muted-foreground">{selectedItem.foundArea}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-sm font-medium">Tarih</label>
+                  <p className="text-sm text-muted-foreground">{selectedItem.foundDate}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Saat</label>
+                  <p className="text-sm text-muted-foreground">{selectedItem.foundTime}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Bulan</label>
+                <p className="text-sm text-muted-foreground">{selectedItem.foundByName}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Şube</label>
+                <p className="text-sm text-muted-foreground">{selectedItem.branchName}</p>
+              </div>
+
+              {selectedItem.status === "teslim_edildi" && (
+                <div className="p-2 bg-success/10 dark:bg-success/5 rounded-md space-y-2">
+                  <div>
+                    <label className="text-sm font-medium">Alan</label>
+                    <p className="text-sm text-muted-foreground">{selectedItem.ownerName}</p>
+                  </div>
+                  {selectedItem.ownerPhone && (
+                    <div>
+                      <label className="text-sm font-medium">Telefon</label>
+                      <p className="text-sm text-muted-foreground">{selectedItem.ownerPhone}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

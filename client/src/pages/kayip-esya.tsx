@@ -142,6 +142,10 @@ export default function KayipEsyaPage() {
     setIsHandoverDialogOpen(true);
   };
 
+  const openDetailDialog = (item: LostFoundItemEnriched) => {
+    setSelectedItem(item);
+  };
+
   const formatDate = (date) => {
     if (!date) return "-";
     try {
@@ -248,7 +252,7 @@ export default function KayipEsyaPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               {foundItems.map((item) => (
-                <Card key={item.id} className="hover-elevate" data-testid={`card-item-${item.id}`}>
+                <Card key={item.id} className="hover-elevate cursor-pointer" data-testid={`card-item-${item.id}`} onClick={() => openDetailDialog(item)}>
                   <CardContent className="p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -665,6 +669,82 @@ export default function KayipEsyaPage() {
               alt="Fotoğraf"
               className="w-full h-auto rounded-md"
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedItem && !isHandoverDialogOpen} onOpenChange={(open) => !open && setSelectedItem(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Eşya Detayları</DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Açıklama</label>
+                <p className="text-sm text-muted-foreground">{selectedItem.itemDescription}</p>
+              </div>
+
+              {selectedItem.photoUrl && (
+                <div>
+                  <label className="text-sm font-medium">Fotoğraf</label>
+                  <img
+                    src={selectedItem.photoUrl}
+                    alt="Eşya"
+                    className="w-full h-40 object-cover rounded-md"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-medium">Bulunduğu Yer</label>
+                <p className="text-sm text-muted-foreground">{selectedItem.foundArea}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-sm font-medium">Tarih</label>
+                  <p className="text-sm text-muted-foreground">{selectedItem.foundDate}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Saat</label>
+                  <p className="text-sm text-muted-foreground">{selectedItem.foundTime}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Bulan</label>
+                <p className="text-sm text-muted-foreground">{selectedItem.foundByName}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Şube</label>
+                <p className="text-sm text-muted-foreground">{selectedItem.branchName}</p>
+              </div>
+
+              {selectedItem.notes && (
+                <div>
+                  <label className="text-sm font-medium">Notlar</label>
+                  <p className="text-sm text-muted-foreground">{selectedItem.notes}</p>
+                </div>
+              )}
+
+              {selectedItem.status === "teslim_edildi" && (
+                <div className="p-2 bg-success/10 dark:bg-success/5 rounded-md space-y-2">
+                  <div>
+                    <label className="text-sm font-medium">Alan</label>
+                    <p className="text-sm text-muted-foreground">{selectedItem.ownerName}</p>
+                  </div>
+                  {selectedItem.ownerPhone && (
+                    <div>
+                      <label className="text-sm font-medium">Telefon</label>
+                      <p className="text-sm text-muted-foreground">{selectedItem.ownerPhone}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>
