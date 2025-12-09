@@ -11801,6 +11801,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==========================================
+  // GLOBAL SEARCH API
+  // ==========================================
+  
+  // GET /api/search - Global search across users, recipes, tasks, branches, equipment
+  app.get('/api/search', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const query = req.query.q as string;
+      
+      // Validate query
+      if (!query || query.trim().length < 2) {
+        return res.status(400).json({ message: "Arama sorgusu en az 2 karakter olmalı" });
+      }
+      
+      const isHQ = isHQRole(user.role);
+      const userBranchId = user.branchId;
+      
+      const results = await storage.searchEntities(
+        query.trim(),
+        userBranchId,
+        isHQ,
+        5 // max per category
+      );
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Global search error:", error);
+      res.status(500).json({ message: "Arama sırasında hata oluştu" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -7,6 +7,7 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
 ## Recent Session Summary (Dec 9, 2025)
+✅ **Global Search** - Implemented system-wide search across Users, Recipes, Tasks, Branches, Equipment with RBAC (HQ sees all, branch sees own)
 ✅ **Code Quality & Performance** - Fixed React hooks, optimized E2E Raporlar page, auto-open Aylık Mesai Özeti accordion
 ✅ **PWA Implementation** - Full Progressive Web App setup with service worker, manifest.json, offline support  
 ✅ **Type Safety Fixes** - All TypeScript errors resolved (8 LSP errors fixed in vardiya-checkin.tsx)

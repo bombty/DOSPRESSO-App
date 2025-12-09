@@ -6383,6 +6383,173 @@ export class DatabaseStorage implements IStorage {
 
     return query;
   }
+
+  // Global Search - search across multiple entities
+  async searchEntities(query: string, userBranchId: number | null, isHQ: boolean, maxPerCategory = 5): Promise<{
+    users: Array<{ id: string; firstName: string; lastName: string; role: string; branchId: number | null }>;
+    recipes: Array<{ id: number; name: string; category: string }>;
+    tasks: Array<{ id: number; title: string; status: string; branchId: number | null }>;
+    branches: Array<{ id: number; name: string; address: string | null }>;
+    equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
+  }> {
+    const searchPattern = `%${query.toLowerCase()}%`;
+    
+    // Search users - HQ sees all, branch sees own branch only
+    // If branch user has no branchId, return empty results for users
+    const usersQuery = isHQ 
+      ? db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+          branchId: users.branchId,
+        })
+        .from(users)
+        .where(
+          or(
+            sql`LOWER(${users.firstName}) LIKE ${searchPattern}`,
+            sql`LOWER(${users.lastName}) LIKE ${searchPattern}`,
+            sql`LOWER(${users.username}) LIKE ${searchPattern}`
+          )
+        )
+        .limit(maxPerCategory)
+      : userBranchId 
+        ? db.select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            role: users.role,
+            branchId: users.branchId,
+          })
+          .from(users)
+          .where(
+            and(
+              eq(users.branchId, userBranchId),
+              or(
+                sql`LOWER(${users.firstName}) LIKE ${searchPattern}`,
+                sql`LOWER(${users.lastName}) LIKE ${searchPattern}`,
+                sql`LOWER(${users.username}) LIKE ${searchPattern}`
+              )
+            )
+          )
+          .limit(maxPerCategory)
+        : Promise.resolve([]);
+
+    // Search recipes - all users can see recipes
+    const recipesQuery = db.select({
+      id: recipes.id,
+      name: recipes.name,
+      category: recipes.category,
+    })
+    .from(recipes)
+    .where(
+      or(
+        sql`LOWER(${recipes.name}) LIKE ${searchPattern}`,
+        sql`LOWER(${recipes.category}) LIKE ${searchPattern}`
+      )
+    )
+    .limit(maxPerCategory);
+
+    // Search tasks - HQ sees all, branch sees own
+    // If branch user has no branchId, return empty results for tasks
+    const tasksQuery = isHQ
+      ? db.select({
+          id: tasks.id,
+          title: tasks.title,
+          status: tasks.status,
+          branchId: tasks.branchId,
+        })
+        .from(tasks)
+        .where(sql`LOWER(${tasks.title}) LIKE ${searchPattern}`)
+        .limit(maxPerCategory)
+      : userBranchId
+        ? db.select({
+            id: tasks.id,
+            title: tasks.title,
+            status: tasks.status,
+            branchId: tasks.branchId,
+          })
+          .from(tasks)
+          .where(
+            and(
+              eq(tasks.branchId, userBranchId),
+              sql`LOWER(${tasks.title}) LIKE ${searchPattern}`
+            )
+          )
+          .limit(maxPerCategory)
+        : Promise.resolve([]);
+
+    // Search branches - HQ only
+    const branchesQuery = isHQ 
+      ? db.select({
+          id: branches.id,
+          name: branches.name,
+          address: branches.address,
+        })
+        .from(branches)
+        .where(
+          or(
+            sql`LOWER(${branches.name}) LIKE ${searchPattern}`,
+            sql`LOWER(${branches.address}) LIKE ${searchPattern}`
+          )
+        )
+        .limit(maxPerCategory)
+      : Promise.resolve([]);
+
+    // Search equipment - HQ sees all, branch sees own
+    // If branch user has no branchId, return empty results for equipment
+    const equipmentQuery = isHQ
+      ? db.select({
+          id: equipment.id,
+          name: equipment.name,
+          type: equipment.equipmentType,
+          branchId: equipment.branchId,
+        })
+        .from(equipment)
+        .where(
+          or(
+            sql`LOWER(${equipment.name}) LIKE ${searchPattern}`,
+            sql`LOWER(${equipment.equipmentType}) LIKE ${searchPattern}`
+          )
+        )
+        .limit(maxPerCategory)
+      : userBranchId
+        ? db.select({
+            id: equipment.id,
+            name: equipment.name,
+            type: equipment.equipmentType,
+            branchId: equipment.branchId,
+          })
+          .from(equipment)
+          .where(
+            and(
+              eq(equipment.branchId, userBranchId),
+              or(
+                sql`LOWER(${equipment.name}) LIKE ${searchPattern}`,
+                sql`LOWER(${equipment.equipmentType}) LIKE ${searchPattern}`
+              )
+            )
+          )
+          .limit(maxPerCategory)
+        : Promise.resolve([]);
+
+    // Execute all queries in parallel
+    const [usersResult, recipesResult, tasksResult, branchesResult, equipmentResult] = await Promise.all([
+      usersQuery,
+      recipesQuery,
+      tasksQuery,
+      branchesQuery,
+      equipmentQuery,
+    ]);
+
+    return {
+      users: usersResult,
+      recipes: recipesResult,
+      tasks: tasksResult,
+      branches: branchesResult,
+      equipment: equipmentResult,
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();
