@@ -10320,6 +10320,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TRAINING MODULE COMPLETION
   // ========================================
   
+  // POST /api/training/modules/ai-generate - Generate module with AI
+  app.post('/api/training/modules/ai-generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const { prompt } = req.body;
+      if (!prompt) return res.status(400).json({ message: "Prompt gerekli" });
+
+      const { generateObject } = await import('ai');
+      const { openai } = await import('@ai-sdk/openai');
+      
+      const { object } = await generateObject({
+        model: openai('gpt-4o-mini'),
+        schema: z.object({
+          title: z.string(),
+          description: z.string(),
+          level: z.enum(['beginner', 'intermediate', 'advanced']),
+          estimatedDuration: z.number(),
+          learningObjectives: z.array(z.string()),
+          steps: z.array(z.object({
+            stepNumber: z.number(),
+            title: z.string(),
+            content: z.string(),
+          })),
+        }),
+        prompt: `Bir eğitim modülü oluştur: ${prompt}. JSON olarak dön.`,
+      });
+
+      const created = await storage.createTrainingModule({
+        title: object.title,
+        description: object.description,
+        level: object.level,
+        estimatedDuration: object.estimatedDuration,
+        isActive: true,
+        isPublished: false,
+        learningObjectives: object.learningObjectives,
+        steps: object.steps,
+      });
+
+      res.json(created);
+    } catch (error: Error | unknown) {
+      console.error("AI module generation error:", error);
+      res.status(500).json({ message: "Modül oluşturulamadı" });
+    }
+  });
+  
   // POST /api/training/modules/:id/complete - Mark module as completed
   app.post('/api/training/modules/:id/complete', isAuthenticated, async (req: any, res) => {
     try {

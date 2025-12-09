@@ -25,7 +25,7 @@ import {
   Brain, GraduationCap, Trophy, Flame, Star, Zap, CheckCircle, Users, 
   BarChart3, Settings, Award, TrendingUp, Clock, Eye, ArrowLeft,
   Snowflake, IceCream, Citrus, Droplets, Leaf, Package, CircleDot, Flower2,
-  Video, ImageIcon, ListOrdered, Sparkles, Search, Copy, EyeOff, GripVertical
+  Video, ImageIcon, ListOrdered, Sparkles, Search, Copy, EyeOff, GripVertical, Loader2
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -149,6 +149,7 @@ export default function AdminAcademy() {
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
   const [editingRecipeId, setEditingRecipeId] = useState<number | null>(null);
   const [duplicatingRecipe, setDuplicatingRecipe] = useState<Recipe | null>(null);
+  const [aiModuleDialogOpen, setAiModuleDialogOpen] = useState(false);
 
   const handleDuplicateRecipe = (recipe: Recipe) => {
     setDuplicatingRecipe(recipe);
@@ -302,6 +303,11 @@ export default function AdminAcademy() {
         categories={recipeCategories}
         duplicatingRecipe={duplicatingRecipe}
       />
+
+      <AIModuleDialog
+        open={aiModuleDialogOpen}
+        onOpenChange={setAiModuleDialogOpen}
+      />
     </div>
   );
 }
@@ -324,7 +330,7 @@ function OverviewTab({ hubCategories, recipeCategories, modules, quizzes, quizSt
     <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map((stat, idx) => (
-          <Card key={idx}>
+          <Card key={idx} className="hover-elevate cursor-pointer" onClick={() => {}} data-testid={`stat-card-${idx}`}>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg bg-muted ${stat.color}`}>
@@ -376,18 +382,18 @@ function OverviewTab({ hubCategories, recipeCategories, modules, quizzes, quizSt
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 rounded-lg bg-muted/50">
+              <div className="text-center p-3 rounded-lg bg-muted/50 hover-elevate cursor-pointer" data-testid="stat-total-attempts">
                 <p className="text-2xl font-bold">{quizStats?.totalAttempts || 0}</p>
                 <p className="text-xs text-muted-foreground">Toplam Deneme</p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-muted/50">
+              <div className="text-center p-3 rounded-lg bg-muted/50 hover-elevate cursor-pointer" data-testid="stat-pass-rate">
                 <p className="text-2xl font-bold text-green-600">{quizStats?.passRate || 0}%</p>
                 <p className="text-xs text-muted-foreground">Başarı Oranı</p>
               </div>
             </div>
             <div className="mt-4 space-y-2">
               {quizzes.slice(0, 3).map((quiz) => (
-                <div key={quiz.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                <div key={quiz.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover-elevate cursor-pointer" data-testid={`quiz-list-item-${quiz.id}`}>
                   <span className="text-sm truncate flex-1">{quiz.title}</span>
                   <Badge variant="secondary" className="text-xs">%{quiz.passingScore}</Badge>
                 </div>
@@ -554,6 +560,7 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
   onAdd: () => void;
 }) {
   const [filterLevel, setFilterLevel] = useState("all");
+  const [aiModuleDialogOpen, setAiModuleDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const filteredModules = modules.filter((m) => {
@@ -603,7 +610,7 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
               <Plus className="w-4 h-4 mr-1" />
               Yeni Modül
             </Button>
-            <Button size="sm" variant="outline" onClick={() => {/* AI dialog açılacak */}} data-testid="button-ai-module">
+            <Button size="sm" variant="outline" onClick={() => setAiModuleDialogOpen(true)} data-testid="button-ai-module">
               <Sparkles className="w-4 h-4 mr-1" />
               AI ile Oluştur
             </Button>
@@ -667,6 +674,12 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
         )}
       </CardContent>
     </Card>
+
+    <AIModuleDialog
+      open={aiModuleDialogOpen}
+      onOpenChange={setAiModuleDialogOpen}
+    />
+    </>
   );
 }
 
@@ -2773,6 +2786,107 @@ const questionSchema = z.object({
   explanation: z.string().optional(),
   points: z.number().min(1).default(1),
 });
+
+const aiModuleSchema = z.object({
+  prompt: z.string().min(10, "Açıklama en az 10 karakter olmalı"),
+});
+
+type AIModuleFormValues = z.infer<typeof aiModuleSchema>;
+
+function AIModuleDialog({ open, onOpenChange }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const form = useForm<AIModuleFormValues>({
+    resolver: zodResolver(aiModuleSchema),
+    defaultValues: {
+      prompt: "",
+    },
+  });
+
+  const handleGenerate = async (data: AIModuleFormValues) => {
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/training/modules/ai-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ prompt: data.prompt }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const moduleData = await res.json();
+      queryClient.invalidateQueries({ queryKey: ['/api/training/modules'] });
+      toast({ title: "Başarılı", description: "AI modül oluşturuldu", });
+      form.reset();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            AI ile Modül Oluştur
+          </DialogTitle>
+          <DialogDescription>
+            Yapay zeka tarafından hazırlanmış eğitim modülünü oluşturun
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleGenerate)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="prompt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Modül Açıklaması</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Örn: Espresso çekme teknikleri hakkında yeni modül oluştur..."
+                      {...field}
+                      rows={5}
+                      data-testid="input-ai-module-prompt"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                İptal
+              </Button>
+              <Button type="submit" disabled={isGenerating} data-testid="button-generate-ai-module">
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Oluşturuluyor...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Oluştur
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function QuestionDialog({ 
   open, 
