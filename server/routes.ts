@@ -1133,7 +1133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const completerName = completer?.firstName && completer?.lastName
           ? `${completer.firstName} ${completer.lastName}`
           : 'Bir çalışan';
-        const branch = existingTask.branchId ? await storage.getBranch(existingTask.branchId) : null;
+        const branch = task.branchId ? await storage.getBranch(task.branchId) : null;
         const branchName = branch?.name || 'Bilinmeyen Şube';
         
         for (const admin of hqAdmins) {
@@ -1145,8 +1145,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               userId: admin.id,
               type: 'task_completed',
               title: 'Görev İnceleme Bekliyor',
-              message: `${completerName} (${branchName}) bir görevi tamamladı ve onayınızı bekliyor: "${existingTask.description?.substring(0, 50)}${(existingTask.description?.length || 0) > 50 ? '...' : ''}"`,
-              link: `/gorevler?taskId=${existingTask.id}`,
+              message: `${completerName} (${branchName}) bir görevi tamamladı ve onayınızı bekliyor: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+              link: `/gorevler?taskId=${task.id}`,
             });
             
             // Send email to HQ admin
@@ -1154,7 +1154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               sendNotificationEmail(
                 admin.email,
                 'Görev İnceleme Bekliyor - DOSPRESSO',
-                `Merhaba ${admin.firstName || 'Değerli Admin'},\n\n${completerName} (${branchName}) bir görevi tamamladı ve onayınızı bekliyor.\n\nGörev: ${existingTask.description}\n\nGörevi incelemek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
+                `Merhaba ${admin.firstName || 'Değerli Admin'},\n\n${completerName} (${branchName}) bir görevi tamamladı ve onayınızı bekliyor.\n\nGörev: ${task.description}\n\nGörevi incelemek için DOSPRESSO uygulamasına giriş yapın.\n\nSaygılarımızla,\nDOSPRESSO Ekibi`
               ).catch(err => console.error("Background email error:", err));
             }
           } catch (notifError) {
