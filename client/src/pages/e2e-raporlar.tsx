@@ -147,16 +147,17 @@ export default function E2EReportsPage() {
     queryKey: ["/api/faults"],
   });
 
+  const performanceQueryKey = useMemo(() => {
+    const params = new URLSearchParams();
+    if (effectiveBranchId) {
+      params.append("branchId", effectiveBranchId.toString());
+    }
+    const queryStr = params.toString();
+    return `/api/performance${queryStr ? `?${queryStr}` : ""}`;
+  }, [effectiveBranchId]);
+
   const { data: performanceMetrics = [], isLoading: isLoadingPerformance, isError: isErrorPerformance } = useQuery<PerformanceMetric[]>({
-    queryKey: ["/api/performance", effectiveBranchId ?? "all"],
-    queryFn: async () => {
-      const url = effectiveBranchId 
-        ? `/api/performance?branchId=${effectiveBranchId}` 
-        : "/api/performance";
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch performance metrics");
-      return res.json();
-    },
+    queryKey: [performanceQueryKey],
   });
 
   const { data: checklistTasks = [], isLoading: isLoadingChecklists, isError: isErrorChecklists } = useQuery<ChecklistTask[]>({
