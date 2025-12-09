@@ -384,22 +384,24 @@ export default function IKPage() {
   };
 
   return (
-    <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">İK Yönetimi</h1>
-          <p className="text-muted-foreground">Personel yönetimi ve deneme süresi takibi</p>
+    <div className="w-full min-h-screen bg-background p-3 sm:p-4">
+      <div className="max-w-full mx-auto space-y-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">İK Yönetimi</h1>
+            <p className="text-sm text-muted-foreground">Personel yönetimi ve deneme süresi takibi</p>
+          </div>
+          {canCreate && (
+            <Button onClick={() => setAddDialogOpen(true)} data-testid="button-add-employee">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Yeni Personel Ekle
+            </Button>
+          )}
         </div>
-        {canCreate && (
-          <Button onClick={() => setAddDialogOpen(true)} data-testid="button-add-employee">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Yeni Personel Ekle
-          </Button>
-        )}
-      </div>
 
       {/* Accordion Sections */}
-      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="w-full space-y-2 sm:space-y-3">
+      <Accordion type="multiple" defaultValue={["personel", "disiplin", "onboarding", "documents"]} className="w-full space-y-3 sm:space-y-4">
         {/* Section 1: Personel Listesi */}
         <AccordionItem value="personel" data-testid="accordion-personel">
           <Card>
@@ -411,21 +413,21 @@ export default function IKPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CardContent className="w-full space-y-2 sm:space-y-3">
-                {/* Filters */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+              <CardContent className="w-full space-y-3 sm:space-y-4">
+                {/* Filters Card */}
+                <Card className="bg-muted/30 border-dashed">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
                       <Filter className="h-4 w-4" />
                       Filtreler
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex flex-wrap gap-2 sm:gap-3">
+                  <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {/* Category filter - Şubeler/HQ/Fabrika */}
-                    <div className="flex-1 min-w-[200px]">
-                      <label className="text-sm font-medium">Kategori</label>
+                    <div>
+                      <label className="text-sm font-medium">Kategori *</label>
                       <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                        <SelectTrigger data-testid="select-category-filter">
+                        <SelectTrigger data-testid="select-category-filter" className="h-9">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -439,10 +441,10 @@ export default function IKPage() {
 
                     {/* Branch filter - only for HQ users */}
                     {user?.role && isHQRole(user.role as any) && (
-                      <div className="flex-1 min-w-[200px]">
+                      <div>
                         <label className="text-sm font-medium">Şube</label>
                         <Select value={branchFilter} onValueChange={setBranchFilter}>
-                          <SelectTrigger data-testid="select-branch-filter">
+                          <SelectTrigger data-testid="select-branch-filter" className="h-9">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -457,10 +459,10 @@ export default function IKPage() {
                       </div>
                     )}
 
-                    <div className="flex-1 min-w-[200px]">
+                    <div>
                       <label className="text-sm font-medium">Rol</label>
                       <Select value={roleFilter} onValueChange={setRoleFilter}>
-                        <SelectTrigger data-testid="select-role-filter">
+                        <SelectTrigger data-testid="select-role-filter" className="h-9">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -474,10 +476,10 @@ export default function IKPage() {
                       </Select>
                     </div>
 
-                    <div className="flex-1 min-w-[200px]">
+                    <div>
                       <label className="text-sm font-medium">Deneme Süresi</label>
                       <Select value={probationFilter} onValueChange={setProbationFilter}>
-                        <SelectTrigger data-testid="select-probation-filter">
+                        <SelectTrigger data-testid="select-probation-filter" className="h-9">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -490,10 +492,10 @@ export default function IKPage() {
                       </Select>
                     </div>
 
-                    <div className="flex-1 min-w-[200px]">
+                    <div>
                       <label className="text-sm font-medium">Eğitim Durumu</label>
                       <Select value={trainingFilter} onValueChange={setTrainingFilter}>
-                        <SelectTrigger data-testid="select-training-filter">
+                        <SelectTrigger data-testid="select-training-filter" className="h-9">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -507,11 +509,48 @@ export default function IKPage() {
                   </CardContent>
                 </Card>
 
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                  <Card className="hover-elevate">
+                    <CardContent className="p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground">Toplam Personel</p>
+                      <p className="text-xl sm:text-2xl font-bold">{filteredEmployees.length}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="hover-elevate">
+                    <CardContent className="p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground">Deneme Süresinde</p>
+                      <p className="text-xl sm:text-2xl font-bold">
+                        {filteredEmployees.filter(e => e.probationEndDate && differenceInDays(new Date(e.probationEndDate), new Date()) >= 0).length}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="hover-elevate">
+                    <CardContent className="p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground">Eğitim Tamamlı</p>
+                      <p className="text-xl sm:text-2xl font-bold">
+                        {filteredEmployees.filter(e => {
+                          const stats = userTrainingCompletion.get(e.id);
+                          return stats && stats.total > 0 && stats.completed === stats.total;
+                        }).length}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="hover-elevate hidden sm:block">
+                    <CardContent className="p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground">HQ Personel</p>
+                      <p className="text-xl sm:text-2xl font-bold">
+                        {filteredEmployees.filter(e => isHQRole(e.role as any)).length}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
                 {/* Employee Table */}
                 {isLoading ? (
-                  <div className="flex flex-col gap-3 sm:gap-4">
+                  <div className="flex flex-col gap-2 sm:gap-3">
                     {[...Array(5)].map((_, i) => (
-                      <Skeleton key={i} className="h-12 w-full" />
+                      <Skeleton key={i} className="h-16 w-full" />
                     ))}
                   </div>
                 ) : (
