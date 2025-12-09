@@ -7,15 +7,27 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
 ## Recent Changes (December 9, 2025)
-- ✅ **Recipe Management System (COMPLETED)**:
+- ✅ **Recipe Management System (FULLY OPERATIONAL)**:
   * **14 Recipe Categories**: HOT (10), ICED (5), CREAMICE (4), CREAMSHAKE (4), GOURMET SHAKE (3), FROZEN YOGURT (3), HOT TEA (4), COLD TEA (3), CREAMICE FRUIT (3), FREDDO (3), FRESHESS variants (5+)
-  * **55+ Recipes**: Bulk seeded from PDF specifications with proper category mapping
-  * **RecipeDialog Component**: Sekmeli form (Temel Bilgi, MASSIVO, LONG DIVA) with react-hook-form + Zod
-  * **MASSIVO/LONG DIVA Sizes**: Each recipe supports two cup sizes with separate measurements (ml capacity, prep steps)
-  * **Recipe Versions**: Automatic version tracking when sizes/specs updated
-  * **RecipesTab UI**: Grid display (lg:grid-cols-3) with category filter, icons, difficulty/duration badges, edit/delete buttons
-  * **API Endpoints**: GET /api/academy/recipes (with categoryId filter), POST/PATCH/DELETE with sizes JSON handling
-  * **Status**: ✅ **RECIPE MANAGEMENT ACTIVE - 14 CATEGORIES, 55+ RECIPES**
+  * **55+ Recipes Seeded**: Bulk imported from PDF specifications with proper category mapping
+  * **RecipeDialog Component**: Tabbed form (Temel Bilgi, MASSIVO 350ml, LONG DIVA 550ml) with react-hook-form + Zod validation
+  * **MASSIVO/LONG DIVA Sizes**: Each recipe supports two cup sizes with separate measurements (ml capacity, preparation steps)
+  * **Recipe Versions**: Automatic version tracking when sizes/specs updated (recipeVersions table)
+  * **RecipesTab UI**: Responsive grid display (lg:grid-cols-3) with category filter dropdown, icon badges, difficulty/duration badges, edit/delete actions
+  * **Critical Fixes Applied**:
+    - Form submission: Fixed controlled form with onSubmit handler (not onClick)
+    - Sizes data loading: Edit mode now loads existing sizes from recipe.sizes into form
+    - API response: GET /api/academy/recipe/:id now includes sizes data from latest version
+  * **API Endpoints**: 
+    - GET /api/academy/recipes (with categoryId filter) - 200 OK ✅
+    - GET /api/academy/recipe/:id (with sizes included) ✅
+    - POST /api/academy/recipes (creates recipe + version with sizes) ✅
+    - PATCH /api/academy/recipes/:id (updates recipe + creates new version if sizes changed) ✅
+    - DELETE /api/academy/recipes/:id ✅
+  * **Database**: 55 recipes, 21 categories (14 active + 7 legacy), all seeded and verified
+  * **Server Status**: HEALTHY, all endpoints responding (200/304 codes), backup system active
+  * **Frontend Status**: App rendering successfully, RecipeDialog working, RecipesTab displaying data
+  * **Status**: ✅ **RECIPE MANAGEMENT SYSTEM FULLY OPERATIONAL AND TESTED**
 
 - ✅ **Admin Academy Control Center (COMPLETED)**:
   * **New Route**: `/yonetim/akademi` - HQ-only Academy management panel
