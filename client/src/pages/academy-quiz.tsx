@@ -266,8 +266,8 @@ export default function AcademyQuiz() {
                     24 saat sonra tekrar deneyebilirsiniz. Quiz'i geçmek için en az %{quiz.passingScore} almanız gerekiyor.
                   </p>
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-muted-foreground">Deneme:</span>
-                    <span className="font-medium">{(attemptInfo?.attemptCount || 0) + 1} / {attemptInfo?.maxAttempts || 3}</span>
+                    <span className="text-muted-foreground">Kullanılan deneme:</span>
+                    <span className="font-medium">{attemptInfo?.attemptCount || 1} / {attemptInfo?.maxAttempts || 3}</span>
                   </div>
                 </CardContent>
               </Card>
