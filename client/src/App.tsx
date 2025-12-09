@@ -66,6 +66,7 @@ import Notifications from "@/pages/notifications";
 import Announcements from "@/pages/announcements";
 import Mesajlar from "@/pages/mesajlar";
 import CashReports from "@/pages/cash-reports";
+import E2EReports from "@/pages/e2e-raporlar";
 import Vardiyalar from "@/pages/vardiyalar";
 import VardiyaCheckin from "@/pages/vardiya-checkin";
 import NFCGiris from "@/pages/nfc-giris";
@@ -190,6 +191,7 @@ function Router() {
           <Route path="/mesai-talepleri" component={OvertimeRequests} />
           <Route path="/ik-raporlari" component={HRReports} />
           <Route path="/kasa-raporlari" component={CashReports} />
+          <Route path="/e2e-raporlar" component={E2EReports} />
           <Route path="/performans" component={Performance} />
 
           {/* Kalite & Denetim */}

@@ -26,7 +26,8 @@ import {
   Briefcase,
   Heart,
   AlertCircle,
-  Plus
+  Plus,
+  FileText
 } from "lucide-react";
 
 interface ModuleCard {
@@ -186,6 +187,14 @@ export function CardGridHub() {
       path: "/performans",
       color: "bg-cyan-500",
       description: "Analitik & metrikler"
+    },
+    { 
+      id: "e2e-reports", 
+      icon: FileText, 
+      label: "E2E Raporlar", 
+      path: "/e2e-raporlar",
+      color: "bg-teal-600",
+      description: "PDF export & analizler"
     },
     { 
       id: "equipment", 
