@@ -138,14 +138,15 @@ export default function VardiyaCheckin() {
       setIsCapturingPhoto(false);
       
       // Normalize browser errors
-      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      const err = error instanceof Error ? error : new Error(String(error));
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         throw new Error("Kamera izni reddedildi. Lütfen tarayıcı ayarlarından kamera iznini verin.");
-      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         throw new Error("Kamera bulunamadı. Cihazınızın kamera erişimi olduğundan emin olun.");
-      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
         throw new Error("Kamera kullanılamıyor. Başka bir uygulama kamerayı kullanıyor olabilir.");
       } else {
-        throw new Error(error.message || "Fotoğraf çekilemedi");
+        throw new Error(err.message || "Fotoğraf çekilemedi");
       }
     }
   };
@@ -190,9 +191,10 @@ export default function VardiyaCheckin() {
               checkOutMutation.mutate({ qrCode: decodedText });
             }
           } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
             toast({
               title: "Hata",
-              description: error.message || "QR kod işlenemedi",
+              description: err.message || "QR kod işlenemedi",
               variant: "destructive",
             });
           }
@@ -216,7 +218,8 @@ export default function VardiyaCheckin() {
         await scannerRef.current.stop();
         setIsScanning(false);
       }
-    } catch (error) {
+    } catch {
+      // Intentionally silent - stop() may fail if already stopped
     }
   };
 
