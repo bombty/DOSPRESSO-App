@@ -13,6 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,7 +25,7 @@ import {
   Brain, GraduationCap, Trophy, Flame, Star, Zap, CheckCircle, Users, 
   BarChart3, Settings, Award, TrendingUp, Clock, Eye, ArrowLeft,
   Snowflake, IceCream, Citrus, Droplets, Leaf, Package, CircleDot, Flower2,
-  Video, ImageIcon, ListOrdered, Sparkles
+  Video, ImageIcon, ListOrdered, Sparkles, Search, Copy, EyeOff, GripVertical
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -147,6 +148,13 @@ export default function AdminAcademy() {
   const [editingModule, setEditingModule] = useState<TrainingModule | null>(null);
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
   const [editingRecipeId, setEditingRecipeId] = useState<number | null>(null);
+  const [duplicatingRecipe, setDuplicatingRecipe] = useState<Recipe | null>(null);
+
+  const handleDuplicateRecipe = (recipe: Recipe) => {
+    setDuplicatingRecipe(recipe);
+    setEditingRecipeId(null);
+    setRecipeDialogOpen(true);
+  };
 
   if (!user || !isHQRole(user.role as UserRoleType)) {
     return (
@@ -248,10 +256,11 @@ export default function AdminAcademy() {
           <RecipesTab 
             recipes={recipes}
             recipeCategories={recipeCategories}
-            onEditRecipe={(rec) => { setEditingRecipeId(rec.id); setRecipeDialogOpen(true); }}
-            onAddRecipe={() => { setEditingRecipeId(null); setRecipeDialogOpen(true); }}
+            onEditRecipe={(rec) => { setDuplicatingRecipe(null); setEditingRecipeId(rec.id); setRecipeDialogOpen(true); }}
+            onAddRecipe={() => { setDuplicatingRecipe(null); setEditingRecipeId(null); setRecipeDialogOpen(true); }}
             onEditCategory={(cat) => { setEditingCategory(cat); setCategoryDialogOpen(true); }}
             onAddCategory={() => { setEditingCategory(null); setCategoryDialogOpen(true); }}
+            onDuplicateRecipe={handleDuplicateRecipe}
           />
         </TabsContent>
 
@@ -288,9 +297,10 @@ export default function AdminAcademy() {
 
       <RecipeDialog 
         open={recipeDialogOpen} 
-        onOpenChange={setRecipeDialogOpen}
+        onOpenChange={(open) => { setRecipeDialogOpen(open); if (!open) setDuplicatingRecipe(null); }}
         recipeId={editingRecipeId}
         categories={recipeCategories}
+        duplicatingRecipe={duplicatingRecipe}
       />
     </div>
   );
@@ -1068,22 +1078,34 @@ function RecipeDetailDialog({ recipeId, category, open, onOpenChange }: {
   );
 }
 
-function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEditCategory, onAddCategory }: {
+function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEditCategory, onAddCategory, onDuplicateRecipe }: {
   recipes: Recipe[];
   recipeCategories: RecipeCategory[];
   onEditRecipe: (rec: Recipe) => void;
   onAddRecipe: () => void;
   onEditCategory: (cat: RecipeCategory) => void;
   onAddCategory: () => void;
+  onDuplicateRecipe?: (rec: Recipe) => void;
 }) {
   const { toast } = useToast();
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeView, setActiveView] = useState<'recipes' | 'categories'>('recipes');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null);
+  
+  const filteredRecipes = recipes.filter(r => {
+    const matchesSearch = searchQuery === "" || 
+      r.nameTr.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.nameEn && r.nameEn.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (r.code && r.code.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = filterCategoryId === null || r.categoryId === filterCategoryId;
+    return matchesSearch && matchesCategory;
+  });
   
   const categoriesWithRecipes = recipeCategories
-    .filter(cat => recipes.some(r => r.categoryId === cat.id))
+    .filter(cat => filteredRecipes.some(r => r.categoryId === cat.id))
     .sort((a, b) => a.displayOrder - b.displayOrder);
   
   const allCategoriesSorted = [...recipeCategories].sort((a, b) => a.displayOrder - b.displayOrder);
@@ -1106,6 +1128,39 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
     },
   });
 
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/academy/recipe-categories/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/recipe-categories'] });
+      toast({ title: "Başarılı", description: "Kategori silindi" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleDeleteCategory = (category: RecipeCategory) => {
+    const recipeCount = recipes.filter(r => r.categoryId === category.id).length;
+    if (recipeCount > 0) {
+      toast({ 
+        title: "Silinemez", 
+        description: `Bu kategoride ${recipeCount} reçete var. Önce reçeteleri başka kategoriye taşıyın veya silin.`, 
+        variant: "destructive" 
+      });
+      return;
+    }
+    if (confirm(`"${category.titleTr}" kategorisini silmek istediğinize emin misiniz?`)) {
+      deleteCategoryMutation.mutate(category.id);
+    }
+  };
+
   const handleViewDetail = (recipe: Recipe) => {
     setSelectedRecipeId(recipe.id);
     setSelectedCategoryId(recipe.categoryId || null);
@@ -1126,7 +1181,7 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <CardTitle className="text-base">Reçeteler</CardTitle>
-              <CardDescription>{recipes.length} reçete, {categoriesWithRecipes.length} kategori</CardDescription>
+              <CardDescription>{filteredRecipes.length} / {recipes.length} reçete, {recipeCategories.length} kategori</CardDescription>
             </div>
             <div className="flex gap-2">
               <Button size="sm" variant={activeView === 'recipes' ? 'default' : 'outline'} onClick={() => setActiveView('recipes')}>
@@ -1143,6 +1198,39 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
               {activeView === 'recipes' ? 'Yeni Reçete' : 'Yeni Kategori'}
             </Button>
           </div>
+          
+          {activeView === 'recipes' && (
+            <div className="flex gap-2 mt-3 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Reçete ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-recipe-search"
+                />
+              </div>
+              <Select value={filterCategoryId?.toString() || "all"} onValueChange={(v) => setFilterCategoryId(v === "all" ? null : parseInt(v))}>
+                <SelectTrigger className="w-[180px]" data-testid="select-filter-category">
+                  <SelectValue placeholder="Tüm Kategoriler" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Kategoriler</SelectItem>
+                  {allCategoriesSorted.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id.toString()}>
+                      {cat.titleTr} ({recipes.filter(r => r.categoryId === cat.id).length})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(searchQuery || filterCategoryId) && (
+                <Button size="sm" variant="ghost" onClick={() => { setSearchQuery(""); setFilterCategoryId(null); }}>
+                  Temizle
+                </Button>
+              )}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {activeView === 'recipes' ? (
@@ -1151,9 +1239,9 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                 Henüz reçete bulunmuyor
               </div>
             ) : (
-              <Accordion type="multiple" defaultValue={categoriesWithRecipes.slice(0, 2).map(c => c.id.toString())} className="space-y-2">
+              <Accordion type="multiple" defaultValue={categoriesWithRecipes.slice(0, 3).map(c => c.id.toString())} className="space-y-2">
                 {categoriesWithRecipes.map((category) => {
-                  const categoryRecipes = recipes.filter(r => r.categoryId === category.id);
+                  const categoryRecipes = filteredRecipes.filter(r => r.categoryId === category.id);
                   const Icon = getIcon(category.iconName);
                   
                   return (
@@ -1201,6 +1289,7 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                                   className="h-7 w-7"
                                   onClick={() => handleViewDetail(recipe)}
                                   data-testid={`button-view-recipe-${recipe.id}`}
+                                  title="Görüntüle"
                                 >
                                   <Eye className="w-3 h-3" />
                                 </Button>
@@ -1210,9 +1299,22 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                                   className="h-7 w-7"
                                   onClick={() => onEditRecipe(recipe)}
                                   data-testid={`button-edit-recipe-${recipe.id}`}
+                                  title="Düzenle"
                                 >
                                   <Pencil className="w-3 h-3" />
                                 </Button>
+                                {onDuplicateRecipe && (
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-7 w-7"
+                                    onClick={() => onDuplicateRecipe(recipe)}
+                                    data-testid={`button-duplicate-recipe-${recipe.id}`}
+                                    title="Kopyala"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                )}
                                 <Button 
                                   size="icon" 
                                   variant="ghost" 
@@ -1223,6 +1325,7 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                                     }
                                   }}
                                   data-testid={`button-delete-recipe-${recipe.id}`}
+                                  title="Sil"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </Button>
@@ -1252,8 +1355,10 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                       <Icon className="w-6 h-6" style={{ color: category.colorHex }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-sm">{category.titleTr}</h4>
-                      <p className="text-xs text-muted-foreground">{recipeCount} reçete</p>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-sm">{category.titleTr}</h4>
+                        <Badge variant="secondary" className="text-xs">{recipeCount}</Badge>
+                      </div>
                       {category.description && (
                         <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{category.description}</p>
                       )}
@@ -1265,8 +1370,19 @@ function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEd
                         className="h-7 w-7"
                         onClick={() => onEditCategory(category)}
                         data-testid={`button-edit-category-${category.id}`}
+                        title="Düzenle"
                       >
                         <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className={`h-7 w-7 ${recipeCount === 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+                        onClick={() => handleDeleteCategory(category)}
+                        data-testid={`button-delete-category-${category.id}`}
+                        title={recipeCount > 0 ? `${recipeCount} reçete var - silinemez` : "Sil"}
+                      >
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   </div>
@@ -1287,7 +1403,7 @@ const recipeFormSchema = z.object({
   description: z.string().optional(),
   difficulty: z.string().default("easy"),
   estimatedMinutes: z.coerce.number().min(1).default(5),
-  categoryId: z.coerce.number().optional(),
+  categoryId: z.coerce.number({ required_error: "Kategori seçimi zorunlu" }).min(1, "Kategori seçimi zorunlu"),
   coffeeType: z.string().optional(),
   // MASSIVO fields
   massivoCupMl: z.coerce.number().optional(),
@@ -1341,11 +1457,12 @@ function formatPowders(powders?: { name: string; scoops: number }[]): string {
   return powders.map(p => `${p.name}:${p.scoops}`).join('\n');
 }
 
-function RecipeDialog({ open, onOpenChange, recipeId, categories }: {
+function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRecipe }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   recipeId: number | null;
   categories: RecipeCategory[];
+  duplicatingRecipe?: Recipe | null;
 }) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("temel");
@@ -1421,7 +1538,40 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories }: {
         longDivaGarnish: l.garnish?.join('\n') || "",
         longDivaSteps: l.steps?.join('\n') || "",
       });
-    } else if (open && !recipeId) {
+    } else if (open && duplicatingRecipe) {
+      const sizes = duplicatingRecipe.sizes || { massivo: {}, longDiva: {} };
+      const m = sizes.massivo || {};
+      const l = sizes.longDiva || {};
+      
+      form.reset({
+        nameTr: duplicatingRecipe.nameTr + " (Kopya)" || "",
+        nameEn: duplicatingRecipe.nameEn ? duplicatingRecipe.nameEn + " (Copy)" : "",
+        code: "",
+        description: duplicatingRecipe.description || "",
+        difficulty: duplicatingRecipe.difficulty || "easy",
+        estimatedMinutes: duplicatingRecipe.estimatedMinutes || 5,
+        categoryId: duplicatingRecipe.categoryId || undefined,
+        coffeeType: duplicatingRecipe.coffeeType || "",
+        massivoCupMl: m.cupMl || 350,
+        massivoEspresso: m.espresso || "",
+        massivoSyrups: formatSyrups(m.syrups),
+        massivoMilkType: m.milk?.type || "",
+        massivoMilkMl: m.milk?.ml,
+        massivoPowders: formatPowders(m.powders),
+        massivoIce: m.ice || "",
+        massivoGarnish: m.garnish?.join('\n') || "",
+        massivoSteps: m.steps?.join('\n') || "",
+        longDivaCupMl: l.cupMl || 550,
+        longDivaEspresso: l.espresso || "",
+        longDivaSyrups: formatSyrups(l.syrups),
+        longDivaMilkType: l.milk?.type || "",
+        longDivaMilkMl: l.milk?.ml,
+        longDivaPowders: formatPowders(l.powders),
+        longDivaIce: l.ice || "",
+        longDivaGarnish: l.garnish?.join('\n') || "",
+        longDivaSteps: l.steps?.join('\n') || "",
+      });
+    } else if (open && !recipeId && !duplicatingRecipe) {
       form.reset({
         nameTr: "",
         nameEn: "",
@@ -1451,7 +1601,7 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories }: {
         longDivaSteps: "",
       });
     }
-  }, [open, recipe, recipeId, form]);
+  }, [open, recipe, recipeId, duplicatingRecipe, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: RecipeFormValues) => {
