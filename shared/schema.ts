@@ -1312,6 +1312,13 @@ export const trainingModules = pgTable("training_modules", {
   quiz: jsonb("quiz").$type<Array<{questionId: string; questionType: string; questionText: string; options: string[]; correctOptionIndex: number}>>().default([]), // Quiz questions
   tags: varchar("tags", { length: 100 }).array(), // ["kültür", "disiplin", "stajyer"]
   generatedByAi: boolean("generated_by_ai").default(false), // AI generation metadata
+  xpReward: integer("xp_reward").default(50), // XP points for completing module
+  mainVideoUrl: text("main_video_url"), // Primary video URL (YouTube/S3)
+  mindmapData: jsonb("mindmap_data").$type<{nodes: {id: string; label: string; level: number}[]; edges: {source: string; target: string}[]}>(), // AI-generated knowledge map
+  aiSummary: text("ai_summary"), // AI-generated module summary
+  examPassingScore: integer("exam_passing_score").default(70), // Passing score for final exam
+  maxRetries: integer("max_retries").default(3), // Max exam retry attempts
+  isActive: boolean("is_active").default(true), // Active/inactive status
   createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

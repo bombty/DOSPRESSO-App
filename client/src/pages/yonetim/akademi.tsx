@@ -23,8 +23,10 @@ import {
   AlertCircle, Plus, Pencil, Trash2, ChevronRight, Target, Coffee, BookOpen, 
   Brain, GraduationCap, Trophy, Flame, Star, Zap, CheckCircle, Users, 
   BarChart3, Settings, Award, TrendingUp, Clock, Eye, ArrowLeft,
-  Snowflake, IceCream, Citrus, Droplets, Leaf, Package, CircleDot, Flower2
+  Snowflake, IceCream, Citrus, Droplets, Leaf, Package, CircleDot, Flower2,
+  Video, ImageIcon, ListOrdered, Sparkles
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 type HubCategory = {
   id: number;
@@ -50,10 +52,17 @@ type RecipeCategory = {
 type TrainingModule = {
   id: number;
   title: string;
+  description?: string;
   level: string;
   estimatedDuration: number;
   category?: string;
   isActive: boolean;
+  isPublished?: boolean;
+  heroImageUrl?: string;
+  mainVideoUrl?: string;
+  xpReward?: number;
+  learningObjectives?: string[];
+  steps?: { stepNumber: number; title: string; content: string }[];
 };
 
 type Quiz = {
@@ -202,7 +211,7 @@ export default function AdminAcademy() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto gap-1 p-1">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 h-auto gap-1 p-1">
           <TabsTrigger value="overview" className="text-xs sm:text-sm" data-testid="tab-overview">
             <BarChart3 className="w-4 h-4 mr-1" />
             Genel Bakış
@@ -210,10 +219,6 @@ export default function AdminAcademy() {
           <TabsTrigger value="recipes" className="text-xs sm:text-sm" data-testid="tab-recipes">
             <Coffee className="w-4 h-4 mr-1" />
             Reçeteler
-          </TabsTrigger>
-          <TabsTrigger value="categories" className="text-xs sm:text-sm" data-testid="tab-categories">
-            <Package className="w-4 h-4 mr-1" />
-            Kategoriler
           </TabsTrigger>
           <TabsTrigger value="modules" className="text-xs sm:text-sm" data-testid="tab-modules">
             <BookOpen className="w-4 h-4 mr-1" />
@@ -243,17 +248,10 @@ export default function AdminAcademy() {
           <RecipesTab 
             recipes={recipes}
             recipeCategories={recipeCategories}
-            onEdit={(rec) => { setEditingRecipeId(rec.id); setRecipeDialogOpen(true); }}
-            onAdd={() => { setEditingRecipeId(null); setRecipeDialogOpen(true); }}
-          />
-        </TabsContent>
-
-        <TabsContent value="categories" className="space-y-4 mt-4">
-          <CategoriesTab 
-            recipeCategories={recipeCategories}
-            hubCategories={hubCategories}
-            onEdit={(cat) => { setEditingCategory(cat); setCategoryDialogOpen(true); }}
-            onAdd={() => { setEditingCategory(null); setCategoryDialogOpen(true); }}
+            onEditRecipe={(rec) => { setEditingRecipeId(rec.id); setRecipeDialogOpen(true); }}
+            onAddRecipe={() => { setEditingRecipeId(null); setRecipeDialogOpen(true); }}
+            onEditCategory={(cat) => { setEditingCategory(cat); setCategoryDialogOpen(true); }}
+            onAddCategory={() => { setEditingCategory(null); setCategoryDialogOpen(true); }}
           />
         </TabsContent>
 
@@ -1038,20 +1036,25 @@ function RecipeDetailDialog({ recipeId, category, open, onOpenChange }: {
   );
 }
 
-function RecipesTab({ recipes, recipeCategories, onEdit, onAdd }: {
+function RecipesTab({ recipes, recipeCategories, onEditRecipe, onAddRecipe, onEditCategory, onAddCategory }: {
   recipes: Recipe[];
   recipeCategories: RecipeCategory[];
-  onEdit: (rec: Recipe) => void;
-  onAdd: () => void;
+  onEditRecipe: (rec: Recipe) => void;
+  onAddRecipe: () => void;
+  onEditCategory: (cat: RecipeCategory) => void;
+  onAddCategory: () => void;
 }) {
   const { toast } = useToast();
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [activeView, setActiveView] = useState<'recipes' | 'categories'>('recipes');
   
   const categoriesWithRecipes = recipeCategories
     .filter(cat => recipes.some(r => r.categoryId === cat.id))
     .sort((a, b) => a.displayOrder - b.displayOrder);
+  
+  const allCategoriesSorted = [...recipeCategories].sort((a, b) => a.displayOrder - b.displayOrder);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -1093,102 +1096,151 @@ function RecipesTab({ recipes, recipeCategories, onEdit, onAdd }: {
               <CardTitle className="text-base">Reçeteler</CardTitle>
               <CardDescription>{recipes.length} reçete, {categoriesWithRecipes.length} kategori</CardDescription>
             </div>
-            <Button size="sm" onClick={onAdd} data-testid="button-add-recipe">
+            <div className="flex gap-2">
+              <Button size="sm" variant={activeView === 'recipes' ? 'default' : 'outline'} onClick={() => setActiveView('recipes')}>
+                <Coffee className="w-4 h-4 mr-1" />
+                Reçeteler
+              </Button>
+              <Button size="sm" variant={activeView === 'categories' ? 'default' : 'outline'} onClick={() => setActiveView('categories')}>
+                <Package className="w-4 h-4 mr-1" />
+                Kategoriler
+              </Button>
+            </div>
+            <Button size="sm" onClick={activeView === 'recipes' ? onAddRecipe : onAddCategory} data-testid="button-add-item">
               <Plus className="w-4 h-4 mr-1" />
-              Yeni Reçete
+              {activeView === 'recipes' ? 'Yeni Reçete' : 'Yeni Kategori'}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {categoriesWithRecipes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Henüz reçete bulunmuyor
-            </div>
-          ) : (
-            <Accordion type="multiple" defaultValue={categoriesWithRecipes.slice(0, 2).map(c => c.id.toString())} className="space-y-2">
-              {categoriesWithRecipes.map((category) => {
-                const categoryRecipes = recipes.filter(r => r.categoryId === category.id);
-                const Icon = getIcon(category.iconName);
-                
-                return (
-                  <AccordionItem key={category.id} value={category.id.toString()} className="border rounded-lg px-4">
-                    <AccordionTrigger className="hover:no-underline py-3" data-testid={`accordion-category-${category.id}`}>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg" style={{ backgroundColor: category.colorHex + '20' }}>
-                          <Icon className="w-5 h-5" style={{ color: category.colorHex }} />
+          {activeView === 'recipes' ? (
+            categoriesWithRecipes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Henüz reçete bulunmuyor
+              </div>
+            ) : (
+              <Accordion type="multiple" defaultValue={categoriesWithRecipes.slice(0, 2).map(c => c.id.toString())} className="space-y-2">
+                {categoriesWithRecipes.map((category) => {
+                  const categoryRecipes = recipes.filter(r => r.categoryId === category.id);
+                  const Icon = getIcon(category.iconName);
+                  
+                  return (
+                    <AccordionItem key={category.id} value={category.id.toString()} className="border rounded-lg px-4">
+                      <AccordionTrigger className="hover:no-underline py-3" data-testid={`accordion-category-${category.id}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg" style={{ backgroundColor: category.colorHex + '20' }}>
+                            <Icon className="w-5 h-5" style={{ color: category.colorHex }} />
+                          </div>
+                          <div className="text-left">
+                            <h3 className="font-semibold text-sm">{category.titleTr}</h3>
+                            <p className="text-xs text-muted-foreground">{categoryRecipes.length} reçete</p>
+                          </div>
                         </div>
-                        <div className="text-left">
-                          <h3 className="font-semibold text-sm">{category.titleTr}</h3>
-                          <p className="text-xs text-muted-foreground">{categoryRecipes.length} reçete</p>
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="grid sm:grid-cols-2 gap-2 pb-2">
-                        {categoryRecipes.map((recipe) => (
-                          <div 
-                            key={recipe.id} 
-                            className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate cursor-pointer"
-                            onClick={() => handleViewDetail(recipe)}
-                            data-testid={`recipe-card-${recipe.id}`}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-sm line-clamp-1">{recipe.nameTr}</h4>
-                              <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                {recipe.difficulty && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {recipe.difficulty === 'easy' ? 'Kolay' : recipe.difficulty === 'medium' ? 'Orta' : 'Zor'}
-                                  </Badge>
-                                )}
-                                {recipe.estimatedMinutes && (
-                                  <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                    <Clock className="w-3 h-3" />
-                                    {recipe.estimatedMinutes}dk
-                                  </span>
-                                )}
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid sm:grid-cols-2 gap-2 pb-2">
+                          {categoryRecipes.map((recipe) => (
+                            <div 
+                              key={recipe.id} 
+                              className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate cursor-pointer"
+                              onClick={() => handleViewDetail(recipe)}
+                              data-testid={`recipe-card-${recipe.id}`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm line-clamp-1">{recipe.nameTr}</h4>
+                                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                  {recipe.difficulty && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {recipe.difficulty === 'easy' ? 'Kolay' : recipe.difficulty === 'medium' ? 'Orta' : 'Zor'}
+                                    </Badge>
+                                  )}
+                                  {recipe.estimatedMinutes && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                      <Clock className="w-3 h-3" />
+                                      {recipe.estimatedMinutes}dk
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-7 w-7"
+                                  onClick={() => handleViewDetail(recipe)}
+                                  data-testid={`button-view-recipe-${recipe.id}`}
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-7 w-7"
+                                  onClick={() => onEditRecipe(recipe)}
+                                  data-testid={`button-edit-recipe-${recipe.id}`}
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-7 w-7 text-destructive"
+                                  onClick={() => {
+                                    if (confirm("Bu reçeteyi silmek istediğinize emin misiniz?")) {
+                                      deleteMutation.mutate(recipe.id);
+                                    }
+                                  }}
+                                  data-testid={`button-delete-recipe-${recipe.id}`}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
                               </div>
                             </div>
-                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-7 w-7"
-                                onClick={() => handleViewDetail(recipe)}
-                                data-testid={`button-view-recipe-${recipe.id}`}
-                              >
-                                <Eye className="w-3 h-3" />
-                              </Button>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-7 w-7"
-                                onClick={() => onEdit(recipe)}
-                                data-testid={`button-edit-recipe-${recipe.id}`}
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </Button>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-7 w-7 text-destructive"
-                                onClick={() => {
-                                  if (confirm("Bu reçeteyi silmek istediğinize emin misiniz?")) {
-                                    deleteMutation.mutate(recipe.id);
-                                  }
-                                }}
-                                data-testid={`button-delete-recipe-${recipe.id}`}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            )
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {allCategoriesSorted.map((category) => {
+                const Icon = getIcon(category.iconName);
+                const recipeCount = recipes.filter(r => r.categoryId === category.id).length;
+                
+                return (
+                  <div 
+                    key={category.id}
+                    className="flex items-center gap-3 p-4 rounded-lg border bg-card hover-elevate"
+                    data-testid={`category-card-${category.id}`}
+                  >
+                    <div className="p-3 rounded-lg" style={{ backgroundColor: category.colorHex + '20' }}>
+                      <Icon className="w-6 h-6" style={{ color: category.colorHex }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-sm">{category.titleTr}</h4>
+                      <p className="text-xs text-muted-foreground">{recipeCount} reçete</p>
+                      {category.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{category.description}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-7 w-7"
+                        onClick={() => onEditCategory(category)}
+                        data-testid={`button-edit-category-${category.id}`}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
                 );
               })}
-            </Accordion>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -2108,14 +2160,29 @@ function CategoryDialog({ open, onOpenChange, category }: {
   );
 }
 
+const stepSchema = z.object({
+  stepNumber: z.number(),
+  title: z.string(),
+  content: z.string(),
+  mediaSuggestions: z.array(z.string()).optional(),
+});
+
 const moduleFormSchema = z.object({
   title: z.string().min(1, "Modül adı gerekli"),
+  description: z.string().optional(),
   level: z.string().default("beginner"),
   estimatedDuration: z.coerce.number().min(5).default(15),
   category: z.string().optional(),
+  heroImageUrl: z.string().optional(),
+  mainVideoUrl: z.string().optional(),
+  xpReward: z.coerce.number().min(0).default(50),
+  isPublished: z.boolean().default(false),
+  learningObjectives: z.string().optional(),
+  stepsText: z.string().optional(),
 });
 
 type ModuleFormValues = z.infer<typeof moduleFormSchema>;
+type ModuleStep = z.infer<typeof stepSchema>;
 
 function ModuleDialog({ open, onOpenChange, module, categories }: {
   open: boolean;
@@ -2124,30 +2191,76 @@ function ModuleDialog({ open, onOpenChange, module, categories }: {
   categories: RecipeCategory[];
 }) {
   const { toast } = useToast();
+  const [activeDialogTab, setActiveDialogTab] = useState<'basic' | 'content' | 'settings'>('basic');
   
   const form = useForm<ModuleFormValues>({
     resolver: zodResolver(moduleFormSchema),
     defaultValues: {
       title: "",
+      description: "",
       level: "beginner",
       estimatedDuration: 15,
       category: "",
+      heroImageUrl: "",
+      mainVideoUrl: "",
+      xpReward: 50,
+      isPublished: false,
+      learningObjectives: "",
+      stepsText: "",
     },
   });
 
   useEffect(() => {
     if (open) {
+      const objectives = module?.learningObjectives || [];
+      const steps = module?.steps || [];
+      
       form.reset({
         title: module?.title || "",
+        description: module?.description || "",
         level: module?.level || "beginner",
         estimatedDuration: module?.estimatedDuration || 15,
         category: module?.category || "",
+        heroImageUrl: module?.heroImageUrl || "",
+        mainVideoUrl: (module as any)?.mainVideoUrl || "",
+        xpReward: (module as any)?.xpReward || 50,
+        isPublished: module?.isPublished || false,
+        learningObjectives: Array.isArray(objectives) ? objectives.join('\n') : "",
+        stepsText: Array.isArray(steps) ? steps.map((s: any) => `${s.stepNumber}. ${s.title}\n${s.content}`).join('\n\n') : "",
       });
+      setActiveDialogTab('basic');
     }
   }, [open, module, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: ModuleFormValues) => {
+      const learningObjectives = data.learningObjectives 
+        ? data.learningObjectives.split('\n').filter(l => l.trim()) 
+        : [];
+      
+      const steps: ModuleStep[] = [];
+      if (data.stepsText) {
+        const stepBlocks = data.stepsText.split('\n\n').filter(b => b.trim());
+        stepBlocks.forEach((block, idx) => {
+          const lines = block.split('\n');
+          const titleLine = lines[0] || '';
+          const titleMatch = titleLine.match(/^\d+\.\s*(.+)$/);
+          steps.push({
+            stepNumber: idx + 1,
+            title: titleMatch ? titleMatch[1] : titleLine,
+            content: lines.slice(1).join('\n').trim() || titleLine,
+          });
+        });
+      }
+      
+      const payload = {
+        ...data,
+        learningObjectives,
+        steps,
+        heroImageUrl: data.heroImageUrl || null,
+        mainVideoUrl: data.mainVideoUrl || null,
+      };
+      
       const url = module 
         ? `/api/training/modules/${module.id}`
         : '/api/training/modules';
@@ -2157,7 +2270,7 @@ function ModuleDialog({ open, onOpenChange, module, categories }: {
         method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
@@ -2178,73 +2291,280 @@ function ModuleDialog({ open, onOpenChange, module, categories }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{module ? 'Modül Düzenle' : 'Yeni Modül'}</DialogTitle>
-          <DialogDescription>Eğitim modülü bilgilerini girin</DialogDescription>
+          <DialogDescription>Modern LMS eğitim modülü oluşturun</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Modül Adı</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field}
-                      placeholder="örn: Espresso Hazırlama Teknikleri"
-                      data-testid="input-module-title"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="level"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Seviye</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
+            <Tabs value={activeDialogTab} onValueChange={(v) => setActiveDialogTab(v as any)}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="basic">Temel Bilgiler</TabsTrigger>
+                <TabsTrigger value="content">İçerik</TabsTrigger>
+                <TabsTrigger value="settings">Ayarlar</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="basic" className="space-y-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Modül Adı</FormLabel>
                       <FormControl>
-                        <SelectTrigger data-testid="select-module-level">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <Input 
+                          {...field}
+                          placeholder="örn: Espresso Hazırlama Teknikleri"
+                          data-testid="input-module-title"
+                        />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="beginner">Başlangıç</SelectItem>
-                        <SelectItem value="intermediate">Orta</SelectItem>
-                        <SelectItem value="advanced">İleri</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="estimatedDuration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Süre (dk)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number"
-                        {...field}
-                        min={5}
-                        data-testid="input-module-duration"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <DialogFooter>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Açıklama</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field}
+                          placeholder="Bu modülde öğrenecekleriniz..."
+                          rows={3}
+                          data-testid="input-module-description"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="level"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Seviye</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-module-level">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="beginner">Başlangıç</SelectItem>
+                            <SelectItem value="intermediate">Orta</SelectItem>
+                            <SelectItem value="advanced">İleri</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="estimatedDuration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Süre (dk)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            {...field}
+                            min={5}
+                            data-testid="input-module-duration"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="xpReward"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>XP Ödülü</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            {...field}
+                            min={0}
+                            data-testid="input-module-xp"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kategori</FormLabel>
+                      <Select value={field.value || ''} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-module-category">
+                            <SelectValue placeholder="Kategori seçin" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="barista">Barista</SelectItem>
+                          <SelectItem value="supervisor">Supervisor</SelectItem>
+                          <SelectItem value="hygiene">Hijyen</SelectItem>
+                          <SelectItem value="customer_service">Müşteri Hizmetleri</SelectItem>
+                          <SelectItem value="onboarding">İşe Alıştırma</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+              
+              <TabsContent value="content" className="space-y-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="heroImageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4" />
+                        Banner Görsel URL
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          placeholder="https://example.com/banner.jpg"
+                          data-testid="input-module-hero"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="mainVideoUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Video className="w-4 h-4" />
+                        Ana Video URL
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          placeholder="https://youtube.com/watch?v=... veya S3 URL"
+                          data-testid="input-module-video"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="learningObjectives"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Target className="w-4 h-4" />
+                        Öğrenme Hedefleri (her satıra bir hedef)
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field}
+                          placeholder="Espresso çekme tekniklerini öğreneceksiniz&#10;Kahve çeşitlerini tanıyacaksınız&#10;Müşteri hizmetleri becerilerinizi geliştireceksiniz"
+                          rows={4}
+                          data-testid="input-module-objectives"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="stepsText"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <ListOrdered className="w-4 h-4" />
+                        Eğitim Adımları (her adım için: "1. Başlık" sonra açıklama)
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field}
+                          placeholder={"1. Espresso Makinesi Tanıtımı\nMakinenin parçalarını ve işlevlerini öğrenin.\n\n2. Kahve Öğütme\nDoğru öğütme boyutunu ayarlayın.\n\n3. Damlatma Tekniği\nMükemmel espresso için damlatma süresini öğrenin."}
+                          rows={8}
+                          className="font-mono text-sm"
+                          data-testid="input-module-steps"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+              
+              <TabsContent value="settings" className="space-y-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="isPublished"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Yayınla</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Bu modülü personele görünür yap
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-module-published"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="rounded-lg border p-4 space-y-3">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    AI Destekli Özellikler
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    İçerik oluşturduktan sonra AI ile quiz soruları ve mindmap oluşturabilirsiniz.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" disabled>
+                      <Brain className="w-4 h-4 mr-1" />
+                      Quiz Oluştur
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" disabled>
+                      <Sparkles className="w-4 h-4 mr-1" />
+                      Mindmap Oluştur
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+            
+            <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 İptal
               </Button>
