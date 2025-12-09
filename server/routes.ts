@@ -102,6 +102,7 @@ import {
   userMissionProgress,
   leaderboardSnapshots,
   userPracticeSessions,
+  userQuizAttempts,
   insertRecipeSchema,
   insertRecipeVersionSchema,
   insertRecipeCategorySchema,
@@ -9690,6 +9691,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Quiz questions error:", error);
       res.status(500).json({ message: error?.message || "Quiz sorgusu başarısız" });
+    }
+  });
+
+  // GET /api/academy/quiz/:quizId/attempts - Get user's quiz attempts with retry info
+  app.get('/api/academy/quiz/:quizId/attempts', isAuthenticated, async (req: any, res) => {
+    try {
+      const quizId = parseInt(req.params.quizId);
+      const attempts = await db.select().from(userQuizAttempts)
+        .where(and(
+          eq(userQuizAttempts.userId, req.user.id),
+          eq(userQuizAttempts.quizId, quizId)
+        ))
+        .orderBy(desc(userQuizAttempts.startedAt));
+      
+      const lastAttempt = attempts[0];
+      const hasPassed = attempts.some(a => a.isPassed);
+      const attemptCount = attempts.length;
+      
+      // Calculate if retry is allowed (24h cooldown after failed attempt)
+      const RETRY_COOLDOWN_HOURS = 24;
+      let canRetry = true;
+      let retryAvailableAt = null;
+      
+      if (lastAttempt && !lastAttempt.isPassed) {
+        const lastAttemptTime = lastAttempt.startedAt ? new Date(lastAttempt.startedAt).getTime() : 0;
+        const cooldownEnd = lastAttemptTime + (RETRY_COOLDOWN_HOURS * 60 * 60 * 1000);
+        if (Date.now() < cooldownEnd) {
+          canRetry = false;
+          retryAvailableAt = new Date(cooldownEnd).toISOString();
+        }
+      }
+      
+      res.json({
+        attempts,
+        attemptCount,
+        hasPassed,
+        lastAttempt,
+        canRetry,
+        retryAvailableAt,
+        maxAttempts: 3 // Max 3 attempts allowed
+      });
+    } catch (error: any) {
+      console.error("Quiz attempts error:", error);
+      res.status(500).json({ message: error?.message || "Deneme bilgisi alınamadı" });
     }
   });
 

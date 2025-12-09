@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, Loader, ArrowRight, Zap, Lock, RefreshCw, Trophy, AlertTriangle } from "lucide-react";
+
+type AttemptInfo = {
+  attempts: any[];
+  attemptCount: number;
+  hasPassed: boolean;
+  lastAttempt: any;
+  canRetry: boolean;
+  retryAvailableAt: string | null;
+  maxAttempts: number;
+};
 
 export default function AcademyQuiz() {
   const { toast } = useToast();
@@ -22,6 +32,18 @@ export default function AcademyQuiz() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
+  const [showRetryInfo, setShowRetryInfo] = useState(false);
+
+  // Fetch attempt info to check if retry is allowed
+  const { data: attemptInfo, isLoading: attemptsLoading } = useQuery<AttemptInfo>({
+    queryKey: [`/api/academy/quiz/${quizId}/attempts`],
+    queryFn: async () => {
+      const res = await fetch(`/api/academy/quiz/${quizId}/attempts`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!quizId,
+  });
 
   // Fetch quiz questions from database
   const { data: questions = [], isLoading } = useQuery({
@@ -31,7 +53,7 @@ export default function AcademyQuiz() {
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: !!quizId,
+    enabled: !!quizId && (attemptInfo?.canRetry !== false || attemptInfo?.hasPassed),
   });
 
   // Fetch adaptive recommendation
@@ -44,6 +66,18 @@ export default function AcademyQuiz() {
     },
     enabled: submitted,
   });
+
+  // Calculate remaining cooldown time
+  const getRemainingTime = () => {
+    if (!attemptInfo?.retryAvailableAt) return null;
+    const retryTime = new Date(attemptInfo.retryAvailableAt).getTime();
+    const now = Date.now();
+    const diff = retryTime - now;
+    if (diff <= 0) return null;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours} saat ${minutes} dakika`;
+  };
 
   // Quiz metadata
   const quiz = {
@@ -85,13 +119,93 @@ export default function AcademyQuiz() {
     });
   };
 
-  if (isLoading) {
+  if (isLoading || attemptsLoading) {
     return (
       <div className="flex items-center justify-center p-6 min-h-screen">
         <div className="flex flex-col items-center gap-2 sm:gap-3">
           <Loader className="w-8 h-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Soru yükleniyor...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Show locked state if already passed
+  if (attemptInfo?.hasPassed) {
+    return (
+      <div className="grid grid-cols-1 gap-3 p-3 max-w-md mx-auto">
+        <Link to="/akademi">
+          <Button variant="ghost" size="sm" data-testid="button-back">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Akademi
+          </Button>
+        </Link>
+        <Card className="border-green-500/30 bg-green-500/5">
+          <CardHeader className="text-center pb-2">
+            <Trophy className="w-12 h-12 text-green-500 mx-auto mb-2" />
+            <CardTitle className="text-lg">Quiz Tamamlandı!</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Bu quiz'i başarıyla tamamladınız.
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <Badge className="bg-green-500">BAŞARILI</Badge>
+              <span className="text-sm font-medium">{attemptInfo.lastAttempt?.score}%</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {attemptInfo.attemptCount} deneme kullanıldı
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show cooldown state if retry is not allowed
+  if (attemptInfo && !attemptInfo.canRetry && !attemptInfo.hasPassed) {
+    const remainingTime = getRemainingTime();
+    const attemptsRemaining = attemptInfo.maxAttempts - attemptInfo.attemptCount;
+    
+    return (
+      <div className="grid grid-cols-1 gap-3 p-3 max-w-md mx-auto">
+        <Link to="/akademi">
+          <Button variant="ghost" size="sm" data-testid="button-back">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Akademi
+          </Button>
+        </Link>
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardHeader className="text-center pb-2">
+            <Lock className="w-12 h-12 text-amber-500 mx-auto mb-2" />
+            <CardTitle className="text-lg">Bekleme Süresi</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Tekrar denemeden önce beklemeniz gerekiyor.
+            </p>
+            {remainingTime && (
+              <div className="flex items-center justify-center gap-2 p-3 bg-muted rounded-lg">
+                <Clock className="w-5 h-5 text-amber-500" />
+                <span className="font-medium">{remainingTime}</span>
+              </div>
+            )}
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                Son puan: <span className="font-medium">{attemptInfo.lastAttempt?.score}%</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Kalan deneme: <span className="font-medium">{attemptsRemaining > 0 ? attemptsRemaining : 0}</span>
+              </p>
+            </div>
+            {attemptsRemaining <= 0 && (
+              <div className="flex items-center justify-center gap-2 p-2 bg-red-500/10 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <span className="text-xs text-red-600">Deneme hakkınız kalmadı</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -139,6 +253,25 @@ export default function AcademyQuiz() {
               <Progress value={score} className="h-1" />
             </div>
 
+            {/* Retry info for failed attempts */}
+            {score < quiz.passingScore && (
+              <Card className="bg-amber-500/5 border-amber-500/20">
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 text-amber-500" />
+                    <span className="text-sm font-medium">Tekrar Deneme</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    24 saat sonra tekrar deneyebilirsiniz. Quiz'i geçmek için en az %{quiz.passingScore} almanız gerekiyor.
+                  </p>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">Deneme:</span>
+                    <span className="font-medium">{(attemptInfo?.attemptCount || 0) + 1} / {attemptInfo?.maxAttempts || 3}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Adaptive Progression */}
             {recommendation && (
               <Card className="bg-primary/10 dark:bg-blue-950 border-primary/30 dark:border-primary/40">
@@ -172,7 +305,17 @@ export default function AcademyQuiz() {
               </Card>
             )}
 
-            <Button onClick={() => window.history.back()}>Geri Dön</Button>
+            <div className="flex gap-2">
+              <Link to="/akademi" className="flex-1">
+                <Button variant="outline" className="w-full">Akademi'ye Dön</Button>
+              </Link>
+              {score >= quiz.passingScore && (
+                <Button className="flex-1" onClick={() => window.history.back()}>
+                  <Trophy className="w-4 h-4 mr-1" />
+                  Devam Et
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
