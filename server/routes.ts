@@ -10964,6 +10964,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/academy/recipe-categories - Yeni kategori ekle (HQ only)
+  app.post('/api/academy/recipe-categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Sadece merkez yetkilileri kategori ekleyebilir" });
+      }
+      
+      const validated = insertRecipeCategorySchema.parse(req.body);
+      const [category] = await db.insert(recipeCategories).values({
+        ...validated,
+        iconName: validated.iconName || 'Coffee',
+        colorHex: validated.colorHex || '#1e3a5f',
+        displayOrder: validated.displayOrder || 1,
+      }).returning();
+      
+      res.json(category);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      console.error("Create recipe category error:", error);
+      res.status(500).json({ message: "Kategori oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/academy/recipe-categories/:id - Kategori güncelle (HQ only)
+  app.patch('/api/academy/recipe-categories/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Sadece merkez yetkilileri kategori güncelleyebilir" });
+      }
+      
+      const { id } = req.params;
+      const validated = insertRecipeCategorySchema.partial().parse(req.body);
+      const [category] = await db.update(recipeCategories)
+        .set(validated)
+        .where(eq(recipeCategories.id, parseInt(id)))
+        .returning();
+      
+      if (!category) {
+        return res.status(404).json({ message: "Kategori bulunamadı" });
+      }
+      
+      res.json(category);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      console.error("Update recipe category error:", error);
+      res.status(500).json({ message: "Kategori güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/academy/recipe-categories/:id - Kategori sil (HQ only)
+  app.delete('/api/academy/recipe-categories/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Sadece merkez yetkilileri kategori silebilir" });
+      }
+      
+      const { id } = req.params;
+      
+      // Check if category has recipes
+      const categoryRecipes = await db.select().from(recipes).where(eq(recipes.categoryId, parseInt(id)));
+      if (categoryRecipes.length > 0) {
+        return res.status(400).json({ message: `Bu kategoride ${categoryRecipes.length} reçete var. Önce reçeteleri taşıyın.` });
+      }
+      
+      await db.delete(recipeCategories).where(eq(recipeCategories.id, parseInt(id)));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete recipe category error:", error);
+      res.status(500).json({ message: "Kategori silinemedi" });
+    }
+  });
+
+  // GET /api/academy/quiz-stats - Genel quiz istatistikleri (HQ only)
+  app.get('/api/academy/quiz-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const totalAttempts = await db.select({ count: sql<number>`count(*)` }).from(userQuizAttempts);
+      const passedAttempts = await db.select({ count: sql<number>`count(*)` }).from(userQuizAttempts).where(eq(userQuizAttempts.passed, true));
+      
+      const total = Number(totalAttempts[0]?.count || 0);
+      const passed = Number(passedAttempts[0]?.count || 0);
+      const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+      
+      res.json({ totalAttempts: total, passRate });
+    } catch (error) {
+      console.error("Quiz stats error:", error);
+      res.json({ totalAttempts: 0, passRate: 0 });
+    }
+  });
+
   // GET /api/academy/recipes - Tüm reçeteler veya kategoriye göre
   app.get('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
     try {

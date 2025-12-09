@@ -7,6 +7,17 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
 ## Recent Changes (December 9, 2025)
+- ✅ **Admin Academy Control Center (COMPLETED)**:
+  * **New Route**: `/yonetim/akademi` - HQ-only Academy management panel
+  * **Tab Interface**: 5 tabs - Genel Bakış, Kategoriler, Modüller, Quizler, Gamification
+  * **Category CRUD**: Create/Edit/Delete recipe categories with icon, color, display order
+  * **Module CRUD**: Create/Edit/Delete training modules with level, duration
+  * **Quiz Toggle**: Enable/disable quizzes from admin panel
+  * **Gamification Dashboard**: View badges, leaderboard, XP settings
+  * **Shadcn Form Integration**: CategoryDialog and ModuleDialog use react-hook-form + Zod validation
+  * **API Endpoints**: POST/PATCH/DELETE `/api/academy/recipe-categories`, GET `/api/academy/quiz-stats`
+  * **Status**: ✅ **ADMIN ACADEMY PANEL ACTIVE**
+
 - ✅ **Quiz Failure Gating & Retry System (COMPLETED)**:
   * **24-Hour Cooldown**: Failed quiz attempts trigger 24-hour retry cooldown
   * **Attempt Tracking**: `/api/academy/quiz/:quizId/attempts` endpoint tracks user attempts

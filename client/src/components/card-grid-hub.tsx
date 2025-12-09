@@ -149,8 +149,8 @@ export function CardGridHub() {
     { 
       id: "academy-hq", 
       icon: GraduationCap, 
-      label: "Akademi", 
-      path: "/akademi-hq",
+      label: "Akademi Yönetimi", 
+      path: "/yonetim/akademi",
       color: "bg-blue-500",
       description: "Eğitim yönetimi"
     },
