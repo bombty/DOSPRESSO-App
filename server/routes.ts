@@ -106,6 +106,8 @@ import {
   insertRecipeSchema,
   insertRecipeVersionSchema,
   insertRecipeCategorySchema,
+  quizzes,
+  quizQuestions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -11057,6 +11059,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Quiz stats error:", error);
       res.json({ totalAttempts: 0, passRate: 0 });
+    }
+  });
+
+  // GET /api/academy/quizzes - Tüm quizler
+  app.get('/api/academy/quizzes', isAuthenticated, async (req: any, res) => {
+    try {
+      const allQuizzes = await db.select().from(quizzes).orderBy(quizzes.createdAt);
+      
+      // Her quiz için soru sayısını al
+      const quizzesWithCount = await Promise.all(allQuizzes.map(async (quiz) => {
+        const questions = await db.select({ count: sql<number>`count(*)` })
+          .from(quizQuestions)
+          .where(eq(quizQuestions.careerQuizId, quiz.id));
+        return {
+          ...quiz,
+          questionCount: Number(questions[0]?.count || 0),
+        };
+      }));
+      
+      res.json(quizzesWithCount);
+    } catch (error) {
+      console.error("Get quizzes error:", error);
+      res.status(500).json({ message: "Quizler yüklenemedi" });
+    }
+  });
+
+  // POST /api/academy/quizzes - Yeni quiz oluştur (HQ only)
+  app.post('/api/academy/quizzes', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Sadece merkez yetkilileri quiz oluşturabilir" });
+      }
+      
+      const { title, description, passingScore, timeLimit, maxAttempts } = req.body;
+      
+      const [newQuiz] = await db.insert(quizzes).values({
+        title,
+        description,
+        passingScore: passingScore || 70,
+        timeLimit: timeLimit || null,
+        maxAttempts: maxAttempts || 3,
+        isActive: true,
+        createdAt: new Date(),
+      }).returning();
+      
+      res.status(201).json(newQuiz);
+    } catch (error) {
+      console.error("Create quiz error:", error);
+      res.status(500).json({ message: "Quiz oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/academy/quizzes/:id - Quiz güncelle (HQ only)
+  app.patch('/api/academy/quizzes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Sadece merkez yetkilileri quiz güncelleyebilir" });
+      }
+      
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const [updated] = await db.update(quizzes)
+        .set(updates)
+        .where(eq(quizzes.id, parseInt(id)))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update quiz error:", error);
+      res.status(500).json({ message: "Quiz güncellenemedi" });
+    }
+  });
+
+  // POST /api/academy/quiz/:quizId/questions - Quiz'e soru ekle (HQ only)
+  app.post('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Sadece merkez yetkilileri soru ekleyebilir" });
+      }
+      
+      const { quizId } = req.params;
+      const { question, questionType, options, correctAnswerIndex, explanation, points } = req.body;
+      
+      // Doğru cevabı bul
+      const correctAnswer = options[correctAnswerIndex] || options[0];
+      
+      const [newQuestion] = await db.insert(quizQuestions).values({
+        careerQuizId: parseInt(quizId),
+        question,
+        questionType: questionType || 'multiple_choice',
+        options,
+        correctAnswer,
+        correctAnswerIndex: correctAnswerIndex || 0,
+        explanation: explanation || null,
+        points: points || 1,
+      }).returning();
+      
+      res.status(201).json(newQuestion);
+    } catch (error) {
+      console.error("Add question error:", error);
+      res.status(500).json({ message: "Soru eklenemedi" });
     }
   });
 

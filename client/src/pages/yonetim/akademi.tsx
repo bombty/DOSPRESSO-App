@@ -658,6 +658,9 @@ function ModulesTab({ modules, recipeCategories, onEdit, onAdd }: {
 
 function QuizzesTab({ quizzes }: { quizzes: Quiz[] }) {
   const { toast } = useToast();
+  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+  const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
+  const [quizDialogOpen, setQuizDialogOpen] = useState(false);
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
@@ -680,64 +683,93 @@ function QuizzesTab({ quizzes }: { quizzes: Quiz[] }) {
   });
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div>
-            <CardTitle className="text-base">Quiz Yönetimi</CardTitle>
-            <CardDescription>{quizzes.length} quiz mevcut</CardDescription>
+    <>
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <CardTitle className="text-base">Quiz Yönetimi</CardTitle>
+              <CardDescription>{quizzes.length} quiz mevcut</CardDescription>
+            </div>
+            <Button size="sm" onClick={() => setQuizDialogOpen(true)} data-testid="button-create-quiz">
+              <Plus className="w-4 h-4 mr-1" />
+              Yeni Quiz
+            </Button>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {quizzes.map((quiz) => (
-            <Card key={quiz.id} className={`${quiz.isActive ? '' : 'opacity-60'}`} data-testid={`quiz-card-${quiz.id}`}>
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <Brain className={`w-5 h-5 ${quiz.isActive ? 'text-purple-600' : 'text-muted-foreground'}`} />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm">{quiz.title}</h3>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <Badge variant="outline" className="text-xs">%{quiz.passingScore} geçme</Badge>
-                        {quiz.timeLimit && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                            <Clock className="w-3 h-3" />
-                            {quiz.timeLimit}dk
-                          </span>
-                        )}
-                        {quiz.questionCount && (
-                          <span className="text-xs text-muted-foreground">{quiz.questionCount} soru</span>
-                        )}
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {quizzes.map((quiz) => (
+              <Card key={quiz.id} className={`${quiz.isActive ? '' : 'opacity-60'}`} data-testid={`quiz-card-${quiz.id}`}>
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Brain className={`w-5 h-5 ${quiz.isActive ? 'text-purple-600' : 'text-muted-foreground'}`} />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm">{quiz.title}</h3>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <Badge variant="outline" className="text-xs">%{quiz.passingScore} geçme</Badge>
+                          {quiz.timeLimit && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                              <Clock className="w-3 h-3" />
+                              {quiz.timeLimit}dk
+                            </span>
+                          )}
+                          {quiz.questionCount && (
+                            <span className="text-xs text-muted-foreground">{quiz.questionCount} soru</span>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedQuiz(quiz);
+                          setQuestionDialogOpen(true);
+                        }}
+                        data-testid={`button-add-question-${quiz.id}`}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Soru Ekle
+                      </Button>
+                      <Badge variant={quiz.isActive ? 'default' : 'secondary'}>
+                        {quiz.isActive ? 'Aktif' : 'Pasif'}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggleMutation.mutate({ id: quiz.id, isActive: !quiz.isActive })}
+                        data-testid={`button-toggle-quiz-${quiz.id}`}
+                      >
+                        {quiz.isActive ? 'Devre Dışı' : 'Aktifleştir'}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={quiz.isActive ? 'default' : 'secondary'}>
-                      {quiz.isActive ? 'Aktif' : 'Pasif'}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => toggleMutation.mutate({ id: quiz.id, isActive: !quiz.isActive })}
-                      data-testid={`button-toggle-quiz-${quiz.id}`}
-                    >
-                      {quiz.isActive ? 'Devre Dışı' : 'Aktifleştir'}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        {quizzes.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            Henüz quiz eklenmemiş
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        )}
-      </CardContent>
-    </Card>
+          {quizzes.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              Henüz quiz eklenmemiş
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <QuestionDialog 
+        open={questionDialogOpen} 
+        onOpenChange={setQuestionDialogOpen} 
+        quiz={selectedQuiz} 
+      />
+
+      <QuizDialog 
+        open={quizDialogOpen} 
+        onOpenChange={setQuizDialogOpen} 
+      />
+    </>
   );
 }
 
@@ -2570,6 +2602,396 @@ function ModuleDialog({ open, onOpenChange, module, categories }: {
               </Button>
               <Button type="submit" disabled={mutation.isPending} data-testid="button-save-module">
                 {mutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const questionSchema = z.object({
+  question: z.string().min(5, "Soru en az 5 karakter olmalı"),
+  questionType: z.enum(["multiple_choice", "true_false"]),
+  options: z.array(z.string()).min(2, "En az 2 seçenek gerekli"),
+  correctAnswerIndex: z.number().min(0),
+  explanation: z.string().optional(),
+  points: z.number().min(1).default(1),
+});
+
+function QuestionDialog({ 
+  open, 
+  onOpenChange, 
+  quiz 
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void; 
+  quiz: Quiz | null;
+}) {
+  const { toast } = useToast();
+  const [questionType, setQuestionType] = useState<"multiple_choice" | "true_false">("multiple_choice");
+  const [options, setOptions] = useState<string[]>(["", "", "", ""]);
+
+  const form = useForm<z.infer<typeof questionSchema>>({
+    resolver: zodResolver(questionSchema),
+    defaultValues: {
+      question: "",
+      questionType: "multiple_choice",
+      options: ["", "", "", ""],
+      correctAnswerIndex: 0,
+      explanation: "",
+      points: 1,
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (data: z.infer<typeof questionSchema>) => {
+      if (!quiz) throw new Error("Quiz seçilmedi");
+      const res = await fetch(`/api/academy/quiz/${quiz.id}/questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...data,
+          careerQuizId: quiz.id,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/quizzes'] });
+      toast({ title: "Başarılı", description: "Soru eklendi" });
+      form.reset();
+      setOptions(["", "", "", ""]);
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleQuestionTypeChange = (type: "multiple_choice" | "true_false") => {
+    setQuestionType(type);
+    if (type === "true_false") {
+      setOptions(["Doğru", "Yanlış"]);
+      form.setValue("options", ["Doğru", "Yanlış"]);
+    } else {
+      setOptions(["", "", "", ""]);
+      form.setValue("options", ["", "", "", ""]);
+    }
+    form.setValue("questionType", type);
+  };
+
+  const onSubmit = (data: z.infer<typeof questionSchema>) => {
+    data.options = options.filter(o => o.trim() !== "");
+    mutation.mutate(data);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Soru Ekle</DialogTitle>
+          <DialogDescription>
+            {quiz?.title} quizine yeni soru ekle
+          </DialogDescription>
+        </DialogHeader>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={questionType === "multiple_choice" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleQuestionTypeChange("multiple_choice")}
+              >
+                Çoktan Seçmeli
+              </Button>
+              <Button
+                type="button"
+                variant={questionType === "true_false" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleQuestionTypeChange("true_false")}
+              >
+                Doğru/Yanlış
+              </Button>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="question"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Soru</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Soru metnini yazın..." 
+                      {...field} 
+                      data-testid="input-question-text"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="space-y-2">
+              <Label>Seçenekler</Label>
+              {options.map((option, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="correctAnswer"
+                    checked={form.watch("correctAnswerIndex") === idx}
+                    onChange={() => form.setValue("correctAnswerIndex", idx)}
+                    className="w-4 h-4"
+                  />
+                  <Input
+                    value={option}
+                    onChange={(e) => {
+                      const newOptions = [...options];
+                      newOptions[idx] = e.target.value;
+                      setOptions(newOptions);
+                    }}
+                    placeholder={`Seçenek ${idx + 1}`}
+                    disabled={questionType === "true_false"}
+                    data-testid={`input-option-${idx}`}
+                  />
+                </div>
+              ))}
+              {questionType === "multiple_choice" && options.length < 6 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setOptions([...options, ""])}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Seçenek Ekle
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Doğru cevabı seçmek için radio butonunu işaretleyin
+              </p>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="explanation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Açıklama (Opsiyonel)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Cevap sonrası gösterilecek açıklama..." 
+                      {...field} 
+                      data-testid="input-question-explanation"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="points"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Puan</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={1} 
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                      data-testid="input-question-points"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                İptal
+              </Button>
+              <Button type="submit" disabled={mutation.isPending} data-testid="button-save-question">
+                {mutation.isPending ? 'Ekleniyor...' : 'Soru Ekle'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const quizSchema = z.object({
+  title: z.string().min(3, "Başlık en az 3 karakter olmalı"),
+  description: z.string().optional(),
+  passingScore: z.number().min(1).max(100).default(70),
+  timeLimit: z.number().min(1).optional(),
+  maxAttempts: z.number().min(1).default(3),
+});
+
+function QuizDialog({ 
+  open, 
+  onOpenChange 
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof quizSchema>>({
+    resolver: zodResolver(quizSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      passingScore: 70,
+      timeLimit: undefined,
+      maxAttempts: 3,
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (data: z.infer<typeof quizSchema>) => {
+      const res = await fetch('/api/academy/quizzes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/quizzes'] });
+      toast({ title: "Başarılı", description: "Quiz oluşturuldu" });
+      form.reset();
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Yeni Quiz Oluştur</DialogTitle>
+          <DialogDescription>
+            Personel için yeni bir quiz ekleyin
+          </DialogDescription>
+        </DialogHeader>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Quiz Başlığı</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ör: Espresso Hazırlama" {...field} data-testid="input-quiz-title" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Açıklama</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Quiz hakkında kısa bir açıklama..." {...field} data-testid="input-quiz-description" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="passingScore"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Geçme Notu (%)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min={1} 
+                        max={100}
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 70)}
+                        data-testid="input-quiz-passing-score"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="timeLimit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Süre (dk)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min={1}
+                        placeholder="Opsiyonel"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                        data-testid="input-quiz-time-limit"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="maxAttempts"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Maksimum Deneme Hakkı</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={1}
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 3)}
+                      data-testid="input-quiz-max-attempts"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                İptal
+              </Button>
+              <Button type="submit" disabled={mutation.isPending} data-testid="button-create-quiz">
+                {mutation.isPending ? 'Oluşturuluyor...' : 'Oluştur'}
               </Button>
             </DialogFooter>
           </form>
