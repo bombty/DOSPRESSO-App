@@ -97,7 +97,7 @@ export default function ReceteDetay() {
   const version = recipe.currentVersion;
   const ingredients = version?.ingredients || [];
   const steps = version?.steps || [];
-  const equipmentNeeded = version?.equipment_needed || [];
+  const equipmentNeeded = version?.equipmentNeeded || [];
   const displaySteps = showAllSteps ? steps : steps.slice(0, 5);
 
   const getDifficultyBadge = (level: string) => {
@@ -119,19 +119,19 @@ export default function ReceteDetay() {
           </Button>
         </Link>
 
-        {recipe.banner_image_url ? (
+        {recipe.photoUrl ? (
           <div 
             className="h-48 rounded-xl bg-cover bg-center relative"
-            style={{ backgroundImage: `url(${recipe.banner_image_url})` }}
+            style={{ backgroundImage: `url(${recipe.photoUrl})` }}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent rounded-xl" />
             <div className="absolute bottom-4 left-4 right-4 text-white">
-              <h1 className="text-xl font-bold">{recipe.name_tr}</h1>
+              <h1 className="text-xl font-bold">{recipe.nameTr}</h1>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="text-white border-white/50">{recipe.code}</Badge>
                 <div className="flex items-center gap-1 text-sm">
                   <Clock className="w-3 h-3" />
-                  <span>{recipe.estimated_minutes} dk</span>
+                  <span>{recipe.estimatedMinutes} dk</span>
                 </div>
               </div>
             </div>
@@ -144,14 +144,14 @@ export default function ReceteDetay() {
                   <Coffee className="w-8 h-8 text-amber-800" />
                 </div>
                 <div className="flex-1">
-                  <h1 className="text-xl font-bold">{recipe.name_tr}</h1>
+                  <h1 className="text-xl font-bold">{recipe.nameTr}</h1>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <Badge variant="outline">{recipe.code}</Badge>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Clock className="w-3 h-3" />
-                      <span>{recipe.estimated_minutes} dk</span>
+                      <span>{recipe.estimatedMinutes} dk</span>
                     </div>
-                    {getDifficultyBadge(recipe.difficulty_level)}
+                    {getDifficultyBadge(recipe.difficulty)}
                   </div>
                 </div>
               </div>
@@ -256,7 +256,7 @@ export default function ReceteDetay() {
           </TabsContent>
 
           <TabsContent value="info" className="mt-4 space-y-3">
-            {version?.tips_tr && (
+            {version?.tipsTr && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -265,12 +265,12 @@ export default function ReceteDetay() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
-                  <p className="text-sm text-muted-foreground">{version.tips_tr}</p>
+                  <p className="text-sm text-muted-foreground">{version.tipsTr}</p>
                 </CardContent>
               </Card>
             )}
 
-            {version?.allergen_info && (
+            {version?.allergenInfo && (
               <Card className="border-red-200">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 text-red-600">
@@ -279,7 +279,7 @@ export default function ReceteDetay() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
-                  <p className="text-sm">{version.allergen_info}</p>
+                  <p className="text-sm">{version.allergenInfo}</p>
                 </CardContent>
               </Card>
             )}
@@ -295,17 +295,17 @@ export default function ReceteDetay() {
                 <CardContent className="p-3 pt-0 space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Versiyon:</span>
-                    <Badge variant="outline">v{version.version_number}</Badge>
+                    <Badge variant="outline">v{version.versionNumber}</Badge>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Son Güncelleme:</span>
-                    <span>{new Date(version.created_at).toLocaleDateString('tr-TR')}</span>
+                    <span>{new Date(version.createdAt).toLocaleDateString('tr-TR')}</span>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {(!version?.tips_tr && !version?.allergen_info && !version) && (
+            {(!version?.tipsTr && !version?.allergenInfo && !version) && (
               <div className="text-center py-8 text-muted-foreground">
                 Ek bilgi mevcut değil
               </div>
