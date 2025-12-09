@@ -11088,15 +11088,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Reçete bulunamadı" });
       }
       
-      // Son versiyonu al
+      // Son versiyonu al - sizes'ı include et
       const versions = await db.select().from(recipeVersions)
         .where(eq(recipeVersions.recipeId, parseInt(id)))
         .orderBy(desc(recipeVersions.versionNumber))
         .limit(1);
       
+      const currentVersion = versions[0] || null;
+      const sizes = currentVersion?.sizes as any || { massivo: { cupMl: 350, steps: [] }, longDiva: { cupMl: 550, steps: [] } };
+      
       res.json({ 
         ...recipe[0], 
-        currentVersion: versions[0] || null 
+        currentVersion,
+        sizes 
       });
     } catch (error) {
       console.error("Recipe detail error:", error);

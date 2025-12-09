@@ -1032,16 +1032,37 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
   });
 
   useEffect(() => {
-    if (open) {
+    if (open && recipe) {
+      // Load sizes from recipe's currentVersion if editing
+      const sizes = (recipe as any).sizes || { massivo: { cupMl: 350, steps: [] }, longDiva: { cupMl: 550, steps: [] } };
+      const massivoSteps = sizes.massivo?.steps?.join('\n') || "";
+      const longDivaSteps = sizes.longDiva?.steps?.join('\n') || "";
+      
       form.reset({
-        nameTr: recipe?.nameTr || "",
-        nameEn: recipe?.nameEn || "",
-        code: recipe?.code || "",
-        description: recipe?.description || "",
-        difficulty: recipe?.difficulty || "easy",
-        estimatedMinutes: recipe?.estimatedMinutes || 5,
-        categoryId: recipe?.categoryId || undefined,
-        coffeeType: recipe?.coffeeType || "",
+        nameTr: recipe.nameTr || "",
+        nameEn: recipe.nameEn || "",
+        code: recipe.code || "",
+        description: recipe.description || "",
+        difficulty: recipe.difficulty || "easy",
+        estimatedMinutes: recipe.estimatedMinutes || 5,
+        categoryId: recipe.categoryId || undefined,
+        coffeeType: recipe.coffeeType || "",
+        massivoCupMl: sizes.massivo?.cupMl || 350,
+        massivoSteps,
+        longDivaCupMl: sizes.longDiva?.cupMl || 550,
+        longDivaSteps,
+      });
+    } else if (open && !recipe) {
+      // New recipe - default values
+      form.reset({
+        nameTr: "",
+        nameEn: "",
+        code: "",
+        description: "",
+        difficulty: "easy",
+        estimatedMinutes: 5,
+        categoryId: undefined,
+        coffeeType: "",
         massivoCupMl: 350,
         massivoSteps: "",
         longDivaCupMl: 550,
@@ -1110,16 +1131,16 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
           <DialogTitle>{recipe ? 'Reçete Düzenle' : 'Yeni Reçete'}</DialogTitle>
           <DialogDescription>Reçete bilgilerini girin ve bardak boylarını tanımlayın</DialogDescription>
         </DialogHeader>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="temel">Temel Bilgi</TabsTrigger>
-            <TabsTrigger value="massivo">MASSIVO</TabsTrigger>
-            <TabsTrigger value="longdiva">LONG DIVA</TabsTrigger>
-          </TabsList>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="temel">Temel Bilgi</TabsTrigger>
+                <TabsTrigger value="massivo">MASSIVO (350ml)</TabsTrigger>
+                <TabsTrigger value="longdiva">LONG DIVA (550ml)</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="temel" className="space-y-4">
-            <Form {...form}>
-              <form className="space-y-4">
+              <TabsContent value="temel" className="space-y-4">
                 <FormField
                   control={form.control}
                   name="nameTr"
@@ -1220,13 +1241,9 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
                     </FormItem>
                   )}
                 />
-              </form>
-            </Form>
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="massivo" className="space-y-4">
-            <Form {...form}>
-              <form className="space-y-4">
+              <TabsContent value="massivo" className="space-y-4">
                 <FormField
                   control={form.control}
                   name="massivoCupMl"
@@ -1253,13 +1270,9 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
                     </FormItem>
                   )}
                 />
-              </form>
-            </Form>
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="longdiva" className="space-y-4">
-            <Form {...form}>
-              <form className="space-y-4">
+              <TabsContent value="longdiva" className="space-y-4">
                 <FormField
                   control={form.control}
                   name="longDivaCupMl"
@@ -1286,19 +1299,19 @@ function RecipeDialog({ open, onOpenChange, recipe, categories }: {
                     </FormItem>
                   )}
                 />
-              </form>
-            </Form>
-          </TabsContent>
-        </Tabs>
+              </TabsContent>
+            </Tabs>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            İptal
-          </Button>
-          <Button type="submit" disabled={mutation.isPending} onClick={() => form.handleSubmit(onSubmit)()} data-testid="button-save-recipe">
-            {mutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                İptal
+              </Button>
+              <Button type="submit" disabled={mutation.isPending} data-testid="button-save-recipe">
+                {mutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
