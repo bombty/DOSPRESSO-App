@@ -63,6 +63,21 @@ type Quiz = {
   questionCount?: number;
 };
 
+type Recipe = {
+  id: number;
+  code: string;
+  nameTr: string;
+  nameEn?: string;
+  description?: string;
+  coffeeType?: string;
+  difficulty?: string;
+  estimatedMinutes?: number;
+  categoryId?: number;
+  photoUrl?: string;
+  isActive: boolean;
+  tags?: string[];
+};
+
 const ICON_MAP: Record<string, any> = {
   Target, Coffee, BookOpen, Brain, GraduationCap, Trophy, Flame, Star, Zap, CheckCircle,
   Snowflake, IceCream, Citrus, Droplets, Leaf, Package, CircleDot, Flower2,
@@ -101,6 +116,8 @@ export default function AdminAcademy() {
   const [editingCategory, setEditingCategory] = useState<RecipeCategory | null>(null);
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<TrainingModule | null>(null);
+  const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
 
   if (!user || !isHQRole(user.role as UserRoleType)) {
     return (
@@ -141,6 +158,10 @@ export default function AdminAcademy() {
     },
   });
 
+  const { data: recipes = [] } = useQuery<Recipe[]>({
+    queryKey: ["/api/academy/recipes"],
+  });
+
   const activeModules = modules.filter((m: any) => m.isActive !== false);
   const activeQuizzes = quizzes.filter((q: any) => q.isActive !== false);
 
@@ -161,13 +182,17 @@ export default function AdminAcademy() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 h-auto gap-1 p-1">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto gap-1 p-1">
           <TabsTrigger value="overview" className="text-xs sm:text-sm" data-testid="tab-overview">
             <BarChart3 className="w-4 h-4 mr-1" />
             Genel Bakış
           </TabsTrigger>
-          <TabsTrigger value="categories" className="text-xs sm:text-sm" data-testid="tab-categories">
+          <TabsTrigger value="recipes" className="text-xs sm:text-sm" data-testid="tab-recipes">
             <Coffee className="w-4 h-4 mr-1" />
+            Reçeteler
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="text-xs sm:text-sm" data-testid="tab-categories">
+            <Package className="w-4 h-4 mr-1" />
             Kategoriler
           </TabsTrigger>
           <TabsTrigger value="modules" className="text-xs sm:text-sm" data-testid="tab-modules">
@@ -191,6 +216,15 @@ export default function AdminAcademy() {
             modules={activeModules}
             quizzes={activeQuizzes}
             quizStats={quizStats}
+          />
+        </TabsContent>
+
+        <TabsContent value="recipes" className="space-y-4 mt-4">
+          <RecipesTab 
+            recipes={recipes}
+            recipeCategories={recipeCategories}
+            onEdit={(rec) => { setEditingRecipe(rec); setRecipeDialogOpen(true); }}
+            onAdd={() => { setEditingRecipe(null); setRecipeDialogOpen(true); }}
           />
         </TabsContent>
 
@@ -231,6 +265,13 @@ export default function AdminAcademy() {
         open={moduleDialogOpen}
         onOpenChange={setModuleDialogOpen}
         module={editingModule}
+        categories={recipeCategories}
+      />
+
+      <RecipeDialog 
+        open={recipeDialogOpen} 
+        onOpenChange={setRecipeDialogOpen}
+        recipe={editingRecipe}
         categories={recipeCategories}
       />
     </div>
@@ -804,6 +845,374 @@ function GamificationTab() {
         </CardContent>
       </Card>
     </>
+  );
+}
+
+function RecipesTab({ recipes, recipeCategories, onEdit, onAdd }: {
+  recipes: Recipe[];
+  recipeCategories: RecipeCategory[];
+  onEdit: (rec: Recipe) => void;
+  onAdd: () => void;
+}) {
+  const [filterCategory, setFilterCategory] = useState("all");
+  const { toast } = useToast();
+
+  const filteredRecipes = recipes.filter((r) => {
+    if (filterCategory !== "all" && r.categoryId !== parseInt(filterCategory)) return false;
+    return true;
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/academy/recipes/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/recipes'] });
+      toast({ title: "Başarılı", description: "Reçete silindi" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <CardTitle className="text-base">Reçeteler</CardTitle>
+            <CardDescription>{recipes.length} reçete mevcut</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-40" data-testid="filter-category">
+                <SelectValue placeholder="Kategori Seç" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tümü</SelectItem>
+                {recipeCategories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id.toString()}>
+                    {cat.titleTr}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="sm" onClick={onAdd} data-testid="button-add-recipe">
+              <Plus className="w-4 h-4 mr-1" />
+              Yeni Reçete
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {filteredRecipes.map((recipe) => {
+            const category = recipeCategories.find(c => c.id === recipe.categoryId);
+            const Icon = category ? getIcon(category.iconName) : Coffee;
+            return (
+              <Card key={recipe.id} className="hover-elevate" data-testid={`recipe-card-${recipe.id}`}>
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-3">
+                    {recipe.photoUrl && (
+                      <img 
+                        src={recipe.photoUrl} 
+                        alt={recipe.nameTr}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                    )}
+                    {!recipe.photoUrl && (
+                      <div className="p-2 rounded-lg bg-muted">
+                        <Icon className="w-5 h-5" style={{ color: category?.colorHex || '#1e3a5f' }} />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm line-clamp-1">{recipe.nameTr}</h3>
+                      {category && <p className="text-xs text-muted-foreground">{category.titleTr}</p>}
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        {recipe.difficulty && (
+                          <Badge variant="outline" className="text-xs">
+                            {recipe.difficulty === 'easy' ? 'Kolay' : recipe.difficulty === 'medium' ? 'Orta' : 'Zor'}
+                          </Badge>
+                        )}
+                        {recipe.estimatedMinutes && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                            <Clock className="w-3 h-3" />
+                            {recipe.estimatedMinutes}dk
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-7 w-7"
+                        onClick={() => onEdit(recipe)}
+                        data-testid={`button-edit-recipe-${recipe.id}`}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => {
+                          if (confirm("Bu reçeteyi silmek istediğinize emin misiniz?")) {
+                            deleteMutation.mutate(recipe.id);
+                          }
+                        }}
+                        data-testid={`button-delete-recipe-${recipe.id}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        {filteredRecipes.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            Bu filtreyle eşleşen reçete bulunamadı
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const recipeFormSchema = z.object({
+  nameTr: z.string().min(1, "Reçete adı gerekli"),
+  nameEn: z.string().optional(),
+  code: z.string().optional(),
+  description: z.string().optional(),
+  difficulty: z.string().default("easy"),
+  estimatedMinutes: z.coerce.number().min(1).default(5),
+  categoryId: z.coerce.number().optional(),
+  coffeeType: z.string().optional(),
+});
+
+type RecipeFormValues = z.infer<typeof recipeFormSchema>;
+
+function RecipeDialog({ open, onOpenChange, recipe, categories }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  recipe: Recipe | null;
+  categories: RecipeCategory[];
+}) {
+  const { toast } = useToast();
+  
+  const form = useForm<RecipeFormValues>({
+    resolver: zodResolver(recipeFormSchema),
+    defaultValues: {
+      nameTr: "",
+      nameEn: "",
+      code: "",
+      description: "",
+      difficulty: "easy",
+      estimatedMinutes: 5,
+      categoryId: undefined,
+      coffeeType: "",
+    },
+  });
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        nameTr: recipe?.nameTr || "",
+        nameEn: recipe?.nameEn || "",
+        code: recipe?.code || "",
+        description: recipe?.description || "",
+        difficulty: recipe?.difficulty || "easy",
+        estimatedMinutes: recipe?.estimatedMinutes || 5,
+        categoryId: recipe?.categoryId || undefined,
+        coffeeType: recipe?.coffeeType || "",
+      });
+    }
+  }, [open, recipe, form]);
+
+  const mutation = useMutation({
+    mutationFn: async (data: RecipeFormValues) => {
+      const url = recipe 
+        ? `/api/academy/recipes/${recipe.id}`
+        : '/api/academy/recipes';
+      const method = recipe ? 'PATCH' : 'POST';
+      
+      const code = data.code || data.nameTr.toUpperCase().substring(0, 3) + String(Date.now()).slice(-3);
+      
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          ...data, 
+          code,
+          categoryId: data.categoryId ? Number(data.categoryId) : null,
+          estimatedMinutes: Number(data.estimatedMinutes),
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/recipes'] });
+      toast({ title: "Başarılı", description: recipe ? "Reçete güncellendi" : "Reçete oluşturuldu" });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const onSubmit = (data: RecipeFormValues) => {
+    mutation.mutate(data);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{recipe ? 'Reçete Düzenle' : 'Yeni Reçete'}</DialogTitle>
+          <DialogDescription>Reçete bilgilerini girin</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="nameTr"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reçete Adı (TR)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field}
+                      placeholder="örn: Espresso"
+                      data-testid="input-recipe-name"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="nameEn"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reçete Adı (EN)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field}
+                      placeholder="örn: Espresso"
+                      data-testid="input-recipe-name-en"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="difficulty"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Zorluk</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-recipe-difficulty">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="easy">Kolay</SelectItem>
+                        <SelectItem value="medium">Orta</SelectItem>
+                        <SelectItem value="hard">Zor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="estimatedMinutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Süre (dk)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number"
+                        {...field}
+                        min={1}
+                        data-testid="input-recipe-duration"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="categoryId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Kategori</FormLabel>
+                  <Select value={field.value?.toString() || ""} onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-recipe-category">
+                        <SelectValue placeholder="Kategori seç" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id.toString()}>
+                          {cat.titleTr}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Açıklama</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field}
+                      placeholder="Reçete açıklaması..."
+                      rows={3}
+                      data-testid="input-recipe-description"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                İptal
+              </Button>
+              <Button type="submit" disabled={mutation.isPending} data-testid="button-save-recipe">
+                {mutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

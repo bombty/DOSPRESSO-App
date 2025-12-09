@@ -11179,6 +11179,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/academy/recipes - Admin panelden reçete ekleme
+  app.post('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const data = insertRecipeSchema.parse(req.body);
+      const [recipe] = await db.insert(recipes).values({
+        ...data,
+        createdById: user.id,
+      }).returning();
+      
+      res.status(201).json(recipe);
+    } catch (error) {
+      console.error("Create recipe error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Reçete oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/academy/recipes/:id - Reçete güncelleme
+  app.patch('/api/academy/recipes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const { id } = req.params;
+      const data = insertRecipeSchema.partial().parse(req.body);
+      
+      const [recipe] = await db.update(recipes)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(recipes.id, parseInt(id)))
+        .returning();
+      
+      if (!recipe) {
+        return res.status(404).json({ message: "Reçete bulunamadı" });
+      }
+      
+      res.json(recipe);
+    } catch (error) {
+      console.error("Update recipe error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Reçete güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/academy/recipes/:id - Reçete silme
+  app.delete('/api/academy/recipes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const { id } = req.params;
+      
+      await db.delete(recipes).where(eq(recipes.id, parseInt(id)));
+      
+      res.json({ success: true, message: "Reçete silindi" });
+    } catch (error) {
+      console.error("Delete recipe error:", error);
+      res.status(500).json({ message: "Reçete silinemedi" });
+    }
+  });
+
   // POST /api/academy/recipe-version - Yeni reçete versiyonu (HQ only)
   app.post('/api/academy/recipe-version', isAuthenticated, async (req: any, res) => {
     try {
