@@ -7,6 +7,7 @@ import { seedRolePermissions } from "./seed-role-permissions";
 import { seedPermissionModules } from "./seed-permission-modules";
 import { seedAdminMenu } from "./seed-admin-menu";
 import { seedServiceRequests } from "./seed-service-requests";
+import { seedMoreRecipes } from "./seed-more-recipes";
 import { startWeeklyBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup } from "./tracking";
 
@@ -109,6 +110,11 @@ app.use((req, res, next) => {
     // Seed service requests (test data - idempotent)
     await seedServiceRequests().catch((error) => {
       console.error("Error seeding service requests:", error);
+    });
+    
+    // Seed additional recipes to reach 100+ (idempotent)
+    await seedMoreRecipes().catch((error) => {
+      console.error("Error seeding more recipes:", error);
     });
     
     // Ensure admin user is always approved and active (self-healing)
