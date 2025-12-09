@@ -6,7 +6,19 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Changes (December 9, 2025 - Final Session)
+## Recent Changes (December 9, 2025 - Current Session)
+- ✅ **Aylık Mesai Özeti (HR Monthly Attendance Summary) (COMPLETED)**:
+  * **New Accordion Section**: IK Yönetimi sayfasında "Aylık Mesai Özeti" accordion bölümü
+  * **Month Navigation**: İleri/geri butonları ile ay seçimi (Ocak-Aralık Türkçe)
+  * **Filters**: Kategori (Şubeler/HQ/Fabrika), Personel, Şube filtreleri
+  * **Stats Cards**: 6 istatistik kartı (Personel, Toplam Saat, Fazla Mesai, Geç Kalma, Devamsızlık, Uyum Skoru)
+  * **Attendance Table**: Personel bazlı detaylı mesai tablosu
+  * **Overtime Calculation**: 45 saat/hafta standardına göre fazla mesai hesabı
+  * **Access Control**: HQ ve Supervisor+ roller görüntüleyebilir
+  * **API Endpoint**: GET `/api/hr/monthly-attendance-summary` with month, year, branchId, category, userId parameters
+  * **Storage Methods**: `getShiftAttendancesByUserAndDateRange`, `getOvertimeRequestsByUserAndDateRange`
+  * **Status**: ✅ **HR MONTHLY ATTENDANCE SUMMARY ACTIVE**
+
 - ✅ **AI Module Oluşturma Sistemi (COMPLETED)**:
   * **AIModuleDialog Component**: Sparkles ikonu, prompt textarea, loading state
   * **Backend Endpoint**: POST `/api/training/modules/ai-generate` - OpenAI gpt-4o-mini kullanır

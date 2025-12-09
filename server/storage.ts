@@ -643,10 +643,13 @@ export interface IStorage {
 
   // Overtime Request operations
   getOvertimeRequests(userId: string, canApprove: boolean): Promise<OvertimeRequest[]>;
+  getOvertimeRequestsByUser(userId: string): Promise<OvertimeRequest[]>;
+  getOvertimeRequestsByUserAndDateRange(userId: string, startDate: string, endDate: string): Promise<OvertimeRequest[]>;
   createOvertimeRequest(data: InsertOvertimeRequest): Promise<OvertimeRequest>;
   approveOvertimeRequest(id: number, approverId: string, approvedMinutes: number): Promise<OvertimeRequest | undefined>;
   rejectOvertimeRequest(id: number, rejectionReason: string): Promise<OvertimeRequest | undefined>;
   getRecentShiftAttendances(userId: string, days: number): Promise<ShiftAttendance[]>;
+  getShiftAttendancesByUserAndDateRange(userId: string, startDate: Date, endDate: Date): Promise<ShiftAttendance[]>;
 
   // Branch Details operations
   getBranchDetails(branchId: number): Promise<{
@@ -4489,6 +4492,42 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(shiftAttendance.checkInTime))
       .limit(50);
+  }
+
+  async getShiftAttendancesByUserAndDateRange(userId: string, startDate: Date, endDate: Date): Promise<ShiftAttendance[]> {
+    return await db.select()
+      .from(shiftAttendance)
+      .where(
+        and(
+          eq(shiftAttendance.userId, userId),
+          sql`${shiftAttendance.checkInTime} >= ${startDate.toISOString()}`,
+          sql`${shiftAttendance.checkInTime} <= ${endDate.toISOString()}`
+        )
+      )
+      .orderBy(desc(shiftAttendance.checkInTime));
+  }
+
+  async getOvertimeRequestsByUser(userId: string): Promise<OvertimeRequest[]> {
+    return await db.select()
+      .from(overtimeRequests)
+      .where(eq(overtimeRequests.userId, userId))
+      .orderBy(desc(overtimeRequests.createdAt));
+  }
+
+  async getOvertimeRequestsByUserAndDateRange(userId: string, startDate: string, endDate: string): Promise<OvertimeRequest[]> {
+    // Extract YYYY-MM from start date for period matching
+    const periodMonth = startDate.substring(0, 7); // Gets YYYY-MM from YYYY-MM-DD
+    
+    return await db.select()
+      .from(overtimeRequests)
+      .where(
+        and(
+          eq(overtimeRequests.userId, userId),
+          // Use appliedToPeriod (YYYY-MM format) for correct monthly filtering
+          sql`${overtimeRequests.appliedToPeriod} = ${periodMonth}`
+        )
+      )
+      .orderBy(desc(overtimeRequests.createdAt));
   }
 
   // ========================================

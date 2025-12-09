@@ -8203,6 +8203,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========================================
+  // HR MONTHLY ATTENDANCE SUMMARY - Aggregated View
+  // ========================================
+
+  app.get('/api/hr/monthly-attendance-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { month, year, branchId, category, userId } = req.query;
+
+      // Only HQ roles and supervisors can access this
+      const isHQ = isHQRole(user.role as UserRoleType);
+      const isSupervisor = user.role === 'supervisor' || user.role === 'supervisor_buddy';
+      
+      if (!isHQ && !isSupervisor) {
+        return res.status(403).json({ message: 'Bu rapora erişim yetkiniz yok' });
+      }
+
+      // SECURITY: Supervisors can only see their own branch - reject any branchId query that doesn't match
+      if (isSupervisor && !isHQ) {
+        if (branchId && branchId !== 'all' && parseInt(branchId as string) !== user.branchId) {
+          return res.status(403).json({ message: 'Sadece kendi şubenizin verilerini görüntüleyebilirsiniz' });
+        }
+      }
+
+      const targetMonth = parseInt(month as string) || new Date().getMonth() + 1;
+      const targetYear = parseInt(year as string) || new Date().getFullYear();
+
+      // Calculate date range for the month
+      const startDate = new Date(targetYear, targetMonth - 1, 1);
+      const endDate = new Date(targetYear, targetMonth, 0);
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      // Get users based on filters
+      let users = await storage.getUsers();
+
+      // Apply branch filter - supervisors are strictly limited to their own branch
+      if (isSupervisor && !isHQ) {
+        // Supervisors can ONLY see their own branch, enforce strictly
+        users = users.filter((u: any) => u.branchId === user.branchId);
+      } else if (isHQ && branchId && branchId !== 'all') {
+        // HQ can filter by any branch
+        users = users.filter((u: any) => u.branchId === parseInt(branchId as string));
+      }
+
+      // Apply category filter (Şubeler/HQ/Fabrika)
+      if (category && category !== 'all') {
+        users = users.filter((u: any) => {
+          const isUserHQ = isHQRole(u.role as UserRoleType);
+          const isFabrika = u.role === 'fabrika';
+          const isSubeler = !isUserHQ && !isFabrika;
+
+          if (category === 'hq') return isUserHQ;
+          if (category === 'fabrika') return isFabrika;
+          if (category === 'subeler') return isSubeler;
+          return true;
+        });
+      }
+
+      // Apply single user filter
+      if (userId && userId !== 'all') {
+        users = users.filter((u: any) => u.id === userId);
+      }
+
+      // Get branches for name lookup
+      const branches = await storage.getBranches();
+      const branchMap = new Map(branches.map((b: any) => [b.id, b.name]));
+
+      // Calculate attendance data for each user
+      const summaries = await Promise.all(users.map(async (u: any) => {
+        // Get shift attendance records
+        const shiftRecords = await storage.getShiftAttendancesByUserAndDateRange?.(u.id, startDate, endDate) || [];
+
+        // Calculate totals
+        let totalShifts = shiftRecords.length;
+        let totalWorkedMinutes = 0;
+        let lateCount = 0;
+        let totalLatenessMinutes = 0;
+        let earlyLeaveCount = 0;
+        let totalEarlyLeaveMinutes = 0;
+        let absences = 0;
+        let complianceScores: number[] = [];
+
+        shiftRecords.forEach((record: any) => {
+          totalWorkedMinutes += record.totalWorkedMinutes || 0;
+          
+          if (record.latenessMinutes && record.latenessMinutes > 0) {
+            lateCount++;
+            totalLatenessMinutes += record.latenessMinutes;
+          }
+
+          if (record.earlyLeaveMinutes && record.earlyLeaveMinutes > 0) {
+            earlyLeaveCount++;
+            totalEarlyLeaveMinutes += record.earlyLeaveMinutes;
+          }
+
+          if (record.status === 'absent') {
+            absences++;
+          }
+
+          if (record.complianceScore !== null && record.complianceScore !== undefined) {
+            complianceScores.push(record.complianceScore);
+          }
+        });
+
+        // Calculate overtime (worked hours above 45 hrs/week standard -> approximate monthly)
+        const totalWorkedHours = totalWorkedMinutes / 60;
+        const monthlyStandardHours = 45 * 4; // 180 hours/month approximate
+        const overtimeHours = Math.max(0, totalWorkedHours - monthlyStandardHours);
+
+        // Get approved overtime minutes
+        const overtimeRequests = await storage.getOvertimeRequestsByUserAndDateRange?.(u.id, startDateStr, endDateStr) || [];
+        const approvedOvertimeMinutes = overtimeRequests
+          .filter((r: any) => r.status === 'approved')
+          .reduce((sum: number, r: any) => sum + (r.approvedMinutes || 0), 0);
+
+        const avgComplianceScore = complianceScores.length > 0 
+          ? Math.round(complianceScores.reduce((a, b) => a + b, 0) / complianceScores.length)
+          : 100;
+
+        return {
+          userId: u.id,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          role: u.role,
+          branchId: u.branchId,
+          branchName: branchMap.get(u.branchId) || 'HQ',
+          totalShifts,
+          totalWorkedHours: Math.round(totalWorkedHours * 10) / 10,
+          overtimeHours: Math.round(overtimeHours * 10) / 10,
+          approvedOvertimeMinutes,
+          lateCount,
+          totalLatenessMinutes,
+          earlyLeaveCount,
+          totalEarlyLeaveMinutes,
+          absences,
+          avgComplianceScore,
+        };
+      }));
+
+      // Filter out users with no shifts if we're looking at historical data
+      const filteredSummaries = summaries.filter((s: any) => s.totalShifts > 0 || s.lateCount > 0);
+
+      // Calculate totals
+      const totals = {
+        totalEmployees: filteredSummaries.length,
+        totalWorkedHours: Math.round(filteredSummaries.reduce((sum: number, s: any) => sum + s.totalWorkedHours, 0) * 10) / 10,
+        totalOvertimeHours: Math.round(filteredSummaries.reduce((sum: number, s: any) => sum + s.overtimeHours, 0) * 10) / 10,
+        totalLateArrivals: filteredSummaries.reduce((sum: number, s: any) => sum + s.lateCount, 0),
+        totalLatenessMinutes: filteredSummaries.reduce((sum: number, s: any) => sum + s.totalLatenessMinutes, 0),
+        totalAbsences: filteredSummaries.reduce((sum: number, s: any) => sum + s.absences, 0),
+        avgComplianceScore: filteredSummaries.length > 0
+          ? Math.round(filteredSummaries.reduce((sum: number, s: any) => sum + s.avgComplianceScore, 0) / filteredSummaries.length)
+          : 100,
+      };
+
+      res.json({
+        month: targetMonth,
+        year: targetYear,
+        summaries: filteredSummaries,
+        totals,
+      });
+    } catch (error: Error | unknown) {
+      console.error("Error fetching HR monthly attendance summary:", error);
+      res.status(500).json({ message: "Aylık mesai özeti yüklenirken hata oluştu" });
+    }
+  });
+
+  // ========================================
   // OVERTIME REQUESTS - Mesai Talepleri
   // ========================================
 
@@ -8335,6 +8503,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================
   // HR MANAGEMENT ENDPOINTS
   // ========================
+
+  // GET /api/hr/monthly-attendance-summary - Monthly overtime and lateness summary
+  app.get('/api/hr/monthly-attendance-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      
+      // Check permission: HQ roles or supervisors only
+      if (!isHQRole(role) && role !== 'supervisor' && role !== 'supervisor_buddy') {
+        return res.status(403).json({ message: "Bu raporu görüntüleme yetkiniz yok" });
+      }
+      
+      const { month, year, branchId, userId, category } = req.query;
+      
+      // Default to current month
+      const targetMonth = month ? parseInt(month as string) : new Date().getMonth() + 1;
+      const targetYear = year ? parseInt(year as string) : new Date().getFullYear();
+      
+      // Calculate date range for the month
+      const startDate = new Date(targetYear, targetMonth - 1, 1);
+      const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+      
+      // Get employees based on filters
+      let employees = await storage.getUsers();
+      
+      // Branch restriction for supervisors (they can only see their own branch)
+      if (role === 'supervisor' || role === 'supervisor_buddy') {
+        employees = employees.filter(emp => emp.branchId === user.branchId);
+      } else if (branchId && branchId !== 'all') {
+        // HQ users can filter by branch
+        employees = employees.filter(emp => emp.branchId === parseInt(branchId as string));
+      }
+      
+      // Category filter (subeler, hq, fabrika)
+      if (category && category !== 'all') {
+        if (category === 'subeler') {
+          employees = employees.filter(emp => !isHQRole(emp.role as UserRoleType) && emp.role !== 'fabrika');
+        } else if (category === 'hq') {
+          employees = employees.filter(emp => isHQRole(emp.role as UserRoleType));
+        } else if (category === 'fabrika') {
+          employees = employees.filter(emp => emp.role === 'fabrika');
+        }
+      }
+      
+      // Specific user filter
+      if (userId && userId !== 'all') {
+        employees = employees.filter(emp => emp.id === userId);
+      }
+      
+      // Get all branches for reference
+      const branches = await storage.getBranches();
+      const branchMap = new Map(branches.map(b => [b.id, b.name]));
+      
+      // Calculate summary for each employee
+      const summaries = await Promise.all(employees.map(async (emp) => {
+        // Get all shift attendances for this employee in the target month
+        const attendances = await storage.getShiftAttendancesByUserAndDateRange(
+          emp.id, 
+          startDate, 
+          endDate
+        );
+        
+        // Calculate total worked minutes
+        const totalWorkedMinutes = attendances.reduce((sum, a) => sum + (a.totalWorkedMinutes || 0), 0);
+        const totalWorkedHours = totalWorkedMinutes / 60;
+        
+        // Calculate overtime (hours over 45 per week × number of weeks in month)
+        const weeksInMonth = Math.ceil(new Date(targetYear, targetMonth, 0).getDate() / 7);
+        const expectedMaxHours = 45 * weeksInMonth;
+        const overtimeHours = Math.max(0, totalWorkedHours - expectedMaxHours);
+        
+        // Calculate late arrivals
+        const lateArrivals = attendances.filter(a => (a.latenessMinutes || 0) > 0);
+        const lateCount = lateArrivals.length;
+        const totalLatenessMinutes = lateArrivals.reduce((sum, a) => sum + (a.latenessMinutes || 0), 0);
+        
+        // Calculate early leaves
+        const earlyLeaves = attendances.filter(a => (a.earlyLeaveMinutes || 0) > 0);
+        const earlyLeaveCount = earlyLeaves.length;
+        const totalEarlyLeaveMinutes = earlyLeaves.reduce((sum, a) => sum + (a.earlyLeaveMinutes || 0), 0);
+        
+        // Calculate absences
+        const absences = attendances.filter(a => a.status === 'absent').length;
+        
+        // Get approved overtime requests
+        const overtimeRequests = await storage.getOvertimeRequestsByUser(emp.id);
+        const approvedOvertimeMinutes = overtimeRequests
+          .filter(r => r.status === 'approved' && r.createdAt && 
+            new Date(r.createdAt) >= startDate && new Date(r.createdAt) <= endDate)
+          .reduce((sum, r) => sum + (r.approvedMinutes || 0), 0);
+        
+        return {
+          userId: emp.id,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          role: emp.role,
+          branchId: emp.branchId,
+          branchName: emp.branchId ? branchMap.get(emp.branchId) || 'Bilinmiyor' : 'HQ',
+          totalShifts: attendances.length,
+          totalWorkedHours: parseFloat(totalWorkedHours.toFixed(2)),
+          overtimeHours: parseFloat(overtimeHours.toFixed(2)),
+          approvedOvertimeMinutes,
+          lateCount,
+          totalLatenessMinutes,
+          earlyLeaveCount,
+          totalEarlyLeaveMinutes,
+          absences,
+          avgComplianceScore: attendances.length > 0 
+            ? Math.round(attendances.reduce((sum, a) => sum + (a.complianceScore || 100), 0) / attendances.length)
+            : 100,
+        };
+      }));
+      
+      // Calculate totals
+      const totals = {
+        totalEmployees: summaries.length,
+        totalWorkedHours: parseFloat(summaries.reduce((sum, s) => sum + s.totalWorkedHours, 0).toFixed(2)),
+        totalOvertimeHours: parseFloat(summaries.reduce((sum, s) => sum + s.overtimeHours, 0).toFixed(2)),
+        totalLateArrivals: summaries.reduce((sum, s) => sum + s.lateCount, 0),
+        totalLatenessMinutes: summaries.reduce((sum, s) => sum + s.totalLatenessMinutes, 0),
+        totalAbsences: summaries.reduce((sum, s) => sum + s.absences, 0),
+        avgComplianceScore: summaries.length > 0
+          ? Math.round(summaries.reduce((sum, s) => sum + s.avgComplianceScore, 0) / summaries.length)
+          : 100,
+      };
+      
+      res.json({
+        month: targetMonth,
+        year: targetYear,
+        summaries,
+        totals,
+      });
+    } catch (error) {
+      console.error("Error fetching monthly attendance summary:", error);
+      res.status(500).json({ message: "Aylık mesai özeti yüklenirken hata oluştu" });
+    }
+  });
 
   // Employee Documents (Özlük Dosyası)
   // Get all employee documents (latest 20, with branch restrictions for branch users)

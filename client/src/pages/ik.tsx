@@ -82,6 +82,10 @@ import {
   FileWarning,
   UserCheck,
   FolderOpen,
+  Clock,
+  Download,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useLocation } from "wouter";
@@ -131,6 +135,12 @@ export default function IKPage() {
 
   // Filters - Section 4: Documents
   const [documentTypeFilter, setDocumentTypeFilter] = useState<string>("all");
+
+  // Filters - Section 5: Monthly Attendance Summary
+  const [attendanceMonth, setAttendanceMonth] = useState<number>(new Date().getMonth() + 1);
+  const [attendanceYear, setAttendanceYear] = useState<number>(new Date().getFullYear());
+  const [attendanceCategoryFilter, setAttendanceCategoryFilter] = useState<string>("all");
+  const [attendanceUserFilter, setAttendanceUserFilter] = useState<string>("all");
 
   // Dialogs
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -242,6 +252,86 @@ export default function IKPage() {
     queryKey: documentsQueryKey,
     enabled: !!user,
   });
+
+  // Monthly Attendance Summary Query
+  interface AttendanceSummary {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    branchId: number | null;
+    branchName: string;
+    totalShifts: number;
+    totalWorkedHours: number;
+    overtimeHours: number;
+    approvedOvertimeMinutes: number;
+    lateCount: number;
+    totalLatenessMinutes: number;
+    earlyLeaveCount: number;
+    totalEarlyLeaveMinutes: number;
+    absences: number;
+    avgComplianceScore: number;
+  }
+
+  interface AttendanceTotals {
+    totalEmployees: number;
+    totalWorkedHours: number;
+    totalOvertimeHours: number;
+    totalLateArrivals: number;
+    totalLatenessMinutes: number;
+    totalAbsences: number;
+    avgComplianceScore: number;
+  }
+
+  const canViewAttendance = user?.role && (isHQRole(user.role as any) || user.role === 'supervisor' || user.role === 'supervisor_buddy');
+
+  const attendanceQueryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append('month', attendanceMonth.toString());
+    params.append('year', attendanceYear.toString());
+    if (branchFilter !== 'all') params.append('branchId', branchFilter);
+    if (attendanceCategoryFilter !== 'all') params.append('category', attendanceCategoryFilter);
+    if (attendanceUserFilter !== 'all') params.append('userId', attendanceUserFilter);
+    return params.toString();
+  }, [attendanceMonth, attendanceYear, branchFilter, attendanceCategoryFilter, attendanceUserFilter]);
+
+  const { data: attendanceSummaryData, isLoading: isAttendanceLoading } = useQuery<{
+    month: number;
+    year: number;
+    summaries: AttendanceSummary[];
+    totals: AttendanceTotals;
+  }>({
+    queryKey: ['/api/hr/monthly-attendance-summary', attendanceQueryParams],
+    queryFn: async () => {
+      const res = await fetch(`/api/hr/monthly-attendance-summary?${attendanceQueryParams}`);
+      if (!res.ok) throw new Error('Failed to fetch attendance summary');
+      return res.json();
+    },
+    enabled: !!user && !!canViewAttendance,
+  });
+
+  const attendanceSummaries = attendanceSummaryData?.summaries || [];
+  const attendanceTotals = attendanceSummaryData?.totals;
+
+  const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+  const handlePrevMonth = () => {
+    if (attendanceMonth === 1) {
+      setAttendanceMonth(12);
+      setAttendanceYear(attendanceYear - 1);
+    } else {
+      setAttendanceMonth(attendanceMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (attendanceMonth === 12) {
+      setAttendanceMonth(1);
+      setAttendanceYear(attendanceYear + 1);
+    } else {
+      setAttendanceMonth(attendanceMonth + 1);
+    }
+  };
 
   // Check permissions
   const canCreate = user?.role && hasPermission(user.role as any, "employees", "create");
@@ -1011,6 +1101,227 @@ export default function IKPage() {
             </AccordionContent>
           </Card>
         </AccordionItem>
+
+        {/* Section 5: Aylık Mesai Özeti - Only for HQ and Supervisors */}
+        {canViewAttendance && (
+          <AccordionItem value="mesai" data-testid="accordion-mesai">
+            <Card>
+              <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-mesai">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span className="text-lg font-semibold">Aylık Mesai Özeti</span>
+                  <Badge variant="secondary" className="ml-2">{attendanceSummaries.length}</Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <CardContent className="w-full space-y-3 sm:space-y-4">
+                  {/* Month Navigation and Filters */}
+                  <Card className="bg-muted/30 border-dashed">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Filter className="h-4 w-4" />
+                        Dönem ve Filtreler
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Month Navigation */}
+                      <div className="flex items-center justify-center gap-4">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={handlePrevMonth}
+                          data-testid="button-prev-month"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="text-center min-w-[150px]">
+                          <p className="text-lg font-semibold">{monthNames[attendanceMonth - 1]} {attendanceYear}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={handleNextMonth}
+                          disabled={attendanceMonth === new Date().getMonth() + 1 && attendanceYear === new Date().getFullYear()}
+                          data-testid="button-next-month"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {/* Filters Row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-sm font-medium">Kategori</label>
+                          <Select value={attendanceCategoryFilter} onValueChange={setAttendanceCategoryFilter}>
+                            <SelectTrigger data-testid="select-attendance-category" className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tümü</SelectItem>
+                              <SelectItem value="subeler">Şubeler</SelectItem>
+                              <SelectItem value="hq">HQ</SelectItem>
+                              <SelectItem value="fabrika">Fabrika</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Personel</label>
+                          <Select value={attendanceUserFilter} onValueChange={setAttendanceUserFilter}>
+                            <SelectTrigger data-testid="select-attendance-user" className="h-9">
+                              <SelectValue placeholder="Kişi Seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tüm Personel</SelectItem>
+                              {employees.map((emp) => (
+                                <SelectItem key={emp.id} value={emp.id}>
+                                  {emp.firstName} {emp.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {user?.role && isHQRole(user.role as any) && (
+                          <div>
+                            <label className="text-sm font-medium">Şube</label>
+                            <Select value={branchFilter} onValueChange={setBranchFilter}>
+                              <SelectTrigger data-testid="select-attendance-branch" className="h-9">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Tüm Şubeler</SelectItem>
+                                {branches.map((branch) => (
+                                  <SelectItem key={branch.id} value={branch.id.toString()}>
+                                    {branch.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Stats Cards */}
+                  {attendanceTotals && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+                      <Card className="hover-elevate cursor-pointer" data-testid="stat-total-employees">
+                        <CardContent className="p-3 space-y-1 text-center">
+                          <p className="text-xs text-muted-foreground">Personel</p>
+                          <p className="text-xl sm:text-2xl font-bold">{attendanceTotals.totalEmployees}</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="hover-elevate cursor-pointer" data-testid="stat-total-hours">
+                        <CardContent className="p-3 space-y-1 text-center">
+                          <p className="text-xs text-muted-foreground">Toplam Saat</p>
+                          <p className="text-xl sm:text-2xl font-bold">{attendanceTotals.totalWorkedHours.toFixed(1)}</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="hover-elevate cursor-pointer" data-testid="stat-overtime-hours">
+                        <CardContent className="p-3 space-y-1 text-center">
+                          <p className="text-xs text-muted-foreground">Fazla Mesai</p>
+                          <p className="text-xl sm:text-2xl font-bold text-orange-600">{attendanceTotals.totalOvertimeHours.toFixed(1)}s</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="hover-elevate cursor-pointer" data-testid="stat-late-arrivals">
+                        <CardContent className="p-3 space-y-1 text-center">
+                          <p className="text-xs text-muted-foreground">Geç Kalma</p>
+                          <p className="text-xl sm:text-2xl font-bold text-red-600">{attendanceTotals.totalLateArrivals}</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="hover-elevate cursor-pointer" data-testid="stat-absences">
+                        <CardContent className="p-3 space-y-1 text-center">
+                          <p className="text-xs text-muted-foreground">Devamsızlık</p>
+                          <p className="text-xl sm:text-2xl font-bold">{attendanceTotals.totalAbsences}</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="hover-elevate cursor-pointer" data-testid="stat-compliance">
+                        <CardContent className="p-3 space-y-1 text-center">
+                          <p className="text-xs text-muted-foreground">Uyum Skoru</p>
+                          <p className="text-xl sm:text-2xl font-bold text-green-600">{attendanceTotals.avgComplianceScore}%</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+
+                  {/* Attendance Table */}
+                  {isAttendanceLoading ? (
+                    <div className="flex flex-col gap-2 sm:gap-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                    </div>
+                  ) : attendanceSummaries.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-10 text-center text-muted-foreground">
+                        <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Bu dönem için mesai kaydı bulunamadı</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Personel</TableHead>
+                            <TableHead>Şube</TableHead>
+                            <TableHead className="text-right">Vardiya</TableHead>
+                            <TableHead className="text-right">Çalışma (saat)</TableHead>
+                            <TableHead className="text-right">Fazla Mesai</TableHead>
+                            <TableHead className="text-right">Geç Kalma</TableHead>
+                            <TableHead className="text-right">Uyum</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {attendanceSummaries.map((summary) => (
+                            <TableRow 
+                              key={summary.userId} 
+                              className="cursor-pointer hover-elevate"
+                              data-testid={`row-attendance-${summary.userId}`}
+                            >
+                              <TableCell className="font-medium">
+                                {summary.firstName} {summary.lastName}
+                                <br />
+                                <span className="text-xs text-muted-foreground">{roleLabels[summary.role] || summary.role}</span>
+                              </TableCell>
+                              <TableCell>{summary.branchName}</TableCell>
+                              <TableCell className="text-right">
+                                <Badge variant="secondary">{summary.totalShifts}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {summary.totalWorkedHours.toFixed(1)}s
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {summary.overtimeHours > 0 ? (
+                                  <Badge variant="default" className="bg-orange-600">{summary.overtimeHours.toFixed(1)}s</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {summary.lateCount > 0 ? (
+                                  <Badge variant="destructive">{summary.lateCount}x ({summary.totalLatenessMinutes}dk)</Badge>
+                                ) : (
+                                  <span className="text-green-600">✓</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Badge 
+                                  variant={summary.avgComplianceScore >= 80 ? "default" : summary.avgComplianceScore >= 60 ? "secondary" : "destructive"}
+                                >
+                                  {summary.avgComplianceScore}%
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
       </Accordion>
 
       {/* Add Employee Dialog */}
