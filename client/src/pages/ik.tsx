@@ -1064,6 +1064,7 @@ export default function IKPage() {
           setNewPassword={setNewPassword}
         />
       )}
+      </div>
     </div>
   );
 }
