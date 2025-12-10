@@ -12357,9 +12357,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.description !== undefined) updateData.description = req.body.description;
       if (req.body.dueDate !== undefined) updateData.dueDate = req.body.dueDate;
       if (req.body.isCompleted !== undefined) {
-        updateData.isCompleted = req.body.isCompleted;
-        if (req.body.isCompleted && !req.body.completedAt) {
+        updateData.status = req.body.isCompleted ? "completed" : "pending";
+        updateData.completedAt = req.body.isCompleted ? new Date() : null;
+      }
+      if (req.body.status !== undefined) {
+        updateData.status = req.body.status;
+        if (req.body.status === "completed") {
           updateData.completedAt = new Date();
+        } else {
+          updateData.completedAt = null;
         }
       }
       

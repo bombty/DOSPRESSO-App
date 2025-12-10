@@ -762,9 +762,9 @@ export default function ProjeDetay() {
                 <Card 
                   key={milestone.id} 
                   data-testid={`card-milestone-${milestone.id}`} 
-                  className={`relative overflow-visible ${milestone.isCompleted ? "border-2 border-green-500 bg-green-50 dark:bg-green-950/20" : ""}`}
+                  className={`relative overflow-visible ${milestone.status === "completed" ? "border-2 border-green-500 bg-green-50 dark:bg-green-950/20" : ""}`}
                 >
-                  {milestone.isCompleted && (
+                  {milestone.status === "completed" && (
                     <div className="absolute -top-3 -right-3 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full rotate-12 shadow-lg border-2 border-green-600 z-10">
                       OK
                     </div>
@@ -774,11 +774,11 @@ export default function ProjeDetay() {
                       <button
                         className="mt-0.5 shrink-0 hover-elevate"
                         disabled={updateMilestoneMutation.isPending}
-                        onClick={() => updateMilestoneMutation.mutate({ id: milestone.id, isCompleted: !milestone.isCompleted })}
+                        onClick={() => updateMilestoneMutation.mutate({ id: milestone.id, isCompleted: milestone.status !== "completed" })}
                       >
                         {updateMilestoneMutation.isPending ? (
                           <div className="h-6 w-6 rounded-full border-2 border-muted-foreground animate-spin" />
-                        ) : milestone.isCompleted ? (
+                        ) : milestone.status === "completed" ? (
                           <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
                             <Check className="h-4 w-4 text-white" />
                           </div>
@@ -788,7 +788,7 @@ export default function ProjeDetay() {
                       </button>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className={`font-medium ${milestone.isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                          <h3 className={`font-medium ${milestone.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
                             {milestone.title}
                           </h3>
                         </div>
@@ -802,7 +802,7 @@ export default function ProjeDetay() {
                               Hedef: {format(new Date(milestone.dueDate), "d MMMM yyyy", { locale: tr })}
                             </div>
                           )}
-                          {milestone.isCompleted && milestone.completedAt && (
+                          {milestone.status === "completed" && milestone.completedAt && (
                             <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
                               <CheckCircle2 className="h-3 w-3" />
                               Tamamlandı: {format(new Date(milestone.completedAt), "d MMMM yyyy", { locale: tr })}
