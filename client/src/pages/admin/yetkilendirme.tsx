@@ -24,7 +24,8 @@ import {
   Calendar,
   MessageSquare,
   Settings,
-  FileText
+  FileText,
+  ChevronRight
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 
@@ -129,13 +130,14 @@ type PermissionState = Record<string, { view: boolean; edit: boolean }>;
 export default function AdminYetkilendirme() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedRole, setSelectedRole] = useState<string>("supervisor");
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<PermissionState>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [showPermissions, setShowPermissions] = useState(false);
 
   const { data: rolePermissions = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/role-permissions", selectedRole],
-    enabled: user?.role === "admin",
+    enabled: user?.role === "admin" && !!selectedRole,
   });
 
   useEffect(() => {
@@ -189,12 +191,26 @@ export default function AdminYetkilendirme() {
   };
 
   const handleSave = () => {
-    saveMutation.mutate({ role: selectedRole, permissions });
+    if (selectedRole) {
+      saveMutation.mutate({ role: selectedRole, permissions });
+    }
+  };
+
+  const handleRoleSelect = (role: string) => {
+    setSelectedRole(role);
+    setPermissions({});
+    setHasChanges(false);
+    setShowPermissions(true);
+  };
+
+  const handleBackToRoles = () => {
+    setShowPermissions(false);
   };
 
   return (
-    <div className="flex h-[calc(100vh-120px)]">
-      <div className="w-56 border-r bg-muted/30 p-3 space-y-4">
+    <div className="h-[calc(100vh-120px)] flex flex-col md:flex-row">
+      {/* Rol Listesi - Mobilde tam ekran, masaüstünde sidebar */}
+      <div className={`${showPermissions ? 'hidden md:block' : 'block'} w-full md:w-56 md:border-r bg-muted/30 p-3 space-y-4 md:h-full`}>
         <div className="flex items-center gap-2">
           <Link href="/admin">
             <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-back-admin">
@@ -204,7 +220,7 @@ export default function AdminYetkilendirme() {
           <h2 className="font-semibold text-sm">Roller</h2>
         </div>
 
-        <ScrollArea className="h-[calc(100%-60px)]">
+        <ScrollArea className="h-[calc(100vh-200px)] md:h-[calc(100%-60px)]">
           <div className="space-y-4">
             {Object.entries(ROLE_GROUPS).map(([groupKey, group]) => (
               <div key={groupKey}>
@@ -216,19 +232,16 @@ export default function AdminYetkilendirme() {
                   {group.roles.map(role => (
                     <button
                       key={role}
-                      onClick={() => {
-                        setSelectedRole(role);
-                        setPermissions({});
-                        setHasChanges(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                      onClick={() => handleRoleSelect(role)}
+                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
                         selectedRole === role 
                           ? "bg-primary text-primary-foreground" 
                           : "hover:bg-muted"
                       }`}
                       data-testid={`button-role-${role}`}
                     >
-                      {ROLE_LABELS[role] || role}
+                      <span>{ROLE_LABELS[role] || role}</span>
+                      <ChevronRight className="h-4 w-4 md:hidden" />
                     </button>
                   ))}
                 </div>
@@ -238,68 +251,100 @@ export default function AdminYetkilendirme() {
         </ScrollArea>
       </div>
 
-      <div className="flex-1 p-4 overflow-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-semibold flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              {ROLE_LABELS[selectedRole]} Yetkileri
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Bu rol için sayfa ve modül erişim izinlerini ayarlayın
-            </p>
-          </div>
-          {hasChanges && (
-            <Button onClick={handleSave} disabled={saveMutation.isPending} data-testid="button-save-permissions">
-              <Save className="h-4 w-4 mr-2" />
-              {saveMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          )}
-        </div>
+      {/* İzin Ayarları - Mobilde tam ekran, masaüstünde ana alan */}
+      <div className={`${showPermissions ? 'block' : 'hidden md:block'} flex-1 p-4 overflow-auto`}>
+        {selectedRole ? (
+          <>
+            <div className="flex items-center justify-between mb-4 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 md:hidden flex-shrink-0" 
+                  onClick={handleBackToRoles}
+                  data-testid="button-back-roles"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div className="min-w-0">
+                  <h1 className="text-lg md:text-xl font-semibold flex items-center gap-2">
+                    <Shield className="h-5 w-5 flex-shrink-0 hidden md:block" />
+                    <span className="truncate">{ROLE_LABELS[selectedRole]} Yetkileri</span>
+                  </h1>
+                  <p className="text-xs md:text-sm text-muted-foreground hidden md:block">
+                    Bu rol için sayfa ve modül erişim izinlerini ayarlayın
+                  </p>
+                </div>
+              </div>
+              {hasChanges && (
+                <Button 
+                  onClick={handleSave} 
+                  disabled={saveMutation.isPending} 
+                  size="sm"
+                  className="flex-shrink-0"
+                  data-testid="button-save-permissions"
+                >
+                  <Save className="h-4 w-4 mr-1 md:mr-2" />
+                  <span className="hidden md:inline">{saveMutation.isPending ? "Kaydediliyor..." : "Kaydet"}</span>
+                  <span className="md:hidden">Kaydet</span>
+                </Button>
+              )}
+            </div>
 
-        <div className="space-y-4">
-          {MODULE_GROUPS.map((group) => (
-            <Card key={group.name}>
-              <CardHeader className="py-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <group.icon className="h-4 w-4" />
-                  {group.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2">
-                  {group.modules.map((module, idx) => (
-                    <div key={module.key}>
-                      {idx > 0 && <Separator className="my-2" />}
-                      <div className="flex items-center justify-between py-1">
-                        <span className="text-sm">{module.label}</span>
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">Görüntüle</span>
-                            <Switch
-                              checked={getPermission(module.key, "view")}
-                              onCheckedChange={() => handleToggle(module.key, "view")}
-                              data-testid={`switch-${module.key}-view`}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">Düzenle</span>
-                            <Switch
-                              checked={getPermission(module.key, "edit")}
-                              onCheckedChange={() => handleToggle(module.key, "edit")}
-                              disabled={!getPermission(module.key, "view")}
-                              data-testid={`switch-${module.key}-edit`}
-                            />
+            <div className="space-y-3">
+              {MODULE_GROUPS.map((group) => (
+                <Card key={group.name}>
+                  <CardHeader className="py-2 md:py-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <group.icon className="h-4 w-4" />
+                      {group.name}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0 pb-2 md:pb-4">
+                    <div className="space-y-1 md:space-y-2">
+                      {group.modules.map((module, idx) => (
+                        <div key={module.key}>
+                          {idx > 0 && <Separator className="my-1 md:my-2" />}
+                          <div className="flex items-center justify-between py-1">
+                            <span className="text-xs md:text-sm">{module.label}</span>
+                            <div className="flex items-center gap-2 md:gap-4">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <span className="text-[10px] md:text-xs text-muted-foreground">Gör</span>
+                                <Switch
+                                  checked={getPermission(module.key, "view")}
+                                  onCheckedChange={() => handleToggle(module.key, "view")}
+                                  className="scale-75 md:scale-100"
+                                  data-testid={`switch-${module.key}-view`}
+                                />
+                              </div>
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <span className="text-[10px] md:text-xs text-muted-foreground">Düz</span>
+                                <Switch
+                                  checked={getPermission(module.key, "edit")}
+                                  onCheckedChange={() => handleToggle(module.key, "edit")}
+                                  disabled={!getPermission(module.key, "view")}
+                                  className="scale-75 md:scale-100"
+                                  data-testid={`switch-${module.key}-edit`}
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="hidden md:flex h-full items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <Shield className="h-12 w-12 mx-auto mb-4 opacity-30" />
+              <p>Yetkileri düzenlemek için bir rol seçin</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

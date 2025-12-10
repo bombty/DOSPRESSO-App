@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, 
   ArrowLeft, 
@@ -22,7 +23,10 @@ import {
   UserCheck,
   Mail,
   Building2,
-  Shield
+  Shield,
+  Factory,
+  Store,
+  Briefcase
 } from "lucide-react";
 import { Link } from "wouter";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -42,19 +46,32 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: "bg-red-500/10 text-red-600",
-  muhasebe: "bg-blue-500/10 text-blue-600",
-  teknik: "bg-orange-500/10 text-orange-600",
-  supervisor: "bg-green-500/10 text-green-600",
-  barista: "bg-purple-500/10 text-purple-600",
+  admin: "bg-red-500/10 text-red-600 dark:text-red-400",
+  muhasebe: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  teknik: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  destek: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  coach: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  satinalma: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  yatirimci_hq: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+  fabrika: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  supervisor: "bg-green-500/10 text-green-600 dark:text-green-400",
+  supervisor_buddy: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  barista: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
 };
+
+const HQ_ROLES = ["admin", "muhasebe", "teknik", "destek", "coach", "satinalma", "yatirimci_hq"];
+const FACTORY_ROLES = ["fabrika"];
+const BRANCH_ROLES = ["supervisor", "supervisor_buddy", "barista"];
+
+type CategoryFilter = "all" | "hq" | "fabrika" | "sube";
 
 export default function AdminKullanicilar() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
+  const [userDetailDialog, setUserDetailDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   if (user?.role !== "admin") {
@@ -74,6 +91,7 @@ export default function AdminKullanicilar() {
       apiRequest("POST", `/api/admin/users/${userId}/reset-password`, {}),
     onSuccess: () => {
       setResetPasswordDialog(false);
+      setUserDetailDialog(false);
       toast({ title: "Şifre sıfırlandı", description: "Kullanıcıya e-posta gönderildi" });
     },
     onError: () => {
@@ -86,6 +104,7 @@ export default function AdminKullanicilar() {
       apiRequest("PATCH", `/api/admin/users/${userId}/status`, { isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setUserDetailDialog(false);
       toast({ title: "Kullanıcı durumu güncellendi" });
     },
   });
@@ -96,19 +115,44 @@ export default function AdminKullanicilar() {
     return branch?.name || "Bilinmiyor";
   };
 
+  const getUserCategory = (userRole: string): CategoryFilter => {
+    if (HQ_ROLES.includes(userRole)) return "hq";
+    if (FACTORY_ROLES.includes(userRole)) return "fabrika";
+    if (BRANCH_ROLES.includes(userRole)) return "sube";
+    return "hq";
+  };
+
   const filteredUsers = users.filter(u => {
     const matchesSearch = 
       u.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all" || u.role === roleFilter;
-    return matchesSearch && matchesRole;
+    
+    const matchesCategory = categoryFilter === "all" || getUserCategory(u.role) === categoryFilter;
+    
+    return matchesSearch && matchesCategory;
   });
 
   const handleResetPassword = (userItem: any) => {
     setSelectedUser(userItem);
     setResetPasswordDialog(true);
   };
+
+  const handleCardClick = (userItem: any) => {
+    setSelectedUser(userItem);
+    setUserDetailDialog(true);
+  };
+
+  const getCategoryCounts = () => {
+    const counts = { all: users.length, hq: 0, fabrika: 0, sube: 0 };
+    users.forEach(u => {
+      const cat = getUserCategory(u.role);
+      counts[cat]++;
+    });
+    return counts;
+  };
+
+  const counts = getCategoryCounts();
 
   return (
     <div className="p-4 pb-24 space-y-4">
@@ -124,37 +168,45 @@ export default function AdminKullanicilar() {
             Kullanıcı Yönetimi
           </h1>
           <p className="text-sm text-muted-foreground">
-            {users.length} kullanıcı
+            {filteredUsers.length} / {users.length} kullanıcı
           </p>
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="İsim veya e-posta ara..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-            data-testid="input-search-users"
-          />
-        </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-40" data-testid="select-role-filter">
-            <Shield className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Rol" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tüm Roller</SelectItem>
-            {Object.entries(ROLE_LABELS).map(([key, label]) => (
-              <SelectItem key={key} value={key}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Kategori Filtreleri */}
+      <Tabs value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as CategoryFilter)}>
+        <TabsList className="w-full grid grid-cols-4">
+          <TabsTrigger value="all" className="text-xs" data-testid="tab-filter-all">
+            Tümü ({counts.all})
+          </TabsTrigger>
+          <TabsTrigger value="hq" className="text-xs" data-testid="tab-filter-hq">
+            <Briefcase className="h-3 w-3 mr-1" />
+            HQ ({counts.hq})
+          </TabsTrigger>
+          <TabsTrigger value="fabrika" className="text-xs" data-testid="tab-filter-fabrika">
+            <Factory className="h-3 w-3 mr-1" />
+            Fabrika ({counts.fabrika})
+          </TabsTrigger>
+          <TabsTrigger value="sube" className="text-xs" data-testid="tab-filter-sube">
+            <Store className="h-3 w-3 mr-1" />
+            Şube ({counts.sube})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Arama */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="İsim veya e-posta ara..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
+          data-testid="input-search-users"
+        />
       </div>
 
-      <ScrollArea className="h-[calc(100vh-250px)]">
+      <ScrollArea className="h-[calc(100vh-300px)]">
         <div className="space-y-2">
           {isLoading ? (
             <p className="text-center text-muted-foreground py-8">Yükleniyor...</p>
@@ -162,7 +214,12 @@ export default function AdminKullanicilar() {
             <p className="text-center text-muted-foreground py-8">Kullanıcı bulunamadı</p>
           ) : (
             filteredUsers.map((userItem) => (
-              <Card key={userItem.id} data-testid={`user-card-${userItem.id}`}>
+              <Card 
+                key={userItem.id} 
+                className="hover-elevate cursor-pointer"
+                onClick={() => handleCardClick(userItem)}
+                data-testid={`user-card-${userItem.id}`}
+              >
                 <CardContent className="p-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
@@ -172,7 +229,7 @@ export default function AdminKullanicilar() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm">
                           {userItem.firstName} {userItem.lastName}
                         </span>
@@ -187,32 +244,35 @@ export default function AdminKullanicilar() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                        <span className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {userItem.email || "E-posta yok"}
+                        <span className="flex items-center gap-1 truncate">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{userItem.email || "E-posta yok"}</span>
                         </span>
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 flex-shrink-0">
                           <Building2 className="h-3 w-3" />
                           {getBranchName(userItem.branchId)}
                         </span>
                       </div>
                     </div>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-user-menu-${userItem.id}`}>
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleResetPassword(userItem)} data-testid={`menu-reset-password-${userItem.id}`}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleResetPassword(userItem); }} data-testid={`menu-reset-password-${userItem.id}`}>
                           <Key className="h-4 w-4 mr-2" />
                           Şifre Sıfırla
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          onClick={() => toggleStatusMutation.mutate({ 
-                            userId: userItem.id, 
-                            isActive: userItem.isActive === false 
-                          })}
+                          onClick={(e) => { 
+                            e.stopPropagation();
+                            toggleStatusMutation.mutate({ 
+                              userId: userItem.id, 
+                              isActive: userItem.isActive === false 
+                            });
+                          }}
                           data-testid={`menu-toggle-status-${userItem.id}`}
                         >
                           {userItem.isActive === false ? (
@@ -237,6 +297,83 @@ export default function AdminKullanicilar() {
         </div>
       </ScrollArea>
 
+      {/* Kullanıcı Detay/İşlem Modal */}
+      <Dialog open={userDetailDialog} onOpenChange={setUserDetailDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={selectedUser?.profileImageUrl} />
+                <AvatarFallback>
+                  {selectedUser?.firstName?.[0]}{selectedUser?.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <span>{selectedUser?.firstName} {selectedUser?.lastName}</span>
+                <Badge 
+                  variant="outline" 
+                  className={`ml-2 text-xs ${ROLE_COLORS[selectedUser?.role] || ""}`}
+                >
+                  {ROLE_LABELS[selectedUser?.role] || selectedUser?.role}
+                </Badge>
+              </div>
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  {selectedUser?.email || "E-posta yok"}
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  {getBranchName(selectedUser?.branchId)}
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  Durum: {selectedUser?.isActive === false ? (
+                    <Badge variant="destructive" className="text-xs">Pasif</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600">Aktif</Badge>
+                  )}
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => handleResetPassword(selectedUser)}
+              data-testid="button-modal-reset-password"
+            >
+              <Key className="h-4 w-4 mr-2" />
+              Şifre Sıfırla
+            </Button>
+            <Button 
+              variant={selectedUser?.isActive === false ? "default" : "destructive"}
+              onClick={() => toggleStatusMutation.mutate({ 
+                userId: selectedUser?.id, 
+                isActive: selectedUser?.isActive === false 
+              })}
+              disabled={toggleStatusMutation.isPending}
+              data-testid="button-modal-toggle-status"
+            >
+              {selectedUser?.isActive === false ? (
+                <>
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Aktif Et
+                </>
+              ) : (
+                <>
+                  <UserX className="h-4 w-4 mr-2" />
+                  Pasif Yap
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Şifre Sıfırlama Onay Dialog */}
       <Dialog open={resetPasswordDialog} onOpenChange={setResetPasswordDialog}>
         <DialogContent>
           <DialogHeader>

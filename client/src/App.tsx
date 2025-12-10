@@ -109,6 +109,8 @@ import AdminYetkilendirme from "@/pages/admin/yetkilendirme";
 import AdminAktiviteLoglar from "@/pages/admin/aktivite-loglari";
 import AdminYedekleme from "@/pages/admin/yedekleme";
 import AdminKullanicilar from "@/pages/admin/kullanicilar";
+import AdminEmailAyarlari from "@/pages/admin/email-ayarlari";
+import AdminBannerlar from "@/pages/admin/bannerlar";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -252,6 +254,8 @@ function Router() {
           <Route path="/admin/aktivite-loglari" component={AdminAktiviteLoglar} />
           <Route path="/admin/yedekleme" component={AdminYedekleme} />
           <Route path="/admin/kullanicilar" component={AdminKullanicilar} />
+          <Route path="/admin/email-ayarlari" component={AdminEmailAyarlari} />
+          <Route path="/admin/bannerlar" component={AdminBannerlar} />
         </>
       )}
       <Route component={NotFound} />

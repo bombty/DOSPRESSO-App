@@ -16,7 +16,9 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Mail,
+  Image
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 
@@ -64,6 +66,8 @@ export default function AdminDashboard() {
     { icon: Users, label: "Kullanıcılar", href: "/admin/kullanicilar", color: "bg-purple-500/10" },
     { icon: Activity, label: "Aktivite Logları", href: "/admin/aktivite-loglari", color: "bg-blue-500/10" },
     { icon: Database, label: "Yedekleme", href: "/admin/yedekleme", color: "bg-orange-500/10" },
+    { icon: Mail, label: "E-posta Ayarları", href: "/admin/email-ayarlari", color: "bg-cyan-500/10" },
+    { icon: Image, label: "Banner Yönetimi", href: "/admin/bannerlar", color: "bg-pink-500/10" },
   ];
 
   const stats = [
@@ -160,7 +164,7 @@ export default function AdminDashboard() {
           <CardTitle className="text-base">Hızlı İşlemler</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {quickActions.map((action, i) => (
               <Link key={i} href={action.href} data-testid={`link-quick-action-${action.label.toLowerCase().replace(/\s+/g, "-").replace(/ı/g, "i").replace(/ö/g, "o").replace(/ü/g, "u")}`}>
                 <Button

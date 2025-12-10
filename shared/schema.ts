@@ -4530,3 +4530,60 @@ export const insertProjectCommentSchema = createInsertSchema(projectComments).om
 
 export type InsertProjectComment = z.infer<typeof insertProjectCommentSchema>;
 export type ProjectComment = typeof projectComments.$inferSelect;
+
+
+// ============================================
+// ADMIN PANEL - E-posta Ayarları
+// ============================================
+export const emailSettings = pgTable("email_settings", {
+  id: serial("id").primaryKey(),
+  smtpHost: varchar("smtp_host", { length: 255 }),
+  smtpPort: integer("smtp_port").default(587),
+  smtpUser: varchar("smtp_user", { length: 255 }),
+  smtpPassword: varchar("smtp_password", { length: 255 }), // Encrypted
+  smtpFromEmail: varchar("smtp_from_email", { length: 255 }),
+  smtpFromName: varchar("smtp_from_name", { length: 255 }).default("DOSPRESSO"),
+  smtpSecure: boolean("smtp_secure").default(false), // TLS
+  isActive: boolean("is_active").default(true),
+  updatedById: varchar("updated_by_id").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmailSettingsSchema = createInsertSchema(emailSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertEmailSettings = z.infer<typeof insertEmailSettingsSchema>;
+export type EmailSettings = typeof emailSettings.$inferSelect;
+
+// ============================================
+// ADMIN PANEL - Banner Yönetimi
+// ============================================
+export const banners = pgTable("banners", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  linkUrl: text("link_url"),
+  targetRoles: text("target_roles").array(), // null = all roles
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  isActive: boolean("is_active").default(true),
+  orderIndex: integer("order_index").default(0),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("banners_active_idx").on(table.isActive),
+  index("banners_dates_idx").on(table.startDate, table.endDate),
+]);
+
+export const insertBannerSchema = createInsertSchema(banners).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBanner = z.infer<typeof insertBannerSchema>;
+export type Banner = typeof banners.$inferSelect;

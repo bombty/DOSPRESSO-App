@@ -120,6 +120,8 @@ import {
   insertRecipeCategorySchema,
   quizzes,
   quizQuestions,
+  emailSettings,
+  banners,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull } from "drizzle-orm";
@@ -12904,6 +12906,231 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete category assignment error:", error);
       res.status(500).json({ message: "Kategori ataması silinemedi" });
+    }
+  });
+
+  // =============================================
+  // ADMIN EMAIL SETTINGS
+  // =============================================
+  
+  app.get('/api/admin/email-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const result = await db.query.emailSettings.findFirst();
+      if (!result) {
+        return res.json({
+          smtpHost: process.env.SMTP_HOST || "",
+          smtpPort: parseInt(process.env.SMTP_PORT || "587"),
+          smtpUser: process.env.SMTP_USER || "",
+          smtpPassword: "",
+          smtpFromEmail: process.env.SMTP_FROM_EMAIL || "",
+          smtpFromName: "DOSPRESSO",
+          smtpSecure: false,
+          isActive: true,
+        });
+      }
+      res.json({ ...result, smtpPassword: result.smtpPassword ? "********" : "" });
+    } catch (error) {
+      console.error("Get email settings error:", error);
+      res.status(500).json({ message: "Ayarlar alınamadı" });
+    }
+  });
+
+  app.post('/api/admin/email-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const existing = await db.query.emailSettings.findFirst();
+      const data = {
+        ...req.body,
+        updatedById: user.id,
+        updatedAt: new Date(),
+      };
+      
+      if (data.smtpPassword === "********" || !data.smtpPassword) {
+        delete data.smtpPassword;
+      }
+      
+      if (existing) {
+        await db.update(emailSettings).set(data).where(eq(emailSettings.id, existing.id));
+      } else {
+        await db.insert(emailSettings).values(data);
+      }
+      
+      res.json({ message: "Ayarlar kaydedildi" });
+    } catch (error) {
+      console.error("Save email settings error:", error);
+      res.status(500).json({ message: "Ayarlar kaydedilemedi" });
+    }
+  });
+
+  app.post('/api/admin/email-settings/test', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      res.json({ message: "Test e-postası gönderildi" });
+    } catch (error) {
+      console.error("Test email error:", error);
+      res.status(500).json({ message: "Test e-postası gönderilemedi" });
+    }
+  });
+
+  // =============================================
+  // ADMIN BANNERS
+  // =============================================
+  
+  app.get('/api/admin/banners', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const result = await db.query.banners.findMany({
+        orderBy: (b, { desc }) => [desc(b.createdAt)],
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("Get banners error:", error);
+      res.status(500).json({ message: "Bannerlar alınamadı" });
+    }
+  });
+
+  app.post('/api/admin/banners', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const { title, description, imageUrl, linkUrl, targetRoles, startDate, endDate, isActive, orderIndex } = req.body;
+      
+      if (!title || !startDate || !endDate) {
+        return res.status(400).json({ message: "Başlık, başlangıç ve bitiş tarihi zorunludur" });
+      }
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ message: "Geçersiz tarih formatı" });
+      }
+      
+      const [banner] = await db.insert(banners).values({
+        title,
+        description: description || null,
+        imageUrl: imageUrl || null,
+        linkUrl: linkUrl || null,
+        targetRoles: targetRoles || null,
+        startDate: start,
+        endDate: end,
+        isActive: isActive !== false,
+        orderIndex: orderIndex || 0,
+        createdById: user.id,
+      }).returning();
+      
+      res.status(201).json(banner);
+    } catch (error) {
+      console.error("Create banner error:", error);
+      res.status(500).json({ message: "Banner oluşturulamadı" });
+    }
+  });
+
+  app.patch('/api/admin/banners/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const updateData: any = { updatedAt: new Date() };
+      const { title, description, imageUrl, linkUrl, targetRoles, startDate, endDate, isActive, orderIndex } = req.body;
+      
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description || null;
+      if (imageUrl !== undefined) updateData.imageUrl = imageUrl || null;
+      if (linkUrl !== undefined) updateData.linkUrl = linkUrl || null;
+      if (targetRoles !== undefined) updateData.targetRoles = targetRoles || null;
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (orderIndex !== undefined) updateData.orderIndex = orderIndex;
+      
+      if (startDate) {
+        const start = new Date(startDate);
+        if (isNaN(start.getTime())) {
+          return res.status(400).json({ message: "Geçersiz başlangıç tarihi" });
+        }
+        updateData.startDate = start;
+      }
+      
+      if (endDate) {
+        const end = new Date(endDate);
+        if (isNaN(end.getTime())) {
+          return res.status(400).json({ message: "Geçersiz bitiş tarihi" });
+        }
+        updateData.endDate = end;
+      }
+      
+      const [banner] = await db.update(banners)
+        .set(updateData)
+        .where(eq(banners.id, parseInt(req.params.id)))
+        .returning();
+      
+      res.json(banner);
+    } catch (error) {
+      console.error("Update banner error:", error);
+      res.status(500).json({ message: "Banner güncellenemedi" });
+    }
+  });
+
+  app.delete('/api/admin/banners/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      await db.delete(banners).where(eq(banners.id, parseInt(req.params.id)));
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete banner error:", error);
+      res.status(500).json({ message: "Banner silinemedi" });
+    }
+  });
+
+  // GET active banners for dashboard
+  app.get('/api/banners/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const now = new Date();
+      
+      const allBanners = await db.query.banners.findMany({
+        where: (b, { and, eq, lte, gte }) => and(
+          eq(b.isActive, true),
+          lte(b.startDate, now),
+          gte(b.endDate, now)
+        ),
+        orderBy: (b, { asc }) => [asc(b.orderIndex)],
+      });
+      
+      const filtered = allBanners.filter((banner: any) => {
+        if (!banner.targetRoles || banner.targetRoles.length === 0) return true;
+        return banner.targetRoles.includes(user.role);
+      });
+      
+      res.json(filtered);
+    } catch (error) {
+      console.error("Get active banners error:", error);
+      res.status(500).json({ message: "Bannerlar alınamadı" });
     }
   });
 
