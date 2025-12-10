@@ -18,7 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, AlertTriangle, Clock, CheckCircle2, DollarSign, User } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Clock, CheckCircle2, DollarSign, User, FileDown, Copy, Download } from "lucide-react";
+import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -119,6 +120,134 @@ export default function FaultDetail() {
     },
   });
 
+  const generateFaultReportPDF = () => {
+    if (!fault) return;
+    
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    doc.setFontSize(22);
+    doc.setTextColor(139, 69, 19);
+    doc.text("DOSPRESSO", pageWidth / 2, 20, { align: "center" });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Arıza Raporu", pageWidth / 2, 28, { align: "center" });
+    
+    doc.setDrawColor(139, 69, 19);
+    doc.setLineWidth(0.5);
+    doc.line(14, 35, pageWidth - 14, 35);
+    
+    let yPos = 45;
+    
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Arıza #${fault.id}`, 14, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(11);
+    doc.setTextColor(80, 80, 80);
+    
+    const addField = (label: string, value: string) => {
+      doc.setFont("helvetica", "bold");
+      doc.text(`${label}:`, 14, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.text(value || "-", 60, yPos);
+      yPos += 8;
+    };
+    
+    addField("Ekipman", fault.equipmentName || "-");
+    addField("Durum", STAGE_LABELS[fault.currentStage] || fault.currentStage);
+    addField("Öncelik", fault.priority ? (PRIORITY_LABELS[fault.priority] || fault.priority) : "Normal");
+    addField("Rapor Tarihi", fault.createdAt ? format(new Date(fault.createdAt), "dd MMM yyyy HH:mm", { locale: tr }) : "-");
+    addField("Atanan Kişi", fault.assignedTo || "Atanmadı");
+    
+    yPos += 5;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, yPos, pageWidth - 14, yPos);
+    yPos += 10;
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("Açıklama:", 14, yPos);
+    yPos += 7;
+    doc.setFont("helvetica", "normal");
+    
+    const description = fault.description || "Açıklama girilmedi";
+    const splitDescription = doc.splitTextToSize(description, pageWidth - 28);
+    doc.text(splitDescription, 14, yPos);
+    yPos += splitDescription.length * 6 + 10;
+    
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, yPos, pageWidth - 14, yPos);
+    yPos += 10;
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Maliyet Bilgileri", 14, yPos);
+    yPos += 8;
+    
+    doc.setFontSize(11);
+    addField("Tahmini Maliyet", fault.estimatedCost ? `₺${typeof fault.estimatedCost === 'string' ? parseFloat(fault.estimatedCost).toFixed(2) : Number(fault.estimatedCost).toFixed(2)}` : "-");
+    addField("Gerçek Maliyet", fault.actualCost ? `₺${typeof fault.actualCost === 'string' ? parseFloat(fault.actualCost).toFixed(2) : Number(fault.actualCost).toFixed(2)}` : "-");
+    
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`DOSPRESSO Franchise Management System - ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, pageHeight - 10, { align: "center" });
+    
+    const fileName = `DOSPRESSO_Ariza_${fault.id}_${format(new Date(), "yyyyMMdd")}.pdf`;
+    doc.save(fileName);
+    
+    toast({ title: "PDF İndirildi", description: fileName });
+  };
+
+  const copyFaultReportToClipboard = () => {
+    if (!fault) return;
+    
+    const reportText = `
+═══════════════════════════════════════
+       DOSPRESSO - ARIZA RAPORU
+═══════════════════════════════════════
+
+Arıza ID: #${fault.id}
+Ekipman: ${fault.equipmentName || "-"}
+Durum: ${STAGE_LABELS[fault.currentStage] || fault.currentStage}
+Öncelik: ${fault.priority ? (PRIORITY_LABELS[fault.priority] || fault.priority) : "Normal"}
+
+─────────────────────────────────────
+TARİH BİLGİLERİ
+─────────────────────────────────────
+Rapor Tarihi: ${fault.createdAt ? format(new Date(fault.createdAt), "dd MMM yyyy HH:mm", { locale: tr }) : "-"}
+
+─────────────────────────────────────
+ATAMA BİLGİLERİ
+─────────────────────────────────────
+Atanan Kişi: ${fault.assignedTo || "Atanmadı"}
+
+─────────────────────────────────────
+AÇIKLAMA
+─────────────────────────────────────
+${fault.description || "Açıklama girilmedi"}
+
+─────────────────────────────────────
+MALİYET BİLGİLERİ
+─────────────────────────────────────
+Tahmini Maliyet: ${fault.estimatedCost ? `₺${typeof fault.estimatedCost === 'string' ? parseFloat(fault.estimatedCost).toFixed(2) : Number(fault.estimatedCost).toFixed(2)}` : "-"}
+Gerçek Maliyet: ${fault.actualCost ? `₺${typeof fault.actualCost === 'string' ? parseFloat(fault.actualCost).toFixed(2) : Number(fault.actualCost).toFixed(2)}` : "-"}
+
+═══════════════════════════════════════
+DOSPRESSO Franchise Management System
+Rapor Tarihi: ${format(new Date(), "dd/MM/yyyy HH:mm")}
+═══════════════════════════════════════
+`.trim();
+
+    navigator.clipboard.writeText(reportText).then(() => {
+      toast({ title: "Kopyalandı", description: "Arıza raporu panoya kopyalandı" });
+    }).catch(() => {
+      toast({ title: "Hata", description: "Kopyalama başarısız", variant: "destructive" });
+    });
+  };
+
   if (faultLoading) {
     return (
       <div className="flex flex-col gap-3 sm:gap-4">
@@ -151,14 +280,36 @@ export default function FaultDetail() {
         Geri Dön
       </Button>
 
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold">{fault.equipmentName}</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold">{fault.equipmentName}</h1>
           <p className="text-muted-foreground mt-1">Arıza ID: #{fault.id}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setLocation("/ariza-yeni")}>Yeni Arıza</Button>
-          <Button onClick={() => setIsEditDialogOpen(true)}>Güncelle</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={copyFaultReportToClipboard}
+            data-testid="button-copy-report"
+          >
+            <Copy className="w-4 h-4 mr-1.5" />
+            Kopyala
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={generateFaultReportPDF}
+            data-testid="button-export-pdf"
+          >
+            <Download className="w-4 h-4 mr-1.5" />
+            PDF İndir
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setLocation("/ariza-yeni")} data-testid="button-new-fault">
+            Yeni Arıza
+          </Button>
+          <Button size="sm" onClick={() => setIsEditDialogOpen(true)} data-testid="button-update-fault">
+            Güncelle
+          </Button>
         </div>
       </div>
 
