@@ -65,6 +65,12 @@ export default function FaultDetail() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [showCards, setShowCards] = useState(true);
+  
+  const handleCardClick = () => {
+    setIsEditDialogOpen(true);
+    setShowCards(false);
+  };
 
   const { data: fault, isLoading: faultLoading } = useQuery<EquipmentFault>({
     queryKey: ["/api/faults", id],
@@ -156,79 +162,77 @@ export default function FaultDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-        <Card 
-          className="hover-elevate active-elevate-2 cursor-pointer"
-          onClick={() => setIsEditDialogOpen(true)}
-          data-testid="card-priority"
-        >
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" />
-              Öncelik
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Compact Metric Cards - hide on click */}
+      {showCards && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <button 
+            type="button"
+            onClick={handleCardClick}
+            className="text-left p-3 rounded-lg border bg-card hover-elevate active-elevate-2 cursor-pointer"
+            data-testid="card-priority"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Öncelik</span>
+            </div>
             <Badge className={fault.priority ? PRIORITY_COLORS[fault.priority] : PRIORITY_COLORS.normal}>
               {fault.priority ? (PRIORITY_LABELS[fault.priority] || fault.priority) : "Normal"}
             </Badge>
-          </CardContent>
-        </Card>
+          </button>
 
-        <Card 
-          className="hover-elevate active-elevate-2 cursor-pointer"
-          onClick={() => setIsEditDialogOpen(true)}
-          data-testid="card-stage"
-        >
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Durum
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <button 
+            type="button"
+            onClick={handleCardClick}
+            className="text-left p-3 rounded-lg border bg-card hover-elevate active-elevate-2 cursor-pointer"
+            data-testid="card-stage"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Durum</span>
+            </div>
             <Badge className={STAGE_COLORS[fault.currentStage] || "bg-secondary"}>
               {STAGE_LABELS[fault.currentStage] || fault.currentStage}
             </Badge>
-          </CardContent>
-        </Card>
+          </button>
 
-        <Card 
-          className="hover-elevate active-elevate-2 cursor-pointer"
-          onClick={() => setIsEditDialogOpen(true)}
-          data-testid="card-responsibility"
-        >
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Sorumluluğu
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-medium">
+          <button 
+            type="button"
+            onClick={handleCardClick}
+            className="text-left p-3 rounded-lg border bg-card hover-elevate active-elevate-2 cursor-pointer"
+            data-testid="card-responsibility"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <User className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Sorumluluk</span>
+            </div>
+            <p className="text-sm font-medium truncate">
               {(fault as any).maintenanceResponsible || (fault as any).faultProtocol || "-"}
             </p>
-          </CardContent>
-        </Card>
+          </button>
 
-        <Card 
-          className="hover-elevate active-elevate-2 cursor-pointer"
-          onClick={() => setIsEditDialogOpen(true)}
-          data-testid="card-cost"
-        >
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <DollarSign className="w-4 h-4" />
-              Gerçek Maliyet
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <button 
+            type="button"
+            onClick={handleCardClick}
+            className="text-left p-3 rounded-lg border bg-card hover-elevate active-elevate-2 cursor-pointer"
+            data-testid="card-cost"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Maliyet</span>
+            </div>
             <p className="text-sm font-medium">
               {fault.actualCost ? `₺${typeof fault.actualCost === 'string' ? parseFloat(fault.actualCost).toFixed(2) : Number(fault.actualCost).toFixed(2)}` : "-"}
             </p>
-          </CardContent>
-        </Card>
-      </div>
+          </button>
+        </div>
+      )}
+      
+      {/* Show cards button when hidden */}
+      {!showCards && (
+        <Button variant="ghost" size="sm" onClick={() => setShowCards(true)} data-testid="button-show-cards">
+          Kartları Göster
+        </Button>
+      )}
 
       <Card>
         <CardHeader>

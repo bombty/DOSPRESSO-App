@@ -238,42 +238,35 @@ export default function SubeDetayPage() {
     toast({ title: "Kopyalandı", description: "QR bağlantısı panoya kopyalandı" });
   };
 
+  // Handle card click - hide cards and switch tab
+  const handleCardClick = (tab: string) => {
+    setActiveTab(tab);
+    setShowCards(false);
+  };
+
   return (
-    <div className="flex flex-col gap-3 sm:gap-4 p-3">
-      {/* Header */}
+    <div className="flex flex-col gap-2 sm:gap-3 p-3">
+      {/* Header with Branch Name */}
       <div className="flex items-center gap-2 sm:gap-3">
         <Link href="/subeler">
           <Button variant="ghost" size="icon" data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <div>
-          <h1 className="text-3xl font-bold">{branch.name}</h1>
-          <p className="text-muted-foreground">{branch.city} • {branch.address}</p>
+        <div className="flex-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold">{branch.name}</h1>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10">
+              <Star className="h-4 w-4 text-primary" />
+              <span className="text-lg font-bold text-primary" data-testid="composite-score">{scores.compositeScore.toFixed(1)}</span>
+              <span className="text-xs text-muted-foreground">/100</span>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">{branch.city} • {branch.address}</p>
         </div>
       </div>
 
-      {/* Composite Performance Score */}
-      <Card className="border-2">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Star className="h-4 w-4 text-primary" />
-            Genel Performans Skoru
-          </CardTitle>
-          <CardDescription>4 ana kategorinin ağırlıklı ortalaması</CardDescription>
-        </CardHeader>
-        <CardContent className="w-full space-y-2 sm:space-y-3">
-          <div className="text-center">
-            <div className="text-5xl font-bold text-primary" data-testid="composite-score">
-              {scores.compositeScore.toFixed(1)}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">100 üzerinden</p>
-          </div>
-          <Progress value={scores.compositeScore} className="h-2" data-testid="progress-composite" />
-        </CardContent>
-      </Card>
-
-      {/* Tabs */}
+      {/* Tabs - directly under header */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full flex flex-wrap gap-1 h-auto p-1">
           {canViewActive && (
@@ -292,94 +285,91 @@ export default function SubeDetayPage() {
           )}
         </TabsList>
 
-        {/* KPI Cards */}
+        {/* Compact KPI Cards - 3 columns, clickable, hide on click */}
         {showCards && (
-          <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-            <div 
-              onClick={() => { setActiveTab("personel"); setShowCards(false); }} 
-              className="hover-elevate active-elevate-2 cursor-pointer"
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
+            <button 
+              type="button"
+              onClick={() => handleCardClick("personel")}
+              className="text-left p-3 rounded-lg border bg-card hover-elevate active-elevate-2 cursor-pointer"
               data-testid="card-metric-employee"
             >
-              <Card className="">
-                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Personel Performansı</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="score-employee">{scores.employeePerformanceScore.toFixed(1)}</div>
-                  <Progress value={scores.employeePerformanceScore} className="h-1 mt-2" />
-                  <p className="text-xs text-muted-foreground mt-1">Ağırlık: %40</p>
-                </CardContent>
-              </Card>
-            </div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs font-medium text-muted-foreground">Personel</span>
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold" data-testid="score-employee">{scores.employeePerformanceScore.toFixed(1)}</span>
+                <Progress value={scores.employeePerformanceScore} className="h-1 flex-1" />
+              </div>
+            </button>
 
-            <div 
-              onClick={() => { setActiveTab("ekipman"); setShowCards(false); }} 
-              className="hover-elevate active-elevate-2 cursor-pointer"
+            <button 
+              type="button"
+              onClick={() => handleCardClick("ekipman")}
+              className="text-left p-3 rounded-lg border bg-card hover-elevate active-elevate-2 cursor-pointer"
               data-testid="card-metric-equipment"
             >
-              <Card className="">
-                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Ekipman Durumu</CardTitle>
-                  <Wrench className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="score-equipment">{scores.equipmentScore.toFixed(1)}</div>
-                  <Progress value={scores.equipmentScore} className="h-1 mt-2" />
-                  <p className="text-xs text-muted-foreground mt-1">Ağırlık: %25</p>
-                </CardContent>
-              </Card>
-            </div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs font-medium text-muted-foreground">Ekipman</span>
+                <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold" data-testid="score-equipment">{scores.equipmentScore.toFixed(1)}</span>
+                <Progress value={scores.equipmentScore} className="h-1 flex-1" />
+              </div>
+            </button>
 
-            <div 
-              onClick={() => { setActiveTab("gorevler"); setShowCards(false); }} 
-              className="hover-elevate active-elevate-2 cursor-pointer"
+            <button 
+              type="button"
+              onClick={() => handleCardClick("gorevler")}
+              className="text-left p-3 rounded-lg border bg-card hover-elevate active-elevate-2 cursor-pointer"
               data-testid="card-metric-quality"
             >
-              <Card className="">
-                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Kalite Denetimi</CardTitle>
-                  <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="score-quality">{scores.qualityAuditScore.toFixed(1)}</div>
-                  <Progress value={scores.qualityAuditScore} className="h-1 mt-2" />
-                  <p className="text-xs text-muted-foreground mt-1">Ağırlık: %20</p>
-                </CardContent>
-              </Card>
-            </div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs font-medium text-muted-foreground">Kalite</span>
+                <ClipboardCheck className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold" data-testid="score-quality">{scores.qualityAuditScore.toFixed(1)}</span>
+                <Progress value={scores.qualityAuditScore} className="h-1 flex-1" />
+              </div>
+            </button>
 
-            <div 
-              onClick={() => { setActiveTab("arizalar"); setShowCards(false); }} 
-              className="hover-elevate active-elevate-2 cursor-pointer"
+            <button 
+              type="button"
+              onClick={() => handleCardClick("arizalar")}
+              className="text-left p-3 rounded-lg border bg-card hover-elevate active-elevate-2 cursor-pointer"
               data-testid="card-metric-satisfaction"
             >
-              <Card className="">
-                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Müşteri Memnuniyeti</CardTitle>
-                  <ThumbsUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="score-satisfaction">{scores.customerSatisfactionScore.toFixed(1)}</div>
-                  <Progress value={scores.customerSatisfactionScore} className="h-1 mt-2" />
-                  <p className="text-xs text-muted-foreground mt-1">Ağırlık: %15</p>
-                </CardContent>
-              </Card>
-            </div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs font-medium text-muted-foreground">Memnuniyet</span>
+                <ThumbsUp className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold" data-testid="score-satisfaction">{scores.customerSatisfactionScore.toFixed(1)}</span>
+                <Progress value={scores.customerSatisfactionScore} className="h-1 flex-1" />
+              </div>
+            </button>
           </div>
         )}
 
         {/* Action Buttons */}
-        {isAdmin && (
-          <div className="flex gap-2">
+        <div className="flex gap-2 mt-2">
+          {isAdmin && (
             <Link href={`/sube-gorevler/${branchId}`}>
               <Button variant="outline" size="sm" data-testid="button-task-performance">
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Görev Performansı
               </Button>
             </Link>
-          </div>
-        )}
+          )}
+          {!showCards && (
+            <Button variant="ghost" size="sm" onClick={() => setShowCards(true)} data-testid="button-show-cards">
+              KPI Göster
+            </Button>
+          )}
+        </div>
 
         <TabsContent value="canlı" className="w-full space-y-2 sm:space-y-3">
           <Card data-testid="card-active-employees">
