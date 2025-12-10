@@ -28,7 +28,8 @@ import {
   AlertCircle,
   Plus,
   FileText,
-  FolderKanban
+  FolderKanban,
+  CheckSquare
 } from "lucide-react";
 
 interface ModuleCard {
@@ -136,6 +137,22 @@ export function CardGridHub() {
       color: "bg-yellow-600",
       description: "Bulunan eşyalar"
     },
+    { 
+      id: "equipment", 
+      icon: Coffee, 
+      label: "Ekipman", 
+      path: "/ekipman",
+      color: "bg-amber-600",
+      description: "Ekipman yönetimi"
+    },
+    { 
+      id: "support", 
+      icon: MessageSquare, 
+      label: "Destek", 
+      path: "/destek",
+      color: "bg-rose-500",
+      description: "Destek talepleri"
+    },
   ];
 
   const hqModules: ModuleCard[] = [
@@ -163,6 +180,22 @@ export function CardGridHub() {
       path: "/subeler",
       color: "bg-indigo-500",
       description: "Şube yönetimi"
+    },
+    { 
+      id: "checklists-hq", 
+      icon: CheckSquare, 
+      label: "Checklistler", 
+      path: "/yonetim/checklistler",
+      color: "bg-teal-500",
+      description: "Checklist yönetimi"
+    },
+    { 
+      id: "shifts-hq", 
+      icon: Calendar, 
+      label: "Vardiya Planlama", 
+      path: "/vardiyalar",
+      color: "bg-purple-500",
+      description: "Vardiya planlaması"
     },
     { 
       id: "faults", 
