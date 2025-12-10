@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
+import { DndContext, DragEndEvent, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor, TouchSensor } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +58,37 @@ const priorityColors: Record<string, string> = {
   urgent: "bg-red-500",
 };
 
+function DroppableColumn({ id, children, status }: { id: string; children: React.ReactNode; status: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div 
+      ref={setNodeRef}
+      className={`space-y-2 min-h-[100px] p-2 rounded-md transition-colors ${isOver ? "bg-primary/5 ring-2 ring-primary/20" : ""}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DraggableTask({ task, children }: { task: any; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `task-${task.id}`,
+    data: { task },
+  });
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`cursor-grab active:cursor-grabbing touch-none ${isDragging ? "opacity-50" : ""}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function ProjeDetay() {
   const params = useParams();
   const projectId = params.id;
@@ -65,6 +98,7 @@ export default function ProjeDetay() {
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [newComment, setNewComment] = useState("");
+  const [activeTask, setActiveTask] = useState<any>(null);
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -73,6 +107,11 @@ export default function ProjeDetay() {
     assignedToId: "",
   });
   const [selectedMemberId, setSelectedMemberId] = useState("");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
 
   const { data: project, isLoading } = useQuery<any>({
     queryKey: ["/api/projects", projectId],
@@ -156,6 +195,30 @@ export default function ProjeDetay() {
 
   const handleTaskStatusChange = (taskId: number, newStatus: string) => {
     updateTaskMutation.mutate({ id: taskId, status: newStatus });
+  };
+
+  const validStatuses = ["todo", "in_progress", "review", "done"];
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveTask(null);
+    if (!over) return;
+    
+    const overId = String(over.id);
+    if (!validStatuses.includes(overId)) return;
+    
+    const taskId = parseInt(String(active.id).replace("task-", ""));
+    const newStatus = overId;
+    const task = project?.tasks?.find((t: any) => t.id === taskId);
+    
+    if (task && task.status !== newStatus && !updateTaskMutation.isPending) {
+      handleTaskStatusChange(taskId, newStatus);
+    }
+  };
+
+  const handleDragStart = (event: any) => {
+    const task = event.active.data?.current?.task;
+    if (task) setActiveTask(task);
   };
 
   if (isLoading) {
@@ -331,65 +394,81 @@ export default function ProjeDetay() {
             </Dialog>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.entries(tasksByStatus).map(([status, tasks]) => (
-              <div key={status} className="space-y-2">
-                <div className={`p-2 rounded-md ${statusConfig[status].bgColor}`}>
-                  <h3 className={`text-sm font-medium ${statusConfig[status].color}`}>
-                    {statusConfig[status].label} ({(tasks as any[]).length})
-                  </h3>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Object.entries(tasksByStatus).map(([status, tasks]) => (
+                <div key={status} className="space-y-2">
+                  <div className={`p-2 rounded-md ${statusConfig[status].bgColor}`}>
+                    <h3 className={`text-sm font-medium ${statusConfig[status].color}`}>
+                      {statusConfig[status].label} ({(tasks as any[]).length})
+                    </h3>
+                  </div>
+                  <DroppableColumn id={status} status={status}>
+                    {(tasks as any[]).map((task) => (
+                      <DraggableTask key={task.id} task={task}>
+                        <Card className="p-3" data-testid={`card-task-${task.id}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium line-clamp-2">{task.title}</p>
+                              {task.dueDate && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  <Calendar className="h-3 w-3 inline mr-1" />
+                                  {new Date(task.dueDate).toLocaleDateString('tr-TR')}
+                                </p>
+                              )}
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {Object.entries(statusConfig).map(([s, info]) => (
+                                  <DropdownMenuItem
+                                    key={s}
+                                    onClick={() => handleTaskStatusChange(task.id, s)}
+                                    disabled={s === status}
+                                  >
+                                    {info.label}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <Badge className={`${priorityColors[task.priority]} text-white text-xs`}>
+                              {task.priority === "low" ? "Düşük" : task.priority === "medium" ? "Orta" : task.priority === "high" ? "Yüksek" : "Acil"}
+                            </Badge>
+                            {task.assignee && (
+                              <Avatar className="h-5 w-5">
+                                <AvatarImage src={task.assignee.profileImageUrl} />
+                                <AvatarFallback className="text-xs">
+                                  {task.assignee.firstName?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
+                          </div>
+                        </Card>
+                      </DraggableTask>
+                    ))}
+                  </DroppableColumn>
                 </div>
-                <div className="space-y-2 min-h-[100px]">
-                  {(tasks as any[]).map((task) => (
-                    <Card key={task.id} className="p-3" data-testid={`card-task-${task.id}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium line-clamp-2">{task.title}</p>
-                          {task.dueDate && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              <Calendar className="h-3 w-3 inline mr-1" />
-                              {new Date(task.dueDate).toLocaleDateString('tr-TR')}
-                            </p>
-                          )}
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <MoreVertical className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {Object.entries(statusConfig).map(([s, info]) => (
-                              <DropdownMenuItem
-                                key={s}
-                                onClick={() => handleTaskStatusChange(task.id, s)}
-                                disabled={s === status}
-                              >
-                                {info.label}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <Badge className={`${priorityColors[task.priority]} text-white text-xs`}>
-                          {task.priority === "low" ? "Düşük" : task.priority === "medium" ? "Orta" : task.priority === "high" ? "Yüksek" : "Acil"}
-                        </Badge>
-                        {task.assignee && (
-                          <Avatar className="h-5 w-5">
-                            <AvatarImage src={task.assignee.profileImageUrl} />
-                            <AvatarFallback className="text-xs">
-                              {task.assignee.firstName?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            <DragOverlay>
+              {activeTask && (
+                <Card className="p-3 shadow-lg opacity-90">
+                  <p className="text-sm font-medium">{activeTask.title}</p>
+                </Card>
+              )}
+            </DragOverlay>
+          </DndContext>
         </TabsContent>
 
         <TabsContent value="team" className="mt-4 space-y-4">
