@@ -157,7 +157,11 @@ export default function FaultDetail() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-        <Card>
+        <Card 
+          className="hover-elevate active-elevate-2 cursor-pointer"
+          onClick={() => setIsEditDialogOpen(true)}
+          data-testid="card-priority"
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
@@ -171,7 +175,11 @@ export default function FaultDetail() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="hover-elevate active-elevate-2 cursor-pointer"
+          onClick={() => setIsEditDialogOpen(true)}
+          data-testid="card-stage"
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Clock className="w-4 h-4" />
@@ -185,7 +193,11 @@ export default function FaultDetail() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="hover-elevate active-elevate-2 cursor-pointer"
+          onClick={() => setIsEditDialogOpen(true)}
+          data-testid="card-responsibility"
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <User className="w-4 h-4" />
@@ -199,7 +211,11 @@ export default function FaultDetail() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="hover-elevate active-elevate-2 cursor-pointer"
+          onClick={() => setIsEditDialogOpen(true)}
+          data-testid="card-cost"
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <DollarSign className="w-4 h-4" />

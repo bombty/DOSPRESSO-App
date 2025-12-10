@@ -760,6 +760,67 @@ export default function EquipmentDetail() {
         </CardContent>
       </Card>
 
+      {/* Status Cards - Clickable */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <Card 
+          className="hover-elevate active-elevate-2 cursor-pointer" 
+          data-testid="card-equipment-status"
+          onClick={() => {}}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Durum</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Badge variant={equipment.isActive ? "default" : "secondary"}>
+              {equipment.isActive ? "Aktif" : "Pasif"}
+            </Badge>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="hover-elevate active-elevate-2 cursor-pointer" 
+          data-testid="card-maintenance-status"
+          onClick={() => {}}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Bakım Sorumlusu</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm font-medium">{equipment.maintenanceResponsible === 'branch' ? 'Şube' : 'Merkez'}</p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="hover-elevate active-elevate-2 cursor-pointer" 
+          data-testid="card-next-maintenance"
+          onClick={() => {}}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Sonraki Bakım</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm font-medium">
+              {equipment.nextMaintenanceDate ? new Date(equipment.nextMaintenanceDate).toLocaleDateString('tr-TR') : '-'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="hover-elevate active-elevate-2 cursor-pointer" 
+          data-testid="card-warranty"
+          onClick={() => {}}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Garanti</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm font-medium">
+              {equipment.warrantyEndDate ? new Date(equipment.warrantyEndDate).toLocaleDateString('tr-TR') : 'Geçti'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Tabs className="w-full" defaultValue="maintenance">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" data-testid="tabs-equipment-detail">
           <TabsTrigger value="maintenance" data-testid="tab-maintenance">
