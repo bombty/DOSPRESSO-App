@@ -100,6 +100,8 @@ import BranchFeedback from "@/pages/branch-feedback";
 import KayipEsya from "@/pages/kayip-esya";
 import KayipEsyaHQ from "@/pages/kayip-esya-hq";
 import ReceteDetay from "@/pages/recete-detay";
+import Projeler from "@/pages/projeler";
+import ProjeDetay from "@/pages/proje-detay";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -184,6 +186,10 @@ function Router() {
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular" component={Announcements} />
           <Route path="/mesajlar" component={Mesajlar} />
+
+          {/* HQ Proje Yönetimi */}
+          <Route path="/projeler/:id" component={ProjeDetay} />
+          <Route path="/projeler" component={Projeler} />
 
           {/* İK & Raporlar */}
           <Route path="/ik" component={IK} />

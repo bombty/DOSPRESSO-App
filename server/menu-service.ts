@@ -241,6 +241,23 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
     ],
   },
+  // HQ-Only: Projects
+  {
+    id: "projects",
+    titleTr: "Projeler",
+    icon: "FolderKanban",
+    scope: "hq",
+    items: [
+      {
+        id: "project-list",
+        titleTr: "Projeler",
+        path: "/projeler",
+        icon: "FolderKanban",
+        moduleKey: "dashboard",
+        scope: "hq",
+      },
+    ],
+  },
   // HQ-Only: Management
   {
     id: "management",
