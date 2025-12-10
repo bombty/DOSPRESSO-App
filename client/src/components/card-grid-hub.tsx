@@ -145,14 +145,6 @@ export function CardGridHub() {
       color: "bg-amber-600",
       description: "Ekipman yönetimi"
     },
-    { 
-      id: "support", 
-      icon: MessageSquare, 
-      label: "Destek", 
-      path: "/destek",
-      color: "bg-rose-500",
-      description: "Destek talepleri"
-    },
   ];
 
   const hqModules: ModuleCard[] = [
