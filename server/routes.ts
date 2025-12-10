@@ -121,6 +121,7 @@ import {
   quizzes,
   quizQuestions,
   emailSettings,
+  serviceEmailSettings,
   banners,
   aiSettings,
 } from "@shared/schema";
@@ -12982,6 +12983,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Test e-postası gönderildi" });
     } catch (error) {
       console.error("Test email error:", error);
+      res.status(500).json({ message: "Test e-postası gönderilemedi" });
+    }
+  });
+
+  // =============================================
+  // ADMIN SERVICE EMAIL SETTINGS (Arıza/Bakım için)
+  // =============================================
+  
+  app.get('/api/admin/service-email-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const result = await db.query.serviceEmailSettings.findFirst();
+      if (!result) {
+        return res.json({
+          smtpHost: "",
+          smtpPort: 587,
+          smtpUser: "",
+          smtpPassword: "",
+          smtpFromEmail: "cowork@dospresso.com",
+          smtpFromName: "DOSPRESSO Teknik",
+          smtpSecure: false,
+          isActive: true,
+        });
+      }
+      res.json({ ...result, smtpPassword: result.smtpPassword ? "********" : "" });
+    } catch (error) {
+      console.error("Get service email settings error:", error);
+      res.status(500).json({ message: "Servis mail ayarları alınamadı" });
+    }
+  });
+
+  app.post('/api/admin/service-email-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const existing = await db.query.serviceEmailSettings.findFirst();
+      const data = {
+        ...req.body,
+        updatedById: user.id,
+        updatedAt: new Date(),
+      };
+      
+      if (data.smtpPassword === "********" || !data.smtpPassword) {
+        delete data.smtpPassword;
+      }
+      
+      if (existing) {
+        await db.update(serviceEmailSettings).set(data).where(eq(serviceEmailSettings.id, existing.id));
+      } else {
+        await db.insert(serviceEmailSettings).values(data);
+      }
+      
+      res.json({ message: "Servis mail ayarları kaydedildi" });
+    } catch (error) {
+      console.error("Save service email settings error:", error);
+      res.status(500).json({ message: "Servis mail ayarları kaydedilemedi" });
+    }
+  });
+
+  app.post('/api/admin/service-email-settings/test', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      res.json({ message: "Test e-postası servis adresine gönderildi" });
+    } catch (error) {
+      console.error("Test service email error:", error);
       res.status(500).json({ message: "Test e-postası gönderilemedi" });
     }
   });

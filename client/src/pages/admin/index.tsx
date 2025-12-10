@@ -19,7 +19,8 @@ import {
   TrendingUp,
   Mail,
   Image,
-  Bot
+  Bot,
+  Wrench
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 
@@ -68,6 +69,7 @@ export default function AdminDashboard() {
     { icon: Activity, label: "Aktivite Logları", href: "/admin/aktivite-loglari", color: "bg-blue-500/10" },
     { icon: Database, label: "Yedekleme", href: "/admin/yedekleme", color: "bg-orange-500/10" },
     { icon: Mail, label: "E-posta Ayarları", href: "/admin/email-ayarlari", color: "bg-cyan-500/10" },
+    { icon: Wrench, label: "Servis Mail Ayarları", href: "/admin/servis-mail-ayarlari", color: "bg-amber-500/10" },
     { icon: Image, label: "Banner Yönetimi", href: "/admin/bannerlar", color: "bg-pink-500/10" },
     { icon: Bot, label: "Yapay Zeka", href: "/admin/yapay-zeka-ayarlari", color: "bg-emerald-500/10" },
   ];

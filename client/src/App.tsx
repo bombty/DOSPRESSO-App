@@ -110,6 +110,7 @@ import AdminAktiviteLoglar from "@/pages/admin/aktivite-loglari";
 import AdminYedekleme from "@/pages/admin/yedekleme";
 import AdminKullanicilar from "@/pages/admin/kullanicilar";
 import AdminEmailAyarlari from "@/pages/admin/email-ayarlari";
+import AdminServisMailAyarlari from "@/pages/admin/servis-mail-ayarlari";
 import AdminBannerlar from "@/pages/admin/bannerlar";
 import AdminYapayZekaAyarlari from "@/pages/admin/yapay-zeka-ayarlari";
 import NotFound from "@/pages/not-found";
@@ -256,6 +257,7 @@ function Router() {
           <Route path="/admin/yedekleme" component={AdminYedekleme} />
           <Route path="/admin/kullanicilar" component={AdminKullanicilar} />
           <Route path="/admin/email-ayarlari" component={AdminEmailAyarlari} />
+          <Route path="/admin/servis-mail-ayarlari" component={AdminServisMailAyarlari} />
           <Route path="/admin/bannerlar" component={AdminBannerlar} />
           <Route path="/admin/yapay-zeka-ayarlari" component={AdminYapayZekaAyarlari} />
         </>

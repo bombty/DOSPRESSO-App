@@ -4566,6 +4566,31 @@ export type InsertEmailSettings = z.infer<typeof insertEmailSettingsSchema>;
 export type EmailSettings = typeof emailSettings.$inferSelect;
 
 // ============================================
+// ADMIN PANEL - Servis Email Ayarları (Arıza/Bakım için ayrı SMTP)
+// ============================================
+export const serviceEmailSettings = pgTable("service_email_settings", {
+  id: serial("id").primaryKey(),
+  smtpHost: varchar("smtp_host", { length: 255 }),
+  smtpPort: integer("smtp_port").default(587),
+  smtpUser: varchar("smtp_user", { length: 255 }),
+  smtpPassword: varchar("smtp_password", { length: 255 }),
+  smtpFromEmail: varchar("smtp_from_email", { length: 255 }),
+  smtpFromName: varchar("smtp_from_name", { length: 255 }).default("DOSPRESSO Teknik"),
+  smtpSecure: boolean("smtp_secure").default(false),
+  isActive: boolean("is_active").default(true),
+  updatedById: varchar("updated_by_id").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertServiceEmailSettingsSchema = createInsertSchema(serviceEmailSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertServiceEmailSettings = z.infer<typeof insertServiceEmailSettingsSchema>;
+export type ServiceEmailSettings = typeof serviceEmailSettings.$inferSelect;
+
+// ============================================
 // ADMIN PANEL - Banner Yönetimi
 // ============================================
 export const banners = pgTable("banners", {
