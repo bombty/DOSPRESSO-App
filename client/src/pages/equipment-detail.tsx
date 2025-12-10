@@ -695,8 +695,8 @@ export default function EquipmentDetail() {
         </div>
       </div>
 
-      {/* Compact Info Summary - single row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 text-xs">
+      {/* Compact Info Summary - responsive grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
         <div className="p-2 rounded-lg border bg-card">
           <span className="text-muted-foreground">Durum</span>
           <div className="mt-1">
@@ -733,26 +733,26 @@ export default function EquipmentDetail() {
 
       {/* Tabs - directly under compact info */}
       <Tabs className="w-full" defaultValue="maintenance">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" data-testid="tabs-equipment-detail">
-          <TabsTrigger value="maintenance" data-testid="tab-maintenance">
+        <TabsList className="flex flex-wrap gap-1 h-auto p-1" data-testid="tabs-equipment-detail">
+          <TabsTrigger value="maintenance" data-testid="tab-maintenance" className="text-xs px-2 py-1.5">
             Bakım Geçmişi
           </TabsTrigger>
-          <TabsTrigger value="maintenance-schedule" data-testid="tab-maintenance-schedule">
-            <Calendar className="h-4 w-4 mr-2" />
+          <TabsTrigger value="maintenance-schedule" data-testid="tab-maintenance-schedule" className="text-xs px-2 py-1.5">
+            <Calendar className="h-3 w-3 mr-1" />
             Bakım Planı
           </TabsTrigger>
-          <TabsTrigger value="faults" data-testid="tab-faults">
+          <TabsTrigger value="faults" data-testid="tab-faults" className="text-xs px-2 py-1.5">
             Arızalar
           </TabsTrigger>
-          <TabsTrigger value="service-requests" data-testid="tab-service-requests">
-            <ClipboardList className="h-4 w-4 mr-2" />
-            Servis Talepleri
+          <TabsTrigger value="service-requests" data-testid="tab-service-requests" className="text-xs px-2 py-1.5">
+            <ClipboardList className="h-3 w-3 mr-1" />
+            Servis
           </TabsTrigger>
-          <TabsTrigger value="comments" data-testid="tab-comments">
+          <TabsTrigger value="comments" data-testid="tab-comments" className="text-xs px-2 py-1.5">
             Yorumlar
           </TabsTrigger>
-          <TabsTrigger value="qr" data-testid="tab-qr">
-            <QrCode className="h-4 w-4 mr-2" />
+          <TabsTrigger value="qr" data-testid="tab-qr" className="text-xs px-2 py-1.5">
+            <QrCode className="h-3 w-3 mr-1" />
             QR Kod
           </TabsTrigger>
         </TabsList>
@@ -908,95 +908,87 @@ export default function EquipmentDetail() {
               {serviceRequests && serviceRequests.length > 0 ? (
                 <div className="w-full space-y-2 sm:space-y-3">
                   {serviceRequests.map((request) => (
-                    <div key={request.id} className="rounded-lg border p-3 grid grid-cols-1 gap-2 sm:gap-3" data-testid={`service-request-${request.id}`}>
-                      <div className="flex items-start justify-between gap-2 sm:gap-3">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={
-                              request.status === SERVICE_REQUEST_STATUS.CLOSED ? 'default' :
-                              request.status === SERVICE_REQUEST_STATUS.FIXED ? 'default' :
-                              request.status === SERVICE_REQUEST_STATUS.CREATED ? 'secondary' :
-                              'outline'
-                            } data-testid={`badge-status-${request.id}`}>
-                              {statusLabels[request.status] || request.status}
-                            </Badge>
-                            <Badge variant="outline">
-                              {request.serviceDecision === SERVICE_DECISION.HQ ? 'Merkez Servisi' : 'Şube Servisi'}
-                            </Badge>
-                          </div>
-                          {request.serviceProvider && (
-                            <div>
-                              <p className="text-sm font-medium">Servis Sağlayıcı</p>
-                              <p className="text-sm text-muted-foreground">{request.serviceProvider}</p>
-                            </div>
-                          )}
-                          {request.contactInfo && (
-                            <div>
-                              <p className="text-sm font-medium">İletişim Bilgisi</p>
-                              <p className="text-sm text-muted-foreground">{request.contactInfo}</p>
-                            </div>
-                          )}
-                          {(request.estimatedCost || request.actualCost) && (
-                            <div className="w-full space-y-1 md:space-y-1">
-                              {request.estimatedCost && (
-                                <div className="flex items-center gap-2">
-                                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                  <p className="text-sm">
-                                    Tahmini Maliyet: ₺{parseFloat(request.estimatedCost).toFixed(2)}
-                                  </p>
-                                </div>
-                              )}
-                              {request.actualCost && (
-                                <div className="flex items-center gap-2">
-                                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                  <p className="text-sm font-medium">
-                                    Gerçek Maliyet: ₺{parseFloat(request.actualCost).toFixed(2)}
-                                  </p>
-                                </div>
-                              )}
-                              {request.estimatedCost && request.actualCost && (
-                                <p className="text-xs text-muted-foreground">
-                                  Fark: ₺{(parseFloat(request.actualCost) - parseFloat(request.estimatedCost)).toFixed(2)}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                          {request.notes && (
-                            <div>
-                              <p className="text-sm font-medium">Notlar</p>
-                              <p className="text-sm text-muted-foreground">{request.notes}</p>
-                            </div>
-                          )}
+                    <div key={request.id} className="rounded-lg border p-3 grid grid-cols-1 sm:grid-cols-2 gap-3" data-testid={`service-request-${request.id}`}>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant={
+                            request.status === SERVICE_REQUEST_STATUS.CLOSED ? 'default' :
+                            request.status === SERVICE_REQUEST_STATUS.FIXED ? 'default' :
+                            request.status === SERVICE_REQUEST_STATUS.CREATED ? 'secondary' :
+                            'outline'
+                          } data-testid={`badge-status-${request.id}`}>
+                            {statusLabels[request.status] || request.status}
+                          </Badge>
+                          <Badge variant="outline">
+                            {request.serviceDecision === SERVICE_DECISION.HQ ? 'Merkez Servisi' : 'Şube Servisi'}
+                          </Badge>
                         </div>
-                        <div className="text-right grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                          <p className="text-sm text-muted-foreground">
+                        {request.serviceProvider && (
+                          <div>
+                            <p className="text-sm font-medium">Servis Sağlayıcı</p>
+                            <p className="text-sm text-muted-foreground">{request.serviceProvider}</p>
+                          </div>
+                        )}
+                        {request.contactInfo && (
+                          <div>
+                            <p className="text-sm font-medium">İletişim Bilgisi</p>
+                            <p className="text-sm text-muted-foreground">{request.contactInfo}</p>
+                          </div>
+                        )}
+                        {request.notes && (
+                          <div>
+                            <p className="text-sm font-medium">Notlar</p>
+                            <p className="text-sm text-muted-foreground">{request.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col justify-between gap-2">
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">
                             {new Date(request.createdAt!).toLocaleDateString('tr-TR', {
                               year: 'numeric',
                               month: 'short',
                               day: 'numeric',
                             })}
                           </p>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedServiceRequest(request);
-                              statusUpdateForm.reset({
-                                status: "",
-                                actualCost: "",
-                                notes: "",
-                              });
-                              setStatusUpdateDialogOpen(true);
-                            }}
-                            data-testid={`button-update-status-${request.id}`}
-                          >
-                            <Edit className="h-3 w-3 mr-1" />
-                            Durumu Güncelle
-                          </Button>
+                          {(request.estimatedCost || request.actualCost) && (
+                            <div className="space-y-1">
+                              {request.estimatedCost && (
+                                <div className="flex items-center gap-1 text-sm">
+                                  <DollarSign className="h-3 w-3 text-muted-foreground" />
+                                  <p>Tahm.: ₺{parseFloat(request.estimatedCost).toFixed(2)}</p>
+                                </div>
+                              )}
+                              {request.actualCost && (
+                                <div className="flex items-center gap-1 text-sm font-medium">
+                                  <DollarSign className="h-3 w-3 text-muted-foreground" />
+                                  <p>Gerçek: ₺{parseFloat(request.actualCost).toFixed(2)}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedServiceRequest(request);
+                            statusUpdateForm.reset({
+                              status: "",
+                              actualCost: "",
+                              notes: "",
+                            });
+                            setStatusUpdateDialogOpen(true);
+                          }}
+                          data-testid={`button-update-status-${request.id}`}
+                          className="w-full"
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Durumu Güncelle
+                        </Button>
                       </div>
                       {request.timeline && request.timeline.length > 0 && (
-                        <div className="pt-4 border-t grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                        <div className="col-span-1 sm:col-span-2 pt-3 border-t space-y-2">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium">Geçmiş (Son 3)</p>
                             <Button
@@ -1012,22 +1004,22 @@ export default function EquipmentDetail() {
                               Tümünü Gör
                             </Button>
                           </div>
-                          <div className="flex flex-col gap-3 sm:gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             {request.timeline.slice(-3).reverse().map((entry) => (
-                              <div key={entry.id} className="text-xs text-muted-foreground flex items-start gap-2">
-                                <Avatar className="h-4 w-4">
+                              <div key={entry.id} className="text-xs text-muted-foreground flex items-start gap-2 p-2 rounded border">
+                                <Avatar className="h-4 w-4 flex-shrink-0">
                                   <AvatarFallback className="text-xs">
                                     {entry.actorId?.substring(0, 2).toUpperCase() || '??'}
                                   </AvatarFallback>
                                 </Avatar>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono">{format(new Date(entry.timestamp), 'dd MMM yyyy HH:mm', { locale: tr })}</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    <span className="text-xs font-mono">{format(new Date(entry.timestamp), 'dd MMM HH:mm', { locale: tr })}</span>
                                     <Badge variant="outline" className="text-xs">
                                       {statusLabels[entry.status] || entry.status}
                                     </Badge>
                                   </div>
-                                  {entry.notes && <p className="mt-1">{entry.notes}</p>}
+                                  {entry.notes && <p className="mt-1 text-xs">{entry.notes}</p>}
                                 </div>
                               </div>
                             ))}
