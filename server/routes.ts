@@ -13064,6 +13064,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================
+  // SERVICE REQUEST EMAIL - Servise İlet
+  // =============================================
+  
+  app.post('/api/service-request/send', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { faultId, equipmentId, serviceEmail, subject, body } = req.body;
+      
+      if (!serviceEmail) {
+        return res.status(400).json({ message: "Servis e-posta adresi bulunamadı" });
+      }
+      
+      const serviceSettings = await db.query.serviceEmailSettings.findFirst();
+      
+      if (!serviceSettings || !serviceSettings.isActive) {
+        return res.status(400).json({ message: "Servis mail ayarları yapılandırılmamış veya pasif" });
+      }
+      
+      if (!serviceSettings.smtpHost || !serviceSettings.smtpUser) {
+        return res.status(400).json({ message: "SMTP ayarları eksik. Admin panelinden yapılandırın." });
+      }
+      
+      const nodemailer = require('nodemailer');
+      
+      const transporter = nodemailer.createTransport({
+        host: serviceSettings.smtpHost,
+        port: serviceSettings.smtpPort || 587,
+        secure: serviceSettings.smtpSecure || false,
+        auth: {
+          user: serviceSettings.smtpUser,
+          pass: serviceSettings.smtpPassword,
+        },
+      });
+      
+      const mailOptions = {
+        from: `"${serviceSettings.smtpFromName || 'DOSPRESSO Teknik'}" <${serviceSettings.smtpFromEmail || serviceSettings.smtpUser}>`,
+        to: serviceEmail,
+        subject: subject || "DOSPRESSO - Servis Talebi",
+        html: body,
+      };
+      
+      await transporter.sendMail(mailOptions);
+      
+      console.log(`Service request email sent to ${serviceEmail} for fault ${faultId} by user ${user.id}`);
+      
+      res.json({ message: "Servis talebi e-postası gönderildi" });
+    } catch (error) {
+      console.error("Send service request email error:", error);
+      res.status(500).json({ message: "Servis talebi gönderilemedi: " + (error as Error).message });
+    }
+  });
+
+  // =============================================
   // ADMIN BANNERS
   // =============================================
   

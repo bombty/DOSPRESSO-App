@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, AlertTriangle, Clock, CheckCircle2, DollarSign, User, FileDown, Copy, Download } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Clock, CheckCircle2, DollarSign, User, FileDown, Copy, Download, Send } from "lucide-react";
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -89,6 +89,82 @@ export default function FaultDetail() {
 
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],
+  });
+
+  const { data: equipmentDetails } = useQuery<any>({
+    queryKey: ["/api/equipment", fault?.equipmentId],
+    enabled: !!fault?.equipmentId,
+    queryFn: async () => {
+      const response = await fetch(`/api/equipment`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      const equipmentList = Array.isArray(data) ? data : (data.data || []);
+      return equipmentList.find((e: any) => e.id === fault?.equipmentId);
+    },
+  });
+
+  const serviceEmailMutation = useMutation({
+    mutationFn: async () => {
+      if (!fault || !equipmentDetails?.serviceContactEmail) {
+        throw new Error("Servis e-posta adresi bulunamadı");
+      }
+      
+      const emailBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #8B4513; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">DOSPRESSO</h1>
+            <p style="margin: 5px 0 0 0;">Servis Talebi</p>
+          </div>
+          
+          <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">
+            <h2 style="color: #8B4513; margin-top: 0;">Arıza Bilgileri</h2>
+            
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Arıza ID:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">#${fault.id}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Ekipman:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${fault.equipmentName || '-'}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Model No:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${equipmentDetails?.modelNo || '-'}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Seri No:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${equipmentDetails?.serialNumber || '-'}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Şube:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${(fault as any).branchName || '-'}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Öncelik:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${fault.priority || 'Normal'}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Durum:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${STAGE_LABELS[fault.currentStage] || fault.currentStage}</td></tr>
+              <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Bildirim Tarihi:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${fault.createdAt ? format(new Date(fault.createdAt), "dd.MM.yyyy HH:mm", { locale: tr }) : '-'}</td></tr>
+            </table>
+            
+            <h3 style="color: #8B4513; margin-top: 20px;">Arıza Açıklaması</h3>
+            <p style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${fault.description || 'Açıklama girilmemiş'}</p>
+            
+            ${fault.notes ? `<h3 style="color: #8B4513;">Notlar</h3><p style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${fault.notes}</p>` : ''}
+            
+            <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 5px;">
+              <strong>İletişim:</strong> Bu arıza hakkında bilgi almak için lütfen DOSPRESSO Merkez Teknik Ekibi ile iletişime geçin.
+            </div>
+          </div>
+          
+          <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666;">
+            <p style="margin: 0;">Bu e-posta DOSPRESSO Franchise Yönetim Sistemi tarafından otomatik olarak gönderilmiştir.</p>
+          </div>
+        </div>
+      `;
+      
+      return apiRequest("POST", "/api/service-request/send", {
+        faultId: fault.id,
+        equipmentId: fault.equipmentId,
+        serviceEmail: equipmentDetails.serviceContactEmail,
+        subject: `DOSPRESSO Servis Talebi - ${fault.equipmentName} - Arıza #${fault.id}`,
+        body: emailBody,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Servis talebi e-posta ile iletildi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Hata", 
+        description: error.message || "Servis talebi gönderilemedi", 
+        variant: "destructive" 
+      });
+    },
   });
 
   const form = useForm<z.infer<typeof updateFaultSchema>>({
@@ -304,6 +380,18 @@ Rapor Tarihi: ${format(new Date(), "dd/MM/yyyy HH:mm")}
             <Download className="w-4 h-4 mr-1.5" />
             PDF İndir
           </Button>
+          {equipmentDetails?.serviceContactEmail && (
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={() => serviceEmailMutation.mutate()}
+              disabled={serviceEmailMutation.isPending}
+              data-testid="button-send-to-service"
+            >
+              <Send className="w-4 h-4 mr-1.5" />
+              {serviceEmailMutation.isPending ? "Gönderiliyor..." : "Servise İlet"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => setLocation("/ariza-yeni")} data-testid="button-new-fault">
             Yeni Arıza
           </Button>
