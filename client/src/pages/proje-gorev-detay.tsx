@@ -325,9 +325,7 @@ export default function ProjeGorevDetay() {
                             className="p-0 hover-elevate flex items-center justify-center"
                           >
                             {subtask.status === "done" ? (
-                              <div className="h-5 w-5 rounded-full bg-green-500 border-2 border-green-600 flex items-center justify-center">
-                                <CheckCircle2 className="h-3 w-3 text-white" />
-                              </div>
+                              <div className="h-5 w-5 rounded-full bg-green-500" />
                             ) : (
                               <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
                             )}
