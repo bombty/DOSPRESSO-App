@@ -27,7 +27,8 @@ import {
   Heart,
   AlertCircle,
   Plus,
-  FileText
+  FileText,
+  FolderKanban
 } from "lucide-react";
 
 interface ModuleCard {
@@ -211,6 +212,14 @@ export function CardGridHub() {
       path: "/kayip-esya-hq",
       color: "bg-yellow-600",
       description: "Bulunan eşyalar"
+    },
+    { 
+      id: "projects", 
+      icon: FolderKanban, 
+      label: "Projeler", 
+      path: "/projeler",
+      color: "bg-violet-600",
+      description: "HQ Proje Yönetimi"
     },
     { 
       id: "support", 
