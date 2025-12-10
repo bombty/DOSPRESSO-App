@@ -558,7 +558,49 @@ export async function seedAdminMenu() {
     });
 
     // ========================================
-    // 12. YÖNETİM / AYARLAR
+    // 12. PROJELER (HQ Project Collaboration)
+    // ========================================
+    const [projelerSection] = await db
+      .insert(menuSections)
+      .values({
+        slug: 'projeler',
+        titleTr: 'Projeler',
+        scope: 'hq',
+        icon: 'FolderKanban',
+        sortOrder: 115,
+      })
+      .onConflictDoUpdate({
+        target: menuSections.slug,
+        set: {
+          titleTr: 'Projeler',
+          scope: 'hq',
+          icon: 'FolderKanban',
+          sortOrder: 115,
+        },
+      })
+      .returning();
+    sectionsInserted++;
+
+    await insertMenuItem(projelerSection.id, {
+      titleTr: 'Tüm Projeler',
+      path: '/projeler',
+      icon: 'FolderKanban',
+      moduleKey: 'dashboard',
+      scope: 'hq',
+      sortOrder: 10,
+    });
+
+    await insertMenuItem(projelerSection.id, {
+      titleTr: 'Yeni Şube Açılış',
+      path: '/yeni-sube-projeler',
+      icon: 'Store',
+      moduleKey: 'dashboard',
+      scope: 'hq',
+      sortOrder: 20,
+    });
+
+    // ========================================
+    // 13. YÖNETİM / AYARLAR
     // ========================================
     const [yonetimSection] = await db
       .insert(menuSections)

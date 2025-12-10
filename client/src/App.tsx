@@ -103,6 +103,8 @@ import ReceteDetay from "@/pages/recete-detay";
 import Projeler from "@/pages/projeler";
 import ProjeDetay from "@/pages/proje-detay";
 import ProjeGorevDetay from "@/pages/proje-gorev-detay";
+import YeniSubeProjeler from "@/pages/yeni-sube-projeler";
+import YeniSubeDetay from "@/pages/yeni-sube-detay";
 import Destek from "@/pages/destek";
 import AdminDashboard from "@/pages/admin/index";
 import AdminYetkilendirme from "@/pages/admin/yetkilendirme";
@@ -202,6 +204,8 @@ function Router() {
           <Route path="/proje-gorev/:id" component={ProjeGorevDetay} />
           <Route path="/projeler/:id" component={ProjeDetay} />
           <Route path="/projeler" component={Projeler} />
+          <Route path="/yeni-sube-projeler" component={YeniSubeProjeler} />
+          <Route path="/yeni-sube-detay/:id" component={YeniSubeDetay} />
 
           {/* İK & Raporlar */}
           <Route path="/ik" component={IK} />
