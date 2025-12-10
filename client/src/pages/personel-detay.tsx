@@ -282,7 +282,7 @@ export default function PersonelDetay() {
   });
 
   const uploadDocumentMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data: any) => {
       return apiRequest("POST", "/api/employee-documents", data);
     },
     onSuccess: () => {
@@ -1078,9 +1078,9 @@ export default function PersonelDetay() {
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
-              ) : trainingProgress && trainingProgress.length > 0 ? (
+              ) : Array.isArray(trainingProgress) && trainingProgress.length > 0 ? (
                 <div className="flex flex-col gap-3">
-                  {trainingProgress.map((progress) => {
+                  {trainingProgress.map((progress: any) => {
                     const module = trainingModules?.find((m) => m.id === progress.moduleId);
                     return (
                       <Card key={progress.id} data-testid={`training-progress-${progress.id}`}>
@@ -1454,47 +1454,47 @@ export default function PersonelDetay() {
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-3/4" />
                 </div>
-              ) : trainingProgress ? (
+              ) : trainingProgress && typeof trainingProgress === 'object' && !Array.isArray(trainingProgress) ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="grid grid-cols-4 gap-2 sm:gap-3">
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Toplam</p>
-                      <p className="text-2xl font-bold">{trainingProgress.summary?.total || 0}</p>
+                      <p className="text-2xl font-bold">{(trainingProgress as any).summary?.total || 0}</p>
                     </div>
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Tamamlanan</p>
-                      <p className="text-2xl font-bold text-success">{trainingProgress.summary?.completed || 0}</p>
+                      <p className="text-2xl font-bold text-success">{(trainingProgress as any).summary?.completed || 0}</p>
                     </div>
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Devam Eden</p>
-                      <p className="text-2xl font-bold text-primary">{trainingProgress.summary?.inProgress || 0}</p>
+                      <p className="text-2xl font-bold text-primary">{(trainingProgress as any).summary?.inProgress || 0}</p>
                     </div>
                     <div className="border rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">Geciken</p>
-                      <p className="text-2xl font-bold text-warning">{trainingProgress.summary?.overdue || 0}</p>
+                      <p className="text-2xl font-bold text-warning">{(trainingProgress as any).summary?.overdue || 0}</p>
                     </div>
                   </div>
 
-                  {trainingProgress.averageScore > 0 && (
+                  {(trainingProgress as any).averageScore > 0 && (
                     <div className="border rounded-lg p-3 bg-primary/10">
                       <p className="text-sm text-muted-foreground mb-1">Ortalama Başarı Oranı</p>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-accent rounded-full h-2">
                           <div 
                             className="bg-blue-600 h-2 rounded-full" 
-                            style={{width: `${trainingProgress.averageScore}%`}}
+                            style={{width: `${(trainingProgress as any).averageScore}%`}}
                           />
                         </div>
-                        <span className="font-bold">{trainingProgress.averageScore}%</span>
+                        <span className="font-bold">{(trainingProgress as any).averageScore}%</span>
                       </div>
                     </div>
                   )}
 
-                  {trainingProgress.assignments && trainingProgress.assignments.length > 0 && (
+                  {(trainingProgress as any).assignments && (trainingProgress as any).assignments.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3">Atanan Eğitimler</h4>
                       <div className="flex flex-col gap-3 sm:gap-4 gap-2">
-                        {trainingProgress.assignments.slice(0, 6).map((a) => (
+                        {(trainingProgress as any).assignments.slice(0, 6).map((a: any) => (
                           <div key={a.id} className="p-2 border rounded-lg text-center">
                             <p className="font-medium text-xs line-clamp-1">{a.materialId}</p>
                             <Badge variant={a.status === 'completed' ? 'default' : 'outline'} className="mt-1 text-xs">
@@ -1581,7 +1581,7 @@ export default function PersonelDetay() {
                       setTaskDueDate("");
                       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
                     } catch (error) {
-                      toast({ title: "Hata", description: error.message || "Görev atanırken hata oluştu", variant: "destructive" });
+                      toast({ title: "Hata", description: (error as any)?.message || "Görev atanırken hata oluştu", variant: "destructive" });
                     }
                   }}
                 >
@@ -1633,7 +1633,7 @@ export default function PersonelDetay() {
                       setMessageText("");
                       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
                     } catch (error) {
-                      toast({ title: "Hata", description: error.message || "Mesaj gönderilemedi", variant: "destructive" });
+                      toast({ title: "Hata", description: (error as any)?.message || "Mesaj gönderilemedi", variant: "destructive" });
                     }
                   }}
                 >
