@@ -751,9 +751,12 @@ export default function ProjeDetay() {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 mt-0.5 shrink-0"
+                        disabled={updateMilestoneMutation.isPending}
                         onClick={() => updateMilestoneMutation.mutate({ id: milestone.id, isCompleted: !milestone.isCompleted })}
                       >
-                        {milestone.isCompleted ? (
+                        {updateMilestoneMutation.isPending ? (
+                          <div className="h-5 w-5 rounded-full border-2 border-muted-foreground animate-spin" />
+                        ) : milestone.isCompleted ? (
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
                         ) : (
                           <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
