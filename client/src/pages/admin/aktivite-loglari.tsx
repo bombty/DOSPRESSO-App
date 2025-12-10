@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
+import { Redirect } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -75,13 +75,11 @@ const mockLogs: ActivityLog[] = [
 
 export default function AdminAktiviteLoglar() {
   const { user } = useAuth();
-  const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
 
   if (user?.role !== "admin") {
-    navigate("/");
-    return null;
+    return <Redirect to="/" />;
   }
 
   const logs = mockLogs;

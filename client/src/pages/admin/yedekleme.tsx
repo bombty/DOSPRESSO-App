@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { Redirect } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,12 +41,10 @@ const mockBackups: BackupInfo[] = [
 export default function AdminYedekleme() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
   const [isBackingUp, setIsBackingUp] = useState(false);
 
   if (user?.role !== "admin") {
-    navigate("/");
-    return null;
+    return <Redirect to="/" />;
   }
 
   const backups = mockBackups;

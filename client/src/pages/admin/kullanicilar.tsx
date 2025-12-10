@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { Redirect } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,15 +52,13 @@ const ROLE_COLORS: Record<string, string> = {
 export default function AdminKullanicilar() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   if (user?.role !== "admin") {
-    navigate("/");
-    return null;
+    return <Redirect to="/" />;
   }
 
   const { data: users = [], isLoading } = useQuery<any[]>({

@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +26,7 @@ import {
   Settings,
   FileText
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, Redirect } from "wouter";
 
 const ROLE_GROUPS = {
   admin: { label: "Admin", color: "bg-red-500", roles: ["admin"] },
@@ -130,19 +129,32 @@ type PermissionState = Record<string, { view: boolean; edit: boolean }>;
 export default function AdminYetkilendirme() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
   const [selectedRole, setSelectedRole] = useState<string>("supervisor");
   const [permissions, setPermissions] = useState<PermissionState>({});
   const [hasChanges, setHasChanges] = useState(false);
 
-  if (user?.role !== "admin") {
-    navigate("/");
-    return null;
-  }
-
   const { data: rolePermissions = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/role-permissions", selectedRole],
+    enabled: user?.role === "admin",
   });
+
+  useEffect(() => {
+    if (rolePermissions.length > 0) {
+      const loaded: PermissionState = {};
+      rolePermissions.forEach((perm: any) => {
+        loaded[perm.moduleKey] = {
+          view: perm.canView ?? false,
+          edit: perm.canEdit ?? false,
+        };
+      });
+      setPermissions(loaded);
+      setHasChanges(false);
+    }
+  }, [rolePermissions, selectedRole]);
+
+  if (user?.role !== "admin") {
+    return <Redirect to="/" />;
+  }
 
   const saveMutation = useMutation({
     mutationFn: (data: { role: string; permissions: PermissionState }) =>
