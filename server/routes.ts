@@ -11935,8 +11935,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Proje oluşturma yetkiniz yok" });
       }
       
+      const { teamMembers, ...projectData } = req.body;
+      
       const data = insertProjectSchema.parse({
-        ...req.body,
+        ...projectData,
         ownerId: user.id,
       });
       
@@ -11947,7 +11949,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         projectId: project.id,
         userId: user.id,
         role: 'owner',
+        canManageTeam: true,
+        canDeleteTasks: true,
       });
+      
+      // Add team members if provided
+      if (teamMembers && Array.isArray(teamMembers)) {
+        for (const member of teamMembers) {
+          if (member.userId && member.userId !== user.id) {
+            await db.insert(projectMembers).values({
+              projectId: project.id,
+              userId: member.userId,
+              role: member.role || 'contributor',
+              canManageTeam: member.role === 'editor',
+              canDeleteTasks: member.role === 'editor',
+            });
+          }
+        }
+      }
       
       res.status(201).json(project);
     } catch (error) {
@@ -12022,11 +12041,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(projectComments.createdAt))
         .limit(50);
       
+      // Get milestones
+      const milestoneList = await db.select()
+        .from(projectMilestones)
+        .where(eq(projectMilestones.projectId, project.id))
+        .orderBy(projectMilestones.dueDate);
+      
       res.json({
         ...project,
         members: members.map(m => ({ ...m.member, user: m.user })),
         tasks: taskList.map(t => ({ ...t.task, assignee: t.assignee })),
         comments: commentList.map(c => ({ ...c.comment, user: c.user })),
+        milestones: milestoneList,
       });
     } catch (error) {
       console.error("Get project detail error:", error);

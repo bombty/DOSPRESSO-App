@@ -102,6 +102,7 @@ import KayipEsyaHQ from "@/pages/kayip-esya-hq";
 import ReceteDetay from "@/pages/recete-detay";
 import Projeler from "@/pages/projeler";
 import ProjeDetay from "@/pages/proje-detay";
+import ProjeGorevDetay from "@/pages/proje-gorev-detay";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -188,6 +189,7 @@ function Router() {
           <Route path="/mesajlar" component={Mesajlar} />
 
           {/* HQ Proje Yönetimi */}
+          <Route path="/proje-gorev/:id" component={ProjeGorevDetay} />
           <Route path="/projeler/:id" component={ProjeDetay} />
           <Route path="/projeler" component={Projeler} />
 

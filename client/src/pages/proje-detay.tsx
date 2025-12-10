@@ -32,8 +32,15 @@ import {
   MoreVertical,
   ListTodo,
   MessageSquare,
-  Edit2
+  Edit2,
+  Flag,
+  CalendarDays,
+  Milestone,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isSameMonth } from "date-fns";
+import { tr } from "date-fns/locale";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
@@ -107,6 +114,9 @@ export default function ProjeDetay() {
     assignedToId: "",
   });
   const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [isAddMilestoneOpen, setIsAddMilestoneOpen] = useState(false);
+  const [newMilestone, setNewMilestone] = useState({ title: "", description: "", dueDate: "" });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -179,6 +189,41 @@ export default function ProjeDetay() {
       setNewComment("");
     },
   });
+
+  const addMilestoneMutation = useMutation({
+    mutationFn: async (data: typeof newMilestone) => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/milestones`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+      setIsAddMilestoneOpen(false);
+      setNewMilestone({ title: "", description: "", dueDate: "" });
+      toast({ title: "Milestone eklendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Milestone eklenemedi", variant: "destructive" });
+    },
+  });
+
+  const updateMilestoneMutation = useMutation({
+    mutationFn: async ({ id, ...data }: { id: number; isCompleted?: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/milestones/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+      toast({ title: "Milestone güncellendi" });
+    },
+  });
+
+  const handleAddMilestone = () => {
+    if (!newMilestone.title.trim()) {
+      toast({ title: "Milestone adı gerekli", variant: "destructive" });
+      return;
+    }
+    addMilestoneMutation.mutate(newMilestone);
+  };
 
   const handleAddTask = () => {
     if (!newTask.title.trim()) {
@@ -298,6 +343,14 @@ export default function ProjeDetay() {
           <TabsTrigger value="timeline" className="flex items-center gap-1">
             <MessageSquare className="h-4 w-4" />
             Timeline
+          </TabsTrigger>
+          <TabsTrigger value="milestones" className="flex items-center gap-1">
+            <Flag className="h-4 w-4" />
+            Milestones
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="flex items-center gap-1">
+            <CalendarDays className="h-4 w-4" />
+            Takvim
           </TabsTrigger>
         </TabsList>
 
@@ -604,6 +657,264 @@ export default function ProjeDetay() {
               )}
             </div>
           </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="milestones" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={isAddMilestoneOpen} onOpenChange={setIsAddMilestoneOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" data-testid="button-add-milestone">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Milestone Ekle
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Yeni Milestone</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Milestone Adı</Label>
+                    <Input
+                      data-testid="input-milestone-title"
+                      value={newMilestone.title}
+                      onChange={(e) => setNewMilestone({ ...newMilestone, title: e.target.value })}
+                      placeholder="Milestone adı"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      data-testid="input-milestone-description"
+                      value={newMilestone.description}
+                      onChange={(e) => setNewMilestone({ ...newMilestone, description: e.target.value })}
+                      placeholder="Milestone açıklaması"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Hedef Tarih</Label>
+                    <Input
+                      data-testid="input-milestone-due-date"
+                      type="date"
+                      value={newMilestone.dueDate}
+                      onChange={(e) => setNewMilestone({ ...newMilestone, dueDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddMilestoneOpen(false)}>İptal</Button>
+                  <Button 
+                    data-testid="button-create-milestone"
+                    onClick={handleAddMilestone} 
+                    disabled={addMilestoneMutation.isPending}
+                  >
+                    {addMilestoneMutation.isPending ? "..." : "Oluştur"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="space-y-3">
+            {project.milestones?.length > 0 ? (
+              project.milestones.map((milestone: any) => (
+                <Card key={milestone.id} data-testid={`card-milestone-${milestone.id}`} className={milestone.isCompleted ? "opacity-70" : ""}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 mt-0.5 shrink-0"
+                        onClick={() => updateMilestoneMutation.mutate({ id: milestone.id, isCompleted: !milestone.isCompleted })}
+                      >
+                        {milestone.isCompleted ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
+                        )}
+                      </Button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className={`font-medium ${milestone.isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                            {milestone.title}
+                          </h3>
+                          {milestone.isCompleted && (
+                            <Badge className="bg-green-500 text-white text-xs">Tamamlandı</Badge>
+                          )}
+                        </div>
+                        {milestone.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{milestone.description}</p>
+                        )}
+                        {milestone.dueDate && (
+                          <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(milestone.dueDate), "d MMMM yyyy", { locale: tr })}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {milestone.linkedTasks?.length || 0} görev
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card className="p-8 text-center">
+                <Flag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-medium mb-2">Henüz milestone yok</h3>
+                <p className="text-sm text-muted-foreground">Projenin önemli aşamalarını belirlemek için milestone ekleyin.</p>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="calendar" className="mt-4 space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  {format(calendarDate, "MMMM yyyy", { locale: tr })}
+                </CardTitle>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => setCalendarDate(subMonths(calendarDate, 1))}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setCalendarDate(new Date())}>Bugün</Button>
+                  <Button variant="ghost" size="icon" onClick={() => setCalendarDate(addMonths(calendarDate, 1))}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-px bg-muted rounded-md overflow-hidden">
+                {["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((day) => (
+                  <div key={day} className="bg-muted p-2 text-center text-xs font-medium text-muted-foreground">
+                    {day}
+                  </div>
+                ))}
+                {(() => {
+                  const monthStart = startOfMonth(calendarDate);
+                  const monthEnd = endOfMonth(calendarDate);
+                  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+                  const startDayOfWeek = (monthStart.getDay() + 6) % 7;
+                  const paddingDays = Array(startDayOfWeek).fill(null);
+                  
+                  return [...paddingDays, ...days].map((day, index) => {
+                    if (!day) {
+                      return <div key={`empty-${index}`} className="bg-background p-2 min-h-[60px]" />;
+                    }
+                    
+                    const dayTasks = project.tasks?.filter((t: any) => 
+                      t.dueDate && isSameDay(new Date(t.dueDate), day)
+                    ) || [];
+                    const dayMilestones = project.milestones?.filter((m: any) => 
+                      m.dueDate && isSameDay(new Date(m.dueDate), day)
+                    ) || [];
+                    
+                    const hasItems = dayTasks.length > 0 || dayMilestones.length > 0;
+                    
+                    return (
+                      <div 
+                        key={day.toISOString()} 
+                        className={`bg-background p-1 min-h-[60px] ${isToday(day) ? "ring-2 ring-primary ring-inset" : ""} ${!isSameMonth(day, calendarDate) ? "opacity-50" : ""}`}
+                      >
+                        <div className={`text-xs font-medium mb-1 ${isToday(day) ? "text-primary" : ""}`}>
+                          {format(day, "d")}
+                        </div>
+                        <div className="space-y-0.5">
+                          {dayMilestones.slice(0, 1).map((m: any) => (
+                            <div key={m.id} className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded px-1 truncate flex items-center gap-0.5">
+                              <Flag className="h-2 w-2 shrink-0" />
+                              {m.title}
+                            </div>
+                          ))}
+                          {dayTasks.slice(0, 2).map((t: any) => (
+                            <div 
+                              key={t.id} 
+                              className={`text-[10px] rounded px-1 truncate ${statusConfig[t.status]?.bgColor}`}
+                            >
+                              {t.title}
+                            </div>
+                          ))}
+                          {(dayTasks.length + dayMilestones.length > 3) && (
+                            <div className="text-[10px] text-muted-foreground">
+                              +{dayTasks.length + dayMilestones.length - 3} daha
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Bu Ay Bitenler
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {project.tasks?.filter((t: any) => {
+                    if (!t.dueDate) return false;
+                    const dueDate = new Date(t.dueDate);
+                    return isSameMonth(dueDate, calendarDate);
+                  }).slice(0, 5).map((task: any) => (
+                    <div 
+                      key={task.id} 
+                      className="flex items-center justify-between p-2 rounded-md border hover:bg-muted/50 cursor-pointer"
+                      onClick={() => navigate(`/proje-gorev/${task.id}`)}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`h-2 w-2 rounded-full ${priorityColors[task.priority]}`} />
+                        <span className="text-sm truncate">{task.title}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {task.dueDate && format(new Date(task.dueDate), "d MMM", { locale: tr })}
+                      </span>
+                    </div>
+                  ))}
+                  {!project.tasks?.some((t: any) => t.dueDate && isSameMonth(new Date(t.dueDate), calendarDate)) && (
+                    <p className="text-sm text-muted-foreground text-center py-2">Bu ay için görev yok</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Flag className="h-4 w-4" />
+                  Yaklaşan Milestones
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {project.milestones?.filter((m: any) => !m.isCompleted).slice(0, 5).map((milestone: any) => (
+                    <div key={milestone.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <span className="text-sm truncate">{milestone.title}</span>
+                      {milestone.dueDate && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {format(new Date(milestone.dueDate), "d MMM", { locale: tr })}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {!project.milestones?.some((m: any) => !m.isCompleted) && (
+                    <p className="text-sm text-muted-foreground text-center py-2">Tamamlanmamış milestone yok</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

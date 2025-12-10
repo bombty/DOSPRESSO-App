@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
@@ -22,9 +24,18 @@ import {
   Clock, 
   AlertCircle,
   Target,
-  ArrowRight
+  UserPlus,
+  X
 } from "lucide-react";
 import type { Project } from "@shared/schema";
+
+interface HQUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  profileImageUrl?: string;
+}
 
 interface ProjectWithStats extends Project {
   memberRole: string | null;
@@ -53,6 +64,23 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
   urgent: { label: "Acil", color: "bg-red-500" },
 };
 
+const roleLabels: Record<string, string> = {
+  admin: "Admin",
+  muhasebe: "Muhasebe",
+  satinalma: "Satınalma",
+  coach: "Coach",
+  teknik: "Teknik",
+  destek: "Destek",
+  fabrika: "Fabrika",
+  yatirimci_hq: "Yatırımcı HQ",
+};
+
+const memberRoleConfig: Record<string, { label: string; description: string }> = {
+  editor: { label: "Editör", description: "Tam düzenleme yetkisi" },
+  contributor: { label: "Katkıda Bulunan", description: "Görev ekleyebilir" },
+  viewer: { label: "Görüntüleyici", description: "Sadece okuma" },
+};
+
 export default function Projeler() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -63,20 +91,29 @@ export default function Projeler() {
     priority: "medium",
     targetDate: "",
   });
+  const [selectedTeam, setSelectedTeam] = useState<{ userId: string; role: string }[]>([]);
 
   const { data: projects, isLoading } = useQuery<ProjectWithStats[]>({
     queryKey: ["/api/projects"],
   });
 
+  const { data: hqUsers } = useQuery<HQUser[]>({
+    queryKey: ["/api/hq-users"],
+  });
+
   const createMutation = useMutation({
-    mutationFn: async (data: typeof newProject) => {
-      const res = await apiRequest("POST", "/api/projects", data);
+    mutationFn: async (data: { project: typeof newProject; team: typeof selectedTeam }) => {
+      const res = await apiRequest("POST", "/api/projects", {
+        ...data.project,
+        teamMembers: data.team,
+      });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       setIsCreateOpen(false);
       setNewProject({ title: "", description: "", priority: "medium", targetDate: "" });
+      setSelectedTeam([]);
       toast({ title: "Proje oluşturuldu" });
     },
     onError: () => {
@@ -89,7 +126,22 @@ export default function Projeler() {
       toast({ title: "Proje adı gerekli", variant: "destructive" });
       return;
     }
-    createMutation.mutate(newProject);
+    createMutation.mutate({ project: newProject, team: selectedTeam });
+  };
+
+  const toggleTeamMember = (userId: string) => {
+    const existing = selectedTeam.find(m => m.userId === userId);
+    if (existing) {
+      setSelectedTeam(selectedTeam.filter(m => m.userId !== userId));
+    } else {
+      setSelectedTeam([...selectedTeam, { userId, role: "contributor" }]);
+    }
+  };
+
+  const updateMemberRole = (userId: string, role: string) => {
+    setSelectedTeam(selectedTeam.map(m => 
+      m.userId === userId ? { ...m, role } : m
+    ));
   };
 
   const getTaskProgress = (stats: Record<string, number>) => {
@@ -130,13 +182,13 @@ export default function Projeler() {
               Yeni Proje
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Yeni Proje Oluştur</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Proje Adı</Label>
+                <Label>Proje Adı *</Label>
                 <Input
                   data-testid="input-project-title"
                   placeholder="Proje adı girin"
@@ -180,6 +232,123 @@ export default function Projeler() {
                     onChange={(e) => setNewProject({ ...newProject, targetDate: e.target.value })}
                   />
                 </div>
+              </div>
+
+              {/* Team Selection */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Ekip Üyeleri
+                  </Label>
+                  {selectedTeam.length > 0 && (
+                    <Badge variant="secondary">{selectedTeam.length} kişi seçili</Badge>
+                  )}
+                </div>
+                
+                <Card className="border-dashed">
+                  <ScrollArea className="h-[200px]">
+                    <div className="p-3 space-y-2">
+                      {hqUsers?.map((user) => {
+                        const isSelected = selectedTeam.some(m => m.userId === user.id);
+                        const memberData = selectedTeam.find(m => m.userId === user.id);
+                        
+                        return (
+                          <div 
+                            key={user.id}
+                            className={`flex items-center justify-between p-2 rounded-md border transition-colors ${
+                              isSelected ? "bg-primary/5 border-primary/20" : "hover:bg-muted/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleTeamMember(user.id)}
+                                data-testid={`checkbox-team-${user.id}`}
+                              />
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={user.profileImageUrl} />
+                                <AvatarFallback className="text-xs">
+                                  {user.firstName?.[0]}{user.lastName?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {user.firstName} {user.lastName}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {roleLabels[user.role] || user.role}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {isSelected && (
+                              <Select
+                                value={memberData?.role || "contributor"}
+                                onValueChange={(v) => updateMemberRole(user.id, v)}
+                              >
+                                <SelectTrigger className="w-32 h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(memberRoleConfig).map(([key, config]) => (
+                                    <SelectItem key={key} value={key}>
+                                      <div>
+                                        <p className="text-sm">{config.label}</p>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {(!hqUsers || hqUsers.length === 0) && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          HQ kullanıcısı bulunamadı
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </Card>
+
+                {/* Selected Team Preview */}
+                {selectedTeam.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTeam.map((member) => {
+                      const user = hqUsers?.find(u => u.id === member.userId);
+                      if (!user) return null;
+                      
+                      return (
+                        <Badge
+                          key={member.userId}
+                          variant="outline"
+                          className="flex items-center gap-1 pr-1"
+                        >
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage src={user.profileImageUrl} />
+                            <AvatarFallback className="text-[8px]">
+                              {user.firstName?.[0]}{user.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs">{user.firstName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({memberRoleConfig[member.role]?.label})
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 ml-1"
+                            onClick={() => toggleTeamMember(member.userId)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>
