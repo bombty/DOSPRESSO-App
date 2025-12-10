@@ -520,7 +520,7 @@ export default function IKPage() {
                       Filtreler
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {/* Category filter - Şubeler/HQ/Fabrika */}
                     <div>
                       <label className="text-sm font-medium">Kategori *</label>
