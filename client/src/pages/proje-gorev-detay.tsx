@@ -310,7 +310,7 @@ export default function ProjeGorevDetay() {
                     return (
                       <div 
                         key={subtask.id}
-                        className="flex items-center justify-between p-2 rounded-md border hover:bg-muted/50 cursor-pointer"
+                        className={`flex items-center justify-between p-2 rounded-md border-2 hover:bg-muted/50 cursor-pointer relative ${subtask.status === "done" ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-border"}`}
                         onClick={() => navigate(`/proje-gorev/${subtask.id}`)}
                       >
                         <div className="flex items-center gap-2">
@@ -322,7 +322,7 @@ export default function ProjeGorevDetay() {
                                 status: subtask.status === "done" ? "todo" : "done"
                               });
                             }}
-                            className="p-0 hover-elevate flex items-center justify-center"
+                            className="p-0 hover-elevate flex items-center justify-center shrink-0"
                           >
                             {subtask.status === "done" ? (
                               <div className="h-5 w-5 rounded-full bg-green-500" />
@@ -334,9 +334,11 @@ export default function ProjeGorevDetay() {
                             {subtask.title}
                           </span>
                         </div>
-                        <Badge variant="outline" className={`text-xs ${subtask.status === "done" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700" : ""}`}>
-                          {subtask.status === "done" ? "Tamamlandı" : subStatus.label}
-                        </Badge>
+                        {subtask.status === "done" && (
+                          <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full rotate-12 shadow-md border-2 border-green-600">
+                            ✓ Tamamlandı
+                          </div>
+                        )}
                       </div>
                     );
                   })}
