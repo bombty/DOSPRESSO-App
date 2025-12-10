@@ -81,15 +81,6 @@ export default function GorevDetay() {
     enabled: !!task?.assignedById,
   });
 
-  const { data: completedByUser } = useQuery<UserType>({
-    queryKey: ["/api/users", task?.statusUpdatedById],
-    queryFn: async () => {
-      const response = await fetch(`/api/users/${task!.statusUpdatedById}`);
-      if (!response.ok) return null;
-      return response.json();
-    },
-    enabled: !!task?.statusUpdatedById && task?.status === "onaylandi",
-  });
 
   const { data: taskHistory } = useQuery<TaskStatusHistory[]>({
     queryKey: ["/api/tasks", id, "history"],
@@ -300,25 +291,44 @@ export default function GorevDetay() {
           </div>
         </div>
         <div className="p-2 rounded-lg border bg-card">
-          <span className="text-muted-foreground">Öncelik</span>
-          <div className="mt-1">
-            <Badge variant="outline" className="text-xs">
-              {priorityLabels[task.priority || "orta"] || task.priority}
-            </Badge>
-          </div>
-        </div>
-        <div className="p-2 rounded-lg border bg-card">
-          <span className="text-muted-foreground">Son Tarih</span>
-          <p className="font-medium mt-1">
-            {task.dueDate ? new Date(task.dueDate).toLocaleDateString("tr-TR") : "-"}
-          </p>
-        </div>
-        <div className="p-2 rounded-lg border bg-card">
-          <span className="text-muted-foreground">Atayan</span>
+          <span className="text-muted-foreground">Atanan</span>
           <p className="font-medium mt-1 truncate">
-            {assignedByUser ? `${assignedByUser.firstName} ${assignedByUser.lastName}` : "-"}
+            {assignedUser ? `${assignedUser.firstName} ${assignedUser.lastName}` : "-"}
           </p>
         </div>
+        {task.status === "onaylandi" && task.completedAt ? (
+          <>
+            <div className="p-2 rounded-lg border bg-card">
+              <span className="text-muted-foreground">Tamamlandı</span>
+              <p className="font-medium mt-1">
+                {new Date(task.completedAt).toLocaleDateString("tr-TR")}
+              </p>
+            </div>
+            <div className="p-2 rounded-lg border bg-card">
+              <span className="text-muted-foreground">Atayan</span>
+              <p className="font-medium mt-1 truncate">
+                {assignedByUser ? `${assignedByUser.firstName} ${assignedByUser.lastName}` : "-"}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="p-2 rounded-lg border bg-card">
+              <span className="text-muted-foreground">Son Tarih</span>
+              <p className="font-medium mt-1">
+                {task.dueDate ? new Date(task.dueDate).toLocaleDateString("tr-TR") : "-"}
+              </p>
+            </div>
+            <div className="p-2 rounded-lg border bg-card">
+              <span className="text-muted-foreground">Öncelik</span>
+              <div className="mt-1">
+                <Badge variant="outline" className="text-xs">
+                  {priorityLabels[task.priority || "orta"] || task.priority}
+                </Badge>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Preview & Action Section */}

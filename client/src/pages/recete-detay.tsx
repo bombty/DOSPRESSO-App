@@ -159,23 +159,23 @@ export default function ReceteDetay() {
           </Card>
         )}
 
-        {/* Compact Metadata Summary */}
+        {/* Compact KPI Strip - Unique Metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          <div className="p-2 rounded-lg border bg-card">
-            <span className="text-muted-foreground">Kod</span>
-            <p className="font-medium mt-1">{recipe.code}</p>
-          </div>
-          <div className="p-2 rounded-lg border bg-card">
-            <span className="text-muted-foreground">Süre</span>
-            <p className="font-medium mt-1">{recipe.estimatedMinutes} dk</p>
-          </div>
-          <div className="p-2 rounded-lg border bg-card">
-            <span className="text-muted-foreground">Zorluk</span>
-            <div className="mt-1">{getDifficultyBadge(recipe.difficulty)}</div>
-          </div>
           <div className="p-2 rounded-lg border bg-card">
             <span className="text-muted-foreground">Versiyon</span>
             <p className="font-medium mt-1">v{version?.versionNumber || 1}</p>
+          </div>
+          <div className="p-2 rounded-lg border bg-card">
+            <span className="text-muted-foreground">Malzeme</span>
+            <p className="font-medium mt-1">{ingredients.length} adet</p>
+          </div>
+          <div className="p-2 rounded-lg border bg-card">
+            <span className="text-muted-foreground">Adım</span>
+            <p className="font-medium mt-1">{steps.length} adım</p>
+          </div>
+          <div className="p-2 rounded-lg border bg-card">
+            <span className="text-muted-foreground">Ekipman</span>
+            <p className="font-medium mt-1">{equipmentNeeded.length} adet</p>
           </div>
         </div>
 
