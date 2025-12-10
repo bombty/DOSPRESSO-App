@@ -105,7 +105,10 @@ import ProjeDetay from "@/pages/proje-detay";
 import ProjeGorevDetay from "@/pages/proje-gorev-detay";
 import Destek from "@/pages/destek";
 import AdminDashboard from "@/pages/admin/index";
-import AdminDestekAyarlari from "@/pages/admin/destek-ayarlari";
+import AdminYetkilendirme from "@/pages/admin/yetkilendirme";
+import AdminAktiviteLoglar from "@/pages/admin/aktivite-loglari";
+import AdminYedekleme from "@/pages/admin/yedekleme";
+import AdminKullanicilar from "@/pages/admin/kullanicilar";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -245,7 +248,10 @@ function Router() {
 
           {/* Admin Panel */}
           <Route path="/admin" component={AdminDashboard} />
-          <Route path="/admin/destek-ayarlari" component={AdminDestekAyarlari} />
+          <Route path="/admin/yetkilendirme" component={AdminYetkilendirme} />
+          <Route path="/admin/aktivite-loglari" component={AdminAktiviteLoglar} />
+          <Route path="/admin/yedekleme" component={AdminYedekleme} />
+          <Route path="/admin/kullanicilar" component={AdminKullanicilar} />
         </>
       )}
       <Route component={NotFound} />

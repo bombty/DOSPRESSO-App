@@ -63,10 +63,10 @@ export default function AdminDashboard() {
   };
 
   const quickActions = [
-    { icon: MessageSquare, label: "Destek Ayarları", href: "/admin/destek-ayarlari", color: "bg-blue-500/10" },
-    { icon: Users, label: "Kullanıcılar", href: "/yonetim/kullanicilar", color: "bg-purple-500/10" },
-    { icon: Settings, label: "Sistem Ayarları", href: "/yonetim/ayarlar", color: "bg-orange-500/10" },
-    { icon: Shield, label: "Rol Yetkileri", href: "/rol-yetkileri", color: "bg-green-500/10" },
+    { icon: Shield, label: "Yetkilendirme", href: "/admin/yetkilendirme", color: "bg-green-500/10" },
+    { icon: Users, label: "Kullanıcılar", href: "/admin/kullanicilar", color: "bg-purple-500/10" },
+    { icon: Activity, label: "Aktivite Logları", href: "/admin/aktivite-loglari", color: "bg-blue-500/10" },
+    { icon: Database, label: "Yedekleme", href: "/admin/yedekleme", color: "bg-orange-500/10" },
   ];
 
   const stats = [
