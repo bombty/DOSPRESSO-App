@@ -5,7 +5,7 @@ import { isHQRole, insertBranchSchema, type Branch, type InsertBranch } from "@s
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, MapPin, Phone, User, Plus, Pencil, Trash2 } from "lucide-react";
+import { Building2, MapPin, Phone, User, Plus, Pencil, Trash2, QrCode, Copy, Check } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,6 +20,7 @@ export default function SubelerPage() {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+  const [copiedBranchId, setCopiedBranchId] = useState<number | null>(null);
 
   const { data: branches = [], isLoading, error } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
@@ -105,6 +106,18 @@ export default function SubelerPage() {
     } else {
       createMutation.mutate(data);
     }
+  };
+
+  const copyNFCLink = (branchId: number, branchName: string) => {
+    const baseUrl = window.location.origin;
+    const nfcLink = `${baseUrl}/vardiya-giris?method=nfc&branchId=${branchId}`;
+    navigator.clipboard.writeText(nfcLink);
+    setCopiedBranchId(branchId);
+    toast({
+      title: "Kopyalandı",
+      description: `${branchName} NFC linki panoya kopyalandı`,
+    });
+    setTimeout(() => setCopiedBranchId(null), 2000);
   };
 
   // Filter branches based on user role
@@ -287,6 +300,29 @@ export default function SubelerPage() {
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Administrator: {branch.managerName}</span>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    copyNFCLink(branch.id, branch.name);
+                  }}
+                  className="w-full mt-2"
+                  data-testid={`button-copy-nfc-link-${branch.id}`}
+                >
+                  {copiedBranchId === branch.id ? (
+                    <>
+                      <Check className="h-3 w-3 mr-1" />
+                      NFC Linki Kopyalandı
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="h-3 w-3 mr-1" />
+                      NFC Linki Kopyala
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </Link>
