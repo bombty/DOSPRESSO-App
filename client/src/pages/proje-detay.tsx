@@ -234,6 +234,16 @@ export default function ProjeDetay() {
     },
   });
 
+  const updateTaskStatusMutation = useMutation({
+    mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
+      const res = await apiRequest("PATCH", `/api/project-tasks/${taskId}`, { status });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+    },
+  });
+
   const handleAddMilestone = () => {
     if (!newMilestone.title.trim()) {
       toast({ title: "Milestone adı gerekli", variant: "destructive" });
@@ -377,6 +387,10 @@ export default function ProjeDetay() {
           <TabsTrigger value="calendar" className="flex items-center gap-1">
             <CalendarDays className="h-4 w-4" />
             Takvim
+          </TabsTrigger>
+          <TabsTrigger value="kanban" className="flex items-center gap-1">
+            <ListTodo className="h-4 w-4" />
+            Kanban
           </TabsTrigger>
         </TabsList>
 
@@ -1000,6 +1014,64 @@ export default function ProjeDetay() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="kanban" className="mt-4">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {["todo", "in_progress", "review", "done"].map((status) => (
+                <div key={status} className="space-y-2">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <div className={`h-3 w-3 rounded-full ${statusConfig[status]?.bgColor}`} />
+                    {statusConfig[status]?.label}
+                  </h3>
+                  <DroppableColumn id={status} status={status}>
+                    {project.tasks?.filter((t: any) => t.status === status).map((task: any) => (
+                      <DraggableTask key={task.id} task={task}>
+                        <div onClick={() => navigate(`/proje-gorev/${task.id}`)} className="cursor-pointer">
+                          <Card className="hover:shadow-md transition-shadow p-3">
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="font-medium text-sm flex-1">{task.title}</span>
+                                <div className={`h-2 w-2 rounded-full shrink-0 ${priorityColors[task.priority]}`} />
+                              </div>
+                              {task.assignedToId && (
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarImage src={task.assignee?.profileImageUrl} />
+                                    <AvatarFallback className="text-xs">{task.assignee?.firstName?.[0]}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-xs text-muted-foreground">{task.assignee?.firstName}</span>
+                                </div>
+                              )}
+                              {task.dueDate && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Calendar className="h-3 w-3" />
+                                  {format(new Date(task.dueDate), "d MMM", { locale: tr })}
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        </div>
+                      </DraggableTask>
+                    ))}
+                  </DroppableColumn>
+                </div>
+              ))}
+            </div>
+            <DragOverlay>
+              {activeTask && (
+                <Card className="p-3 w-64 shadow-lg">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-medium text-sm flex-1">{activeTask.title}</span>
+                      <div className={`h-2 w-2 rounded-full shrink-0 ${priorityColors[activeTask.priority]}`} />
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </DragOverlay>
+          </DndContext>
         </TabsContent>
       </Tabs>
     </div>
