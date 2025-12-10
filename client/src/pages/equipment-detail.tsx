@@ -540,12 +540,20 @@ export default function EquipmentDetail() {
     editForm.reset({
       equipmentType: equipment.equipmentType,
       serialNumber: equipment.serialNumber || "",
+      modelNo: (equipment as any).modelNo || "",
       purchaseDate: equipment.purchaseDate || undefined,
       warrantyEndDate: equipment.warrantyEndDate || undefined,
       lastMaintenanceDate: equipment.lastMaintenanceDate || undefined,
       branchId: equipment.branchId,
       notes: equipment.notes || "",
       isActive: equipment.isActive,
+      maintenanceResponsible: equipment.maintenanceResponsible || SERVICE_DECISION.BRANCH,
+      faultProtocol: equipment.faultProtocol || "branch",
+      serviceContactName: (equipment as any).serviceContactName || "",
+      serviceContactPhone: (equipment as any).serviceContactPhone || "",
+      serviceContactEmail: (equipment as any).serviceContactEmail || "",
+      serviceContactAddress: (equipment as any).serviceContactAddress || "",
+      serviceHandledBy: (equipment as any).serviceHandledBy || "hq",
     });
     setIsEditDialogOpen(true);
   };
@@ -1665,13 +1673,14 @@ export default function EquipmentDetail() {
 
       {/* Edit Equipment Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent data-testid="dialog-edit-equipment">
-          <DialogHeader>
+        <DialogContent data-testid="dialog-edit-equipment" className="max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Ekipman Düzenle</DialogTitle>
             <DialogDescription>
               Ekipman bilgilerini güncelleyin
             </DialogDescription>
           </DialogHeader>
+          <div className="flex-1 overflow-y-auto max-h-[60vh] pr-2">
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
               <FormField
@@ -1706,6 +1715,19 @@ export default function EquipmentDetail() {
                     <FormLabel>Seri Numarası</FormLabel>
                     <FormControl>
                       <Input {...field} value={field.value || ''} placeholder="Ekipman seri numarası" data-testid="input-edit-serial-number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="modelNo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Model Numarası</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} placeholder="Ekipman model numarası" data-testid="input-edit-model-no" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1818,6 +1840,48 @@ export default function EquipmentDetail() {
               />
               <FormField
                 control={editForm.control}
+                name="maintenanceResponsible"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bakım Sorumlusu</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || SERVICE_DECISION.BRANCH}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-maintenance-responsible">
+                          <SelectValue placeholder="Sorumlu seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={SERVICE_DECISION.BRANCH}>Şube</SelectItem>
+                        <SelectItem value={SERVICE_DECISION.HQ}>Merkez (HQ)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="faultProtocol"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Arıza Protokolü</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "branch"}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-fault-protocol">
+                          <SelectValue placeholder="Protokol seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="branch">Şube Yöneticisi</SelectItem>
+                        <SelectItem value="hq_teknik">HQ Teknik Ekip</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
@@ -1829,7 +1893,88 @@ export default function EquipmentDetail() {
                   </FormItem>
                 )}
               />
-              <DialogFooter>
+              
+              {/* HQ-Only: Service Contact Fields */}
+              {user?.role && isHQRole(user.role as any) && (
+                <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+                  <h4 className="font-medium text-sm">Servis Firma Bilgileri (Sadece HQ)</h4>
+                  <FormField
+                    control={editForm.control}
+                    name="serviceContactName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Servis Firma Adı</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} placeholder="Servis firması adı" data-testid="input-edit-service-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="serviceContactPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Servis Telefon</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} placeholder="Servis telefon numarası" data-testid="input-edit-service-phone" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="serviceContactEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Servis E-posta</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} placeholder="Servis e-posta adresi" data-testid="input-edit-service-email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="serviceContactAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Servis Adresi</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} placeholder="Servis firma adresi" data-testid="input-edit-service-address" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="serviceHandledBy"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Servis Yönetimi</FormLabel>
+                        <Select onValueChange={field.onChange} value={String(field.value || "hq")}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-service-handled-by">
+                              <SelectValue placeholder="Yönetici seçin" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="hq">HQ Yönetir</SelectItem>
+                            <SelectItem value="branch">Şube Yönetir</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              
+              <DialogFooter className="pt-4">
                 <Button
                   type="button"
                   variant="outline"
@@ -1847,6 +1992,7 @@ export default function EquipmentDetail() {
               </DialogFooter>
             </form>
           </Form>
+          </div>
         </DialogContent>
       </Dialog>
 
