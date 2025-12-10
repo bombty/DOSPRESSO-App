@@ -114,7 +114,7 @@ export default function AdminKullanicilar() {
     <div className="p-4 pb-24 space-y-4">
       <div className="flex items-center gap-2">
         <Link href="/admin">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" data-testid="button-back-admin">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
@@ -199,12 +199,12 @@ export default function AdminKullanicilar() {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-user-menu-${userItem.id}`}>
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleResetPassword(userItem)}>
+                        <DropdownMenuItem onClick={() => handleResetPassword(userItem)} data-testid={`menu-reset-password-${userItem.id}`}>
                           <Key className="h-4 w-4 mr-2" />
                           Şifre Sıfırla
                         </DropdownMenuItem>
@@ -213,6 +213,7 @@ export default function AdminKullanicilar() {
                             userId: userItem.id, 
                             isActive: userItem.isActive === false 
                           })}
+                          data-testid={`menu-toggle-status-${userItem.id}`}
                         >
                           {userItem.isActive === false ? (
                             <>
@@ -246,7 +247,7 @@ export default function AdminKullanicilar() {
             Kullanıcıya yeni şifre için e-posta gönderilecektir.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setResetPasswordDialog(false)}>
+            <Button variant="outline" onClick={() => setResetPasswordDialog(false)} data-testid="button-cancel-reset">
               İptal
             </Button>
             <Button 

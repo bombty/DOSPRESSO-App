@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +18,7 @@ import {
   Clock,
   TrendingUp
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, Redirect } from "wouter";
 
 interface SystemHealth {
   database: "healthy" | "warning" | "error";
@@ -36,11 +35,9 @@ interface PendingApproval {
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [, navigate] = useLocation();
 
   if (user?.role !== "admin") {
-    navigate("/");
-    return null;
+    return <Redirect to="/" />;
   }
 
   const { data: pendingTickets = [] } = useQuery<any[]>({
@@ -165,11 +162,11 @@ export default function AdminDashboard() {
         <CardContent>
           <div className="grid grid-cols-2 gap-2">
             {quickActions.map((action, i) => (
-              <Link key={i} href={action.href}>
+              <Link key={i} href={action.href} data-testid={`link-quick-action-${action.label.toLowerCase().replace(/\s+/g, "-").replace(/ı/g, "i").replace(/ö/g, "o").replace(/ü/g, "u")}`}>
                 <Button
                   variant="outline"
                   className={`w-full justify-start gap-2 ${action.color}`}
-                  data-testid={`button-admin-${action.label.toLowerCase().replace(/\s+/g, "-")}`}
+                  data-testid={`button-admin-${action.label.toLowerCase().replace(/\s+/g, "-").replace(/ı/g, "i").replace(/ö/g, "o").replace(/ü/g, "u")}`}
                 >
                   <action.icon className="h-4 w-4" />
                   {action.label}
@@ -193,7 +190,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-2">
             {pendingTickets.slice(0, 5).map((ticket: any) => (
-              <Link key={ticket.id} href="/hq-support">
+              <Link key={ticket.id} href="/hq-support" data-testid={`link-ticket-${ticket.id}`}>
                 <div className="flex items-center justify-between p-2 rounded-lg hover-elevate cursor-pointer">
                   <div>
                     <p className="text-sm font-medium line-clamp-1">{ticket.title}</p>

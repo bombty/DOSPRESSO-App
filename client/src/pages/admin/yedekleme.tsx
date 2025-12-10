@@ -64,7 +64,7 @@ export default function AdminYedekleme() {
     <div className="p-4 pb-24 space-y-4">
       <div className="flex items-center gap-2">
         <Link href="/admin">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" data-testid="button-back-admin">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
@@ -138,7 +138,7 @@ export default function AdminYedekleme() {
               <span>{storageUsed} MB kullanılıyor</span>
               <span className="text-muted-foreground">{storageTotal} MB</span>
             </div>
-            <Progress value={storagePercent} className="h-2" />
+            <Progress value={storagePercent} className="h-2" data-testid="progress-storage" />
             <p className="text-xs text-muted-foreground">
               %{storagePercent.toFixed(1)} dolu - {(storageTotal - storageUsed).toFixed(1)} MB boş alan
             </p>
@@ -179,7 +179,7 @@ export default function AdminYedekleme() {
                   <Badge variant={backup.type === "auto" ? "secondary" : "outline"}>
                     {backup.type === "auto" ? "Otomatik" : "Manuel"}
                   </Badge>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-download-backup-${backup.id}`}>
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>

@@ -197,7 +197,7 @@ export default function AdminYetkilendirme() {
       <div className="w-56 border-r bg-muted/30 p-3 space-y-4">
         <div className="flex items-center gap-2">
           <Link href="/admin">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-back-admin">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>

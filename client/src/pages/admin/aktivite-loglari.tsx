@@ -95,7 +95,7 @@ export default function AdminAktiviteLoglar() {
     <div className="p-4 pb-24 space-y-4">
       <div className="flex items-center gap-2">
         <Link href="/admin">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" data-testid="button-back-admin">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
