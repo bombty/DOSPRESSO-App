@@ -184,6 +184,17 @@ export default function ProjeGorevDetay() {
     },
   });
 
+  const updateSubtaskMutation = useMutation({
+    mutationFn: async ({ subtaskId, status }: { subtaskId: number; status: string }) => {
+      const res = await apiRequest("PATCH", `/api/project-tasks/${subtaskId}`, { status });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/project-tasks", taskId] });
+      toast({ title: "Alt görev güncellendi" });
+    },
+  });
+
   const addCommentMutation = useMutation({
     mutationFn: async (content: string) => {
       const res = await apiRequest("POST", `/api/project-tasks/${taskId}/comments`, { content });
@@ -219,7 +230,7 @@ export default function ProjeGorevDetay() {
         <Card className="p-8 text-center">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="font-medium mb-2">Görev bulunamadı</h3>
-          <Button onClick={() => navigate(-1)}>
+          <Button onClick={() => navigate("/projeler")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Geri Dön
           </Button>
@@ -303,16 +314,29 @@ export default function ProjeGorevDetay() {
                         onClick={() => navigate(`/proje-gorev/${subtask.id}`)}
                       >
                         <div className="flex items-center gap-2">
-                          {subtask.status === "done" ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <div className="h-4 w-4 rounded-full border-2" />
-                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateSubtaskMutation.mutate({
+                                subtaskId: subtask.id,
+                                status: subtask.status === "done" ? "todo" : "done"
+                              });
+                            }}
+                            className="p-0 h-4 w-4 hover-elevate"
+                          >
+                            {subtask.status === "done" ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+                            )}
+                          </button>
                           <span className={`text-sm ${subtask.status === "done" ? "line-through text-muted-foreground" : ""}`}>
                             {subtask.title}
                           </span>
                         </div>
-                        <Badge variant="outline" className="text-xs">{subStatus.label}</Badge>
+                        <Badge variant="outline" className={`text-xs ${subtask.status === "done" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700" : ""}`}>
+                          {subtask.status === "done" ? "Tamamlandı" : subStatus.label}
+                        </Badge>
                       </div>
                     );
                   })}
@@ -437,7 +461,7 @@ export default function ProjeGorevDetay() {
 
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Atanan</Label>
-                <Select value={task.assignee?.id || "unassigned"} onValueChange={(v) => updateTaskMutation.mutate({ assignedToId: v === "unassigned" ? null : v })}>
+                <Select value={task.assignee?.id || "unassigned"} onValueChange={(v) => updateTaskMutation.mutate({ assignedToId: v === "unassigned" ? null : v } as any)}>
                   <SelectTrigger><SelectValue placeholder="Atanmamış" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unassigned">Atanmamış</SelectItem>
