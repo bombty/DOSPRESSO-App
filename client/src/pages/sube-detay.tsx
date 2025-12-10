@@ -272,71 +272,8 @@ export default function SubeDetayPage() {
         </CardContent>
       </Card>
 
-      {/* KPI Cards */}
-      <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-4 gap-2 sm:gap-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Personel Performansı</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="score-employee">{scores.employeePerformanceScore.toFixed(1)}</div>
-            <Progress value={scores.employeePerformanceScore} className="h-1 mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">Ağırlık: %40</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ekipman Durumu</CardTitle>
-            <Wrench className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="score-equipment">{scores.equipmentScore.toFixed(1)}</div>
-            <Progress value={scores.equipmentScore} className="h-1 mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">Ağırlık: %25</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Kalite Denetimi</CardTitle>
-            <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="score-quality">{scores.qualityAuditScore.toFixed(1)}</div>
-            <Progress value={scores.qualityAuditScore} className="h-1 mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">Ağırlık: %20</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Müşteri Memnuniyeti</CardTitle>
-            <ThumbsUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="score-satisfaction">{scores.customerSatisfactionScore.toFixed(1)}</div>
-            <Progress value={scores.customerSatisfactionScore} className="h-1 mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">Ağırlık: %15</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Action Buttons */}
-      {isAdmin && (
-        <div className="flex gap-2">
-          <Link href={`/sube-gorevler/${branchId}`}>
-            <Button variant="outline" size="sm" data-testid="button-task-performance">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Görev Performansı
-            </Button>
-          </Link>
-        </div>
-      )}
-
       {/* Tabs */}
-      <Tabs className="w-full flex flex-col gap-3 sm:gap-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col gap-3 sm:gap-4">
         <TabsList className="flex-wrap">
           {canViewActive && (
             <TabsTrigger value="canlı" data-testid="tab-active-employees">
@@ -356,7 +293,86 @@ export default function SubeDetayPage() {
           )}
         </TabsList>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        {/* KPI Cards */}
+        <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-4 gap-2 sm:gap-3">
+          <Card 
+            onClick={() => setActiveTab("personel")} 
+            className="hover-elevate active-elevate-2 cursor-pointer"
+            data-testid="card-metric-employee"
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Personel Performansı</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="score-employee">{scores.employeePerformanceScore.toFixed(1)}</div>
+              <Progress value={scores.employeePerformanceScore} className="h-1 mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">Ağırlık: %40</p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            onClick={() => setActiveTab("ekipman")} 
+            className="hover-elevate active-elevate-2 cursor-pointer"
+            data-testid="card-metric-equipment"
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ekipman Durumu</CardTitle>
+              <Wrench className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="score-equipment">{scores.equipmentScore.toFixed(1)}</div>
+              <Progress value={scores.equipmentScore} className="h-1 mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">Ağırlık: %25</p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            onClick={() => setActiveTab("gorevler")} 
+            className="hover-elevate active-elevate-2 cursor-pointer"
+            data-testid="card-metric-quality"
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Kalite Denetimi</CardTitle>
+              <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="score-quality">{scores.qualityAuditScore.toFixed(1)}</div>
+              <Progress value={scores.qualityAuditScore} className="h-1 mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">Ağırlık: %20</p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            onClick={() => setActiveTab("arizalar")} 
+            className="hover-elevate active-elevate-2 cursor-pointer"
+            data-testid="card-metric-satisfaction"
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Müşteri Memnuniyeti</CardTitle>
+              <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="score-satisfaction">{scores.customerSatisfactionScore.toFixed(1)}</div>
+              <Progress value={scores.customerSatisfactionScore} className="h-1 mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">Ağırlık: %15</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Action Buttons */}
+        {isAdmin && (
+          <div className="flex gap-2">
+            <Link href={`/sube-gorevler/${branchId}`}>
+              <Button variant="outline" size="sm" data-testid="button-task-performance">
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Görev Performansı
+              </Button>
+            </Link>
+          </div>
+        )}
+
+        <TabsContent value="canlı" className="w-full space-y-2 sm:space-y-3">
           <Card data-testid="card-active-employees">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -410,7 +426,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="personel" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Şube Personeli</CardTitle>
@@ -455,7 +471,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="gorevler" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Son Görevler</CardTitle>
@@ -485,7 +501,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="ekipman" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Ekipman</CardTitle>
@@ -515,7 +531,7 @@ export default function SubeDetayPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+        <TabsContent value="arizalar" className="w-full space-y-2 sm:space-y-3">
           <Card>
             <CardHeader>
               <CardTitle>Son Arızalar</CardTitle>
@@ -551,7 +567,7 @@ export default function SubeDetayPage() {
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="content" className="w-full space-y-2 sm:space-y-3">
+          <TabsContent value="qr-ayarlar" className="w-full space-y-2 sm:space-y-3">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">
               {/* QR Kod Üretici */}
               <Card>
