@@ -274,7 +274,7 @@ export default function SubeDetayPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <TabsList className="w-full flex flex-wrap gap-1 h-auto p-1">
           {canViewActive && (
             <TabsTrigger value="canlı" data-testid="tab-active-employees">
               Canlı ({activeEmployees?.length || 0})
