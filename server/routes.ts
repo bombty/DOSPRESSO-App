@@ -122,6 +122,7 @@ import {
   quizQuestions,
   emailSettings,
   banners,
+  aiSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull } from "drizzle-orm";
@@ -13131,6 +13132,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get active banners error:", error);
       res.status(500).json({ message: "Bannerlar alınamadı" });
+    }
+  });
+
+  // ============================================
+  // ADMIN - AI SETTINGS API
+  // ============================================
+  
+  // GET AI Settings
+  app.get('/api/admin/ai-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const [settings] = await db.query.aiSettings.findMany({ limit: 1 });
+      
+      if (!settings) {
+        // Return default settings
+        return res.json({
+          id: 0,
+          provider: "openai",
+          isActive: true,
+          openaiApiKey: process.env.OPENAI_API_KEY ? "********" : null,
+          openaiChatModel: "gpt-4o-mini",
+          openaiEmbeddingModel: "text-embedding-3-small",
+          openaiVisionModel: "gpt-4o",
+          geminiApiKey: null,
+          geminiChatModel: "gemini-1.5-pro",
+          geminiEmbeddingModel: "text-embedding-004",
+          geminiVisionModel: "gemini-1.5-pro",
+          anthropicApiKey: null,
+          anthropicChatModel: "claude-3-5-sonnet-20241022",
+          anthropicVisionModel: "claude-3-5-sonnet-20241022",
+          temperature: 0.7,
+          maxTokens: 2000,
+          rateLimitPerMinute: 60,
+        });
+      }
+      
+      // Mask API keys for frontend
+      const maskedSettings = {
+        ...settings,
+        openaiApiKey: settings.openaiApiKey ? "********" : null,
+        geminiApiKey: settings.geminiApiKey ? "********" : null,
+        anthropicApiKey: settings.anthropicApiKey ? "********" : null,
+      };
+      
+      res.json(maskedSettings);
+    } catch (error) {
+      console.error("Get AI settings error:", error);
+      res.status(500).json({ message: "AI ayarları alınamadı" });
+    }
+  });
+
+  // POST/Update AI Settings
+  app.post('/api/admin/ai-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const data = req.body;
+      const [existing] = await db.query.aiSettings.findMany({ limit: 1 });
+      
+      const updateData: any = {
+        provider: data.provider,
+        isActive: data.isActive,
+        openaiChatModel: data.openaiChatModel,
+        openaiEmbeddingModel: data.openaiEmbeddingModel,
+        openaiVisionModel: data.openaiVisionModel,
+        geminiChatModel: data.geminiChatModel,
+        geminiEmbeddingModel: data.geminiEmbeddingModel,
+        geminiVisionModel: data.geminiVisionModel,
+        anthropicChatModel: data.anthropicChatModel,
+        anthropicVisionModel: data.anthropicVisionModel,
+        temperature: data.temperature,
+        maxTokens: data.maxTokens,
+        rateLimitPerMinute: data.rateLimitPerMinute,
+        updatedById: user.id,
+        updatedAt: new Date(),
+      };
+      
+      // Only update API keys if new value provided (not masked)
+      if (data.openaiApiKey && data.openaiApiKey !== "********") {
+        updateData.openaiApiKey = data.openaiApiKey;
+      }
+      if (data.geminiApiKey && data.geminiApiKey !== "********") {
+        updateData.geminiApiKey = data.geminiApiKey;
+      }
+      if (data.anthropicApiKey && data.anthropicApiKey !== "********") {
+        updateData.anthropicApiKey = data.anthropicApiKey;
+      }
+      
+      let result;
+      if (existing) {
+        [result] = await db.update(aiSettings)
+          .set(updateData)
+          .where(eq(aiSettings.id, existing.id))
+          .returning();
+      } else {
+        [result] = await db.insert(aiSettings).values(updateData).returning();
+      }
+      
+      res.json({ success: true, id: result.id });
+    } catch (error) {
+      console.error("Save AI settings error:", error);
+      res.status(500).json({ message: "AI ayarları kaydedilemedi" });
+    }
+  });
+
+  // Test AI connection
+  app.post('/api/admin/ai-settings/test', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const { provider } = req.body;
+      const [settings] = await db.query.aiSettings.findMany({ limit: 1 });
+      
+      // Simple test - try to make a basic API call
+      if (provider === 'openai') {
+        const apiKey = settings?.openaiApiKey || process.env.OPENAI_API_KEY;
+        if (!apiKey) {
+          return res.json({ success: false, message: "OpenAI API anahtarı bulunamadı" });
+        }
+        
+        try {
+          const OpenAI = (await import('openai')).default;
+          const openai = new OpenAI({ apiKey });
+          await openai.models.list();
+          return res.json({ success: true, message: "OpenAI bağlantısı başarılı" });
+        } catch (e: any) {
+          return res.json({ success: false, message: `OpenAI hatası: ${e.message}` });
+        }
+      }
+      
+      if (provider === 'gemini') {
+        const apiKey = settings?.geminiApiKey;
+        if (!apiKey) {
+          return res.json({ success: false, message: "Gemini API anahtarı bulunamadı" });
+        }
+        return res.json({ success: true, message: "Gemini yapılandırıldı (test bağlantısı eklenmedi)" });
+      }
+      
+      if (provider === 'anthropic') {
+        const apiKey = settings?.anthropicApiKey;
+        if (!apiKey) {
+          return res.json({ success: false, message: "Anthropic API anahtarı bulunamadı" });
+        }
+        return res.json({ success: true, message: "Anthropic yapılandırıldı (test bağlantısı eklenmedi)" });
+      }
+      
+      res.json({ success: false, message: "Bilinmeyen sağlayıcı" });
+    } catch (error) {
+      console.error("Test AI connection error:", error);
+      res.status(500).json({ success: false, message: "Bağlantı testi başarısız" });
     }
   });
 

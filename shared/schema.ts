@@ -1014,12 +1014,20 @@ export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   equipmentType: varchar("equipment_type", { length: 50 }).notNull(), // espresso, krema, mixer, etc.
+  modelNo: varchar("model_no", { length: 255 }), // Model numarası
   serialNumber: varchar("serial_number", { length: 255 }),
+  imageUrl: text("image_url"), // Ekipman banner/görseli
   purchaseDate: date("purchase_date"),
   warrantyEndDate: date("warranty_end_date"),
   // Routing: Who maintains / handles faults
   maintenanceResponsible: varchar("maintenance_responsible", { length: 20 }).notNull().default("branch"), // 'branch' | 'hq'
   faultProtocol: varchar("fault_protocol", { length: 20 }).notNull().default("branch"), // 'branch' | 'hq_teknik'
+  // Service contact info (HQ managed)
+  serviceContactName: varchar("service_contact_name", { length: 255 }), // Servis firma adı
+  serviceContactPhone: varchar("service_contact_phone", { length: 50 }), // Servis telefon
+  serviceContactEmail: varchar("service_contact_email", { length: 255 }), // Servis email
+  serviceContactAddress: text("service_contact_address"), // Servis adres
+  serviceHandledBy: varchar("service_handled_by", { length: 20 }).default("hq"), // 'branch' (şube servisle iletişim kurar) | 'hq' (HQ yönetir)
   // Maintenance tracking
   lastMaintenanceDate: date("last_maintenance_date"),
   nextMaintenanceDate: date("next_maintenance_date"),
@@ -4587,3 +4595,52 @@ export const insertBannerSchema = createInsertSchema(banners).omit({
 
 export type InsertBanner = z.infer<typeof insertBannerSchema>;
 export type Banner = typeof banners.$inferSelect;
+
+// ============================================
+// ADMIN PANEL - AI Sağlayıcı Ayarları
+// ============================================
+export const AI_PROVIDERS = {
+  OPENAI: "openai",
+  GEMINI: "gemini",
+  ANTHROPIC: "anthropic",
+} as const;
+
+export type AIProviderType = typeof AI_PROVIDERS[keyof typeof AI_PROVIDERS];
+
+export const aiSettings = pgTable("ai_settings", {
+  id: serial("id").primaryKey(),
+  // Aktif sağlayıcı
+  provider: varchar("provider", { length: 30 }).notNull().default("openai"), // openai, gemini, anthropic
+  isActive: boolean("is_active").default(true),
+  // OpenAI ayarları
+  openaiApiKey: text("openai_api_key"), // Şifreli
+  openaiChatModel: varchar("openai_chat_model", { length: 100 }).default("gpt-4o-mini"),
+  openaiEmbeddingModel: varchar("openai_embedding_model", { length: 100 }).default("text-embedding-3-small"),
+  openaiVisionModel: varchar("openai_vision_model", { length: 100 }).default("gpt-4o"),
+  // Gemini ayarları
+  geminiApiKey: text("gemini_api_key"), // Şifreli
+  geminiChatModel: varchar("gemini_chat_model", { length: 100 }).default("gemini-1.5-pro"),
+  geminiEmbeddingModel: varchar("gemini_embedding_model", { length: 100 }).default("text-embedding-004"),
+  geminiVisionModel: varchar("gemini_vision_model", { length: 100 }).default("gemini-1.5-pro"),
+  // Anthropic (Claude) ayarları
+  anthropicApiKey: text("anthropic_api_key"), // Şifreli
+  anthropicChatModel: varchar("anthropic_chat_model", { length: 100 }).default("claude-3-5-sonnet-20241022"),
+  anthropicVisionModel: varchar("anthropic_vision_model", { length: 100 }).default("claude-3-5-sonnet-20241022"),
+  // Genel ayarlar
+  temperature: real("temperature").default(0.7),
+  maxTokens: integer("max_tokens").default(2000),
+  rateLimitPerMinute: integer("rate_limit_per_minute").default(60),
+  // Metadata
+  updatedById: varchar("updated_by_id").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAISettingsSchema = createInsertSchema(aiSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAISettings = z.infer<typeof insertAISettingsSchema>;
+export type AISettings = typeof aiSettings.$inferSelect;

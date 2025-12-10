@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
   Image, 
   ArrowLeft, 
@@ -24,7 +25,9 @@ import {
   Eye,
   EyeOff,
   Link as LinkIcon,
-  Users
+  Users,
+  Upload,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -346,14 +349,51 @@ export default function AdminBannerlar() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="imageUrl">Görsel URL</Label>
-              <Input
-                id="imageUrl"
-                placeholder="https://example.com/image.jpg"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
-                data-testid="input-banner-image"
-              />
+              <Label>Banner Görseli</Label>
+              {formData.imageUrl ? (
+                <div className="relative">
+                  <div className="aspect-[3/1] w-full rounded-lg overflow-hidden bg-muted border">
+                    <img 
+                      src={formData.imageUrl} 
+                      alt="Banner önizleme" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8"
+                    onClick={() => setFormData(prev => ({ ...prev, imageUrl: "" }))}
+                    data-testid="button-remove-banner-image"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <ObjectUploader
+                  onGetUploadParameters={async () => {
+                    const response = await fetch("/api/objects/upload", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                    });
+                    const data = await response.json();
+                    return { method: "PUT" as const, url: data.url };
+                  }}
+                  onComplete={(result) => {
+                    if (result.successful && result.successful[0]) {
+                      setFormData(prev => ({ ...prev, imageUrl: result.successful[0].uploadURL }));
+                    }
+                  }}
+                  buttonClassName="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Görsel Yükle
+                </ObjectUploader>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Önerilen boyut: 1200x400px (3:1 oran). Otomatik olarak cihaza göre boyutlanır.
+              </p>
             </div>
 
             <div className="space-y-2">
