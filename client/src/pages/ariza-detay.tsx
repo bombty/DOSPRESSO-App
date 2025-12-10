@@ -133,7 +133,7 @@ export default function FaultDetail() {
             <h3 style="color: #8B4513; margin-top: 20px;">Arıza Açıklaması</h3>
             <p style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${fault.description || 'Açıklama girilmemiş'}</p>
             
-            ${fault.notes ? `<h3 style="color: #8B4513;">Notlar</h3><p style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${fault.notes}</p>` : ''}
+            ${(fault as any).notes ? `<h3 style="color: #8B4513;">Notlar</h3><p style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${(fault as any).notes}</p>` : ''}
             
             <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 5px;">
               <strong>İletişim:</strong> Bu arıza hakkında bilgi almak için lütfen DOSPRESSO Merkez Teknik Ekibi ile iletişime geçin.

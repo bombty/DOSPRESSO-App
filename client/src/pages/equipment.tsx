@@ -191,9 +191,9 @@ export default function Equipment() {
   const bulkQRMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/equipment/generate-qr-bulk", {});
-      return response;
+      return await response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: { message?: string; generated?: number }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
       toast({ 
         title: "Başarılı", 
@@ -565,8 +565,8 @@ export default function Equipment() {
 
       {/* Edit Equipment Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent data-testid="dialog-edit-equipment">
-          <DialogHeader>
+        <DialogContent data-testid="dialog-edit-equipment" className="max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Ekipman Düzenle</DialogTitle>
             <DialogDescription>
               Ekipman bilgilerini güncelleyin
@@ -577,7 +577,7 @@ export default function Equipment() {
               if (editingEquipment) {
                 updateMutation.mutate({ id: editingEquipment.id, data });
               }
-            })} className="w-full space-y-2 sm:space-y-3">
+            })} className="w-full space-y-2 sm:space-y-3 flex-1 overflow-y-auto pr-2">
               <FormField
                 control={editForm.control}
                 name="equipmentType"
