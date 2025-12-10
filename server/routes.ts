@@ -12351,10 +12351,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/milestones/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const updateData = { ...req.body };
+      const updateData: any = {};
       
-      if (updateData.status === 'completed' && !updateData.completedAt) {
-        updateData.completedAt = new Date();
+      if (req.body.title !== undefined) updateData.title = req.body.title;
+      if (req.body.description !== undefined) updateData.description = req.body.description;
+      if (req.body.dueDate !== undefined) updateData.dueDate = req.body.dueDate;
+      if (req.body.isCompleted !== undefined) {
+        updateData.isCompleted = req.body.isCompleted;
+        if (req.body.isCompleted && !req.body.completedAt) {
+          updateData.completedAt = new Date();
+        }
+      }
+      
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "Güncellenecek alan yok" });
       }
       
       const [updated] = await db.update(projectMilestones)

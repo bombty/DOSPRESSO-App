@@ -42,6 +42,7 @@ import {
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isSameMonth } from "date-fns";
 import { tr } from "date-fns/locale";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Trash2 } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
   todo: { label: "Yapılacak", color: "text-slate-600", bgColor: "bg-slate-100 dark:bg-slate-800" },
@@ -117,6 +118,8 @@ export default function ProjeDetay() {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [isAddMilestoneOpen, setIsAddMilestoneOpen] = useState(false);
   const [newMilestone, setNewMilestone] = useState({ title: "", description: "", dueDate: "" });
+  const [isEditMilestoneOpen, setIsEditMilestoneOpen] = useState(false);
+  const [editingMilestone, setEditingMilestone] = useState<any>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -207,7 +210,7 @@ export default function ProjeDetay() {
   });
 
   const updateMilestoneMutation = useMutation({
-    mutationFn: async ({ id, ...data }: { id: number; isCompleted?: boolean }) => {
+    mutationFn: async ({ id, ...data }: { id: number; isCompleted?: boolean; title?: string; description?: string; dueDate?: string }) => {
       const res = await apiRequest("PATCH", `/api/milestones/${id}`, data);
       return res.json();
     },
@@ -217,12 +220,35 @@ export default function ProjeDetay() {
     },
   });
 
+  const deleteMilestoneMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/milestones/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+      toast({ title: "Milestone silindi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Milestone silinemedi", variant: "destructive" });
+    },
+  });
+
   const handleAddMilestone = () => {
     if (!newMilestone.title.trim()) {
       toast({ title: "Milestone adı gerekli", variant: "destructive" });
       return;
     }
     addMilestoneMutation.mutate(newMilestone);
+  };
+
+  const handleEditMilestone = () => {
+    if (!editingMilestone.title.trim()) {
+      toast({ title: "Milestone adı gerekli", variant: "destructive" });
+      return;
+    }
+    updateMilestoneMutation.mutate({ id: editingMilestone.id, title: editingMilestone.title, description: editingMilestone.description, dueDate: editingMilestone.dueDate });
+    setIsEditMilestoneOpen(false);
   };
 
   const handleAddTask = () => {
@@ -752,9 +778,23 @@ export default function ProjeDetay() {
                           </div>
                         )}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {milestone.linkedTasks?.length || 0} görev
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setEditingMilestone({ ...milestone }); setIsEditMilestoneOpen(true); }}>
+                            <Edit2 className="h-4 w-4 mr-2" />
+                            Düzenle
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => deleteMilestoneMutation.mutate(milestone.id)} className="text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Sil
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardContent>
                 </Card>
@@ -767,6 +807,48 @@ export default function ProjeDetay() {
               </Card>
             )}
           </div>
+
+          <Dialog open={isEditMilestoneOpen} onOpenChange={setIsEditMilestoneOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Milestone Düzenle</DialogTitle>
+              </DialogHeader>
+              {editingMilestone && (
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Milestone Adı</Label>
+                    <Input
+                      value={editingMilestone.title}
+                      onChange={(e) => setEditingMilestone({ ...editingMilestone, title: e.target.value })}
+                      placeholder="Milestone adı"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editingMilestone.description || ""}
+                      onChange={(e) => setEditingMilestone({ ...editingMilestone, description: e.target.value })}
+                      placeholder="Milestone açıklaması"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Hedef Tarih</Label>
+                    <Input
+                      type="date"
+                      value={editingMilestone.dueDate?.split('T')[0] || ""}
+                      onChange={(e) => setEditingMilestone({ ...editingMilestone, dueDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditMilestoneOpen(false)}>İptal</Button>
+                <Button onClick={handleEditMilestone} disabled={updateMilestoneMutation.isPending}>
+                  {updateMilestoneMutation.isPending ? "..." : "Kaydet"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4 space-y-4">
