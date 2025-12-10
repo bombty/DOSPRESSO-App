@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,12 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -44,15 +47,52 @@ import {
   Target,
   ShieldAlert,
   Activity,
-  ChevronDown,
-  ChevronUp,
   Store,
   DollarSign,
   Truck,
-  FileWarning,
-  LayoutList
 } from "lucide-react";
 import type { ProjectPhase, ProjectBudgetLine, ProjectVendor, ProjectRisk } from "@shared/schema";
+
+const phaseFormSchema = z.object({
+  status: z.string().min(1, "Durum seçilmelidir"),
+  progress: z.number().min(0).max(100),
+  targetDate: z.string().optional(),
+});
+
+type PhaseFormValues = z.infer<typeof phaseFormSchema>;
+
+const budgetFormSchema = z.object({
+  category: z.string().min(1, "Kategori seçilmelidir"),
+  title: z.string().min(1, "Başlık zorunludur"),
+  description: z.string().optional(),
+  plannedAmount: z.number().min(0, "Planlanan tutar 0 veya daha büyük olmalı"),
+  actualAmount: z.number().min(0, "Gerçekleşen tutar 0 veya daha büyük olmalı"),
+});
+
+type BudgetFormValues = z.infer<typeof budgetFormSchema>;
+
+const vendorFormSchema = z.object({
+  vendorType: z.string().min(1, "Kategori seçilmelidir"),
+  companyName: z.string().min(1, "Firma adı zorunludur"),
+  contactName: z.string().optional(),
+  contactPhone: z.string().optional(),
+  contactEmail: z.string().optional(),
+  contractStatus: z.string().min(1, "Sözleşme durumu seçilmelidir"),
+  contractAmount: z.number().optional(),
+});
+
+type VendorFormValues = z.infer<typeof vendorFormSchema>;
+
+const riskFormSchema = z.object({
+  title: z.string().min(1, "Risk başlığı zorunludur"),
+  description: z.string().optional(),
+  probability: z.number().min(1).max(5),
+  impact: z.number().min(1).max(5),
+  status: z.string().min(1, "Durum seçilmelidir"),
+  mitigationPlan: z.string().optional(),
+});
+
+type RiskFormValues = z.infer<typeof riskFormSchema>;
 
 interface ProjectWithDetails {
   id: number;
@@ -156,7 +196,7 @@ function PhaseCard({ phase, onEdit }: { phase: ProjectPhase; onEdit: (phase: Pro
     <Card 
       className="cursor-pointer hover-elevate transition-all"
       onClick={() => onEdit(phase)}
-      data-testid={`phase-card-${phase.id}`}
+      data-testid={`card-phase-${phase.id}`}
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
@@ -167,8 +207,8 @@ function PhaseCard({ phase, onEdit }: { phase: ProjectPhase; onEdit: (phase: Pro
             <Icon className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate">{phase.title}</h4>
-            <Badge variant="outline" className={`${statusConfig.color} text-xs gap-1 mt-1`}>
+            <h4 className="font-medium text-sm truncate" data-testid={`text-phase-title-${phase.id}`}>{phase.title}</h4>
+            <Badge variant="outline" className={`${statusConfig.color} text-xs gap-1 mt-1`} data-testid={`badge-phase-status-${phase.id}`}>
               <StatusIcon className="h-3 w-3" />
               {statusConfig.label}
             </Badge>
@@ -178,15 +218,15 @@ function PhaseCard({ phase, onEdit }: { phase: ProjectPhase; onEdit: (phase: Pro
         <div className="mt-3 space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>İlerleme</span>
-            <span className="font-medium">{phase.progress || 0}%</span>
+            <span className="font-medium" data-testid={`text-phase-progress-${phase.id}`}>{phase.progress || 0}%</span>
           </div>
-          <Progress value={phase.progress || 0} className="h-2" />
+          <Progress value={phase.progress || 0} className="h-2" data-testid={`progress-phase-${phase.id}`} />
         </div>
 
         {phase.targetDate && (
           <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
-            <span>{format(new Date(phase.targetDate), "d MMM yyyy", { locale: tr })}</span>
+            <span data-testid={`text-phase-date-${phase.id}`}>{format(new Date(phase.targetDate), "d MMM yyyy", { locale: tr })}</span>
           </div>
         )}
       </CardContent>
@@ -229,37 +269,134 @@ export default function YeniSubeDetay() {
   
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<ProjectBudgetLine | null>(null);
-  const [budgetForm, setBudgetForm] = useState({
-    category: "",
-    title: "",
-    description: "",
-    plannedAmount: "",
-    actualAmount: "",
-  });
 
   const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<ProjectVendor | null>(null);
-  const [vendorForm, setVendorForm] = useState({
-    vendorType: "",
-    companyName: "",
-    contactName: "",
-    contactPhone: "",
-    contactEmail: "",
-    contractStatus: "pending",
-    contractAmount: "",
-  });
   const [vendorFilter, setVendorFilter] = useState<string>("all");
 
   const [isRiskDialogOpen, setIsRiskDialogOpen] = useState(false);
   const [editingRisk, setEditingRisk] = useState<ProjectRisk | null>(null);
-  const [riskForm, setRiskForm] = useState({
-    title: "",
-    description: "",
-    probability: "3",
-    impact: "3",
-    status: "identified",
-    mitigationPlan: "",
+
+  const phaseForm = useForm<PhaseFormValues>({
+    resolver: zodResolver(phaseFormSchema),
+    defaultValues: {
+      status: "not_started",
+      progress: 0,
+      targetDate: "",
+    },
   });
+
+  const budgetForm = useForm<BudgetFormValues>({
+    resolver: zodResolver(budgetFormSchema),
+    defaultValues: {
+      category: "",
+      title: "",
+      description: "",
+      plannedAmount: 0,
+      actualAmount: 0,
+    },
+  });
+
+  const vendorForm = useForm<VendorFormValues>({
+    resolver: zodResolver(vendorFormSchema),
+    defaultValues: {
+      vendorType: "",
+      companyName: "",
+      contactName: "",
+      contactPhone: "",
+      contactEmail: "",
+      contractStatus: "pending",
+      contractAmount: undefined,
+    },
+  });
+
+  const riskForm = useForm<RiskFormValues>({
+    resolver: zodResolver(riskFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      probability: 3,
+      impact: 3,
+      status: "identified",
+      mitigationPlan: "",
+    },
+  });
+
+  useEffect(() => {
+    if (editingPhase) {
+      phaseForm.reset({
+        status: editingPhase.status || "not_started",
+        progress: editingPhase.progress || 0,
+        targetDate: editingPhase.targetDate || "",
+      });
+    }
+  }, [editingPhase, phaseForm]);
+
+  useEffect(() => {
+    if (editingBudget) {
+      budgetForm.reset({
+        category: editingBudget.category,
+        title: editingBudget.title,
+        description: editingBudget.description || "",
+        plannedAmount: editingBudget.plannedAmount || 0,
+        actualAmount: editingBudget.actualAmount || 0,
+      });
+    } else {
+      budgetForm.reset({
+        category: "",
+        title: "",
+        description: "",
+        plannedAmount: 0,
+        actualAmount: 0,
+      });
+    }
+  }, [editingBudget, budgetForm]);
+
+  useEffect(() => {
+    if (editingVendor) {
+      vendorForm.reset({
+        vendorType: editingVendor.vendorType,
+        companyName: editingVendor.companyName,
+        contactName: editingVendor.contactName || "",
+        contactPhone: editingVendor.contactPhone || "",
+        contactEmail: editingVendor.contactEmail || "",
+        contractStatus: editingVendor.contractStatus || "pending",
+        contractAmount: editingVendor.contractAmount || undefined,
+      });
+    } else {
+      vendorForm.reset({
+        vendorType: "",
+        companyName: "",
+        contactName: "",
+        contactPhone: "",
+        contactEmail: "",
+        contractStatus: "pending",
+        contractAmount: undefined,
+      });
+    }
+  }, [editingVendor, vendorForm]);
+
+  useEffect(() => {
+    if (editingRisk) {
+      riskForm.reset({
+        title: editingRisk.title,
+        description: editingRisk.description || "",
+        probability: editingRisk.probability || 3,
+        impact: editingRisk.impact || 3,
+        status: editingRisk.status || "identified",
+        mitigationPlan: editingRisk.mitigationPlan || "",
+      });
+    } else {
+      riskForm.reset({
+        title: "",
+        description: "",
+        probability: 3,
+        impact: 3,
+        status: "identified",
+        mitigationPlan: "",
+      });
+    }
+  }, [editingRisk, riskForm]);
 
   const { data: project, isLoading } = useQuery<ProjectWithDetails>({
     queryKey: ["/api/new-shop-projects", projectId],
@@ -291,7 +428,7 @@ export default function YeniSubeDetay() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId] });
       setIsBudgetDialogOpen(false);
-      setBudgetForm({ category: "", title: "", description: "", plannedAmount: "", actualAmount: "" });
+      setEditingBudget(null);
       toast({ title: "Bütçe kalemi eklendi" });
     },
     onError: () => {
@@ -338,7 +475,7 @@ export default function YeniSubeDetay() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId] });
       setIsVendorDialogOpen(false);
-      setVendorForm({ vendorType: "", companyName: "", contactName: "", contactPhone: "", contactEmail: "", contractStatus: "pending", contractAmount: "" });
+      setEditingVendor(null);
       toast({ title: "Tedarikçi eklendi" });
     },
     onError: () => {
@@ -385,7 +522,7 @@ export default function YeniSubeDetay() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId] });
       setIsRiskDialogOpen(false);
-      setRiskForm({ title: "", description: "", probability: "3", impact: "3", status: "identified", mitigationPlan: "" });
+      setEditingRisk(null);
       toast({ title: "Risk eklendi" });
     },
     onError: () => {
@@ -429,37 +566,22 @@ export default function YeniSubeDetay() {
     setIsPhaseDialogOpen(true);
   };
 
-  const handleSavePhase = () => {
+  const onSubmitPhase = (data: PhaseFormValues) => {
     if (!editingPhase) return;
     updatePhaseMutation.mutate({
       id: editingPhase.id,
-      status: editingPhase.status,
-      progress: editingPhase.progress,
-      targetDate: editingPhase.targetDate,
+      status: data.status,
+      progress: data.progress,
+      targetDate: data.targetDate || undefined,
     });
   };
 
   const handleEditBudget = (budget: ProjectBudgetLine) => {
     setEditingBudget(budget);
-    setBudgetForm({
-      category: budget.category,
-      title: budget.title,
-      description: budget.description || "",
-      plannedAmount: budget.plannedAmount?.toString() || "",
-      actualAmount: budget.actualAmount?.toString() || "",
-    });
     setIsBudgetDialogOpen(true);
   };
 
-  const handleSaveBudget = () => {
-    const data = {
-      category: budgetForm.category,
-      title: budgetForm.title,
-      description: budgetForm.description,
-      plannedAmount: parseInt(budgetForm.plannedAmount) || 0,
-      actualAmount: parseInt(budgetForm.actualAmount) || 0,
-    };
-
+  const onSubmitBudget = (data: BudgetFormValues) => {
     if (editingBudget) {
       updateBudgetMutation.mutate({ id: editingBudget.id, ...data });
     } else {
@@ -469,29 +591,10 @@ export default function YeniSubeDetay() {
 
   const handleEditVendor = (vendor: ProjectVendor) => {
     setEditingVendor(vendor);
-    setVendorForm({
-      vendorType: vendor.vendorType,
-      companyName: vendor.companyName,
-      contactName: vendor.contactName || "",
-      contactPhone: vendor.contactPhone || "",
-      contactEmail: vendor.contactEmail || "",
-      contractStatus: vendor.contractStatus || "pending",
-      contractAmount: vendor.contractAmount?.toString() || "",
-    });
     setIsVendorDialogOpen(true);
   };
 
-  const handleSaveVendor = () => {
-    const data = {
-      vendorType: vendorForm.vendorType,
-      companyName: vendorForm.companyName,
-      contactName: vendorForm.contactName,
-      contactPhone: vendorForm.contactPhone,
-      contactEmail: vendorForm.contactEmail,
-      contractStatus: vendorForm.contractStatus,
-      contractAmount: parseInt(vendorForm.contractAmount) || undefined,
-    };
-
+  const onSubmitVendor = (data: VendorFormValues) => {
     if (editingVendor) {
       updateVendorMutation.mutate({ id: editingVendor.id, ...data });
     } else {
@@ -501,27 +604,10 @@ export default function YeniSubeDetay() {
 
   const handleEditRisk = (risk: ProjectRisk) => {
     setEditingRisk(risk);
-    setRiskForm({
-      title: risk.title,
-      description: risk.description || "",
-      probability: risk.probability?.toString() || "3",
-      impact: risk.impact?.toString() || "3",
-      status: risk.status || "identified",
-      mitigationPlan: risk.mitigationPlan || "",
-    });
     setIsRiskDialogOpen(true);
   };
 
-  const handleSaveRisk = () => {
-    const data = {
-      title: riskForm.title,
-      description: riskForm.description,
-      probability: parseInt(riskForm.probability),
-      impact: parseInt(riskForm.impact),
-      status: riskForm.status,
-      mitigationPlan: riskForm.mitigationPlan,
-    };
-
+  const onSubmitRisk = (data: RiskFormValues) => {
     if (editingRisk) {
       updateRiskMutation.mutate({ id: editingRisk.id, ...data });
     } else {
@@ -531,7 +617,7 @@ export default function YeniSubeDetay() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-6xl mx-auto p-4 space-y-4">
+      <div className="container max-w-6xl mx-auto p-4 space-y-4" data-testid="loading-state">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-40 w-full" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -543,7 +629,7 @@ export default function YeniSubeDetay() {
 
   if (!project) {
     return (
-      <div className="container max-w-6xl mx-auto p-4">
+      <div className="container max-w-6xl mx-auto p-4" data-testid="not-found-state">
         <Card>
           <CardContent className="p-8 text-center">
             <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -574,7 +660,7 @@ export default function YeniSubeDetay() {
   const sortedPhases = [...(project.phases || [])].sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
 
   return (
-    <div className="container max-w-6xl mx-auto p-4 space-y-4">
+    <div className="container max-w-6xl mx-auto p-4 space-y-4" data-testid="page-yeni-sube-detay">
       <Button 
         variant="ghost" 
         onClick={() => navigate("/yeni-sube-projeler")}
@@ -585,30 +671,30 @@ export default function YeniSubeDetay() {
         Tüm Projeler
       </Button>
 
-      <Card>
+      <Card data-testid="card-project-header">
         <CardHeader className="pb-2">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Store className="h-5 w-5 text-primary" />
                 <CardTitle className="text-xl" data-testid="text-project-title">{project.title}</CardTitle>
-                <Badge className={projectStatusConfig[project.status]?.color || "bg-slate-500"}>
+                <Badge className={projectStatusConfig[project.status]?.color || "bg-slate-500"} data-testid="badge-project-status">
                   {projectStatusConfig[project.status]?.label || project.status}
                 </Badge>
               </div>
               <CardDescription className="flex flex-wrap items-center gap-4 text-sm">
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1" data-testid="text-project-location">
                   <MapPin className="h-3.5 w-3.5" />
                   {project.cityName}{project.locationAddress && ` - ${project.locationAddress}`}
                 </span>
                 {project.targetOpeningDate && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1" data-testid="text-project-target-date">
                     <Calendar className="h-3.5 w-3.5" />
                     Hedef: {format(new Date(project.targetOpeningDate), "d MMM yyyy", { locale: tr })}
                   </span>
                 )}
                 {project.franchiseeName && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1" data-testid="text-franchisee-name">
                     <Users className="h-3.5 w-3.5" />
                     {project.franchiseeName}
                   </span>
@@ -621,8 +707,8 @@ export default function YeniSubeDetay() {
                 <p className="text-sm text-muted-foreground">Genel İlerleme</p>
                 <p className="text-2xl font-bold" data-testid="text-overall-progress">{overallProgress}%</p>
               </div>
-              <Progress value={overallProgress} className="w-32 h-2" />
-              <p className="text-xs text-muted-foreground">
+              <Progress value={overallProgress} className="w-32 h-2" data-testid="progress-overall" />
+              <p className="text-xs text-muted-foreground" data-testid="text-phases-completed">
                 {completedPhases}/{project.phases?.length || 0} Faz Tamamlandı
               </p>
             </div>
@@ -630,8 +716,8 @@ export default function YeniSubeDetay() {
         </CardHeader>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4" data-testid="tabs-container">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid" data-testid="tabs-list">
           <TabsTrigger value="overview" className="gap-1" data-testid="tab-overview">
             <Eye className="h-4 w-4" />
             <span className="hidden sm:inline">Genel Bakış</span>
@@ -648,26 +734,26 @@ export default function YeniSubeDetay() {
             <ShieldAlert className="h-4 w-4" />
             <span className="hidden sm:inline">Riskler</span>
           </TabsTrigger>
-          <TabsTrigger value="activity" className="gap-1" data-testid="tab-activity">
+          <TabsTrigger value="activities" className="gap-1" data-testid="tab-activities">
             <Activity className="h-4 w-4" />
             <span className="hidden sm:inline">Aktiviteler</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="overview" className="space-y-4" data-testid="tab-content-overview">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Proje Fazları</h3>
             <p className="text-sm text-muted-foreground">Düzenlemek için faza tıklayın</p>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" data-testid="grid-phases">
             {sortedPhases.map((phase) => (
               <PhaseCard key={phase.id} phase={phase} onEdit={handleEditPhase} />
             ))}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <Card>
+            <Card data-testid="card-estimated-budget">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
                   <Wallet className="h-4 w-4" />
@@ -679,7 +765,7 @@ export default function YeniSubeDetay() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card data-testid="card-vendor-count">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
                   <Truck className="h-4 w-4" />
@@ -691,7 +777,7 @@ export default function YeniSubeDetay() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card data-testid="card-risk-count">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
                   <AlertTriangle className="h-4 w-4" />
@@ -705,9 +791,9 @@ export default function YeniSubeDetay() {
           </div>
         </TabsContent>
 
-        <TabsContent value="budget" className="space-y-4">
+        <TabsContent value="budget" className="space-y-4" data-testid="tab-content-budget">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
+            <Card data-testid="card-budget-planned">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <Target className="h-4 w-4" />
@@ -716,7 +802,7 @@ export default function YeniSubeDetay() {
                 <p className="text-xl font-bold" data-testid="text-budget-planned">{formatCurrency(totalPlanned)}</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card data-testid="card-budget-actual">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <DollarSign className="h-4 w-4" />
@@ -725,7 +811,7 @@ export default function YeniSubeDetay() {
                 <p className="text-xl font-bold" data-testid="text-budget-actual">{formatCurrency(totalActual)}</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card data-testid="card-budget-variance">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   {totalVariance >= 0 ? <TrendingDown className="h-4 w-4 text-green-500" /> : <TrendingUp className="h-4 w-4 text-red-500" />}
@@ -744,7 +830,6 @@ export default function YeniSubeDetay() {
               size="sm" 
               onClick={() => {
                 setEditingBudget(null);
-                setBudgetForm({ category: "", title: "", description: "", plannedAmount: "", actualAmount: "" });
                 setIsBudgetDialogOpen(true);
               }}
               data-testid="button-add-budget"
@@ -754,23 +839,23 @@ export default function YeniSubeDetay() {
             </Button>
           </div>
 
-          <Card>
+          <Card data-testid="card-budget-table">
             <ScrollArea className="w-full">
-              <Table>
+              <Table data-testid="table-budget">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead>Açıklama</TableHead>
-                    <TableHead className="text-right">Planlanan</TableHead>
-                    <TableHead className="text-right">Gerçekleşen</TableHead>
-                    <TableHead className="text-right">Fark</TableHead>
+                    <TableHead data-testid="table-head-category">Kategori</TableHead>
+                    <TableHead data-testid="table-head-description">Açıklama</TableHead>
+                    <TableHead className="text-right" data-testid="table-head-planned">Planlanan</TableHead>
+                    <TableHead className="text-right" data-testid="table-head-actual">Gerçekleşen</TableHead>
+                    <TableHead className="text-right" data-testid="table-head-diff">Fark</TableHead>
                     <TableHead className="w-20"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {project.budgetLines?.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8" data-testid="text-no-budget">
                         Henüz bütçe kalemi eklenmemiş
                       </TableCell>
                     </TableRow>
@@ -778,17 +863,17 @@ export default function YeniSubeDetay() {
                   {project.budgetLines?.map((line) => {
                     const variance = (line.plannedAmount || 0) - (line.actualAmount || 0);
                     return (
-                      <TableRow key={line.id} data-testid={`budget-row-${line.id}`}>
+                      <TableRow key={line.id} data-testid={`row-budget-${line.id}`}>
                         <TableCell>
-                          <Badge variant="outline">{budgetCategoryLabels[line.category] || line.category}</Badge>
+                          <Badge variant="outline" data-testid={`badge-budget-category-${line.id}`}>{budgetCategoryLabels[line.category] || line.category}</Badge>
                         </TableCell>
                         <TableCell>
-                          <p className="font-medium">{line.title}</p>
+                          <p className="font-medium" data-testid={`text-budget-title-${line.id}`}>{line.title}</p>
                           {line.description && <p className="text-xs text-muted-foreground">{line.description}</p>}
                         </TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(line.plannedAmount)}</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(line.actualAmount)}</TableCell>
-                        <TableCell className={`text-right font-medium ${variance >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                        <TableCell className="text-right font-medium" data-testid={`text-budget-planned-${line.id}`}>{formatCurrency(line.plannedAmount)}</TableCell>
+                        <TableCell className="text-right font-medium" data-testid={`text-budget-actual-${line.id}`}>{formatCurrency(line.actualAmount)}</TableCell>
+                        <TableCell className={`text-right font-medium ${variance >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} data-testid={`text-budget-variance-${line.id}`}>
                           {variance >= 0 ? "+" : ""}{formatCurrency(variance)}
                         </TableCell>
                         <TableCell>
@@ -810,16 +895,16 @@ export default function YeniSubeDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="vendors" className="space-y-4">
+        <TabsContent value="vendors" className="space-y-4" data-testid="tab-content-vendors">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <Select value={vendorFilter} onValueChange={setVendorFilter}>
               <SelectTrigger className="w-full sm:w-48" data-testid="select-vendor-filter">
                 <SelectValue placeholder="Tüm Kategoriler" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tüm Kategoriler</SelectItem>
+                <SelectItem value="all" data-testid="select-item-vendor-all">Tüm Kategoriler</SelectItem>
                 {Object.entries(vendorTypeLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                  <SelectItem key={key} value={key} data-testid={`select-item-vendor-${key}`}>{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -827,7 +912,6 @@ export default function YeniSubeDetay() {
               size="sm"
               onClick={() => {
                 setEditingVendor(null);
-                setVendorForm({ vendorType: "", companyName: "", contactName: "", contactPhone: "", contactEmail: "", contractStatus: "pending", contractAmount: "" });
                 setIsVendorDialogOpen(true);
               }}
               data-testid="button-add-vendor"
@@ -837,44 +921,44 @@ export default function YeniSubeDetay() {
             </Button>
           </div>
 
-          <Card>
+          <Card data-testid="card-vendor-table">
             <ScrollArea className="w-full">
-              <Table>
+              <Table data-testid="table-vendors">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Firma</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead>İletişim</TableHead>
-                    <TableHead>Sözleşme</TableHead>
+                    <TableHead data-testid="table-head-vendor-company">Firma</TableHead>
+                    <TableHead data-testid="table-head-vendor-category">Kategori</TableHead>
+                    <TableHead data-testid="table-head-vendor-contact">İletişim</TableHead>
+                    <TableHead data-testid="table-head-vendor-contract">Sözleşme</TableHead>
                     <TableHead className="w-20"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredVendors?.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8" data-testid="text-no-vendors">
                         {vendorFilter === "all" ? "Henüz tedarikçi eklenmemiş" : "Bu kategoride tedarikçi yok"}
                       </TableCell>
                     </TableRow>
                   )}
                   {filteredVendors?.map((vendor) => (
-                    <TableRow key={vendor.id} data-testid={`vendor-row-${vendor.id}`}>
+                    <TableRow key={vendor.id} data-testid={`row-vendor-${vendor.id}`}>
                       <TableCell>
-                        <p className="font-medium">{vendor.companyName}</p>
+                        <p className="font-medium" data-testid={`text-vendor-company-${vendor.id}`}>{vendor.companyName}</p>
                         {vendor.contactName && <p className="text-xs text-muted-foreground">{vendor.contactName}</p>}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{vendorTypeLabels[vendor.vendorType] || vendor.vendorType}</Badge>
+                        <Badge variant="outline" data-testid={`badge-vendor-type-${vendor.id}`}>{vendorTypeLabels[vendor.vendorType] || vendor.vendorType}</Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1 text-sm">
                           {vendor.contactPhone && (
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1" data-testid={`text-vendor-phone-${vendor.id}`}>
                               <Phone className="h-3 w-3" /> {vendor.contactPhone}
                             </span>
                           )}
                           {vendor.contactEmail && (
-                            <span className="flex items-center gap-1 text-muted-foreground">
+                            <span className="flex items-center gap-1 text-muted-foreground" data-testid={`text-vendor-email-${vendor.id}`}>
                               <Mail className="h-3 w-3" /> {vendor.contactEmail}
                             </span>
                           )}
@@ -884,6 +968,7 @@ export default function YeniSubeDetay() {
                         <Badge 
                           variant={vendor.contractStatus === "signed" ? "default" : vendor.contractStatus === "completed" ? "default" : "outline"}
                           className={vendor.contractStatus === "signed" ? "bg-green-500" : vendor.contractStatus === "completed" ? "bg-blue-500" : ""}
+                          data-testid={`badge-vendor-contract-${vendor.id}`}
                         >
                           {vendor.contractStatus === "pending" ? "Beklemede" :
                            vendor.contractStatus === "signed" ? "İmzalandı" :
@@ -891,7 +976,7 @@ export default function YeniSubeDetay() {
                            vendor.contractStatus === "cancelled" ? "İptal" : vendor.contractStatus}
                         </Badge>
                         {vendor.contractAmount && (
-                          <p className="text-xs mt-1 text-muted-foreground">{formatCurrency(vendor.contractAmount)}</p>
+                          <p className="text-xs mt-1 text-muted-foreground" data-testid={`text-vendor-amount-${vendor.id}`}>{formatCurrency(vendor.contractAmount)}</p>
                         )}
                       </TableCell>
                       <TableCell>
@@ -912,14 +997,13 @@ export default function YeniSubeDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="risks" className="space-y-4">
+        <TabsContent value="risks" className="space-y-4" data-testid="tab-content-risks">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Risk Değerlendirmeleri</h3>
             <Button 
               size="sm"
               onClick={() => {
                 setEditingRisk(null);
-                setRiskForm({ title: "", description: "", probability: "3", impact: "3", status: "identified", mitigationPlan: "" });
                 setIsRiskDialogOpen(true);
               }}
               data-testid="button-add-risk"
@@ -929,35 +1013,35 @@ export default function YeniSubeDetay() {
             </Button>
           </div>
 
-          <Card>
+          <Card data-testid="card-risk-table">
             <ScrollArea className="w-full">
-              <Table>
+              <Table data-testid="table-risks">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Risk</TableHead>
-                    <TableHead>Olasılık</TableHead>
-                    <TableHead>Etki</TableHead>
-                    <TableHead>Skor</TableHead>
-                    <TableHead>Durum</TableHead>
+                    <TableHead data-testid="table-head-risk-title">Risk</TableHead>
+                    <TableHead data-testid="table-head-risk-probability">Olasılık</TableHead>
+                    <TableHead data-testid="table-head-risk-impact">Etki</TableHead>
+                    <TableHead data-testid="table-head-risk-score">Skor</TableHead>
+                    <TableHead data-testid="table-head-risk-status">Durum</TableHead>
                     <TableHead className="w-20"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {project.risks?.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8" data-testid="text-no-risks">
                         Henüz risk eklenmemiş
                       </TableCell>
                     </TableRow>
                   )}
                   {project.risks?.map((risk) => (
-                    <TableRow key={risk.id} data-testid={`risk-row-${risk.id}`}>
+                    <TableRow key={risk.id} data-testid={`row-risk-${risk.id}`}>
                       <TableCell>
-                        <p className="font-medium">{risk.title}</p>
+                        <p className="font-medium" data-testid={`text-risk-title-${risk.id}`}>{risk.title}</p>
                         {risk.description && <p className="text-xs text-muted-foreground line-clamp-1">{risk.description}</p>}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" data-testid={`indicator-risk-probability-${risk.id}`}>
                           {Array.from({ length: 5 }).map((_, i) => (
                             <div 
                               key={i} 
@@ -968,7 +1052,7 @@ export default function YeniSubeDetay() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" data-testid={`indicator-risk-impact-${risk.id}`}>
                           {Array.from({ length: 5 }).map((_, i) => (
                             <div 
                               key={i} 
@@ -978,11 +1062,11 @@ export default function YeniSubeDetay() {
                           <span className="text-xs ml-1">{risk.impact}/5</span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-testid={`badge-risk-score-${risk.id}`}>
                         <RiskScoreBadge probability={risk.probability || 1} impact={risk.impact || 1} />
                       </TableCell>
                       <TableCell>
-                        <Badge className={riskStatusLabels[risk.status || "identified"]?.color}>
+                        <Badge className={riskStatusLabels[risk.status || "identified"]?.color} data-testid={`badge-risk-status-${risk.id}`}>
                           {riskStatusLabels[risk.status || "identified"]?.label}
                         </Badge>
                       </TableCell>
@@ -1004,8 +1088,8 @@ export default function YeniSubeDetay() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="activity" className="space-y-4">
-          <Card>
+        <TabsContent value="activities" className="space-y-4" data-testid="tab-content-activities">
+          <Card data-testid="card-activity-history">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Activity className="h-5 w-5" />
@@ -1014,9 +1098,9 @@ export default function YeniSubeDetay() {
               <CardDescription>Proje üzerindeki son değişiklikler</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-4" data-testid="list-activities">
                 {project.createdAt && (
-                  <div className="flex items-start gap-3 pb-4 border-b last:border-0">
+                  <div className="flex items-start gap-3 pb-4 border-b last:border-0" data-testid="activity-project-created">
                     <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
                       <Store className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
@@ -1030,7 +1114,7 @@ export default function YeniSubeDetay() {
                 )}
                 
                 {sortedPhases.filter(p => p.status === "completed").map((phase) => (
-                  <div key={`completed-${phase.id}`} className="flex items-start gap-3 pb-4 border-b last:border-0">
+                  <div key={`completed-${phase.id}`} className="flex items-start gap-3 pb-4 border-b last:border-0" data-testid={`activity-phase-completed-${phase.id}`}>
                     <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
                       <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
@@ -1046,7 +1130,7 @@ export default function YeniSubeDetay() {
                 ))}
 
                 {sortedPhases.filter(p => p.status === "in_progress").map((phase) => (
-                  <div key={`progress-${phase.id}`} className="flex items-start gap-3 pb-4 border-b last:border-0">
+                  <div key={`progress-${phase.id}`} className="flex items-start gap-3 pb-4 border-b last:border-0" data-testid={`activity-phase-progress-${phase.id}`}>
                     <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center shrink-0">
                       <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>
@@ -1058,7 +1142,7 @@ export default function YeniSubeDetay() {
                 ))}
 
                 {project.vendors?.slice(0, 3).map((vendor) => (
-                  <div key={`vendor-${vendor.id}`} className="flex items-start gap-3 pb-4 border-b last:border-0">
+                  <div key={`vendor-${vendor.id}`} className="flex items-start gap-3 pb-4 border-b last:border-0" data-testid={`activity-vendor-added-${vendor.id}`}>
                     <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center shrink-0">
                       <Truck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                     </div>
@@ -1074,7 +1158,7 @@ export default function YeniSubeDetay() {
                 ))}
 
                 {project.risks?.filter(r => r.status === "occurred").map((risk) => (
-                  <div key={`risk-${risk.id}`} className="flex items-start gap-3 pb-4 border-b last:border-0">
+                  <div key={`risk-${risk.id}`} className="flex items-start gap-3 pb-4 border-b last:border-0" data-testid={`activity-risk-occurred-${risk.id}`}>
                     <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center shrink-0">
                       <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
                     </div>
@@ -1092,336 +1176,489 @@ export default function YeniSubeDetay() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={isPhaseDialogOpen} onOpenChange={setIsPhaseDialogOpen}>
-        <DialogContent>
+      <Dialog open={isPhaseDialogOpen} onOpenChange={setIsPhaseDialogOpen} data-testid="dialog-phase-edit">
+        <DialogContent data-testid="dialog-content-phase-edit">
           <DialogHeader>
-            <DialogTitle>Faz Düzenle</DialogTitle>
+            <DialogTitle data-testid="dialog-title-phase-edit">Faz Düzenle</DialogTitle>
             <DialogDescription>Faz durumunu ve ilerlemesini güncelleyin</DialogDescription>
           </DialogHeader>
-          {editingPhase && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Durum</Label>
-                <Select
-                  value={editingPhase.status || "not_started"}
-                  onValueChange={(val) => setEditingPhase({ ...editingPhase, status: val })}
+          <Form {...phaseForm}>
+            <form onSubmit={phaseForm.handleSubmit(onSubmitPhase)} className="space-y-4" data-testid="form-phase-edit">
+              <FormField
+                control={phaseForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Durum</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-phase-status">
+                          <SelectValue placeholder="Durum seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="not_started" data-testid="select-item-phase-not-started">Başlamadı</SelectItem>
+                        <SelectItem value="in_progress" data-testid="select-item-phase-in-progress">Devam Ediyor</SelectItem>
+                        <SelectItem value="completed" data-testid="select-item-phase-completed">Tamamlandı</SelectItem>
+                        <SelectItem value="blocked" data-testid="select-item-phase-blocked">Engelli</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={phaseForm.control}
+                name="progress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>İlerleme ({field.value}%)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="range"
+                        min="0"
+                        max="100"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        data-testid="input-phase-progress"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={phaseForm.control}
+                name="targetDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hedef Tarih</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="input-phase-target-date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsPhaseDialogOpen(false)} data-testid="button-cancel-phase">
+                  İptal
+                </Button>
+                <Button type="submit" disabled={updatePhaseMutation.isPending} data-testid="button-save-phase">
+                  {updatePhaseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen} data-testid="dialog-budget">
+        <DialogContent data-testid="dialog-content-budget">
+          <DialogHeader>
+            <DialogTitle data-testid="dialog-title-budget">{editingBudget ? "Bütçe Kalemi Düzenle" : "Yeni Bütçe Kalemi"}</DialogTitle>
+          </DialogHeader>
+          <Form {...budgetForm}>
+            <form onSubmit={budgetForm.handleSubmit(onSubmitBudget)} className="space-y-4" data-testid="form-budget">
+              <FormField
+                control={budgetForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kategori *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-budget-category">
+                          <SelectValue placeholder="Kategori seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(budgetCategoryLabels).map(([key, label]) => (
+                          <SelectItem key={key} value={key} data-testid={`select-item-budget-${key}`}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={budgetForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Başlık *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Bütçe kalemi adı" {...field} data-testid="input-budget-title" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={budgetForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Açıklama</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Detaylı açıklama" {...field} data-testid="input-budget-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={budgetForm.control}
+                  name="plannedAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Planlanan (₺)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="0" 
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          data-testid="input-budget-planned" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={budgetForm.control}
+                  name="actualAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gerçekleşen (₺)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="0" 
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          data-testid="input-budget-actual" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsBudgetDialogOpen(false)} data-testid="button-cancel-budget">
+                  İptal
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={addBudgetMutation.isPending || updateBudgetMutation.isPending}
+                  data-testid="button-save-budget"
                 >
-                  <SelectTrigger data-testid="select-phase-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="not_started">Başlamadı</SelectItem>
-                    <SelectItem value="in_progress">Devam Ediyor</SelectItem>
-                    <SelectItem value="completed">Tamamlandı</SelectItem>
-                    <SelectItem value="blocked">Engelli</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>İlerleme ({editingPhase.progress || 0}%)</Label>
-                <Input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={editingPhase.progress || 0}
-                  onChange={(e) => setEditingPhase({ ...editingPhase, progress: parseInt(e.target.value) })}
-                  data-testid="input-phase-progress"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Hedef Tarih</Label>
-                <Input
-                  type="date"
-                  value={editingPhase.targetDate || ""}
-                  onChange={(e) => setEditingPhase({ ...editingPhase, targetDate: e.target.value })}
-                  data-testid="input-phase-target-date"
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPhaseDialogOpen(false)}>İptal</Button>
-            <Button onClick={handleSavePhase} disabled={updatePhaseMutation.isPending} data-testid="button-save-phase">
-              {updatePhaseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          </DialogFooter>
+                  {addBudgetMutation.isPending || updateBudgetMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
-        <DialogContent>
+      <Dialog open={isVendorDialogOpen} onOpenChange={setIsVendorDialogOpen} data-testid="dialog-vendor">
+        <DialogContent data-testid="dialog-content-vendor">
           <DialogHeader>
-            <DialogTitle>{editingBudget ? "Bütçe Kalemi Düzenle" : "Yeni Bütçe Kalemi"}</DialogTitle>
+            <DialogTitle data-testid="dialog-title-vendor">{editingVendor ? "Tedarikçi Düzenle" : "Yeni Tedarikçi"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Kategori *</Label>
-              <Select value={budgetForm.category} onValueChange={(val) => setBudgetForm({ ...budgetForm, category: val })}>
-                <SelectTrigger data-testid="select-budget-category">
-                  <SelectValue placeholder="Kategori seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(budgetCategoryLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Başlık *</Label>
-              <Input
-                value={budgetForm.title}
-                onChange={(e) => setBudgetForm({ ...budgetForm, title: e.target.value })}
-                placeholder="Bütçe kalemi adı"
-                data-testid="input-budget-title"
+          <Form {...vendorForm}>
+            <form onSubmit={vendorForm.handleSubmit(onSubmitVendor)} className="space-y-4" data-testid="form-vendor">
+              <FormField
+                control={vendorForm.control}
+                name="vendorType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kategori *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-vendor-type">
+                          <SelectValue placeholder="Kategori seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(vendorTypeLabels).map(([key, label]) => (
+                          <SelectItem key={key} value={key} data-testid={`select-item-vendor-type-${key}`}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="space-y-2">
-              <Label>Açıklama</Label>
-              <Textarea
-                value={budgetForm.description}
-                onChange={(e) => setBudgetForm({ ...budgetForm, description: e.target.value })}
-                placeholder="Detaylı açıklama"
-                data-testid="input-budget-description"
+              <FormField
+                control={vendorForm.control}
+                name="companyName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Firma Adı *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Firma adı" {...field} data-testid="input-vendor-company" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Planlanan (₺)</Label>
-                <Input
-                  type="number"
-                  value={budgetForm.plannedAmount}
-                  onChange={(e) => setBudgetForm({ ...budgetForm, plannedAmount: e.target.value })}
-                  placeholder="0"
-                  data-testid="input-budget-planned"
+              <FormField
+                control={vendorForm.control}
+                name="contactName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Yetkili Kişi</FormLabel>
+                    <FormControl>
+                      <Input placeholder="İletişim kurulacak kişi" {...field} data-testid="input-vendor-contact" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={vendorForm.control}
+                  name="contactPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefon</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+90 5xx xxx xx xx" {...field} data-testid="input-vendor-phone" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={vendorForm.control}
+                  name="contactEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>E-posta</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="email@firma.com" {...field} data-testid="input-vendor-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Gerçekleşen (₺)</Label>
-                <Input
-                  type="number"
-                  value={budgetForm.actualAmount}
-                  onChange={(e) => setBudgetForm({ ...budgetForm, actualAmount: e.target.value })}
-                  placeholder="0"
-                  data-testid="input-budget-actual"
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={vendorForm.control}
+                  name="contractStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sözleşme Durumu</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-vendor-contract-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="pending" data-testid="select-item-contract-pending">Beklemede</SelectItem>
+                          <SelectItem value="signed" data-testid="select-item-contract-signed">İmzalandı</SelectItem>
+                          <SelectItem value="completed" data-testid="select-item-contract-completed">Tamamlandı</SelectItem>
+                          <SelectItem value="cancelled" data-testid="select-item-contract-cancelled">İptal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={vendorForm.control}
+                  name="contractAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sözleşme Tutarı (₺)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="0" 
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                          data-testid="input-vendor-amount" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBudgetDialogOpen(false)}>İptal</Button>
-            <Button 
-              onClick={handleSaveBudget} 
-              disabled={!budgetForm.category || !budgetForm.title || addBudgetMutation.isPending || updateBudgetMutation.isPending}
-              data-testid="button-save-budget"
-            >
-              {addBudgetMutation.isPending || updateBudgetMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          </DialogFooter>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsVendorDialogOpen(false)} data-testid="button-cancel-vendor">
+                  İptal
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={addVendorMutation.isPending || updateVendorMutation.isPending}
+                  data-testid="button-save-vendor"
+                >
+                  {addVendorMutation.isPending || updateVendorMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isVendorDialogOpen} onOpenChange={setIsVendorDialogOpen}>
-        <DialogContent>
+      <Dialog open={isRiskDialogOpen} onOpenChange={setIsRiskDialogOpen} data-testid="dialog-risk">
+        <DialogContent data-testid="dialog-content-risk">
           <DialogHeader>
-            <DialogTitle>{editingVendor ? "Tedarikçi Düzenle" : "Yeni Tedarikçi"}</DialogTitle>
+            <DialogTitle data-testid="dialog-title-risk">{editingRisk ? "Risk Düzenle" : "Yeni Risk"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Kategori *</Label>
-              <Select value={vendorForm.vendorType} onValueChange={(val) => setVendorForm({ ...vendorForm, vendorType: val })}>
-                <SelectTrigger data-testid="select-vendor-type">
-                  <SelectValue placeholder="Kategori seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(vendorTypeLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Firma Adı *</Label>
-              <Input
-                value={vendorForm.companyName}
-                onChange={(e) => setVendorForm({ ...vendorForm, companyName: e.target.value })}
-                placeholder="Firma adı"
-                data-testid="input-vendor-company"
+          <Form {...riskForm}>
+            <form onSubmit={riskForm.handleSubmit(onSubmitRisk)} className="space-y-4" data-testid="form-risk">
+              <FormField
+                control={riskForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Risk Başlığı *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Risk tanımı" {...field} data-testid="input-risk-title" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="space-y-2">
-              <Label>Yetkili Kişi</Label>
-              <Input
-                value={vendorForm.contactName}
-                onChange={(e) => setVendorForm({ ...vendorForm, contactName: e.target.value })}
-                placeholder="İletişim kurulacak kişi"
-                data-testid="input-vendor-contact"
+              <FormField
+                control={riskForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Açıklama</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Riskin detaylı açıklaması" {...field} data-testid="input-risk-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Telefon</Label>
-                <Input
-                  value={vendorForm.contactPhone}
-                  onChange={(e) => setVendorForm({ ...vendorForm, contactPhone: e.target.value })}
-                  placeholder="+90 5xx xxx xx xx"
-                  data-testid="input-vendor-phone"
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={riskForm.control}
+                  name="probability"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Olasılık (1-5)</FormLabel>
+                      <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value.toString()}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-risk-probability">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="1" data-testid="select-item-probability-1">1 - Çok Düşük</SelectItem>
+                          <SelectItem value="2" data-testid="select-item-probability-2">2 - Düşük</SelectItem>
+                          <SelectItem value="3" data-testid="select-item-probability-3">3 - Orta</SelectItem>
+                          <SelectItem value="4" data-testid="select-item-probability-4">4 - Yüksek</SelectItem>
+                          <SelectItem value="5" data-testid="select-item-probability-5">5 - Çok Yüksek</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={riskForm.control}
+                  name="impact"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Etki (1-5)</FormLabel>
+                      <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value.toString()}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-risk-impact">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="1" data-testid="select-item-impact-1">1 - Önemsiz</SelectItem>
+                          <SelectItem value="2" data-testid="select-item-impact-2">2 - Küçük</SelectItem>
+                          <SelectItem value="3" data-testid="select-item-impact-3">3 - Orta</SelectItem>
+                          <SelectItem value="4" data-testid="select-item-impact-4">4 - Büyük</SelectItem>
+                          <SelectItem value="5" data-testid="select-item-impact-5">5 - Kritik</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>E-posta</Label>
-                <Input
-                  type="email"
-                  value={vendorForm.contactEmail}
-                  onChange={(e) => setVendorForm({ ...vendorForm, contactEmail: e.target.value })}
-                  placeholder="email@firma.com"
-                  data-testid="input-vendor-email"
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Sözleşme Durumu</Label>
-                <Select value={vendorForm.contractStatus} onValueChange={(val) => setVendorForm({ ...vendorForm, contractStatus: val })}>
-                  <SelectTrigger data-testid="select-vendor-contract-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Beklemede</SelectItem>
-                    <SelectItem value="signed">İmzalandı</SelectItem>
-                    <SelectItem value="completed">Tamamlandı</SelectItem>
-                    <SelectItem value="cancelled">İptal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Sözleşme Tutarı (₺)</Label>
-                <Input
-                  type="number"
-                  value={vendorForm.contractAmount}
-                  onChange={(e) => setVendorForm({ ...vendorForm, contractAmount: e.target.value })}
-                  placeholder="0"
-                  data-testid="input-vendor-amount"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsVendorDialogOpen(false)}>İptal</Button>
-            <Button 
-              onClick={handleSaveVendor} 
-              disabled={!vendorForm.vendorType || !vendorForm.companyName || addVendorMutation.isPending || updateVendorMutation.isPending}
-              data-testid="button-save-vendor"
-            >
-              {addVendorMutation.isPending || updateVendorMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isRiskDialogOpen} onOpenChange={setIsRiskDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingRisk ? "Risk Düzenle" : "Yeni Risk"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Risk Başlığı *</Label>
-              <Input
-                value={riskForm.title}
-                onChange={(e) => setRiskForm({ ...riskForm, title: e.target.value })}
-                placeholder="Risk tanımı"
-                data-testid="input-risk-title"
+              <FormField
+                control={riskForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Durum</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-risk-status">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="identified" data-testid="select-item-risk-identified">Belirlendi</SelectItem>
+                        <SelectItem value="mitigating" data-testid="select-item-risk-mitigating">Azaltılıyor</SelectItem>
+                        <SelectItem value="resolved" data-testid="select-item-risk-resolved">Çözüldü</SelectItem>
+                        <SelectItem value="occurred" data-testid="select-item-risk-occurred">Gerçekleşti</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="space-y-2">
-              <Label>Açıklama</Label>
-              <Textarea
-                value={riskForm.description}
-                onChange={(e) => setRiskForm({ ...riskForm, description: e.target.value })}
-                placeholder="Riskin detaylı açıklaması"
-                data-testid="input-risk-description"
+              <FormField
+                control={riskForm.control}
+                name="mitigationPlan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Risk Azaltma Planı</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Bu riski azaltmak için alınacak önlemler" {...field} data-testid="input-risk-mitigation" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Olasılık (1-5)</Label>
-                <Select value={riskForm.probability} onValueChange={(val) => setRiskForm({ ...riskForm, probability: val })}>
-                  <SelectTrigger data-testid="select-risk-probability">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 - Çok Düşük</SelectItem>
-                    <SelectItem value="2">2 - Düşük</SelectItem>
-                    <SelectItem value="3">3 - Orta</SelectItem>
-                    <SelectItem value="4">4 - Yüksek</SelectItem>
-                    <SelectItem value="5">5 - Çok Yüksek</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Etki (1-5)</Label>
-                <Select value={riskForm.impact} onValueChange={(val) => setRiskForm({ ...riskForm, impact: val })}>
-                  <SelectTrigger data-testid="select-risk-impact">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 - Önemsiz</SelectItem>
-                    <SelectItem value="2">2 - Küçük</SelectItem>
-                    <SelectItem value="3">3 - Orta</SelectItem>
-                    <SelectItem value="4">4 - Büyük</SelectItem>
-                    <SelectItem value="5">5 - Kritik</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Durum</Label>
-              <Select value={riskForm.status} onValueChange={(val) => setRiskForm({ ...riskForm, status: val })}>
-                <SelectTrigger data-testid="select-risk-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="identified">Belirlendi</SelectItem>
-                  <SelectItem value="mitigating">Azaltılıyor</SelectItem>
-                  <SelectItem value="resolved">Çözüldü</SelectItem>
-                  <SelectItem value="occurred">Gerçekleşti</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Risk Azaltma Planı</Label>
-              <Textarea
-                value={riskForm.mitigationPlan}
-                onChange={(e) => setRiskForm({ ...riskForm, mitigationPlan: e.target.value })}
-                placeholder="Bu riski azaltmak için alınacak önlemler"
-                data-testid="input-risk-mitigation"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRiskDialogOpen(false)}>İptal</Button>
-            <Button 
-              onClick={handleSaveRisk} 
-              disabled={!riskForm.title || addRiskMutation.isPending || updateRiskMutation.isPending}
-              data-testid="button-save-risk"
-            >
-              {addRiskMutation.isPending || updateRiskMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsRiskDialogOpen(false)} data-testid="button-cancel-risk">
+                  İptal
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={addRiskMutation.isPending || updateRiskMutation.isPending}
+                  data-testid="button-save-risk"
+                >
+                  {addRiskMutation.isPending || updateRiskMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>

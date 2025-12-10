@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -28,17 +31,27 @@ import {
   Wallet,
   Users,
   GraduationCap,
-  TrendingUp,
-  AlertTriangle,
   Clock,
   CheckCircle2,
   Ban,
-  Phone,
-  Mail,
   User
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Project, ProjectPhase, Branch } from "@shared/schema";
+
+const createProjectSchema = z.object({
+  title: z.string().min(1, "Proje adı zorunludur"),
+  cityName: z.string().min(1, "Şehir adı zorunludur"),
+  locationAddress: z.string().optional(),
+  targetOpeningDate: z.string().optional(),
+  estimatedBudget: z.string().optional(),
+  franchiseeName: z.string().optional(),
+  franchiseePhone: z.string().optional(),
+  franchiseeEmail: z.string().email("Geçerli bir e-posta adresi giriniz").optional().or(z.literal("")),
+  branchId: z.string().optional(),
+});
+
+type CreateProjectFormValues = z.infer<typeof createProjectSchema>;
 
 interface NewShopProjectWithDetails extends Project {
   owner: {
@@ -97,7 +110,7 @@ function PhaseStatusBadge({ status }: { status: string }) {
 function PhaseSwimlanesPreview({ phases }: { phases: ProjectPhase[] }) {
   return (
     <div className="flex items-center gap-1 mt-3">
-      {phases.map((phase, index) => {
+      {phases.map((phase) => {
         const Icon = phaseIcons[phase.phaseType as string] || Building2;
         const statusConfig = phaseStatusConfig[phase.status || "not_started"];
         
@@ -137,16 +150,20 @@ export default function YeniSubeProjeler() {
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteProjectId, setDeleteProjectId] = useState<number | null>(null);
-  const [newProject, setNewProject] = useState({
-    title: "",
-    cityName: "",
-    locationAddress: "",
-    targetOpeningDate: "",
-    estimatedBudget: "",
-    franchiseeName: "",
-    franchiseePhone: "",
-    franchiseeEmail: "",
-    branchId: "",
+
+  const form = useForm<CreateProjectFormValues>({
+    resolver: zodResolver(createProjectSchema),
+    defaultValues: {
+      title: "",
+      cityName: "",
+      locationAddress: "",
+      targetOpeningDate: "",
+      estimatedBudget: "",
+      franchiseeName: "",
+      franchiseePhone: "",
+      franchiseeEmail: "",
+      branchId: "",
+    },
   });
 
   const { data: projects, isLoading } = useQuery<NewShopProjectWithDetails[]>({
@@ -158,11 +175,11 @@ export default function YeniSubeProjeler() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: typeof newProject) => {
+    mutationFn: async (data: CreateProjectFormValues) => {
       const payload = {
         title: data.title,
         cityName: data.cityName,
-        locationAddress: data.locationAddress,
+        locationAddress: data.locationAddress || undefined,
         targetOpeningDate: data.targetOpeningDate || undefined,
         estimatedBudget: data.estimatedBudget ? parseInt(data.estimatedBudget) : undefined,
         franchiseeName: data.franchiseeName || undefined,
@@ -176,17 +193,7 @@ export default function YeniSubeProjeler() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects"] });
       setIsCreateOpen(false);
-      setNewProject({
-        title: "",
-        cityName: "",
-        locationAddress: "",
-        targetOpeningDate: "",
-        estimatedBudget: "",
-        franchiseeName: "",
-        franchiseePhone: "",
-        franchiseeEmail: "",
-        branchId: "",
-      });
+      form.reset();
       toast({ title: "Yeni şube projesi oluşturuldu", description: "7 faz otomatik olarak eklendi" });
     },
     onError: () => {
@@ -208,16 +215,15 @@ export default function YeniSubeProjeler() {
     },
   });
 
-  const handleCreate = () => {
-    if (!newProject.title.trim()) {
-      toast({ title: "Proje adı gerekli", variant: "destructive" });
-      return;
+  const onSubmit = (data: CreateProjectFormValues) => {
+    createMutation.mutate(data);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsCreateOpen(open);
+    if (!open) {
+      form.reset();
     }
-    if (!newProject.cityName.trim()) {
-      toast({ title: "Şehir adı gerekli", variant: "destructive" });
-      return;
-    }
-    createMutation.mutate(newProject);
   };
 
   const formatCurrency = (amount: number | null | undefined) => {
@@ -233,12 +239,12 @@ export default function YeniSubeProjeler() {
     return (
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-8 w-64" data-testid="skeleton-title" />
+          <Skeleton className="h-10 w-40" data-testid="skeleton-button" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-64" />
+            <Skeleton key={i} className="h-64" data-testid={`skeleton-card-${i}`} />
           ))}
         </div>
       </div>
@@ -257,7 +263,7 @@ export default function YeniSubeProjeler() {
           <Badge variant="secondary" data-testid="badge-project-count">{projects?.length || 0}</Badge>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button data-testid="button-new-project">
               <Plus className="h-4 w-4 mr-2" />
@@ -271,137 +277,218 @@ export default function YeniSubeProjeler() {
                 7 fazlı açılış süreci otomatik oluşturulacak
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Proje Adı *</Label>
-                <Input
-                  id="title"
-                  placeholder="Örn: DOSPRESSO Kadıköy"
-                  value={newProject.title}
-                  onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
-                  data-testid="input-project-title"
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Proje Adı *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Örn: DOSPRESSO Kadıköy"
+                          data-testid="input-title"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cityName">Şehir *</Label>
-                  <Input
-                    id="cityName"
-                    placeholder="İstanbul"
-                    value={newProject.cityName}
-                    onChange={(e) => setNewProject({ ...newProject, cityName: e.target.value })}
-                    data-testid="input-city-name"
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="cityName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Şehir *</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="İstanbul"
+                            data-testid="input-city"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="branchId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mevcut Şube (İsteğe Bağlı)</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-branch">
+                              <SelectValue placeholder="Şube seçin" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {branches?.map((branch) => (
+                              <SelectItem 
+                                key={branch.id} 
+                                value={branch.id.toString()}
+                                data-testid={`select-branch-option-${branch.id}`}
+                              >
+                                {branch.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="branch">Mevcut Şube (İsteğe Bağlı)</Label>
-                  <Select
-                    value={newProject.branchId}
-                    onValueChange={(v) => setNewProject({ ...newProject, branchId: v })}
-                  >
-                    <SelectTrigger data-testid="select-branch">
-                      <SelectValue placeholder="Şube seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches?.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id.toString()}>
-                          {branch.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Adres</Label>
-                <Input
-                  id="address"
-                  placeholder="Tam adres"
-                  value={newProject.locationAddress}
-                  onChange={(e) => setNewProject({ ...newProject, locationAddress: e.target.value })}
-                  data-testid="input-address"
+                <FormField
+                  control={form.control}
+                  name="locationAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Adres</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Tam adres"
+                          data-testid="input-address"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="targetDate">Hedef Açılış Tarihi</Label>
-                  <Input
-                    id="targetDate"
-                    type="date"
-                    value={newProject.targetOpeningDate}
-                    onChange={(e) => setNewProject({ ...newProject, targetOpeningDate: e.target.value })}
-                    data-testid="input-target-date"
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="targetOpeningDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hedef Açılış Tarihi</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            data-testid="input-target-date"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="estimatedBudget"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tahmini Bütçe (₺)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="1500000"
+                            data-testid="input-budget"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="budget">Tahmini Bütçe (₺)</Label>
-                  <Input
-                    id="budget"
-                    type="number"
-                    placeholder="1500000"
-                    value={newProject.estimatedBudget}
-                    onChange={(e) => setNewProject({ ...newProject, estimatedBudget: e.target.value })}
-                    data-testid="input-budget"
-                  />
-                </div>
-              </div>
 
-              <div className="border-t pt-4 mt-4">
-                <h4 className="text-sm font-medium mb-3">Franchise Sahibi Bilgileri</h4>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="franchiseeName">Franchise Sahibi Adı</Label>
-                    <Input
-                      id="franchiseeName"
-                      placeholder="Ad Soyad"
-                      value={newProject.franchiseeName}
-                      onChange={(e) => setNewProject({ ...newProject, franchiseeName: e.target.value })}
-                      data-testid="input-franchisee-name"
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-medium mb-3">Franchise Sahibi Bilgileri</h4>
+                  <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="franchiseeName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Franchise Sahibi Adı</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ad Soyad"
+                              data-testid="input-owner-name"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="franchiseePhone">Telefon</Label>
-                      <Input
-                        id="franchiseePhone"
-                        placeholder="+90 5XX XXX XX XX"
-                        value={newProject.franchiseePhone}
-                        onChange={(e) => setNewProject({ ...newProject, franchiseePhone: e.target.value })}
-                        data-testid="input-franchisee-phone"
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="franchiseePhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Telefon</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="+90 5XX XXX XX XX"
+                                data-testid="input-owner-phone"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="franchiseeEmail">E-posta</Label>
-                      <Input
-                        id="franchiseeEmail"
-                        type="email"
-                        placeholder="email@example.com"
-                        value={newProject.franchiseeEmail}
-                        onChange={(e) => setNewProject({ ...newProject, franchiseeEmail: e.target.value })}
-                        data-testid="input-franchisee-email"
+                      <FormField
+                        control={form.control}
+                        name="franchiseeEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>E-posta</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="email@example.com"
+                                data-testid="input-owner-email"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)} data-testid="button-cancel-create">
-                İptal
-              </Button>
-              <Button onClick={handleCreate} disabled={createMutation.isPending} data-testid="button-submit-create">
-                {createMutation.isPending ? "Oluşturuluyor..." : "Proje Oluştur"}
-              </Button>
-            </DialogFooter>
+
+                <DialogFooter className="pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => handleDialogOpenChange(false)} 
+                    data-testid="button-cancel-create"
+                  >
+                    İptal
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={createMutation.isPending} 
+                    data-testid="button-submit-project"
+                  >
+                    {createMutation.isPending ? "Oluşturuluyor..." : "Proje Oluştur"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
 
       {projects?.length === 0 ? (
-        <Card className="py-12">
+        <Card className="py-12" data-testid="card-empty-state">
           <CardContent className="text-center">
             <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Henüz Şube Projesi Yok</h3>
@@ -453,7 +540,7 @@ export default function YeniSubeProjeler() {
                       </span>
                     </div>
                     <Progress value={project.overallProgress} className="h-2" data-testid={`progress-project-${project.id}`} />
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground" data-testid={`text-phases-completed-${project.id}`}>
                       {project.completedPhases} / {project.totalPhases} faz tamamlandı
                     </div>
                   </div>
@@ -484,7 +571,7 @@ export default function YeniSubeProjeler() {
                     </div>
                   )}
 
-                  <div className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
+                  <div className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1" data-testid={`text-active-phase-${project.id}`}>
                     Aktif Faz: <span className="font-medium">{project.currentPhase}</span>
                   </div>
                 </CardContent>
@@ -520,7 +607,7 @@ export default function YeniSubeProjeler() {
       )}
 
       <AlertDialog open={!!deleteProjectId} onOpenChange={() => setDeleteProjectId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent data-testid="dialog-delete-confirm">
           <AlertDialogHeader>
             <AlertDialogTitle>Projeyi Sil</AlertDialogTitle>
             <AlertDialogDescription>
