@@ -1890,6 +1890,29 @@ export const insertTicketActivityLogSchema = createInsertSchema(ticketActivityLo
 export type InsertTicketActivityLog = z.infer<typeof insertTicketActivityLogSchema>;
 export type TicketActivityLog = typeof ticketActivityLogs.$inferSelect;
 
+// HQ Support Category Assignments - Which HQ users can view which ticket categories
+export const hqSupportCategoryAssignments = pgTable("hq_support_category_assignments", {
+  id: serial("id").primaryKey(),
+  category: varchar("category", { length: 50 }).notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  canAssign: boolean("can_assign").default(false),
+  canClose: boolean("can_close").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+}, (table) => [
+  index("hq_support_cat_assign_category_idx").on(table.category),
+  index("hq_support_cat_assign_user_idx").on(table.userId),
+  unique("hq_support_cat_assign_unique").on(table.category, table.userId),
+]);
+
+export const insertHQSupportCategoryAssignmentSchema = createInsertSchema(hqSupportCategoryAssignments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertHQSupportCategoryAssignment = z.infer<typeof insertHQSupportCategoryAssignmentSchema>;
+export type HQSupportCategoryAssignment = typeof hqSupportCategoryAssignments.$inferSelect;
+
 // Notification types enum
 export const NotificationType = {
   TASK_ASSIGNED: "task_assigned",

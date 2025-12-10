@@ -60,6 +60,8 @@ import type {
   InsertHQSupportTicket,
   HQSupportMessage,
   InsertHQSupportMessage,
+  HQSupportCategoryAssignment,
+  InsertHQSupportCategoryAssignment,
   Notification,
   InsertNotification,
   Announcement,
@@ -159,6 +161,7 @@ import {
   equipmentComments,
   equipmentServiceRequests,
   hqSupportTickets,
+  hqSupportCategoryAssignments,
   hqSupportMessages,
   notifications,
   announcements,
@@ -476,6 +479,14 @@ export interface IStorage {
   // Ticket Activity Log operations
   getTicketActivityLogs(ticketId: number): Promise<TicketActivityLog[]>;
   createTicketActivityLog(log: InsertTicketActivityLog): Promise<TicketActivityLog>;
+  
+  // HQ Support Category Assignment operations
+  getHQSupportCategoryAssignments(): Promise<HQSupportCategoryAssignment[]>;
+  getHQSupportCategoryAssignmentsByUser(userId: string): Promise<HQSupportCategoryAssignment[]>;
+  createHQSupportCategoryAssignment(assignment: InsertHQSupportCategoryAssignment): Promise<HQSupportCategoryAssignment>;
+  deleteHQSupportCategoryAssignment(id: number): Promise<void>;
+  getHQSupportTicketsByUser(userId: string): Promise<HQSupportTicket[]>;
+  getHQSupportTicketsByCreator(createdById: string): Promise<HQSupportTicket[]>;
 
   // Notification operations
   getNotifications(userId: string, isRead?: boolean): Promise<Notification[]>;
@@ -2525,6 +2536,42 @@ export class DatabaseStorage implements IStorage {
   async createTicketActivityLog(log: InsertTicketActivityLog): Promise<TicketActivityLog> {
     const [newLog] = await db.insert(ticketActivityLogs).values(log).returning();
     return newLog;
+  }
+  
+  // HQ Support Category Assignment operations
+  async getHQSupportCategoryAssignments(): Promise<HQSupportCategoryAssignment[]> {
+    return db.select().from(hqSupportCategoryAssignments).orderBy(hqSupportCategoryAssignments.category);
+  }
+  
+  async getHQSupportCategoryAssignmentsByUser(userId: string): Promise<HQSupportCategoryAssignment[]> {
+    return db.select().from(hqSupportCategoryAssignments)
+      .where(eq(hqSupportCategoryAssignments.userId, userId));
+  }
+  
+  async createHQSupportCategoryAssignment(assignment: InsertHQSupportCategoryAssignment): Promise<HQSupportCategoryAssignment> {
+    const [newAssignment] = await db.insert(hqSupportCategoryAssignments).values(assignment).returning();
+    return newAssignment;
+  }
+  
+  async deleteHQSupportCategoryAssignment(id: number): Promise<void> {
+    await db.delete(hqSupportCategoryAssignments).where(eq(hqSupportCategoryAssignments.id, id));
+  }
+  
+  async getHQSupportTicketsByUser(userId: string): Promise<HQSupportTicket[]> {
+    const assignments = await this.getHQSupportCategoryAssignmentsByUser(userId);
+    if (assignments.length === 0) {
+      return [];
+    }
+    const categories = assignments.map(a => a.category);
+    return db.select().from(hqSupportTickets)
+      .where(inArray(hqSupportTickets.category, categories))
+      .orderBy(desc(hqSupportTickets.createdAt));
+  }
+  
+  async getHQSupportTicketsByCreator(createdById: string): Promise<HQSupportTicket[]> {
+    return db.select().from(hqSupportTickets)
+      .where(eq(hqSupportTickets.createdById, createdById))
+      .orderBy(desc(hqSupportTickets.createdAt));
   }
 
   // Notification operations

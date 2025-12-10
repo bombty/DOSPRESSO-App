@@ -103,6 +103,9 @@ import ReceteDetay from "@/pages/recete-detay";
 import Projeler from "@/pages/projeler";
 import ProjeDetay from "@/pages/proje-detay";
 import ProjeGorevDetay from "@/pages/proje-gorev-detay";
+import Destek from "@/pages/destek";
+import AdminDashboard from "@/pages/admin/index";
+import AdminDestekAyarlari from "@/pages/admin/destek-ayarlari";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -236,6 +239,13 @@ function Router() {
           {/* Lost & Found System */}
           <Route path="/kayip-esya" component={KayipEsya} />
           <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />
+
+          {/* Şube Destek Talebi */}
+          <Route path="/destek" component={Destek} />
+
+          {/* Admin Panel */}
+          <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/destek-ayarlari" component={AdminDestekAyarlari} />
         </>
       )}
       <Route component={NotFound} />

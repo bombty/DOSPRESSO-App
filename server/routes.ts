@@ -12672,6 +12672,241 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =============================================
+  // HQ SUPPORT TICKET ROUTES
+  // =============================================
+  
+  // GET /api/hq-support/tickets - Get all tickets (HQ sees assigned categories, branch sees own)
+  app.get('/api/hq-support/tickets', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { status, category } = req.query;
+      
+      let tickets: any[];
+      
+      if (isHQRole(user.role) || user.role === 'admin') {
+        // Admin sees all, HQ users see their assigned categories or all if no assignments
+        if (user.role === 'admin') {
+          tickets = await storage.getHQSupportTickets(undefined, status, category);
+        } else {
+          tickets = await storage.getHQSupportTicketsByUser(user.id);
+          // If user has no assigned categories, show all tickets (for triage)
+          if (tickets.length === 0) {
+            tickets = await storage.getHQSupportTickets(undefined, status, category);
+          } else if (status) {
+            tickets = tickets.filter((t: any) => t.status === status);
+          }
+        }
+      } else {
+        // Branch users see only their own tickets
+        tickets = await storage.getHQSupportTicketsByCreator(user.id);
+        if (status) {
+          tickets = tickets.filter((t: any) => t.status === status);
+        }
+      }
+      
+      // Enrich with branch and user info
+      const branches = await storage.getBranches();
+      const allUsers = await storage.getUsers();
+      
+      const enrichedTickets = tickets.map((ticket: any) => {
+        const branch = branches.find(b => b.id === ticket.branchId);
+        const createdBy = allUsers.find(u => u.id === ticket.createdById);
+        return {
+          ...ticket,
+          branch: branch || { name: 'Unknown' },
+          createdBy: createdBy ? { firstName: createdBy.firstName, lastName: createdBy.lastName } : { firstName: 'Unknown', lastName: '' },
+          messageCount: 0,
+        };
+      });
+      
+      res.json(enrichedTickets);
+    } catch (error) {
+      console.error("Get tickets error:", error);
+      res.status(500).json({ message: "Talepler alınamadı" });
+    }
+  });
+  
+  // POST /api/hq-support/tickets - Create new ticket
+  app.post('/api/hq-support/tickets', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      const ticketData = {
+        ...req.body,
+        createdById: user.id,
+        branchId: user.branchId || req.body.branchId,
+        priority: req.body.priority || 'normal',
+        status: 'aktif',
+      };
+      
+      const ticket = await storage.createHQSupportTicket(ticketData);
+      res.status(201).json(ticket);
+    } catch (error) {
+      console.error("Create ticket error:", error);
+      res.status(500).json({ message: "Talep oluşturulamadı" });
+    }
+  });
+  
+  // GET /api/hq-support/tickets/:id - Get single ticket with messages
+  app.get('/api/hq-support/tickets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const ticketId = parseInt(req.params.id);
+      
+      const ticket = await storage.getHQSupportTicket(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ message: "Talep bulunamadı" });
+      }
+      
+      // Check authorization
+      if (!isHQRole(user.role) && user.role !== 'admin' && ticket.createdById !== user.id) {
+        return res.status(403).json({ message: "Bu talebe erişim yetkiniz yok" });
+      }
+      
+      const messages = await storage.getHQSupportMessages(ticketId);
+      const allUsers = await storage.getUsers();
+      
+      const enrichedMessages = messages.map((msg: any) => {
+        const sender = allUsers.find(u => u.id === msg.senderId);
+        return {
+          ...msg,
+          sender: sender ? { firstName: sender.firstName, lastName: sender.lastName, profileImageUrl: sender.profileImageUrl } : null,
+        };
+      });
+      
+      res.json({ ticket, messages: enrichedMessages });
+    } catch (error) {
+      console.error("Get ticket details error:", error);
+      res.status(500).json({ message: "Talep detayları alınamadı" });
+    }
+  });
+  
+  // PATCH /api/hq-support/tickets/:id - Update ticket
+  app.patch('/api/hq-support/tickets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const ticketId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Talep güncelleme yetkiniz yok" });
+      }
+      
+      const updates = req.body;
+      if (updates.status === 'kapatildi') {
+        updates.closedAt = new Date();
+        updates.closedBy = user.id;
+      }
+      
+      const updated = await storage.updateHQSupportTicket(ticketId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update ticket error:", error);
+      res.status(500).json({ message: "Talep güncellenemedi" });
+    }
+  });
+  
+  // POST /api/hq-support/tickets/:id/messages - Add message to ticket
+  app.post('/api/hq-support/tickets/:id/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const ticketId = parseInt(req.params.id);
+      
+      const ticket = await storage.getHQSupportTicket(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ message: "Talep bulunamadı" });
+      }
+      
+      const message = await storage.createHQSupportMessage({
+        ticketId,
+        senderId: user.id,
+        message: req.body.message,
+        attachments: req.body.attachments || [],
+        isInternal: req.body.isInternal || false,
+      });
+      
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Add message error:", error);
+      res.status(500).json({ message: "Mesaj eklenemedi" });
+    }
+  });
+  
+  // =============================================
+  // ADMIN SUPPORT CATEGORY ASSIGNMENTS
+  // =============================================
+  
+  // GET /api/admin/support-assignments - Get all category assignments
+  app.get('/api/admin/support-assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const assignments = await storage.getHQSupportCategoryAssignments();
+      
+      // Enrich with user info
+      const allUsers = await storage.getUsers();
+      const enriched = assignments.map((a: any) => {
+        const assignedUser = allUsers.find(u => u.id === a.userId);
+        return {
+          ...a,
+          user: assignedUser ? { 
+            id: assignedUser.id, 
+            firstName: assignedUser.firstName, 
+            lastName: assignedUser.lastName,
+            role: assignedUser.role 
+          } : null,
+        };
+      });
+      
+      res.json(enriched);
+    } catch (error) {
+      console.error("Get category assignments error:", error);
+      res.status(500).json({ message: "Kategori atamaları alınamadı" });
+    }
+  });
+  
+  // POST /api/admin/support-assignments - Create category assignment
+  app.post('/api/admin/support-assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const assignment = await storage.createHQSupportCategoryAssignment({
+        ...req.body,
+        createdById: user.id,
+      });
+      
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Create category assignment error:", error);
+      res.status(500).json({ message: "Kategori ataması oluşturulamadı" });
+    }
+  });
+  
+  // DELETE /api/admin/support-assignments/:id - Delete category assignment
+  app.delete('/api/admin/support-assignments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      await storage.deleteHQSupportCategoryAssignment(parseInt(req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete category assignment error:", error);
+      res.status(500).json({ message: "Kategori ataması silinemedi" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

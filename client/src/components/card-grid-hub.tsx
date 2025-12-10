@@ -29,7 +29,8 @@ import {
   Plus,
   FileText,
   FolderKanban,
-  CheckSquare
+  CheckSquare,
+  Shield
 } from "lucide-react";
 
 interface ModuleCard {
@@ -144,6 +145,14 @@ export function CardGridHub() {
       path: "/ekipman",
       color: "bg-amber-600",
       description: "Ekipman yönetimi"
+    },
+    { 
+      id: "support", 
+      icon: MessageSquare, 
+      label: "Merkez Destek", 
+      path: "/destek",
+      color: "bg-blue-500",
+      description: "HQ'ya talep gönder"
     },
   ];
 
@@ -262,6 +271,15 @@ export function CardGridHub() {
       color: "bg-slate-600",
       description: "Sistem ayarları"
     },
+    { 
+      id: "admin", 
+      icon: Shield, 
+      label: "Admin Panel", 
+      path: "/admin",
+      color: "bg-red-600",
+      description: "Sistem yönetimi",
+      roles: ["admin"]
+    },
   ];
 
   const modules = isHQ ? hqModules : branchModules;
@@ -322,7 +340,12 @@ export function CardGridHub() {
 
       {/* Card Grid */}
       <div className="grid grid-cols-3 gap-2">
-        {modules.map((module) => {
+        {modules.filter((module) => {
+          if (module.roles && module.roles.length > 0) {
+            return module.roles.includes(user?.role || '');
+          }
+          return true;
+        }).map((module) => {
           const Icon = module.icon;
           return (
             <button
