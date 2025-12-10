@@ -124,6 +124,22 @@ import {
   serviceEmailSettings,
   banners,
   aiSettings,
+  // New Shop Opening Management (existing tables from schema.ts)
+  projectPhases,
+  projectBudgetLines,
+  projectVendors,
+  projectRisks,
+  externalUsers,
+  externalUserProjects,
+  externalUserAuditLog,
+  insertProjectPhaseSchema,
+  insertProjectBudgetLineSchema,
+  insertProjectVendorSchema,
+  insertProjectRiskSchema,
+  insertExternalUserSchema,
+  insertExternalUserProjectSchema,
+  NEW_SHOP_PHASE_TEMPLATE,
+  PHASE_STATUS,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull } from "drizzle-orm";
@@ -13422,6 +13438,529 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Test AI connection error:", error);
       res.status(500).json({ success: false, message: "Bağlantı testi başarısız" });
+    }
+  });
+
+  // =============================================
+  // NEW SHOP OPENING MANAGEMENT ROUTES
+  // Yeni Şube Açılış Yönetim Sistemi
+  // =============================================
+
+  // GET /api/new-shop-projects - Get all new shop projects
+  app.get('/api/new-shop-projects', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu modüle erişim yetkiniz yok" });
+      }
+      
+      const projectList = await db.select({
+        project: projects,
+        owner: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        }
+      })
+        .from(projects)
+        .innerJoin(users, eq(projects.ownerId, users.id))
+        .where(and(
+          eq(projects.projectType, 'new_shop'),
+          eq(projects.isActive, true)
+        ))
+        .orderBy(desc(projects.createdAt));
+      
+      // Get phase progress for each project
+      const projectsWithProgress = await Promise.all(projectList.map(async ({ project, owner }) => {
+        const phases = await db.select().from(projectPhases)
+          .where(eq(projectPhases.projectId, project.id))
+          .orderBy(projectPhases.orderIndex);
+        
+        const completedPhases = phases.filter(p => p.status === 'completed').length;
+        const totalPhases = phases.length;
+        const overallProgress = totalPhases > 0 ? Math.round((completedPhases / totalPhases) * 100) : 0;
+        const currentPhase = phases.find(p => p.status === 'in_progress') || phases.find(p => p.status === 'not_started');
+        
+        return {
+          ...project,
+          owner,
+          phases,
+          overallProgress,
+          currentPhase: currentPhase?.title || 'Tamamlandı',
+          currentPhaseType: currentPhase?.phaseType,
+          completedPhases,
+          totalPhases,
+        };
+      }));
+      
+      res.json(projectsWithProgress);
+    } catch (error) {
+      console.error("Get new shop projects error:", error);
+      res.status(500).json({ message: "Projeler alınamadı" });
+    }
+  });
+
+  // POST /api/new-shop-projects - Create new shop project with phases
+  app.post('/api/new-shop-projects', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const projectData = insertProjectSchema.parse({
+        ...req.body,
+        projectType: 'new_shop',
+        ownerId: user.id,
+        status: 'planning',
+      });
+      
+      // Create project
+      const [newProject] = await db.insert(projects).values(projectData).returning();
+      
+      // Create 7 phases from template
+      const startDate = new Date();
+      for (const template of NEW_SHOP_PHASE_TEMPLATE) {
+        const targetDate = new Date(startDate);
+        targetDate.setDate(targetDate.getDate() + template.targetDays);
+        
+        await db.insert(projectPhases).values({
+          projectId: newProject.id,
+          phaseType: template.phaseType,
+          title: template.title,
+          description: template.description,
+          iconName: template.iconName,
+          colorHex: template.colorHex,
+          orderIndex: template.orderIndex,
+          targetDate: targetDate.toISOString().split('T')[0],
+          status: template.orderIndex === 0 ? 'in_progress' : 'not_started',
+        });
+      }
+      
+      // Add contingency budget line (10% of estimated budget)
+      if (projectData.estimatedBudget) {
+        await db.insert(projectBudgetLines).values({
+          projectId: newProject.id,
+          category: 'contingency',
+          title: 'Beklenmeyen Giderler (%10)',
+          description: 'Proje bütçesinin %10\'u olarak ayrılan rezerv',
+          plannedAmount: Math.round(projectData.estimatedBudget * 0.1),
+          isContingency: true,
+          createdById: user.id,
+        });
+      }
+      
+      res.status(201).json(newProject);
+    } catch (error) {
+      console.error("Create new shop project error:", error);
+      res.status(500).json({ message: "Proje oluşturulamadı" });
+    }
+  });
+
+  // GET /api/new-shop-projects/:id - Get single project with full details
+  app.get('/api/new-shop-projects/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu projeye erişim yetkiniz yok" });
+      }
+      
+      const [project] = await db.select().from(projects)
+        .where(and(
+          eq(projects.id, projectId),
+          eq(projects.projectType, 'new_shop')
+        ));
+      
+      if (!project) {
+        return res.status(404).json({ message: "Proje bulunamadı" });
+      }
+      
+      // Get phases
+      const phases = await db.select().from(projectPhases)
+        .where(eq(projectPhases.projectId, projectId))
+        .orderBy(projectPhases.orderIndex);
+      
+      // Get budget summary
+      const budgetLines = await db.select().from(projectBudgetLines)
+        .where(eq(projectBudgetLines.projectId, projectId));
+      
+      const totalPlanned = budgetLines.reduce((sum, b) => sum + (b.plannedAmount || 0), 0);
+      const totalActual = budgetLines.reduce((sum, b) => sum + (b.actualAmount || 0), 0);
+      const totalPaid = budgetLines.reduce((sum, b) => sum + (b.paidAmount || 0), 0);
+      
+      // Get vendors
+      const vendors = await db.select().from(projectVendors)
+        .where(eq(projectVendors.projectId, projectId));
+      
+      // Get risks
+      const risks = await db.select().from(projectRisks)
+        .where(eq(projectRisks.projectId, projectId));
+      
+      // Get owner info
+      const [owner] = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      }).from(users).where(eq(users.id, project.ownerId));
+      
+      res.json({
+        ...project,
+        owner,
+        phases,
+        budgetLines,
+        budgetSummary: { totalPlanned, totalActual, totalPaid, variance: totalPlanned - totalActual },
+        vendors,
+        risks,
+      });
+    } catch (error) {
+      console.error("Get new shop project error:", error);
+      res.status(500).json({ message: "Proje detayı alınamadı" });
+    }
+  });
+
+  // PATCH /api/project-phases/:id - Update phase status/progress
+  app.patch('/api/project-phases/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const phaseId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const updateData: any = {
+        ...req.body,
+        updatedAt: new Date(),
+      };
+      
+      if (req.body.status === 'completed') {
+        updateData.completedAt = new Date();
+        updateData.progress = 100;
+      }
+      
+      const [updated] = await db.update(projectPhases)
+        .set(updateData)
+        .where(eq(projectPhases.id, phaseId))
+        .returning();
+      
+      // If completed, auto-start next phase
+      if (req.body.status === 'completed' && updated) {
+        const nextPhase = await db.select().from(projectPhases)
+          .where(and(
+            eq(projectPhases.projectId, updated.projectId),
+            eq(projectPhases.status, 'not_started')
+          ))
+          .orderBy(projectPhases.orderIndex)
+          .limit(1);
+        
+        if (nextPhase.length > 0) {
+          await db.update(projectPhases)
+            .set({ status: 'in_progress', startDate: new Date().toISOString().split('T')[0] })
+            .where(eq(projectPhases.id, nextPhase[0].id));
+        }
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update phase error:", error);
+      res.status(500).json({ message: "Faz güncellenemedi" });
+    }
+  });
+
+  // ---- Budget Lines ----
+  
+  // GET /api/projects/:id/budget - Get budget lines
+  app.get('/api/projects/:id/budget', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+      }
+      
+      const lines = await db.select().from(projectBudgetLines)
+        .where(eq(projectBudgetLines.projectId, projectId))
+        .orderBy(projectBudgetLines.category, projectBudgetLines.createdAt);
+      
+      res.json(lines);
+    } catch (error) {
+      console.error("Get budget lines error:", error);
+      res.status(500).json({ message: "Bütçe kalemleri alınamadı" });
+    }
+  });
+
+  // POST /api/projects/:id/budget - Add budget line
+  app.post('/api/projects/:id/budget', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const data = insertProjectBudgetLineSchema.parse({
+        ...req.body,
+        projectId,
+        createdById: user.id,
+      });
+      
+      const [line] = await db.insert(projectBudgetLines).values(data).returning();
+      res.status(201).json(line);
+    } catch (error) {
+      console.error("Add budget line error:", error);
+      res.status(500).json({ message: "Bütçe kalemi eklenemedi" });
+    }
+  });
+
+  // PATCH /api/budget-lines/:id - Update budget line
+  app.patch('/api/budget-lines/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const lineId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const [updated] = await db.update(projectBudgetLines)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(projectBudgetLines.id, lineId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update budget line error:", error);
+      res.status(500).json({ message: "Bütçe kalemi güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/budget-lines/:id - Delete budget line
+  app.delete('/api/budget-lines/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const lineId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      await db.delete(projectBudgetLines).where(eq(projectBudgetLines.id, lineId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete budget line error:", error);
+      res.status(500).json({ message: "Bütçe kalemi silinemedi" });
+    }
+  });
+
+  // ---- Vendors ----
+  
+  // GET /api/projects/:id/vendors - Get vendors
+  app.get('/api/projects/:id/vendors', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+      }
+      
+      const vendorList = await db.select().from(projectVendors)
+        .where(eq(projectVendors.projectId, projectId))
+        .orderBy(projectVendors.vendorType);
+      
+      res.json(vendorList);
+    } catch (error) {
+      console.error("Get vendors error:", error);
+      res.status(500).json({ message: "Tedarikçiler alınamadı" });
+    }
+  });
+
+  // POST /api/projects/:id/vendors - Add vendor
+  app.post('/api/projects/:id/vendors', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const data = insertProjectVendorSchema.parse({
+        ...req.body,
+        projectId,
+        createdById: user.id,
+      });
+      
+      const [vendor] = await db.insert(projectVendors).values(data).returning();
+      res.status(201).json(vendor);
+    } catch (error) {
+      console.error("Add vendor error:", error);
+      res.status(500).json({ message: "Tedarikçi eklenemedi" });
+    }
+  });
+
+  // PATCH /api/vendors/:id - Update vendor
+  app.patch('/api/vendors/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const vendorId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const [updated] = await db.update(projectVendors)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(projectVendors.id, vendorId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update vendor error:", error);
+      res.status(500).json({ message: "Tedarikçi güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/vendors/:id - Delete vendor
+  app.delete('/api/vendors/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const vendorId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      await db.delete(projectVendors).where(eq(projectVendors.id, vendorId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete vendor error:", error);
+      res.status(500).json({ message: "Tedarikçi silinemedi" });
+    }
+  });
+
+  // ---- Risks ----
+  
+  // GET /api/projects/:id/risks - Get risks
+  app.get('/api/projects/:id/risks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+      }
+      
+      const riskList = await db.select().from(projectRisks)
+        .where(eq(projectRisks.projectId, projectId))
+        .orderBy(desc(projectRisks.severity));
+      
+      res.json(riskList);
+    } catch (error) {
+      console.error("Get risks error:", error);
+      res.status(500).json({ message: "Riskler alınamadı" });
+    }
+  });
+
+  // POST /api/projects/:id/risks - Add risk
+  app.post('/api/projects/:id/risks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      // Calculate severity from probability * impact
+      const probability = req.body.probability || 3;
+      const impact = req.body.impact || 3;
+      const score = probability * impact;
+      let severity = 'medium';
+      if (score >= 15) severity = 'critical';
+      else if (score >= 10) severity = 'high';
+      else if (score <= 4) severity = 'low';
+      
+      const data = insertProjectRiskSchema.parse({
+        ...req.body,
+        projectId,
+        severity,
+        createdById: user.id,
+      });
+      
+      const [risk] = await db.insert(projectRisks).values(data).returning();
+      res.status(201).json(risk);
+    } catch (error) {
+      console.error("Add risk error:", error);
+      res.status(500).json({ message: "Risk eklenemedi" });
+    }
+  });
+
+  // PATCH /api/risks/:id - Update risk
+  app.patch('/api/risks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const riskId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const updateData: any = { ...req.body, updatedAt: new Date() };
+      
+      // Recalculate severity if probability or impact changed
+      if (req.body.probability || req.body.impact) {
+        const [existing] = await db.select().from(projectRisks).where(eq(projectRisks.id, riskId));
+        if (existing) {
+          const probability = req.body.probability || existing.probability || 3;
+          const impact = req.body.impact || existing.impact || 3;
+          const score = probability * impact;
+          if (score >= 15) updateData.severity = 'critical';
+          else if (score >= 10) updateData.severity = 'high';
+          else if (score <= 4) updateData.severity = 'low';
+          else updateData.severity = 'medium';
+        }
+      }
+      
+      if (req.body.status === 'resolved') {
+        updateData.resolvedAt = new Date();
+      }
+      
+      const [updated] = await db.update(projectRisks)
+        .set(updateData)
+        .where(eq(projectRisks.id, riskId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update risk error:", error);
+      res.status(500).json({ message: "Risk güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/risks/:id - Delete risk
+  app.delete('/api/risks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const riskId = parseInt(req.params.id);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      await db.delete(projectRisks).where(eq(projectRisks.id, riskId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete risk error:", error);
+      res.status(500).json({ message: "Risk silinemedi" });
     }
   });
 

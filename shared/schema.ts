@@ -4969,3 +4969,86 @@ export const insertAISettingsSchema = createInsertSchema(aiSettings).omit({
 
 export type InsertAISettings = z.infer<typeof insertAISettingsSchema>;
 export type AISettings = typeof aiSettings.$inferSelect;
+
+// Phase Status Constants
+export const PHASE_STATUS = {
+  NOT_STARTED: "not_started",
+  IN_PROGRESS: "in_progress",
+  BLOCKED: "blocked",
+  COMPLETED: "completed",
+} as const;
+
+export type PhaseStatusType = typeof PHASE_STATUS[keyof typeof PHASE_STATUS];
+export const NEW_SHOP_PHASE_TEMPLATE: Array<{
+  phaseType: ProjectPhaseType;
+  title: string;
+  description: string;
+  iconName: string;
+  colorHex: string;
+  orderIndex: number;
+  targetDays: number;
+}> = [
+  {
+    phaseType: "company_setup",
+    title: "Şirket Kurulumu",
+    description: "Şirket tescili, vergi mükellefiyet kaydı, banka hesabı açılışı, imza sirküleri",
+    iconName: "Building2",
+    colorHex: "#8b5cf6",
+    orderIndex: 0,
+    targetDays: 30,
+  },
+  {
+    phaseType: "contract_legal",
+    title: "Sözleşmeler & Hukuki",
+    description: "Franchise sözleşmesi, kira sözleşmesi, sigorta poliçeleri, yasal izinler",
+    iconName: "FileSignature",
+    colorHex: "#6366f1",
+    orderIndex: 1,
+    targetDays: 45,
+  },
+  {
+    phaseType: "construction",
+    title: "İnşaat & Dekorasyon",
+    description: "Mekan tadilat, elektrik/tesisat, dekorasyon, dış cephe, tabela",
+    iconName: "Hammer",
+    colorHex: "#f59e0b",
+    orderIndex: 2,
+    targetDays: 120,
+  },
+  {
+    phaseType: "equipment",
+    title: "Ekipman Yönetimi",
+    description: "Kahve makineleri, mutfak ekipmanları, mobilya, POS sistemi, güvenlik",
+    iconName: "Coffee",
+    colorHex: "#10b981",
+    orderIndex: 3,
+    targetDays: 150,
+  },
+  {
+    phaseType: "payments",
+    title: "Ödemeler & Bütçe",
+    description: "Franchise ücreti, depozito, tedarikçi ödemeleri, bütçe takibi",
+    iconName: "Wallet",
+    colorHex: "#ef4444",
+    orderIndex: 4,
+    targetDays: 165,
+  },
+  {
+    phaseType: "staffing",
+    title: "Personel & İşe Alım",
+    description: "İşe alım, mülakat, sözleşme, SGK kaydı, oryantasyon",
+    iconName: "Users",
+    colorHex: "#3b82f6",
+    orderIndex: 5,
+    targetDays: 175,
+  },
+  {
+    phaseType: "training_opening",
+    title: "Eğitim & Açılış",
+    description: "Barista eğitimi, operasyon eğitimi, hijyen sertifikası, açılış öncesi pratik",
+    iconName: "GraduationCap",
+    colorHex: "#ec4899",
+    orderIndex: 6,
+    targetDays: 180,
+  },
+];
