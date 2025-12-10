@@ -273,11 +273,10 @@ export default function SubeDetayPage() {
       </Card>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col gap-3 sm:gap-4">
-        <TabsList className="flex-wrap">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           {canViewActive && (
             <TabsTrigger value="canlı" data-testid="tab-active-employees">
-              <span className="mr-1">🟢</span>
               Canlı ({activeEmployees?.length || 0})
             </TabsTrigger>
           )}
@@ -287,14 +286,13 @@ export default function SubeDetayPage() {
           <TabsTrigger value="arizalar" data-testid="tab-faults">Arızalar</TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="qr-ayarlar" data-testid="tab-qr-settings">
-              <QrCode className="h-4 w-4 mr-1" />
               QR & Lokasyon
             </TabsTrigger>
           )}
         </TabsList>
 
         {/* KPI Cards */}
-        <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-4 gap-2 sm:gap-3">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           <Card 
             onClick={() => setActiveTab("personel")} 
             className="hover-elevate active-elevate-2 cursor-pointer"
