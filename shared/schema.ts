@@ -4371,18 +4371,35 @@ export type AcademyHubCategory = typeof academyHubCategories.$inferSelect;
 // Proje yönetimi, görev atama, iş birliği
 // ========================================
 
+// Project Types
+export const projectTypeEnum = ["standard", "new_shop"] as const;
+export type ProjectTypeType = typeof projectTypeEnum[number];
+
 // Projects - Ana proje tablosu
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 200 }).notNull(),
   description: text("description"),
+  projectType: varchar("project_type", { length: 30 }).default("standard"), // standard, new_shop
   status: varchar("status", { length: 30 }).default("planning"), // planning, in_progress, completed, on_hold, cancelled
   priority: varchar("priority", { length: 20 }).default("medium"), // low, medium, high, urgent
   ownerId: varchar("owner_id").notNull().references(() => users.id),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }), // Yeni şube için oluşturulacak branch
   startDate: date("start_date"),
   targetDate: date("target_date"),
   completedAt: timestamp("completed_at"),
   tags: text("tags").array(),
+  // New Shop specific fields
+  cityName: varchar("city_name", { length: 100 }), // Şube şehri
+  locationAddress: text("location_address"), // Şube adresi
+  estimatedBudget: integer("estimated_budget"), // Tahmini bütçe (TL)
+  actualBudget: integer("actual_budget"), // Gerçekleşen bütçe (TL)
+  franchiseeName: varchar("franchisee_name", { length: 200 }), // Bayi adı
+  franchiseePhone: varchar("franchisee_phone", { length: 20 }),
+  franchiseeEmail: varchar("franchisee_email", { length: 255 }),
+  contractSignedAt: timestamp("contract_signed_at"), // Sözleşme imza tarihi
+  targetOpeningDate: date("target_opening_date"), // Hedef açılış tarihi
+  actualOpeningDate: date("actual_opening_date"), // Gerçek açılış tarihi
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -4390,6 +4407,7 @@ export const projects = pgTable("projects", {
   index("projects_owner_idx").on(table.ownerId),
   index("projects_status_idx").on(table.status),
   index("projects_active_idx").on(table.isActive),
+  index("projects_type_idx").on(table.projectType),
 ]);
 
 export const insertProjectSchema = createInsertSchema(projects).omit({
@@ -4538,6 +4556,288 @@ export const insertProjectCommentSchema = createInsertSchema(projectComments).om
 
 export type InsertProjectComment = z.infer<typeof insertProjectCommentSchema>;
 export type ProjectComment = typeof projectComments.$inferSelect;
+
+// ========================================
+// NEW SHOP OPENING - Yeni Şube Açılış Sistemi
+// ========================================
+
+// Project Phases - Proje Fazları (Yeni Şube için 7 ana faz)
+export const projectPhaseTypeEnum = [
+  "company_setup",      // Şirket Kurulum
+  "contract_legal",     // Sözleşme & Hukuki
+  "construction",       // İnşaat & Dekorasyon
+  "equipment",          // Ekipman Yönetimi
+  "payments",           // Ödemeler & Bütçe
+  "staffing",           // Personel & İşe Alım
+  "training_opening"    // Eğitim & Açılış
+] as const;
+export type ProjectPhaseType = typeof projectPhaseTypeEnum[number];
+
+export const projectPhases = pgTable("project_phases", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  phaseType: varchar("phase_type", { length: 50 }).notNull(), // company_setup, contract_legal, construction, equipment, payments, staffing, training_opening
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 30 }).default("not_started"), // not_started, in_progress, completed, blocked
+  progress: integer("progress").default(0), // 0-100 percentage
+  orderIndex: integer("order_index").default(0),
+  startDate: date("start_date"),
+  targetDate: date("target_date"),
+  completedAt: timestamp("completed_at"),
+  colorHex: varchar("color_hex", { length: 7 }).default("#6366f1"),
+  iconName: varchar("icon_name", { length: 50 }), // lucide icon name
+  responsibleUserId: varchar("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("project_phases_project_idx").on(table.projectId),
+  index("project_phases_type_idx").on(table.phaseType),
+  index("project_phases_status_idx").on(table.status),
+]);
+
+export const insertProjectPhaseSchema = createInsertSchema(projectPhases).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
+
+export type InsertProjectPhase = z.infer<typeof insertProjectPhaseSchema>;
+export type ProjectPhase = typeof projectPhases.$inferSelect;
+
+// Budget Categories for New Shop
+export const budgetCategoryEnum = [
+  "franchise_fee",      // Franchise Ücreti
+  "rent_deposit",       // Kira & Depozito
+  "construction",       // İnşaat
+  "decoration",         // Dekorasyon
+  "furniture",          // Mobilya
+  "equipment",          // Ekipman
+  "signage",            // Tabela & Reklam
+  "permits",            // İzin & Ruhsat
+  "staffing",           // Personel
+  "training",           // Eğitim
+  "marketing",          // Pazarlama
+  "inventory",          // Stok
+  "contingency",        // Beklenmedik Giderler
+  "other"               // Diğer
+] as const;
+export type BudgetCategoryType = typeof budgetCategoryEnum[number];
+
+// Project Budget Lines - Bütçe Kalemleri
+export const projectBudgetLines = pgTable("project_budget_lines", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  phaseId: integer("phase_id").references(() => projectPhases.id, { onDelete: "set null" }),
+  category: varchar("category", { length: 50 }).notNull(), // From budgetCategoryEnum
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  plannedAmount: integer("planned_amount").default(0), // TL
+  actualAmount: integer("actual_amount").default(0), // TL
+  paidAmount: integer("paid_amount").default(0), // Ödenen tutar
+  paymentStatus: varchar("payment_status", { length: 30 }).default("pending"), // pending, partial, paid, overdue
+  dueDate: date("due_date"),
+  paidAt: timestamp("paid_at"),
+  vendorId: integer("vendor_id"), // Project vendor reference
+  invoiceNo: varchar("invoice_no", { length: 100 }),
+  notes: text("notes"),
+  isContingency: boolean("is_contingency").default(false), // Acil durum tamponu mu?
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("project_budget_project_idx").on(table.projectId),
+  index("project_budget_phase_idx").on(table.phaseId),
+  index("project_budget_category_idx").on(table.category),
+  index("project_budget_status_idx").on(table.paymentStatus),
+]);
+
+export const insertProjectBudgetLineSchema = createInsertSchema(projectBudgetLines).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProjectBudgetLine = z.infer<typeof insertProjectBudgetLineSchema>;
+export type ProjectBudgetLine = typeof projectBudgetLines.$inferSelect;
+
+// Vendor Types
+export const vendorTypeEnum = [
+  "contractor",         // Müteahhit
+  "architect",          // Mimar
+  "interior_designer",  // İç Mimar
+  "furniture_supplier", // Mobilya Tedarikçisi
+  "equipment_supplier", // Ekipman Tedarikçisi
+  "signage_company",    // Tabela Firması
+  "marketing_agency",   // Reklam Ajansı
+  "legal_advisor",      // Hukuk Danışmanı
+  "accountant",         // Mali Müşavir
+  "consultant",         // Danışman
+  "other"               // Diğer
+] as const;
+export type VendorType = typeof vendorTypeEnum[number];
+
+// Project Vendors - Tedarikçi/Firma Yönetimi
+export const projectVendors = pgTable("project_vendors", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  vendorType: varchar("vendor_type", { length: 50 }).notNull(), // From vendorTypeEnum
+  companyName: varchar("company_name", { length: 200 }).notNull(),
+  contactName: varchar("contact_name", { length: 200 }),
+  contactPhone: varchar("contact_phone", { length: 20 }),
+  contactEmail: varchar("contact_email", { length: 255 }),
+  address: text("address"),
+  taxNumber: varchar("tax_number", { length: 50 }),
+  contractStatus: varchar("contract_status", { length: 30 }).default("pending"), // pending, signed, completed, cancelled
+  contractAmount: integer("contract_amount"), // TL
+  contractStartDate: date("contract_start_date"),
+  contractEndDate: date("contract_end_date"),
+  responsibilityArea: text("responsibility_area"), // Sorumluluk alanı açıklaması
+  notes: text("notes"),
+  rating: integer("rating"), // 1-5 performance rating
+  isActive: boolean("is_active").default(true),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("project_vendors_project_idx").on(table.projectId),
+  index("project_vendors_type_idx").on(table.vendorType),
+  index("project_vendors_status_idx").on(table.contractStatus),
+]);
+
+export const insertProjectVendorSchema = createInsertSchema(projectVendors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProjectVendor = z.infer<typeof insertProjectVendorSchema>;
+export type ProjectVendor = typeof projectVendors.$inferSelect;
+
+// Risk Severity Levels
+export const riskSeverityEnum = ["low", "medium", "high", "critical"] as const;
+export type RiskSeverityType = typeof riskSeverityEnum[number];
+
+// Project Risks - Risk Yönetimi
+export const projectRisks = pgTable("project_risks", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  phaseId: integer("phase_id").references(() => projectPhases.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  probability: integer("probability").default(3), // 1-5 (1=düşük, 5=yüksek)
+  impact: integer("impact").default(3), // 1-5 (1=düşük, 5=yüksek)
+  severity: varchar("severity", { length: 20 }).default("medium"), // Calculated: low, medium, high, critical
+  status: varchar("status", { length: 30 }).default("identified"), // identified, mitigating, resolved, occurred
+  mitigationPlan: text("mitigation_plan"), // Risk azaltma planı
+  contingencyPlan: text("contingency_plan"), // Alternatif plan
+  responsibleUserId: varchar("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
+  identifiedAt: timestamp("identified_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("project_risks_project_idx").on(table.projectId),
+  index("project_risks_phase_idx").on(table.phaseId),
+  index("project_risks_severity_idx").on(table.severity),
+  index("project_risks_status_idx").on(table.status),
+]);
+
+export const insertProjectRiskSchema = createInsertSchema(projectRisks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProjectRisk = z.infer<typeof insertProjectRiskSchema>;
+export type ProjectRisk = typeof projectRisks.$inferSelect;
+
+// ========================================
+// EXTERNAL USERS - Dış Kullanıcı Erişim Sistemi
+// ========================================
+
+// External Users - Proje bazlı dış kullanıcılar (mimar, müteahhit vb.)
+export const externalUsers = pgTable("external_users", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  firstName: varchar("first_name", { length: 100 }),
+  lastName: varchar("last_name", { length: 100 }),
+  companyName: varchar("company_name", { length: 200 }),
+  phoneNumber: varchar("phone_number", { length: 20 }),
+  accessToken: varchar("access_token", { length: 255 }), // Magic link token
+  tokenExpiresAt: timestamp("token_expires_at"),
+  lastLoginAt: timestamp("last_login_at"),
+  isActive: boolean("is_active").default(true),
+  invitedById: varchar("invited_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("external_users_email_idx").on(table.email),
+  index("external_users_token_idx").on(table.accessToken),
+]);
+
+export const insertExternalUserSchema = createInsertSchema(externalUsers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExternalUser = z.infer<typeof insertExternalUserSchema>;
+export type ExternalUser = typeof externalUsers.$inferSelect;
+
+// External User Project Access - Dış kullanıcıların proje erişimleri
+export const externalUserProjects = pgTable("external_user_projects", {
+  id: serial("id").primaryKey(),
+  externalUserId: integer("external_user_id").notNull().references(() => externalUsers.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 30 }).default("viewer"), // viewer, contributor
+  canViewBudget: boolean("can_view_budget").default(false),
+  canViewTasks: boolean("can_view_tasks").default(true),
+  canComment: boolean("can_comment").default(true),
+  canUploadFiles: boolean("can_upload_files").default(false),
+  grantedById: varchar("granted_by_id").references(() => users.id),
+  grantedAt: timestamp("granted_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // null = no expiration
+  revokedAt: timestamp("revoked_at"),
+}, (table) => [
+  index("external_user_projects_user_idx").on(table.externalUserId),
+  index("external_user_projects_project_idx").on(table.projectId),
+  unique("external_user_projects_unique").on(table.externalUserId, table.projectId),
+]);
+
+export const insertExternalUserProjectSchema = createInsertSchema(externalUserProjects).omit({
+  id: true,
+  grantedAt: true,
+});
+
+export type InsertExternalUserProject = z.infer<typeof insertExternalUserProjectSchema>;
+export type ExternalUserProject = typeof externalUserProjects.$inferSelect;
+
+// External User Audit Log - Dış kullanıcı aktivite logları
+export const externalUserAuditLog = pgTable("external_user_audit_log", {
+  id: serial("id").primaryKey(),
+  externalUserId: integer("external_user_id").notNull().references(() => externalUsers.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 100 }).notNull(), // login, view_project, add_comment, upload_file, etc.
+  details: text("details"), // JSON details
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("external_audit_user_idx").on(table.externalUserId),
+  index("external_audit_project_idx").on(table.projectId),
+  index("external_audit_created_idx").on(table.createdAt),
+]);
+
+export const insertExternalUserAuditLogSchema = createInsertSchema(externalUserAuditLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertExternalUserAuditLog = z.infer<typeof insertExternalUserAuditLogSchema>;
+export type ExternalUserAuditLog = typeof externalUserAuditLog.$inferSelect;
 
 
 // ============================================
