@@ -695,132 +695,43 @@ export default function EquipmentDetail() {
         </div>
       </div>
 
-      {/* Equipment Info Card */}
-      <Card data-testid="card-equipment-header">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Ekipman Bilgileri</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {equipment.purchaseDate && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Satın Alma Tarihi</p>
-                  <p className="text-sm text-muted-foreground" data-testid="text-purchase-date">
-                    {new Date(equipment.purchaseDate).toLocaleDateString('tr-TR')}
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            {equipment.warrantyEndDate && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Garanti Bitiş Tarihi</p>
-                  <p className="text-sm text-muted-foreground" data-testid="text-warranty-end">
-                    {new Date(equipment.warrantyEndDate).toLocaleDateString('tr-TR')}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              <Wrench className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Bakım Sorumlusu</p>
-                <p className="text-sm text-muted-foreground" data-testid="text-maintenance-responsible">
-                  {equipment.maintenanceResponsible === 'branch' ? 'Şube' : 'Merkez'}
-                </p>
-              </div>
-            </div>
-
-            {equipment.nextMaintenanceDate && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Sonraki Bakım Tarihi</p>
-                  <p className="text-sm text-muted-foreground" data-testid="text-next-maintenance">
-                    {new Date(equipment.nextMaintenanceDate).toLocaleDateString('tr-TR')}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {equipment.notes && (
-            <div className="pt-4 border-t">
-              <p className="text-sm font-medium mb-1">Notlar</p>
-              <p className="text-sm text-muted-foreground" data-testid="text-notes">
-                {equipment.notes}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Status Cards - Clickable */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        <Card 
-          className="hover-elevate active-elevate-2 cursor-pointer" 
-          data-testid="card-equipment-status"
-          onClick={() => {}}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Durum</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge variant={equipment.isActive ? "default" : "secondary"}>
+      {/* Compact Info Summary - single row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 text-xs">
+        <div className="p-2 rounded-lg border bg-card">
+          <span className="text-muted-foreground">Durum</span>
+          <div className="mt-1">
+            <Badge variant={equipment.isActive ? "default" : "secondary"} className="text-xs" data-testid="badge-status">
               {equipment.isActive ? "Aktif" : "Pasif"}
             </Badge>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="hover-elevate active-elevate-2 cursor-pointer" 
-          data-testid="card-maintenance-status"
-          onClick={() => {}}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Bakım Sorumlusu</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-medium">{equipment.maintenanceResponsible === 'branch' ? 'Şube' : 'Merkez'}</p>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="hover-elevate active-elevate-2 cursor-pointer" 
-          data-testid="card-next-maintenance"
-          onClick={() => {}}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Sonraki Bakım</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-medium">
-              {equipment.nextMaintenanceDate ? new Date(equipment.nextMaintenanceDate).toLocaleDateString('tr-TR') : '-'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="hover-elevate active-elevate-2 cursor-pointer" 
-          data-testid="card-warranty"
-          onClick={() => {}}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Garanti</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-medium">
-              {equipment.warrantyEndDate ? new Date(equipment.warrantyEndDate).toLocaleDateString('tr-TR') : 'Geçti'}
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        <div className="p-2 rounded-lg border bg-card">
+          <span className="text-muted-foreground">Bakım Sorumlusu</span>
+          <p className="font-medium mt-1" data-testid="text-responsible">{equipment.maintenanceResponsible === 'branch' ? 'Şube' : 'Merkez'}</p>
+        </div>
+        <div className="p-2 rounded-lg border bg-card">
+          <span className="text-muted-foreground">Sonraki Bakım</span>
+          <p className="font-medium mt-1" data-testid="text-next-maint">{equipment.nextMaintenanceDate ? new Date(equipment.nextMaintenanceDate).toLocaleDateString('tr-TR') : '-'}</p>
+        </div>
+        <div className="p-2 rounded-lg border bg-card">
+          <span className="text-muted-foreground">Garanti</span>
+          <p className="font-medium mt-1" data-testid="text-warranty">{equipment.warrantyEndDate ? new Date(equipment.warrantyEndDate).toLocaleDateString('tr-TR') : '-'}</p>
+        </div>
+        {equipment.purchaseDate && (
+          <div className="p-2 rounded-lg border bg-card">
+            <span className="text-muted-foreground">Satın Alma</span>
+            <p className="font-medium mt-1" data-testid="text-purchase">{new Date(equipment.purchaseDate).toLocaleDateString('tr-TR')}</p>
+          </div>
+        )}
+        {equipment.notes && (
+          <div className="p-2 rounded-lg border bg-card col-span-2 sm:col-span-1">
+            <span className="text-muted-foreground">Notlar</span>
+            <p className="font-medium mt-1 truncate" title={equipment.notes} data-testid="text-notes">{equipment.notes}</p>
+          </div>
+        )}
       </div>
 
+      {/* Tabs - directly under compact info */}
       <Tabs className="w-full" defaultValue="maintenance">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" data-testid="tabs-equipment-detail">
           <TabsTrigger value="maintenance" data-testid="tab-maintenance">
@@ -988,30 +899,10 @@ export default function EquipmentDetail() {
         <TabsContent value="service-requests" className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <div className="flex items-start justify-between gap-2 sm:gap-3">
-                <div className="flex-1">
-                  <CardTitle className="text-base">Servis Talepleri</CardTitle>
-                  <CardDescription>
-                    Bu ekipman için oluşturulan servis talepleri
-                  </CardDescription>
-                </div>
-                <Button 
-                  onClick={() => {
-                    serviceRequestForm.reset({
-                      serviceProvider: "",
-                      contactInfo: "",
-                      serviceDecision: SERVICE_DECISION.BRANCH,
-                      estimatedCost: "",
-                      notes: "",
-                    });
-                    setServiceRequestDialogOpen(true);
-                  }}
-                  data-testid="button-create-service-request"
-                >
-                  <ClipboardList className="mr-2 h-4 w-4" />
-                  Yeni Talep
-                </Button>
-              </div>
+              <CardTitle className="text-base">Servis Talepleri</CardTitle>
+              <CardDescription>
+                Bu ekipman için oluşturulan servis talepleri
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {serviceRequests && serviceRequests.length > 0 ? (
