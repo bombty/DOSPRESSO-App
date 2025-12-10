@@ -295,69 +295,77 @@ export default function SubeDetayPage() {
         {/* KPI Cards */}
         {showCards && (
           <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-            <Card 
+            <div 
               onClick={() => { setActiveTab("personel"); setShowCards(false); }} 
               className="hover-elevate active-elevate-2 cursor-pointer"
               data-testid="card-metric-employee"
             >
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Personel Performansı</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="score-employee">{scores.employeePerformanceScore.toFixed(1)}</div>
-                <Progress value={scores.employeePerformanceScore} className="h-1 mt-2" />
-                <p className="text-xs text-muted-foreground mt-1">Ağırlık: %40</p>
-              </CardContent>
-            </Card>
+              <Card className="">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Personel Performansı</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold" data-testid="score-employee">{scores.employeePerformanceScore.toFixed(1)}</div>
+                  <Progress value={scores.employeePerformanceScore} className="h-1 mt-2" />
+                  <p className="text-xs text-muted-foreground mt-1">Ağırlık: %40</p>
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card 
+            <div 
               onClick={() => { setActiveTab("ekipman"); setShowCards(false); }} 
               className="hover-elevate active-elevate-2 cursor-pointer"
               data-testid="card-metric-equipment"
             >
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ekipman Durumu</CardTitle>
-                <Wrench className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="score-equipment">{scores.equipmentScore.toFixed(1)}</div>
-                <Progress value={scores.equipmentScore} className="h-1 mt-2" />
-                <p className="text-xs text-muted-foreground mt-1">Ağırlık: %25</p>
-              </CardContent>
-            </Card>
+              <Card className="">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Ekipman Durumu</CardTitle>
+                  <Wrench className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold" data-testid="score-equipment">{scores.equipmentScore.toFixed(1)}</div>
+                  <Progress value={scores.equipmentScore} className="h-1 mt-2" />
+                  <p className="text-xs text-muted-foreground mt-1">Ağırlık: %25</p>
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card 
+            <div 
               onClick={() => { setActiveTab("gorevler"); setShowCards(false); }} 
               className="hover-elevate active-elevate-2 cursor-pointer"
               data-testid="card-metric-quality"
             >
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Kalite Denetimi</CardTitle>
-                <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="score-quality">{scores.qualityAuditScore.toFixed(1)}</div>
-                <Progress value={scores.qualityAuditScore} className="h-1 mt-2" />
-                <p className="text-xs text-muted-foreground mt-1">Ağırlık: %20</p>
-              </CardContent>
-            </Card>
+              <Card className="">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Kalite Denetimi</CardTitle>
+                  <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold" data-testid="score-quality">{scores.qualityAuditScore.toFixed(1)}</div>
+                  <Progress value={scores.qualityAuditScore} className="h-1 mt-2" />
+                  <p className="text-xs text-muted-foreground mt-1">Ağırlık: %20</p>
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card 
+            <div 
               onClick={() => { setActiveTab("arizalar"); setShowCards(false); }} 
               className="hover-elevate active-elevate-2 cursor-pointer"
               data-testid="card-metric-satisfaction"
             >
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Müşteri Memnuniyeti</CardTitle>
-                <ThumbsUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="score-satisfaction">{scores.customerSatisfactionScore.toFixed(1)}</div>
-                <Progress value={scores.customerSatisfactionScore} className="h-1 mt-2" />
-                <p className="text-xs text-muted-foreground mt-1">Ağırlık: %15</p>
-              </CardContent>
-            </Card>
+              <Card className="">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Müşteri Memnuniyeti</CardTitle>
+                  <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold" data-testid="score-satisfaction">{scores.customerSatisfactionScore.toFixed(1)}</div>
+                  <Progress value={scores.customerSatisfactionScore} className="h-1 mt-2" />
+                  <p className="text-xs text-muted-foreground mt-1">Ağırlık: %15</p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )}
 
