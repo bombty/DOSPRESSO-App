@@ -103,6 +103,14 @@ import {
   leaderboardSnapshots,
   userPracticeSessions,
   userQuizAttempts,
+  projects,
+  projectMembers,
+  projectTasks,
+  projectComments,
+  insertProjectSchema,
+  insertProjectMemberSchema,
+  insertProjectTaskSchema,
+  insertProjectCommentSchema,
   insertRecipeSchema,
   insertRecipeVersionSchema,
   insertRecipeCategorySchema,
@@ -110,7 +118,7 @@ import {
   quizQuestions,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNull, isNotNull } from "drizzle-orm";
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
@@ -11830,6 +11838,480 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Global search error:", error);
       res.status(500).json({ message: "Arama sırasında hata oluştu" });
+    }
+  });
+
+  // ==========================================
+  // HQ PROJECT MANAGEMENT API
+  // ==========================================
+
+  // GET /api/projects - List all projects for user
+  app.get('/api/projects', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu modüle erişim yetkiniz yok" });
+      }
+      
+      // Get projects where user is owner or member
+      const userProjects = await db.select({
+        project: projects,
+        memberRole: projectMembers.role,
+      })
+        .from(projects)
+        .leftJoin(projectMembers, and(
+          eq(projectMembers.projectId, projects.id),
+          eq(projectMembers.userId, user.id),
+          isNull(projectMembers.removedAt)
+        ))
+        .where(
+          and(
+            eq(projects.isActive, true),
+            or(
+              eq(projects.ownerId, user.id),
+              isNotNull(projectMembers.id)
+            )
+          )
+        )
+        .orderBy(desc(projects.updatedAt));
+      
+      // Get task counts and member counts for each project
+      const projectsWithStats = await Promise.all(userProjects.map(async (p) => {
+        const taskCounts = await db.select({
+          status: projectTasks.status,
+          count: sql<number>`count(*)::int`,
+        })
+          .from(projectTasks)
+          .where(eq(projectTasks.projectId, p.project.id))
+          .groupBy(projectTasks.status);
+        
+        const memberCount = await db.select({ count: sql<number>`count(*)::int` })
+          .from(projectMembers)
+          .where(and(
+            eq(projectMembers.projectId, p.project.id),
+            isNull(projectMembers.removedAt)
+          ));
+        
+        const owner = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        })
+          .from(users)
+          .where(eq(users.id, p.project.ownerId))
+          .limit(1);
+        
+        return {
+          ...p.project,
+          memberRole: p.memberRole,
+          taskStats: taskCounts.reduce((acc, t) => {
+            acc[t.status] = t.count;
+            return acc;
+          }, {} as Record<string, number>),
+          memberCount: memberCount[0]?.count || 0,
+          owner: owner[0] || null,
+        };
+      }));
+      
+      res.json(projectsWithStats);
+    } catch (error) {
+      console.error("Get projects error:", error);
+      res.status(500).json({ message: "Projeler alınamadı" });
+    }
+  });
+
+  // POST /api/projects - Create new project
+  app.post('/api/projects', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Proje oluşturma yetkiniz yok" });
+      }
+      
+      const data = insertProjectSchema.parse({
+        ...req.body,
+        ownerId: user.id,
+      });
+      
+      const [project] = await db.insert(projects).values(data).returning();
+      
+      // Add owner as project member with 'owner' role
+      await db.insert(projectMembers).values({
+        projectId: project.id,
+        userId: user.id,
+        role: 'owner',
+      });
+      
+      res.status(201).json(project);
+    } catch (error) {
+      console.error("Create project error:", error);
+      res.status(500).json({ message: "Proje oluşturulamadı" });
+    }
+  });
+
+  // GET /api/projects/:id - Get project details
+  app.get('/api/projects/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu modüle erişim yetkiniz yok" });
+      }
+      
+      const [project] = await db.select().from(projects)
+        .where(eq(projects.id, parseInt(id)));
+      
+      if (!project) {
+        return res.status(404).json({ message: "Proje bulunamadı" });
+      }
+      
+      // Get members with user details
+      const members = await db.select({
+        member: projectMembers,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+          profileImageUrl: users.profileImageUrl,
+        }
+      })
+        .from(projectMembers)
+        .innerJoin(users, eq(users.id, projectMembers.userId))
+        .where(and(
+          eq(projectMembers.projectId, project.id),
+          isNull(projectMembers.removedAt)
+        ));
+      
+      // Get tasks
+      const taskList = await db.select({
+        task: projectTasks,
+        assignee: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        }
+      })
+        .from(projectTasks)
+        .leftJoin(users, eq(users.id, projectTasks.assignedToId))
+        .where(eq(projectTasks.projectId, project.id))
+        .orderBy(projectTasks.orderIndex);
+      
+      // Get comments/timeline
+      const commentList = await db.select({
+        comment: projectComments,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        }
+      })
+        .from(projectComments)
+        .innerJoin(users, eq(users.id, projectComments.userId))
+        .where(eq(projectComments.projectId, project.id))
+        .orderBy(desc(projectComments.createdAt))
+        .limit(50);
+      
+      res.json({
+        ...project,
+        members: members.map(m => ({ ...m.member, user: m.user })),
+        tasks: taskList.map(t => ({ ...t.task, assignee: t.assignee })),
+        comments: commentList.map(c => ({ ...c.comment, user: c.user })),
+      });
+    } catch (error) {
+      console.error("Get project detail error:", error);
+      res.status(500).json({ message: "Proje detayları alınamadı" });
+    }
+  });
+
+  // PATCH /api/projects/:id - Update project
+  app.patch('/api/projects/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+      
+      const [project] = await db.select().from(projects)
+        .where(eq(projects.id, parseInt(id)));
+      
+      if (!project) {
+        return res.status(404).json({ message: "Proje bulunamadı" });
+      }
+      
+      // Only owner or admin can update
+      if (project.ownerId !== user.id && user.role !== 'admin') {
+        return res.status(403).json({ message: "Proje güncelleme yetkiniz yok" });
+      }
+      
+      const updateData: any = { ...req.body, updatedAt: new Date() };
+      if (req.body.status === 'completed' && !project.completedAt) {
+        updateData.completedAt = new Date();
+      }
+      
+      const [updated] = await db.update(projects)
+        .set(updateData)
+        .where(eq(projects.id, parseInt(id)))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update project error:", error);
+      res.status(500).json({ message: "Proje güncellenemedi" });
+    }
+  });
+
+  // POST /api/projects/:id/members - Add member to project
+  app.post('/api/projects/:id/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+      const { userId, role = 'member' } = req.body;
+      
+      const [project] = await db.select().from(projects)
+        .where(eq(projects.id, parseInt(id)));
+      
+      if (!project || project.ownerId !== user.id && user.role !== 'admin') {
+        return res.status(403).json({ message: "Üye ekleme yetkiniz yok" });
+      }
+      
+      // Check if already member
+      const existing = await db.select().from(projectMembers)
+        .where(and(
+          eq(projectMembers.projectId, parseInt(id)),
+          eq(projectMembers.userId, userId)
+        ));
+      
+      if (existing.length > 0 && !existing[0].removedAt) {
+        return res.status(400).json({ message: "Bu kullanıcı zaten üye" });
+      }
+      
+      // If previously removed, update instead of insert
+      if (existing.length > 0) {
+        const [updated] = await db.update(projectMembers)
+          .set({ removedAt: null, role, joinedAt: new Date() })
+          .where(eq(projectMembers.id, existing[0].id))
+          .returning();
+        return res.json(updated);
+      }
+      
+      const [member] = await db.insert(projectMembers).values({
+        projectId: parseInt(id),
+        userId,
+        role,
+      }).returning();
+      
+      // Add system comment
+      await db.insert(projectComments).values({
+        projectId: parseInt(id),
+        userId: user.id,
+        content: `Yeni üye eklendi`,
+        isSystemMessage: true,
+      });
+      
+      res.status(201).json(member);
+    } catch (error) {
+      console.error("Add project member error:", error);
+      res.status(500).json({ message: "Üye eklenemedi" });
+    }
+  });
+
+  // DELETE /api/projects/:id/members/:userId - Remove member from project
+  app.delete('/api/projects/:id/members/:memberId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id, memberId } = req.params;
+      
+      const [project] = await db.select().from(projects)
+        .where(eq(projects.id, parseInt(id)));
+      
+      if (!project || project.ownerId !== user.id && user.role !== 'admin') {
+        return res.status(403).json({ message: "Üye çıkarma yetkiniz yok" });
+      }
+      
+      await db.update(projectMembers)
+        .set({ removedAt: new Date() })
+        .where(eq(projectMembers.id, parseInt(memberId)));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Remove project member error:", error);
+      res.status(500).json({ message: "Üye çıkarılamadı" });
+    }
+  });
+
+  // POST /api/projects/:id/tasks - Create task in project
+  app.post('/api/projects/:id/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+      
+      // Verify user is member of project
+      const membership = await db.select().from(projectMembers)
+        .where(and(
+          eq(projectMembers.projectId, parseInt(id)),
+          eq(projectMembers.userId, user.id),
+          isNull(projectMembers.removedAt)
+        ));
+      
+      const [project] = await db.select().from(projects)
+        .where(eq(projects.id, parseInt(id)));
+      
+      if (!project) {
+        return res.status(404).json({ message: "Proje bulunamadı" });
+      }
+      
+      if (membership.length === 0 && project.ownerId !== user.id && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu projede görev oluşturma yetkiniz yok" });
+      }
+      
+      const data = insertProjectTaskSchema.parse({
+        ...req.body,
+        projectId: parseInt(id),
+        createdById: user.id,
+      });
+      
+      const [task] = await db.insert(projectTasks).values(data).returning();
+      
+      // Add system comment
+      await db.insert(projectComments).values({
+        projectId: parseInt(id),
+        userId: user.id,
+        content: `Yeni görev oluşturuldu: ${task.title}`,
+        isSystemMessage: true,
+      });
+      
+      res.status(201).json(task);
+    } catch (error) {
+      console.error("Create project task error:", error);
+      res.status(500).json({ message: "Görev oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/project-tasks/:id - Update task
+  app.patch('/api/project-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+      
+      const [task] = await db.select().from(projectTasks)
+        .where(eq(projectTasks.id, parseInt(id)));
+      
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      const updateData: any = { ...req.body, updatedAt: new Date() };
+      if (req.body.status === 'done' && !task.completedAt) {
+        updateData.completedAt = new Date();
+      }
+      
+      const [updated] = await db.update(projectTasks)
+        .set(updateData)
+        .where(eq(projectTasks.id, parseInt(id)))
+        .returning();
+      
+      // Add system comment for status changes
+      if (req.body.status && req.body.status !== task.status) {
+        await db.insert(projectComments).values({
+          projectId: task.projectId,
+          taskId: task.id,
+          userId: user.id,
+          content: `Görev durumu "${task.status}" → "${req.body.status}" olarak güncellendi`,
+          isSystemMessage: true,
+        });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update project task error:", error);
+      res.status(500).json({ message: "Görev güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/project-tasks/:id - Delete task
+  app.delete('/api/project-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      await db.delete(projectTasks).where(eq(projectTasks.id, parseInt(id)));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete project task error:", error);
+      res.status(500).json({ message: "Görev silinemedi" });
+    }
+  });
+
+  // POST /api/projects/:id/comments - Add comment to project
+  app.post('/api/projects/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+      
+      const data = insertProjectCommentSchema.parse({
+        ...req.body,
+        projectId: parseInt(id),
+        userId: user.id,
+        isSystemMessage: false,
+      });
+      
+      const [comment] = await db.insert(projectComments).values(data).returning();
+      
+      // Get user info for response
+      const [commentUser] = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      }).from(users).where(eq(users.id, user.id));
+      
+      res.status(201).json({ ...comment, user: commentUser });
+    } catch (error) {
+      console.error("Add project comment error:", error);
+      res.status(500).json({ message: "Yorum eklenemedi" });
+    }
+  });
+
+  // GET /api/hq-users - Get HQ users for project member selection
+  app.get('/api/hq-users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+      }
+      
+      const hqUsers = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        profileImageUrl: users.profileImageUrl,
+      })
+        .from(users)
+        .where(
+          or(
+            eq(users.role, 'admin'),
+            eq(users.role, 'muhasebe'),
+            eq(users.role, 'satinalma'),
+            eq(users.role, 'coach'),
+            eq(users.role, 'teknik'),
+            eq(users.role, 'destek'),
+            eq(users.role, 'fabrika'),
+            eq(users.role, 'yatirimci_hq')
+          )
+        )
+        .orderBy(users.firstName);
+      
+      res.json(hqUsers);
+    } catch (error) {
+      console.error("Get HQ users error:", error);
+      res.status(500).json({ message: "HQ kullanıcıları alınamadı" });
     }
   });
 
