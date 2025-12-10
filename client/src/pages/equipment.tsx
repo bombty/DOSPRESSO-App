@@ -72,6 +72,8 @@ export default function Equipment() {
       purchaseDate: undefined,
       branchId: undefined,
       notes: "",
+      maintenanceResponsible: "branch",
+      faultProtocol: "branch",
     },
   });
 
@@ -87,6 +89,8 @@ export default function Equipment() {
       branchId: undefined,
       notes: "",
       isActive: true,
+      maintenanceResponsible: "branch",
+      faultProtocol: "branch",
       serviceContactName: "",
       serviceContactPhone: "",
       serviceContactEmail: "",
@@ -228,6 +232,8 @@ export default function Equipment() {
       branchId: equipment.branchId,
       notes: equipment.notes || "",
       isActive: equipment.isActive,
+      maintenanceResponsible: (equipment as any).maintenanceResponsible || "branch",
+      faultProtocol: (equipment as any).faultProtocol || "branch",
       serviceContactName: (equipment as any).serviceContactName || "",
       serviceContactPhone: (equipment as any).serviceContactPhone || "",
       serviceContactEmail: (equipment as any).serviceContactEmail || "",
@@ -473,10 +479,36 @@ export default function Equipment() {
                   />
                   <FormField
                     control={form.control}
+                    name="maintenanceResponsible"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bakım Sorumlusu</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || 'branch'}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-maintenance-responsible">
+                              <SelectValue placeholder="Sorumlu seçin" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="branch">Şube</SelectItem>
+                            <SelectItem value="hq">Merkez (HQ)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {field.value === 'hq' 
+                            ? 'Bakımlar Merkez tarafından yönetilecektir' 
+                            : 'Bakımlar Şube tarafından yönetilecektir'}
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="faultProtocol"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Arıza Yönetimi Sorumlusu</FormLabel>
+                        <FormLabel>Arıza Sorumlusu</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || 'branch'}>
                           <FormControl>
                             <SelectTrigger data-testid="select-fault-protocol">
@@ -484,12 +516,8 @@ export default function Equipment() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="branch">
-                              <span className="flex items-center gap-2">Şube</span>
-                            </SelectItem>
-                            <SelectItem value="hq_teknik">
-                              <span className="flex items-center gap-2">Merkez (HQ Teknik)</span>
-                            </SelectItem>
+                            <SelectItem value="branch">Şube</SelectItem>
+                            <SelectItem value="hq_teknik">Merkez (HQ Teknik)</SelectItem>
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -707,10 +735,36 @@ export default function Equipment() {
               />
               <FormField
                 control={editForm.control}
+                name="maintenanceResponsible"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bakım Sorumlusu</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || 'branch'}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-maintenance-responsible">
+                          <SelectValue placeholder="Sorumlu seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="branch">Şube</SelectItem>
+                        <SelectItem value="hq">Merkez (HQ)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {field.value === 'hq' 
+                        ? 'Bakımlar Merkez tarafından yönetilecektir' 
+                        : 'Bakımlar Şube tarafından yönetilecektir'}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
                 name="faultProtocol"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Arıza Yönetimi Sorumlusu</FormLabel>
+                    <FormLabel>Arıza Sorumlusu</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || 'branch'}>
                       <FormControl>
                         <SelectTrigger data-testid="select-edit-fault-protocol">
@@ -718,12 +772,8 @@ export default function Equipment() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="branch">
-                          <span className="flex items-center gap-2">Şube</span>
-                        </SelectItem>
-                        <SelectItem value="hq_teknik">
-                          <span className="flex items-center gap-2">Merkez (HQ Teknik)</span>
-                        </SelectItem>
+                        <SelectItem value="branch">Şube</SelectItem>
+                        <SelectItem value="hq_teknik">Merkez (HQ Teknik)</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">
