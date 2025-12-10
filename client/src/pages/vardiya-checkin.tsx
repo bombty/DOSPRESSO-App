@@ -15,6 +15,7 @@ export default function VardiyaCheckin() {
   const [method, setMethod] = useState<"qr" | "nfc" | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scannedQR, setScannedQR] = useState<string | null>(null);
+  const [nfcCardId, setNfcCardId] = useState<string>("");
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null); // S3 URL
   const [location, setLocation] = useState<{latitude: number; longitude: number} | null>(null);
   const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
@@ -23,6 +24,7 @@ export default function VardiyaCheckin() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const nfcCardInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: activeAttendance, isLoading } = useQuery<ShiftAttendance | null>({
     queryKey: ["/api/shift-attendance"],
@@ -342,12 +344,101 @@ export default function VardiyaCheckin() {
     );
   }
 
-  // NFC yöntemi seçilmişse NFC sayfasına yönlendir
-  if (method === "nfc") {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/nfc-giris';
+  // NFC yöntemi seçilmişse NFC UI'ı göster
+  const handleNFCScan = async () => {
+    try {
+      if (!nfcCardId.trim()) {
+        toast({
+          title: "Hata",
+          description: "Lütfen kart/RFID ID'sini girin",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const qrCode = `nfc:${nfcCardId}`;
+      
+      if (!activeAttendance) {
+        checkInMutation.mutate({ qrCode });
+      } else {
+        checkOutMutation.mutate({ qrCode });
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      toast({
+        title: "Hata",
+        description: err.message,
+        variant: "destructive",
+      });
     }
-    return null;
+  };
+
+  if (method === "nfc") {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>NFC/RFID Giriş</CardTitle>
+            <CardDescription>Kart ID'sini girin veya kartı okuyucuya yaklaştırın</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <input
+                ref={nfcCardInputRef}
+                type="text"
+                placeholder="Kart ID / RFID UID"
+                value={nfcCardId}
+                onChange={(e) => setNfcCardId(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleNFCScan()}
+                className="w-full px-3 py-2 border rounded-md bg-background"
+                autoFocus
+                data-testid="input-nfc-card-id"
+              />
+            </div>
+
+            {(capturedPhoto || location) && (
+              <div className="bg-green-50 dark:bg-green-950 p-3 rounded-md space-y-2">
+                {capturedPhoto && (
+                  <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Fotoğraf çekildi ✓</span>
+                  </div>
+                )}
+                {location && (
+                  <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
+                    <MapPin className="h-4 w-4" />
+                    <span>Konum alındı ✓</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Button
+              onClick={handleNFCScan}
+              disabled={checkInMutation.isPending || checkOutMutation.isPending}
+              className="w-full"
+              data-testid="button-nfc-submit"
+            >
+              {checkInMutation.isPending || checkOutMutation.isPending ? "İşleniyor..." : activeAttendance ? "Çıkış Yap" : "Giriş Yap"}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMethod(null);
+                setNfcCardId("");
+                setCapturedPhoto(null);
+                setLocation(null);
+              }}
+              className="w-full"
+              data-testid="button-back-to-method"
+            >
+              Geri
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
