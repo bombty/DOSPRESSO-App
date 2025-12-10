@@ -4372,11 +4372,14 @@ export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
 
 // Project Members - Proje ekip üyeleri
+// Roller: editor (düzenleme), contributor (görev ekleme), viewer (sadece görüntüleme), owner (tam yetki)
 export const projectMembers = pgTable("project_members", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  role: varchar("role", { length: 30 }).default("member"), // owner, lead, member, observer
+  role: varchar("role", { length: 30 }).default("contributor"), // owner, editor, contributor, viewer
+  canManageTeam: boolean("can_manage_team").default(false), // Ekip yönetim yetkisi
+  canDeleteTasks: boolean("can_delete_tasks").default(false), // Görev silme yetkisi
   joinedAt: timestamp("joined_at").defaultNow(),
   removedAt: timestamp("removed_at"),
 }, (table) => [
@@ -4394,10 +4397,38 @@ export const insertProjectMemberSchema = createInsertSchema(projectMembers).omit
 export type InsertProjectMember = z.infer<typeof insertProjectMemberSchema>;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 
-// Project Tasks - Proje görevleri
+// Project Milestones - Kilometre taşları
+export const projectMilestones = pgTable("project_milestones", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  dueDate: date("due_date"),
+  status: varchar("status", { length: 30 }).default("pending"), // pending, in_progress, completed
+  completedAt: timestamp("completed_at"),
+  colorHex: varchar("color_hex", { length: 7 }).default("#6366f1"),
+  orderIndex: integer("order_index").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("project_milestones_project_idx").on(table.projectId),
+  index("project_milestones_status_idx").on(table.status),
+]);
+
+export const insertProjectMilestoneSchema = createInsertSchema(projectMilestones).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export type InsertProjectMilestone = z.infer<typeof insertProjectMilestoneSchema>;
+export type ProjectMilestone = typeof projectMilestones.$inferSelect;
+
+// Project Tasks - Proje görevleri (enhanced with subtask & milestone support)
 export const projectTasks = pgTable("project_tasks", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  parentTaskId: integer("parent_task_id"), // Alt görev için üst görev ID'si
+  milestoneId: integer("milestone_id").references(() => projectMilestones.id, { onDelete: "set null" }),
   title: varchar("title", { length: 200 }).notNull(),
   description: text("description"),
   status: varchar("status", { length: 30 }).default("todo"), // todo, in_progress, review, done
@@ -4405,14 +4436,20 @@ export const projectTasks = pgTable("project_tasks", {
   assignedToId: varchar("assigned_to_id").references(() => users.id),
   createdById: varchar("created_by_id").notNull().references(() => users.id),
   dueDate: date("due_date"),
+  startDate: date("start_date"),
+  estimatedHours: integer("estimated_hours"),
+  actualHours: integer("actual_hours"),
   completedAt: timestamp("completed_at"),
   orderIndex: integer("order_index").default(0),
+  tags: text("tags").array(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("project_tasks_project_idx").on(table.projectId),
   index("project_tasks_assigned_idx").on(table.assignedToId),
   index("project_tasks_status_idx").on(table.status),
+  index("project_tasks_parent_idx").on(table.parentTaskId),
+  index("project_tasks_milestone_idx").on(table.milestoneId),
 ]);
 
 export const insertProjectTaskSchema = createInsertSchema(projectTasks).omit({
@@ -4424,6 +4461,27 @@ export const insertProjectTaskSchema = createInsertSchema(projectTasks).omit({
 
 export type InsertProjectTask = z.infer<typeof insertProjectTaskSchema>;
 export type ProjectTask = typeof projectTasks.$inferSelect;
+
+// Project Task Dependencies - Görev bağımlılıkları
+export const projectTaskDependencies = pgTable("project_task_dependencies", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => projectTasks.id, { onDelete: "cascade" }),
+  dependsOnTaskId: integer("depends_on_task_id").notNull().references(() => projectTasks.id, { onDelete: "cascade" }),
+  dependencyType: varchar("dependency_type", { length: 30 }).default("finish_to_start"), // finish_to_start, start_to_start, finish_to_finish
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("task_dependencies_task_idx").on(table.taskId),
+  index("task_dependencies_depends_on_idx").on(table.dependsOnTaskId),
+  unique("task_dependencies_unique").on(table.taskId, table.dependsOnTaskId),
+]);
+
+export const insertProjectTaskDependencySchema = createInsertSchema(projectTaskDependencies).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProjectTaskDependency = z.infer<typeof insertProjectTaskDependencySchema>;
+export type ProjectTaskDependency = typeof projectTaskDependencies.$inferSelect;
 
 // Project Comments - Proje timeline/yorumları
 export const projectComments = pgTable("project_comments", {

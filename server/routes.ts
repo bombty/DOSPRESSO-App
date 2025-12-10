@@ -107,10 +107,14 @@ import {
   projectMembers,
   projectTasks,
   projectComments,
+  projectMilestones,
+  projectTaskDependencies,
   insertProjectSchema,
   insertProjectMemberSchema,
   insertProjectTaskSchema,
   insertProjectCommentSchema,
+  insertProjectMilestoneSchema,
+  insertProjectTaskDependencySchema,
   insertRecipeSchema,
   insertRecipeVersionSchema,
   insertRecipeCategorySchema,
@@ -12273,6 +12277,317 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json({ ...comment, user: commentUser });
     } catch (error) {
       console.error("Add project comment error:", error);
+      res.status(500).json({ message: "Yorum eklenemedi" });
+    }
+  });
+
+  // ========================================
+  // PROJECT MILESTONES
+  // ========================================
+  
+  // GET /api/projects/:id/milestones - Get project milestones
+  app.get('/api/projects/:id/milestones', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const milestones = await db.select()
+        .from(projectMilestones)
+        .where(eq(projectMilestones.projectId, parseInt(id)))
+        .orderBy(projectMilestones.orderIndex, projectMilestones.dueDate);
+      
+      res.json(milestones);
+    } catch (error) {
+      console.error("Get project milestones error:", error);
+      res.status(500).json({ message: "Kilometre taşları alınamadı" });
+    }
+  });
+
+  // POST /api/projects/:id/milestones - Create milestone
+  app.post('/api/projects/:id/milestones', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const data = insertProjectMilestoneSchema.parse({
+        ...req.body,
+        projectId: parseInt(id),
+      });
+      
+      const [milestone] = await db.insert(projectMilestones).values(data).returning();
+      
+      res.status(201).json(milestone);
+    } catch (error) {
+      console.error("Create milestone error:", error);
+      res.status(500).json({ message: "Kilometre taşı oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/milestones/:id - Update milestone
+  app.patch('/api/milestones/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = { ...req.body };
+      
+      if (updateData.status === 'completed' && !updateData.completedAt) {
+        updateData.completedAt = new Date();
+      }
+      
+      const [updated] = await db.update(projectMilestones)
+        .set(updateData)
+        .where(eq(projectMilestones.id, parseInt(id)))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update milestone error:", error);
+      res.status(500).json({ message: "Kilometre taşı güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/milestones/:id - Delete milestone
+  app.delete('/api/milestones/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      await db.delete(projectMilestones).where(eq(projectMilestones.id, parseInt(id)));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete milestone error:", error);
+      res.status(500).json({ message: "Kilometre taşı silinemedi" });
+    }
+  });
+
+  // ========================================
+  // SUBTASKS (Tasks with parentTaskId)
+  // ========================================
+  
+  // GET /api/project-tasks/:id/subtasks - Get subtasks of a task
+  app.get('/api/project-tasks/:id/subtasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const subtasks = await db.select({
+        task: projectTasks,
+        assignee: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+        .from(projectTasks)
+        .leftJoin(users, eq(projectTasks.assignedToId, users.id))
+        .where(eq(projectTasks.parentTaskId, parseInt(id)))
+        .orderBy(projectTasks.orderIndex);
+      
+      res.json(subtasks.map(s => ({ ...s.task, assignee: s.assignee })));
+    } catch (error) {
+      console.error("Get subtasks error:", error);
+      res.status(500).json({ message: "Alt görevler alınamadı" });
+    }
+  });
+
+  // POST /api/project-tasks/:id/subtasks - Create subtask
+  app.post('/api/project-tasks/:id/subtasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+      
+      // Get parent task to get projectId
+      const [parentTask] = await db.select().from(projectTasks).where(eq(projectTasks.id, parseInt(id)));
+      if (!parentTask) {
+        return res.status(404).json({ message: "Ana görev bulunamadı" });
+      }
+      
+      const data = insertProjectTaskSchema.parse({
+        ...req.body,
+        projectId: parentTask.projectId,
+        parentTaskId: parseInt(id),
+        createdById: user.id,
+      });
+      
+      const [subtask] = await db.insert(projectTasks).values(data).returning();
+      
+      res.status(201).json(subtask);
+    } catch (error) {
+      console.error("Create subtask error:", error);
+      res.status(500).json({ message: "Alt görev oluşturulamadı" });
+    }
+  });
+
+  // ========================================
+  // TASK DEPENDENCIES
+  // ========================================
+  
+  // GET /api/project-tasks/:id/dependencies - Get task dependencies
+  app.get('/api/project-tasks/:id/dependencies', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const dependencies = await db.select({
+        dependency: projectTaskDependencies,
+        dependsOnTask: {
+          id: projectTasks.id,
+          title: projectTasks.title,
+          status: projectTasks.status,
+        },
+      })
+        .from(projectTaskDependencies)
+        .innerJoin(projectTasks, eq(projectTaskDependencies.dependsOnTaskId, projectTasks.id))
+        .where(eq(projectTaskDependencies.taskId, parseInt(id)));
+      
+      res.json(dependencies.map(d => ({ ...d.dependency, dependsOnTask: d.dependsOnTask })));
+    } catch (error) {
+      console.error("Get dependencies error:", error);
+      res.status(500).json({ message: "Bağımlılıklar alınamadı" });
+    }
+  });
+
+  // POST /api/project-tasks/:id/dependencies - Add dependency
+  app.post('/api/project-tasks/:id/dependencies', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { dependsOnTaskId, dependencyType } = req.body;
+      
+      // Prevent self-dependency
+      if (parseInt(id) === dependsOnTaskId) {
+        return res.status(400).json({ message: "Görev kendisine bağımlı olamaz" });
+      }
+      
+      const data = insertProjectTaskDependencySchema.parse({
+        taskId: parseInt(id),
+        dependsOnTaskId,
+        dependencyType: dependencyType || 'finish_to_start',
+      });
+      
+      const [dependency] = await db.insert(projectTaskDependencies).values(data).returning();
+      
+      res.status(201).json(dependency);
+    } catch (error) {
+      console.error("Add dependency error:", error);
+      res.status(500).json({ message: "Bağımlılık eklenemedi" });
+    }
+  });
+
+  // DELETE /api/task-dependencies/:id - Remove dependency
+  app.delete('/api/task-dependencies/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      await db.delete(projectTaskDependencies).where(eq(projectTaskDependencies.id, parseInt(id)));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete dependency error:", error);
+      res.status(500).json({ message: "Bağımlılık silinemedi" });
+    }
+  });
+
+  // ========================================
+  // TASK DETAILS (Single task with all relations)
+  // ========================================
+  
+  // GET /api/project-tasks/:id - Get task with details
+  app.get('/api/project-tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const [taskData] = await db.select({
+        task: projectTasks,
+        assignee: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+        .from(projectTasks)
+        .leftJoin(users, eq(projectTasks.assignedToId, users.id))
+        .where(eq(projectTasks.id, parseInt(id)));
+      
+      if (!taskData) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      // Get subtasks
+      const subtasks = await db.select()
+        .from(projectTasks)
+        .where(eq(projectTasks.parentTaskId, parseInt(id)));
+      
+      // Get dependencies
+      const dependencies = await db.select({
+        dependency: projectTaskDependencies,
+        dependsOnTask: {
+          id: projectTasks.id,
+          title: projectTasks.title,
+          status: projectTasks.status,
+        },
+      })
+        .from(projectTaskDependencies)
+        .innerJoin(projectTasks, eq(projectTaskDependencies.dependsOnTaskId, projectTasks.id))
+        .where(eq(projectTaskDependencies.taskId, parseInt(id)));
+      
+      // Get comments
+      const comments = await db.select({
+        comment: projectComments,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+        .from(projectComments)
+        .innerJoin(users, eq(projectComments.userId, users.id))
+        .where(eq(projectComments.taskId, parseInt(id)))
+        .orderBy(projectComments.createdAt);
+      
+      res.json({
+        ...taskData.task,
+        assignee: taskData.assignee,
+        subtasks,
+        dependencies: dependencies.map(d => ({ ...d.dependency, dependsOnTask: d.dependsOnTask })),
+        comments: comments.map(c => ({ ...c.comment, user: c.user })),
+      });
+    } catch (error) {
+      console.error("Get task details error:", error);
+      res.status(500).json({ message: "Görev detayları alınamadı" });
+    }
+  });
+
+  // POST /api/project-tasks/:id/comments - Add comment to task
+  app.post('/api/project-tasks/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+      
+      // Get task to get projectId
+      const [task] = await db.select().from(projectTasks).where(eq(projectTasks.id, parseInt(id)));
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      const data = insertProjectCommentSchema.parse({
+        ...req.body,
+        projectId: task.projectId,
+        taskId: parseInt(id),
+        userId: user.id,
+        isSystemMessage: false,
+      });
+      
+      const [comment] = await db.insert(projectComments).values(data).returning();
+      
+      // Get user info for response
+      const [commentUser] = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      }).from(users).where(eq(users.id, user.id));
+      
+      res.status(201).json({ ...comment, user: commentUser });
+    } catch (error) {
+      console.error("Add task comment error:", error);
       res.status(500).json({ message: "Yorum eklenemedi" });
     }
   });
