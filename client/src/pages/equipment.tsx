@@ -565,19 +565,20 @@ export default function Equipment() {
 
       {/* Edit Equipment Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent data-testid="dialog-edit-equipment" className="max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent data-testid="dialog-edit-equipment" className="max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Ekipman Düzenle</DialogTitle>
             <DialogDescription>
               Ekipman bilgilerini güncelleyin
             </DialogDescription>
           </DialogHeader>
+          <div className="flex-1 overflow-y-auto max-h-[60vh] pr-2">
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit((data) => {
               if (editingEquipment) {
                 updateMutation.mutate({ id: editingEquipment.id, data });
               }
-            })} className="w-full space-y-2 sm:space-y-3 flex-1 overflow-y-auto pr-2">
+            })} className="w-full space-y-2 sm:space-y-3">
               <FormField
                 control={editForm.control}
                 name="equipmentType"
@@ -881,7 +882,7 @@ export default function Equipment() {
                 </div>
               )}
               
-              <DialogFooter>
+              <DialogFooter className="pt-4">
                 <Button
                   type="button"
                   variant="outline"
@@ -900,6 +901,7 @@ export default function Equipment() {
               </DialogFooter>
             </form>
           </Form>
+          </div>
         </DialogContent>
       </Dialog>
 
