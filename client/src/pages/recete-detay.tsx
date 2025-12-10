@@ -159,18 +159,38 @@ export default function ReceteDetay() {
           </Card>
         )}
 
+        {/* Compact Metadata Summary */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="p-2 rounded-lg border bg-card">
+            <span className="text-muted-foreground">Kod</span>
+            <p className="font-medium mt-1">{recipe.code}</p>
+          </div>
+          <div className="p-2 rounded-lg border bg-card">
+            <span className="text-muted-foreground">Süre</span>
+            <p className="font-medium mt-1">{recipe.estimatedMinutes} dk</p>
+          </div>
+          <div className="p-2 rounded-lg border bg-card">
+            <span className="text-muted-foreground">Zorluk</span>
+            <div className="mt-1">{getDifficultyBadge(recipe.difficulty)}</div>
+          </div>
+          <div className="p-2 rounded-lg border bg-card">
+            <span className="text-muted-foreground">Versiyon</span>
+            <p className="font-medium mt-1">v{version?.versionNumber || 1}</p>
+          </div>
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="ingredients" data-testid="tab-ingredients">
-              <Beaker className="w-4 h-4 mr-1" />
+          <TabsList className="flex flex-wrap gap-1 h-auto p-1">
+            <TabsTrigger value="ingredients" data-testid="tab-ingredients" className="text-xs px-2 py-1.5">
+              <Beaker className="w-3 h-3 mr-1" />
               Malzemeler
             </TabsTrigger>
-            <TabsTrigger value="steps" data-testid="tab-steps">
-              <ListCheck className="w-4 h-4 mr-1" />
+            <TabsTrigger value="steps" data-testid="tab-steps" className="text-xs px-2 py-1.5">
+              <ListCheck className="w-3 h-3 mr-1" />
               Adımlar
             </TabsTrigger>
-            <TabsTrigger value="info" data-testid="tab-info">
-              <AlertTriangle className="w-4 h-4 mr-1" />
+            <TabsTrigger value="info" data-testid="tab-info" className="text-xs px-2 py-1.5">
+              <AlertTriangle className="w-3 h-3 mr-1" />
               Bilgi
             </TabsTrigger>
           </TabsList>

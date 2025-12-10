@@ -82,13 +82,13 @@ export default function GorevDetay() {
   });
 
   const { data: completedByUser } = useQuery<UserType>({
-    queryKey: ["/api/users", task?.completedById],
+    queryKey: ["/api/users", task?.statusUpdatedById],
     queryFn: async () => {
-      const response = await fetch(`/api/users/${task!.completedById}`);
+      const response = await fetch(`/api/users/${task!.statusUpdatedById}`);
       if (!response.ok) return null;
       return response.json();
     },
-    enabled: !!task?.completedById,
+    enabled: !!task?.statusUpdatedById && task?.status === "onaylandi",
   });
 
   const { data: taskHistory } = useQuery<TaskStatusHistory[]>({
@@ -287,6 +287,38 @@ export default function GorevDetay() {
             Görülmedi
           </Badge>
         )}
+      </div>
+
+      {/* Compact Summary Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        <div className="p-2 rounded-lg border bg-card">
+          <span className="text-muted-foreground">Durum</span>
+          <div className="mt-1">
+            <Badge variant={task.status === "onaylandi" ? "default" : task.status === "basarisiz" ? "destructive" : "secondary"} className="text-xs">
+              {statusLabels[task.status] || task.status}
+            </Badge>
+          </div>
+        </div>
+        <div className="p-2 rounded-lg border bg-card">
+          <span className="text-muted-foreground">Öncelik</span>
+          <div className="mt-1">
+            <Badge variant="outline" className="text-xs">
+              {priorityLabels[task.priority || "orta"] || task.priority}
+            </Badge>
+          </div>
+        </div>
+        <div className="p-2 rounded-lg border bg-card">
+          <span className="text-muted-foreground">Son Tarih</span>
+          <p className="font-medium mt-1">
+            {task.dueDate ? new Date(task.dueDate).toLocaleDateString("tr-TR") : "-"}
+          </p>
+        </div>
+        <div className="p-2 rounded-lg border bg-card">
+          <span className="text-muted-foreground">Atayan</span>
+          <p className="font-medium mt-1 truncate">
+            {assignedByUser ? `${assignedByUser.firstName} ${assignedByUser.lastName}` : "-"}
+          </p>
+        </div>
       </div>
 
       {/* Preview & Action Section */}
@@ -568,7 +600,7 @@ export default function GorevDetay() {
                     <StarRating 
                       value={ratingData.finalRating} 
                       readonly 
-                      size="xs"
+                      size="sm"
                     />
                     <span className="font-medium">{ratingData.finalRating}/5</span>
                     {ratingData.penaltyApplied === 1 && (
