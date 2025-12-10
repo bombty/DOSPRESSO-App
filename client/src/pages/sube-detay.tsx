@@ -244,6 +244,12 @@ export default function SubeDetayPage() {
     setShowCards(false);
   };
 
+  // Handle tab change - hide cards when switching tabs
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setShowCards(false);
+  };
+
   return (
     <div className="flex flex-col gap-2 sm:gap-3 p-3">
       {/* Header with Branch Name */}
@@ -267,7 +273,7 @@ export default function SubeDetayPage() {
       </div>
 
       {/* Tabs - directly under header */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="w-full flex flex-wrap gap-1 h-auto p-1">
           {canViewActive && (
             <TabsTrigger value="canlı" data-testid="tab-active-employees">
@@ -287,7 +293,7 @@ export default function SubeDetayPage() {
 
         {/* Compact KPI Cards - 3 columns, clickable, hide on click */}
         {showCards && (
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-2">
             <button 
               type="button"
               onClick={() => handleCardClick("personel")}
