@@ -64,6 +64,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -71,6 +77,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   UserPlus,
+  UserMinus,
   Edit,
   AlertTriangle,
   Eye,
@@ -170,6 +177,20 @@ export default function IKPage() {
   const { data: employees = [], isLoading } = useQuery<User[]>({
     queryKey: employeesQueryKey,
     enabled: !!user,
+  });
+
+  // Fetch terminated employees (ayrılan personeller)
+  const terminatedQueryKey = useMemo(() => {
+    const baseUrl = '/api/employees/terminated';
+    if (user?.role && isHQRole(user.role as any) && branchFilter !== "all") {
+      return [`${baseUrl}?branchId=${branchFilter}`];
+    }
+    return [baseUrl];
+  }, [user?.role, branchFilter]);
+
+  const { data: terminatedEmployees = [], isLoading: isTerminatedLoading } = useQuery<User[]>({
+    queryKey: terminatedQueryKey,
+    enabled: !!user && (isHQRole(user.role as any) || user.role === 'admin'),
   });
 
   // Fetch training progress summary for all users
@@ -512,30 +533,49 @@ export default function IKPage() {
             </AccordionTrigger>
             <AccordionContent>
               <CardContent className="w-full space-y-3 sm:space-y-4">
-                {/* Filters Card */}
-                <Card className="bg-muted/30 border-dashed">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      Filtreler
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                    {/* Category filter - Şubeler/HQ/Fabrika */}
-                    <div>
-                      <label className="text-sm font-medium">Kategori *</label>
-                      <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                        <SelectTrigger data-testid="select-category-filter" className="h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tümü</SelectItem>
-                          <SelectItem value="subeler">Şubeler</SelectItem>
-                          <SelectItem value="hq">HQ</SelectItem>
-                          <SelectItem value="fabrika">Fabrika</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                {/* Tabs for Active/Terminated Employees */}
+                <Tabs defaultValue="active" className="w-full">
+                  <TabsList className={`grid w-full max-w-md ${(isHQRole(user?.role as any) || user?.role === 'admin') ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    <TabsTrigger value="active" data-testid="tab-active-employees" className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Aktif Personel
+                      <Badge variant="secondary" className="ml-1">{filteredEmployees.length}</Badge>
+                    </TabsTrigger>
+                    {(isHQRole(user?.role as any) || user?.role === 'admin') && (
+                      <TabsTrigger value="terminated" data-testid="tab-terminated-employees" className="flex items-center gap-2">
+                        <UserMinus className="h-4 w-4" />
+                        Ayrılan Personel
+                        <Badge variant="outline" className="ml-1">{terminatedEmployees.length}</Badge>
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+
+                  {/* Active Employees Tab */}
+                  <TabsContent value="active" className="space-y-4 mt-4">
+                    {/* Filters Card */}
+                    <Card className="bg-muted/30 border-dashed">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Filter className="h-4 w-4" />
+                          Filtreler
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                        {/* Category filter - Şubeler/HQ/Fabrika */}
+                        <div>
+                          <label className="text-sm font-medium">Kategori *</label>
+                          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                            <SelectTrigger data-testid="select-category-filter" className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tümü</SelectItem>
+                              <SelectItem value="subeler">Şubeler</SelectItem>
+                              <SelectItem value="hq">HQ</SelectItem>
+                              <SelectItem value="fabrika">Fabrika</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
 
                     {/* Branch filter - only for HQ users */}
                     {user?.role && isHQRole(user.role as any) && (
@@ -805,9 +845,109 @@ export default function IKPage() {
                           );
                         })
                       )}
-                    </TableBody>
-                  </Table>
-                )}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </TabsContent>
+
+                  {/* Terminated Employees Tab */}
+                  <TabsContent value="terminated" className="space-y-4 mt-4">
+                    {isTerminatedLoading ? (
+                      <div className="flex flex-col gap-2 sm:gap-3">
+                        {[...Array(5)].map((_, i) => (
+                          <Skeleton key={i} className="h-16 w-full" />
+                        ))}
+                      </div>
+                    ) : terminatedEmployees.length === 0 ? (
+                      <Card className="p-8 text-center">
+                        <UserMinus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-lg font-medium">Ayrılan Personel Yok</p>
+                        <p className="text-sm text-muted-foreground">İşten ayrılan personel kaydı bulunmuyor.</p>
+                      </Card>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Ad Soyad</TableHead>
+                            <TableHead>TCKN</TableHead>
+                            <TableHead>Departman</TableHead>
+                            <TableHead>Son Rol</TableHead>
+                            <TableHead>Son Şube</TableHead>
+                            <TableHead>İşe Giriş</TableHead>
+                            <TableHead>İşten Ayrılış</TableHead>
+                            <TableHead>Ayrılma Nedeni</TableHead>
+                            <TableHead>İletişim</TableHead>
+                            <TableHead className="text-right">İşlemler</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {terminatedEmployees.map((employee) => {
+                            const branch = branches.find((b) => b.id === employee.branchId);
+                            return (
+                              <TableRow key={employee.id} data-testid={`row-terminated-${employee.id}`} className="bg-muted/30">
+                                <TableCell className="font-medium">
+                                  {employee.firstName} {employee.lastName}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {(employee as any).tckn || "-"}
+                                </TableCell>
+                                <TableCell>
+                                  {(employee as any).department ? (
+                                    <Badge variant="outline">{(employee as any).department}</Badge>
+                                  ) : "-"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary">{roleLabels[employee.role] || employee.role}</Badge>
+                                </TableCell>
+                                <TableCell>{branch?.name || "-"}</TableCell>
+                                <TableCell>
+                                  {employee.hireDate ? (
+                                    <div className="flex items-center gap-1">
+                                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                                      {format(new Date(employee.hireDate), "dd.MM.yyyy")}
+                                    </div>
+                                  ) : "-"}
+                                </TableCell>
+                                <TableCell>
+                                  {(employee as any).leaveStartDate ? (
+                                    <div className="flex items-center gap-1">
+                                      <Calendar className="h-4 w-4 text-destructive" />
+                                      <span className="text-destructive font-medium">
+                                        {format(new Date((employee as any).leaveStartDate), "dd.MM.yyyy")}
+                                      </span>
+                                    </div>
+                                  ) : "-"}
+                                </TableCell>
+                                <TableCell className="max-w-[200px] truncate">
+                                  <span className="text-sm text-muted-foreground" title={(employee as any).leaveReason || ""}>
+                                    {(employee as any).leaveReason || "-"}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  <div>{employee.phoneNumber || "-"}</div>
+                                  <div className="text-muted-foreground">{employee.email || "-"}</div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex gap-2 justify-end">
+                                    <Link href={`/personel-detay/${employee.id}`}>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        data-testid={`button-detail-terminated-${employee.id}`}
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                      </Button>
+                                    </Link>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </AccordionContent>
           </Card>
