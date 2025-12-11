@@ -66,12 +66,44 @@ import {
 import type { ProjectPhase, ProjectBudgetLine, ProjectVendor, ProjectRisk, PhaseSubTask, PhaseAssignment, ProcurementItem, ProcurementProposal } from "@shared/schema";
 
 const phaseFormSchema = z.object({
+  title: z.string().min(1, "Faz adı zorunludur"),
+  colorHex: z.string().default("#6366f1"),
   status: z.string().min(1, "Durum seçilmelidir"),
   progress: z.number().min(0).max(100),
   targetDate: z.string().optional(),
 });
 
 type PhaseFormValues = z.infer<typeof phaseFormSchema>;
+
+const newPhaseFormSchema = z.object({
+  title: z.string().min(1, "Faz adı zorunludur"),
+  phaseType: z.string().min(1, "Faz tipi seçilmelidir"),
+  colorHex: z.string().default("#6366f1"),
+  targetDate: z.string().optional(),
+});
+
+type NewPhaseFormValues = z.infer<typeof newPhaseFormSchema>;
+
+const phaseTypeLabels: Record<string, string> = {
+  company_setup: "Şirket Kurulumu",
+  contract_legal: "Sözleşme & Hukuki",
+  construction: "İnşaat",
+  equipment: "Ekipman",
+  payments: "Ödemeler",
+  staffing: "Kadro",
+  training_opening: "Eğitim & Açılış",
+  custom: "Özel",
+};
+
+const colorPresets = [
+  { value: "#6366f1", label: "Indigo" },
+  { value: "#3b82f6", label: "Mavi" },
+  { value: "#10b981", label: "Yeşil" },
+  { value: "#f59e0b", label: "Amber" },
+  { value: "#ef4444", label: "Kırmızı" },
+  { value: "#8b5cf6", label: "Mor" },
+  { value: "#ec4899", label: "Pembe" },
+];
 
 const budgetFormSchema = z.object({
   category: z.string().min(1, "Kategori seçilmelidir"),
@@ -360,6 +392,7 @@ export default function YeniSubeDetay() {
   const [activeTab, setActiveTab] = useState("overview");
   const [editingPhase, setEditingPhase] = useState<ProjectPhase | null>(null);
   const [isPhaseDialogOpen, setIsPhaseDialogOpen] = useState(false);
+  const [isAddPhaseDialogOpen, setIsAddPhaseDialogOpen] = useState(false);
   
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<ProjectBudgetLine | null>(null);
@@ -382,8 +415,20 @@ export default function YeniSubeDetay() {
   const phaseForm = useForm<PhaseFormValues>({
     resolver: zodResolver(phaseFormSchema),
     defaultValues: {
+      title: "",
+      colorHex: "#6366f1",
       status: "not_started",
       progress: 0,
+      targetDate: "",
+    },
+  });
+
+  const newPhaseForm = useForm<NewPhaseFormValues>({
+    resolver: zodResolver(newPhaseFormSchema),
+    defaultValues: {
+      title: "",
+      phaseType: "",
+      colorHex: "#6366f1",
       targetDate: "",
     },
   });
@@ -463,6 +508,8 @@ export default function YeniSubeDetay() {
   useEffect(() => {
     if (editingPhase) {
       phaseForm.reset({
+        title: editingPhase.title || "",
+        colorHex: editingPhase.colorHex || "#6366f1",
         status: editingPhase.status || "not_started",
         progress: editingPhase.progress || 0,
         targetDate: editingPhase.targetDate || "",
@@ -584,6 +631,22 @@ export default function YeniSubeDetay() {
     },
     onError: () => {
       toast({ title: "Hata", description: "Faz güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  const addPhaseMutation = useMutation({
+    mutationFn: async (data: NewPhaseFormValues) => {
+      const res = await apiRequest("POST", `/api/new-shop-projects/${projectId}/phases`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId] });
+      setIsAddPhaseDialogOpen(false);
+      newPhaseForm.reset();
+      toast({ title: "Faz eklendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Faz eklenemedi", variant: "destructive" });
     },
   });
 
@@ -847,10 +910,16 @@ export default function YeniSubeDetay() {
     if (!editingPhase) return;
     updatePhaseMutation.mutate({
       id: editingPhase.id,
+      title: data.title,
+      colorHex: data.colorHex,
       status: data.status,
       progress: data.progress,
       targetDate: data.targetDate || undefined,
     });
+  };
+
+  const onSubmitNewPhase = (data: NewPhaseFormValues) => {
+    addPhaseMutation.mutate(data);
   };
 
   const handleEditBudget = (budget: ProjectBudgetLine) => {
@@ -1106,7 +1175,13 @@ export default function YeniSubeDetay() {
         <TabsContent value="overview" className="space-y-4" data-testid="tab-content-overview">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Proje Fazları</h3>
-            <p className="text-sm text-muted-foreground">Düzenlemek için faza tıklayın</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">Düzenlemek için faza tıklayın</p>
+              <Button size="sm" onClick={() => setIsAddPhaseDialogOpen(true)} data-testid="button-add-phase">
+                <Plus className="h-4 w-4 mr-1" />
+                Faz Ekle
+              </Button>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" data-testid="grid-phases">
@@ -1583,6 +1658,44 @@ export default function YeniSubeDetay() {
               <TabsContent value="general" className="space-y-4 m-0" data-testid="tab-content-phase-general">
                 <Form {...phaseForm}>
                   <form onSubmit={phaseForm.handleSubmit(onSubmitPhase)} className="space-y-4" data-testid="form-phase-edit">
+                    <FormField
+                      control={phaseForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Faz Adı</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Faz adını girin" data-testid="input-phase-title" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={phaseForm.control}
+                      name="colorHex"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Renk</FormLabel>
+                          <div className="flex gap-2">
+                            {colorPresets.map((color) => (
+                              <button
+                                key={color.value}
+                                type="button"
+                                className={`w-8 h-8 rounded-md border-2 ${field.value === color.value ? 'border-foreground' : 'border-transparent'}`}
+                                style={{ backgroundColor: color.value }}
+                                onClick={() => field.onChange(color.value)}
+                                title={color.label}
+                                data-testid={`color-preset-${color.value.replace('#', '')}`}
+                              />
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <FormField
                       control={phaseForm.control}
                       name="status"
@@ -2796,6 +2909,104 @@ export default function YeniSubeDetay() {
                   data-testid="button-save-risk"
                 >
                   {addRiskMutation.isPending || updateRiskMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddPhaseDialogOpen} onOpenChange={setIsAddPhaseDialogOpen}>
+        <DialogContent className="max-w-md" data-testid="dialog-add-phase">
+          <DialogHeader>
+            <DialogTitle>Yeni Faz Ekle</DialogTitle>
+            <DialogDescription>Projeye yeni bir faz ekleyin</DialogDescription>
+          </DialogHeader>
+          <Form {...newPhaseForm}>
+            <form onSubmit={newPhaseForm.handleSubmit(onSubmitNewPhase)} className="space-y-4" data-testid="form-add-phase">
+              <FormField
+                control={newPhaseForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Faz Adı</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Faz adını girin" data-testid="input-new-phase-title" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={newPhaseForm.control}
+                name="phaseType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Faz Tipi</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-new-phase-type">
+                          <SelectValue placeholder="Faz tipi seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(phaseTypeLabels).map(([value, label]) => (
+                          <SelectItem key={value} value={value} data-testid={`select-item-phase-type-${value}`}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={newPhaseForm.control}
+                name="colorHex"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Renk</FormLabel>
+                    <div className="flex gap-2">
+                      {colorPresets.map((color) => (
+                        <button
+                          key={color.value}
+                          type="button"
+                          className={`w-8 h-8 rounded-md border-2 ${field.value === color.value ? 'border-foreground' : 'border-transparent'}`}
+                          style={{ backgroundColor: color.value }}
+                          onClick={() => field.onChange(color.value)}
+                          title={color.label}
+                          data-testid={`new-phase-color-preset-${color.value.replace('#', '')}`}
+                        />
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={newPhaseForm.control}
+                name="targetDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hedef Tarih</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="input-new-phase-target-date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsAddPhaseDialogOpen(false)} data-testid="button-cancel-add-phase">
+                  İptal
+                </Button>
+                <Button type="submit" disabled={addPhaseMutation.isPending} data-testid="button-save-new-phase">
+                  {addPhaseMutation.isPending ? "Ekleniyor..." : "Ekle"}
                 </Button>
               </DialogFooter>
             </form>

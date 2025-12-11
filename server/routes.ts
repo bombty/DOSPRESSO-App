@@ -13682,6 +13682,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/new-shop-projects/:projectId/phases - Create new phase
+  app.post('/api/new-shop-projects/:projectId/phases', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.projectId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      // Validate the project exists
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+      if (!project) {
+        return res.status(404).json({ message: "Proje bulunamadı" });
+      }
+      
+      // Get max order index for the project
+      const existingPhases = await db.select().from(projectPhases)
+        .where(eq(projectPhases.projectId, projectId));
+      const maxOrderIndex = existingPhases.reduce((max, p) => Math.max(max, p.orderIndex || 0), 0);
+      
+      const phaseData = insertProjectPhaseSchema.parse({
+        projectId,
+        title: req.body.title,
+        phaseType: req.body.phaseType || 'custom',
+        colorHex: req.body.colorHex || '#6366f1',
+        targetDate: req.body.targetDate || null,
+        orderIndex: req.body.orderIndex ?? maxOrderIndex + 1,
+        status: 'not_started',
+        progress: 0,
+      });
+      
+      const [newPhase] = await db.insert(projectPhases).values(phaseData).returning();
+      res.status(201).json(newPhase);
+    } catch (error) {
+      console.error("Create phase error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Faz oluşturulamadı" });
+    }
+  });
+
   // ---- Budget Lines ----
   
   // GET /api/projects/:id/budget - Get budget lines
