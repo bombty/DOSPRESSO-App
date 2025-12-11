@@ -14103,10 +14103,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         children: tasks.filter(t => t.parentId === cat.id).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
       }));
       
-      // Also include orphan tasks (tasks without a category parent)
-      const orphanTasks = tasks.filter(t => !t.parentId || !categories.find(c => c.id === t.parentId));
-      
-      res.json({ categories: nestedResult, orphanTasks, all: subtasks });
+      // Return all subtasks as flat array - frontend handles categorization
+      res.json(subtasks);
     } catch (error) {
       console.error("Get phase subtasks error:", error);
       res.status(500).json({ message: "Alt görevler alınamadı" });
