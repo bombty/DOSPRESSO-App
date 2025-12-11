@@ -6,7 +6,20 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Session Summary (Dec 10, 2025 - Evening)
+## Recent Session Summary (Dec 11, 2025)
+✅ **New Shop Opening Management System** - Comprehensive 7-phase workflow tracking for franchise openings:
+  - Phase Sub-Tasks: Hierarchical task tree with categories (Mobilya → Masa, Sandalye, etc.)
+  - RACI Team Assignments: Responsible, Accountable, Consulted, Informed role matrix
+  - Procurement/Bidding System: Vendor proposals, price comparison, winner selection
+  - Enhanced Phase Modal: 4-tab interface (Genel, Görevler, Ekip, Tedarik)
+  - Database Tables: phase_assignments, phase_sub_tasks, procurement_items, procurement_proposals
+  - 19 New API Endpoints: Full CRUD for subtasks, assignments, and procurement
+
+**Routes Added:**
+- /projeler - Tabbed projects page with "Tüm Projeler" and "Yeni Şube Açılış" tabs
+- /yeni-sube-detay/:id - Project detail with enhanced phase management
+
+## Previous Session (Dec 10, 2025 - Evening)
 ✅ **Equipment Model Number** - Added model number field to equipment create and edit forms
 ✅ **Equipment Service Contact Management** - HQ-only service company contact info fields (name, phone, email, address, handled-by) in equipment edit form
 ✅ **Professional Fault Report Export** - PDF generation with DOSPRESSO branding + copy to clipboard functionality
