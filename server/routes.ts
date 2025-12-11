@@ -151,7 +151,7 @@ import {
   insertProcurementProposalSchema,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNull, isNotNull, inArray } from "drizzle-orm";
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
@@ -13594,6 +13594,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(projectPhases.projectId, projectId))
         .orderBy(projectPhases.orderIndex);
       
+      // Get all phase assignments for this project
+      const phaseIds = phases.map(p => p.id);
+      let fetchedAssignments: any[] = [];
+      if (phaseIds.length > 0) {
+        fetchedAssignments = await db.select({
+          assignment: phaseAssignments,
+          user: {
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+          }
+        })
+          .from(phaseAssignments)
+          .leftJoin(users, eq(phaseAssignments.userId, users.id))
+          .where(inArray(phaseAssignments.phaseId, phaseIds));
+      }
+
+      // Group assignments by phase
+      const phasesWithAssignments = phases.map(phase => ({
+        ...phase,
+        assignments: fetchedAssignments.filter(a => a.assignment.phaseId === phase.id).map(a => ({
+          ...a.assignment,
+          user: a.user,
+        })),
+      }));
+      
       // Get budget summary
       const budgetLines = await db.select().from(projectBudgetLines)
         .where(eq(projectBudgetLines.projectId, projectId));
@@ -13621,7 +13647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         ...project,
         owner,
-        phases,
+        phases: phasesWithAssignments,
         budgetLines,
         budgetSummary: { totalPlanned, totalActual, totalPaid, variance: totalPlanned - totalActual },
         vendors,

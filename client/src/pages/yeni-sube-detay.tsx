@@ -220,6 +220,10 @@ interface ProcurementItemWithSubTask {
   subTask: PhaseSubTask;
 }
 
+interface PhaseWithAssignments extends ProjectPhase {
+  assignments?: (PhaseAssignment & { user?: { id: string; firstName: string; lastName: string } })[];
+}
+
 interface ProjectWithDetails {
   id: number;
   title: string;
@@ -232,7 +236,7 @@ interface ProjectWithDetails {
   franchiseePhone?: string;
   franchiseeEmail?: string;
   createdAt: string;
-  phases: ProjectPhase[];
+  phases: PhaseWithAssignments[];
   budgetLines: ProjectBudgetLine[];
   vendors: ProjectVendor[];
   risks: ProjectRisk[];
@@ -311,7 +315,7 @@ function formatCurrency(amount: number | null | undefined): string {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount);
 }
 
-function PhaseCard({ phase, onEdit }: { phase: ProjectPhase; onEdit: (phase: ProjectPhase) => void }) {
+function PhaseCard({ phase, onEdit }: { phase: PhaseWithAssignments; onEdit: (phase: ProjectPhase) => void }) {
   const Icon = phaseIcons[phase.phaseType as string] || Building2;
   const statusConfig = phaseStatusConfig[phase.status || "not_started"];
   const StatusIcon = phase.status === "completed" ? CheckCircle2 : 
@@ -353,6 +357,34 @@ function PhaseCard({ phase, onEdit }: { phase: ProjectPhase; onEdit: (phase: Pro
           <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
             <span data-testid={`text-phase-date-${phase.id}`}>{format(new Date(phase.targetDate), "d MMM yyyy", { locale: tr })}</span>
+          </div>
+        )}
+
+        {phase.assignments && phase.assignments.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-border">
+            <div className="flex flex-wrap gap-1">
+              {phase.assignments
+                .filter(a => a.raciRole === 'responsible' || a.raciRole === 'accountable')
+                .slice(0, 3)
+                .map(a => (
+                  <Badge 
+                    key={a.id} 
+                    variant="outline" 
+                    className="text-xs"
+                    data-testid={`badge-assignment-${a.id}`}
+                  >
+                    <span className={`font-bold mr-1 ${a.raciRole === 'responsible' ? 'text-blue-500' : 'text-green-500'}`}>
+                      {a.raciRole === 'responsible' ? 'R' : 'A'}
+                    </span>
+                    {a.user ? `${a.user.firstName} ${a.user.lastName}` : 'Atanmamış'}
+                  </Badge>
+                ))}
+              {phase.assignments.filter(a => a.raciRole === 'responsible' || a.raciRole === 'accountable').length > 3 && (
+                <Badge variant="outline" className="text-xs" data-testid={`badge-assignment-overflow-${phase.id}`}>
+                  +{phase.assignments.filter(a => a.raciRole === 'responsible' || a.raciRole === 'accountable').length - 3}
+                </Badge>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
