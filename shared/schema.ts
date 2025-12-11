@@ -568,6 +568,23 @@ export const users = pgTable("users", {
   employmentType: varchar("employment_type", { length: 20 }).default("fulltime"), // fulltime, parttime
   weeklyHours: integer("weekly_hours").default(45), // 45 for fulltime, custom for parttime
   skillScore: integer("skill_score").default(50), // 0-100, for AI planning balance
+  // Extended HR fields
+  tckn: varchar("tckn", { length: 11 }), // Turkish ID number
+  gender: varchar("gender", { length: 20 }), // Erkek, Kadın
+  maritalStatus: varchar("marital_status", { length: 30 }), // Bekar, Evli, Boşanmış, Dul
+  department: varchar("department", { length: 100 }), // BAR, Fabrika, etc.
+  address: text("address"), // Home address
+  city: varchar("city", { length: 100 }), // City (separate from branch city)
+  militaryStatus: varchar("military_status", { length: 30 }), // Tamamlandı, Tecilli, Muaf, Tamamlanmadı
+  educationLevel: varchar("education_level", { length: 100 }), // Lise, Ön Lisans, Lisans
+  educationStatus: varchar("education_status", { length: 50 }), // Mezun, Öğrenci
+  educationInstitution: varchar("education_institution", { length: 255 }), // School/University name
+  contractType: varchar("contract_type", { length: 50 }), // Süresiz, Süreli
+  homePhone: varchar("home_phone", { length: 20 }), // Home phone number
+  numChildren: integer("num_children").default(0), // Number of children
+  disabilityLevel: varchar("disability_level", { length: 50 }), // Yok, etc.
+  leaveStartDate: date("leave_start_date"), // When employee left
+  leaveReason: text("leave_reason"), // Reason for leaving
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

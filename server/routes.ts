@@ -14719,6 +14719,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/import-employees - Import employees from data
+  app.post('/api/admin/import-employees', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && !isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { employees, deleteExisting } = req.body;
+      if (!Array.isArray(employees)) {
+        return res.status(400).json({ message: "employees array gerekli" });
+      }
+
+      // Delete existing non-admin users if requested
+      if (deleteExisting) {
+        const allUsers = await storage.getAllEmployees();
+        for (const emp of allUsers) {
+          if (emp.role !== 'admin') {
+            await storage.deleteUser(emp.id);
+          }
+        }
+      }
+
+      // Import employees
+      const created: any[] = [];
+      for (const emp of employees) {
+        const userData = {
+          username: emp.username,
+          email: emp.email || undefined,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          role: emp.role || 'barista',
+          branchId: emp.branchId || 1,
+          hireDate: emp.hireDate || undefined,
+          birthDate: emp.birthDate || undefined,
+          phoneNumber: emp.phoneNumber || undefined,
+          // Extended HR fields
+          tckn: emp.tckn || undefined,
+          gender: emp.gender || undefined,
+          maritalStatus: emp.maritalStatus || undefined,
+          department: emp.department || undefined,
+          address: emp.address || undefined,
+          city: emp.city || undefined,
+          militaryStatus: emp.militaryStatus || undefined,
+          educationLevel: emp.educationLevel || undefined,
+          educationStatus: emp.educationStatus || undefined,
+          educationInstitution: emp.educationInstitution || undefined,
+          contractType: emp.contractType || undefined,
+          homePhone: emp.homePhone || undefined,
+          numChildren: emp.numChildren || 0,
+          disabilityLevel: emp.disabilityLevel || 'Yok',
+          leaveStartDate: emp.leaveStartDate || undefined,
+          leaveReason: emp.leaveReason || undefined,
+          accountStatus: 'approved',
+        };
+        
+        try {
+          const user = await storage.createUser(userData as any);
+          created.push({ id: user.id, name: `${user.firstName} ${user.lastName}` });
+        } catch (err: any) {
+          console.error(`Personel ekleme hatası: ${emp.firstName} ${emp.lastName}`, err.message);
+        }
+      }
+
+      res.json({ success: true, imported: created.length, details: created });
+    } catch (error) {
+      console.error("Import employees error:", error);
+      res.status(500).json({ message: "Personel ekleme hatası" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
