@@ -81,6 +81,9 @@ export default function PersonelDetay() {
   const [taskDescription, setTaskDescription] = useState("");
   const [taskDueDate, setTaskDueDate] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const { data: employee, isLoading: employeeLoading } = useQuery<User>({
     queryKey: ["/api/personnel", id],
@@ -254,6 +257,54 @@ export default function PersonelDetay() {
     },
     enabled: !!id,
   });
+
+  // Şifre sıfırlama mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: { userId: string; password: string }) => {
+      return apiRequest("POST", `/api/employees/${data.userId}/reset-password`, { password: data.password });
+    },
+    onSuccess: () => {
+      setResetPasswordDialogOpen(false);
+      setNewPassword("");
+      setConfirmPassword("");
+      toast({
+        title: "Şifre değiştirildi",
+        description: "Personelin şifresi başarıyla güncellendi",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Şifre değiştirilemedi",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Yetki kontrolü - HQ rolleri ve admin şifre sıfırlayabilir
+  const canManage = currentUser && (isHQRole(currentUser.role as any) || currentUser.role === "admin");
+
+  const handleResetPassword = () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast({
+        title: "Hata",
+        description: "Şifre en az 6 karakter olmalıdır",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Hata",
+        description: "Şifreler eşleşmiyor",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (id) {
+      resetPasswordMutation.mutate({ userId: id, password: newPassword });
+    }
+  };
 
   const createOnboardingMutation = useMutation({
     mutationFn: async () => {
@@ -467,7 +518,7 @@ export default function PersonelDetay() {
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2 sm:gap-3">
           <Button 
             variant="outline" 
@@ -484,6 +535,72 @@ export default function PersonelDetay() {
             </p>
           </div>
         </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <Link href={`/personel-duzenle/${employee.id}`}>
+              <Button variant="outline" size="sm" data-testid="button-edit-employee">
+                <Edit className="h-4 w-4 mr-1" />
+                Düzenle
+              </Button>
+            </Link>
+            <Dialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" data-testid="button-reset-password">
+                  <Shield className="h-4 w-4 mr-1" />
+                  Şifre Sıfırla
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Şifre Sıfırlama</DialogTitle>
+                  <DialogDescription>
+                    {employee.firstName} {employee.lastName} için yeni şifre oluşturun.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">Yeni Şifre</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="En az 6 karakter"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      data-testid="input-new-password"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Şifre Tekrar</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Şifreyi tekrar girin"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      data-testid="input-confirm-password"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setResetPasswordDialogOpen(false)}
+                    data-testid="button-cancel-password"
+                  >
+                    İptal
+                  </Button>
+                  <Button 
+                    onClick={handleResetPassword}
+                    disabled={resetPasswordMutation.isPending}
+                    data-testid="button-confirm-password"
+                  >
+                    {resetPasswordMutation.isPending ? "Kaydediliyor..." : "Şifreyi Kaydet"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </div>
 
       <Card>
