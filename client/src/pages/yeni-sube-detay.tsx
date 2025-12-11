@@ -17,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -50,8 +52,18 @@ import {
   Store,
   DollarSign,
   Truck,
+  ChevronDown,
+  ChevronRight,
+  ListTodo,
+  UserPlus,
+  ShoppingCart,
+  Check,
+  X,
+  FileText,
+  Tag,
+  Award,
 } from "lucide-react";
-import type { ProjectPhase, ProjectBudgetLine, ProjectVendor, ProjectRisk } from "@shared/schema";
+import type { ProjectPhase, ProjectBudgetLine, ProjectVendor, ProjectRisk, PhaseSubTask, PhaseAssignment, ProcurementItem, ProcurementProposal } from "@shared/schema";
 
 const phaseFormSchema = z.object({
   status: z.string().min(1, "Durum seçilmelidir"),
@@ -93,6 +105,88 @@ const riskFormSchema = z.object({
 });
 
 type RiskFormValues = z.infer<typeof riskFormSchema>;
+
+const subTaskFormSchema = z.object({
+  title: z.string().min(1, "Görev adı zorunludur"),
+  description: z.string().optional(),
+  isCategory: z.boolean().default(false),
+  parentId: z.number().optional().nullable(),
+  dueDate: z.string().optional(),
+  requiresBidding: z.boolean().default(false),
+  assigneeType: z.enum(["none", "internal", "external"]).default("none"),
+  assigneeUserId: z.string().optional().nullable(),
+  assigneeExternalId: z.number().optional().nullable(),
+});
+
+type SubTaskFormValues = z.infer<typeof subTaskFormSchema>;
+
+const assignmentFormSchema = z.object({
+  assigneeType: z.enum(["internal", "external"]),
+  userId: z.string().optional().nullable(),
+  externalUserId: z.number().optional().nullable(),
+  raciRole: z.enum(["responsible", "accountable", "consulted", "informed"]),
+});
+
+type AssignmentFormValues = z.infer<typeof assignmentFormSchema>;
+
+const proposalFormSchema = z.object({
+  vendorId: z.number().min(1, "Tedarikçi seçilmelidir"),
+  proposedPrice: z.number().min(0, "Fiyat 0 veya daha büyük olmalı"),
+  deliveryDays: z.number().min(1, "Teslimat süresi en az 1 gün olmalı").optional(),
+  warrantyMonths: z.number().min(0).optional(),
+  notes: z.string().optional(),
+});
+
+type ProposalFormValues = z.infer<typeof proposalFormSchema>;
+
+const subTaskStatusConfig: Record<string, { label: string; color: string }> = {
+  not_started: { label: "Başlamadı", color: "bg-muted text-muted-foreground" },
+  in_progress: { label: "Devam Ediyor", color: "bg-blue-500 text-white" },
+  blocked: { label: "Engelli", color: "bg-red-500 text-white" },
+  done: { label: "Tamamlandı", color: "bg-green-500 text-white" },
+};
+
+const procurementStatusConfig: Record<string, { label: string; color: string }> = {
+  draft: { label: "Taslak", color: "bg-muted text-muted-foreground" },
+  open: { label: "Açık", color: "bg-blue-500 text-white" },
+  under_review: { label: "İnceleniyor", color: "bg-yellow-500 text-white" },
+  awarded: { label: "Atandı", color: "bg-green-500 text-white" },
+  closed: { label: "Kapatıldı", color: "bg-muted text-muted-foreground" },
+  cancelled: { label: "İptal", color: "bg-red-500 text-white" },
+};
+
+const raciLabels: Record<string, { short: string; full: string }> = {
+  responsible: { short: "R", full: "Sorumlu" },
+  accountable: { short: "A", full: "Hesap Verir" },
+  consulted: { short: "C", full: "Danışılan" },
+  informed: { short: "I", full: "Bilgilendirilen" },
+};
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role?: string;
+}
+
+interface ExternalUser {
+  id: number;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  companyName?: string;
+  specialty?: string;
+}
+
+interface AssignmentWithUser extends PhaseAssignment {
+  user?: User | null;
+  externalUser?: ExternalUser | null;
+}
+
+interface ProcurementItemWithSubTask {
+  item: ProcurementItem;
+  subTask: PhaseSubTask;
+}
 
 interface ProjectWithDetails {
   id: number;
@@ -277,6 +371,14 @@ export default function YeniSubeDetay() {
   const [isRiskDialogOpen, setIsRiskDialogOpen] = useState(false);
   const [editingRisk, setEditingRisk] = useState<ProjectRisk | null>(null);
 
+  const [phaseDetailTab, setPhaseDetailTab] = useState("general");
+  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
+  const [isSubTaskDialogOpen, setIsSubTaskDialogOpen] = useState(false);
+  const [editingSubTask, setEditingSubTask] = useState<PhaseSubTask | null>(null);
+  const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false);
+  const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
+  const [selectedProcurementItem, setSelectedProcurementItem] = useState<ProcurementItem | null>(null);
+
   const phaseForm = useForm<PhaseFormValues>({
     resolver: zodResolver(phaseFormSchema),
     defaultValues: {
@@ -319,6 +421,42 @@ export default function YeniSubeDetay() {
       impact: 3,
       status: "identified",
       mitigationPlan: "",
+    },
+  });
+
+  const subTaskForm = useForm<SubTaskFormValues>({
+    resolver: zodResolver(subTaskFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      isCategory: false,
+      parentId: null,
+      dueDate: "",
+      requiresBidding: false,
+      assigneeType: "none",
+      assigneeUserId: null,
+      assigneeExternalId: null,
+    },
+  });
+
+  const assignmentForm = useForm<AssignmentFormValues>({
+    resolver: zodResolver(assignmentFormSchema),
+    defaultValues: {
+      assigneeType: "internal",
+      userId: null,
+      externalUserId: null,
+      raciRole: "responsible",
+    },
+  });
+
+  const proposalForm = useForm<ProposalFormValues>({
+    resolver: zodResolver(proposalFormSchema),
+    defaultValues: {
+      vendorId: 0,
+      proposedPrice: 0,
+      deliveryDays: undefined,
+      warrantyMonths: undefined,
+      notes: "",
     },
   });
 
@@ -401,6 +539,35 @@ export default function YeniSubeDetay() {
   const { data: project, isLoading } = useQuery<ProjectWithDetails>({
     queryKey: ["/api/new-shop-projects", projectId],
     enabled: !!projectId,
+  });
+
+  const { data: subTasks = [], isLoading: isSubTasksLoading } = useQuery<PhaseSubTask[]>({
+    queryKey: ["/api/new-shop-projects", projectId, "phases", editingPhase?.id, "subtasks"],
+    enabled: !!projectId && !!editingPhase?.id,
+  });
+
+  const { data: assignments = [], isLoading: isAssignmentsLoading } = useQuery<AssignmentWithUser[]>({
+    queryKey: ["/api/new-shop-projects", projectId, "phases", editingPhase?.id, "assignments"],
+    enabled: !!projectId && !!editingPhase?.id,
+  });
+
+  const { data: procurementItems = [] } = useQuery<ProcurementItemWithSubTask[]>({
+    queryKey: ["/api/new-shop-projects", projectId, "procurement", "items"],
+    enabled: !!projectId && !!editingPhase?.id,
+  });
+
+  const { data: allUsers = [] } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+
+  const { data: externalUsersList = [] } = useQuery<{ user: ExternalUser }[]>({
+    queryKey: ["/api/projects", projectId, "external-users"],
+    enabled: !!projectId,
+  });
+
+  const { data: procurementProposals = [] } = useQuery<ProcurementProposal[]>({
+    queryKey: ["/api/new-shop-projects", projectId, "procurement", "items", selectedProcurementItem?.id],
+    enabled: !!selectedProcurementItem?.id,
   });
 
   const updatePhaseMutation = useMutation({
@@ -561,6 +728,116 @@ export default function YeniSubeDetay() {
     },
   });
 
+  const addSubTaskMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", `/api/new-shop-projects/${projectId}/phases/${editingPhase?.id}/subtasks`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId, "phases", editingPhase?.id, "subtasks"] });
+      setIsSubTaskDialogOpen(false);
+      setEditingSubTask(null);
+      subTaskForm.reset();
+      toast({ title: "Alt görev eklendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Alt görev eklenemedi", variant: "destructive" });
+    },
+  });
+
+  const updateSubTaskMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const { id, ...updates } = data;
+      const res = await apiRequest("PATCH", `/api/new-shop-projects/${projectId}/phases/${editingPhase?.id}/subtasks/${id}`, updates);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId, "phases", editingPhase?.id, "subtasks"] });
+      setIsSubTaskDialogOpen(false);
+      setEditingSubTask(null);
+      subTaskForm.reset();
+      toast({ title: "Alt görev güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Alt görev güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  const deleteSubTaskMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/new-shop-projects/${projectId}/phases/${editingPhase?.id}/subtasks/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId, "phases", editingPhase?.id, "subtasks"] });
+      toast({ title: "Alt görev silindi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Alt görev silinemedi", variant: "destructive" });
+    },
+  });
+
+  const addAssignmentMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", `/api/new-shop-projects/${projectId}/phases/${editingPhase?.id}/assignments`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId, "phases", editingPhase?.id, "assignments"] });
+      setIsAssignmentDialogOpen(false);
+      assignmentForm.reset();
+      toast({ title: "Ekip üyesi atandı" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Atama yapılamadı", variant: "destructive" });
+    },
+  });
+
+  const deleteAssignmentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/new-shop-projects/${projectId}/phases/${editingPhase?.id}/assignments/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId, "phases", editingPhase?.id, "assignments"] });
+      toast({ title: "Atama kaldırıldı" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Atama kaldırılamadı", variant: "destructive" });
+    },
+  });
+
+  const addProposalMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", `/api/new-shop-projects/${projectId}/procurement/items/${selectedProcurementItem?.id}/proposals`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId, "procurement", "items", selectedProcurementItem?.id] });
+      setIsProposalDialogOpen(false);
+      proposalForm.reset();
+      toast({ title: "Teklif eklendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Teklif eklenemedi", variant: "destructive" });
+    },
+  });
+
+  const selectProposalMutation = useMutation({
+    mutationFn: async (proposalId: number) => {
+      const res = await apiRequest("PATCH", `/api/new-shop-projects/${projectId}/procurement/items/${selectedProcurementItem?.id}/proposals/${proposalId}/select`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId, "procurement", "items", selectedProcurementItem?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/new-shop-projects", projectId, "procurement", "items"] });
+      toast({ title: "Teklif seçildi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Teklif seçilemedi", variant: "destructive" });
+    },
+  });
+
   const handleEditPhase = (phase: ProjectPhase) => {
     setEditingPhase(phase);
     setIsPhaseDialogOpen(true);
@@ -614,6 +891,92 @@ export default function YeniSubeDetay() {
       addRiskMutation.mutate(data);
     }
   };
+
+  const handleOpenSubTaskDialog = (parentId?: number | null, isCategory: boolean = false) => {
+    setEditingSubTask(null);
+    subTaskForm.reset({
+      title: "",
+      description: "",
+      isCategory,
+      parentId: parentId ?? null,
+      dueDate: "",
+      requiresBidding: false,
+      assigneeType: "none",
+      assigneeUserId: null,
+      assigneeExternalId: null,
+    });
+    setIsSubTaskDialogOpen(true);
+  };
+
+  const handleEditSubTask = (subTask: PhaseSubTask) => {
+    setEditingSubTask(subTask);
+    subTaskForm.reset({
+      title: subTask.title,
+      description: subTask.description || "",
+      isCategory: subTask.isCategory || false,
+      parentId: subTask.parentId,
+      dueDate: subTask.dueDate || "",
+      requiresBidding: subTask.requiresBidding || false,
+      assigneeType: subTask.assigneeUserId ? "internal" : subTask.assigneeExternalId ? "external" : "none",
+      assigneeUserId: subTask.assigneeUserId,
+      assigneeExternalId: subTask.assigneeExternalId,
+    });
+    setIsSubTaskDialogOpen(true);
+  };
+
+  const onSubmitSubTask = (data: SubTaskFormValues) => {
+    const payload = {
+      ...data,
+      assigneeUserId: data.assigneeType === "internal" ? data.assigneeUserId : null,
+      assigneeExternalId: data.assigneeType === "external" ? data.assigneeExternalId : null,
+      phaseId: editingPhase?.id,
+    };
+    if (editingSubTask) {
+      updateSubTaskMutation.mutate({ id: editingSubTask.id, ...payload });
+    } else {
+      addSubTaskMutation.mutate(payload);
+    }
+  };
+
+  const toggleSubTaskStatus = (subTask: PhaseSubTask) => {
+    const nextStatus = subTask.status === "done" ? "not_started" : "done";
+    updateSubTaskMutation.mutate({ id: subTask.id, status: nextStatus });
+  };
+
+  const toggleCategoryExpansion = (categoryId: number) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
+  };
+
+  const onSubmitAssignment = (data: AssignmentFormValues) => {
+    const payload = {
+      userId: data.assigneeType === "internal" ? data.userId : null,
+      externalUserId: data.assigneeType === "external" ? data.externalUserId : null,
+      raciRole: data.raciRole,
+      phaseId: editingPhase?.id,
+    };
+    addAssignmentMutation.mutate(payload);
+  };
+
+  const onSubmitProposal = (data: ProposalFormValues) => {
+    addProposalMutation.mutate(data);
+  };
+
+  const categories = subTasks.filter(st => st.isCategory);
+  const getChildTasks = (parentId: number) => subTasks.filter(st => st.parentId === parentId && !st.isCategory);
+  const orphanTasks = subTasks.filter(st => !st.isCategory && !st.parentId);
+  
+  const phaseProcurementItems = procurementItems.filter(pi => {
+    const subTask = subTasks.find(st => st.id === pi.subTask?.id || st.id === (pi.item as any)?.subTaskId);
+    return subTask !== undefined;
+  });
 
   if (isLoading) {
     return (
@@ -1176,31 +1539,577 @@ export default function YeniSubeDetay() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={isPhaseDialogOpen} onOpenChange={setIsPhaseDialogOpen} data-testid="dialog-phase-edit">
-        <DialogContent data-testid="dialog-content-phase-edit">
+      <Dialog open={isPhaseDialogOpen} onOpenChange={(open) => {
+        setIsPhaseDialogOpen(open);
+        if (!open) {
+          setPhaseDetailTab("general");
+          setEditingPhase(null);
+        }
+      }} data-testid="dialog-phase-edit">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="dialog-content-phase-edit">
           <DialogHeader>
-            <DialogTitle data-testid="dialog-title-phase-edit">Faz Düzenle</DialogTitle>
-            <DialogDescription>Faz durumunu ve ilerlemesini güncelleyin</DialogDescription>
+            <DialogTitle className="flex items-center gap-2" data-testid="dialog-title-phase-edit">
+              {editingPhase?.title || "Faz Detayları"}
+              {editingPhase?.status && (
+                <Badge className={phaseStatusConfig[editingPhase.status]?.bgColor}>
+                  {phaseStatusConfig[editingPhase.status]?.label}
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>Faz detaylarını görüntüleyin ve yönetin</DialogDescription>
           </DialogHeader>
-          <Form {...phaseForm}>
-            <form onSubmit={phaseForm.handleSubmit(onSubmitPhase)} className="space-y-4" data-testid="form-phase-edit">
+
+          <Tabs value={phaseDetailTab} onValueChange={setPhaseDetailTab} className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="grid w-full grid-cols-4" data-testid="tabs-phase-detail">
+              <TabsTrigger value="general" className="gap-1" data-testid="tab-phase-general">
+                <Eye className="h-4 w-4" />
+                Genel
+              </TabsTrigger>
+              <TabsTrigger value="tasks" className="gap-1" data-testid="tab-phase-tasks">
+                <ListTodo className="h-4 w-4" />
+                Görevler
+              </TabsTrigger>
+              <TabsTrigger value="team" className="gap-1" data-testid="tab-phase-team">
+                <Users className="h-4 w-4" />
+                Ekip
+              </TabsTrigger>
+              <TabsTrigger value="procurement" className="gap-1" data-testid="tab-phase-procurement">
+                <ShoppingCart className="h-4 w-4" />
+                Tedarik
+              </TabsTrigger>
+            </TabsList>
+
+            <ScrollArea className="flex-1 mt-4">
+              <TabsContent value="general" className="space-y-4 m-0" data-testid="tab-content-phase-general">
+                <Form {...phaseForm}>
+                  <form onSubmit={phaseForm.handleSubmit(onSubmitPhase)} className="space-y-4" data-testid="form-phase-edit">
+                    <FormField
+                      control={phaseForm.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Durum</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-phase-status">
+                                <SelectValue placeholder="Durum seçin" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="not_started" data-testid="select-item-phase-not-started">Başlamadı</SelectItem>
+                              <SelectItem value="in_progress" data-testid="select-item-phase-in-progress">Devam Ediyor</SelectItem>
+                              <SelectItem value="completed" data-testid="select-item-phase-completed">Tamamlandı</SelectItem>
+                              <SelectItem value="blocked" data-testid="select-item-phase-blocked">Engelli</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={phaseForm.control}
+                      name="progress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>İlerleme ({field.value}%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="range"
+                              min="0"
+                              max="100"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              data-testid="input-phase-progress"
+                            />
+                          </FormControl>
+                          <Progress value={field.value} className="h-2 mt-2" />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={phaseForm.control}
+                      name="targetDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Hedef Tarih</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} data-testid="input-phase-target-date" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <DialogFooter>
+                      <Button type="submit" disabled={updatePhaseMutation.isPending} data-testid="button-save-phase">
+                        {updatePhaseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </TabsContent>
+
+              <TabsContent value="tasks" className="space-y-4 m-0" data-testid="tab-content-phase-tasks">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-medium">Alt Görevler</h4>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => handleOpenSubTaskDialog(null, true)} data-testid="button-add-category">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Kategori Ekle
+                    </Button>
+                    <Button size="sm" onClick={() => handleOpenSubTaskDialog(null, false)} data-testid="button-add-subtask">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Görev Ekle
+                    </Button>
+                  </div>
+                </div>
+
+                {isSubTasksLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : (
+                  <div className="space-y-2" data-testid="subtasks-tree">
+                    {categories.map((category) => (
+                      <Collapsible
+                        key={category.id}
+                        open={expandedCategories.has(category.id)}
+                        onOpenChange={() => toggleCategoryExpansion(category.id)}
+                      >
+                        <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 hover-elevate" data-testid={`category-${category.id}`}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                              {expandedCategories.has(category.id) ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <span className="font-medium flex-1" data-testid={`text-category-title-${category.id}`}>{category.title}</span>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleOpenSubTaskDialog(category.id, false); }} data-testid={`button-add-task-to-${category.id}`}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleEditSubTask(category); }} data-testid={`button-edit-category-${category.id}`}>
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); deleteSubTaskMutation.mutate(category.id); }} data-testid={`button-delete-category-${category.id}`}>
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
+                        <CollapsibleContent className="pl-8 space-y-1 mt-1">
+                          {getChildTasks(category.id).map((task) => (
+                            <div key={task.id} className="flex items-center gap-2 p-2 rounded-md hover-elevate" data-testid={`subtask-${task.id}`}>
+                              <Checkbox
+                                checked={task.status === "done"}
+                                onCheckedChange={() => toggleSubTaskStatus(task)}
+                                data-testid={`checkbox-subtask-${task.id}`}
+                              />
+                              <span className={`flex-1 text-sm ${task.status === "done" ? "line-through text-muted-foreground" : ""}`} data-testid={`text-subtask-title-${task.id}`}>
+                                {task.title}
+                              </span>
+                              {task.requiresBidding && (
+                                <Badge variant="outline" className="text-xs gap-1 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300" data-testid={`badge-bidding-${task.id}`}>
+                                  <Tag className="h-3 w-3" />
+                                  Teklif Gerekli
+                                </Badge>
+                              )}
+                              <Badge className={subTaskStatusConfig[task.status || "not_started"]?.color} data-testid={`badge-subtask-status-${task.id}`}>
+                                {subTaskStatusConfig[task.status || "not_started"]?.label}
+                              </Badge>
+                              {task.dueDate && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {format(new Date(task.dueDate), "d MMM", { locale: tr })}
+                                </span>
+                              )}
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditSubTask(task)} data-testid={`button-edit-subtask-${task.id}`}>
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteSubTaskMutation.mutate(task.id)} data-testid={`button-delete-subtask-${task.id}`}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </div>
+                          ))}
+                          {getChildTasks(category.id).length === 0 && (
+                            <p className="text-sm text-muted-foreground py-2">Bu kategoride görev yok</p>
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))}
+
+                    {orphanTasks.length > 0 && (
+                      <div className="space-y-1 mt-2">
+                        <p className="text-xs text-muted-foreground font-medium mb-1">Kategorisiz Görevler</p>
+                        {orphanTasks.map((task) => (
+                          <div key={task.id} className="flex items-center gap-2 p-2 rounded-md hover-elevate" data-testid={`subtask-${task.id}`}>
+                            <Checkbox
+                              checked={task.status === "done"}
+                              onCheckedChange={() => toggleSubTaskStatus(task)}
+                              data-testid={`checkbox-subtask-${task.id}`}
+                            />
+                            <span className={`flex-1 text-sm ${task.status === "done" ? "line-through text-muted-foreground" : ""}`} data-testid={`text-subtask-title-${task.id}`}>
+                              {task.title}
+                            </span>
+                            {task.requiresBidding && (
+                              <Badge variant="outline" className="text-xs gap-1 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300" data-testid={`badge-bidding-${task.id}`}>
+                                <Tag className="h-3 w-3" />
+                                Teklif Gerekli
+                              </Badge>
+                            )}
+                            <Badge className={subTaskStatusConfig[task.status || "not_started"]?.color} data-testid={`badge-subtask-status-${task.id}`}>
+                              {subTaskStatusConfig[task.status || "not_started"]?.label}
+                            </Badge>
+                            {task.dueDate && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(task.dueDate), "d MMM", { locale: tr })}
+                              </span>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditSubTask(task)} data-testid={`button-edit-subtask-${task.id}`}>
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteSubTaskMutation.mutate(task.id)} data-testid={`button-delete-subtask-${task.id}`}>
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {subTasks.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground" data-testid="text-no-subtasks">
+                        <ListTodo className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Henüz alt görev eklenmemiş</p>
+                        <p className="text-sm">Yukarıdaki butonları kullanarak kategori veya görev ekleyebilirsiniz</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="team" className="space-y-4 m-0" data-testid="tab-content-phase-team">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-medium">RACI Matrisi</h4>
+                  <Button size="sm" onClick={() => { assignmentForm.reset(); setIsAssignmentDialogOpen(true); }} data-testid="button-add-assignment">
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Üye Ekle
+                  </Button>
+                </div>
+
+                <div className="text-xs text-muted-foreground mb-2">
+                  <span className="font-medium">R</span> = Sorumlu, <span className="font-medium">A</span> = Hesap Verir, <span className="font-medium">C</span> = Danışılan, <span className="font-medium">I</span> = Bilgilendirilen
+                </div>
+
+                {isAssignmentsLoading ? (
+                  <Skeleton className="h-32 w-full" />
+                ) : (
+                  <Table data-testid="table-raci">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Kişi</TableHead>
+                        <TableHead className="text-center w-16">R</TableHead>
+                        <TableHead className="text-center w-16">A</TableHead>
+                        <TableHead className="text-center w-16">C</TableHead>
+                        <TableHead className="text-center w-16">I</TableHead>
+                        <TableHead className="w-16"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assignments.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8" data-testid="text-no-assignments">
+                            Henüz ekip üyesi atanmamış
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {assignments.map((assignment) => {
+                        const displayName = assignment.user
+                          ? `${assignment.user.firstName} ${assignment.user.lastName}`
+                          : assignment.externalUser
+                          ? `${assignment.externalUser.firstName || ""} ${assignment.externalUser.lastName || ""} (${assignment.externalUser.companyName || assignment.externalUser.specialty || "Dış"})`
+                          : "Bilinmeyen";
+                        return (
+                          <TableRow key={assignment.id} data-testid={`row-assignment-${assignment.id}`}>
+                            <TableCell>
+                              <span className="font-medium" data-testid={`text-assignment-name-${assignment.id}`}>{displayName}</span>
+                              {assignment.user?.role && (
+                                <Badge variant="outline" className="ml-2 text-xs">{assignment.user.role}</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {assignment.raciRole === "responsible" && <Check className="h-4 w-4 mx-auto text-green-600" />}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {assignment.raciRole === "accountable" && <Check className="h-4 w-4 mx-auto text-blue-600" />}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {assignment.raciRole === "consulted" && <Check className="h-4 w-4 mx-auto text-yellow-600" />}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {assignment.raciRole === "informed" && <Check className="h-4 w-4 mx-auto text-muted-foreground" />}
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" onClick={() => deleteAssignmentMutation.mutate(assignment.id)} data-testid={`button-delete-assignment-${assignment.id}`}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </TabsContent>
+
+              <TabsContent value="procurement" className="space-y-4 m-0" data-testid="tab-content-phase-procurement">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-medium">Tedarik Kalemleri</h4>
+                </div>
+
+                <div className="text-sm text-muted-foreground mb-2">
+                  "Teklif Gerekli" işaretli görevlerin tedarik süreçlerini buradan yönetebilirsiniz.
+                </div>
+
+                {subTasks.filter(st => st.requiresBidding).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground" data-testid="text-no-procurement">
+                    <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Teklif gerektiren görev bulunmuyor</p>
+                    <p className="text-sm">Görevler sekmesinden "Teklif Gerekli" işaretli görev ekleyebilirsiniz</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3" data-testid="procurement-items-list">
+                    {subTasks.filter(st => st.requiresBidding).map((task) => {
+                      const item = phaseProcurementItems.find(pi => pi.subTask?.id === task.id || (pi.item as any)?.subTaskId === task.id);
+                      const itemStatus = item?.item?.status || "draft";
+                      return (
+                        <Card key={task.id} className="hover-elevate" data-testid={`procurement-item-${task.id}`}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1">
+                                <p className="font-medium" data-testid={`text-procurement-title-${task.id}`}>{task.title}</p>
+                                {task.description && <p className="text-sm text-muted-foreground">{task.description}</p>}
+                              </div>
+                              <Badge className={procurementStatusConfig[itemStatus]?.color} data-testid={`badge-procurement-status-${task.id}`}>
+                                {procurementStatusConfig[itemStatus]?.label}
+                              </Badge>
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  if (item?.item) {
+                                    setSelectedProcurementItem(item.item);
+                                    setIsProposalDialogOpen(true);
+                                  } else {
+                                    toast({ title: "Bilgi", description: "Önce tedarik kalemi oluşturulmalı" });
+                                  }
+                                }}
+                                data-testid={`button-add-proposal-${task.id}`}
+                              >
+                                <FileText className="h-4 w-4 mr-1" />
+                                Teklif Gir
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+            </ScrollArea>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSubTaskDialogOpen} onOpenChange={setIsSubTaskDialogOpen} data-testid="dialog-subtask">
+        <DialogContent data-testid="dialog-content-subtask">
+          <DialogHeader>
+            <DialogTitle data-testid="dialog-title-subtask">
+              {editingSubTask 
+                ? (editingSubTask.isCategory ? "Kategori Düzenle" : "Görev Düzenle")
+                : (subTaskForm.watch("isCategory") ? "Yeni Kategori" : "Yeni Görev")}
+            </DialogTitle>
+          </DialogHeader>
+          <Form {...subTaskForm}>
+            <form onSubmit={subTaskForm.handleSubmit(onSubmitSubTask)} className="space-y-4" data-testid="form-subtask">
               <FormField
-                control={phaseForm.control}
-                name="status"
+                control={subTaskForm.control}
+                name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Durum</FormLabel>
+                    <FormLabel>Başlık *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Görev adı" {...field} data-testid="input-subtask-title" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {!subTaskForm.watch("isCategory") && (
+                <>
+                  <FormField
+                    control={subTaskForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Açıklama</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Detaylı açıklama" {...field} data-testid="input-subtask-description" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={subTaskForm.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bitiş Tarihi</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} data-testid="input-subtask-duedate" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={subTaskForm.control}
+                    name="requiresBidding"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-subtask-bidding" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Teklif Gerektirir</FormLabel>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={subTaskForm.control}
+                    name="assigneeType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Atama Türü</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-subtask-assignee-type">
+                              <SelectValue placeholder="Seçin" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Atama Yok</SelectItem>
+                            <SelectItem value="internal">Dahili Kullanıcı</SelectItem>
+                            <SelectItem value="external">Dış Kullanıcı</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {subTaskForm.watch("assigneeType") === "internal" && (
+                    <FormField
+                      control={subTaskForm.control}
+                      name="assigneeUserId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kullanıcı</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-subtask-user">
+                                <SelectValue placeholder="Kullanıcı seçin" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {allUsers.map((user) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.firstName} {user.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {subTaskForm.watch("assigneeType") === "external" && (
+                    <FormField
+                      control={subTaskForm.control}
+                      name="assigneeExternalId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Dış Kullanıcı</FormLabel>
+                          <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString() || ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-subtask-external">
+                                <SelectValue placeholder="Dış kullanıcı seçin" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {externalUsersList.map((eu) => (
+                                <SelectItem key={eu.user.id} value={eu.user.id.toString()}>
+                                  {eu.user.firstName} {eu.user.lastName} ({eu.user.companyName || eu.user.specialty || eu.user.email})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </>
+              )}
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsSubTaskDialogOpen(false)} data-testid="button-cancel-subtask">
+                  İptal
+                </Button>
+                <Button type="submit" disabled={addSubTaskMutation.isPending || updateSubTaskMutation.isPending} data-testid="button-save-subtask">
+                  {addSubTaskMutation.isPending || updateSubTaskMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen} data-testid="dialog-assignment">
+        <DialogContent data-testid="dialog-content-assignment">
+          <DialogHeader>
+            <DialogTitle data-testid="dialog-title-assignment">Ekip Üyesi Ekle</DialogTitle>
+            <DialogDescription>Faza yeni bir RACI ataması ekleyin</DialogDescription>
+          </DialogHeader>
+          <Form {...assignmentForm}>
+            <form onSubmit={assignmentForm.handleSubmit(onSubmitAssignment)} className="space-y-4" data-testid="form-assignment">
+              <FormField
+                control={assignmentForm.control}
+                name="assigneeType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kullanıcı Türü</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-phase-status">
-                          <SelectValue placeholder="Durum seçin" />
+                        <SelectTrigger data-testid="select-assignment-type">
+                          <SelectValue placeholder="Seçin" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="not_started" data-testid="select-item-phase-not-started">Başlamadı</SelectItem>
-                        <SelectItem value="in_progress" data-testid="select-item-phase-in-progress">Devam Ediyor</SelectItem>
-                        <SelectItem value="completed" data-testid="select-item-phase-completed">Tamamlandı</SelectItem>
-                        <SelectItem value="blocked" data-testid="select-item-phase-blocked">Engelli</SelectItem>
+                        <SelectItem value="internal">Dahili Kullanıcı</SelectItem>
+                        <SelectItem value="external">Dış Kullanıcı</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -1208,51 +2117,283 @@ export default function YeniSubeDetay() {
                 )}
               />
 
-              <FormField
-                control={phaseForm.control}
-                name="progress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>İlerleme ({field.value}%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="range"
-                        min="0"
-                        max="100"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                        data-testid="input-phase-progress"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {assignmentForm.watch("assigneeType") === "internal" && (
+                <FormField
+                  control={assignmentForm.control}
+                  name="userId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kullanıcı</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-assignment-user">
+                            <SelectValue placeholder="Kullanıcı seçin" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {allUsers.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.firstName} {user.lastName} {user.role ? `(${user.role})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {assignmentForm.watch("assigneeType") === "external" && (
+                <FormField
+                  control={assignmentForm.control}
+                  name="externalUserId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dış Kullanıcı</FormLabel>
+                      <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString() || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-assignment-external">
+                            <SelectValue placeholder="Dış kullanıcı seçin" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {externalUsersList.map((eu) => (
+                            <SelectItem key={eu.user.id} value={eu.user.id.toString()}>
+                              {eu.user.firstName} {eu.user.lastName} ({eu.user.companyName || eu.user.specialty || eu.user.email})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
-                control={phaseForm.control}
-                name="targetDate"
+                control={assignmentForm.control}
+                name="raciRole"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Hedef Tarih</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} data-testid="input-phase-target-date" />
-                    </FormControl>
+                    <FormLabel>RACI Rolü</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-assignment-raci">
+                          <SelectValue placeholder="Rol seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="responsible">R - Sorumlu (Responsible)</SelectItem>
+                        <SelectItem value="accountable">A - Hesap Verir (Accountable)</SelectItem>
+                        <SelectItem value="consulted">C - Danışılan (Consulted)</SelectItem>
+                        <SelectItem value="informed">I - Bilgilendirilen (Informed)</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsPhaseDialogOpen(false)} data-testid="button-cancel-phase">
+                <Button type="button" variant="outline" onClick={() => setIsAssignmentDialogOpen(false)} data-testid="button-cancel-assignment">
                   İptal
                 </Button>
-                <Button type="submit" disabled={updatePhaseMutation.isPending} data-testid="button-save-phase">
-                  {updatePhaseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                <Button type="submit" disabled={addAssignmentMutation.isPending} data-testid="button-save-assignment">
+                  {addAssignmentMutation.isPending ? "Kaydediliyor..." : "Ekle"}
                 </Button>
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isProposalDialogOpen} onOpenChange={setIsProposalDialogOpen} data-testid="dialog-proposal">
+        <DialogContent className="max-w-2xl" data-testid="dialog-content-proposal">
+          <DialogHeader>
+            <DialogTitle data-testid="dialog-title-proposal">Teklif Yönetimi</DialogTitle>
+            <DialogDescription>
+              {selectedProcurementItem?.title || "Tedarik kalemi için teklifleri yönetin"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Mevcut Teklifler</h4>
+              <Button size="sm" variant="outline" onClick={() => proposalForm.reset()} data-testid="button-new-proposal">
+                <Plus className="h-4 w-4 mr-1" />
+                Yeni Teklif
+              </Button>
+            </div>
+
+            {procurementProposals.length > 0 ? (
+              <Table data-testid="table-proposals">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tedarikçi</TableHead>
+                    <TableHead className="text-right">Fiyat</TableHead>
+                    <TableHead className="text-center">Teslimat (Gün)</TableHead>
+                    <TableHead className="text-center">Garanti (Ay)</TableHead>
+                    <TableHead className="text-center">Durum</TableHead>
+                    <TableHead className="w-24"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {procurementProposals.map((proposal) => {
+                    const vendor = project?.vendors?.find(v => v.id === proposal.vendorId);
+                    return (
+                      <TableRow key={proposal.id} data-testid={`row-proposal-${proposal.id}`}>
+                        <TableCell className="font-medium">{vendor?.companyName || "Bilinmeyen"}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(proposal.proposedPrice)}</TableCell>
+                        <TableCell className="text-center">{proposal.deliveryDays || "-"}</TableCell>
+                        <TableCell className="text-center">{proposal.warrantyMonths || "-"}</TableCell>
+                        <TableCell className="text-center">
+                          {proposal.status === "selected" ? (
+                            <Badge className="bg-green-500"><Award className="h-3 w-3 mr-1" />Seçildi</Badge>
+                          ) : proposal.status === "rejected" ? (
+                            <Badge variant="outline" className="text-muted-foreground">Reddedildi</Badge>
+                          ) : (
+                            <Badge variant="outline">Beklemede</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {proposal.status !== "selected" && (
+                            <Button
+                              size="sm"
+                              onClick={() => selectProposalMutation.mutate(proposal.id)}
+                              disabled={selectProposalMutation.isPending}
+                              data-testid={`button-select-proposal-${proposal.id}`}
+                            >
+                              Seç
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-center text-muted-foreground py-4">Henüz teklif girilmemiş</p>
+            )}
+
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">Yeni Teklif Ekle</h4>
+              <Form {...proposalForm}>
+                <form onSubmit={proposalForm.handleSubmit(onSubmitProposal)} className="space-y-4" data-testid="form-proposal">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={proposalForm.control}
+                      name="vendorId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tedarikçi *</FormLabel>
+                          <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString() || ""}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-proposal-vendor">
+                                <SelectValue placeholder="Tedarikçi seçin" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {project?.vendors?.map((vendor) => (
+                                <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                                  {vendor.companyName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={proposalForm.control}
+                      name="proposedPrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fiyat (₺) *</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              data-testid="input-proposal-price"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={proposalForm.control}
+                      name="deliveryDays"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Teslimat Süresi (Gün)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                              data-testid="input-proposal-delivery"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={proposalForm.control}
+                      name="warrantyMonths"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Garanti Süresi (Ay)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                              data-testid="input-proposal-warranty"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={proposalForm.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notlar</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Ek bilgiler" {...field} data-testid="input-proposal-notes" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsProposalDialogOpen(false)} data-testid="button-cancel-proposal">
+                      Kapat
+                    </Button>
+                    <Button type="submit" disabled={addProposalMutation.isPending} data-testid="button-save-proposal">
+                      {addProposalMutation.isPending ? "Kaydediliyor..." : "Teklif Ekle"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
