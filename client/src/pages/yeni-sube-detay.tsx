@@ -1851,7 +1851,7 @@ export default function YeniSubeDetay() {
                   </div>
                 ) : (
                   <div className="space-y-2" data-testid="subtasks-tree">
-                    {categories.map((category) => (
+                    {((subTasks || []).filter(st => st.isCategory)).map((category) => (
                       <Collapsible
                         key={category.id}
                         open={expandedCategories.has(category.id)}
@@ -1879,7 +1879,7 @@ export default function YeniSubeDetay() {
                           </Button>
                         </div>
                         <CollapsibleContent className="pl-8 space-y-1 mt-1">
-                          {getChildTasks(category.id).map((task) => (
+                          {((subTasks || []).filter(st => st.parentId === category.id && !st.isCategory)).map((task) => (
                             <div key={task.id} className="flex items-center gap-2 p-2 rounded-md hover-elevate" data-testid={`subtask-${task.id}`}>
                               <Checkbox
                                 checked={task.status === "done"}
@@ -1912,17 +1912,17 @@ export default function YeniSubeDetay() {
                               </Button>
                             </div>
                           ))}
-                          {getChildTasks(category.id).length === 0 && (
+                          {((subTasks || []).filter(st => st.parentId === category.id && !st.isCategory)).length === 0 && (
                             <p className="text-sm text-muted-foreground py-2">Bu kategoride görev yok</p>
                           )}
                         </CollapsibleContent>
                       </Collapsible>
                     ))}
 
-                    {orphanTasks.length > 0 && (
+                    {((subTasks || []).filter(st => !st.isCategory && !st.parentId)).length > 0 && (
                       <div className="space-y-1 mt-2">
                         <p className="text-xs text-muted-foreground font-medium mb-1">Kategorisiz Görevler</p>
-                        {orphanTasks.map((task) => (
+                        {((subTasks || []).filter(st => !st.isCategory && !st.parentId)).map((task) => (
                           <div key={task.id} className="flex items-center gap-2 p-2 rounded-md hover-elevate" data-testid={`subtask-${task.id}`}>
                             <Checkbox
                               checked={task.status === "done"}
@@ -1958,7 +1958,7 @@ export default function YeniSubeDetay() {
                       </div>
                     )}
 
-                    {subTasks.length === 0 && (
+                    {(subTasks || []).length === 0 && (
                       <div className="text-center py-8 text-muted-foreground" data-testid="text-no-subtasks">
                         <ListTodo className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p>Henüz alt görev eklenmemiş</p>
@@ -2052,7 +2052,7 @@ export default function YeniSubeDetay() {
                   "Teklif Gerekli" işaretli görevlerin tedarik süreçlerini buradan yönetebilirsiniz.
                 </div>
 
-                {subTasks.filter(st => st.requiresBidding).length === 0 ? (
+                {(subTasks || []).filter(st => st.requiresBidding).length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground" data-testid="text-no-procurement">
                     <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>Teklif gerektiren görev bulunmuyor</p>
@@ -2060,7 +2060,7 @@ export default function YeniSubeDetay() {
                   </div>
                 ) : (
                   <div className="space-y-3" data-testid="procurement-items-list">
-                    {subTasks.filter(st => st.requiresBidding).map((task) => {
+                    {(subTasks || []).filter(st => st.requiresBidding).map((task) => {
                       const item = phaseProcurementItems.find(pi => pi.subTask?.id === task.id || (pi.item as any)?.subTaskId === task.id);
                       const itemStatus = item?.item?.status || "draft";
                       return (
