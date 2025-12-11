@@ -20,6 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -315,7 +316,11 @@ function formatCurrency(amount: number | null | undefined): string {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount);
 }
 
-function PhaseCard({ phase, onEdit }: { phase: PhaseWithAssignments; onEdit: (phase: ProjectPhase) => void }) {
+function PhaseCard({ phase, onEdit, canEdit = true }: { 
+  phase: PhaseWithAssignments; 
+  onEdit: (phase: ProjectPhase) => void;
+  canEdit?: boolean;
+}) {
   const Icon = phaseIcons[phase.phaseType as string] || Building2;
   const statusConfig = phaseStatusConfig[phase.status || "not_started"];
   const StatusIcon = phase.status === "completed" ? CheckCircle2 : 
@@ -324,8 +329,8 @@ function PhaseCard({ phase, onEdit }: { phase: PhaseWithAssignments; onEdit: (ph
 
   return (
     <Card 
-      className="cursor-pointer hover-elevate transition-all"
-      onClick={() => onEdit(phase)}
+      className={`${canEdit ? 'cursor-pointer hover-elevate' : ''} transition-all`}
+      onClick={() => canEdit && onEdit(phase)}
       data-testid={`card-phase-${phase.id}`}
     >
       <CardContent className="p-4">
@@ -420,6 +425,13 @@ export default function YeniSubeDetay() {
   const projectId = params.id;
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Authorization: Admin and HQ roles have full access
+  const isHQRole = (role: string | undefined) => {
+    const hqRoles = ['admin', 'hq_manager', 'hq_operations', 'hq_hr', 'hq_finance', 'hq_training', 'hq_quality', 'hq_marketing', 'hq_it'];
+    return hqRoles.includes(role || '');
+  };
   
   const [activeTab, setActiveTab] = useState("overview");
   const [editingPhase, setEditingPhase] = useState<ProjectPhase | null>(null);
@@ -1109,6 +1121,11 @@ export default function YeniSubeDetay() {
     );
   }
 
+  // Project owner also has full access
+  const isProjectOwner = project?.owner?.id === user?.id;
+  const canManageProject = isHQRole(user?.role) || isProjectOwner;
+  const isAdmin = user?.role === 'admin';
+
   const totalPlanned = project.budgetLines?.reduce((sum, bl) => sum + (bl.plannedAmount || 0), 0) || 0;
   const totalActual = project.budgetLines?.reduce((sum, bl) => sum + (bl.actualAmount || 0), 0) || 0;
   const totalVariance = totalPlanned - totalActual;
@@ -1208,17 +1225,19 @@ export default function YeniSubeDetay() {
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Proje Fazları</h3>
             <div className="flex items-center gap-2">
-              <p className="text-sm text-muted-foreground">Düzenlemek için faza tıklayın</p>
-              <Button size="sm" onClick={() => setIsAddPhaseDialogOpen(true)} data-testid="button-add-phase">
-                <Plus className="h-4 w-4 mr-1" />
-                Faz Ekle
-              </Button>
+              {canManageProject && <p className="text-sm text-muted-foreground">Düzenlemek için faza tıklayın</p>}
+              {canManageProject && (
+                <Button size="sm" onClick={() => setIsAddPhaseDialogOpen(true)} data-testid="button-add-phase">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Faz Ekle
+                </Button>
+              )}
             </div>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" data-testid="grid-phases">
             {sortedPhases.map((phase) => (
-              <PhaseCard key={phase.id} phase={phase} onEdit={handleEditPhase} />
+              <PhaseCard key={phase.id} phase={phase} onEdit={handleEditPhase} canEdit={canManageProject} />
             ))}
           </div>
 
@@ -1296,17 +1315,19 @@ export default function YeniSubeDetay() {
 
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Bütçe Kalemleri</h3>
-            <Button 
-              size="sm" 
-              onClick={() => {
-                setEditingBudget(null);
-                setIsBudgetDialogOpen(true);
-              }}
-              data-testid="button-add-budget"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Kalem Ekle
-            </Button>
+            {canManageProject && (
+              <Button 
+                size="sm" 
+                onClick={() => {
+                  setEditingBudget(null);
+                  setIsBudgetDialogOpen(true);
+                }}
+                data-testid="button-add-budget"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Kalem Ekle
+              </Button>
+            )}
           </div>
 
           <Card data-testid="card-budget-table">
@@ -1347,14 +1368,16 @@ export default function YeniSubeDetay() {
                           {variance >= 0 ? "+" : ""}{formatCurrency(variance)}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditBudget(line)} data-testid={`button-edit-budget-${line.id}`}>
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteBudgetMutation.mutate(line.id)} data-testid={`button-delete-budget-${line.id}`}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+                          {canManageProject && (
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditBudget(line)} data-testid={`button-edit-budget-${line.id}`}>
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => deleteBudgetMutation.mutate(line.id)} data-testid={`button-delete-budget-${line.id}`}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -1378,17 +1401,19 @@ export default function YeniSubeDetay() {
                 ))}
               </SelectContent>
             </Select>
-            <Button 
-              size="sm"
-              onClick={() => {
-                setEditingVendor(null);
-                setIsVendorDialogOpen(true);
-              }}
-              data-testid="button-add-vendor"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Tedarikçi Ekle
-            </Button>
+            {canManageProject && (
+              <Button 
+                size="sm"
+                onClick={() => {
+                  setEditingVendor(null);
+                  setIsVendorDialogOpen(true);
+                }}
+                data-testid="button-add-vendor"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Tedarikçi Ekle
+              </Button>
+            )}
           </div>
 
           <Card data-testid="card-vendor-table">
@@ -1450,14 +1475,16 @@ export default function YeniSubeDetay() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditVendor(vendor)} data-testid={`button-edit-vendor-${vendor.id}`}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteVendorMutation.mutate(vendor.id)} data-testid={`button-delete-vendor-${vendor.id}`}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                        {canManageProject && (
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditVendor(vendor)} data-testid={`button-edit-vendor-${vendor.id}`}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => deleteVendorMutation.mutate(vendor.id)} data-testid={`button-delete-vendor-${vendor.id}`}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1470,17 +1497,19 @@ export default function YeniSubeDetay() {
         <TabsContent value="risks" className="space-y-4" data-testid="tab-content-risks">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Risk Değerlendirmeleri</h3>
-            <Button 
-              size="sm"
-              onClick={() => {
-                setEditingRisk(null);
-                setIsRiskDialogOpen(true);
-              }}
-              data-testid="button-add-risk"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Risk Ekle
-            </Button>
+            {canManageProject && (
+              <Button 
+                size="sm"
+                onClick={() => {
+                  setEditingRisk(null);
+                  setIsRiskDialogOpen(true);
+                }}
+                data-testid="button-add-risk"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Risk Ekle
+              </Button>
+            )}
           </div>
 
           <Card data-testid="card-risk-table">
@@ -1541,14 +1570,16 @@ export default function YeniSubeDetay() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditRisk(risk)} data-testid={`button-edit-risk-${risk.id}`}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteRiskMutation.mutate(risk.id)} data-testid={`button-delete-risk-${risk.id}`}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                        {canManageProject && (
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditRisk(risk)} data-testid={`button-edit-risk-${risk.id}`}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => deleteRiskMutation.mutate(risk.id)} data-testid={`button-delete-risk-${risk.id}`}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
