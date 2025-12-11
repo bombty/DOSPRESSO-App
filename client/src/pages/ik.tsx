@@ -656,11 +656,14 @@ export default function IKPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Ad Soyad</TableHead>
+                        <TableHead>TCKN</TableHead>
+                        <TableHead>Departman</TableHead>
                         <TableHead>Rol</TableHead>
                         <TableHead>Şube</TableHead>
+                        <TableHead>Şehir</TableHead>
                         <TableHead>İşe Giriş</TableHead>
                         <TableHead>Deneme Süresi</TableHead>
-                        <TableHead>Eğitim</TableHead>
+                        <TableHead>Eğitim Durumu</TableHead>
                         <TableHead>İletişim</TableHead>
                         <TableHead className="text-right">İşlemler</TableHead>
                       </TableRow>
@@ -668,7 +671,7 @@ export default function IKPage() {
                     <TableBody>
                       {filteredEmployees.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground">
+                          <TableCell colSpan={11} className="text-center text-muted-foreground">
                             Personel bulunamadı
                           </TableCell>
                         </TableRow>
@@ -683,10 +686,19 @@ export default function IKPage() {
                               <TableCell className="font-medium">
                                 {employee.firstName} {employee.lastName}
                               </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {(employee as any).tckn || "-"}
+                              </TableCell>
+                              <TableCell>
+                                {(employee as any).department ? (
+                                  <Badge variant="outline">{(employee as any).department}</Badge>
+                                ) : "-"}
+                              </TableCell>
                               <TableCell>
                                 <Badge variant="secondary">{roleLabels[employee.role] || employee.role}</Badge>
                               </TableCell>
                               <TableCell>{branch?.name || "-"}</TableCell>
+                              <TableCell className="text-sm">{(employee as any).city || "-"}</TableCell>
                               <TableCell>
                                 {employee.hireDate ? (
                                   <div className="flex items-center gap-1">
