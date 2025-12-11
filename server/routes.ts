@@ -259,6 +259,40 @@ function ensurePermission(user: unknown, module: string, action: string, errorMe
   }
 }
 
+// Helper function to check project access (HQ, admin, or project owner)
+async function checkProjectAccess(user: any, projectId: number): Promise<{ allowed: boolean; error?: string }> {
+  if (isHQRole(user.role) || user.role === 'admin') {
+    return { allowed: true };
+  }
+  const [project] = await db.select({ ownerId: projects.ownerId }).from(projects).where(eq(projects.id, projectId));
+  if (!project) {
+    return { allowed: false, error: "Proje bulunamadı" };
+  }
+  if (project.ownerId === user.id) {
+    return { allowed: true };
+  }
+  return { allowed: false, error: "Bu işlem için yetkiniz yok" };
+}
+
+// Helper function to check project access via phase ID
+async function checkProjectAccessByPhaseId(user: any, phaseId: number): Promise<{ allowed: boolean; error?: string; projectId?: number }> {
+  if (isHQRole(user.role) || user.role === 'admin') {
+    return { allowed: true };
+  }
+  const [phase] = await db.select({ projectId: projectPhases.projectId }).from(projectPhases).where(eq(projectPhases.id, phaseId));
+  if (!phase) {
+    return { allowed: false, error: "Faz bulunamadı" };
+  }
+  const [project] = await db.select({ ownerId: projects.ownerId }).from(projects).where(eq(projects.id, phase.projectId));
+  if (!project) {
+    return { allowed: false, error: "Proje bulunamadı" };
+  }
+  if (project.ownerId === user.id) {
+    return { allowed: true, projectId: phase.projectId };
+  }
+  return { allowed: false, error: "Bu işlem için yetkiniz yok" };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
@@ -13665,8 +13699,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user;
       const phaseId = parseInt(req.params.id);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccessByPhaseId(user, phaseId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Faz bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const updateData: any = {
@@ -13714,14 +13750,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user;
       const projectId = parseInt(req.params.projectId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
-      }
-      
-      // Validate the project exists
-      const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-      if (!project) {
-        return res.status(404).json({ message: "Proje bulunamadı" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       // Get max order index for the project
@@ -14085,10 +14117,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const phaseId = parseInt(req.params.phaseId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const data = insertPhaseSubTaskSchema.parse({
@@ -14112,10 +14147,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const subtaskId = parseInt(req.params.subtaskId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const updateData: any = { ...req.body, updatedAt: new Date() };
@@ -14141,10 +14179,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId/reorder', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const subtaskId = parseInt(req.params.subtaskId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const { sortOrder, parentId } = req.body;
@@ -14165,10 +14206,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const subtaskId = parseInt(req.params.subtaskId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       await db.delete(phaseSubTasks).where(eq(phaseSubTasks.id, subtaskId));
@@ -14225,10 +14269,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const phaseId = parseInt(req.params.phaseId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const data = insertPhaseAssignmentSchema.parse({
@@ -14257,10 +14304,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const assignmentId = parseInt(req.params.assignmentId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const [updated] = await db.update(phaseAssignments)
@@ -14279,10 +14329,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const assignmentId = parseInt(req.params.assignmentId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       await db.delete(phaseAssignments).where(eq(phaseAssignments.id, assignmentId));
@@ -14359,9 +14412,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/new-shop-projects/:projectId/procurement/items', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const data = insertProcurementItemSchema.parse({
@@ -14384,10 +14440,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const itemId = parseInt(req.params.itemId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const [updated] = await db.update(procurementItems)
@@ -14406,10 +14465,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const itemId = parseInt(req.params.itemId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const data = insertProcurementProposalSchema.parse({
@@ -14432,10 +14494,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const proposalId = parseInt(req.params.proposalId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       const [updated] = await db.update(procurementProposals)
@@ -14454,11 +14519,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId/select', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const itemId = parseInt(req.params.itemId);
       const proposalId = parseInt(req.params.proposalId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       // Update the winning proposal status
@@ -14498,10 +14566,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      const projectId = parseInt(req.params.projectId);
       const proposalId = parseInt(req.params.proposalId);
       
-      if (!isHQRole(user.role) && user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      // Check access: HQ, admin, or project owner
+      const accessCheck = await checkProjectAccess(user, projectId);
+      if (!accessCheck.allowed) {
+        return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
       await db.delete(procurementProposals).where(eq(procurementProposals.id, proposalId));

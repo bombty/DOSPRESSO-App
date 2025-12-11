@@ -15,6 +15,15 @@ Preferred communication style: Simple, everyday language. Turkish language commu
   - Database Tables: phase_assignments, phase_sub_tasks, procurement_items, procurement_proposals
   - 19 New API Endpoints: Full CRUD for subtasks, assignments, and procurement
 
+✅ **Phase Cards Enhancement** (Dec 11, 2025 - Session 2):
+  - Phase cards in grid view with progress bars and status badges
+  - "Faz Ekle" button for creating new phases with title, type, color, target date
+  - Phase editing: title, status, progress, color, date in "Genel" tab
+  - RACI R/A users shown on phase cards (Responsible=blue, Accountable=green badges)
+  - Authorization: HQ roles, admin, and project owners have full access
+  - Conditional button visibility based on canManageProject check
+  - Backend helper functions: checkProjectAccess(), checkProjectAccessByPhaseId()
+
 **Routes Added:**
 - /projeler - Tabbed projects page with "Tüm Projeler" and "Yeni Şube Açılış" tabs
 - /yeni-sube-detay/:id - Project detail with enhanced phase management
