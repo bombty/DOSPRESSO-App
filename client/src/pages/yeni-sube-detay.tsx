@@ -455,6 +455,7 @@ export default function YeniSubeDetay() {
   const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false);
   const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
   const [selectedProcurementItem, setSelectedProcurementItem] = useState<ProcurementItem | null>(null);
+  const [isAddExternalUserDialogOpen, setIsAddExternalUserDialogOpen] = useState(false);
 
   const phaseForm = useForm<PhaseFormValues>({
     resolver: zodResolver(phaseFormSchema),
@@ -535,6 +536,17 @@ export default function YeniSubeDetay() {
       userId: null,
       externalUserId: null,
       raciRole: "responsible",
+    },
+  });
+
+  const externalUserForm = useForm({
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      companyName: "",
+      specialty: "",
     },
   });
 
@@ -2041,6 +2053,26 @@ export default function YeniSubeDetay() {
                     </TableBody>
                   </Table>
                 )}
+                <div className="mt-8 border-t pt-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="font-medium">Dış Kullanıcılar</h4>
+                    <Button size="sm" variant="outline" onClick={() => setIsAddExternalUserDialogOpen(true)} data-testid="button-add-external-user">
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Dış Kullanıcı Ekle
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {externalUsersList.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Henüz dış kullanıcı eklenmemiş</p>
+                    ) : (
+                      externalUsersList.map((eu) => (
+                        <Badge key={eu.user.id} variant="secondary" data-testid={`badge-external-user-${eu.user.id}`}>
+                          {eu.user.firstName} {eu.user.lastName} - {eu.user.companyName || eu.user.specialty}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="procurement" className="space-y-4 m-0" data-testid="tab-content-phase-procurement">
@@ -2381,6 +2413,58 @@ export default function YeniSubeDetay() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddExternalUserDialogOpen} onOpenChange={setIsAddExternalUserDialogOpen} data-testid="dialog-add-external-user">
+        <DialogContent data-testid="dialog-content-add-external-user">
+          <DialogHeader>
+            <DialogTitle data-testid="dialog-title-add-external-user">Dış Kullanıcı Ekle</DialogTitle>
+            <DialogDescription>Projeye yeni bir dış kullanıcı ekleyin</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const data = externalUserForm.getValues();
+            fetch(`/api/projects/${projectId}/external-users`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data),
+            }).then(() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "external-users"] });
+              externalUserForm.reset();
+              setIsAddExternalUserDialogOpen(false);
+              toast({ title: "Dış kullanıcı eklendi" });
+            }).catch(() => toast({ title: "Hata", description: "Eklenemedi", variant: "destructive" }));
+          }} className="space-y-4" data-testid="form-add-external-user">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Adı</label>
+              <input type="text" placeholder="Ad" {...externalUserForm.register("firstName")} className="w-full px-3 py-2 border rounded-md" data-testid="input-external-first-name" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Soyadı</label>
+              <input type="text" placeholder="Soyad" {...externalUserForm.register("lastName")} className="w-full px-3 py-2 border rounded-md" data-testid="input-external-last-name" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email</label>
+              <input type="email" placeholder="Email" {...externalUserForm.register("email")} className="w-full px-3 py-2 border rounded-md" data-testid="input-external-email" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Telefon</label>
+              <input type="tel" placeholder="Telefon" {...externalUserForm.register("phone")} className="w-full px-3 py-2 border rounded-md" data-testid="input-external-phone" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Şirket</label>
+              <input type="text" placeholder="Şirket Adı" {...externalUserForm.register("companyName")} className="w-full px-3 py-2 border rounded-md" data-testid="input-external-company" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Uzmanlık</label>
+              <input type="text" placeholder="Uzmanlık" {...externalUserForm.register("specialty")} className="w-full px-3 py-2 border rounded-md" data-testid="input-external-specialty" />
+            </div>
+            <DialogFooter>
+              <button type="button" variant="outline" onClick={() => setIsAddExternalUserDialogOpen(false)} className="px-4 py-2 border rounded-md" data-testid="button-cancel-external">İptal</button>
+              <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded-md" data-testid="button-save-external">Ekle</button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
