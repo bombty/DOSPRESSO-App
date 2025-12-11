@@ -4586,6 +4586,7 @@ export const projectPhases = pgTable("project_phases", {
   targetDate: date("target_date"),
   completedAt: timestamp("completed_at"),
   colorHex: varchar("color_hex", { length: 7 }).default("#6366f1"),
+  isCustom: boolean("is_custom").default(false), // Özel eklenen faz mı?
   iconName: varchar("icon_name", { length: 50 }), // lucide icon name
   responsibleUserId: varchar("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
@@ -4755,6 +4756,158 @@ export type InsertProjectRisk = z.infer<typeof insertProjectRiskSchema>;
 export type ProjectRisk = typeof projectRisks.$inferSelect;
 
 // ========================================
+// PHASE MANAGEMENT SYSTEM - Faz Yönetim Sistemi
+// ========================================
+
+// RACI Enum
+export const raciRoleEnum = ["responsible", "accountable", "consulted", "informed"] as const;
+export type RaciRoleType = typeof raciRoleEnum[number];
+
+// Phase Assignments - Faz Ekip Atamaları (RACI)
+export const phaseAssignments = pgTable("phase_assignments", {
+  id: serial("id").primaryKey(),
+  phaseId: integer("phase_id").notNull().references(() => projectPhases.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }), // Internal user
+  externalUserId: integer("external_user_id").references(() => externalUsers.id, { onDelete: "cascade" }), // External user
+  raciRole: varchar("raci_role", { length: 20 }).notNull(), // responsible, accountable, consulted, informed
+  canEditPhase: boolean("can_edit_phase").default(false),
+  canManageTasks: boolean("can_manage_tasks").default(false),
+  assignedById: varchar("assigned_by_id").references(() => users.id),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+}, (table) => [
+  index("phase_assignments_phase_idx").on(table.phaseId),
+  index("phase_assignments_user_idx").on(table.userId),
+  index("phase_assignments_external_idx").on(table.externalUserId),
+]);
+
+export const insertPhaseAssignmentSchema = createInsertSchema(phaseAssignments).omit({
+  id: true,
+  assignedAt: true,
+});
+
+export type InsertPhaseAssignment = z.infer<typeof insertPhaseAssignmentSchema>;
+export type PhaseAssignment = typeof phaseAssignments.$inferSelect;
+
+// Sub Task Status
+export const subTaskStatusEnum = ["not_started", "in_progress", "blocked", "done"] as const;
+export type SubTaskStatusType = typeof subTaskStatusEnum[number];
+
+// Phase Sub Tasks - Faz Alt Görevleri
+export const phaseSubTasks = pgTable("phase_sub_tasks", {
+  id: serial("id").primaryKey(),
+  phaseId: integer("phase_id").notNull().references(() => projectPhases.id, { onDelete: "cascade" }),
+  parentId: integer("parent_id"), // Self-reference for nested categories - will add .references in table config
+  isCategory: boolean("is_category").default(false), // True if this is a category, false if task
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).default("not_started"),
+  sortOrder: integer("sort_order").default(0),
+  dueDate: date("due_date"),
+  assigneeUserId: varchar("assignee_user_id").references(() => users.id, { onDelete: "set null" }),
+  assigneeExternalId: integer("assignee_external_id").references(() => externalUsers.id, { onDelete: "set null" }),
+  requiresBidding: boolean("requires_bidding").default(false), // Teklif gerektirir mi?
+  completedAt: timestamp("completed_at"),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("phase_sub_tasks_phase_idx").on(table.phaseId),
+  index("phase_sub_tasks_parent_idx").on(table.parentId),
+  index("phase_sub_tasks_status_idx").on(table.status),
+]);
+
+export const insertPhaseSubTaskSchema = createInsertSchema(phaseSubTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
+
+export type InsertPhaseSubTask = z.infer<typeof insertPhaseSubTaskSchema>;
+export type PhaseSubTask = typeof phaseSubTasks.$inferSelect;
+
+// Procurement Status
+export const procurementStatusEnum = ["draft", "open", "under_review", "awarded", "closed", "cancelled"] as const;
+export type ProcurementStatusType = typeof procurementStatusEnum[number];
+
+// Procurement Items - Tedarik Kalemleri
+export const procurementItems = pgTable("procurement_items", {
+  id: serial("id").primaryKey(),
+  subTaskId: integer("sub_task_id").notNull().references(() => phaseSubTasks.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  specifications: text("specifications"), // Teknik özellikler
+  quantity: integer("quantity").default(1),
+  unit: varchar("unit", { length: 50 }), // adet, kg, metre vb.
+  estimatedBudget: integer("estimated_budget"), // TL
+  status: varchar("status", { length: 30 }).default("draft"),
+  biddingDeadline: timestamp("bidding_deadline"),
+  selectedProposalId: integer("selected_proposal_id"), // Will reference proposals
+  awardedAt: timestamp("awarded_at"),
+  awardedById: varchar("awarded_by_id").references(() => users.id),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("procurement_items_subtask_idx").on(table.subTaskId),
+  index("procurement_items_status_idx").on(table.status),
+]);
+
+export const insertProcurementItemSchema = createInsertSchema(procurementItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  awardedAt: true,
+});
+
+export type InsertProcurementItem = z.infer<typeof insertProcurementItemSchema>;
+export type ProcurementItem = typeof procurementItems.$inferSelect;
+
+// Proposal Status
+export const proposalStatusEnum = ["submitted", "under_review", "selected", "rejected", "withdrawn"] as const;
+export type ProposalStatusType = typeof proposalStatusEnum[number];
+
+// Procurement Proposals - Teklifler
+export const procurementProposals = pgTable("procurement_proposals", {
+  id: serial("id").primaryKey(),
+  procurementItemId: integer("procurement_item_id").notNull().references(() => procurementItems.id, { onDelete: "cascade" }),
+  vendorId: integer("vendor_id").references(() => externalUsers.id, { onDelete: "set null" }), // External vendor
+  vendorName: varchar("vendor_name", { length: 200 }), // If no external user record
+  vendorPhone: varchar("vendor_phone", { length: 30 }),
+  vendorEmail: varchar("vendor_email", { length: 255 }),
+  vendorCompany: varchar("vendor_company", { length: 200 }),
+  proposedPrice: integer("proposed_price").notNull(), // TL
+  currency: varchar("currency", { length: 10 }).default("TRY"),
+  deliveryDays: integer("delivery_days"), // Teslimat süresi (gün)
+  warrantyMonths: integer("warranty_months"), // Garanti süresi (ay)
+  specifications: text("specifications"), // Teklif detayları
+  notes: text("notes"),
+  attachmentUrls: text("attachment_urls").array(), // Teklif dosyaları
+  status: varchar("status", { length: 30 }).default("submitted"),
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedById: varchar("reviewed_by_id").references(() => users.id),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("procurement_proposals_item_idx").on(table.procurementItemId),
+  index("procurement_proposals_vendor_idx").on(table.vendorId),
+  index("procurement_proposals_status_idx").on(table.status),
+]);
+
+export const insertProcurementProposalSchema = createInsertSchema(procurementProposals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  submittedAt: true,
+  reviewedAt: true,
+});
+
+export type InsertProcurementProposal = z.infer<typeof insertProcurementProposalSchema>;
+export type ProcurementProposal = typeof procurementProposals.$inferSelect;
+
+// ========================================
 // EXTERNAL USERS - Dış Kullanıcı Erişim Sistemi
 // ========================================
 
@@ -4766,6 +4919,7 @@ export const externalUsers = pgTable("external_users", {
   lastName: varchar("last_name", { length: 100 }),
   companyName: varchar("company_name", { length: 200 }),
   phoneNumber: varchar("phone_number", { length: 20 }),
+  specialty: varchar("specialty", { length: 100 }), // Mobilyacı, Mimar, Elektrikçi, Avukat vb.
   accessToken: varchar("access_token", { length: 255 }), // Magic link token
   tokenExpiresAt: timestamp("token_expires_at"),
   lastLoginAt: timestamp("last_login_at"),
