@@ -14719,6 +14719,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH /api/admin/update-employee-terminations - Update termination dates for existing employees
+  app.patch('/api/admin/update-employee-terminations', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && !isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { terminations } = req.body;
+      if (!Array.isArray(terminations)) {
+        return res.status(400).json({ message: "terminations array gerekli" });
+      }
+
+      const updated: any[] = [];
+      for (const term of terminations) {
+        // Find user by email or TCKN
+        let foundUser = null;
+        if (term.email) {
+          const allUsers = await storage.getAllEmployees();
+          foundUser = allUsers.find(u => u.email === term.email);
+        }
+        if (!foundUser && term.tckn) {
+          const allUsers = await storage.getAllEmployees();
+          foundUser = allUsers.find(u => u.tckn === term.tckn);
+        }
+        
+        if (foundUser) {
+          await db.update(users)
+            .set({
+              leaveStartDate: term.leaveStartDate || null,
+              leaveReason: term.leaveReason || null,
+              isActive: term.leaveStartDate ? false : true,
+            })
+            .where(eq(users.id, foundUser.id));
+          updated.push({ id: foundUser.id, name: `${foundUser.firstName} ${foundUser.lastName}`, leaveStartDate: term.leaveStartDate });
+        }
+      }
+
+      res.json({ success: true, updated: updated.length, details: updated });
+    } catch (error) {
+      console.error("Update terminations error:", error);
+      res.status(500).json({ message: "İşten ayrılma güncelleme hatası" });
+    }
+  });
+
   // POST /api/admin/import-employees - Import employees from data
   app.post('/api/admin/import-employees', isAuthenticated, async (req: any, res) => {
     try {
