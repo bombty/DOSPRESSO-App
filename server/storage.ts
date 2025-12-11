@@ -265,6 +265,7 @@ export interface IStorage {
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   deleteUser(id: string): Promise<void>;
   getAllEmployees(branchId?: number): Promise<User[]>;
+  getTerminatedEmployees(branchId?: number): Promise<User[]>;
   getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string; accountStatus?: string }): Promise<User[]>;
   bulkImportUsers(users: UpsertUser[]): Promise<User[]>;
   getUsersByRole(role: string): Promise<User[]>;
@@ -873,9 +874,16 @@ export class DatabaseStorage implements IStorage {
 
   async getAllEmployees(branchId?: number): Promise<User[]> {
     if (branchId !== undefined) {
-      return db.select().from(users).where(eq(users.branchId, branchId)) as Promise<User[]>;
+      return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.isActive, true))) as Promise<User[]>;
     }
-    return db.select().from(users) as Promise<User[]>;
+    return db.select().from(users).where(eq(users.isActive, true)) as Promise<User[]>;
+  }
+
+  async getTerminatedEmployees(branchId?: number): Promise<User[]> {
+    if (branchId !== undefined) {
+      return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.isActive, false))).orderBy(desc(users.leaveStartDate)) as Promise<User[]>;
+    }
+    return db.select().from(users).where(eq(users.isActive, false)).orderBy(desc(users.leaveStartDate)) as Promise<User[]>;
   }
 
   async getAllUsersWithFilters(filters: { role?: string; branchId?: number; search?: string; accountStatus?: string }): Promise<User[]> {

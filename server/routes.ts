@@ -3427,6 +3427,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get terminated employees list (ayrılan personeller)
+  app.get('/api/employees/terminated', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { role, branchId: userBranchId } = user;
+
+      // Permission check - only HQ and admin can see terminated employees
+      if (!isHQRole(role as UserRoleType) && role !== 'admin') {
+        return res.status(403).json({ message: "Ayrılan personel listesine erişim yetkiniz yok" });
+      }
+
+      // Optional branch filter
+      const branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+
+      const terminatedEmployees = await storage.getTerminatedEmployees(branchFilter);
+      
+      // Sanitize: Remove sensitive fields - HQ users get more details
+      res.json(sanitizeUsersForRole(terminatedEmployees, role as UserRoleType));
+    } catch (error) {
+      console.error("Error fetching terminated employees:", error);
+      res.status(500).json({ message: "Ayrılan personeller yüklenirken hata oluştu" });
+    }
+  });
+
   // Get single employee (with permissions and branch filtering)
   app.get('/api/employees/:id', isAuthenticated, async (req, res) => {
     try {
