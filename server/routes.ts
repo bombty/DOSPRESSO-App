@@ -140,6 +140,15 @@ import {
   insertExternalUserProjectSchema,
   NEW_SHOP_PHASE_TEMPLATE,
   PHASE_STATUS,
+  // Phase Management System tables
+  phaseAssignments,
+  phaseSubTasks,
+  procurementItems,
+  procurementProposals,
+  insertPhaseAssignmentSchema,
+  insertPhaseSubTaskSchema,
+  insertProcurementItemSchema,
+  insertProcurementProposalSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull } from "drizzle-orm";
@@ -13961,6 +13970,605 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete risk error:", error);
       res.status(500).json({ message: "Risk silinemedi" });
+    }
+  });
+
+  // ========================================
+  // PHASE MANAGEMENT SYSTEM ROUTES
+  // ========================================
+
+  // ---- Phase Sub-Tasks ----
+
+  // GET /api/new-shop-projects/:projectId/phases/:phaseId/subtasks - List sub-tasks for a phase
+  app.get('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const phaseId = parseInt(req.params.phaseId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+      }
+      
+      const subtasks = await db.select().from(phaseSubTasks)
+        .where(eq(phaseSubTasks.phaseId, phaseId))
+        .orderBy(phaseSubTasks.sortOrder, phaseSubTasks.id);
+      
+      // Build nested structure - categories with their child tasks
+      const categories = subtasks.filter(s => s.isCategory);
+      const tasks = subtasks.filter(s => !s.isCategory);
+      
+      const nestedResult = categories.map(cat => ({
+        ...cat,
+        children: tasks.filter(t => t.parentId === cat.id).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+      }));
+      
+      // Also include orphan tasks (tasks without a category parent)
+      const orphanTasks = tasks.filter(t => !t.parentId || !categories.find(c => c.id === t.parentId));
+      
+      res.json({ categories: nestedResult, orphanTasks, all: subtasks });
+    } catch (error) {
+      console.error("Get phase subtasks error:", error);
+      res.status(500).json({ message: "Alt görevler alınamadı" });
+    }
+  });
+
+  // POST /api/new-shop-projects/:projectId/phases/:phaseId/subtasks - Create sub-task
+  app.post('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const phaseId = parseInt(req.params.phaseId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const data = insertPhaseSubTaskSchema.parse({
+        ...req.body,
+        phaseId,
+        createdById: user.id,
+      });
+      
+      const [subtask] = await db.insert(phaseSubTasks).values(data).returning();
+      res.status(201).json(subtask);
+    } catch (error) {
+      console.error("Create phase subtask error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Alt görev oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId - Update sub-task
+  app.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const subtaskId = parseInt(req.params.subtaskId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const updateData: any = { ...req.body, updatedAt: new Date() };
+      
+      // If status is set to done, record completedAt
+      if (req.body.status === 'done') {
+        updateData.completedAt = new Date();
+      }
+      
+      const [updated] = await db.update(phaseSubTasks)
+        .set(updateData)
+        .where(eq(phaseSubTasks.id, subtaskId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update phase subtask error:", error);
+      res.status(500).json({ message: "Alt görev güncellenemedi" });
+    }
+  });
+
+  // PATCH /api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId/reorder - Update sort order
+  app.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId/reorder', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const subtaskId = parseInt(req.params.subtaskId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const { sortOrder, parentId } = req.body;
+      
+      const [updated] = await db.update(phaseSubTasks)
+        .set({ sortOrder, parentId: parentId ?? null, updatedAt: new Date() })
+        .where(eq(phaseSubTasks.id, subtaskId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Reorder phase subtask error:", error);
+      res.status(500).json({ message: "Sıralama güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId - Delete sub-task
+  app.delete('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const subtaskId = parseInt(req.params.subtaskId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      await db.delete(phaseSubTasks).where(eq(phaseSubTasks.id, subtaskId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete phase subtask error:", error);
+      res.status(500).json({ message: "Alt görev silinemedi" });
+    }
+  });
+
+  // ---- Phase Assignments ----
+
+  // GET /api/new-shop-projects/:projectId/phases/:phaseId/assignments - List assignments for a phase
+  app.get('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const phaseId = parseInt(req.params.phaseId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+      }
+      
+      const assignments = await db.select({
+        assignment: phaseAssignments,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          role: users.role,
+        },
+        externalUser: {
+          id: externalUsers.id,
+          firstName: externalUsers.firstName,
+          lastName: externalUsers.lastName,
+          email: externalUsers.email,
+          companyName: externalUsers.companyName,
+          specialty: externalUsers.specialty,
+        },
+      })
+        .from(phaseAssignments)
+        .leftJoin(users, eq(phaseAssignments.userId, users.id))
+        .leftJoin(externalUsers, eq(phaseAssignments.externalUserId, externalUsers.id))
+        .where(eq(phaseAssignments.phaseId, phaseId));
+      
+      res.json(assignments);
+    } catch (error) {
+      console.error("Get phase assignments error:", error);
+      res.status(500).json({ message: "Atamalar alınamadı" });
+    }
+  });
+
+  // POST /api/new-shop-projects/:projectId/phases/:phaseId/assignments - Add assignment
+  app.post('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const phaseId = parseInt(req.params.phaseId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const data = insertPhaseAssignmentSchema.parse({
+        ...req.body,
+        phaseId,
+        assignedById: user.id,
+      });
+      
+      // Ensure either userId or externalUserId is provided
+      if (!data.userId && !data.externalUserId) {
+        return res.status(400).json({ message: "Kullanıcı veya dış kullanıcı seçilmeli" });
+      }
+      
+      const [assignment] = await db.insert(phaseAssignments).values(data).returning();
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Create phase assignment error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Atama oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId - Update assignment
+  app.patch('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const assignmentId = parseInt(req.params.assignmentId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const [updated] = await db.update(phaseAssignments)
+        .set(req.body)
+        .where(eq(phaseAssignments.id, assignmentId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update phase assignment error:", error);
+      res.status(500).json({ message: "Atama güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId - Remove assignment
+  app.delete('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const assignmentId = parseInt(req.params.assignmentId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      await db.delete(phaseAssignments).where(eq(phaseAssignments.id, assignmentId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete phase assignment error:", error);
+      res.status(500).json({ message: "Atama silinemedi" });
+    }
+  });
+
+  // ---- Procurement Items and Proposals ----
+
+  // GET /api/new-shop-projects/:projectId/procurement/items - List all procurement items for project
+  app.get('/api/new-shop-projects/:projectId/procurement/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.projectId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+      }
+      
+      // Get all procurement items linked to subtasks of this project's phases
+      const items = await db.select({
+        item: procurementItems,
+        subtask: {
+          id: phaseSubTasks.id,
+          title: phaseSubTasks.title,
+          phaseId: phaseSubTasks.phaseId,
+        },
+      })
+        .from(procurementItems)
+        .innerJoin(phaseSubTasks, eq(procurementItems.subTaskId, phaseSubTasks.id))
+        .innerJoin(projectPhases, eq(phaseSubTasks.phaseId, projectPhases.id))
+        .where(eq(projectPhases.projectId, projectId))
+        .orderBy(desc(procurementItems.createdAt));
+      
+      res.json(items);
+    } catch (error) {
+      console.error("Get procurement items error:", error);
+      res.status(500).json({ message: "Tedarik kalemleri alınamadı" });
+    }
+  });
+
+  // GET /api/new-shop-projects/:projectId/procurement/items/:itemId - Get single item with proposals
+  app.get('/api/new-shop-projects/:projectId/procurement/items/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const itemId = parseInt(req.params.itemId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+      }
+      
+      const [item] = await db.select().from(procurementItems)
+        .where(eq(procurementItems.id, itemId));
+      
+      if (!item) {
+        return res.status(404).json({ message: "Tedarik kalemi bulunamadı" });
+      }
+      
+      const proposals = await db.select().from(procurementProposals)
+        .where(eq(procurementProposals.procurementItemId, itemId))
+        .orderBy(procurementProposals.proposedPrice);
+      
+      res.json({ ...item, proposals });
+    } catch (error) {
+      console.error("Get procurement item error:", error);
+      res.status(500).json({ message: "Tedarik kalemi alınamadı" });
+    }
+  });
+
+  // POST /api/new-shop-projects/:projectId/procurement/items - Create procurement item from sub-task
+  app.post('/api/new-shop-projects/:projectId/procurement/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const data = insertProcurementItemSchema.parse({
+        ...req.body,
+        createdById: user.id,
+      });
+      
+      const [item] = await db.insert(procurementItems).values(data).returning();
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Create procurement item error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Tedarik kalemi oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/new-shop-projects/:projectId/procurement/items/:itemId - Update item
+  app.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const itemId = parseInt(req.params.itemId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const [updated] = await db.update(procurementItems)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(procurementItems.id, itemId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update procurement item error:", error);
+      res.status(500).json({ message: "Tedarik kalemi güncellenemedi" });
+    }
+  });
+
+  // POST /api/new-shop-projects/:projectId/procurement/items/:itemId/proposals - Add proposal
+  app.post('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const itemId = parseInt(req.params.itemId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const data = insertProcurementProposalSchema.parse({
+        ...req.body,
+        procurementItemId: itemId,
+      });
+      
+      const [proposal] = await db.insert(procurementProposals).values(data).returning();
+      res.status(201).json(proposal);
+    } catch (error) {
+      console.error("Create procurement proposal error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Teklif oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId - Update proposal
+  app.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const proposalId = parseInt(req.params.proposalId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const [updated] = await db.update(procurementProposals)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(procurementProposals.id, proposalId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update procurement proposal error:", error);
+      res.status(500).json({ message: "Teklif güncellenemedi" });
+    }
+  });
+
+  // PATCH /api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId/select - Select winning proposal
+  app.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId/select', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const itemId = parseInt(req.params.itemId);
+      const proposalId = parseInt(req.params.proposalId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      // Update the winning proposal status
+      await db.update(procurementProposals)
+        .set({ status: 'selected', reviewedAt: new Date(), reviewedById: user.id })
+        .where(eq(procurementProposals.id, proposalId));
+      
+      // Reject other proposals for this item
+      await db.update(procurementProposals)
+        .set({ status: 'rejected', reviewedAt: new Date(), reviewedById: user.id })
+        .where(and(
+          eq(procurementProposals.procurementItemId, itemId),
+          sql`${procurementProposals.id} != ${proposalId}`,
+          sql`${procurementProposals.status} NOT IN ('withdrawn')`
+        ));
+      
+      // Update the procurement item with selected proposal
+      const [updatedItem] = await db.update(procurementItems)
+        .set({ 
+          selectedProposalId: proposalId, 
+          status: 'awarded', 
+          awardedAt: new Date(), 
+          awardedById: user.id,
+          updatedAt: new Date() 
+        })
+        .where(eq(procurementItems.id, itemId))
+        .returning();
+      
+      res.json(updatedItem);
+    } catch (error) {
+      console.error("Select proposal error:", error);
+      res.status(500).json({ message: "Teklif seçilemedi" });
+    }
+  });
+
+  // DELETE /api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId - Delete proposal
+  app.delete('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const proposalId = parseInt(req.params.proposalId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      await db.delete(procurementProposals).where(eq(procurementProposals.id, proposalId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete procurement proposal error:", error);
+      res.status(500).json({ message: "Teklif silinemedi" });
+    }
+  });
+
+  // ---- External Users for Project ----
+
+  // GET /api/new-shop-projects/:projectId/external-users - List external users assigned to project
+  app.get('/api/new-shop-projects/:projectId/external-users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.projectId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+      }
+      
+      const externalUsersList = await db.select({
+        access: externalUserProjects,
+        user: externalUsers,
+      })
+        .from(externalUserProjects)
+        .innerJoin(externalUsers, eq(externalUserProjects.externalUserId, externalUsers.id))
+        .where(and(
+          eq(externalUserProjects.projectId, projectId),
+          isNull(externalUserProjects.revokedAt)
+        ));
+      
+      res.json(externalUsersList);
+    } catch (error) {
+      console.error("Get external users error:", error);
+      res.status(500).json({ message: "Dış kullanıcılar alınamadı" });
+    }
+  });
+
+  // POST /api/new-shop-projects/:projectId/external-users - Invite external user
+  app.post('/api/new-shop-projects/:projectId/external-users', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.projectId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      const { email, firstName, lastName, companyName, phoneNumber, specialty, role, canViewBudget, canComment, canUploadFiles } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email adresi gerekli" });
+      }
+      
+      // Check if external user already exists
+      let [existingUser] = await db.select().from(externalUsers)
+        .where(eq(externalUsers.email, email.toLowerCase()));
+      
+      let externalUserId: number;
+      
+      if (existingUser) {
+        externalUserId = existingUser.id;
+      } else {
+        // Create new external user
+        const [newExternalUser] = await db.insert(externalUsers).values({
+          email: email.toLowerCase(),
+          firstName,
+          lastName,
+          companyName,
+          phoneNumber,
+          specialty,
+          invitedById: user.id,
+        }).returning();
+        externalUserId = newExternalUser.id;
+      }
+      
+      // Check if already assigned to this project
+      const [existingAccess] = await db.select().from(externalUserProjects)
+        .where(and(
+          eq(externalUserProjects.externalUserId, externalUserId),
+          eq(externalUserProjects.projectId, projectId),
+          isNull(externalUserProjects.revokedAt)
+        ));
+      
+      if (existingAccess) {
+        return res.status(400).json({ message: "Bu kullanıcı zaten projeye atanmış" });
+      }
+      
+      // Assign to project
+      const [access] = await db.insert(externalUserProjects).values({
+        externalUserId,
+        projectId,
+        role: role || 'viewer',
+        canViewBudget: canViewBudget ?? false,
+        canViewTasks: true,
+        canComment: canComment ?? true,
+        canUploadFiles: canUploadFiles ?? false,
+        grantedById: user.id,
+      }).returning();
+      
+      // Get the full user info
+      const [fullExternalUser] = await db.select().from(externalUsers)
+        .where(eq(externalUsers.id, externalUserId));
+      
+      res.status(201).json({ access, user: fullExternalUser });
+    } catch (error) {
+      console.error("Invite external user error:", error);
+      res.status(500).json({ message: "Dış kullanıcı davet edilemedi" });
+    }
+  });
+
+  // DELETE /api/new-shop-projects/:projectId/external-users/:externalUserId - Remove from project
+  app.delete('/api/new-shop-projects/:projectId/external-users/:externalUserId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const projectId = parseInt(req.params.projectId);
+      const externalUserId = parseInt(req.params.externalUserId);
+      
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      // Soft delete by setting revokedAt
+      await db.update(externalUserProjects)
+        .set({ revokedAt: new Date() })
+        .where(and(
+          eq(externalUserProjects.externalUserId, externalUserId),
+          eq(externalUserProjects.projectId, projectId)
+        ));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Remove external user error:", error);
+      res.status(500).json({ message: "Dış kullanıcı kaldırılamadı" });
     }
   });
 
