@@ -93,6 +93,9 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  Star,
+  Building2,
+  MapPin,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useLocation } from "wouter";
@@ -684,178 +687,87 @@ export default function IKPage() {
                   </Card>
                 </div>
 
-                {/* Employee Table */}
+                {/* Simplified Employee List */}
                 {isLoading ? (
-                  <div className="flex flex-col gap-2 sm:gap-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Skeleton key={i} className="h-16 w-full" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {[...Array(6)].map((_, i) => (
+                      <Skeleton key={i} className="h-24 w-full rounded-lg" />
                     ))}
                   </div>
+                ) : filteredEmployees.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-lg font-medium">Personel Bulunamadı</p>
+                    <p className="text-sm text-muted-foreground">Filtrelere uygun personel yok.</p>
+                  </Card>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Ad Soyad</TableHead>
-                        <TableHead>TCKN</TableHead>
-                        <TableHead>Departman</TableHead>
-                        <TableHead>Rol</TableHead>
-                        <TableHead>Şube</TableHead>
-                        <TableHead>Şehir</TableHead>
-                        <TableHead>İşe Giriş</TableHead>
-                        <TableHead>Deneme Süresi</TableHead>
-                        <TableHead>Eğitim Durumu</TableHead>
-                        <TableHead>İletişim</TableHead>
-                        <TableHead className="text-right">İşlemler</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredEmployees.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={11} className="text-center text-muted-foreground">
-                            Personel bulunamadı
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredEmployees.map((employee) => {
-                          const probationStatus = getProbationStatus(employee.probationEndDate);
-                          const branch = branches.find((b) => b.id === employee.branchId);
-                          const trainingStats = userTrainingCompletion.get(employee.id);
-                          
-                          return (
-                            <TableRow key={employee.id} data-testid={`row-employee-${employee.id}`}>
-                              <TableCell className="font-medium">
-                                {employee.firstName} {employee.lastName}
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {(employee as any).tckn || "-"}
-                              </TableCell>
-                              <TableCell>
-                                {(employee as any).department ? (
-                                  <Badge variant="outline">{(employee as any).department}</Badge>
-                                ) : "-"}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="secondary">{roleLabels[employee.role] || employee.role}</Badge>
-                              </TableCell>
-                              <TableCell>{branch?.name || "-"}</TableCell>
-                              <TableCell className="text-sm">{(employee as any).city || "-"}</TableCell>
-                              <TableCell>
-                                {employee.hireDate ? (
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                                    {format(new Date(employee.hireDate), "dd.MM.yyyy")}
-                                  </div>
-                                ) : (
-                                  "-"
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {probationStatus ? (
-                                  <Badge variant={probationStatus.variant}>
-                                    {probationStatus.label}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {filteredEmployees.map((employee) => {
+                      const branch = branches.find((b) => b.id === employee.branchId);
+                      const trainingStats = userTrainingCompletion.get(employee.id);
+                      
+                      return (
+                        <Link key={employee.id} href={`/personel-detay/${employee.id}`}>
+                          <Card 
+                            className="hover-elevate cursor-pointer transition-all h-full"
+                            data-testid={`card-employee-${employee.id}`}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold truncate">
+                                    {employee.firstName} {employee.lastName}
+                                  </h3>
+                                  <Badge variant="secondary" className="mt-1">
+                                    {roleLabels[employee.role] || employee.role}
                                   </Badge>
-                                ) : (
-                                  "-"
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {trainingStats && trainingStats.total > 0 ? (
-                                  <Badge
-                                    variant={
-                                      trainingStats.completed === trainingStats.total
-                                        ? "default"
-                                        : "secondary"
-                                    }
-                                  >
-                                    {trainingStats.completed}/{trainingStats.total}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">-</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-sm">
-                                <div>{employee.phoneNumber || "-"}</div>
-                                <div className="text-muted-foreground">{employee.email || "-"}</div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex gap-2 justify-end">
-                                  {canEdit && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setSelectedEmployee(employee);
-                                        setEditDialogOpen(true);
-                                      }}
-                                      data-testid={`button-edit-${employee.id}`}
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  {trainingStats && trainingStats.total > 0 ? (
+                                    <Badge 
+                                      variant={trainingStats.completed === trainingStats.total ? "default" : "outline"}
+                                      className={trainingStats.completed === trainingStats.total ? "bg-green-600" : ""}
                                     >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  <Link href={`/personel-detay/${employee.id}`}>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      data-testid={`button-detail-${employee.id}`}
-                                    >
-                                      <FileText className="h-4 w-4" />
-                                    </Button>
-                                  </Link>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedEmployee(employee);
-                                      setWarningsDialogOpen(true);
-                                    }}
-                                    data-testid={`button-warnings-${employee.id}`}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  {canWarn && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setSelectedEmployee(employee);
-                                        setAddWarningDialogOpen(true);
-                                      }}
-                                      data-testid={`button-add-warning-${employee.id}`}
-                                    >
-                                      <AlertTriangle className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  {(user?.role === 'admin' || user?.role === 'coach') && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setSelectedEmployee(employee);
-                                        setNewPassword("");
-                                        setResetPasswordDialogOpen(true);
-                                      }}
-                                      data-testid={`button-reset-password-${employee.id}`}
-                                    >
-                                      <Key className="h-4 w-4" />
-                                    </Button>
+                                      <Star className="h-3 w-3 mr-1" />
+                                      {trainingStats.completed}/{trainingStats.total}
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-muted-foreground">
+                                      Eğitim Yok
+                                    </Badge>
                                   )}
                                 </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                        </TableBody>
-                      </Table>
-                    )}
+                              </div>
+                              <div className="mt-3 text-sm text-muted-foreground">
+                                {(employee as any).department ? (
+                                  <div className="flex items-center gap-1">
+                                    <Building2 className="h-3 w-3" />
+                                    <span className="truncate">{(employee as any).department}</span>
+                                  </div>
+                                ) : branch ? (
+                                  <div className="flex items-center gap-1">
+                                    <MapPin className="h-3 w-3" />
+                                    <span className="truncate">{branch.name}</span>
+                                  </div>
+                                ) : (
+                                  <span>-</span>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
                   </TabsContent>
 
                   {/* Terminated Employees Tab */}
                   <TabsContent value="terminated" className="space-y-4 mt-4">
                     {isTerminatedLoading ? (
-                      <div className="flex flex-col gap-2 sm:gap-3">
-                        {[...Array(5)].map((_, i) => (
-                          <Skeleton key={i} className="h-16 w-full" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {[...Array(6)].map((_, i) => (
+                          <Skeleton key={i} className="h-24 w-full rounded-lg" />
                         ))}
                       </div>
                     ) : terminatedEmployees.length === 0 ? (
@@ -865,86 +777,60 @@ export default function IKPage() {
                         <p className="text-sm text-muted-foreground">İşten ayrılan personel kaydı bulunmuyor.</p>
                       </Card>
                     ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Ad Soyad</TableHead>
-                            <TableHead>TCKN</TableHead>
-                            <TableHead>Departman</TableHead>
-                            <TableHead>Son Rol</TableHead>
-                            <TableHead>Son Şube</TableHead>
-                            <TableHead>İşe Giriş</TableHead>
-                            <TableHead>İşten Ayrılış</TableHead>
-                            <TableHead>Ayrılma Nedeni</TableHead>
-                            <TableHead>İletişim</TableHead>
-                            <TableHead className="text-right">İşlemler</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {terminatedEmployees.map((employee) => {
-                            const branch = branches.find((b) => b.id === employee.branchId);
-                            return (
-                              <TableRow key={employee.id} data-testid={`row-terminated-${employee.id}`} className="bg-muted/30">
-                                <TableCell className="font-medium">
-                                  {employee.firstName} {employee.lastName}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {(employee as any).tckn || "-"}
-                                </TableCell>
-                                <TableCell>
-                                  {(employee as any).department ? (
-                                    <Badge variant="outline">{(employee as any).department}</Badge>
-                                  ) : "-"}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="secondary">{roleLabels[employee.role] || employee.role}</Badge>
-                                </TableCell>
-                                <TableCell>{branch?.name || "-"}</TableCell>
-                                <TableCell>
-                                  {employee.hireDate ? (
-                                    <div className="flex items-center gap-1">
-                                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                                      {format(new Date(employee.hireDate), "dd.MM.yyyy")}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {terminatedEmployees.map((employee) => {
+                          const branch = branches.find((b) => b.id === employee.branchId);
+                          return (
+                            <Link key={employee.id} href={`/personel-detay/${employee.id}`}>
+                              <Card 
+                                className="hover-elevate cursor-pointer transition-all h-full bg-muted/30 border-dashed"
+                                data-testid={`card-terminated-${employee.id}`}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="font-semibold truncate text-muted-foreground">
+                                        {employee.firstName} {employee.lastName}
+                                      </h3>
+                                      <Badge variant="outline" className="mt-1">
+                                        {roleLabels[employee.role] || employee.role}
+                                      </Badge>
                                     </div>
-                                  ) : "-"}
-                                </TableCell>
-                                <TableCell>
-                                  {(employee as any).leaveStartDate ? (
-                                    <div className="flex items-center gap-1">
-                                      <Calendar className="h-4 w-4 text-destructive" />
-                                      <span className="text-destructive font-medium">
-                                        {format(new Date((employee as any).leaveStartDate), "dd.MM.yyyy")}
-                                      </span>
+                                    <div className="flex flex-col items-end gap-1">
+                                      {(employee as any).leaveStartDate && (
+                                        <div className="flex items-center gap-1 text-xs text-destructive">
+                                          <Calendar className="h-3 w-3" />
+                                          {format(new Date((employee as any).leaveStartDate), "dd.MM.yyyy")}
+                                        </div>
+                                      )}
                                     </div>
-                                  ) : "-"}
-                                </TableCell>
-                                <TableCell className="max-w-[200px] truncate">
-                                  <span className="text-sm text-muted-foreground" title={(employee as any).leaveReason || ""}>
-                                    {(employee as any).leaveReason || "-"}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="text-sm">
-                                  <div>{employee.phoneNumber || "-"}</div>
-                                  <div className="text-muted-foreground">{employee.email || "-"}</div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex gap-2 justify-end">
-                                    <Link href={`/personel-detay/${employee.id}`}>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        data-testid={`button-detail-terminated-${employee.id}`}
-                                      >
-                                        <FileText className="h-4 w-4" />
-                                      </Button>
-                                    </Link>
                                   </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                                  <div className="mt-3 text-sm text-muted-foreground">
+                                    {(employee as any).department ? (
+                                      <div className="flex items-center gap-1">
+                                        <Building2 className="h-3 w-3" />
+                                        <span className="truncate">{(employee as any).department}</span>
+                                      </div>
+                                    ) : branch ? (
+                                      <div className="flex items-center gap-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span className="truncate">{branch.name}</span>
+                                      </div>
+                                    ) : (
+                                      <span>-</span>
+                                    )}
+                                  </div>
+                                  {(employee as any).leaveReason && (
+                                    <p className="mt-2 text-xs text-muted-foreground truncate" title={(employee as any).leaveReason}>
+                                      {(employee as any).leaveReason}
+                                    </p>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </Link>
+                          );
+                        })}
+                      </div>
                     )}
                   </TabsContent>
                 </Tabs>
