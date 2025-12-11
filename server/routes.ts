@@ -14124,11 +14124,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(accessCheck.error === "Proje bulunamadı" ? 404 : 403).json({ message: accessCheck.error });
       }
       
-      const data = insertPhaseSubTaskSchema.parse({
+      // Clean data: convert empty strings to null for date fields
+      const cleanData = {
         ...req.body,
+        dueDate: req.body.dueDate === '' ? null : req.body.dueDate,
         phaseId,
         createdById: user.id,
-      });
+      };
+      
+      const data = insertPhaseSubTaskSchema.parse(cleanData);
       
       const [subtask] = await db.insert(phaseSubTasks).values(data).returning();
       res.status(201).json(subtask);
@@ -14155,6 +14159,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const updateData: any = { ...req.body, updatedAt: new Date() };
+      
+      // Clean data: convert empty strings to null for date fields
+      if ('dueDate' in updateData && updateData.dueDate === '') {
+        updateData.dueDate = null;
+      }
       
       // If status is set to done, record completedAt
       if (req.body.status === 'done') {
