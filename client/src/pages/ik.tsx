@@ -2428,6 +2428,8 @@ function RecruitmentSection() {
   const { user } = useAuth();
   const [addPositionOpen, setAddPositionOpen] = useState(false);
   const [addApplicationOpen, setAddApplicationOpen] = useState(false);
+  const [addInterviewOpen, setAddInterviewOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [selectedPosition, setSelectedPosition] = useState<any>(null);
 
   // Fetch job positions
@@ -2456,6 +2458,12 @@ function RecruitmentSection() {
   // Fetch branches
   const { data: branches = [] } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/branches"],
+  });
+
+  // Fetch interviews
+  const { data: interviewsData = [] } = useQuery<any[]>({
+    queryKey: ["/api/interviews"],
+    enabled: !!user,
   });
 
   const statusLabels: Record<string, string> = {
@@ -2510,16 +2518,20 @@ function RecruitmentSection() {
         </Card>
       </div>
 
-      {/* Tabs for Positions and Applications */}
+      {/* Tabs for Positions, Applications and Interviews */}
       <Tabs defaultValue="positions" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="positions" data-testid="tab-positions">
-            Açık Pozisyonlar
+            Pozisyonlar
             <Badge variant="secondary" className="ml-2">{positions.filter(p => p.status === 'open').length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="applications" data-testid="tab-applications">
             Başvurular
             <Badge variant="secondary" className="ml-2">{applications.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="interviews" data-testid="tab-interviews">
+            Mülakatlar
+            <Badge variant="secondary" className="ml-2">{interviewsData.filter(i => i.status === 'scheduled').length}</Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -2630,6 +2642,7 @@ function RecruitmentSection() {
                   <TableHead>Telefon</TableHead>
                   <TableHead>Durum</TableHead>
                   <TableHead>Tarih</TableHead>
+                  <TableHead className="text-right">İşlem</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2659,6 +2672,84 @@ function RecruitmentSection() {
                       <TableCell className="text-muted-foreground text-sm">
                         {app.createdAt ? format(new Date(app.createdAt), "dd.MM.yyyy") : "-"}
                       </TableCell>
+                      <TableCell className="text-right">
+                        {app.status !== 'hired' && app.status !== 'rejected' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedApplication(app);
+                              setAddInterviewOpen(true);
+                            }}
+                            data-testid={`button-schedule-interview-${app.id}`}
+                          >
+                            <Calendar className="h-3 w-3 mr-1" />
+                            Mülakat
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+
+        {/* Interviews Tab */}
+        <TabsContent value="interviews" className="space-y-4 mt-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium">Planlı Mülakatlar</h3>
+          </div>
+
+          {interviewsData.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-lg font-medium">Mülakat Yok</p>
+              <p className="text-sm text-muted-foreground">
+                Başvuru listesinden aday seçerek mülakat planlayabilirsiniz.
+              </p>
+            </Card>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Aday</TableHead>
+                  <TableHead>Pozisyon</TableHead>
+                  <TableHead>Tarih/Saat</TableHead>
+                  <TableHead>Görüşmeci</TableHead>
+                  <TableHead>Durum</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {interviewsData.map((interview: any) => {
+                  const app = applications.find((a: any) => a.id === interview.applicationId);
+                  const position = positions.find((p: any) => p.id === app?.positionId);
+                  return (
+                    <TableRow key={interview.id} data-testid={`row-interview-${interview.id}`}>
+                      <TableCell className="font-medium">
+                        {app ? `${app.firstName} ${app.lastName}` : `Başvuru #${interview.applicationId}`}
+                      </TableCell>
+                      <TableCell>
+                        {position?.title || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {interview.scheduledDate ? format(new Date(interview.scheduledDate), "dd.MM.yyyy HH:mm") : "-"}
+                      </TableCell>
+                      <TableCell>{interview.notes?.split('|')[0]?.trim() || '-'}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            interview.status === 'completed' ? 'default' :
+                            interview.status === 'cancelled' ? 'destructive' :
+                            'secondary'
+                          }
+                        >
+                          {interview.status === 'scheduled' ? 'Planlandı' :
+                           interview.status === 'completed' ? 'Tamamlandı' :
+                           interview.status === 'cancelled' ? 'İptal' : interview.status}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -2681,6 +2772,15 @@ function RecruitmentSection() {
         onOpenChange={setAddApplicationOpen} 
         positions={positions}
       />
+
+      {/* Schedule Interview Dialog */}
+      {selectedApplication && (
+        <ScheduleInterviewDialog
+          open={addInterviewOpen}
+          onOpenChange={setAddInterviewOpen}
+          application={selectedApplication}
+        />
+      )}
     </div>
   );
 }
@@ -2998,6 +3098,146 @@ function AddApplicationDialog({
             </Button>
             <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-application">
               {createMutation.isPending ? "Kaydediliyor..." : "Başvuru Ekle"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Schedule Interview Dialog
+function ScheduleInterviewDialog({
+  open,
+  onOpenChange,
+  application,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  application: any;
+}) {
+  const { toast } = useToast();
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("10:00");
+  const [interviewerName, setInterviewerName] = useState("");
+  const [interviewType, setInterviewType] = useState("in_person");
+  const [notes, setNotes] = useState("");
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", "/api/interviews", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Mülakat planlandı" });
+      queryClient.invalidateQueries({ queryKey: ["/api/interviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
+      onOpenChange(false);
+      setScheduledAt("");
+      setInterviewerName("");
+      setNotes("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Mülakat oluşturulurken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { user } = useAuth();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scheduledAt || !interviewerName.trim()) {
+      toast({ title: "Hata", description: "Tarih ve görüşmeci adı gerekli", variant: "destructive" });
+      return;
+    }
+    const dateTime = new Date(`${scheduledAt}T${scheduledTime}`);
+    createMutation.mutate({
+      applicationId: application.id,
+      scheduledDate: dateTime.toISOString(),
+      interviewerId: user?.id,
+      interviewType,
+      notes: interviewerName + (notes ? ` | ${notes}` : ''),
+      status: "scheduled",
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Mülakat Planla</DialogTitle>
+          <DialogDescription>
+            {application.firstName} {application.lastName} için mülakat planla
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">Tarih *</label>
+              <Input
+                type="date"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+                data-testid="input-interview-date"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Saat *</label>
+              <Input
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                data-testid="input-interview-time"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Görüşmeci *</label>
+            <Input
+              value={interviewerName}
+              onChange={(e) => setInterviewerName(e.target.value)}
+              placeholder="Görüşmeyi yapacak kişi"
+              data-testid="input-interviewer"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Mülakat Tipi</label>
+            <Select value={interviewType} onValueChange={setInterviewType}>
+              <SelectTrigger data-testid="select-interview-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="in_person">Yüz Yüze</SelectItem>
+                <SelectItem value="phone">Telefon</SelectItem>
+                <SelectItem value="video">Video</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Notlar</label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Mülakat hakkında notlar..."
+              rows={2}
+              data-testid="input-interview-notes"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              İptal
+            </Button>
+            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-interview">
+              {createMutation.isPending ? "Kaydediliyor..." : "Planla"}
             </Button>
           </DialogFooter>
         </form>
