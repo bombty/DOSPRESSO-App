@@ -100,6 +100,7 @@ import {
 import { format, differenceInDays } from "date-fns";
 import { useLocation } from "wouter";
 import { CreateDisciplinaryDialog } from "@/components/hr/DisciplinaryDialogs";
+import { EmployeeTermination, insertEmployeeTerminationSchema } from "@shared/schema";
 
 const roleLabels: Record<string, string> = {
   admin: "Admin",
@@ -158,6 +159,7 @@ export default function IKPage() {
   const [warningsDialogOpen, setWarningsDialogOpen] = useState(false);
   const [addWarningDialogOpen, setAddWarningDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [addTerminationOpen, setAddTerminationOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState("");
 
@@ -275,6 +277,12 @@ export default function IKPage() {
   const { data: employeeDocuments = [], isLoading: isDocumentsLoading } = useQuery<(EmployeeDocument & { user?: User })[]>({
     queryKey: documentsQueryKey,
     enabled: !!user,
+  });
+
+  // Fetch termination records
+  const { data: terminationRecords = [] } = useQuery<any[]>({
+    queryKey: ["/api/employee-terminations"],
+    enabled: isHQRole(user?.role as any),
   });
 
   // Monthly Attendance Summary Query
@@ -1387,6 +1395,51 @@ export default function IKPage() {
             </Card>
           </AccordionItem>
         )}
+
+        {/* Section 7: İşten Çıkış Kayıtları */}
+        {isHQRole(user?.role as any) && (
+          <AccordionItem value="istten-cikis" data-testid="accordion-istten-cikis">
+            <Card>
+              <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-istten-cikis">
+                <div className="flex items-center gap-2">
+                  <UserMinus className="h-4 w-4" />
+                  <span className="text-lg font-semibold">İşten Çıkış Kayıtları</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <CardContent className="w-full space-y-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">Ayrılış Yönetimi</h3>
+                    <Button onClick={() => setAddTerminationOpen(true)} size="sm" data-testid="button-add-termination">
+                      <UserMinus className="mr-2 h-4 w-4" />
+                      Ayrılış Ekle
+                    </Button>
+                  </div>
+                  {terminationRecords.length === 0 ? (
+                    <Card className="p-8 text-center">
+                      <p className="text-sm text-muted-foreground">Ayrılış kaydı bulunmuyor</p>
+                    </Card>
+                  ) : (
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {terminationRecords.map((record: any) => (
+                        <Card key={record.employee_terminations?.id} className="p-4 hover-elevate">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium">{record.user?.firstName} {record.user?.lastName}</p>
+                              <p className="text-sm text-muted-foreground">{record.employee_terminations?.terminationType === 'resignation' ? 'İstifa' : 'Fesih'}</p>
+                              <p className="text-xs text-muted-foreground">{record.employee_terminations?.terminationDate ? format(new Date(record.employee_terminations.terminationDate), "dd.MM.yyyy") : "-"}</p>
+                            </div>
+                            <Badge>{record.employee_terminations?.totalPayment ? `${record.employee_terminations.totalPayment.toLocaleString('tr-TR')} ₺` : "Ödeme Yapılmadı"}</Badge>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
       </Accordion>
 
       {/* Add Employee Dialog */}
@@ -1438,6 +1491,15 @@ export default function IKPage() {
           employee={selectedEmployee}
           newPassword={newPassword}
           setNewPassword={setNewPassword}
+        />
+      )}
+
+      {/* Add Termination Dialog */}
+      {isHQRole(user?.role as any) && (
+        <AddTerminationDialog
+          open={addTerminationOpen}
+          onOpenChange={setAddTerminationOpen}
+          employees={employees}
         />
       )}
       </div>
@@ -3238,6 +3300,119 @@ function ScheduleInterviewDialog({
             </Button>
             <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-interview">
               {createMutation.isPending ? "Kaydediliyor..." : "Planla"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add Termination Dialog Component
+function AddTerminationDialog({
+  open,
+  onOpenChange,
+  employees,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  employees: User[];
+}) {
+  const { toast } = useToast();
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [terminationType, setTerminationType] = useState("resignation");
+  const [terminationDate, setTerminationDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reason, setReason] = useState("");
+  const [totalPayment, setTotalPayment] = useState(0);
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", "/api/employee-terminations", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Ayrılış kaydı oluşturuldu" });
+      queryClient.invalidateQueries({ queryKey: ["/api/employee-terminations"] });
+      onOpenChange(false);
+      setSelectedUserId("");
+      setTerminationDate(new Date().toISOString().split('T')[0]);
+      setReason("");
+      setTotalPayment(0);
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Ayrılış kaydı oluşturulurken hata oluştu", variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserId || !terminationDate) {
+      toast({ title: "Hata", description: "Personel ve tarih zorunludur", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate({
+      userId: selectedUserId,
+      terminationType,
+      terminationDate,
+      reason: reason || undefined,
+      totalPayment: totalPayment || undefined,
+      processedById: undefined,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Ayrılış Kaydı Ekle</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Personel</label>
+            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+              <SelectTrigger data-testid="select-user-termination">
+                <SelectValue placeholder="Personel seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((emp) => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {emp.firstName} {emp.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Ayrılış Türü</label>
+            <Select value={terminationType} onValueChange={setTerminationType}>
+              <SelectTrigger data-testid="select-termination-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="resignation">İstifa</SelectItem>
+                <SelectItem value="termination">Fesih</SelectItem>
+                <SelectItem value="retirement">Emeklilik</SelectItem>
+                <SelectItem value="mutual_agreement">Karşılıklı Anlaşma</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Ayrılış Tarihi</label>
+            <Input type="date" value={terminationDate} onChange={(e) => setTerminationDate(e.target.value)} data-testid="input-termination-date" />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Sebep (Opsiyonel)</label>
+            <Textarea placeholder="Ayrılış sebebini yazın" value={reason} onChange={(e) => setReason(e.target.value)} className="resize-none" />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Toplam Ödeme (₺) (Opsiyonel)</label>
+            <Input type="number" min="0" value={totalPayment} onChange={(e) => setTotalPayment(parseInt(e.target.value) || 0)} data-testid="input-payment" />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              İptal
+            </Button>
+            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-termination">
+              {createMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
             </Button>
           </DialogFooter>
         </form>

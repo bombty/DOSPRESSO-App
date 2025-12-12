@@ -5392,3 +5392,41 @@ export const insertInterviewSchema = createInsertSchema(interviews).omit({
 
 export type InsertInterview = z.infer<typeof insertInterviewSchema>;
 export type Interview = typeof interviews.$inferSelect;
+
+// İşten Çıkarma ve Ayrılış Kayıtları
+export const employeeTerminations = pgTable("employee_terminations", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  terminationType: varchar("termination_type", { length: 50 }).notNull(), // resignation, termination, retirement, mutual_agreement, contract_end
+  terminationDate: date("termination_date").notNull(),
+  reason: text("reason"), // Ayrılış sebebi
+  lastWorkDay: date("last_work_day"), // Son çalışma günü
+  noticeGiven: integer("notice_given"), // Gün cinsinden uyarı süresi
+  finalSalary: integer("final_salary"), // Son maaş tutarı
+  severancePayment: integer("severance_payment"), // Kıdem tazminatı
+  otherPayments: integer("other_payments"), // Diğer ödemeler
+  totalPayment: integer("total_payment"), // Toplam ödeme
+  returnedItems: text("returned_items"), // Teslim edilen işletme malları (JSON array)
+  exitInterview: text("exit_interview"), // Çıkış görüşmesi notları
+  performanceRating: integer("performance_rating"), // Son performans puanı (1-5)
+  recommendation: text("recommendation"), // Yeniden işe alım önerisi
+  processedById: varchar("processed_by_id").notNull().references(() => users.id), // İK tarafından işlem gören
+  approvedById: varchar("approved_by_id").references(() => users.id), // Onay yapan (genellikle HQ)
+  documents: text("documents").array(), // Sözleşme, tazminat formu vb. URL'ler
+  notes: text("notes"), // Genel notlar
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_terminations_user_idx").on(table.userId),
+  index("employee_terminations_date_idx").on(table.terminationDate),
+  index("employee_terminations_type_idx").on(table.terminationType),
+]);
+
+export const insertEmployeeTerminationSchema = createInsertSchema(employeeTerminations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeTermination = z.infer<typeof insertEmployeeTerminationSchema>;
+export type EmployeeTermination = typeof employeeTerminations.$inferSelect;

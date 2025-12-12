@@ -15181,6 +15181,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/employee-terminations - Get termination records
+  app.get('/api/employee-terminations', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Erişim yetkiniz yok' });
+      }
+      const result = await db.select()
+        .from(employeeTerminations)
+        .leftJoin(users, eq(employeeTerminations.userId, users.id))
+        .orderBy(desc(employeeTerminations.terminationDate));
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching terminations:", error);
+      res.status(500).json({ message: "Ayrılış kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/employee-terminations - Create termination record
+  app.post('/api/employee-terminations', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Erişim yetkiniz yok' });
+      }
+      const result = await db.insert(employeeTerminations)
+        .values({
+          ...req.body,
+          processedById: user.id,
+        })
+        .returning();
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error("Error creating termination:", error);
+      res.status(500).json({ message: "Ayrılış kaydı oluşturulurken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/employee-terminations/:id - Update termination record
+  app.patch('/api/employee-terminations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Erişim yetkiniz yok' });
+      }
+      const id = parseInt(req.params.id);
+      const result = await db.update(employeeTerminations)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(employeeTerminations.id, id))
+        .returning();
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Kayd bulunamadı' });
+      }
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error updating termination:", error);
+      res.status(500).json({ message: "Ayrılış kaydı güncellenirken hata oluştu" });
+    }
+  });
+
   // GET /api/hr/recruitment-stats - Get recruitment statistics
   app.get('/api/hr/recruitment-stats', isAuthenticated, async (req: any, res) => {
     try {
