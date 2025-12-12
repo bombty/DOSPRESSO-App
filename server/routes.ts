@@ -149,6 +149,13 @@ import {
   insertPhaseSubTaskSchema,
   insertProcurementItemSchema,
   insertProcurementProposalSchema,
+  // İşe Alım Modülü
+  jobPositions,
+  jobApplications,
+  interviews,
+  insertJobPositionSchema,
+  insertJobApplicationSchema,
+  insertInterviewSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray } from "drizzle-orm";
@@ -14845,6 +14852,375 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Import employees error:", error);
       res.status(500).json({ message: "Personel ekleme hatası" });
+    }
+  });
+
+  // ========================================
+  // İŞE ALIM MODÜLÜ - Job Positions, Applications, Interviews
+  // ========================================
+
+  // GET /api/job-positions - List all job positions
+  app.get('/api/job-positions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { status, branchId } = req.query;
+
+      // Only HQ/admin and supervisors can view job positions
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'İşe alım bilgilerine erişim yetkiniz yok' });
+      }
+
+      // Build query with drizzle
+      let positions = await db.select().from(jobPositions).orderBy(desc(jobPositions.createdAt));
+
+      // Filter by status
+      if (status && status !== 'all') {
+        positions = positions.filter(p => p.status === status);
+      }
+
+      // Supervisors can only see their branch positions
+      if (user.role === 'supervisor' && user.branchId) {
+        positions = positions.filter(p => p.branchId === user.branchId);
+      } else if (branchId && branchId !== 'all') {
+        positions = positions.filter(p => p.branchId === parseInt(branchId as string));
+      }
+
+      // Get branches and users for name lookup
+      const branchList = await db.select().from(branches);
+      const userList = await db.select().from(users);
+      const applications = await db.select().from(jobApplications);
+
+      // Enrich positions with branch name and counts
+      const enrichedPositions = positions.map(p => ({
+        ...p,
+        branchName: branchList.find(b => b.id === p.branchId)?.name || null,
+        createdByName: userList.find(u => u.id === p.createdById)?.firstName + ' ' + userList.find(u => u.id === p.createdById)?.lastName,
+        assignedToName: p.assignedToId ? userList.find(u => u.id === p.assignedToId)?.firstName + ' ' + userList.find(u => u.id === p.assignedToId)?.lastName : null,
+        applicationCount: applications.filter(a => a.positionId === p.id).length,
+      }));
+      
+      res.json(enrichedPositions);
+    } catch (error: any) {
+      console.error("Error fetching job positions:", error);
+      res.status(500).json({ message: "Pozisyonlar yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/job-positions - Create a new job position
+  app.post('/api/job-positions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+
+      // Only HQ/admin can create positions
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Pozisyon oluşturma yetkiniz yok' });
+      }
+
+      const data = {
+        ...req.body,
+        createdById: user.id,
+      };
+
+      const result = await db.insert(jobPositions).values(data).returning();
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error("Error creating job position:", error);
+      res.status(500).json({ message: "Pozisyon oluşturulurken hata oluştu" });
+    }
+  });
+
+  // GET /api/job-positions/:id - Get single job position
+  app.get('/api/job-positions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'İşe alım bilgilerine erişim yetkiniz yok' });
+      }
+
+      const result = await db.select().from(jobPositions).where(eq(jobPositions.id, id));
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Pozisyon bulunamadı' });
+      }
+
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error fetching job position:", error);
+      res.status(500).json({ message: "Pozisyon yüklenirken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/job-positions/:id - Update job position
+  app.patch('/api/job-positions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Pozisyon güncelleme yetkiniz yok' });
+      }
+
+      const result = await db.update(jobPositions)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(jobPositions.id, id))
+        .returning();
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Pozisyon bulunamadı' });
+      }
+
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error updating job position:", error);
+      res.status(500).json({ message: "Pozisyon güncellenirken hata oluştu" });
+    }
+  });
+
+  // DELETE /api/job-positions/:id - Delete job position
+  app.delete('/api/job-positions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Pozisyon silme yetkiniz yok' });
+      }
+
+      await db.delete(jobPositions).where(eq(jobPositions.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting job position:", error);
+      res.status(500).json({ message: "Pozisyon silinirken hata oluştu" });
+    }
+  });
+
+  // GET /api/job-applications - List all applications
+  app.get('/api/job-applications', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { positionId, status } = req.query;
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Başvuru bilgilerine erişim yetkiniz yok' });
+      }
+
+      let query = db.select().from(jobApplications);
+      
+      if (positionId) {
+        query = query.where(eq(jobApplications.positionId, parseInt(positionId as string)));
+      }
+      if (status && status !== 'all') {
+        query = query.where(eq(jobApplications.status, status as string));
+      }
+
+      const applications = await query.orderBy(desc(jobApplications.createdAt));
+      res.json(applications);
+    } catch (error: any) {
+      console.error("Error fetching applications:", error);
+      res.status(500).json({ message: "Başvurular yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/job-applications - Create a new application
+  app.post('/api/job-applications', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Başvuru ekleme yetkiniz yok' });
+      }
+
+      const data = {
+        ...req.body,
+        createdById: user.id,
+      };
+
+      const result = await db.insert(jobApplications).values(data).returning();
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error("Error creating application:", error);
+      res.status(500).json({ message: "Başvuru oluşturulurken hata oluştu" });
+    }
+  });
+
+  // GET /api/job-applications/:id - Get single application
+  app.get('/api/job-applications/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Başvuru bilgilerine erişim yetkiniz yok' });
+      }
+
+      const result = await db.select().from(jobApplications).where(eq(jobApplications.id, id));
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Başvuru bulunamadı' });
+      }
+
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error fetching application:", error);
+      res.status(500).json({ message: "Başvuru yüklenirken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/job-applications/:id - Update application
+  app.patch('/api/job-applications/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Başvuru güncelleme yetkiniz yok' });
+      }
+
+      const result = await db.update(jobApplications)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(jobApplications.id, id))
+        .returning();
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Başvuru bulunamadı' });
+      }
+
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error updating application:", error);
+      res.status(500).json({ message: "Başvuru güncellenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/interviews - List all interviews
+  app.get('/api/interviews', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { applicationId, status } = req.query;
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Mülakat bilgilerine erişim yetkiniz yok' });
+      }
+
+      let query = db.select().from(interviews);
+      
+      if (applicationId) {
+        query = query.where(eq(interviews.applicationId, parseInt(applicationId as string)));
+      }
+      if (status && status !== 'all') {
+        query = query.where(eq(interviews.status, status as string));
+      }
+
+      const interviewList = await query.orderBy(desc(interviews.scheduledDate));
+      res.json(interviewList);
+    } catch (error: any) {
+      console.error("Error fetching interviews:", error);
+      res.status(500).json({ message: "Mülakatlar yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/interviews - Create a new interview
+  app.post('/api/interviews', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Mülakat oluşturma yetkiniz yok' });
+      }
+
+      const data = {
+        ...req.body,
+        createdById: user.id,
+      };
+
+      const result = await db.insert(interviews).values(data).returning();
+      
+      // Update application status to interview_scheduled
+      await db.update(jobApplications)
+        .set({ status: 'interview_scheduled', updatedAt: new Date() })
+        .where(eq(jobApplications.id, data.applicationId));
+
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error("Error creating interview:", error);
+      res.status(500).json({ message: "Mülakat oluşturulurken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/interviews/:id - Update interview
+  app.patch('/api/interviews/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Mülakat güncelleme yetkiniz yok' });
+      }
+
+      const result = await db.update(interviews)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(interviews.id, id))
+        .returning();
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Mülakat bulunamadı' });
+      }
+
+      // If interview completed, update application status
+      if (req.body.status === 'completed') {
+        const interview = result[0];
+        await db.update(jobApplications)
+          .set({ status: 'interview_completed', updatedAt: new Date() })
+          .where(eq(jobApplications.id, interview.applicationId));
+      }
+
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error updating interview:", error);
+      res.status(500).json({ message: "Mülakat güncellenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/hr/recruitment-stats - Get recruitment statistics
+  app.get('/api/hr/recruitment-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'İstatistiklere erişim yetkiniz yok' });
+      }
+
+      // Get counts
+      const openPositions = await db.select({ count: sql`COUNT(*)` })
+        .from(jobPositions)
+        .where(eq(jobPositions.status, 'open'));
+      
+      const newApplications = await db.select({ count: sql`COUNT(*)` })
+        .from(jobApplications)
+        .where(eq(jobApplications.status, 'new'));
+      
+      const scheduledInterviews = await db.select({ count: sql`COUNT(*)` })
+        .from(interviews)
+        .where(eq(interviews.status, 'scheduled'));
+      
+      const hiredThisMonth = await db.select({ count: sql`COUNT(*)` })
+        .from(jobApplications)
+        .where(
+          and(
+            eq(jobApplications.status, 'hired'),
+            sql`${jobApplications.updatedAt} >= date_trunc('month', CURRENT_DATE)`
+          )
+        );
+
+      res.json({
+        openPositions: Number(openPositions[0]?.count || 0),
+        newApplications: Number(newApplications[0]?.count || 0),
+        scheduledInterviews: Number(scheduledInterviews[0]?.count || 0),
+        hiredThisMonth: Number(hiredThisMonth[0]?.count || 0),
+      });
+    } catch (error: any) {
+      console.error("Error fetching recruitment stats:", error);
+      res.status(500).json({ message: "İstatistikler yüklenirken hata oluştu" });
     }
   });
 

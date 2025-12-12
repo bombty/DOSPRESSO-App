@@ -5223,3 +5223,172 @@ export const NEW_SHOP_PHASE_TEMPLATE: Array<{
     targetDays: 180,
   },
 ];
+
+// ============================================
+// İŞE ALIM MODÜLÜ - Job Positions, Applications, Interviews
+// ============================================
+
+// Pozisyon durumları
+export const JOB_POSITION_STATUS = {
+  OPEN: "open",
+  PAUSED: "paused",
+  FILLED: "filled",
+  CANCELLED: "cancelled",
+} as const;
+
+export type JobPositionStatusType = typeof JOB_POSITION_STATUS[keyof typeof JOB_POSITION_STATUS];
+
+// Başvuru durumları
+export const APPLICATION_STATUS = {
+  NEW: "new",
+  SCREENING: "screening",
+  INTERVIEW_SCHEDULED: "interview_scheduled",
+  INTERVIEW_COMPLETED: "interview_completed",
+  OFFERED: "offered",
+  HIRED: "hired",
+  REJECTED: "rejected",
+  WITHDRAWN: "withdrawn",
+} as const;
+
+export type ApplicationStatusType = typeof APPLICATION_STATUS[keyof typeof APPLICATION_STATUS];
+
+// Mülakat durumları
+export const INTERVIEW_STATUS = {
+  SCHEDULED: "scheduled",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+  NO_SHOW: "no_show",
+} as const;
+
+export type InterviewStatusType = typeof INTERVIEW_STATUS[keyof typeof INTERVIEW_STATUS];
+
+// Mülakat sonuçları
+export const INTERVIEW_RESULT = {
+  PASSED: "passed",
+  FAILED: "failed",
+  PENDING: "pending",
+} as const;
+
+export type InterviewResultType = typeof INTERVIEW_RESULT[keyof typeof INTERVIEW_RESULT];
+
+// Açık Pozisyonlar Tablosu
+export const jobPositions = pgTable("job_positions", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(), // Pozisyon adı: Barista, Supervisor vb.
+  targetRole: varchar("target_role", { length: 50 }).notNull(), // UserRoleType
+  branchId: integer("branch_id").references(() => branches.id), // Null ise HQ pozisyonu
+  department: varchar("department", { length: 100 }), // HQ için departman
+  description: text("description"), // Pozisyon açıklaması
+  requirements: text("requirements"), // Gereksinimler
+  salaryMin: integer("salary_min"), // Minimum maaş
+  salaryMax: integer("salary_max"), // Maximum maaş
+  employmentType: varchar("employment_type", { length: 50 }).default("fulltime"), // fulltime, parttime, intern
+  headcount: integer("headcount").default(1), // Kaç kişi alınacak
+  hiredCount: integer("hired_count").default(0), // Kaç kişi alındı
+  status: varchar("status", { length: 30 }).notNull().default("open"), // open, paused, filled, cancelled
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  deadline: date("deadline"), // Son başvuru tarihi
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  assignedToId: varchar("assigned_to_id").references(() => users.id), // İşe alımdan sorumlu kişi
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("job_positions_status_idx").on(table.status),
+  index("job_positions_branch_idx").on(table.branchId),
+]);
+
+export const insertJobPositionSchema = createInsertSchema(jobPositions).omit({
+  id: true,
+  hiredCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertJobPosition = z.infer<typeof insertJobPositionSchema>;
+export type JobPosition = typeof jobPositions.$inferSelect;
+
+// Başvurular Tablosu
+export const jobApplications = pgTable("job_applications", {
+  id: serial("id").primaryKey(),
+  positionId: integer("position_id").notNull().references(() => jobPositions.id),
+  // Aday bilgileri
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 30 }).notNull(),
+  tckn: varchar("tckn", { length: 11 }), // TC Kimlik No (opsiyonel başvuru aşamasında)
+  birthDate: date("birth_date"),
+  address: text("address"),
+  // Başvuru bilgileri
+  resumeUrl: text("resume_url"), // CV dosyası
+  coverLetter: text("cover_letter"), // Ön yazı
+  source: varchar("source", { length: 100 }), // Nereden geldi: kariyer.net, referans, yürüyen vb.
+  referredBy: varchar("referred_by_id").references(() => users.id), // Referans veren personel
+  experience: text("experience"), // Deneyim özeti
+  education: varchar("education", { length: 200 }), // Eğitim durumu
+  expectedSalary: integer("expected_salary"), // Beklenen maaş
+  availableFrom: date("available_from"), // Ne zaman başlayabilir
+  // Durum ve değerlendirme
+  status: varchar("status", { length: 30 }).notNull().default("new"), // ApplicationStatusType
+  rating: integer("rating"), // 1-5 arası puanlama
+  notes: text("notes"), // Değerlendirme notları
+  rejectionReason: text("rejection_reason"), // Red nedeni
+  // Tracking
+  createdById: varchar("created_by_id").references(() => users.id), // Kim ekledi (null = online başvuru)
+  assignedToId: varchar("assigned_to_id").references(() => users.id), // Kim takip ediyor
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("job_applications_position_idx").on(table.positionId),
+  index("job_applications_status_idx").on(table.status),
+]);
+
+export const insertJobApplicationSchema = createInsertSchema(jobApplications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertJobApplication = z.infer<typeof insertJobApplicationSchema>;
+export type JobApplication = typeof jobApplications.$inferSelect;
+
+// Mülakatlar Tablosu
+export const interviews = pgTable("interviews", {
+  id: serial("id").primaryKey(),
+  applicationId: integer("application_id").notNull().references(() => jobApplications.id),
+  // Mülakat bilgileri
+  interviewType: varchar("interview_type", { length: 50 }).notNull(), // phone, video, onsite, trial_day
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  duration: integer("duration").default(30), // Dakika cinsinden
+  location: text("location"), // Şube adresi veya online link
+  // Mülakatçı bilgileri
+  interviewerId: varchar("interviewer_id").notNull().references(() => users.id),
+  additionalInterviewers: text("additional_interviewers"), // JSON: [userId1, userId2]
+  // Sonuç
+  status: varchar("status", { length: 30 }).notNull().default("scheduled"), // InterviewStatusType
+  result: varchar("result", { length: 30 }), // InterviewResultType
+  feedback: text("feedback"), // Mülakat geri bildirimi
+  rating: integer("rating"), // 1-5 arası değerlendirme
+  strengths: text("strengths"), // Güçlü yönler
+  weaknesses: text("weaknesses"), // Gelişim alanları
+  recommendation: text("recommendation"), // İşe al/alma önerisi
+  // Metadata
+  notes: text("notes"),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("interviews_application_idx").on(table.applicationId),
+  index("interviews_date_idx").on(table.scheduledDate),
+  index("interviews_interviewer_idx").on(table.interviewerId),
+]);
+
+export const insertInterviewSchema = createInsertSchema(interviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInterview = z.infer<typeof insertInterviewSchema>;
+export type Interview = typeof interviews.$inferSelect;

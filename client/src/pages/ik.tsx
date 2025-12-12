@@ -739,18 +739,18 @@ export default function IKPage() {
                                 </div>
                               </div>
                               <div className="mt-3 text-sm text-muted-foreground">
-                                {(employee as any).department ? (
-                                  <div className="flex items-center gap-1">
-                                    <Building2 className="h-3 w-3" />
-                                    <span className="truncate">{(employee as any).department}</span>
-                                  </div>
-                                ) : branch ? (
+                                {branch ? (
                                   <div className="flex items-center gap-1">
                                     <MapPin className="h-3 w-3" />
                                     <span className="truncate">{branch.name}</span>
                                   </div>
+                                ) : (employee as any).department ? (
+                                  <div className="flex items-center gap-1">
+                                    <Building2 className="h-3 w-3" />
+                                    <span className="truncate">{(employee as any).department}</span>
+                                  </div>
                                 ) : (
-                                  <span>-</span>
+                                  <span>HQ</span>
                                 )}
                               </div>
                             </CardContent>
@@ -806,18 +806,18 @@ export default function IKPage() {
                                     </div>
                                   </div>
                                   <div className="mt-3 text-sm text-muted-foreground">
-                                    {(employee as any).department ? (
-                                      <div className="flex items-center gap-1">
-                                        <Building2 className="h-3 w-3" />
-                                        <span className="truncate">{(employee as any).department}</span>
-                                      </div>
-                                    ) : branch ? (
+                                    {branch ? (
                                       <div className="flex items-center gap-1">
                                         <MapPin className="h-3 w-3" />
                                         <span className="truncate">{branch.name}</span>
                                       </div>
+                                    ) : (employee as any).department ? (
+                                      <div className="flex items-center gap-1">
+                                        <Building2 className="h-3 w-3" />
+                                        <span className="truncate">{(employee as any).department}</span>
+                                      </div>
                                     ) : (
-                                      <span>-</span>
+                                      <span>HQ</span>
                                     )}
                                   </div>
                                   {(employee as any).leaveReason && (
@@ -1363,6 +1363,25 @@ export default function IKPage() {
                       </Table>
                     </div>
                   )}
+                </CardContent>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
+
+        {/* Section 6: İşe Alım Yönetimi */}
+        {(isHQRole(user?.role as any) || user?.role === 'supervisor') && (
+          <AccordionItem value="ise-alim" data-testid="accordion-ise-alim">
+            <Card>
+              <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-ise-alim">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  <span className="text-lg font-semibold">İşe Alım Yönetimi</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <CardContent className="w-full space-y-4">
+                  <RecruitmentSection />
                 </CardContent>
               </AccordionContent>
             </Card>
@@ -2395,6 +2414,590 @@ function ResetPasswordDialog({
               data-testid="button-submit-reset-password"
             >
               {resetPasswordMutation.isPending ? "Sıfırlanıyor..." : "Şifreyi Sıfırla"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Recruitment Section Component
+function RecruitmentSection() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [addPositionOpen, setAddPositionOpen] = useState(false);
+  const [addApplicationOpen, setAddApplicationOpen] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<any>(null);
+
+  // Fetch job positions
+  const { data: positions = [], isLoading: isPositionsLoading } = useQuery<any[]>({
+    queryKey: ["/api/job-positions"],
+    enabled: !!user,
+  });
+
+  // Fetch recruitment stats
+  const { data: stats } = useQuery<{
+    openPositions: number;
+    newApplications: number;
+    scheduledInterviews: number;
+    hiredThisMonth: number;
+  }>({
+    queryKey: ["/api/hr/recruitment-stats"],
+    enabled: !!user,
+  });
+
+  // Fetch applications
+  const { data: applications = [] } = useQuery<any[]>({
+    queryKey: ["/api/job-applications"],
+    enabled: !!user,
+  });
+
+  // Fetch branches
+  const { data: branches = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/branches"],
+  });
+
+  const statusLabels: Record<string, string> = {
+    open: "Açık",
+    paused: "Durduruldu",
+    filled: "Dolduruldu",
+    cancelled: "İptal",
+    new: "Yeni",
+    screening: "Ön Değerlendirme",
+    interview_scheduled: "Mülakat Planlandı",
+    interview_completed: "Mülakat Tamamlandı",
+    offered: "Teklif Yapıldı",
+    hired: "İşe Alındı",
+    rejected: "Reddedildi",
+    withdrawn: "Çekildi",
+  };
+
+  const priorityLabels: Record<string, string> = {
+    low: "Düşük",
+    normal: "Normal",
+    high: "Yüksek",
+    urgent: "Acil",
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="hover-elevate">
+          <CardContent className="p-3 space-y-1 text-center">
+            <p className="text-xs text-muted-foreground">Açık Pozisyon</p>
+            <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats?.openPositions || 0}</p>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate">
+          <CardContent className="p-3 space-y-1 text-center">
+            <p className="text-xs text-muted-foreground">Yeni Başvuru</p>
+            <p className="text-xl sm:text-2xl font-bold text-orange-600">{stats?.newApplications || 0}</p>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate">
+          <CardContent className="p-3 space-y-1 text-center">
+            <p className="text-xs text-muted-foreground">Planlı Mülakat</p>
+            <p className="text-xl sm:text-2xl font-bold text-purple-600">{stats?.scheduledInterviews || 0}</p>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate">
+          <CardContent className="p-3 space-y-1 text-center">
+            <p className="text-xs text-muted-foreground">Bu Ay İşe Alım</p>
+            <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.hiredThisMonth || 0}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs for Positions and Applications */}
+      <Tabs defaultValue="positions" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="positions" data-testid="tab-positions">
+            Açık Pozisyonlar
+            <Badge variant="secondary" className="ml-2">{positions.filter(p => p.status === 'open').length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="applications" data-testid="tab-applications">
+            Başvurular
+            <Badge variant="secondary" className="ml-2">{applications.length}</Badge>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Positions Tab */}
+        <TabsContent value="positions" className="space-y-4 mt-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium">Açık Pozisyonlar</h3>
+            {isHQRole(user?.role as any) && (
+              <Button onClick={() => setAddPositionOpen(true)} data-testid="button-add-position">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Yeni Pozisyon
+              </Button>
+            )}
+          </div>
+
+          {isPositionsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : positions.length === 0 ? (
+            <Card className="p-8 text-center">
+              <UserPlus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-lg font-medium">Açık Pozisyon Yok</p>
+              <p className="text-sm text-muted-foreground">Yeni bir pozisyon ekleyerek başlayın.</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {positions.map((position: any) => (
+                <Card 
+                  key={position.id}
+                  className="hover-elevate cursor-pointer"
+                  onClick={() => setSelectedPosition(position)}
+                  data-testid={`card-position-${position.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">{position.title}</h3>
+                        <Badge 
+                          variant={position.status === 'open' ? 'default' : 'secondary'}
+                          className={position.status === 'open' ? 'bg-green-600' : ''}
+                        >
+                          {statusLabels[position.status] || position.status}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant="outline">
+                          {position.applicationCount || 0} başvuru
+                        </Badge>
+                        {position.priority !== 'normal' && (
+                          <Badge 
+                            variant={position.priority === 'urgent' ? 'destructive' : 'secondary'}
+                          >
+                            {priorityLabels[position.priority] || position.priority}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 text-sm text-muted-foreground">
+                      {position.branchName ? (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate">{position.branchName}</span>
+                        </div>
+                      ) : (
+                        <span>HQ</span>
+                      )}
+                    </div>
+                    {position.deadline && (
+                      <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Son: {format(new Date(position.deadline), "dd.MM.yyyy")}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Applications Tab */}
+        <TabsContent value="applications" className="space-y-4 mt-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium">Başvurular</h3>
+            {(isHQRole(user?.role as any) || user?.role === 'supervisor') && positions.length > 0 && (
+              <Button onClick={() => setAddApplicationOpen(true)} data-testid="button-add-application">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Başvuru Ekle
+              </Button>
+            )}
+          </div>
+
+          {applications.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-lg font-medium">Başvuru Yok</p>
+              <p className="text-sm text-muted-foreground">Henüz başvuru kaydı bulunmuyor.</p>
+            </Card>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Aday</TableHead>
+                  <TableHead>Pozisyon</TableHead>
+                  <TableHead>Telefon</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead>Tarih</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {applications.map((app: any) => {
+                  const position = positions.find((p: any) => p.id === app.positionId);
+                  return (
+                    <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
+                      <TableCell className="font-medium">
+                        {app.firstName} {app.lastName}
+                      </TableCell>
+                      <TableCell>
+                        {position?.title || `Pozisyon #${app.positionId}`}
+                      </TableCell>
+                      <TableCell>{app.phone}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            app.status === 'hired' ? 'default' :
+                            app.status === 'rejected' ? 'destructive' :
+                            'secondary'
+                          }
+                          className={app.status === 'hired' ? 'bg-green-600' : ''}
+                        >
+                          {statusLabels[app.status] || app.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {app.createdAt ? format(new Date(app.createdAt), "dd.MM.yyyy") : "-"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Add Position Dialog */}
+      <AddPositionDialog 
+        open={addPositionOpen} 
+        onOpenChange={setAddPositionOpen} 
+        branches={branches}
+      />
+
+      {/* Add Application Dialog */}
+      <AddApplicationDialog 
+        open={addApplicationOpen} 
+        onOpenChange={setAddApplicationOpen} 
+        positions={positions}
+      />
+    </div>
+  );
+}
+
+// Add Position Dialog
+function AddPositionDialog({
+  open,
+  onOpenChange,
+  branches,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  branches: { id: number; name: string }[];
+}) {
+  const { toast } = useToast();
+  const [title, setTitle] = useState("");
+  const [targetRole, setTargetRole] = useState("barista");
+  const [branchId, setBranchId] = useState<string>("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("normal");
+  const [headcount, setHeadcount] = useState(1);
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", "/api/job-positions", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Pozisyon oluşturuldu" });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-positions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
+      onOpenChange(false);
+      setTitle("");
+      setDescription("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Pozisyon oluşturulurken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      toast({ title: "Hata", description: "Pozisyon adı gerekli", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate({
+      title,
+      targetRole,
+      branchId: branchId ? parseInt(branchId) : null,
+      description,
+      priority,
+      headcount,
+      status: "open",
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Yeni Pozisyon Ekle</DialogTitle>
+          <DialogDescription>
+            Açık pozisyon bilgilerini girin
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Pozisyon Adı *</label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Örn: Barista"
+              data-testid="input-position-title"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">Rol</label>
+              <Select value={targetRole} onValueChange={setTargetRole}>
+                <SelectTrigger data-testid="select-target-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="barista">Barista</SelectItem>
+                  <SelectItem value="bar_buddy">Bar Buddy</SelectItem>
+                  <SelectItem value="stajyer">Stajyer</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="supervisor_buddy">Supervisor Buddy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Öncelik</label>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger data-testid="select-priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Düşük</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="high">Yüksek</SelectItem>
+                  <SelectItem value="urgent">Acil</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Şube</label>
+            <Select value={branchId} onValueChange={setBranchId}>
+              <SelectTrigger data-testid="select-branch">
+                <SelectValue placeholder="HQ (Merkez)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">HQ (Merkez)</SelectItem>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id.toString()}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Alınacak Kişi Sayısı</label>
+            <Input
+              type="number"
+              min={1}
+              value={headcount}
+              onChange={(e) => setHeadcount(parseInt(e.target.value) || 1)}
+              data-testid="input-headcount"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Açıklama</label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Pozisyon gereksinimleri..."
+              rows={3}
+              data-testid="input-description"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              İptal
+            </Button>
+            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-position">
+              {createMutation.isPending ? "Kaydediliyor..." : "Oluştur"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add Application Dialog
+function AddApplicationDialog({
+  open,
+  onOpenChange,
+  positions,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  positions: any[];
+}) {
+  const { toast } = useToast();
+  const [positionId, setPositionId] = useState<string>("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [source, setSource] = useState("");
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", "/api/job-applications", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Başvuru eklendi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
+      onOpenChange(false);
+      setFirstName("");
+      setLastName("");
+      setPhone("");
+      setEmail("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Başvuru eklenirken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!positionId || !firstName.trim() || !lastName.trim() || !phone.trim()) {
+      toast({ title: "Hata", description: "Lütfen zorunlu alanları doldurun", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate({
+      positionId: parseInt(positionId),
+      firstName,
+      lastName,
+      phone,
+      email: email || undefined,
+      source: source || undefined,
+      status: "new",
+    });
+  };
+
+  const openPositions = positions.filter(p => p.status === 'open');
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Yeni Başvuru Ekle</DialogTitle>
+          <DialogDescription>
+            Aday bilgilerini girin
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Pozisyon *</label>
+            <Select value={positionId} onValueChange={setPositionId}>
+              <SelectTrigger data-testid="select-position">
+                <SelectValue placeholder="Pozisyon seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                {openPositions.map((position: any) => (
+                  <SelectItem key={position.id} value={position.id.toString()}>
+                    {position.title} {position.branchName ? `(${position.branchName})` : '(HQ)'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">Ad *</label>
+              <Input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                data-testid="input-first-name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Soyad *</label>
+              <Input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                data-testid="input-last-name"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Telefon *</label>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="05XX XXX XX XX"
+              data-testid="input-phone"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">E-posta</label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              data-testid="input-email"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Kaynak</label>
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger data-testid="select-source">
+                <SelectValue placeholder="Nereden geldi?" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="referans">Personel Referansı</SelectItem>
+                <SelectItem value="kariyer_net">Kariyer.net</SelectItem>
+                <SelectItem value="indeed">Indeed</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="instagram">Instagram</SelectItem>
+                <SelectItem value="yuruyen">Yürüyen (Direkt Başvuru)</SelectItem>
+                <SelectItem value="diger">Diğer</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              İptal
+            </Button>
+            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-application">
+              {createMutation.isPending ? "Kaydediliyor..." : "Başvuru Ekle"}
             </Button>
           </DialogFooter>
         </form>
