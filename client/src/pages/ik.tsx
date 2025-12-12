@@ -554,7 +554,7 @@ export default function IKPage() {
               <span className="hidden sm:inline">İşten Çıkış</span>
             </TabsTrigger>
           )}
-          {user?.role === 'admin' && (
+          {(isHQRole(user?.role as any) || user?.role === 'admin') && (
             <TabsTrigger value="izinler" className="flex items-center gap-2 px-4 py-2" data-testid="tab-izinler">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">İzinler</span>
@@ -1445,8 +1445,8 @@ export default function IKPage() {
           </TabsContent>
         )}
 
-        {/* Tab 8: İzin Bakiyeleri ve Resmi Tatiller (sadece admin) */}
-        {user?.role === 'admin' && (
+        {/* Tab 8: İzin Bakiyeleri ve Resmi Tatiller (HQ + admin) */}
+        {(isHQRole(user?.role as any) || user?.role === 'admin') && (
           <TabsContent value="izinler" data-testid="content-izinler">
             <LeaveManagementSection employees={employees} />
           </TabsContent>

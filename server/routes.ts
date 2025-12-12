@@ -15303,9 +15303,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user!;
       
-      // RBAC: Yalnızca admin tüm izin bakiyelerini görebilir
-      // HQ rolleri dahil diğer kullanıcılar için erişim kapalı (en az yetki prensibi)
-      if (user.role !== 'admin') {
+      // RBAC: HQ rolleri ve admin izin bakiyelerini görebilir
+      if (!isHQRole(user.role) && user.role !== 'admin') {
         return res.status(403).json({ message: 'Erişim yetkiniz yok' });
       }
       
