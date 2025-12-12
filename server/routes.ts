@@ -15015,7 +15015,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Başvuru bilgilerine erişim yetkiniz yok' });
       }
 
-      let query = db.select().from(jobApplications);
+      let query = db.select()
+        .from(jobApplications)
+        .leftJoin(jobPositions, eq(jobApplications.positionId, jobPositions.id));
       
       if (positionId) {
         query = query.where(eq(jobApplications.positionId, parseInt(positionId as string)));
@@ -15024,7 +15026,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         query = query.where(eq(jobApplications.status, status as string));
       }
 
-      const applications = await query.orderBy(desc(jobApplications.createdAt));
+      // Supervisor: only see their branch's positions
+      if (user.role === 'supervisor' && user.branchId) {
+        query = query.where(eq(jobPositions.branchId, user.branchId));
+      }
+
+      const results = await query.orderBy(desc(jobApplications.createdAt));
+      // Extract just the jobApplications part
+      const applications = results.map(r => r.job_applications);
       res.json(applications);
     } catch (error: any) {
       console.error("Error fetching applications:", error);
@@ -15112,7 +15121,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Mülakat bilgilerine erişim yetkiniz yok' });
       }
 
-      let query = db.select().from(interviews);
+      let query = db.select()
+        .from(interviews)
+        .leftJoin(jobApplications, eq(interviews.applicationId, jobApplications.id))
+        .leftJoin(jobPositions, eq(jobApplications.positionId, jobPositions.id));
       
       if (applicationId) {
         query = query.where(eq(interviews.applicationId, parseInt(applicationId as string)));
@@ -15121,7 +15133,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         query = query.where(eq(interviews.status, status as string));
       }
 
-      const interviewList = await query.orderBy(desc(interviews.scheduledDate));
+      // Supervisor: only see their branch's interviews
+      if (user.role === 'supervisor' && user.branchId) {
+        query = query.where(eq(jobPositions.branchId, user.branchId));
+      }
+
+      const results = await query.orderBy(desc(interviews.scheduledDate));
+      // Extract just the interviews part
+      const interviewList = results.map(r => r.interviews);
       res.json(interviewList);
     } catch (error: any) {
       console.error("Error fetching interviews:", error);
@@ -15138,9 +15157,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Mülakat oluşturma yetkiniz yok' });
       }
 
+      // Convert scheduledDate string to Date object
       const data = {
         ...req.body,
         createdById: user.id,
+        scheduledDate: typeof req.body.scheduledDate === 'string' 
+          ? new Date(req.body.scheduledDate)
+          : req.body.scheduledDate,
       };
 
       const result = await db.insert(interviews).values(data).returning();
