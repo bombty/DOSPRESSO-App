@@ -59,12 +59,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
   Tabs,
   TabsContent,
   TabsList,
@@ -522,27 +516,49 @@ export default function IKPage() {
           )}
         </div>
 
-      {/* Accordion Sections */}
-      <Accordion 
-        type="multiple" 
-        defaultValue={
-          canViewAttendance 
-            ? ["personel", "disiplin", "onboarding", "documents", "mesai"]
-            : ["personel", "disiplin", "onboarding", "documents"]
-        } 
-        className="w-full space-y-3 sm:space-y-4"
-      >
-        {/* Section 1: Personel Listesi */}
-        <AccordionItem value="personel" data-testid="accordion-personel">
+      {/* Main Tabs Navigation */}
+      <Tabs defaultValue="personel" className="w-full space-y-4">
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1 bg-muted/50 rounded-lg" data-testid="ik-main-tabs">
+          <TabsTrigger value="personel" className="flex items-center gap-2 px-4 py-2" data-testid="tab-personel">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Personel</span>
+            <Badge variant="secondary" className="ml-1">{filteredEmployees.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="disiplin" className="flex items-center gap-2 px-4 py-2" data-testid="tab-disiplin">
+            <FileWarning className="h-4 w-4" />
+            <span className="hidden sm:inline">Disiplin</span>
+          </TabsTrigger>
+          <TabsTrigger value="onboarding" className="flex items-center gap-2 px-4 py-2" data-testid="tab-onboarding">
+            <UserCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Onboarding</span>
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="flex items-center gap-2 px-4 py-2" data-testid="tab-documents">
+            <FolderOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">Özlük</span>
+          </TabsTrigger>
+          {canViewAttendance && (
+            <TabsTrigger value="mesai" className="flex items-center gap-2 px-4 py-2" data-testid="tab-mesai">
+              <Clock className="h-4 w-4" />
+              <span className="hidden sm:inline">Mesai</span>
+            </TabsTrigger>
+          )}
+          {(isHQRole(user?.role as any) || user?.role === 'supervisor') && (
+            <TabsTrigger value="ise-alim" className="flex items-center gap-2 px-4 py-2" data-testid="tab-ise-alim">
+              <UserPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">İşe Alım</span>
+            </TabsTrigger>
+          )}
+          {isHQRole(user?.role as any) && (
+            <TabsTrigger value="istten-cikis" className="flex items-center gap-2 px-4 py-2" data-testid="tab-istten-cikis">
+              <UserMinus className="h-4 w-4" />
+              <span className="hidden sm:inline">İşten Çıkış</span>
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        {/* Tab 1: Personel Listesi */}
+        <TabsContent value="personel" data-testid="content-personel">
           <Card>
-            <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-personel">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span className="text-lg font-semibold">Personel Listesi</span>
-                <Badge variant="secondary" className="ml-2">{filteredEmployees.length}</Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
               <CardContent className="w-full space-y-3 sm:space-y-4">
                 {/* Tabs for Active/Terminated Employees */}
                 <Tabs defaultValue="active" className="w-full">
@@ -843,31 +859,25 @@ export default function IKPage() {
                   </TabsContent>
                 </Tabs>
               </CardContent>
-            </AccordionContent>
           </Card>
-        </AccordionItem>
+        </TabsContent>
 
-        {/* Section 2: Disiplin Yönetimi */}
-        <AccordionItem value="disiplin" data-testid="accordion-disiplin">
+        {/* Tab 2: Disiplin Yönetimi */}
+        <TabsContent value="disiplin" data-testid="content-disiplin">
           <Card>
-            <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-disiplin">
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2">
-                  <FileWarning className="h-4 w-4" />
-                  <span className="text-lg font-semibold">Disiplin Yönetimi</span>
-                  <Badge variant="secondary" className="ml-2">{filteredDisciplinaryReports.length}</Badge>
-                </div>
-                {canWarn && user?.id && user?.branchId && (
-                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    <CreateDisciplinaryDialog 
-                      userId={user.id} 
-                      branchId={user.branchId} 
-                    />
-                  </div>
-                )}
+            <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
+              <div className="flex items-center gap-2">
+                <FileWarning className="h-5 w-5" />
+                <CardTitle>Disiplin Yönetimi</CardTitle>
+                <Badge variant="secondary">{filteredDisciplinaryReports.length}</Badge>
               </div>
-            </AccordionTrigger>
-            <AccordionContent>
+              {canWarn && user?.id && user?.branchId && (
+                <CreateDisciplinaryDialog 
+                  userId={user.id} 
+                  branchId={user.branchId} 
+                />
+              )}
+            </CardHeader>
               <CardContent className="w-full space-y-2 sm:space-y-3">
                 {/* Disciplinary Filter */}
                 <div className="flex justify-between items-center">
@@ -957,21 +967,17 @@ export default function IKPage() {
                   </Table>
                 )}
               </CardContent>
-            </AccordionContent>
           </Card>
-        </AccordionItem>
+        </TabsContent>
 
-        {/* Section 3: Yeni Personel Onboarding */}
-        <AccordionItem value="onboarding" data-testid="accordion-onboarding">
+        {/* Tab 3: Yeni Personel Onboarding */}
+        <TabsContent value="onboarding" data-testid="content-onboarding">
           <Card>
-            <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-onboarding">
-              <div className="flex items-center gap-2">
-                <UserCheck className="h-4 w-4" />
-                <span className="text-lg font-semibold">Yeni Personel Onboarding</span>
-                <Badge variant="secondary" className="ml-2">{filteredOnboardingRecords.length}</Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
+            <CardHeader className="flex flex-row items-center gap-4 pb-4">
+              <UserCheck className="h-5 w-5" />
+              <CardTitle>Yeni Personel Onboarding</CardTitle>
+              <Badge variant="secondary">{filteredOnboardingRecords.length}</Badge>
+            </CardHeader>
               <CardContent className="w-full space-y-2 sm:space-y-3">
                 {/* Onboarding Filter */}
                 <div className="flex gap-2 sm:gap-3">
@@ -1059,21 +1065,17 @@ export default function IKPage() {
                   </Table>
                 )}
               </CardContent>
-            </AccordionContent>
           </Card>
-        </AccordionItem>
+        </TabsContent>
 
-        {/* Section 4: Özlük Dosyaları */}
-        <AccordionItem value="documents" data-testid="accordion-documents">
+        {/* Tab 4: Özlük Dosyaları */}
+        <TabsContent value="documents" data-testid="content-documents">
           <Card>
-            <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-documents">
-              <div className="flex items-center gap-2">
-                <FolderOpen className="h-4 w-4" />
-                <span className="text-lg font-semibold">Özlük Dosyaları</span>
-                <Badge variant="secondary" className="ml-2">{filteredEmployeeDocuments.length}</Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
+            <CardHeader className="flex flex-row items-center gap-4 pb-4">
+              <FolderOpen className="h-5 w-5" />
+              <CardTitle>Özlük Dosyaları</CardTitle>
+              <Badge variant="secondary">{filteredEmployeeDocuments.length}</Badge>
+            </CardHeader>
               <CardContent className="w-full space-y-2 sm:space-y-3">
                 {/* Documents Filter */}
                 <div className="flex gap-2 sm:gap-3">
@@ -1152,22 +1154,18 @@ export default function IKPage() {
                   </Table>
                 )}
               </CardContent>
-            </AccordionContent>
           </Card>
-        </AccordionItem>
+        </TabsContent>
 
-        {/* Section 5: Aylık Mesai Özeti - Only for HQ and Supervisors */}
+        {/* Tab 5: Aylık Mesai Özeti - Only for HQ and Supervisors */}
         {canViewAttendance && (
-          <AccordionItem value="mesai" data-testid="accordion-mesai">
+          <TabsContent value="mesai" data-testid="content-mesai">
             <Card>
-              <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-mesai">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  <span className="text-lg font-semibold">Aylık Mesai Özeti</span>
-                  <Badge variant="secondary" className="ml-2">{attendanceSummaries.length}</Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
+              <CardHeader className="flex flex-row items-center gap-4 pb-4">
+                <Clock className="h-5 w-5" />
+                <CardTitle>Aylık Mesai Özeti</CardTitle>
+                <Badge variant="secondary">{attendanceSummaries.length}</Badge>
+              </CardHeader>
                 <CardContent className="w-full space-y-3 sm:space-y-4">
                   {/* Month Navigation and Filters */}
                   <Card className="bg-muted/30 border-dashed">
@@ -1372,75 +1370,65 @@ export default function IKPage() {
                     </div>
                   )}
                 </CardContent>
-              </AccordionContent>
             </Card>
-          </AccordionItem>
+          </TabsContent>
         )}
 
-        {/* Section 6: İşe Alım Yönetimi */}
+        {/* Tab 6: İşe Alım Yönetimi */}
         {(isHQRole(user?.role as any) || user?.role === 'supervisor') && (
-          <AccordionItem value="ise-alim" data-testid="accordion-ise-alim">
+          <TabsContent value="ise-alim" data-testid="content-ise-alim">
             <Card>
-              <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-ise-alim">
-                <div className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  <span className="text-lg font-semibold">İşe Alım Yönetimi</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <CardContent className="w-full space-y-4">
-                  <RecruitmentSection />
-                </CardContent>
-              </AccordionContent>
+              <CardHeader className="flex flex-row items-center gap-4 pb-4">
+                <UserPlus className="h-5 w-5" />
+                <CardTitle>İşe Alım Yönetimi</CardTitle>
+              </CardHeader>
+              <CardContent className="w-full space-y-4">
+                <RecruitmentSection />
+              </CardContent>
             </Card>
-          </AccordionItem>
+          </TabsContent>
         )}
 
-        {/* Section 7: İşten Çıkış Kayıtları */}
+        {/* Tab 7: İşten Çıkış Kayıtları */}
         {isHQRole(user?.role as any) && (
-          <AccordionItem value="istten-cikis" data-testid="accordion-istten-cikis">
+          <TabsContent value="istten-cikis" data-testid="content-istten-cikis">
             <Card>
-              <AccordionTrigger className="px-6 hover:no-underline" data-testid="accordion-trigger-istten-cikis">
+              <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
                 <div className="flex items-center gap-2">
-                  <UserMinus className="h-4 w-4" />
-                  <span className="text-lg font-semibold">İşten Çıkış Kayıtları</span>
+                  <UserMinus className="h-5 w-5" />
+                  <CardTitle>İşten Çıkış Kayıtları</CardTitle>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <CardContent className="w-full space-y-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">Ayrılış Yönetimi</h3>
-                    <Button onClick={() => setAddTerminationOpen(true)} size="sm" data-testid="button-add-termination">
-                      <UserMinus className="mr-2 h-4 w-4" />
-                      Ayrılış Ekle
-                    </Button>
-                  </div>
-                  {terminationRecords.length === 0 ? (
-                    <Card className="p-8 text-center">
-                      <p className="text-sm text-muted-foreground">Ayrılış kaydı bulunmuyor</p>
-                    </Card>
-                  ) : (
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {terminationRecords.map((record: any) => (
-                        <Card key={record.employee_terminations?.id} className="p-4 hover-elevate">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">{record.user?.firstName} {record.user?.lastName}</p>
-                              <p className="text-sm text-muted-foreground">{record.employee_terminations?.terminationType === 'resignation' ? 'İstifa' : 'Fesih'}</p>
-                              <p className="text-xs text-muted-foreground">{record.employee_terminations?.terminationDate ? format(new Date(record.employee_terminations.terminationDate), "dd.MM.yyyy") : "-"}</p>
-                            </div>
-                            <Badge>{record.employee_terminations?.totalPayment ? `${record.employee_terminations.totalPayment.toLocaleString('tr-TR')} ₺` : "Ödeme Yapılmadı"}</Badge>
+                <Button onClick={() => setAddTerminationOpen(true)} size="sm" data-testid="button-add-termination">
+                  <UserMinus className="mr-2 h-4 w-4" />
+                  Ayrılış Ekle
+                </Button>
+              </CardHeader>
+              <CardContent className="w-full space-y-4">
+                {terminationRecords.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <p className="text-sm text-muted-foreground">Ayrılış kaydı bulunmuyor</p>
+                  </Card>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {terminationRecords.map((record: any) => (
+                      <Card key={record.employee_terminations?.id} className="p-4 hover-elevate">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium">{record.user?.firstName} {record.user?.lastName}</p>
+                            <p className="text-sm text-muted-foreground">{record.employee_terminations?.terminationType === 'resignation' ? 'İstifa' : 'Fesih'}</p>
+                            <p className="text-xs text-muted-foreground">{record.employee_terminations?.terminationDate ? format(new Date(record.employee_terminations.terminationDate), "dd.MM.yyyy") : "-"}</p>
                           </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </AccordionContent>
+                          <Badge>{record.employee_terminations?.totalPayment ? `${record.employee_terminations.totalPayment.toLocaleString('tr-TR')} ₺` : "Ödeme Yapılmadı"}</Badge>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
             </Card>
-          </AccordionItem>
+          </TabsContent>
         )}
-      </Accordion>
+      </Tabs>
 
       {/* Add Employee Dialog */}
       {canCreate && (

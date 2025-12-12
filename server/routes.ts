@@ -156,6 +156,9 @@ import {
   insertJobPositionSchema,
   insertJobApplicationSchema,
   insertInterviewSchema,
+  // İşten Çıkış Modülü
+  employeeTerminations,
+  insertEmployeeTerminationSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray } from "drizzle-orm";
@@ -8331,20 +8334,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDateStr = endDate.toISOString().split('T')[0];
 
       // Get users based on filters
-      let users = await storage.getUsers();
+      let allUsersData = await db.select().from(users);
 
       // Apply branch filter - supervisors are strictly limited to their own branch
       if (isSupervisor && !isHQ) {
         // Supervisors can ONLY see their own branch, enforce strictly
-        users = users.filter((u: any) => u.branchId === user.branchId);
+        allUsersData = allUsersData.filter((u: any) => u.branchId === user.branchId);
       } else if (isHQ && branchId && branchId !== 'all') {
         // HQ can filter by any branch
-        users = users.filter((u: any) => u.branchId === parseInt(branchId as string));
+        allUsersData = allUsersData.filter((u: any) => u.branchId === parseInt(branchId as string));
       }
 
       // Apply category filter (Şubeler/HQ/Fabrika)
       if (category && category !== 'all') {
-        users = users.filter((u: any) => {
+        allUsersData = allUsersData.filter((u: any) => {
           const isUserHQ = isHQRole(u.role as UserRoleType);
           const isFabrika = u.role === 'fabrika';
           const isSubeler = !isUserHQ && !isFabrika;
@@ -8358,7 +8361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Apply single user filter
       if (userId && userId !== 'all') {
-        users = users.filter((u: any) => u.id === userId);
+        allUsersData = allUsersData.filter((u: any) => u.id === userId);
       }
 
       // Get branches for name lookup
@@ -8366,7 +8369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const branchMap = new Map(branches.map((b: any) => [b.id, b.name]));
 
       // Calculate attendance data for each user
-      const summaries = await Promise.all(users.map(async (u: any) => {
+      const summaries = await Promise.all(allUsersData.map(async (u: any) => {
         // Get shift attendance records
         const shiftRecords = await storage.getShiftAttendancesByUserAndDateRange?.(u.id, startDate, endDate) || [];
 
@@ -8621,7 +8624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
       
       // Get employees based on filters
-      let employees = await storage.getUsers();
+      let employees = await db.select().from(users);
       
       // Branch restriction for supervisors (they can only see their own branch)
       if (role === 'supervisor' || role === 'supervisor_buddy') {
@@ -8746,7 +8749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ensurePermission(user, 'hr', 'view', 'Personel belgelerini görüntüleme yetkiniz yok');
       
       // Get all employees
-      const allEmployees = await storage.getUsers();
+      const allEmployees = await db.select().from(users);
       let documentsToReturn: any[] = [];
       
       // Collect all documents from all employees
@@ -9120,7 +9123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ensurePermission(user, 'hr', 'view', 'Onboarding kayıtlarını görüntüleme yetkiniz yok');
       
       // Get all employees first
-      const allEmployees = await storage.getUsers();
+      const allEmployees = await db.select().from(users);
       let onboardingRecords: any[] = [];
       
       // Branch users can only see their own branch (ignore query param)
@@ -12790,7 +12793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Enrich with branch and user info
       const branches = await storage.getBranches();
-      const allUsers = await storage.getUsers();
+      const allUsers = await db.select().from(users);
       
       const enrichedTickets = tickets.map((ticket: any) => {
         const branch = branches.find(b => b.id === ticket.branchId);
@@ -12848,7 +12851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const messages = await storage.getHQSupportMessages(ticketId);
-      const allUsers = await storage.getUsers();
+      const allUsers = await db.select().from(users);
       
       const enrichedMessages = messages.map((msg: any) => {
         const sender = allUsers.find(u => u.id === msg.senderId);
@@ -12931,7 +12934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assignments = await storage.getHQSupportCategoryAssignments();
       
       // Enrich with user info
-      const allUsers = await storage.getUsers();
+      const allUsers = await db.select().from(users);
       const enriched = assignments.map((a: any) => {
         const assignedUser = allUsers.find(u => u.id === a.userId);
         return {
