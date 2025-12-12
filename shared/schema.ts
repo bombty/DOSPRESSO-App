@@ -5430,3 +5430,76 @@ export const insertEmployeeTerminationSchema = createInsertSchema(employeeTermin
 
 export type InsertEmployeeTermination = z.infer<typeof insertEmployeeTerminationSchema>;
 export type EmployeeTermination = typeof employeeTerminations.$inferSelect;
+
+// Çalışan İzin Bakiyeleri
+export const employeeLeaves = pgTable("employee_leaves", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  year: integer("year").notNull(), // İzin yılı
+  leaveType: varchar("leave_type", { length: 50 }).notNull(), // annual, sick, unpaid, maternity, paternity, marriage, bereavement
+  totalDays: integer("total_days").notNull().default(14), // Toplam izin hakkı
+  usedDays: integer("used_days").notNull().default(0), // Kullanılan gün
+  remainingDays: integer("remaining_days").notNull().default(14), // Kalan izin
+  carriedOver: integer("carried_over").default(0), // Geçen yıldan aktarılan
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_leaves_user_idx").on(table.userId),
+  index("employee_leaves_year_idx").on(table.year),
+  index("employee_leaves_type_idx").on(table.leaveType),
+]);
+
+export const insertEmployeeLeaveSchema = createInsertSchema(employeeLeaves).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeLeave = z.infer<typeof insertEmployeeLeaveSchema>;
+export type EmployeeLeave = typeof employeeLeaves.$inferSelect;
+
+// Resmi Tatiller
+export const publicHolidays = pgTable("public_holidays", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(), // Tatil adı
+  date: date("date").notNull(), // Tatil tarihi
+  year: integer("year").notNull(), // Yıl
+  isHalfDay: boolean("is_half_day").default(false), // Yarım gün mü
+  isActive: boolean("is_active").default(true), // Aktif mi
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("public_holidays_date_idx").on(table.date),
+  index("public_holidays_year_idx").on(table.year),
+]);
+
+export const insertPublicHolidaySchema = createInsertSchema(publicHolidays).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPublicHoliday = z.infer<typeof insertPublicHolidaySchema>;
+export type PublicHoliday = typeof publicHolidays.$inferSelect;
+
+// İzin Kayıtları (kullanılan izinler)
+export const leaveRecords = pgTable("leave_records", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  leaveType: varchar("leave_type", { length: 50 }).notNull(), // annual, sick, unpaid, etc.
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  totalDays: integer("total_days").notNull(), // Toplam gün sayısı
+  status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, rejected
+  reason: text("reason"), // İzin nedeni
+  approvedById: varchar("approved_by_id").references(() => users.id), // Onaylayan
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("leave_records_user_idx").on(table.userId),
+  index("leave_records_date_idx").on(table.startDate),
+  index("leave_records_status_idx").on(table.status),
+]);

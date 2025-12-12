@@ -6,7 +6,19 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Session Summary (Dec 11, 2025)
+## Recent Session Summary (Dec 12, 2025)
+✅ **İzin Yönetimi ve Resmi Tatiller Sistemi** - Comprehensive leave and holiday management:
+  - Database Tables: employee_leaves, public_holidays, leave_records
+  - API Endpoints: GET/POST /api/employee-leaves, GET/POST /api/public-holidays
+  - New HR Tab: "İzinler" tab in /ik page for HQ/admin users
+  - LeaveManagementSection component with two-card layout
+  - Leave balances: Progress bars showing used/remaining days
+  - Public holidays: 14 Turkish holidays for 2025 with countdown badges
+  - Year selector dropdown for filtering by year
+  - Test data seeding: 41 employee leave balances, 14 holidays
+  - System Health Check API: GET /api/system-health-check
+
+## Previous Session (Dec 11, 2025)
 ✅ **New Shop Opening Management System** - Comprehensive 7-phase workflow tracking for franchise openings:
   - Phase Sub-Tasks: Hierarchical task tree with categories (Mobilya → Masa, Sandalye, etc.)
   - RACI Team Assignments: Responsible, Accountable, Consulted, Informed role matrix

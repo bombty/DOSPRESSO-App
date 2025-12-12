@@ -554,6 +554,12 @@ export default function IKPage() {
               <span className="hidden sm:inline">İşten Çıkış</span>
             </TabsTrigger>
           )}
+          {user?.role === 'admin' && (
+            <TabsTrigger value="izinler" className="flex items-center gap-2 px-4 py-2" data-testid="tab-izinler">
+              <Calendar className="h-4 w-4" />
+              <span className="hidden sm:inline">İzinler</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Tab 1: Personel Listesi */}
@@ -1200,38 +1206,32 @@ export default function IKPage() {
                         </Button>
                       </div>
                       {/* Filters Row */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <div>
                           <label className="text-sm font-medium">Kategori</label>
-                          <Select value={attendanceCategoryFilter} onValueChange={setAttendanceCategoryFilter}>
+                          <Select 
+                            value={attendanceCategoryFilter} 
+                            onValueChange={(val) => {
+                              setAttendanceCategoryFilter(val);
+                              // HQ veya Fabrika seçildiğinde şube filtresini sıfırla
+                              if (val === 'hq' || val === 'fabrika') {
+                                setBranchFilter('all');
+                              }
+                            }}
+                          >
                             <SelectTrigger data-testid="select-attendance-category" className="h-9">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">Tümü</SelectItem>
                               <SelectItem value="subeler">Şubeler</SelectItem>
-                              <SelectItem value="hq">HQ</SelectItem>
+                              <SelectItem value="hq">HQ (Merkez)</SelectItem>
                               <SelectItem value="fabrika">Fabrika</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
-                          <label className="text-sm font-medium">Personel</label>
-                          <Select value={attendanceUserFilter} onValueChange={setAttendanceUserFilter}>
-                            <SelectTrigger data-testid="select-attendance-user" className="h-9">
-                              <SelectValue placeholder="Kişi Seçin" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Tüm Personel</SelectItem>
-                              {employees.map((emp) => (
-                                <SelectItem key={emp.id} value={emp.id}>
-                                  {emp.firstName} {emp.lastName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {user?.role && isHQRole(user.role as any) && (
+                        {/* Şube dropdown - Sadece Kategori "Şubeler" veya "Tümü" seçiliyse göster */}
+                        {user?.role && isHQRole(user.role as any) && (attendanceCategoryFilter === 'subeler' || attendanceCategoryFilter === 'all') && (
                           <div>
                             <label className="text-sm font-medium">Şube</label>
                             <Select value={branchFilter} onValueChange={setBranchFilter}>
@@ -1249,6 +1249,22 @@ export default function IKPage() {
                             </Select>
                           </div>
                         )}
+                        <div>
+                          <label className="text-sm font-medium">Personel</label>
+                          <Select value={attendanceUserFilter} onValueChange={setAttendanceUserFilter}>
+                            <SelectTrigger data-testid="select-attendance-user" className="h-9">
+                              <SelectValue placeholder="Kişi Seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tüm Personel</SelectItem>
+                              {employees.map((emp) => (
+                                <SelectItem key={emp.id} value={emp.id}>
+                                  {emp.firstName} {emp.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -1426,6 +1442,13 @@ export default function IKPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {/* Tab 8: İzin Bakiyeleri ve Resmi Tatiller (sadece admin) */}
+        {user?.role === 'admin' && (
+          <TabsContent value="izinler" data-testid="content-izinler">
+            <LeaveManagementSection employees={employees} />
           </TabsContent>
         )}
       </Tabs>
@@ -3406,5 +3429,168 @@ function AddTerminationDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// İzin Yönetimi Bileşeni
+function LeaveManagementSection({ employees }: { employees: User[] }) {
+  const { toast } = useToast();
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+
+  // İzin bakiyeleri
+  const { data: leaveBalances = [], isLoading: isLoadingLeaves } = useQuery<any[]>({
+    queryKey: ['/api/employee-leaves', selectedYear],
+  });
+
+  // Resmi tatiller
+  const { data: holidays = [], isLoading: isLoadingHolidays } = useQuery<any[]>({
+    queryKey: ['/api/public-holidays', selectedYear],
+  });
+
+  const leaveTypeLabels: Record<string, string> = {
+    annual: "Yıllık İzin",
+    sick: "Hastalık",
+    maternity: "Doğum",
+    paternity: "Babalık",
+    marriage: "Evlilik",
+    bereavement: "Vefat",
+    unpaid: "Ücretsiz",
+  };
+
+  return (
+    <div className="grid lg:grid-cols-2 gap-4">
+      {/* İzin Bakiyeleri */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            <CardTitle>İzin Bakiyeleri</CardTitle>
+          </div>
+          <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+            <SelectTrigger className="w-[120px]" data-testid="select-leave-year">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={(currentYear - 1).toString()}>{currentYear - 1}</SelectItem>
+              <SelectItem value={currentYear.toString()}>{currentYear}</SelectItem>
+              <SelectItem value={(currentYear + 1).toString()}>{currentYear + 1}</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {isLoadingLeaves ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : leaveBalances.length === 0 ? (
+            <div className="text-center p-8">
+              <Calendar className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">İzin bakiyesi bulunamadı</p>
+            </div>
+          ) : (
+            <div className="max-h-[400px] overflow-y-auto space-y-2">
+              {leaveBalances.map((item: any) => {
+                const emp = item.users || {};
+                const leave = item.employee_leaves || {};
+                const usedPercent = leave.totalDays > 0 ? Math.round((leave.usedDays / leave.totalDays) * 100) : 0;
+                return (
+                  <Card key={leave.id || `${emp.id}-${leave.leaveType}`} className="p-3 hover-elevate" data-testid={`leave-card-${leave.id}`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium text-sm">{emp.firstName} {emp.lastName}</p>
+                        <p className="text-xs text-muted-foreground">{leaveTypeLabels[leave.leaveType] || leave.leaveType}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={leave.remainingDays > 5 ? "default" : leave.remainingDays > 0 ? "secondary" : "destructive"}>
+                            {leave.remainingDays} gün kaldı
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {leave.usedDays}/{leave.totalDays} kullanıldı
+                          {leave.carriedOver > 0 && ` (+${leave.carriedOver} devir)`}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all ${usedPercent > 80 ? 'bg-destructive' : usedPercent > 50 ? 'bg-amber-500' : 'bg-primary'}`}
+                        style={{ width: `${usedPercent}%` }}
+                      />
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Resmi Tatiller */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
+          <div className="flex items-center gap-2">
+            <Star className="h-5 w-5" />
+            <CardTitle>Resmi Tatiller - {selectedYear}</CardTitle>
+          </div>
+          <Badge variant="outline">{holidays.length} tatil</Badge>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {isLoadingHolidays ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : holidays.length === 0 ? (
+            <div className="text-center p-8">
+              <Star className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">{selectedYear} için tatil tanımlı değil</p>
+            </div>
+          ) : (
+            <div className="max-h-[400px] overflow-y-auto space-y-2">
+              {holidays.map((holiday: any) => {
+                const holidayDate = new Date(holiday.date);
+                const today = new Date();
+                const isPast = holidayDate < today;
+                const daysUntil = Math.ceil((holidayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                return (
+                  <Card 
+                    key={holiday.id} 
+                    className={`p-3 hover-elevate ${isPast ? 'opacity-60' : ''}`}
+                    data-testid={`holiday-card-${holiday.id}`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-sm">{holiday.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(holidayDate, "dd MMMM yyyy")}
+                          {holiday.isHalfDay && " (Yarım Gün)"}
+                        </p>
+                      </div>
+                      <div>
+                        {isPast ? (
+                          <Badge variant="outline" className="text-muted-foreground">Geçti</Badge>
+                        ) : daysUntil === 0 ? (
+                          <Badge>Bugün!</Badge>
+                        ) : daysUntil <= 7 ? (
+                          <Badge variant="secondary">{daysUntil} gün kaldı</Badge>
+                        ) : (
+                          <Badge variant="outline">{daysUntil} gün</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
