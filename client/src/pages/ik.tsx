@@ -69,6 +69,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   UserPlus,
   UserMinus,
@@ -2504,6 +2505,11 @@ function RecruitmentSection() {
   const [addInterviewOpen, setAddInterviewOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [selectedPosition, setSelectedPosition] = useState<any>(null);
+  const [selectedInterview, setSelectedInterview] = useState<any>(null);
+  const [interviewDetailOpen, setInterviewDetailOpen] = useState(false);
+  const [branchFilterId, setBranchFilterId] = useState<string>("all");
+  const [selectedCandidates, setSelectedCandidates] = useState<number[]>([]);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
 
   // Fetch job positions
   const { data: positions = [], isLoading: isPositionsLoading } = useQuery<any[]>({
@@ -2561,10 +2567,35 @@ function RecruitmentSection() {
     urgent: "Acil",
   };
 
+  const filteredApplications = branchFilterId === "all" 
+    ? applications 
+    : applications.filter((app: any) => {
+        const position = positions.find((p: any) => p.id === app.positionId);
+        return position?.branchId?.toString() === branchFilterId;
+      });
+
+  const filteredInterviews = branchFilterId === "all"
+    ? interviewsData
+    : interviewsData.filter((interview: any) => {
+        const app = applications.find((a: any) => a.id === interview.applicationId);
+        const position = positions.find((p: any) => p.id === app?.positionId);
+        return position?.branchId?.toString() === branchFilterId;
+      });
+
+  const hiredCount = applications.filter((a: any) => a.status === 'hired').length;
+
+  const toggleCandidateSelection = (appId: number) => {
+    setSelectedCandidates(prev => 
+      prev.includes(appId) 
+        ? prev.filter(id => id !== appId)
+        : [...prev, appId]
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card className="hover-elevate">
           <CardContent className="p-3 space-y-1 text-center">
             <p className="text-xs text-muted-foreground">Açık Pozisyon</p>
@@ -2589,7 +2620,46 @@ function RecruitmentSection() {
             <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.hiredThisMonth || 0}</p>
           </CardContent>
         </Card>
+        <Card className="hover-elevate" data-testid="card-hired-candidates">
+          <CardContent className="p-3 space-y-1 text-center">
+            <p className="text-xs text-muted-foreground">Kabul Edilenler</p>
+            <p className="text-xl sm:text-2xl font-bold text-emerald-600">{hiredCount}</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* HQ Branch Filter */}
+      {isHQRole(user?.role as any) && (
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <label className="text-sm font-medium">Şube Filtresi:</label>
+          </div>
+          <Select value={branchFilterId} onValueChange={setBranchFilterId}>
+            <SelectTrigger className="w-[200px]" data-testid="select-branch-filter">
+              <SelectValue placeholder="Tüm Şubeler" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tüm Şubeler</SelectItem>
+              {branches.map((branch: any) => (
+                <SelectItem key={branch.id} value={branch.id.toString()}>
+                  {branch.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedCandidates.length >= 2 && (
+            <Button 
+              variant="outline"
+              onClick={() => setComparisonOpen(true)}
+              data-testid="button-compare-candidates"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Karşılaştır ({selectedCandidates.length})
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Tabs for Positions, Applications and Interviews */}
       <Tabs defaultValue="positions" className="w-full">
@@ -2700,7 +2770,7 @@ function RecruitmentSection() {
             )}
           </div>
 
-          {applications.length === 0 ? (
+          {filteredApplications.length === 0 ? (
             <Card className="p-8 text-center">
               <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-lg font-medium">Başvuru Yok</p>
@@ -2710,6 +2780,9 @@ function RecruitmentSection() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <span className="sr-only">Seç</span>
+                  </TableHead>
                   <TableHead>Aday</TableHead>
                   <TableHead>Pozisyon</TableHead>
                   <TableHead>Telefon</TableHead>
@@ -2719,10 +2792,17 @@ function RecruitmentSection() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {applications.map((app: any) => {
+                {filteredApplications.map((app: any) => {
                   const position = positions.find((p: any) => p.id === app.positionId);
                   return (
                     <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedCandidates.includes(app.id)}
+                          onCheckedChange={() => toggleCandidateSelection(app.id)}
+                          data-testid={`checkbox-candidate-${app.id}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         {app.firstName} {app.lastName}
                       </TableCell>
@@ -2775,7 +2855,7 @@ function RecruitmentSection() {
             <h3 className="text-lg font-medium">Planlı Mülakatlar</h3>
           </div>
 
-          {interviewsData.length === 0 ? (
+          {filteredInterviews.length === 0 ? (
             <Card className="p-8 text-center">
               <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-lg font-medium">Mülakat Yok</p>
@@ -2795,11 +2875,19 @@ function RecruitmentSection() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {interviewsData.map((interview: any) => {
+                {filteredInterviews.map((interview: any) => {
                   const app = applications.find((a: any) => a.id === interview.applicationId);
                   const position = positions.find((p: any) => p.id === app?.positionId);
                   return (
-                    <TableRow key={interview.id} data-testid={`row-interview-${interview.id}`}>
+                    <TableRow 
+                      key={interview.id} 
+                      data-testid={`row-interview-${interview.id}`}
+                      className="cursor-pointer hover-elevate"
+                      onClick={() => {
+                        setSelectedInterview({ ...interview, application: app, position });
+                        setInterviewDetailOpen(true);
+                      }}
+                    >
                       <TableCell className="font-medium">
                         {app ? `${app.firstName} ${app.lastName}` : `Başvuru #${interview.applicationId}`}
                       </TableCell>
@@ -2815,10 +2903,13 @@ function RecruitmentSection() {
                           variant={
                             interview.status === 'completed' ? 'default' :
                             interview.status === 'cancelled' ? 'destructive' :
+                            interview.status === 'in_progress' ? 'default' :
                             'secondary'
                           }
+                          className={interview.status === 'in_progress' ? 'bg-blue-600' : ''}
                         >
                           {interview.status === 'scheduled' ? 'Planlandı' :
+                           interview.status === 'in_progress' ? 'Devam Ediyor' :
                            interview.status === 'completed' ? 'Tamamlandı' :
                            interview.status === 'cancelled' ? 'İptal' : interview.status}
                         </Badge>
@@ -2854,7 +2945,216 @@ function RecruitmentSection() {
           application={selectedApplication}
         />
       )}
+
+      {/* Interview Detail Modal */}
+      {selectedInterview && (
+        <InterviewDetailModal
+          open={interviewDetailOpen}
+          onOpenChange={setInterviewDetailOpen}
+          interview={selectedInterview}
+        />
+      )}
+
+      {/* Candidate Comparison Modal */}
+      <CandidateComparisonModal
+        open={comparisonOpen}
+        onOpenChange={setComparisonOpen}
+        candidates={filteredApplications.filter((app: any) => selectedCandidates.includes(app.id))}
+        positions={positions}
+        interviews={filteredInterviews}
+        onClearSelection={() => setSelectedCandidates([])}
+      />
     </div>
+  );
+}
+
+// Candidate Comparison Modal
+function CandidateComparisonModal({
+  open,
+  onOpenChange,
+  candidates,
+  positions,
+  interviews,
+  onClearSelection,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  candidates: any[];
+  positions: any[];
+  interviews: any[];
+  onClearSelection: () => void;
+}) {
+  const getPosition = (positionId: number) => positions.find((p: any) => p.id === positionId);
+  const getInterview = (applicationId: number) => interviews.find((i: any) => i.applicationId === applicationId);
+  
+  const statusLabels: Record<string, string> = {
+    new: "Yeni",
+    screening: "Ön Değerlendirme",
+    interview_scheduled: "Mülakat Planlandı",
+    interview_completed: "Mülakat Tamamlandı",
+    offered: "Teklif Yapıldı",
+    hired: "İşe Alındı",
+    rejected: "Reddedildi",
+    withdrawn: "Çekildi",
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Aday Karşılaştırma ({candidates.length} aday)
+          </DialogTitle>
+          <DialogDescription>
+            Seçilen adayları yan yana karşılaştırın
+          </DialogDescription>
+        </DialogHeader>
+
+        {candidates.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground">Karşılaştırılacak aday seçilmedi</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[120px] bg-muted/50">Özellik</TableHead>
+                  {candidates.map((candidate: any) => (
+                    <TableHead key={candidate.id} className="min-w-[160px] text-center">
+                      {candidate.firstName} {candidate.lastName}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">Pozisyon</TableCell>
+                  {candidates.map((c: any) => (
+                    <TableCell key={c.id} className="text-center">
+                      {getPosition(c.positionId)?.title || '-'}
+                    </TableCell>
+                  ))}
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">Durum</TableCell>
+                  {candidates.map((c: any) => (
+                    <TableCell key={c.id} className="text-center">
+                      <Badge 
+                        variant={c.status === 'hired' ? 'default' : c.status === 'rejected' ? 'destructive' : 'secondary'}
+                        className={c.status === 'hired' ? 'bg-green-600' : ''}
+                      >
+                        {statusLabels[c.status] || c.status}
+                      </Badge>
+                    </TableCell>
+                  ))}
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">Telefon</TableCell>
+                  {candidates.map((c: any) => (
+                    <TableCell key={c.id} className="text-center">{c.phone || '-'}</TableCell>
+                  ))}
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">E-posta</TableCell>
+                  {candidates.map((c: any) => (
+                    <TableCell key={c.id} className="text-center text-sm">{c.email || '-'}</TableCell>
+                  ))}
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">Başvuru Tarihi</TableCell>
+                  {candidates.map((c: any) => (
+                    <TableCell key={c.id} className="text-center text-sm">
+                      {c.createdAt ? format(new Date(c.createdAt), "dd.MM.yyyy") : '-'}
+                    </TableCell>
+                  ))}
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">Mülakat Durumu</TableCell>
+                  {candidates.map((c: any) => {
+                    const interview = getInterview(c.id);
+                    return (
+                      <TableCell key={c.id} className="text-center">
+                        {interview ? (
+                          <Badge variant={interview.status === 'completed' ? 'default' : 'secondary'}>
+                            {interview.status === 'scheduled' ? 'Planlandı' :
+                             interview.status === 'completed' ? 'Tamamlandı' :
+                             interview.status === 'in_progress' ? 'Devam Ediyor' : '-'}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">Mülakat yok</span>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">Mülakat Puanı</TableCell>
+                  {candidates.map((c: any) => {
+                    const interview = getInterview(c.id);
+                    return (
+                      <TableCell key={c.id} className="text-center">
+                        {interview?.overallRating ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                            <span className="font-bold">{interview.overallRating}/5</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">Güçlü Yönler</TableCell>
+                  {candidates.map((c: any) => {
+                    const interview = getInterview(c.id);
+                    return (
+                      <TableCell key={c.id} className="text-center text-sm">
+                        {interview?.strengths || '-'}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">Zayıf Yönler</TableCell>
+                  {candidates.map((c: any) => {
+                    const interview = getInterview(c.id);
+                    return (
+                      <TableCell key={c.id} className="text-center text-sm">
+                        {interview?.weaknesses || '-'}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium bg-muted/30">Notlar</TableCell>
+                  {candidates.map((c: any) => (
+                    <TableCell key={c.id} className="text-center text-sm">
+                      {c.notes || '-'}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        <DialogFooter className="flex gap-2">
+          <Button variant="outline" onClick={() => {
+            onClearSelection();
+            onOpenChange(false);
+          }}>
+            Seçimi Temizle
+          </Button>
+          <Button onClick={() => onOpenChange(false)}>
+            Kapat
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -3314,6 +3614,348 @@ function ScheduleInterviewDialog({
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Interview Detail Modal - Mülakat detay görüntüleme ve değerlendirme
+function InterviewDetailModal({
+  open,
+  onOpenChange,
+  interview,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  interview: any;
+}) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [rating, setRating] = useState(interview.rating || 0);
+  const [strengths, setStrengths] = useState(interview.strengths || "");
+  const [weaknesses, setWeaknesses] = useState(interview.weaknesses || "");
+  const [feedback, setFeedback] = useState(interview.feedback || "");
+  const [questionRatings, setQuestionRatings] = useState<Record<number, { rating: number; notes: string }>>({});
+
+  // Fetch interview questions
+  const { data: interviewQuestions = [] } = useQuery<any[]>({
+    queryKey: ["/api/interview-questions"],
+    enabled: open,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("PATCH", `/api/interviews/${interview.id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Mülakat güncellendi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/interviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Mülakat güncellenirken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStartInterview = () => {
+    updateMutation.mutate({ status: 'in_progress' });
+  };
+
+  const handleCompleteInterview = () => {
+    updateMutation.mutate({
+      status: 'completed',
+      rating,
+      strengths,
+      weaknesses,
+      feedback,
+      result: 'pending',
+    });
+  };
+
+  const handleHire = () => {
+    updateMutation.mutate({
+      status: 'completed',
+      result: 'hired',
+      rating,
+      strengths,
+      weaknesses,
+      feedback,
+    });
+    // Also update application status
+    apiRequest("PATCH", `/api/job-applications/${interview.applicationId}`, { status: 'hired' })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
+        onOpenChange(false);
+      });
+  };
+
+  const handleReject = () => {
+    updateMutation.mutate({
+      status: 'completed',
+      result: 'rejected',
+      rating,
+      strengths,
+      weaknesses,
+      feedback,
+    });
+    // Also update application status
+    apiRequest("PATCH", `/api/job-applications/${interview.applicationId}`, { status: 'rejected' })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
+        onOpenChange(false);
+      });
+  };
+
+  const handleSave = () => {
+    updateMutation.mutate({
+      rating,
+      strengths,
+      weaknesses,
+      feedback,
+    });
+  };
+
+  const renderStars = (currentRating: number, onChange: (value: number) => void) => {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => onChange(star)}
+            className="focus:outline-none"
+            data-testid={`star-${star}`}
+          >
+            <Star
+              className={`h-5 w-5 ${star <= currentRating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+            />
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  const interviewStatusLabels: Record<string, string> = {
+    scheduled: "Planlandı",
+    in_progress: "Devam Ediyor",
+    completed: "Tamamlandı",
+    cancelled: "İptal Edildi",
+  };
+
+  const resultLabels: Record<string, string> = {
+    pending: "Beklemede",
+    hired: "İşe Alındı",
+    rejected: "Reddedildi",
+    on_hold: "Bekletiliyor",
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Mülakat Detayı
+          </DialogTitle>
+          <DialogDescription>
+            {interview.application?.firstName} {interview.application?.lastName} - {interview.position?.title || 'Pozisyon'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Interview Info */}
+          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+            <div>
+              <p className="text-sm text-muted-foreground">Tarih/Saat</p>
+              <p className="font-medium">
+                {interview.scheduledDate ? format(new Date(interview.scheduledDate), "dd.MM.yyyy HH:mm") : "-"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Durum</p>
+              <Badge 
+                variant={interview.status === 'completed' ? 'default' : interview.status === 'in_progress' ? 'default' : 'secondary'}
+                className={interview.status === 'in_progress' ? 'bg-blue-600' : ''}
+              >
+                {interviewStatusLabels[interview.status] || interview.status}
+              </Badge>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Tip</p>
+              <p className="font-medium">
+                {interview.interviewType === 'in_person' ? 'Yüz Yüze' : 
+                 interview.interviewType === 'phone' ? 'Telefon' : 
+                 interview.interviewType === 'video' ? 'Video' : interview.interviewType}
+              </p>
+            </div>
+            {interview.result && (
+              <div>
+                <p className="text-sm text-muted-foreground">Sonuç</p>
+                <Badge 
+                  variant={interview.result === 'hired' ? 'default' : interview.result === 'rejected' ? 'destructive' : 'secondary'}
+                  className={interview.result === 'hired' ? 'bg-green-600' : ''}
+                >
+                  {resultLabels[interview.result] || interview.result}
+                </Badge>
+              </div>
+            )}
+          </div>
+
+          {/* Interview Questions */}
+          {interviewQuestions.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Mülakat Soruları
+              </h3>
+              <div className="space-y-3">
+                {interviewQuestions.map((question: any, index: number) => (
+                  <Card key={question.id} className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <Badge variant="outline" className="mb-2">
+                            {question.category}
+                          </Badge>
+                          <p className="font-medium">{index + 1}. {question.question}</p>
+                        </div>
+                        {renderStars(
+                          questionRatings[question.id]?.rating || 0,
+                          (value) => setQuestionRatings(prev => ({
+                            ...prev,
+                            [question.id]: { ...prev[question.id], rating: value }
+                          }))
+                        )}
+                      </div>
+                      <Textarea
+                        placeholder="Aday cevabı ve notlar..."
+                        value={questionRatings[question.id]?.notes || ''}
+                        onChange={(e) => setQuestionRatings(prev => ({
+                          ...prev,
+                          [question.id]: { ...prev[question.id], notes: e.target.value }
+                        }))}
+                        rows={2}
+                        className="text-sm"
+                        data-testid={`textarea-question-${question.id}`}
+                      />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Overall Rating */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Genel Değerlendirme</h3>
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">Genel Puan:</span>
+              {renderStars(rating, setRating)}
+              <span className="text-sm text-muted-foreground">({rating}/5)</span>
+            </div>
+          </div>
+
+          {/* Strengths & Weaknesses */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-green-600">Güçlü Yönler</label>
+              <Textarea
+                value={strengths}
+                onChange={(e) => setStrengths(e.target.value)}
+                placeholder="Adayın güçlü yönleri..."
+                rows={3}
+                data-testid="textarea-strengths"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-orange-600">Gelişim Alanları</label>
+              <Textarea
+                value={weaknesses}
+                onChange={(e) => setWeaknesses(e.target.value)}
+                placeholder="Geliştirilmesi gereken alanlar..."
+                rows={3}
+                data-testid="textarea-weaknesses"
+              />
+            </div>
+          </div>
+
+          {/* Feedback */}
+          <div>
+            <label className="text-sm font-medium">Genel Değerlendirme Notları</label>
+            <Textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Mülakat hakkında genel geri bildirim..."
+              rows={3}
+              data-testid="textarea-feedback"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="flex-wrap gap-2 sm:gap-0">
+          {interview.status === 'scheduled' && (
+            <Button 
+              onClick={handleStartInterview} 
+              disabled={updateMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="button-start-interview"
+            >
+              Mülakatı Başlat
+            </Button>
+          )}
+          
+          {(interview.status === 'in_progress' || interview.status === 'scheduled') && (
+            <>
+              <Button 
+                variant="outline" 
+                onClick={handleSave}
+                disabled={updateMutation.isPending}
+                data-testid="button-save-interview"
+              >
+                Kaydet
+              </Button>
+              <Button 
+                onClick={handleCompleteInterview}
+                disabled={updateMutation.isPending}
+                data-testid="button-complete-interview"
+              >
+                Tamamla
+              </Button>
+            </>
+          )}
+
+          {interview.status === 'completed' && !interview.result && (
+            <>
+              <Button 
+                variant="destructive"
+                onClick={handleReject}
+                disabled={updateMutation.isPending}
+                data-testid="button-reject"
+              >
+                Reddet
+              </Button>
+              <Button 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleHire}
+                disabled={updateMutation.isPending}
+                data-testid="button-hire"
+              >
+                İşe Al
+              </Button>
+            </>
+          )}
+
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Kapat
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
