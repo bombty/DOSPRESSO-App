@@ -3488,18 +3488,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { role, branchId: userBranchId } = user;
       const employeeId = req.params.id;
 
-      // Permission check
-      if (!hasPermission(role as UserRoleType, 'employees', 'edit')) {
-        return res.status(403).json({ message: "Çalışan düzenleme yetkiniz yok" });
+      // HQ roles that can edit employees (full access)
+      const hqEditRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+      
+      // Only HQ roles can edit employee records
+      if (!hqEditRoles.includes(role)) {
+        return res.status(403).json({ message: "Çalışan düzenleme yetkiniz yok. Bu işlem sadece HQ personeli tarafından yapılabilir." });
       }
 
-      // Get employee with branch authorization
-      const allowedBranchId = role === 'supervisor' ? userBranchId : null;
+      // Get employee (HQ roles can access all employees)
+      const allowedBranchId = null;
       const employee = await storage.getEmployeeForBranch(employeeId, allowedBranchId);
       if (!employee) {
-        if (role === 'supervisor') {
-          return res.status(403).json({ message: "Çalışan bulunamadı veya erişim yetkiniz yok" });
-        }
         return res.status(404).json({ message: "Çalışan bulunamadı" });
       }
 
@@ -3509,19 +3509,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Geçersiz veri", errors: parsed.error.errors });
       }
 
-      // Field-level restrictions based on role
-      let allowedFields: (keyof UpdateUser)[] = [];
-      
-      if (role === 'admin') {
-        // Admin can update all fields
-        allowedFields = Object.keys(parsed.data) as (keyof UpdateUser)[];
-      } else if (role === 'coach') {
-        // Coach can only update notes (training-related)
-        allowedFields = ['notes'];
-      } else if (role === 'supervisor') {
-        // Supervisor can update contact info and notes
-        allowedFields = ['phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'notes'];
-      }
+      // HQ roles can update all fields (supervisors already blocked above)
+      const allowedFields = Object.keys(parsed.data) as (keyof UpdateUser)[];
 
       // Filter updates to only allowed fields
       const filteredUpdates: Partial<UpdateUser> = {};
