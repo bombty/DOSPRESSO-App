@@ -9,14 +9,15 @@ Preferred communication style: Simple, everyday language. Turkish language commu
 ## Recent Session Summary (Dec 12, 2025)
 ✅ **İzin Yönetimi ve Resmi Tatiller Sistemi** - Comprehensive leave and holiday management:
   - Database Tables: employee_leaves, public_holidays, leave_records
-  - API Endpoints: GET/POST /api/employee-leaves, GET/POST /api/public-holidays
-  - New HR Tab: "İzinler" tab in /ik page for HQ/admin users
+  - API Endpoints: GET/POST /api/employee-leaves, GET/POST /api/public-holidays (RBAC: HQ/admin only)
+  - New HR Tab: "İzinler" tab in /ik page for HQ/admin users (visible to both)
   - LeaveManagementSection component with two-card layout
-  - Leave balances: Progress bars showing used/remaining days
+  - Leave balances: Progress bars showing used/remaining days, carried-over days display
   - Public holidays: 14 Turkish holidays for 2025 with countdown badges
-  - Year selector dropdown for filtering by year
+  - Year selector dropdown for filtering by year (2024-2026)
   - Test data seeding: 41 employee leave balances, 14 holidays
   - System Health Check API: GET /api/system-health-check
+  - Mesai Verileri: 1354 shifts + 1000 attendance records (Nov-Dec 2024)
 
 ## Previous Session (Dec 11, 2025)
 ✅ **New Shop Opening Management System** - Comprehensive 7-phase workflow tracking for franchise openings:
