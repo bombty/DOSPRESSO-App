@@ -23,6 +23,7 @@ import SubeDetay from "@/pages/sube-detay";
 import SubeNFCDetay from "@/pages/sube-nfc-detay";
 import PersonelProfil from "@/pages/personel-profil";
 import PersonelDetay from "@/pages/personel-detay";
+import PersonelDuzenle from "@/pages/personel-duzenle";
 import Tasks from "@/pages/tasks";
 import Checklists from "@/pages/checklists";
 import Equipment from "@/pages/equipment";
@@ -140,6 +141,7 @@ function Router() {
           <Route path="/subeler" component={Subeler} />
           <Route path="/personel/:id" component={PersonelProfil} />
           <Route path="/personel-detay/:id" component={PersonelDetay} />
+          <Route path="/personel-duzenle/:id" component={PersonelDuzenle} />
           <Route path="/personel-onboarding" component={PersonelOnboarding} />
           <Route path="/vardiyalar" component={Vardiyalar} />
           <Route path="/vardiya-planlama" component={VardiyaPlanlama} />
