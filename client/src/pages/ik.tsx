@@ -2848,7 +2848,7 @@ function AddPositionDialog({
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [targetRole, setTargetRole] = useState("barista");
-  const [branchId, setBranchId] = useState<string>("");
+  const [branchId, setBranchId] = useState<string>("hq");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("normal");
   const [headcount, setHeadcount] = useState(1);
@@ -2883,7 +2883,7 @@ function AddPositionDialog({
     createMutation.mutate({
       title,
       targetRole,
-      branchId: branchId ? parseInt(branchId) : null,
+      branchId: branchId === "hq" || branchId === "" ? null : parseInt(branchId),
       description,
       priority,
       headcount,
@@ -2952,7 +2952,7 @@ function AddPositionDialog({
                 <SelectValue placeholder="HQ (Merkez)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">HQ (Merkez)</SelectItem>
+                <SelectItem value="hq">HQ (Merkez)</SelectItem>
                 {branches.map((branch) => (
                   <SelectItem key={branch.id} value={branch.id.toString()}>
                     {branch.name}
