@@ -153,9 +153,11 @@ import {
   jobPositions,
   jobApplications,
   interviews,
+  interviewQuestions,
   insertJobPositionSchema,
   insertJobApplicationSchema,
   insertInterviewSchema,
+  insertInterviewQuestionSchema,
   // İşten Çıkış Modülü
   employeeTerminations,
   insertEmployeeTerminationSchema,
@@ -15211,6 +15213,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating interview:", error);
       res.status(500).json({ message: "Mülakat güncellenirken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // Standart Mülakat Soruları (HQ yönetimli)
+  // ========================================
+
+  // GET /api/interview-questions - Get all interview questions
+  app.get('/api/interview-questions', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await db.select()
+        .from(interviewQuestions)
+        .where(eq(interviewQuestions.isActive, true))
+        .orderBy(interviewQuestions.category, interviewQuestions.orderIndex);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching interview questions:", error);
+      res.status(500).json({ message: "Mülakat soruları yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/interview-questions - Create interview question (HQ only)
+  app.post('/api/interview-questions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Sadece HQ bu işlemi yapabilir' });
+      }
+
+      const data = insertInterviewQuestionSchema.parse({
+        ...req.body,
+        createdById: user.id,
+      });
+
+      const result = await db.insert(interviewQuestions).values(data).returning();
+      res.status(201).json(result[0]);
+    } catch (error: any) {
+      console.error("Error creating interview question:", error);
+      res.status(500).json({ message: "Mülakat sorusu oluşturulurken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/interview-questions/:id - Update interview question (HQ only)
+  app.patch('/api/interview-questions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Sadece HQ bu işlemi yapabilir' });
+      }
+
+      const id = parseInt(req.params.id);
+      const result = await db.update(interviewQuestions)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(interviewQuestions.id, id))
+        .returning();
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Soru bulunamadı' });
+      }
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error updating interview question:", error);
+      res.status(500).json({ message: "Mülakat sorusu güncellenirken hata oluştu" });
+    }
+  });
+
+  // DELETE /api/interview-questions/:id - Soft delete question (HQ only)
+  app.delete('/api/interview-questions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Sadece HQ bu işlemi yapabilir' });
+      }
+
+      const id = parseInt(req.params.id);
+      await db.update(interviewQuestions)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(interviewQuestions.id, id));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting interview question:", error);
+      res.status(500).json({ message: "Mülakat sorusu silinirken hata oluştu" });
     }
   });
 

@@ -5393,6 +5393,27 @@ export const insertInterviewSchema = createInsertSchema(interviews).omit({
 export type InsertInterview = z.infer<typeof insertInterviewSchema>;
 export type Interview = typeof interviews.$inferSelect;
 
+// Standart Mülakat Soruları (HQ yönetimli)
+export const interviewQuestions = pgTable("interview_questions", {
+  id: serial("id").primaryKey(),
+  question: text("question").notNull(),
+  category: varchar("category", { length: 50 }).notNull(), // behavioral, technical, situational, star, general
+  isActive: boolean("is_active").default(true),
+  orderIndex: integer("order_index").default(0),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInterviewQuestionSchema = createInsertSchema(interviewQuestions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInterviewQuestion = z.infer<typeof insertInterviewQuestionSchema>;
+export type InterviewQuestion = typeof interviewQuestions.$inferSelect;
+
 // İşten Çıkarma ve Ayrılış Kayıtları
 export const employeeTerminations = pgTable("employee_terminations", {
   id: serial("id").primaryKey(),
