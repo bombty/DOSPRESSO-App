@@ -11143,6 +11143,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdById: user.id,
       });
       
+      // Send notification to assigned employee
+      if (shift.assignedToId) {
+        try {
+          await storage.createNotification({
+            userId: shift.assignedToId,
+            type: 'shift_assigned',
+            title: 'Yeni Vardiya Atandı',
+            message: `${shift.shiftDate} tarihinde ${shift.startTime?.substring(0, 5)} - ${shift.endTime?.substring(0, 5)} vardiyası atandı.`,
+            link: '/benim-takvimim',
+          });
+        } catch (notifErr) {
+          console.error("Shift notification error:", notifErr);
+        }
+      }
+      
       res.status(201).json(shift);
     } catch (error: Error | unknown) {
       console.error("Error creating shift:", error);
@@ -11150,6 +11165,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       }
       res.status(500).json({ message: "Vardiya oluşturulamadı" });
+    }
+  });
+
+  // POST /api/shifts/bulk-create - Create multiple shifts at once
+  app.post('/api/shifts/bulk-create', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      
+      // Only supervisors and HQ can create shifts
+      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+        return res.status(403).json({ message: "Vardiya oluşturma yetkiniz yok" });
+      }
+      
+      const { z } = await import('zod');
+      const shiftSchema = z.object({
+        shiftDate: z.string(),
+        startTime: z.string(),
+        endTime: z.string(),
+        breakStartTime: z.string().optional().nullable(),
+        breakEndTime: z.string().optional().nullable(),
+        shiftType: z.enum(['morning', 'evening', 'night']).optional(),
+        status: z.string().optional(),
+        notes: z.string().optional().nullable(),
+        branchId: z.number(),
+        assignedToId: z.string().optional().nullable(),
+        checklistId: z.number().optional().nullable(),
+        checklist2Id: z.number().optional().nullable(),
+        checklist3Id: z.number().optional().nullable(),
+      });
+      
+      const bulkSchema = z.object({
+        shifts: z.array(shiftSchema),
+      });
+      
+      const { shifts: shiftsData } = bulkSchema.parse(req.body);
+      
+      // Branch staff can only create for their own branch
+      const invalidBranch = shiftsData.find(s => isBranchRole(role) && s.branchId !== user.branchId);
+      if (invalidBranch) {
+        return res.status(403).json({ message: "Sadece kendi şubeniz için vardiya oluşturabilirsiniz" });
+      }
+      
+      const createdShifts = [];
+      const notifiedEmployees = new Set<string>();
+      
+      for (const shiftData of shiftsData) {
+        const shift = await storage.createShift({
+          ...shiftData,
+          createdById: user.id,
+        });
+        createdShifts.push(shift);
+        
+        // Track employees to notify
+        if (shift.assignedToId) {
+          notifiedEmployees.add(shift.assignedToId);
+        }
+      }
+      
+      // Send notifications to assigned employees (one per employee)
+      for (const employeeId of notifiedEmployees) {
+        const empShifts = createdShifts.filter(s => s.assignedToId === employeeId);
+        const firstDate = empShifts[0]?.shiftDate;
+        const lastDate = empShifts[empShifts.length - 1]?.shiftDate;
+        
+        try {
+          await storage.createNotification({
+            userId: employeeId,
+            type: 'shift_assigned',
+            title: 'Yeni Vardiya Planı',
+            message: empShifts.length === 1 
+              ? `${firstDate} tarihinde vardiya atandı.`
+              : `${firstDate} - ${lastDate} arasında ${empShifts.length} vardiya atandı.`,
+            link: '/benim-takvimim',
+          });
+        } catch (notifErr) {
+          console.error("Bulk shift notification error:", notifErr);
+        }
+      }
+      
+      res.status(201).json({ 
+        message: `${createdShifts.length} vardiya oluşturuldu`,
+        shifts: createdShifts,
+        notifiedCount: notifiedEmployees.size
+      });
+    } catch (error: Error | unknown) {
+      console.error("Error creating bulk shifts:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Vardiyalar oluşturulamadı" });
     }
   });
 
@@ -11192,7 +11298,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const validated = updateSchema.parse(req.body);
+      const previousAssignedTo = shift.assignedToId;
       const updated = await storage.updateShift(id, validated);
+      
+      // Send notification if shift is updated
+      if (updated && updated.assignedToId) {
+        try {
+          // If assigned to a different person, notify them
+          if (validated.assignedToId && validated.assignedToId !== previousAssignedTo) {
+            await storage.createNotification({
+              userId: updated.assignedToId,
+              type: 'shift_assigned',
+              title: 'Vardiya Atandı',
+              message: `${updated.shiftDate} tarihinde ${updated.startTime?.substring(0, 5)} - ${updated.endTime?.substring(0, 5)} vardiyası size atandı.`,
+              link: '/benim-takvimim',
+            });
+          } else if (validated.shiftDate || validated.startTime || validated.endTime) {
+            // If date/time changed, notify existing assignee
+            await storage.createNotification({
+              userId: updated.assignedToId,
+              type: 'shift_change',
+              title: 'Vardiya Güncellendi',
+              message: `${updated.shiftDate} tarihindeki vardiya güncellendi: ${updated.startTime?.substring(0, 5)} - ${updated.endTime?.substring(0, 5)}`,
+              link: '/benim-takvimim',
+            });
+          }
+        } catch (notifErr) {
+          console.error("Shift update notification error:", notifErr);
+        }
+      }
       
       res.json(updated);
     } catch (error: Error | unknown) {
