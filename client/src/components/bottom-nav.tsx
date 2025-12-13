@@ -1,13 +1,14 @@
 import { useLocation } from "wouter";
-import { Home, GraduationCap, Wrench, User, MoreHorizontal } from "lucide-react";
+import { Home, GraduationCap, Wrench, User, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { isHQRole } from "@shared/schema";
+import { isHQRole, PERMISSIONS } from "@shared/schema";
 
 interface NavItem {
   icon: any;
   label: string;
   path: string;
   badge?: number;
+  roles?: string[]; // If specified, only show for these roles
 }
 
 export function BottomNav() {
@@ -15,16 +16,26 @@ export function BottomNav() {
   const { user } = useAuth();
   
   const isHQ = user && isHQRole(user.role as any);
+  const userRole = user?.role as string | undefined;
   
-  const navItems: NavItem[] = [
-    { icon: Home, label: "Ana Sayfa", path: "/" },
+  // Check if user has HR access
+  const hasHRAccess = userRole && PERMISSIONS[userRole as keyof typeof PERMISSIONS]?.hr?.length > 0;
+  
+  // Build nav items based on user role
+  const allNavItems: NavItem[] = [
+    { icon: Home, label: "Ana Sayfa", path: isHQ ? "/" : "/sube-dashboard" },
     { icon: GraduationCap, label: "Akademi", path: isHQ ? "/akademi-hq" : "/akademi" },
+    // İK - show only for roles with HR access (supervisor, supervisor_buddy, admin, etc.)
+    ...(hasHRAccess ? [{ icon: Users, label: "İK", path: "/ik" }] : []),
     { icon: Wrench, label: "Arıza", path: "/ariza" },
     { icon: User, label: "Profil", path: user ? `/personel/${user.id}` : "/login" },
   ];
+  
+  // Limit to 5 items max for bottom nav
+  const navItems = allNavItems.slice(0, 5);
 
   const isActive = (path: string) => {
-    if (path === "/") return location === "/";
+    if (path === "/" || path === "/sube-dashboard") return location === "/" || location === "/sube-dashboard";
     return location.startsWith(path);
   };
 
