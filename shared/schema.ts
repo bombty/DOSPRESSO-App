@@ -2610,9 +2610,12 @@ export const qualityAudits = pgTable("quality_audits", {
   index("quality_audits_date_idx").on(table.auditDate),
 ]);
 
-export const insertQualityAuditSchema = createInsertSchema(qualityAudits).omit({
+export const insertQualityAuditSchema = createInsertSchema(qualityAudits, {
+  auditDate: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+}).omit({
   id: true,
   createdAt: true,
+  auditorId: true,
 });
 
 export type InsertQualityAudit = z.infer<typeof insertQualityAuditSchema>;
