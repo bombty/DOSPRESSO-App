@@ -205,6 +205,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "performance",
         scope: "both",
       },
+      {
+        id: "reports",
+        titleTr: "Raporlar",
+        path: "/raporlar",
+        icon: "FileText",
+        moduleKey: "performance",
+        scope: "hq",
+      },
     ],
   },
   // HQ-Only: Quality
