@@ -11151,7 +11151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'shift_assigned',
             title: 'Yeni Vardiya Atandı',
             message: `${shift.shiftDate} tarihinde ${shift.startTime?.substring(0, 5)} - ${shift.endTime?.substring(0, 5)} vardiyası atandı.`,
-            link: '/benim-takvimim',
+            link: '/vardiyalarim',
           });
         } catch (notifErr) {
           console.error("Shift notification error:", notifErr);
@@ -11238,7 +11238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: empShifts.length === 1 
               ? `${firstDate} tarihinde vardiya atandı.`
               : `${firstDate} - ${lastDate} arasında ${empShifts.length} vardiya atandı.`,
-            link: '/benim-takvimim',
+            link: '/vardiyalarim',
           });
         } catch (notifErr) {
           console.error("Bulk shift notification error:", notifErr);
@@ -11311,7 +11311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               type: 'shift_assigned',
               title: 'Vardiya Atandı',
               message: `${updated.shiftDate} tarihinde ${updated.startTime?.substring(0, 5)} - ${updated.endTime?.substring(0, 5)} vardiyası size atandı.`,
-              link: '/benim-takvimim',
+              link: '/vardiyalarim',
             });
           } else if (validated.shiftDate || validated.startTime || validated.endTime) {
             // If date/time changed, notify existing assignee
@@ -11320,7 +11320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               type: 'shift_change',
               title: 'Vardiya Güncellendi',
               message: `${updated.shiftDate} tarihindeki vardiya güncellendi: ${updated.startTime?.substring(0, 5)} - ${updated.endTime?.substring(0, 5)}`,
-              link: '/benim-takvimim',
+              link: '/vardiyalarim',
             });
           }
         } catch (notifErr) {
