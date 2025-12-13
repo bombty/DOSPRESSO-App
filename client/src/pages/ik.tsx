@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -126,8 +126,18 @@ export default function IKPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Supervisor için şube rolü kontrolü
+  const isBranchRole = user?.role && !isHQRole(user.role as any) && user.role !== 'admin';
+
   // Filters - Section 1: Employee List
-  const [categoryFilter, setCategoryFilter] = useState<string>("all"); // Şubeler, HQ, Fabrika
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  
+  // Auth yüklendikten sonra şube kullanıcıları için categoryFilter'ı "subeler" olarak ayarla
+  useEffect(() => {
+    if (user?.role && !isHQRole(user.role as any) && user.role !== 'admin') {
+      setCategoryFilter("subeler");
+    }
+  }, [user?.role]);
   const [branchFilter, setBranchFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [probationFilter, setProbationFilter] = useState<string>("all");
@@ -367,6 +377,14 @@ export default function IKPage() {
 
   // Filter employees (branchFilter handled by backend via query params)
   const filteredEmployees = employees.filter((emp) => {
+    // GÜVENLİK: Şube kullanıcıları sadece şube personelini görebilir (HQ/Fabrika değil)
+    // Backend zaten şube filtresi yapıyor ama ek güvenlik katmanı olarak frontend'de de kontrol ediyoruz
+    if (isBranchRole) {
+      const empIsHQ = isHQRole(emp.role as any);
+      const empIsFabrika = emp.role === "fabrika";
+      if (empIsHQ || empIsFabrika) return false;
+    }
+    
     // Category filter (Şubeler/HQ/Fabrika)
     if (categoryFilter !== "all") {
       const isHQ = isHQRole(emp.role as any);
@@ -555,7 +573,7 @@ export default function IKPage() {
               <span className="hidden sm:inline">İşten Çıkış</span>
             </TabsTrigger>
           )}
-          {(isHQRole(user?.role as any) || user?.role === 'admin') && (
+          {(isHQRole(user?.role as any) || user?.role === 'admin' || user?.role === 'supervisor') && (
             <TabsTrigger value="izinler" className="flex items-center gap-2 px-4 py-2" data-testid="tab-izinler">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">İzinler</span>
@@ -595,9 +613,10 @@ export default function IKPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                        {/* Category filter - Şubeler/HQ/Fabrika */}
+                        {/* Category filter - Şubeler/HQ/Fabrika - only for HQ users */}
+                        {user?.role && isHQRole(user.role as any) && (
                         <div>
-                          <label className="text-sm font-medium">Kategori *</label>
+                          <label className="text-sm font-medium">Kategori</label>
                           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                             <SelectTrigger data-testid="select-category-filter" className="h-9">
                               <SelectValue />
@@ -610,6 +629,7 @@ export default function IKPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        )}
 
                     {/* Branch filter - only for HQ users */}
                     {user?.role && isHQRole(user.role as any) && (
