@@ -5675,14 +5675,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let messageCount = 0;
       
       try {
-        const notifications = await storage.getUserNotifications(user.id);
-        notificationCount = notifications.filter(n => !n.readAt).length;
+        const notifications = await storage.getNotifications(user.id);
+        notificationCount = notifications.filter((n: any) => !n.readAt).length;
       } catch (e) {
         // Ignore notification count errors
       }
       
       try {
-        const unreadResult = await storage.getUnreadMessageCount(user.id);
+        const unreadResult = await storage.getUnreadCount(user.id);
         messageCount = unreadResult?.count || 0;
       } catch (e) {
         // Ignore message count errors
