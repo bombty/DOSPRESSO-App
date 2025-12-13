@@ -19,7 +19,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertKnowledgeBaseArticleSchema, type KnowledgeBaseArticle, type InsertKnowledgeBaseArticle, isHQRole } from "@shared/schema";
-import { BookOpen, Eye, Plus, CheckCircle, XCircle } from "lucide-react";
+import { BookOpen, Eye, Plus, CheckCircle, XCircle, Link2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function KnowledgeBase() {
   const { toast } = useToast();
@@ -27,6 +28,7 @@ export default function KnowledgeBase() {
   const [, setLocation] = useLocation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticle | null>(null);
   const isHQ = user?.role && isHQRole(user.role as any);
 
   // Redirect non-HQ users away
@@ -121,6 +123,31 @@ export default function KnowledgeBase() {
     }
     return article.category === selectedCategory;
   });
+
+  // İlgili makaleleri bul - aynı kategori veya ortak etiketler
+  const getRelatedArticles = (article: KnowledgeBaseArticle) => {
+    if (!articles) return [];
+    
+    const procedureCategories = ["procedure", "sop", "maintenance"];
+    const articleCategories = procedureCategories.includes(article.category) 
+      ? procedureCategories 
+      : [article.category];
+    
+    return articles
+      .filter(a => a.id !== article.id && a.isPublished)
+      .map(a => {
+        let score = 0;
+        // Aynı kategori +2 puan
+        if (articleCategories.includes(a.category)) score += 2;
+        // Ortak etiketler için her biri +1 puan
+        const sharedTags = (article.tags || []).filter(tag => (a.tags || []).includes(tag));
+        score += sharedTags.length;
+        return { article: a, score, sharedTags };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3); // En fazla 3 ilgili makale
+  };
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
@@ -284,10 +311,19 @@ export default function KnowledgeBase() {
                         <Eye className="h-3 w-3" />
                         {article.viewCount || 0} görüntüleme
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant={article.isPublished ? "default" : "outline"}>
                           {article.isPublished ? "Yayında" : "Taslak"}
                         </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedArticle(article)}
+                          data-testid={`button-detail-${article.id}`}
+                        >
+                          <BookOpen className="h-4 w-4 mr-1" />
+                          Detay
+                        </Button>
                         {isHQ && (article.isPublished ? (
                           <Button
                             size="sm"
@@ -328,6 +364,84 @@ export default function KnowledgeBase() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Makale Detay Dialogu */}
+      <Dialog open={!!selectedArticle} onOpenChange={(open) => !open && setSelectedArticle(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh]">
+          {selectedArticle && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5" />
+                  {selectedArticle.title}
+                </DialogTitle>
+                <div className="flex items-center gap-2 pt-2">
+                  <Badge variant="secondary">{categoryLabels[selectedArticle.category]}</Badge>
+                  <Badge variant={selectedArticle.isPublished ? "default" : "outline"}>
+                    {selectedArticle.isPublished ? "Yayında" : "Taslak"}
+                  </Badge>
+                </div>
+              </DialogHeader>
+              <ScrollArea className="max-h-[50vh]">
+                <div className="prose prose-sm dark:prose-invert max-w-none p-1">
+                  <p className="whitespace-pre-wrap">{selectedArticle.content}</p>
+                </div>
+              </ScrollArea>
+              
+              {selectedArticle.tags && selectedArticle.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-2">
+                  {selectedArticle.tags.map((tag, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">{tag}</Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* İlgili İçerikler Bölümü */}
+              {getRelatedArticles(selectedArticle).length > 0 && (
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-medium flex items-center gap-2 mb-3">
+                    <Link2 className="h-4 w-4" />
+                    İlgili İçerikler
+                  </h4>
+                  <div className="grid gap-2">
+                    {getRelatedArticles(selectedArticle).map(({ article: relatedArticle, sharedTags }) => (
+                      <Card 
+                        key={relatedArticle.id} 
+                        className="cursor-pointer hover-elevate"
+                        onClick={() => setSelectedArticle(relatedArticle)}
+                        data-testid={`card-related-${relatedArticle.id}`}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{relatedArticle.title}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+                                {relatedArticle.content}
+                              </p>
+                            </div>
+                            <Badge variant="secondary" className="text-xs shrink-0">
+                              {categoryLabels[relatedArticle.category]}
+                            </Badge>
+                          </div>
+                          {sharedTags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {sharedTags.map((tag, i) => (
+                                <Badge key={i} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
