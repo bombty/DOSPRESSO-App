@@ -1528,7 +1528,7 @@ function LiveShiftGrid({ todayShifts, activeAttendances, users, shiftTypeIcons, 
 
   const ShiftCard = ({ shift, status }: { shift: ShiftWithRelations; status: 'completed' | 'active' | 'upcoming' }) => {
     const ShiftIcon = shiftTypeIcons[shift.shiftType];
-    const isActive = activeAttendances?.some(a => a.userId === shift.assignedToId);
+    const hasCheckedIn = activeAttendances?.some(a => a.userId === shift.assignedToId && a.shiftId === shift.id);
     
     return (
       <div className={cn(
@@ -1540,13 +1540,17 @@ function LiveShiftGrid({ todayShifts, activeAttendances, users, shiftTypeIcons, 
         <div className="flex items-center gap-1.5 mb-1">
           {ShiftIcon && <ShiftIcon className="w-3 h-3" />}
           <span className="font-medium truncate">{shift.assignedTo?.fullName || "—"}</span>
-          {status === 'active' && isActive && (
-            <div className="w-2 h-2 rounded-full bg-success animate-pulse ml-auto" />
+          {status === 'active' && hasCheckedIn && (
+            <div className="w-2 h-2 rounded-full bg-success animate-pulse ml-auto" title="Giriş yapıldı" />
+          )}
+          {status === 'active' && !hasCheckedIn && (
+            <div className="w-2 h-2 rounded-full bg-warning ml-auto" title="Giriş bekleniyor" />
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          {shift.startTime?.slice(0, 5)} - {shift.endTime?.slice(0, 5)}
-        </p>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{shift.startTime?.slice(0, 5)} - {shift.endTime?.slice(0, 5)}</span>
+          <span className="truncate ml-1">{shift.branch?.name}</span>
+        </div>
       </div>
     );
   };
