@@ -5707,6 +5707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch menu" });
     }
   });
+
   
   // GET /api/menu - Legacy endpoint (deprecated, redirects to static blueprint)
   app.get('/api/menu', isAuthenticated, async (req: any, res) => {
