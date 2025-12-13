@@ -106,6 +106,13 @@ export default function KnowledgeBase() {
     maintenance: "Prosedürler",
   };
 
+  const categoryDescriptions: Record<string, string> = {
+    all: "Tüm bilgi bankası içeriklerini görüntüleyin. Tarifler, prosedürler ve eğitim materyallerinin tamamına buradan erişebilirsiniz.",
+    recipe: "İçecek ve yiyecek tarifleri. Malzeme ölçüleri, hazırlama adımları ve sunum önerileri bu bölümde yer almaktadır.",
+    procedure: "Standart operasyon prosedürleri (SOP) ve bakım kılavuzları. Günlük işleyiş, açılış-kapanış ve ekipman bakım talimatları burada bulunur.",
+    training: "Eğitim materyalleri ve kurslar. Yeni personel oryantasyonu, kariyer gelişimi ve sertifikasyon içerikleri bu kategoride yer alır.",
+  };
+
   const filteredArticles = articles?.filter((article) => {
     if (selectedCategory === "all") return true;
     if (selectedCategory === "procedure") {
@@ -229,7 +236,13 @@ export default function KnowledgeBase() {
           <TabsTrigger value="training" data-testid="tab-training">Eğitim</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={selectedCategory} className="mt-6">
+        <div className="mt-4 p-3 bg-muted/50 rounded-md" data-testid="text-category-description">
+          <p className="text-sm text-muted-foreground">
+            {categoryDescriptions[selectedCategory]}
+          </p>
+        </div>
+
+        <TabsContent value={selectedCategory} className="mt-4">
           {isLoading ? (
             <div className="grid gap-2 sm:gap-3 md:grid-cols-2">
               {[1, 2, 3, 4].map((i) => (
