@@ -66,9 +66,9 @@ const getPriorityColor = (priority: string | null): string =>
 const getStageColor = (stage: string | null): string => 
   STAGE_COLORS[stage as string] || "bg-secondary text-foreground";
 
-const getTimeSinceCreation = (createdAt): string => {
+const getTimeSinceCreation = (createdAt: unknown): string => {
   if (!createdAt) return "-";
-  const hours = differenceInHours(new Date(), new Date(createdAt));
+  const hours = differenceInHours(new Date(), new Date(createdAt as string));
   if (hours < 1) return "< 1 saat";
   if (hours < 24) return `${hours} saat`;
   return `${Math.floor(hours / 24)} gün`;
@@ -120,7 +120,7 @@ export default function FaultHub() {
   const { data: rawFaults } = useQuery<unknown>({
     queryKey: ["/api/faults"],
   });
-  const faults = (Array.isArray(rawFaults) ? rawFaults : rawFaults?.data || []) as EquipmentFault[];
+  const faults = (Array.isArray(rawFaults) ? rawFaults : (rawFaults as any)?.data || []) as EquipmentFault[];
   const isFaultsLoading = false;
 
   const { data: users = [] } = useQuery<any[]>({

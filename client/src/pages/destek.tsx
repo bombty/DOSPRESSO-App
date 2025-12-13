@@ -99,18 +99,21 @@ export default function Destek() {
 
   const createMutation = useMutation({
     mutationFn: (data: CreateTicketFormData) =>
-      apiRequest("POST", "/api/hq-support/tickets", data),
+      apiRequest("/api/hq-support/tickets", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets"] });
       setCreateDialogOpen(false);
       createForm.reset();
       toast({ title: "Talep oluşturuldu" });
     },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Talep oluşturulamadı", variant: "destructive" });
+    },
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: (data: { message: string }) =>
-      apiRequest("POST", `/api/hq-support/tickets/${selectedTicketId}/messages`, data),
+      apiRequest(`/api/hq-support/tickets/${selectedTicketId}/messages`, "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hq-support/tickets", selectedTicketId] });
       messageForm.reset();
