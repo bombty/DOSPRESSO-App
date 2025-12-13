@@ -16340,6 +16340,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Summary for Reports
+  app.post('/api/ai-summary-report', isAuthenticated, async (req: any, res) => {
+    try {
+      const { reportId } = req.body;
+      const user = req.user;
+
+      if (!reportId) {
+        return res.status(400).json({ message: "Rapor ID'si gereklidir" });
+      }
+
+      const report = await storage.getReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Rapor bulunamadı" });
+      }
+
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Sadece HQ kullanıcıları AI özeti oluşturabilir" });
+      }
+
+      const summaryPrompt = `Şu rapor için kısa bir özet oluştur:
+      Rapor Adı: ${report.title}
+      Rapor Tipi: ${report.reportType}
+      Dönem: ${report.dateRange?.start} - ${report.dateRange?.end}
+      Metrikleri: ${report.metrics?.join(", ")}
+      
+      Önemli bulguları ve önerileri kısaca yaz.`;
+
+      const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: summaryPrompt }],
+          max_tokens: 500,
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        throw new Error("OpenAI API error");
+      }
+
+      const data = await openaiResponse.json();
+      const summary = data.choices?.[0]?.message?.content || "";
+
+      const aiSummary = await storage.createAISummary({
+        reportId,
+        summary,
+        keyFindings: "",
+        recommendations: "",
+        visualInsights: "",
+      });
+
+      res.json(aiSummary);
+    } catch (error) {
+      console.error("AI summary error:", error);
+      res.status(500).json({ message: "AI özeti oluşturulamadı" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
