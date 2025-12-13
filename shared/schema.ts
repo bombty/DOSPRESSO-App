@@ -5418,6 +5418,28 @@ export const insertInterviewQuestionSchema = createInsertSchema(interviewQuestio
 export type InsertInterviewQuestion = z.infer<typeof insertInterviewQuestionSchema>;
 export type InterviewQuestion = typeof interviewQuestions.$inferSelect;
 
+// Mülakat Soru-Cevap Kayıtları
+export const interviewResponses = pgTable("interview_responses", {
+  id: serial("id").primaryKey(),
+  interviewId: integer("interview_id").notNull().references(() => interviews.id, { onDelete: "cascade" }),
+  questionId: integer("question_id").notNull().references(() => interviewQuestions.id),
+  answer: text("answer"), // Adayın cevabı
+  score: integer("score"), // 1-5 arası puan
+  notes: text("notes"), // Mülakatçı notu
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("interview_responses_interview_idx").on(table.interviewId),
+  index("interview_responses_question_idx").on(table.questionId),
+]);
+
+export const insertInterviewResponseSchema = createInsertSchema(interviewResponses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInterviewResponse = z.infer<typeof insertInterviewResponseSchema>;
+export type InterviewResponse = typeof interviewResponses.$inferSelect;
+
 // İşten Çıkarma ve Ayrılış Kayıtları
 export const employeeTerminations = pgTable("employee_terminations", {
   id: serial("id").primaryKey(),
