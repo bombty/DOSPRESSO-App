@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -6,11 +6,84 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, startOfWeek, addDays, isToday } from "date-fns";
+import { format, startOfWeek, addDays, isToday, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus, Trash2, AlertTriangle, Calendar, GripVertical } from "lucide-react";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+
+// Draggable Shift Chip Component
+function DraggableShiftChip({ shift, employee, canEdit, onClick }: {
+  shift: any;
+  employee: any;
+  canEdit: boolean;
+  onClick: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `shift-${shift.id}`,
+    data: { shift, employee },
+    disabled: !canEdit,
+  });
+
+  const hour = parseInt(shift.startTime?.split(':')[0] || '0');
+  const colorClass = hour < 12 
+    ? 'bg-amber-100 dark:bg-amber-900/50 border-amber-300 dark:border-amber-700' 
+    : 'bg-blue-100 dark:bg-blue-900/50 border-blue-300 dark:border-blue-700';
+
+  const name = employee?.fullName || employee?.firstName || 'Bilinmiyor';
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+      className={`w-full p-1.5 rounded border text-left text-xs transition-all ${colorClass} ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'opacity-60'}`}
+      data-testid={`shift-chip-${shift.id}`}
+    >
+      <div className="flex items-center gap-1">
+        {canEdit && (
+          <div {...listeners} {...attributes} className="cursor-grab">
+            <GripVertical className="w-3 h-3 text-muted-foreground" />
+          </div>
+        )}
+        <button onClick={onClick} disabled={!canEdit} className="flex-1 text-left min-w-0">
+          <div className="font-medium truncate">{name}</div>
+          <div className="opacity-70">
+            {shift.startTime?.substring(0, 5)}-{shift.endTime?.substring(0, 5)}
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Droppable Day Cell Component
+function DroppableDayCell({ dateStr, children, isOver }: {
+  dateStr: string;
+  children: React.ReactNode;
+  isOver?: boolean;
+}) {
+  const { setNodeRef, isOver: dropIsOver } = useDroppable({
+    id: `day-${dateStr}`,
+    data: { dateStr },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`min-h-[80px] p-2 space-y-1 transition-colors ${
+        dropIsOver ? 'bg-primary/10 ring-2 ring-primary ring-inset' : ''
+      }`}
+      data-testid={`drop-zone-${dateStr}`}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function VardiyaPlanlama() {
   const { user } = useAuth();
@@ -20,6 +93,15 @@ export default function VardiyaPlanlama() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [periodWeeks, setPeriodWeeks] = useState<1 | 2>(1);
+  const [activeShift, setActiveShift] = useState<any>(null);
+
+  // Drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   // Role-based access: Only these roles can edit shifts
   const editableRoles = ['supervisor', 'supervisor_buddy', 'destek', 'muhasebe', 'coach', 'teknik', 'satinalma', 'fabrika', 'yatirimci_hq', 'admin'];
@@ -38,8 +120,10 @@ export default function VardiyaPlanlama() {
     return allEmployees.filter((emp: any) => emp.branchId === user?.branchId);
   }, [allEmployees, user?.branchId]);
 
-  const weekDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
+  // Period days: 7 for 1 week, 14 for 2 weeks
+  const periodDays = useMemo(() => {
+    const totalDays = periodWeeks * 7;
+    return Array.from({ length: totalDays }, (_, i) => {
       const date = addDays(weekStart, i);
       return {
         date,
@@ -47,22 +131,100 @@ export default function VardiyaPlanlama() {
         dayName: format(date, 'EEEE', { locale: tr }),
         shortName: format(date, 'EEE', { locale: tr }),
         dayNum: format(date, 'd'),
+        weekIndex: Math.floor(i / 7),
       };
     });
-  }, [weekStart]);
+  }, [weekStart, periodWeeks]);
 
-  const weekShifts = useMemo(() => {
+  // For backward compatibility
+  const weekDays = periodDays.filter(d => d.weekIndex === 0);
+
+  const periodShifts = useMemo(() => {
     if (!shifts || !Array.isArray(shifts)) return {};
     const byDate: Record<string, any[]> = {};
-    weekDays.forEach(day => {
+    periodDays.forEach(day => {
       byDate[day.dateStr] = shifts.filter((s: any) => s.shiftDate === day.dateStr);
     });
     return byDate;
-  }, [shifts, weekDays]);
+  }, [shifts, periodDays]);
 
-  const previousWeek = () => setWeekStart(addDays(weekStart, -7));
-  const nextWeek = () => setWeekStart(addDays(weekStart, 7));
+  // Alias for backward compatibility
+  const weekShifts = periodShifts;
+
+  // Conflict detection: check if employee already has a shift on given date
+  const detectConflict = useCallback((employeeId: string, targetDate: string, excludeShiftId?: number) => {
+    if (!shifts || !Array.isArray(shifts)) return null;
+    // Normalize IDs to strings for comparison (backend may return different types)
+    const normalizedEmployeeId = String(employeeId);
+    const conflictingShift = shifts.find((s: any) => 
+      s.shiftDate === targetDate && 
+      String(s.assignedToId) === normalizedEmployeeId && 
+      s.id !== excludeShiftId
+    );
+    return conflictingShift;
+  }, [shifts]);
+
+  // Gap detection: find days with no shifts
+  const gapsInPeriod = useMemo(() => {
+    const gaps: string[] = [];
+    periodDays.forEach(day => {
+      const dayShifts = periodShifts[day.dateStr] || [];
+      if (dayShifts.length === 0) {
+        gaps.push(day.dateStr);
+      }
+    });
+    return gaps;
+  }, [periodDays, periodShifts]);
+
+  const previousWeek = () => setWeekStart(addDays(weekStart, -7 * periodWeeks));
+  const nextWeek = () => setWeekStart(addDays(weekStart, 7 * periodWeeks));
   const goToToday = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+
+  // Drag-drop mutation
+  const moveShiftMutation = useMutation({
+    mutationFn: async ({ shiftId, newDate }: { shiftId: number; newDate: string }) => {
+      return apiRequest('PATCH', `/api/shifts/${shiftId}`, { shiftDate: newDate });
+    },
+    onSuccess: () => {
+      toast({ title: "Taşındı", description: "Vardiya yeni güne taşındı" });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // Handle drag end
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveShift(null);
+    const { active, over } = event;
+    
+    if (!over || !active.data.current) return;
+    
+    const shift = active.data.current.shift;
+    const targetDateStr = over.data.current?.dateStr;
+    
+    if (!targetDateStr || shift.shiftDate === targetDateStr) return;
+    
+    // Check for conflict
+    const conflict = detectConflict(shift.assignedToId, targetDateStr, shift.id);
+    if (conflict) {
+      toast({ 
+        title: "Çakışma Tespit Edildi", 
+        description: `Bu personel ${targetDateStr} tarihinde zaten başka bir vardiyaya atanmış.`,
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    moveShiftMutation.mutate({ shiftId: shift.id, newDate: targetDateStr });
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    if (event.active.data.current) {
+      setActiveShift(event.active.data.current.shift);
+    }
+  };
 
   const resetWeeklyMutation = useMutation({
     mutationFn: () => {
@@ -79,12 +241,8 @@ export default function VardiyaPlanlama() {
     },
   });
 
-  const getShiftColor = (shift: any) => {
-    const hour = parseInt(shift.startTime?.split(':')[0] || '0');
-    return hour < 12 
-      ? 'bg-amber-100 dark:bg-amber-900/50 border-amber-300 dark:border-amber-700' 
-      : 'bg-blue-100 dark:bg-blue-900/50 border-blue-300 dark:border-blue-700';
-  };
+  // End date for display
+  const periodEndDate = addDays(weekStart, periodWeeks * 7 - 1);
 
   return (
     <div className="flex flex-col gap-4 p-3">
@@ -93,11 +251,33 @@ export default function VardiyaPlanlama() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Vardiya Planlama</h1>
           <p className="text-muted-foreground text-sm">
-            {format(weekStart, "d MMM", { locale: tr })} - {format(addDays(weekStart, 6), "d MMM yyyy", { locale: tr })}
+            {format(weekStart, "d MMM", { locale: tr })} - {format(periodEndDate, "d MMM yyyy", { locale: tr })}
           </p>
         </div>
         
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* Period Toggle */}
+          <div className="flex border rounded-md overflow-hidden">
+            <button
+              onClick={() => setPeriodWeeks(1)}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                periodWeeks === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted hover-elevate'
+              }`}
+              data-testid="toggle-1-week"
+            >
+              1 Hafta
+            </button>
+            <button
+              onClick={() => setPeriodWeeks(2)}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                periodWeeks === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted hover-elevate'
+              }`}
+              data-testid="toggle-2-weeks"
+            >
+              2 Hafta
+            </button>
+          </div>
+
           {canEditShifts && (
             <>
               <Button variant="outline" onClick={() => setAddModalOpen(true)} className="gap-2" data-testid="button-add-shift">
@@ -115,12 +295,23 @@ export default function VardiyaPlanlama() {
                 data-testid="button-reset-shifts"
               >
                 <Trash2 className="w-4 h-4" />
-                Şiftleri Sıfırla
+                Sıfırla
               </Button>
             </>
           )}
         </div>
       </div>
+
+      {/* Gap Warning */}
+      {gapsInPeriod.length > 0 && (
+        <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md text-sm">
+          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <span className="text-amber-800 dark:text-amber-200">
+            <strong>{gapsInPeriod.length} gün</strong> vardiya atanmamış: {gapsInPeriod.slice(0, 3).map(d => format(parseISO(d), "d MMM", { locale: tr })).join(", ")}
+            {gapsInPeriod.length > 3 && ` ve ${gapsInPeriod.length - 3} daha...`}
+          </span>
+        </div>
+      )}
 
       {/* Week Navigation */}
       <div className="flex items-center gap-2">
@@ -133,53 +324,78 @@ export default function VardiyaPlanlama() {
         <Button size="icon" variant="outline" onClick={nextWeek} data-testid="button-next-week">
           <ChevronRight className="w-4 h-4" />
         </Button>
+        <span className="text-xs text-muted-foreground ml-2">
+          {canEditShifts && "Sürükle-bırak ile vardiyaları taşıyabilirsiniz"}
+        </span>
       </div>
 
-      {/* Weekly Calendar Grid */}
+      {/* Calendar Grid with Drag-Drop */}
       {shiftsLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-          {weekDays.map((day) => (
-            <Card 
-              key={day.dateStr}
-              className={`min-h-[120px] ${isToday(day.date) ? 'ring-2 ring-primary' : ''}`}
-            >
-              <div className="p-2 border-b bg-muted/30 text-center">
-                <div className="text-xs text-muted-foreground">{day.shortName}</div>
-                <div className="text-lg font-bold">{day.dayNum}</div>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          {/* Week Headers for 2-week view */}
+          {periodWeeks === 2 && (
+            <div className="grid grid-cols-2 gap-4 mb-2">
+              <div className="text-center text-sm font-medium text-muted-foreground">
+                1. Hafta: {format(weekStart, "d MMM", { locale: tr })} - {format(addDays(weekStart, 6), "d MMM", { locale: tr })}
               </div>
+              <div className="text-center text-sm font-medium text-muted-foreground">
+                2. Hafta: {format(addDays(weekStart, 7), "d MMM", { locale: tr })} - {format(addDays(weekStart, 13), "d MMM", { locale: tr })}
+              </div>
+            </div>
+          )}
 
-              <CardContent className="p-2 space-y-1">
-                {(weekShifts[day.dateStr] || []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">-</p>
-                ) : (
-                  (weekShifts[day.dateStr] || []).map((shift: any) => {
-                    const emp = branchEmployees.find((e: any) => e.id === shift.assignedToId);
-                    const name = emp?.fullName || emp?.firstName || 'Bilinmiyor';
-                    
-                    return (
-                      <button
-                        key={shift.id}
-                        onClick={() => { if (canEditShifts) setEditingShiftId(shift.id); }}
-                        disabled={!canEditShifts}
-                        className={`w-full p-1.5 rounded border text-left text-xs transition-all ${getShiftColor(shift)} ${canEditShifts ? 'hover:shadow cursor-pointer' : 'opacity-60 cursor-not-allowed'}`}
-                        data-testid={`shift-chip-${shift.id}`}
-                      >
-                        <div className="font-medium truncate">{name}</div>
-                        <div className="opacity-70">
-                          {shift.startTime?.substring(0, 5)}-{shift.endTime?.substring(0, 5)}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          <div className={`grid gap-2 ${periodWeeks === 2 ? 'grid-cols-7 md:grid-cols-14' : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-7'}`}>
+            {periodDays.map((day) => {
+              const isGap = gapsInPeriod.includes(day.dateStr);
+              
+              return (
+                <Card 
+                  key={day.dateStr}
+                  className={`min-h-[120px] ${isToday(day.date) ? 'ring-2 ring-primary' : ''} ${isGap ? 'border-amber-300 dark:border-amber-700' : ''}`}
+                >
+                  <div className={`p-2 border-b text-center ${isGap ? 'bg-amber-50 dark:bg-amber-900/30' : 'bg-muted/30'}`}>
+                    <div className="text-xs text-muted-foreground">{day.shortName}</div>
+                    <div className="text-lg font-bold">{day.dayNum}</div>
+                  </div>
+
+                  <DroppableDayCell dateStr={day.dateStr}>
+                    {(periodShifts[day.dateStr] || []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-3">-</p>
+                    ) : (
+                      (periodShifts[day.dateStr] || []).map((shift: any) => {
+                        const emp = branchEmployees.find((e: any) => e.id === shift.assignedToId);
+                        
+                        return (
+                          <DraggableShiftChip
+                            key={shift.id}
+                            shift={shift}
+                            employee={emp}
+                            canEdit={canEditShifts || false}
+                            onClick={() => { if (canEditShifts) setEditingShiftId(shift.id); }}
+                          />
+                        );
+                      })
+                    )}
+                  </DroppableDayCell>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Drag Overlay */}
+          <DragOverlay>
+            {activeShift && (
+              <div className="p-2 bg-primary text-primary-foreground rounded shadow-lg text-xs">
+                <div className="font-medium">Taşınıyor...</div>
+                <div>{activeShift.startTime?.substring(0, 5)}-{activeShift.endTime?.substring(0, 5)}</div>
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {/* Edit Shift Modal */}

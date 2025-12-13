@@ -11061,6 +11061,224 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== SHIFTS CRUD ROUTES =====
+  
+  // GET /api/shifts - Get all shifts
+  app.get('/api/shifts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      
+      let branchId: number | undefined = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      
+      // Branch staff can only see their own branch shifts
+      if (isBranchRole(role)) {
+        branchId = user.branchId;
+      }
+      
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+      const assignedToId = req.query.assignedToId as string | undefined;
+      
+      const shifts = await storage.getShifts(branchId, assignedToId, dateFrom, dateTo);
+      res.json(shifts);
+    } catch (error: Error | unknown) {
+      console.error("Error fetching shifts:", error);
+      res.status(500).json({ message: "Vardiyalar yüklenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/shifts/my - Get current user's shifts
+  app.get('/api/shifts/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+      
+      const shifts = await storage.getShifts(undefined, user.id, dateFrom, dateTo);
+      res.json(shifts);
+    } catch (error: Error | unknown) {
+      console.error("Error fetching user shifts:", error);
+      res.status(500).json({ message: "Vardiyalar yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/shifts - Create a new shift
+  app.post('/api/shifts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      
+      // Only supervisors and HQ can create shifts
+      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+        return res.status(403).json({ message: "Vardiya oluşturma yetkiniz yok" });
+      }
+      
+      const { z } = await import('zod');
+      const shiftSchema = z.object({
+        shiftDate: z.string(),
+        startTime: z.string(),
+        endTime: z.string(),
+        breakStartTime: z.string().optional().nullable(),
+        breakEndTime: z.string().optional().nullable(),
+        shiftType: z.enum(['morning', 'evening', 'night']).optional(),
+        status: z.string().optional(),
+        notes: z.string().optional().nullable(),
+        branchId: z.number(),
+        assignedToId: z.string().optional().nullable(),
+        checklistId: z.number().optional().nullable(),
+        checklist2Id: z.number().optional().nullable(),
+        checklist3Id: z.number().optional().nullable(),
+      });
+      
+      const validated = shiftSchema.parse(req.body);
+      
+      // Branch staff can only create for their own branch
+      if (isBranchRole(role) && validated.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubeniz için vardiya oluşturabilirsiniz" });
+      }
+      
+      const shift = await storage.createShift({
+        ...validated,
+        createdById: user.id,
+      });
+      
+      res.status(201).json(shift);
+    } catch (error: Error | unknown) {
+      console.error("Error creating shift:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Vardiya oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/shifts/:id - Update a shift
+  app.patch('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      // Only supervisors and HQ can update shifts
+      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+        return res.status(403).json({ message: "Vardiya güncelleme yetkiniz yok" });
+      }
+      
+      const shift = await storage.getShift(id);
+      if (!shift) {
+        return res.status(404).json({ message: "Vardiya bulunamadı" });
+      }
+      
+      // Branch staff can only update their own branch shifts
+      if (isBranchRole(role) && shift.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu vardiyayı güncelleme yetkiniz yok" });
+      }
+      
+      const { z } = await import('zod');
+      const updateSchema = z.object({
+        shiftDate: z.string().optional(),
+        startTime: z.string().optional(),
+        endTime: z.string().optional(),
+        breakStartTime: z.string().optional().nullable(),
+        breakEndTime: z.string().optional().nullable(),
+        shiftType: z.enum(['morning', 'evening', 'night']).optional(),
+        status: z.string().optional(),
+        notes: z.string().optional().nullable(),
+        assignedToId: z.string().optional().nullable(),
+        checklistId: z.number().optional().nullable(),
+        checklist2Id: z.number().optional().nullable(),
+        checklist3Id: z.number().optional().nullable(),
+      });
+      
+      const validated = updateSchema.parse(req.body);
+      const updated = await storage.updateShift(id, validated);
+      
+      res.json(updated);
+    } catch (error: Error | unknown) {
+      console.error("Error updating shift:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Vardiya güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/shifts/:id - Delete a shift
+  app.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      // Only supervisors and HQ can delete shifts
+      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+        return res.status(403).json({ message: "Vardiya silme yetkiniz yok" });
+      }
+      
+      const shift = await storage.getShift(id);
+      if (!shift) {
+        return res.status(404).json({ message: "Vardiya bulunamadı" });
+      }
+      
+      // Branch staff can only delete their own branch shifts
+      if (isBranchRole(role) && shift.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu vardiyayı silme yetkiniz yok" });
+      }
+      
+      await storage.deleteShift(id);
+      res.json({ message: "Vardiya silindi" });
+    } catch (error: Error | unknown) {
+      console.error("Error deleting shift:", error);
+      res.status(500).json({ message: "Vardiya silinemedi" });
+    }
+  });
+
+  // DELETE /api/shifts/reset-weekly - Reset weekly shifts
+  app.delete('/api/shifts/reset-weekly', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      
+      // Only supervisors and HQ can reset shifts
+      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+        return res.status(403).json({ message: "Vardiya sıfırlama yetkiniz yok" });
+      }
+      
+      const weekStart = req.query.weekStart as string;
+      if (!weekStart) {
+        return res.status(400).json({ message: "weekStart parametresi gerekli" });
+      }
+      
+      // Calculate week end (weekStart + 6 days)
+      const startDate = new Date(weekStart);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      const weekEnd = endDate.toISOString().split('T')[0];
+      
+      // Get branch filter
+      let branchId: number | undefined;
+      if (isBranchRole(role)) {
+        branchId = user.branchId;
+      } else if (req.query.branchId) {
+        branchId = parseInt(req.query.branchId as string);
+      }
+      
+      // Get shifts in the week
+      const shifts = await storage.getShifts(branchId, undefined, weekStart, weekEnd);
+      
+      // Delete each shift
+      for (const shift of shifts) {
+        await storage.deleteShift(shift.id);
+      }
+      
+      res.json({ message: `${shifts.length} vardiya silindi` });
+    } catch (error: Error | unknown) {
+      console.error("Error resetting weekly shifts:", error);
+      res.status(500).json({ message: "Vardiyalar sıfırlanamadı" });
+    }
+  });
+
   // GET /api/shifts/recommendations - Get AI shift recommendations using ShiftScheduler
   app.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res) => {
     try {
