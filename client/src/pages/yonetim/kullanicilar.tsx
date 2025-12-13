@@ -163,7 +163,7 @@ export default function UserCRM() {
   // Update user mutation
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, role, branchId }: { id: string; role?: string; branchId?: number | null }) =>
-      apiRequest(`/api/admin/users/${id}`, "PATCH", { role, branchId }),
+      apiRequest("PATCH", `/api/admin/users/${id}`, { role, branchId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({ title: "Başarılı", description: "Kullanıcı güncellendi" });
@@ -176,8 +176,10 @@ export default function UserCRM() {
 
   // Bulk import mutation
   const bulkImportMutation = useMutation({
-    mutationFn: async (csvUsers: any[]) =>
-      apiRequest("POST", "/api/admin/users/bulk-import", { users: csvUsers }),
+    mutationFn: async (csvUsers: any[]) => {
+      const res = await apiRequest("POST", "/api/admin/users/bulk-import", { users: csvUsers });
+      return res.json() as Promise<{ imported: number }>;
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({ 
