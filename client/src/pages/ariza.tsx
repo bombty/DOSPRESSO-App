@@ -314,7 +314,7 @@ export default function FaultHub() {
                   <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
                     <AlertTriangle className="h-4 w-4 text-destructive" />
                   </div>
-                  <p className="text-xs text-destructive">Zaman Aşımı</p>
+                  <p className="text-xs text-muted-foreground">Zaman Aşımı</p>
                   <p className="text-lg font-bold text-destructive" data-testid="text-breached-count">{metrics.breached.length}</p>
                 </div>
               </CardContent>
@@ -326,7 +326,7 @@ export default function FaultHub() {
                   <div className="h-4 w-4 rounded-full bg-warning/10 dark:bg-warning/5/20 flex items-center justify-center">
                     <Clock className="h-4 w-4 text-warning" />
                   </div>
-                  <p className="text-xs text-warning">Risk Altında</p>
+                  <p className="text-xs text-muted-foreground">Risk Altında</p>
                   <p className="text-lg font-bold text-warning" data-testid="text-atrisk-count">{metrics.atRisk.length}</p>
                 </div>
               </CardContent>
@@ -338,7 +338,7 @@ export default function FaultHub() {
                   <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
                     <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
-                  <p className="text-xs text-success">Sağlıklı</p>
+                  <p className="text-xs text-muted-foreground">Sağlıklı</p>
                   <p className="text-lg font-bold text-success" data-testid="text-healthy-count">{metrics.healthy.length}</p>
                 </div>
               </CardContent>
@@ -403,7 +403,7 @@ export default function FaultHub() {
                   <p className="text-sm text-muted-foreground text-center py-3">Arıza bulunamadı</p>
                 ) : (
                   paginatedManageFaults.map((fault: EquipmentFault) => (
-                    <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted" data-testid={`card-manage-fault-${fault.id}`}>
+                    <div key={fault.id} className="flex items-center justify-between p-3 border rounded hover:bg-muted cursor-pointer hover-elevate" data-testid={`card-manage-fault-${fault.id}`} onClick={() => handleUpdateFault(fault)}>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium">{fault.equipmentName}</p>
@@ -418,7 +418,7 @@ export default function FaultHub() {
                       </div>
                       <Button
                         size="sm"
-                        onClick={() => handleUpdateFault(fault)}
+                        onClick={(e) => { e.stopPropagation(); handleUpdateFault(fault); }}
                         variant="outline"
                         data-testid={`button-update-fault-${fault.id}`}
                       >
