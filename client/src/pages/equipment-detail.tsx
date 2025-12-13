@@ -200,6 +200,20 @@ export default function EquipmentDetail() {
     enabled: !!equipment?.equipmentType,
   });
 
+  // Knowledge base articles for this equipment type
+  const { data: relatedArticles = [], isLoading: isLoadingArticles } = useQuery<any[]>({
+    queryKey: ["/api/knowledge-base", "equipment", equipment?.equipmentType],
+    queryFn: async () => {
+      if (!equipment?.equipmentType) return [];
+      const response = await fetch(`/api/knowledge-base?equipmentTypeId=${equipment.equipmentType}&isPublished=true`, {
+        credentials: 'include',
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!equipment?.equipmentType,
+  });
+
   // Calculate if troubleshooting is complete
   const requiredSteps = troubleshootingSteps?.filter(step => step.isRequired) || [];
   const missingRequiredSteps = requiredSteps.filter(step => !completedStepIds.has(step.id));
@@ -762,6 +776,10 @@ export default function EquipmentDetail() {
           <TabsTrigger value="qr" data-testid="tab-qr" className="text-xs px-2 py-1.5">
             <QrCode className="h-3 w-3 mr-1" />
             QR Kod
+          </TabsTrigger>
+          <TabsTrigger value="guide" data-testid="tab-guide" className="text-xs px-2 py-1.5">
+            <FileText className="h-3 w-3 mr-1" />
+            Kılavuz & Bakım
           </TabsTrigger>
         </TabsList>
 
@@ -1338,6 +1356,106 @@ export default function EquipmentDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="guide" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Kılavuz & Bakım Dokümanları
+              </CardTitle>
+              <CardDescription>
+                Bu ekipman tipi için hazırlanmış kılavuzlar, bakım prosedürleri ve sorun giderme dokümanları
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingArticles ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : relatedArticles.length > 0 ? (
+                <div className="w-full space-y-2 sm:space-y-3">
+                  {relatedArticles.map((article: any) => (
+                    <div
+                      key={article.id}
+                      className="p-3 border rounded-lg hover-elevate cursor-pointer"
+                      data-testid={`article-card-${article.id}`}
+                      onClick={() => window.open(`/bilgi-bankasi/${article.id}`, '_blank')}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm" data-testid={`text-article-title-${article.id}`}>
+                            {article.title}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {article.category === 'maintenance' ? 'Bakım' :
+                               article.category === 'sop' ? 'Prosedür' :
+                               article.category === 'training' ? 'Eğitim' :
+                               article.category === 'recipe' ? 'Tarif' : article.category}
+                            </Badge>
+                            {article.tags?.slice(0, 3).map((tag: string, idx: number) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">{tag}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {article.viewCount || 0} görüntüleme
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-2">Bu ekipman için henüz doküman eklenmemiş</p>
+                  <p className="text-sm text-muted-foreground">
+                    HQ personeli Bilgi Bankası'ndan "{equipment?.equipmentType}" tipine özel içerik ekleyebilir
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Troubleshooting Quick Reference */}
+          {hasSteps && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Wrench className="h-4 w-4" />
+                  Hızlı Sorun Giderme
+                </CardTitle>
+                <CardDescription>
+                  Bu ekipman için tanımlı sorun giderme adımları
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {troubleshootingSteps?.slice(0, 5).map((step, idx) => (
+                    <div key={step.id} className="flex items-start gap-2 p-2 rounded border" data-testid={`guide-step-${step.id}`}>
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        {idx + 1}
+                      </Badge>
+                      <div className="flex-1">
+                        <p className="text-sm">{step.description}</p>
+                        {step.isRequired && (
+                          <Badge variant="destructive" className="text-xs mt-1">Zorunlu</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {troubleshootingSteps && troubleshootingSteps.length > 5 && (
+                    <p className="text-sm text-muted-foreground text-center pt-2">
+                      +{troubleshootingSteps.length - 5} adım daha var. Arıza bildirimi yaparken tüm adımlar gösterilir.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 

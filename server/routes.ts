@@ -3192,7 +3192,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/knowledge-base', isAuthenticated, async (req, res) => {
     try {
       const category = req.query.category as string | undefined;
-      const articles = await storage.getArticles(category);
+      const equipmentTypeId = req.query.equipmentTypeId as string | undefined;
+      const isPublished = req.query.isPublished === 'true' ? true : undefined;
+      const articles = await storage.getArticles(category, equipmentTypeId, isPublished);
       res.json(articles);
     } catch (error) {
       console.error("Error fetching articles:", error);

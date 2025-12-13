@@ -368,7 +368,7 @@ export interface IStorage {
   getFaultStageHistory(faultId: number): Promise<FaultStageTransition[]>;
   
   // Knowledge Base operations
-  getArticles(category?: string): Promise<KnowledgeBaseArticle[]>;
+  getArticles(category?: string, equipmentTypeId?: string, isPublished?: boolean): Promise<KnowledgeBaseArticle[]>;
   getArticle(id: number): Promise<KnowledgeBaseArticle | undefined>;
   createArticle(article: InsertKnowledgeBaseArticle): Promise<KnowledgeBaseArticle>;
   incrementArticleViews(id: number): Promise<void>;
@@ -1473,9 +1473,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Knowledge Base operations
-  async getArticles(category?: string): Promise<KnowledgeBaseArticle[]> {
+  async getArticles(category?: string, equipmentTypeId?: string, isPublished?: boolean): Promise<KnowledgeBaseArticle[]> {
+    const conditions = [];
     if (category) {
-      return db.select().from(knowledgeBaseArticles).where(eq(knowledgeBaseArticles.category, category)).orderBy(desc(knowledgeBaseArticles.createdAt));
+      conditions.push(eq(knowledgeBaseArticles.category, category));
+    }
+    if (equipmentTypeId) {
+      conditions.push(eq(knowledgeBaseArticles.equipmentTypeId, equipmentTypeId));
+    }
+    if (isPublished !== undefined) {
+      conditions.push(eq(knowledgeBaseArticles.isPublished, isPublished));
+    }
+    
+    if (conditions.length > 0) {
+      return db.select().from(knowledgeBaseArticles).where(and(...conditions)).orderBy(desc(knowledgeBaseArticles.createdAt));
     }
     return db.select().from(knowledgeBaseArticles).orderBy(desc(knowledgeBaseArticles.createdAt));
   }

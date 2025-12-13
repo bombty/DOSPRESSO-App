@@ -1211,6 +1211,7 @@ export const knowledgeBaseArticles = pgTable("knowledge_base_articles", {
   content: text("content").notNull(),
   tags: text("tags").array(),
   attachmentUrls: text("attachment_urls").array(),
+  equipmentTypeId: varchar("equipment_type_id", { length: 100 }), // Links article to equipment type (e.g., 'espresso_machine', 'grinder')
   isPublished: boolean("is_published").default(false),
   viewCount: integer("view_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
