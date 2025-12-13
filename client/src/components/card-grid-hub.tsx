@@ -30,7 +30,10 @@ import {
   FileText,
   FolderKanban,
   CheckSquare,
-  Shield
+  Shield,
+  Bell,
+  Bot,
+  Star
 } from "lucide-react";
 
 interface ModuleCard {
@@ -150,9 +153,53 @@ export function CardGridHub() {
       id: "support", 
       icon: MessageSquare, 
       label: "Merkez Destek", 
-      path: "/destek",
+      path: "/hq-destek",
       color: "bg-blue-500",
       description: "HQ'ya talep gönder"
+    },
+    // Yeni eklenen modüller
+    { 
+      id: "hr", 
+      icon: Users, 
+      label: "İK Yönetimi", 
+      path: "/ik",
+      color: "bg-pink-500",
+      description: "Personel yönetimi",
+      roles: ["supervisor", "supervisor_buddy", "yatirimci_branch", "admin"]
+    },
+    { 
+      id: "knowledge", 
+      icon: BookOpen, 
+      label: "Bilgi Bankası", 
+      path: "/bilgi-bankasi",
+      color: "bg-emerald-500",
+      description: "Dokümanlar & rehberler"
+    },
+    { 
+      id: "performance", 
+      icon: BarChart3, 
+      label: "Performans", 
+      path: "/performans",
+      color: "bg-cyan-500",
+      description: "Performans metrikleri",
+      roles: ["supervisor", "supervisor_buddy", "yatirimci_branch", "admin"]
+    },
+    { 
+      id: "notifications", 
+      icon: Bell, 
+      label: "Bildirimler", 
+      path: "/bildirimler",
+      color: "bg-rose-500",
+      badge: unreadNotifications,
+      description: "Sistem bildirimleri"
+    },
+    { 
+      id: "messages", 
+      icon: MessageSquare, 
+      label: "Mesajlar", 
+      path: "/mesajlar",
+      color: "bg-indigo-500",
+      description: "İç iletişim"
     },
   ];
 
@@ -279,6 +326,64 @@ export function CardGridHub() {
       color: "bg-red-600",
       description: "Sistem yönetimi",
       roles: ["admin"]
+    },
+    // Yeni eklenen modüller
+    { 
+      id: "knowledge", 
+      icon: BookOpen, 
+      label: "Bilgi Bankası", 
+      path: "/bilgi-bankasi",
+      color: "bg-emerald-500",
+      description: "Dokümanlar & rehberler"
+    },
+    { 
+      id: "ai-assistant", 
+      icon: Bot, 
+      label: "AI Asistan", 
+      path: "/ai-asistan",
+      color: "bg-violet-500",
+      description: "Yapay zeka asistanı"
+    },
+    { 
+      id: "quality", 
+      icon: Star, 
+      label: "Kalite Kontrol", 
+      path: "/kalite",
+      color: "bg-amber-500",
+      description: "Kalite & denetim"
+    },
+    { 
+      id: "qr", 
+      icon: QrCode, 
+      label: "QR Tara", 
+      path: "/qr-tara",
+      color: "bg-gray-600",
+      description: "Hızlı erişim"
+    },
+    { 
+      id: "users", 
+      icon: Users, 
+      label: "Kullanıcılar", 
+      path: "/yonetim/kullanicilar",
+      color: "bg-sky-500",
+      description: "Kullanıcı yönetimi"
+    },
+    { 
+      id: "notifications", 
+      icon: Bell, 
+      label: "Bildirimler", 
+      path: "/bildirimler",
+      color: "bg-rose-400",
+      badge: unreadNotifications,
+      description: "Sistem bildirimleri"
+    },
+    { 
+      id: "messages", 
+      icon: MessageSquare, 
+      label: "Mesajlar", 
+      path: "/mesajlar",
+      color: "bg-indigo-400",
+      description: "İç iletişim"
     },
   ];
 
