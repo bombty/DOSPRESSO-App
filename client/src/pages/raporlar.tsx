@@ -190,10 +190,11 @@ export default function Raporlar() {
     queryKey: ["/api/tasks"],
   });
 
-  // Fetch all faults for comparison
-  const { data: allFaults = [] } = useQuery<any[]>({
+  // Fetch all faults for comparison (API returns paginated object)
+  const { data: faultsResponse } = useQuery<any>({
     queryKey: ["/api/faults"],
   });
+  const allFaults = Array.isArray(faultsResponse) ? faultsResponse : faultsResponse?.data || [];
 
   // Fetch all equipment for health scores
   const { data: allEquipment = [] } = useQuery<any[]>({

@@ -211,7 +211,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         path: "/raporlar",
         icon: "FileText",
         moduleKey: "performance",
-        scope: "hq",
+        scope: "both",
       },
     ],
   },
