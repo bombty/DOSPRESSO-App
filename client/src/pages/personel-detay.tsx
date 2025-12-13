@@ -1357,7 +1357,7 @@ export default function PersonelDetay() {
               ) : disciplinaryReports && disciplinaryReports.length > 0 ? (
                 <div className="flex flex-col gap-3">
                   {disciplinaryReports.map((report) => (
-                    <Card key={report.id} className="border-l-4" data-testid={`disciplinary-report-${report.id}`}>
+                    <Card key={report.id} className="border-l-4 hover-elevate active-elevate-2 cursor-pointer" data-testid={`disciplinary-report-${report.id}`}>
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between gap-2 sm:gap-3">
                           <div className="flex-1">
@@ -1474,7 +1474,7 @@ export default function PersonelDetay() {
                     ) : onboardingTasks && onboardingTasks.length > 0 ? (
                       <div className="flex flex-col gap-3 sm:gap-4">
                         {onboardingTasks.map((task) => (
-                          <Card key={task.id} data-testid={`onboarding-task-${task.id}`}>
+                          <Card key={task.id} className="hover-elevate active-elevate-2 cursor-pointer" data-testid={`onboarding-task-${task.id}`}>
                             <CardContent className="p-3">
                               <div className="flex items-center justify-between gap-2 sm:gap-3">
                                 <div className="flex-1">
