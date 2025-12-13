@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Plus, Download, FileText, Sparkles } from "lucide-react";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import autoTable, { RowInput } from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import dospressoNavyLogo from "@assets/IMG_5044_1765665383658.jpeg";
 
 interface DetailedReport {
   id: number;
@@ -73,31 +74,134 @@ export default function Raporlar() {
     { date: "06 Ara", faults: 5, tasks: 13 },
   ];
 
-  // Export functions
-  const exportChartToPDF = (chartName: string, chartData: any[]) => {
+  // Professional PDF export with logo and branding
+  const exportProfessionalPDF = async (
+    reportTitle: string,
+    reportType: string,
+    dateRange: { start?: string; end?: string } | null,
+    chartData: any[],
+    aiSummary?: string
+  ) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    let yPos = margin;
 
-    doc.setFontSize(16);
-    doc.text(chartName, pageWidth / 2, 20, { align: "center" });
+    // Add navy logo
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = dospressoNavyLogo;
+      });
+      doc.addImage(img, "JPEG", margin, yPos, 50, 25);
+    } catch (e) {
+      console.log("Logo yüklenemedi");
+    }
 
-    doc.setFontSize(10);
-    const tableData = chartData.map((row) => Object.values(row));
-    const headers = Object.keys(chartData[0]);
-
-    autoTable(doc, {
-      head: [headers],
-      body: tableData,
-      startY: 35,
-      margin: 10,
+    // Header - Date
+    const today = new Date().toLocaleDateString("tr-TR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(today, pageWidth - margin, yPos + 10, { align: "right" });
 
-    doc.save(`${chartName}.pdf`);
+    yPos += 35;
+
+    // Title
+    doc.setFontSize(20);
+    doc.setTextColor(30, 41, 82);
+    doc.text(reportTitle, pageWidth / 2, yPos, { align: "center" });
+    yPos += 10;
+
+    // Subtitle - Report Type
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    doc.text(reportType, pageWidth / 2, yPos, { align: "center" });
+    yPos += 8;
+
+    // Date Range
+    if (dateRange?.start || dateRange?.end) {
+      doc.setFontSize(10);
+      doc.text(
+        `Dönem: ${dateRange.start || "-"} - ${dateRange.end || "-"}`,
+        pageWidth / 2,
+        yPos,
+        { align: "center" }
+      );
+      yPos += 5;
+    }
+
+    // Divider line
+    yPos += 5;
+    doc.setDrawColor(30, 41, 82);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 15;
+
+    // Data Table
+    if (chartData && chartData.length > 0) {
+      const headers = Object.keys(chartData[0]);
+      const tableData: RowInput[] = chartData.map((row) =>
+        Object.values(row).map((val) => String(val ?? ""))
+      );
+
+      autoTable(doc, {
+        head: [headers],
+        body: tableData,
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        headStyles: {
+          fillColor: [30, 41, 82],
+          textColor: 255,
+          fontStyle: "bold",
+        },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        styles: { fontSize: 9 },
+      });
+
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+    }
+
+    // AI Summary section
+    if (aiSummary) {
+      doc.setFontSize(12);
+      doc.setTextColor(30, 41, 82);
+      doc.text("AI Özet ve Öneriler", margin, yPos);
+      yPos += 8;
+
+      doc.setFontSize(10);
+      doc.setTextColor(60);
+      const splitText = doc.splitTextToSize(aiSummary, pageWidth - margin * 2);
+      doc.text(splitText, margin, yPos);
+      yPos += splitText.length * 5 + 10;
+    }
+
+    // Footer
+    const footerY = pageHeight - 15;
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text("DOSPRESSO Franchise Management System", pageWidth / 2, footerY, {
+      align: "center",
+    });
+    doc.text(`Sayfa 1`, pageWidth - margin, footerY, { align: "right" });
+
+    doc.save(`${reportTitle.replace(/\s+/g, "_")}_Rapor.pdf`);
     toast({
       title: "Başarılı",
-      description: `${chartName} PDF olarak indirildi`,
+      description: "Profesyonel PDF raporu indirildi",
     });
+  };
+
+  // Simple chart export
+  const exportChartToPDF = (chartName: string, chartData: any[]) => {
+    exportProfessionalPDF(chartName, "Analiz Raporu", null, chartData);
   };
 
   const exportReportsToExcel = () => {
@@ -251,23 +355,58 @@ export default function Raporlar() {
               </div>
               {reports.map((report) => (
                 <Card key={report.id}>
-                  <CardHeader className="flex flex-row items-start justify-between">
+                  <CardHeader className="flex flex-row items-start justify-between gap-2">
                     <div>
                       <CardTitle>{report.title}</CardTitle>
                       <CardDescription>
                         {report.reportType} • {new Date(report.createdAt).toLocaleDateString('tr-TR')}
                       </CardDescription>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => aiSummaryMutation.mutate(report.id)}
-                      disabled={aiSummaryMutation.isPending}
-                      data-testid={`button-ai-summary-${report.id}`}
-                    >
-                      <Sparkles className="h-4 w-4 mr-1" />
-                      {aiSummaryMutation.isPending ? "Hazırlanıyor..." : "AI Özeti"}
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          exportProfessionalPDF(
+                            report.title,
+                            report.reportType,
+                            report.dateRange,
+                            [
+                              {
+                                Metrik: "Şube Sayısı",
+                                Değer: report.branchIds?.length || 0,
+                              },
+                              {
+                                Metrik: "Başlangıç",
+                                Değer: report.dateRange?.start || "-",
+                              },
+                              {
+                                Metrik: "Bitiş",
+                                Değer: report.dateRange?.end || "-",
+                              },
+                              {
+                                Metrik: "Oluşturulma",
+                                Değer: new Date(report.createdAt).toLocaleDateString("tr-TR"),
+                              },
+                            ]
+                          )
+                        }
+                        data-testid={`button-pdf-report-${report.id}`}
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        PDF
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => aiSummaryMutation.mutate(report.id)}
+                        disabled={aiSummaryMutation.isPending}
+                        data-testid={`button-ai-summary-${report.id}`}
+                      >
+                        <Sparkles className="h-4 w-4 mr-1" />
+                        {aiSummaryMutation.isPending ? "Hazırlanıyor..." : "AI Özeti"}
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
