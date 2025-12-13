@@ -11497,19 +11497,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         skipCache
       );
 
-      // Validate and sanitize AI response - ensure valid employee IDs
+      // Validate and sanitize AI response - ensure valid employee IDs with fallback
       const validEmployeeIds = new Set(employees.map(e => String(e.id)));
+      const employeeIdArray = employees.map(e => String(e.id));
+      let fallbackIndex = 0;
+      
       const validatedShifts = (aiPlan.shifts || [])
         .filter((shift: any) => {
-          // Must have valid employee ID
-          if (!shift.assignedToId || !validEmployeeIds.has(String(shift.assignedToId))) {
-            return false;
-          }
           // Must have valid date
           if (!shift.shiftDate || !/^\d{4}-\d{2}-\d{2}$/.test(shift.shiftDate)) {
             return false;
           }
           return true;
+        })
+        .map((shift: any) => {
+          // If invalid ID, assign to a valid employee using round-robin
+          let assignedToId = String(shift.assignedToId);
+          if (!shift.assignedToId || !validEmployeeIds.has(assignedToId)) {
+            assignedToId = employeeIdArray[fallbackIndex % employeeIdArray.length];
+            fallbackIndex++;
+          }
+          return { ...shift, assignedToId };
         })
         .map((shift: any) => {
           // Ensure all required fields with defaults
