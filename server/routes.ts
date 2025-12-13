@@ -16208,6 +16208,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Detailed Reports API Endpoints
+  app.get('/api/detailed-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      ensurePermission(user, 'performance', 'view', 'Raporlara erişim yetkiniz yok');
+      
+      const reports = await storage.getReports({ createdById: user.id });
+      res.json(reports);
+    } catch (error: any) {
+      console.error("Get reports error:", error);
+      if (error.name === 'AuthorizationError') {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Raporlar alınamadı" });
+    }
+  });
+
+  app.post('/api/detailed-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      ensurePermission(user, 'performance', 'create', 'Rapor oluşturma yetkiniz yok');
+      
+      const data = z.object({
+        title: z.string(),
+        reportType: z.string(),
+        branchIds: z.array(z.number()),
+        dateRange: z.object({ start: z.string(), end: z.string() }),
+        metrics: z.array(z.string()),
+        chartType: z.string().optional(),
+        includeAISummary: z.boolean().optional(),
+      }).parse(req.body);
+
+      const report = await storage.createReport({
+        ...data,
+        createdById: user.id,
+      });
+      res.status(201).json(report);
+    } catch (error: any) {
+      console.error("Create report error:", error);
+      if (error.name === 'AuthorizationError') {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Rapor oluşturulamadı" });
+    }
+  });
+
+  app.get('/api/detailed-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const reportId = parseInt(req.params.id);
+      const report = await storage.getReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Rapor bulunamadı" });
+      }
+      res.json(report);
+    } catch (error) {
+      console.error("Get report error:", error);
+      res.status(500).json({ message: "Rapor alınamadı" });
+    }
+  });
+
+  app.patch('/api/detailed-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const reportId = parseInt(req.params.id);
+      
+      const report = await storage.getReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Rapor bulunamadı" });
+      }
+      if (report.createdById !== user.id && !isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkisiz işlem" });
+      }
+
+      const updated = await storage.updateReport(reportId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update report error:", error);
+      res.status(500).json({ message: "Rapor güncellenemedi" });
+    }
+  });
+
+  app.delete('/api/detailed-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const reportId = parseInt(req.params.id);
+      
+      const report = await storage.getReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Rapor bulunamadı" });
+      }
+      if (report.createdById !== user.id && !isHQRole(user.role)) {
+        return res.status(403).json({ message: "Yetkisiz işlem" });
+      }
+
+      await storage.deleteReport(reportId);
+      res.json({ message: "Rapor silindi" });
+    } catch (error) {
+      console.error("Delete report error:", error);
+      res.status(500).json({ message: "Rapor silinemedi" });
+    }
+  });
+
+  // Branch Comparisons API
+  app.get('/api/branch-comparisons/:reportId', isAuthenticated, async (req: any, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const comparisons = await storage.getBranchComparisons(reportId);
+      res.json(comparisons);
+    } catch (error) {
+      console.error("Get branch comparisons error:", error);
+      res.status(500).json({ message: "Karşılaştırmalar alınamadı" });
+    }
+  });
+
+  // Trend Metrics API
+  app.get('/api/trend-metrics', isAuthenticated, async (req: any, res) => {
+    try {
+      const { reportId, branchId } = req.query;
+      const metrics = await storage.getTrendMetrics(
+        reportId ? parseInt(reportId) : undefined,
+        branchId ? parseInt(branchId) : undefined
+      );
+      res.json(metrics);
+    } catch (error) {
+      console.error("Get trend metrics error:", error);
+      res.status(500).json({ message: "Trendler alınamadı" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

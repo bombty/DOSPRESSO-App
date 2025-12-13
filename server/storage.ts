@@ -129,6 +129,14 @@ import type {
   InsertChecklistRating,
   EmployeeSatisfactionScore,
   InsertEmployeeSatisfactionScore,
+  DetailedReport,
+  InsertDetailedReport,
+  BranchComparison,
+  InsertBranchComparison,
+  TrendMetric,
+  InsertTrendMetric,
+  AIReportSummary,
+  InsertAIReportSummary,
 } from "@shared/schema";
 import {
   users,
@@ -153,6 +161,10 @@ import {
   userQuizAttempts,
   employeeWarnings,
   auditLogs,
+  detailedReports,
+  branchComparisons,
+  trendMetrics,
+  aiReportSummaries,
   messages,
   messageReads,
   threadParticipants,
@@ -6615,6 +6627,70 @@ export class DatabaseStorage implements IStorage {
       branches: branchesResult,
       equipment: equipmentResult,
     };
+  }
+
+  // Detailed Reports CRUD operations
+  async getReports(filters?: { createdById?: string; reportType?: string }): Promise<DetailedReport[]> {
+    let query = db.select().from(detailedReports);
+    if (filters?.createdById) query = query.where(eq(detailedReports.createdById, filters.createdById));
+    if (filters?.reportType) query = query.where(eq(detailedReports.reportType, filters.reportType));
+    return query;
+  }
+
+  async getReport(id: number): Promise<DetailedReport | undefined> {
+    const [report] = await db.select().from(detailedReports).where(eq(detailedReports.id, id));
+    return report;
+  }
+
+  async createReport(report: InsertDetailedReport): Promise<DetailedReport> {
+    const [created] = await db.insert(detailedReports).values(report).returning();
+    return created;
+  }
+
+  async updateReport(id: number, updates: Partial<InsertDetailedReport>): Promise<DetailedReport | undefined> {
+    const [updated] = await db.update(detailedReports)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(detailedReports.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteReport(id: number): Promise<void> {
+    await db.delete(detailedReports).where(eq(detailedReports.id, id));
+  }
+
+  // Branch Comparison CRUD operations
+  async getBranchComparisons(reportId: number): Promise<BranchComparison[]> {
+    return db.select().from(branchComparisons).where(eq(branchComparisons.reportId, reportId));
+  }
+
+  async createBranchComparison(comparison: InsertBranchComparison): Promise<BranchComparison> {
+    const [created] = await db.insert(branchComparisons).values(comparison).returning();
+    return created;
+  }
+
+  // Trend Metrics CRUD operations
+  async getTrendMetrics(reportId?: number, branchId?: number): Promise<TrendMetric[]> {
+    let query = db.select().from(trendMetrics);
+    if (reportId) query = query.where(eq(trendMetrics.reportId, reportId));
+    if (branchId) query = query.where(eq(trendMetrics.branchId, branchId));
+    return query;
+  }
+
+  async createTrendMetric(metric: InsertTrendMetric): Promise<TrendMetric> {
+    const [created] = await db.insert(trendMetrics).values(metric).returning();
+    return created;
+  }
+
+  // AI Report Summaries CRUD operations
+  async getAISummary(reportId: number): Promise<AIReportSummary | undefined> {
+    const [summary] = await db.select().from(aiReportSummaries).where(eq(aiReportSummaries.reportId, reportId));
+    return summary;
+  }
+
+  async createAISummary(summary: InsertAIReportSummary): Promise<AIReportSummary> {
+    const [created] = await db.insert(aiReportSummaries).values(summary).returning();
+    return created;
   }
 }
 

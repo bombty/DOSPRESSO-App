@@ -5484,6 +5484,115 @@ export const insertEmployeeLeaveSchema = createInsertSchema(employeeLeaves).omit
 export type InsertEmployeeLeave = z.infer<typeof insertEmployeeLeaveSchema>;
 export type EmployeeLeave = typeof employeeLeaves.$inferSelect;
 
+// ========================================
+// DETAYLI RAPORLAMA VE ANALİTİK SİSTEMİ
+// ========================================
+
+// Detaylı Raporlar
+export const detailedReports = pgTable("detailed_reports", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  reportType: varchar("report_type", { length: 50 }).notNull(), // branch_comparison, trend_analysis, performance
+  branchIds: integer("branch_ids").array(),
+  dateRange: jsonb("date_range").notNull(), // { startDate, endDate }
+  metrics: jsonb("metrics").notNull(),
+  filters: jsonb("filters"),
+  chartType: varchar("chart_type", { length: 50 }),
+  includeAISummary: boolean("include_ai_summary").default(false),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("reports_type_idx").on(table.reportType),
+  index("reports_created_idx").on(table.createdAt),
+]);
+
+export const insertDetailedReportSchema = createInsertSchema(detailedReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDetailedReport = z.infer<typeof insertDetailedReportSchema>;
+export type DetailedReport = typeof detailedReports.$inferSelect;
+
+// Şube Karşılaştırma
+export const branchComparisons = pgTable("branch_comparisons", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").references(() => detailedReports.id, { onDelete: "cascade" }),
+  branch1Id: integer("branch1_id").notNull().references(() => branches.id),
+  branch2Id: integer("branch2_id").notNull().references(() => branches.id),
+  metric: varchar("metric", { length: 100 }).notNull(),
+  branch1Value: numeric("branch1_value"),
+  branch2Value: numeric("branch2_value"),
+  difference: numeric("difference"),
+  percentDifference: numeric("percent_difference"),
+  trend: varchar("trend", { length: 20 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("comparisons_report_idx").on(table.reportId),
+  index("comparisons_metric_idx").on(table.metric),
+]);
+
+export const insertBranchComparisonSchema = createInsertSchema(branchComparisons).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBranchComparison = z.infer<typeof insertBranchComparisonSchema>;
+export type BranchComparison = typeof branchComparisons.$inferSelect;
+
+// Trend Metrikler
+export const trendMetrics = pgTable("trend_metrics", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").references(() => detailedReports.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id),
+  metricName: varchar("metric_name", { length: 100 }).notNull(),
+  date: date("date").notNull(),
+  value: numeric("value").notNull(),
+  previousValue: numeric("previous_value"),
+  changePercent: numeric("change_percent"),
+  target: numeric("target"),
+  status: varchar("status", { length: 20 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("trends_report_idx").on(table.reportId),
+  index("trends_branch_idx").on(table.branchId),
+  index("trends_metric_idx").on(table.metricName),
+  index("trends_date_idx").on(table.date),
+]);
+
+export const insertTrendMetricSchema = createInsertSchema(trendMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrendMetric = z.infer<typeof insertTrendMetricSchema>;
+export type TrendMetric = typeof trendMetrics.$inferSelect;
+
+// AI Rapor Özeti
+export const aiReportSummaries = pgTable("ai_report_summaries", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull().references(() => detailedReports.id, { onDelete: "cascade" }),
+  summary: text("summary").notNull(),
+  keyFindings: jsonb("key_findings"),
+  recommendations: jsonb("recommendations"),
+  visualInsights: jsonb("visual_insights"),
+  generatedAt: timestamp("generated_at").defaultNow(),
+}, (table) => [
+  index("summaries_report_idx").on(table.reportId),
+]);
+
+export const insertAIReportSummarySchema = createInsertSchema(aiReportSummaries).omit({
+  id: true,
+  generatedAt: true,
+});
+
+export type InsertAIReportSummary = z.infer<typeof insertAIReportSummarySchema>;
+export type AIReportSummary = typeof aiReportSummaries.$inferSelect;
+
 // Resmi Tatiller
 export const publicHolidays = pgTable("public_holidays", {
   id: serial("id").primaryKey(),
