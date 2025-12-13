@@ -43,7 +43,7 @@ export default function KnowledgeBase() {
     resolver: zodResolver(insertKnowledgeBaseArticleSchema),
     defaultValues: {
       title: "",
-      category: "sop",
+      category: "procedure",
       content: "",
       tags: [],
       attachmentUrls: [],
@@ -98,22 +98,29 @@ export default function KnowledgeBase() {
 
   const categoryLabels: Record<string, string> = {
     all: "Tümü",
-    sop: "Standart Operasyon Prosedürleri",
     recipe: "Tarifler",
-    maintenance: "Bakım",
+    procedure: "Prosedürler",
     training: "Eğitim",
+    // Eski kategoriler için fallback (mevcut veritabanı uyumluluğu)
+    sop: "Prosedürler",
+    maintenance: "Prosedürler",
   };
 
-  const filteredArticles = articles?.filter(
-    (article) => selectedCategory === "all" || article.category === selectedCategory
-  );
+  const filteredArticles = articles?.filter((article) => {
+    if (selectedCategory === "all") return true;
+    if (selectedCategory === "procedure") {
+      // Prosedürler sekmesi: procedure, sop ve maintenance kategorilerini göster
+      return ["procedure", "sop", "maintenance"].includes(article.category);
+    }
+    return article.category === selectedCategory;
+  });
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Bilgi Bankası</h1>
-          <p className="text-muted-foreground mt-1">SOP'lar, tarifler ve bakım dokümanları</p>
+          <p className="text-muted-foreground mt-1">Tarifler, prosedürler ve eğitim dokümanları</p>
         </div>
         {isHQ && (
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -155,9 +162,8 @@ export default function KnowledgeBase() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="sop">SOP</SelectItem>
                           <SelectItem value="recipe">Tarif</SelectItem>
-                          <SelectItem value="maintenance">Bakım</SelectItem>
+                          <SelectItem value="procedure">Prosedür</SelectItem>
                           <SelectItem value="training">Eğitim</SelectItem>
                         </SelectContent>
                       </Select>
@@ -218,9 +224,8 @@ export default function KnowledgeBase() {
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
         <TabsList>
           <TabsTrigger value="all" data-testid="tab-all">Tümü</TabsTrigger>
-          <TabsTrigger value="sop" data-testid="tab-sop">SOP</TabsTrigger>
           <TabsTrigger value="recipe" data-testid="tab-recipe">Tarifler</TabsTrigger>
-          <TabsTrigger value="maintenance" data-testid="tab-maintenance">Bakım</TabsTrigger>
+          <TabsTrigger value="procedure" data-testid="tab-procedure">Prosedürler</TabsTrigger>
           <TabsTrigger value="training" data-testid="tab-training">Eğitim</TabsTrigger>
         </TabsList>
 

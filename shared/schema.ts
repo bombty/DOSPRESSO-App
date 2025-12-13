@@ -1207,7 +1207,7 @@ export type FaultStageTransition = typeof faultStageTransitions.$inferSelect;
 export const knowledgeBaseArticles = pgTable("knowledge_base_articles", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
-  category: varchar("category", { length: 100 }).notNull(), // sop, recipe, maintenance, training
+  category: varchar("category", { length: 100 }).notNull(), // recipe, procedure, training (legacy: sop, maintenance)
   content: text("content").notNull(),
   tags: text("tags").array(),
   attachmentUrls: text("attachment_urls").array(),
