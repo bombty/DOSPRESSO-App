@@ -171,7 +171,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray } from "drizzle-orm";
-import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport } from "./ai";
+import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport, generateArticleDraft } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
 import { updateEmployeeLocation, getActiveBranchEmployees, getEmployeeLocation, removeEmployeeLocation, startTrackingCleanup } from "./tracking";
@@ -3304,6 +3304,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: Error | unknown) {
       console.error("Error answering question:", error);
       res.status(500).json({ message: error.message || "Soru cevaplanamadı" });
+    }
+  });
+
+  // AI Article Draft Generator (HQ only)
+  app.post('/api/knowledge-base/generate-draft', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { topic, category } = req.body;
+      
+      // HQ only
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Bu özellik sadece merkez kullanıcıları içindir" });
+      }
+      
+      if (!topic || typeof topic !== 'string' || topic.trim().length < 3) {
+        return res.status(400).json({ message: "Konu en az 3 karakter olmalıdır" });
+      }
+      
+      if (!category || !['recipe', 'procedure', 'training'].includes(category)) {
+        return res.status(400).json({ message: "Geçersiz kategori" });
+      }
+      
+      const draft = await generateArticleDraft(topic.trim(), category, user.id);
+      res.json(draft);
+    } catch (error: Error | unknown) {
+      console.error("Error generating article draft:", error);
+      const statusCode = (error as any).statusCode || 500;
+      res.status(statusCode).json({ message: (error as Error).message || "Taslak oluşturulamadı" });
     }
   });
 

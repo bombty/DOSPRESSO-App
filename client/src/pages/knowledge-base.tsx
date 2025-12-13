@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertKnowledgeBaseArticleSchema, type KnowledgeBaseArticle, type InsertKnowledgeBaseArticle, isHQRole } from "@shared/schema";
-import { BookOpen, Eye, Plus, CheckCircle, XCircle, Link2 } from "lucide-react";
+import { BookOpen, Eye, Plus, CheckCircle, XCircle, Link2, Sparkles, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function KnowledgeBase() {
@@ -29,6 +29,7 @@ export default function KnowledgeBase() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticle | null>(null);
+  const [aiTopic, setAiTopic] = useState("");
   const isHQ = user?.role && isHQRole(user.role as any);
 
   // Redirect non-HQ users away
@@ -95,6 +96,27 @@ export default function KnowledgeBase() {
     },
     onError: () => {
       toast({ title: "Hata", description: "İşlem başarısız", variant: "destructive" });
+    },
+  });
+
+  const aiDraftMutation = useMutation({
+    mutationFn: async ({ topic, category }: { topic: string; category: string }) => {
+      const res = await apiRequest("POST", "/api/knowledge-base/generate-draft", { topic, category });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Taslak oluşturulamadı");
+      }
+      return res.json();
+    },
+    onSuccess: (data: { title: string; content: string; tags: string[] }) => {
+      form.setValue("title", data.title);
+      form.setValue("content", data.content);
+      form.setValue("tags", data.tags);
+      setAiTopic("");
+      toast({ title: "Başarılı", description: "AI taslak oluşturuldu" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message || "Taslak oluşturulamadı", variant: "destructive" });
     },
   });
 
@@ -168,6 +190,41 @@ export default function KnowledgeBase() {
             <DialogHeader>
               <DialogTitle>Yeni Bilgi Bankası Makalesi</DialogTitle>
             </DialogHeader>
+            
+            {/* AI Taslak Oluşturucu */}
+            <div className="p-3 bg-muted/50 rounded-md border border-dashed mb-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">AI Taslak Oluşturucu</span>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Konu girin (örn: Latte Art Teknikleri)"
+                  value={aiTopic}
+                  onChange={(e) => setAiTopic(e.target.value)}
+                  className="flex-1"
+                  data-testid="input-ai-topic"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={aiDraftMutation.isPending || aiTopic.trim().length < 3}
+                  onClick={() => aiDraftMutation.mutate({ topic: aiTopic, category: form.getValues("category") })}
+                  data-testid="button-generate-draft"
+                >
+                  {aiDraftMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  <span className="ml-1">{aiDraftMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}</span>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Önce kategori seçin, sonra konu girin. AI sizin için taslak oluşturacak.
+              </p>
+            </div>
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
                 <FormField

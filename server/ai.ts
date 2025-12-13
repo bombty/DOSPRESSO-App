@@ -2329,3 +2329,80 @@ export async function generateBranchSummaryReport(
     return `${data.branchName} ${period === 'daily' ? 'Günlük' : period === 'weekly' ? 'Haftalık' : 'Aylık'} Özet: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev.`;
   }
 }
+
+// AI-powered article draft generator for Knowledge Base
+export interface ArticleDraftResponse {
+  title: string;
+  content: string;
+  tags: string[];
+}
+
+export async function generateArticleDraft(
+  topic: string,
+  category: string,
+  userId?: string
+): Promise<ArticleDraftResponse> {
+  const effectiveUserId = userId || 'system';
+  
+  // Rate limit: 20 drafts per user per day
+  if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'article_draft', 20)) {
+    console.warn(`⚠️ RATE LIMIT - User ${effectiveUserId} exceeded daily article draft quota`);
+    const error = new Error('Günlük makale taslak limitiniz doldu (20/gün). Yarın tekrar deneyin.');
+    (error as any).statusCode = 429;
+    throw error;
+  }
+
+  const categoryPrompts: Record<string, string> = {
+    recipe: `Bir kahve içeceği veya yiyecek tarifi yaz. Malzemeler, ölçüler (MASSIVO 350ml ve LONG DIVA 550ml için), hazırlama adımları ve sunum önerileri dahil et.`,
+    procedure: `Bir standart operasyon prosedürü (SOP) veya bakım kılavuzu yaz. Adım adım talimatlar, güvenlik uyarıları ve sıklık bilgileri dahil et.`,
+    training: `Bir eğitim materyali veya kurs içeriği hazırla. Öğrenme hedefleri, temel konular ve pratik egzersizler dahil et.`,
+  };
+
+  const categoryLabel = category === 'recipe' ? 'Tarif' : category === 'procedure' ? 'Prosedür' : 'Eğitim';
+  const prompt = categoryPrompts[category] || categoryPrompts.procedure;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: SUMMARY_MODEL, // gpt-4o-mini: cost-efficient for text generation
+      messages: [
+        {
+          role: "system",
+          content: `Sen DOSPRESSO kahve franchise yönetim sisteminin içerik yazarısın. Profesyonel, net ve uygulanabilir bilgi bankası içerikleri hazırlarsın. Türkçe yaz.`
+        },
+        {
+          role: "user",
+          content: `"${topic}" konusunda bir ${categoryLabel} makalesi taslağı oluştur.
+
+${prompt}
+
+JSON formatında yanıt ver:
+{
+  "title": "Makale başlığı (açıklayıcı, kısa)",
+  "content": "Detaylı içerik (minimum 200 kelime, paragraflar halinde)",
+  "tags": ["etiket1", "etiket2", "etiket3"]
+}`
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1500,
+      temperature: 0.7
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Boş yanıt");
+
+    const result = JSON.parse(content);
+    aiRateLimiter.incrementRequest(effectiveUserId, 'article_draft');
+    
+    console.log(`✅ AI article draft generated for topic: ${topic}`);
+
+    return {
+      title: result.title || `${topic} - ${categoryLabel}`,
+      content: result.content || '',
+      tags: result.tags || [],
+    };
+  } catch (error: Error | unknown) {
+    console.error("Article draft generation error:", error);
+    throw new Error("Makale taslağı oluşturulamadı: " + ((error as Error).message || "Bilinmeyen hata"));
+  }
+}
