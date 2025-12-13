@@ -20,18 +20,14 @@ import {
   Building2,
   AlertTriangle,
   BookOpen,
-  Trophy,
-  QrCode,
   Coffee,
   Briefcase,
   Heart,
   AlertCircle,
   Plus,
-  FileText,
   FolderKanban,
   CheckSquare,
   Shield,
-  Bell,
   Bot,
   Star
 } from "lucide-react";
@@ -69,17 +65,12 @@ export function CardGridHub() {
     queryKey: ["/api/tasks"],
   });
 
-  const { data: notifications = [] } = useQuery<any[]>({
-    queryKey: ["/api/notifications"],
-  });
-
   const { data: criticalEquipment = [] } = useQuery<any[]>({
     queryKey: ["/api/equipment/critical"],
   });
 
   const openFaults = faults.filter((f) => f.currentStage !== "kapatildi").length;
   const pendingTasks = tasks.filter((t) => t.status === "beklemede").length;
-  const unreadNotifications = notifications.filter((n) => !n.isRead).length;
 
   // Module definitions - different for HQ vs Branch users
   const branchModules: ModuleCard[] = [
@@ -124,14 +115,6 @@ export function CardGridHub() {
       path: "/checklistler",
       color: "bg-teal-500",
       description: "Günlük kontroller"
-    },
-    { 
-      id: "qr", 
-      icon: QrCode, 
-      label: "QR Tara", 
-      path: "/qr-tara",
-      color: "bg-gray-600",
-      description: "Hızlı erişim"
     },
     { 
       id: "lost-found", 
@@ -183,23 +166,6 @@ export function CardGridHub() {
       color: "bg-cyan-500",
       description: "Performans metrikleri",
       roles: ["supervisor", "supervisor_buddy", "yatirimci_branch", "admin"]
-    },
-    { 
-      id: "notifications", 
-      icon: Bell, 
-      label: "Bildirimler", 
-      path: "/bildirimler",
-      color: "bg-rose-500",
-      badge: unreadNotifications,
-      description: "Sistem bildirimleri"
-    },
-    { 
-      id: "messages", 
-      icon: MessageSquare, 
-      label: "Mesajlar", 
-      path: "/mesajlar",
-      color: "bg-indigo-500",
-      description: "İç iletişim"
     },
   ];
 
@@ -266,17 +232,9 @@ export function CardGridHub() {
       id: "reports", 
       icon: BarChart3, 
       label: "Raporlar", 
-      path: "/performans",
-      color: "bg-cyan-500",
-      description: "Analitik & metrikler"
-    },
-    { 
-      id: "e2e-reports", 
-      icon: FileText, 
-      label: "E2E Raporlar", 
       path: "/e2e-raporlar",
-      color: "bg-teal-600",
-      description: "PDF export & analizler"
+      color: "bg-cyan-500",
+      description: "Analitik & PDF export"
     },
     { 
       id: "equipment", 
@@ -348,17 +306,9 @@ export function CardGridHub() {
       id: "quality", 
       icon: Star, 
       label: "Kalite Kontrol", 
-      path: "/kalite",
+      path: "/kalite-denetimi",
       color: "bg-amber-500",
       description: "Kalite & denetim"
-    },
-    { 
-      id: "qr", 
-      icon: QrCode, 
-      label: "QR Tara", 
-      path: "/qr-tara",
-      color: "bg-gray-600",
-      description: "Hızlı erişim"
     },
     { 
       id: "users", 
@@ -367,23 +317,6 @@ export function CardGridHub() {
       path: "/yonetim/kullanicilar",
       color: "bg-sky-500",
       description: "Kullanıcı yönetimi"
-    },
-    { 
-      id: "notifications", 
-      icon: Bell, 
-      label: "Bildirimler", 
-      path: "/bildirimler",
-      color: "bg-rose-400",
-      badge: unreadNotifications,
-      description: "Sistem bildirimleri"
-    },
-    { 
-      id: "messages", 
-      icon: MessageSquare, 
-      label: "Mesajlar", 
-      path: "/mesajlar",
-      color: "bg-indigo-400",
-      description: "İç iletişim"
     },
   ];
 
