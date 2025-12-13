@@ -5424,7 +5424,7 @@ export const employeeTerminations = pgTable("employee_terminations", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   terminationType: varchar("termination_type", { length: 50 }).notNull(), // resignation, termination, retirement, mutual_agreement, contract_end
   terminationDate: date("termination_date").notNull(),
-  reason: text("reason"), // Ayrılış sebebi
+  terminationReason: text("termination_reason"), // Ayrılış sebebi
   lastWorkDay: date("last_work_day"), // Son çalışma günü
   noticeGiven: integer("notice_given"), // Gün cinsinden uyarı süresi
   finalSalary: integer("final_salary"), // Son maaş tutarı
