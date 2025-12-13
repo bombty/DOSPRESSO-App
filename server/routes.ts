@@ -154,10 +154,12 @@ import {
   jobApplications,
   interviews,
   interviewQuestions,
+  interviewResponses,
   insertJobPositionSchema,
   insertJobApplicationSchema,
   insertInterviewSchema,
   insertInterviewQuestionSchema,
+  insertInterviewResponseSchema,
   // İşten Çıkış Modülü
   employeeTerminations,
   insertEmployeeTerminationSchema,
@@ -15786,6 +15788,251 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error deleting interview question:", error);
       res.status(500).json({ message: "Mülakat sorusu silinirken hata oluştu" });
+    }
+  });
+
+  // POST /api/interviews/:id/start - Start interview (change status to in_progress)
+  app.post('/api/interviews/:id/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor' && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+      }
+
+      const id = parseInt(req.params.id);
+      const result = await db.update(interviews)
+        .set({ status: 'in_progress', updatedAt: new Date() })
+        .where(eq(interviews.id, id))
+        .returning();
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Mülakat bulunamadı' });
+      }
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error starting interview:", error);
+      res.status(500).json({ message: "Mülakat başlatılırken hata oluştu" });
+    }
+  });
+
+  // GET /api/interviews/:id/responses - Get all responses for an interview
+  app.get('/api/interviews/:id/responses', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor' && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+      }
+
+      const interviewId = parseInt(req.params.id);
+      const rawResponses = await db.select()
+        .from(interviewResponses)
+        .leftJoin(interviewQuestions, eq(interviewResponses.questionId, interviewQuestions.id))
+        .where(eq(interviewResponses.interviewId, interviewId))
+        .orderBy(interviewQuestions.orderIndex);
+
+      // Flatten the join result for frontend consumption
+      const flatResponses = rawResponses.map(row => ({
+        id: row.interviewResponses.id,
+        interviewId: row.interviewResponses.interviewId,
+        questionId: row.interviewResponses.questionId,
+        answer: row.interviewResponses.answer,
+        score: row.interviewResponses.score,
+        notes: row.interviewResponses.notes,
+        createdAt: row.interviewResponses.createdAt,
+        questionText: row.interviewQuestions?.question,
+        questionCategory: row.interviewQuestions?.category,
+      }));
+
+      res.json(flatResponses);
+    } catch (error: any) {
+      console.error("Error fetching interview responses:", error);
+      res.status(500).json({ message: "Mülakat cevapları yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/interviews/:id/respond - Add or update a response
+  app.post('/api/interviews/:id/respond', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor' && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+      }
+
+      const interviewId = parseInt(req.params.id);
+      const { questionId, answer, score, notes } = req.body;
+
+      // Check if response exists for this question
+      const existing = await db.select()
+        .from(interviewResponses)
+        .where(and(
+          eq(interviewResponses.interviewId, interviewId),
+          eq(interviewResponses.questionId, questionId)
+        ));
+
+      let result;
+      if (existing.length > 0) {
+        // Update existing
+        result = await db.update(interviewResponses)
+          .set({ answer, score, notes })
+          .where(eq(interviewResponses.id, existing[0].id))
+          .returning();
+      } else {
+        // Create new
+        result = await db.insert(interviewResponses)
+          .values({ interviewId, questionId, answer, score, notes })
+          .returning();
+      }
+
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error saving interview response:", error);
+      res.status(500).json({ message: "Cevap kaydedilirken hata oluştu" });
+    }
+  });
+
+  // POST /api/interviews/:id/complete - Complete interview with overall result
+  app.post('/api/interviews/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor' && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+      }
+
+      const id = parseInt(req.params.id);
+      const { result: interviewResult, overallNotes, overallScore } = req.body;
+
+      const updateData: any = {
+        status: 'completed',
+        result: interviewResult || 'pending',
+        updatedAt: new Date(),
+      };
+      if (overallNotes) updateData.notes = overallNotes;
+      if (overallScore) updateData.score = overallScore;
+
+      const result = await db.update(interviews)
+        .set(updateData)
+        .where(eq(interviews.id, id))
+        .returning();
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Mülakat bulunamadı' });
+      }
+
+      // Update application status based on result
+      const interview = result[0];
+      if (interview.applicationId) {
+        let appStatus = 'interviewed';
+        if (interviewResult === 'passed') appStatus = 'offered';
+        else if (interviewResult === 'failed') appStatus = 'rejected';
+
+        await db.update(jobApplications)
+          .set({ status: appStatus, updatedAt: new Date() })
+          .where(eq(jobApplications.id, interview.applicationId));
+      }
+
+      res.json(result[0]);
+    } catch (error: any) {
+      console.error("Error completing interview:", error);
+      res.status(500).json({ message: "Mülakat tamamlanırken hata oluştu" });
+    }
+  });
+
+  // POST /api/interviews/:id/hire - Hire candidate and send rejection emails to others
+  app.post('/api/interviews/:id/hire', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Sadece HQ işe alım yapabilir' });
+      }
+
+      const id = parseInt(req.params.id);
+
+      // Get the interview with application info
+      const [interview] = await db.select()
+        .from(interviews)
+        .where(eq(interviews.id, id));
+
+      if (!interview) {
+        return res.status(404).json({ message: 'Mülakat bulunamadı' });
+      }
+
+      // Get the application
+      const [application] = await db.select()
+        .from(jobApplications)
+        .where(eq(jobApplications.id, interview.applicationId!));
+
+      if (!application) {
+        return res.status(404).json({ message: 'Başvuru bulunamadı' });
+      }
+
+      // Update the hired application status
+      await db.update(jobApplications)
+        .set({ status: 'hired', updatedAt: new Date() })
+        .where(eq(jobApplications.id, application.id));
+
+      // Update interview result
+      await db.update(interviews)
+        .set({ result: 'passed', status: 'completed', updatedAt: new Date() })
+        .where(eq(interviews.id, id));
+
+      // Get other applications for the same position
+      const otherApplications = await db.select()
+        .from(jobApplications)
+        .where(and(
+          eq(jobApplications.positionId, application.positionId),
+          sql`${jobApplications.id} != ${application.id}`,
+          sql`${jobApplications.status} NOT IN ('hired', 'rejected', 'withdrawn')`
+        ));
+
+      // Send rejection emails to other candidates
+      for (const otherApp of otherApplications) {
+        // Update status to rejected
+        await db.update(jobApplications)
+          .set({ status: 'rejected', updatedAt: new Date() })
+          .where(eq(jobApplications.id, otherApp.id));
+
+        // Get position info for email
+        const [position] = await db.select()
+          .from(jobPositions)
+          .where(eq(jobPositions.id, otherApp.positionId));
+
+        // Send rejection email
+        if (otherApp.email) {
+          try {
+            await sendNotificationEmail(
+              otherApp.email,
+              `DOSPRESSO - Başvuru Sonucu`,
+              `Sayın ${otherApp.fullName},
+
+DOSPRESSO ailesine olan ilginiz ve ${position?.title || 'açık pozisyon'} için başvurunuz için teşekkür ederiz.
+
+Başvurunuzu dikkatle değerlendirdik. Maalesef bu pozisyon için başka bir adayla ilerlemekten karar verdik.
+
+Gösterdiğiniz ilgi ve ayırdığınız zaman için teşekkür ederiz. Gelecekteki fırsatlar için sizi değerlendirmekten memnuniyet duyarız.
+
+Başarılar dileriz,
+DOSPRESSO İnsan Kaynakları Ekibi`
+            );
+          } catch (emailError) {
+            console.error(`Failed to send rejection email to ${otherApp.email}:`, emailError);
+          }
+        }
+      }
+
+      // Close the position
+      await db.update(jobPositions)
+        .set({ status: 'closed', updatedAt: new Date() })
+        .where(eq(jobPositions.id, application.positionId));
+
+      res.json({
+        success: true,
+        hiredCandidate: application.fullName,
+        rejectedCount: otherApplications.length,
+        message: `${application.fullName} işe alındı. ${otherApplications.length} diğer adaya ret maili gönderildi.`
+      });
+    } catch (error: any) {
+      console.error("Error hiring candidate:", error);
+      res.status(500).json({ message: "İşe alım sırasında hata oluştu" });
     }
   });
 

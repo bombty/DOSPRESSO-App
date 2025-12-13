@@ -2528,6 +2528,8 @@ function RecruitmentSection() {
   const [selectedInterview, setSelectedInterview] = useState<any>(null);
   const [interviewDetailOpen, setInterviewDetailOpen] = useState(false);
   const [branchFilterId, setBranchFilterId] = useState<string>("all");
+  const [positionFilter, setPositionFilter] = useState<string>("all");
+  const [interviewStatusFilter, setInterviewStatusFilter] = useState<string>("all");
   const [selectedCandidates, setSelectedCandidates] = useState<number[]>([]);
   const [comparisonOpen, setComparisonOpen] = useState(false);
 
@@ -2594,13 +2596,27 @@ function RecruitmentSection() {
         return position?.branchId?.toString() === branchFilterId;
       });
 
-  const filteredInterviews = branchFilterId === "all"
-    ? interviewsData
-    : interviewsData.filter((interview: any) => {
-        const app = applications.find((a: any) => a.id === interview.applicationId);
-        const position = positions.find((p: any) => p.id === app?.positionId);
-        return position?.branchId?.toString() === branchFilterId;
-      });
+  const filteredInterviews = interviewsData.filter((interview: any) => {
+    const app = applications.find((a: any) => a.id === interview.applicationId);
+    const position = positions.find((p: any) => p.id === app?.positionId);
+    
+    // Branch filter
+    if (branchFilterId !== "all" && position?.branchId?.toString() !== branchFilterId) {
+      return false;
+    }
+    
+    // Position filter
+    if (positionFilter !== "all" && position?.id?.toString() !== positionFilter) {
+      return false;
+    }
+    
+    // Status filter
+    if (interviewStatusFilter !== "all" && interview.status !== interviewStatusFilter) {
+      return false;
+    }
+    
+    return true;
+  });
 
   const hiredCount = applications.filter((a: any) => a.status === 'hired').length;
 
@@ -2871,8 +2887,35 @@ function RecruitmentSection() {
 
         {/* Interviews Tab */}
         <TabsContent value="interviews" className="space-y-4 mt-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">Planlı Mülakatlar</h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h3 className="text-lg font-medium">Mülakatlar</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={positionFilter} onValueChange={setPositionFilter}>
+                <SelectTrigger className="w-[180px]" data-testid="select-position-filter">
+                  <SelectValue placeholder="Tüm Pozisyonlar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Pozisyonlar</SelectItem>
+                  {positions.map((pos: any) => (
+                    <SelectItem key={pos.id} value={pos.id.toString()}>
+                      {pos.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={interviewStatusFilter} onValueChange={setInterviewStatusFilter}>
+                <SelectTrigger className="w-[160px]" data-testid="select-interview-status-filter">
+                  <SelectValue placeholder="Tüm Durumlar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Durumlar</SelectItem>
+                  <SelectItem value="scheduled">Planlandı</SelectItem>
+                  <SelectItem value="in_progress">Devam Ediyor</SelectItem>
+                  <SelectItem value="completed">Tamamlandı</SelectItem>
+                  <SelectItem value="cancelled">İptal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {filteredInterviews.length === 0 ? (
@@ -3656,12 +3699,33 @@ function InterviewDetailModal({
   const [weaknesses, setWeaknesses] = useState(interview.weaknesses || "");
   const [feedback, setFeedback] = useState(interview.feedback || "");
   const [questionRatings, setQuestionRatings] = useState<Record<number, { rating: number; notes: string }>>({});
+  const [savingResponse, setSavingResponse] = useState<number | null>(null);
 
   // Fetch interview questions
   const { data: interviewQuestions = [] } = useQuery<any[]>({
     queryKey: ["/api/interview-questions"],
     enabled: open,
   });
+
+  // Fetch existing responses for this interview
+  const { data: existingResponses = [] } = useQuery<any[]>({
+    queryKey: ["/api/interviews", interview.id, "responses"],
+    enabled: open && !!interview.id,
+  });
+
+  // Load existing responses into questionRatings state
+  useEffect(() => {
+    if (existingResponses.length > 0) {
+      const loaded: Record<number, { rating: number; notes: string }> = {};
+      existingResponses.forEach((resp: any) => {
+        loaded[resp.questionId] = {
+          rating: resp.score || 0,
+          notes: resp.answer || '',
+        };
+      });
+      setQuestionRatings(loaded);
+    }
+  }, [existingResponses]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -3682,64 +3746,112 @@ function InterviewDetailModal({
     },
   });
 
-  const handleStartInterview = () => {
-    updateMutation.mutate({ status: 'in_progress' });
+  const handleStartInterview = async () => {
+    try {
+      await apiRequest("POST", `/api/interviews/${interview.id}/start`, {});
+      toast({ title: "Başarılı", description: "Mülakat başlatıldı" });
+      queryClient.invalidateQueries({ queryKey: ["/api/interviews"] });
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleCompleteInterview = () => {
-    updateMutation.mutate({
-      status: 'completed',
-      rating,
-      strengths,
-      weaknesses,
-      feedback,
-      result: 'pending',
-    });
-  };
-
-  const handleHire = () => {
-    updateMutation.mutate({
-      status: 'completed',
-      result: 'hired',
-      rating,
-      strengths,
-      weaknesses,
-      feedback,
-    });
-    // Also update application status
-    apiRequest("PATCH", `/api/job-applications/${interview.applicationId}`, { status: 'hired' })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
-        onOpenChange(false);
+  const handleCompleteInterview = async () => {
+    try {
+      // Save all question responses first
+      await saveAllResponses();
+      // Then complete the interview
+      await apiRequest("POST", `/api/interviews/${interview.id}/complete`, {
+        result: 'pending',
+        overallNotes: feedback,
+        overallScore: rating,
       });
+      toast({ title: "Başarılı", description: "Mülakat tamamlandı" });
+      queryClient.invalidateQueries({ queryKey: ["/api/interviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleReject = () => {
-    updateMutation.mutate({
-      status: 'completed',
-      result: 'rejected',
-      rating,
-      strengths,
-      weaknesses,
-      feedback,
-    });
-    // Also update application status
-    apiRequest("PATCH", `/api/job-applications/${interview.applicationId}`, { status: 'rejected' })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
-        onOpenChange(false);
+  const handleHire = async () => {
+    try {
+      // Save all responses before hiring
+      await saveAllResponses();
+      // Call the hire endpoint - handles rejection emails for other candidates automatically
+      const response = await apiRequest("POST", `/api/interviews/${interview.id}/hire`, {});
+      toast({ title: "Başarılı", description: response.message || "Aday işe alındı" });
+      queryClient.invalidateQueries({ queryKey: ["/api/interviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-positions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      await saveAllResponses();
+      updateMutation.mutate({
+        status: 'completed',
+        result: 'rejected',
+        rating,
+        strengths,
+        weaknesses,
+        feedback,
       });
+      await apiRequest("PATCH", `/api/job-applications/${interview.applicationId}`, { status: 'rejected' });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleSave = () => {
-    updateMutation.mutate({
-      rating,
-      strengths,
-      weaknesses,
-      feedback,
-    });
+  // Save a single question response to backend
+  const saveQuestionResponse = async (questionId: number, answer: string, score: number) => {
+    setSavingResponse(questionId);
+    try {
+      await apiRequest("POST", `/api/interviews/${interview.id}/respond`, {
+        questionId,
+        answer,
+        score,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/interviews", interview.id, "responses"] });
+    } catch (error: any) {
+      toast({ title: "Hata", description: "Cevap kaydedilemedi", variant: "destructive" });
+    } finally {
+      setSavingResponse(null);
+    }
+  };
+
+  // Save all question responses
+  const saveAllResponses = async () => {
+    const promises = Object.entries(questionRatings).map(([qId, data]) =>
+      apiRequest("POST", `/api/interviews/${interview.id}/respond`, {
+        questionId: parseInt(qId),
+        answer: data.notes,
+        score: data.rating,
+      })
+    );
+    await Promise.all(promises);
+  };
+
+  const handleSave = async () => {
+    try {
+      await saveAllResponses();
+      updateMutation.mutate({
+        rating,
+        strengths,
+        weaknesses,
+        feedback,
+      });
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    }
   };
 
   const renderStars = (currentRating: number, onChange: (value: number) => void) => {
