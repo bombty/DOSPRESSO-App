@@ -1139,13 +1139,8 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [preview, setPreview] = useState<any[]>([]);
-
-  const { data: branches } = useQuery({ queryKey: ['/api/branches'] });
-  
-  const branch = useMemo(() => {
-    if (!branches || !Array.isArray(branches)) return null;
-    return branches.find((b: any) => b.id === branchId);
-  }, [branches, branchId]);
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [isCached, setIsCached] = useState(false);
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
@@ -1159,176 +1154,63 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
     });
   }, [weekStart]);
 
-  const alreadyAssigned = useMemo(() => {
-    const result: Record<string, Set<string>> = {};
-    weekDays.forEach(day => {
-      result[day.dateStr] = new Set();
-      if (Array.isArray(existingShifts)) {
-        existingShifts
-          .filter((s: any) => s.shiftDate === day.dateStr)
-          .forEach((s: any) => result[day.dateStr].add(String(s.assignedToId)));
-      }
-    });
-    return result;
-  }, [weekDays, existingShifts]);
-
-  const generateAIPlan = () => {
+  // AI-powered shift plan generation via backend
+  const generateAIPlan = async (skipCache: boolean = false) => {
     setIsGenerating(true);
+    setAiSummary('');
     
-    const newShifts: any[] = [];
-    const employeeShiftMap: Record<string, Set<string>> = {}; // empId -> Set<dateStr>
-    const employeeHoursMap: Record<string, number> = {}; // empId -> total hours
-    
-    // Initialize employee maps
-    employees.forEach((emp: any) => {
-      const empId = String(emp.id);
-      employeeShiftMap[empId] = new Set();
-      employeeHoursMap[empId] = 0;
+    try {
+      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+      const url = `/api/shifts/recommendations?weekStart=${weekStartStr}&branchId=${branchId}${skipCache ? '&skipCache=true' : ''}`;
       
-      if (Array.isArray(existingShifts)) {
-        existingShifts
-          .filter((s: any) => String(s.assignedToId) === empId && 
-            weekDays.some(d => d.dateStr === s.shiftDate))
-          .forEach((s: any) => {
-            employeeShiftMap[empId].add(s.shiftDate);
-            employeeHoursMap[empId] += 8;
-          });
+      const response = await fetch(url, { credentials: 'include' });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'AI planlama başarısız');
       }
-    });
-    
-    const openingHour = branch?.openingHours ? parseInt(branch.openingHours.split(':')[0]) : 7;
-    const closingHour = branch?.closingHours ? parseInt(branch.closingHours.split(':')[0]) : 1;
-    
-    // Build all shift slots for the week
-    const allSlots: any[] = [];
-    weekDays.forEach((day) => {
-      allSlots.push({
-        date: day.dateStr,
-        dayDate: day.date,
-        name: 'Sabah',
-        startHour: openingHour,
-        endHour: openingHour + 8,
-        shiftType: 'morning',
-        durationHours: 7.5
-      });
-      allSlots.push({
-        date: day.dateStr,
-        dayDate: day.date,
-        name: 'Akşam',
-        startHour: openingHour + 8,
-        endHour: closingHour === 1 ? openingHour + 16 : closingHour,
-        shiftType: 'evening',
-        durationHours: 7.5
-      });
-    });
-    
-    const getSkillScore = (emp: any) => {
-      let score = emp.skillScore || 50;
-      if (emp.role === 'supervisor') score += 30;
-      else if (emp.role === 'supervisor_buddy') score += 20;
-      else if (emp.role === 'barista') score += 10;
-      else if (emp.role === 'bar_buddy') score += 5;
-      else if (emp.role === 'stajyer') score -= 10;
-      return Math.min(100, Math.max(0, score));
-    };
-    
-    const sortedEmployees = [...employees].sort((a, b) => getSkillScore(b) - getSkillScore(a));
-    
-    const assignShift = (emp: any, slot: any) => {
-      const empId = String(emp.id);
-      const endHour = slot.endHour > 24 ? slot.endHour - 24 : slot.endHour;
-      const breakStartH = slot.startHour + 4;
       
-      newShifts.push({
-        shiftDate: slot.date,
-        startTime: `${String(slot.startHour).padStart(2, '0')}:00:00`,
-        endTime: `${String(endHour).padStart(2, '0')}:00:00`,
-        breakStartTime: `${String(breakStartH).padStart(2, '0')}:00:00`,
-        breakEndTime: `${String(breakStartH + 1).padStart(2, '0')}:00:00`,
-        shiftType: slot.shiftType,
-        assignedToId: empId,
-        status: 'draft',
-        branchId,
-        employeeName: emp.fullName || `${emp.firstName} ${emp.lastName}`,
-        slotName: slot.name,
-      });
+      const data = await response.json();
       
-      employeeShiftMap[empId].add(slot.date);
-      employeeHoursMap[empId] += slot.durationHours;
-    };
-    
-    // Core algorithm: Full-time 45h/week (6 days x 7.5h), 1 day off
-    const fullTimeHours = 45;
-    const fullTimeDays = 6;
-    const partTimeHours = 25;
-    
-    const maxHoursPerEmployee = (emp: any) => {
-      if (emp.employmentType === 'parttime') return partTimeHours;
-      return emp.weeklyHours || fullTimeHours;
-    };
-    
-    const maxDaysPerEmployee = (emp: any) => {
-      if (emp.employmentType === 'parttime') return 3; // Part-time: 3 days
-      return fullTimeDays; // Full-time: 6 days
-    };
-    
-    // Step 1: Assign each employee exactly 6 days (or 3 for part-time) - 1 per day only
-    for (const emp of sortedEmployees) {
-      const empId = String(emp.id);
-      let daysAssigned = employeeShiftMap[empId].size;
-      let hoursAssigned = employeeHoursMap[empId];
-      const maxHours = maxHoursPerEmployee(emp);
-      const maxDays = maxDaysPerEmployee(emp);
-      
-      // Process days in order, assign max 1 slot per day per employee
-      const daySlotMap: Record<string, any[]> = {};
-      allSlots.forEach(slot => {
-        if (!daySlotMap[slot.date]) daySlotMap[slot.date] = [];
-        daySlotMap[slot.date].push(slot);
-      });
-      
-      for (const dateStr of Object.keys(daySlotMap).sort()) {
-        if (daysAssigned >= maxDays) break;
-        if (hoursAssigned >= maxHours) break;
-        if (employeeShiftMap[empId].has(dateStr)) continue; // Already assigned this day
-        
-        // Assign to first available slot of the day (sabah/morning preferred)
-        const daySlots = daySlotMap[dateStr];
-        const availableSlot = daySlots[0]; // Sabah vardiyası
-        
-        assignShift(emp, availableSlot);
-        daysAssigned++;
-        hoursAssigned += availableSlot.durationHours;
+      if (!data.recommendations || data.recommendations.length === 0) {
+        toast({ 
+          title: "Uyarı", 
+          description: "AI yeterli öneri oluşturamadı. Personel bilgilerini kontrol edin.", 
+          variant: "destructive" 
+        });
+        setPreview([]);
+        return;
       }
-    }
-    
-    // Step 2: Fill empty slots with second person (but not if employee already assigned that day)
-    for (const slot of allSlots) {
-      const peopleInSlot = newShifts.filter(s => s.shiftDate === slot.date && s.slotName === slot.name).length;
       
-      for (const emp of sortedEmployees) {
-        if (peopleInSlot >= 2) break; // Slot full
-        
-        const empId = String(emp.id);
-        const maxHours = maxHoursPerEmployee(emp);
-        const maxDays = maxDaysPerEmployee(emp);
-        
-        // CRITICAL: Do NOT assign if employee already assigned any shift on this day
-        if (!employeeShiftMap[empId].has(slot.date) && 
-            employeeShiftMap[empId].size < maxDays && 
-            employeeHoursMap[empId] < maxHours) {
-          assignShift(emp, slot);
-        }
-      }
-    }
-
-    setTimeout(() => {
-      setPreview(newShifts);
+      // Map AI recommendations to preview format with employee names
+      const mappedShifts = data.recommendations.map((rec: any) => {
+        const emp = employees.find((e: any) => String(e.id) === String(rec.assignedToId));
+        return {
+          ...rec,
+          branchId,
+          employeeName: emp?.fullName || emp?.firstName || 'Bilinmeyen',
+          slotName: rec.shiftType === 'morning' ? 'Sabah' : rec.shiftType === 'evening' ? 'Akşam' : 'Gece',
+        };
+      });
+      
+      setPreview(mappedShifts);
+      setAiSummary(data.summary || '');
+      setIsCached(data.cached || false);
+      
+      toast({ 
+        title: data.cached ? "Önbellek Kullanıldı" : "AI Plan Hazır", 
+        description: `${mappedShifts.length} vardiya önerisi oluşturuldu` 
+      });
+    } catch (error: any) {
+      console.error("AI plan error:", error);
+      toast({ 
+        title: "AI Hatası", 
+        description: error.message || "Planlama başarısız", 
+        variant: "destructive" 
+      });
+    } finally {
       setIsGenerating(false);
-      if (newShifts.length === 0) {
-        toast({ title: "Uyarı", description: "Yeterli personel bulunamadı", variant: "destructive" });
-      }
-    }, 500);
+    }
   };
 
   const createMutation = useMutation({
@@ -1388,10 +1270,13 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
           <div className="text-center py-8">
             <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">
-              {employees.length} personel için haftalık plan oluştur
+              {employees.length} personel için AI destekli haftalık plan oluştur
+            </p>
+            <p className="text-xs text-muted-foreground mb-4">
+              OpenAI ile optimal vardiya dağılımı, stajyer-barista eşleşmesi ve 45 saat limiti kontrolü
             </p>
             <Button 
-              onClick={generateAIPlan} 
+              onClick={() => generateAIPlan(false)} 
               disabled={isGenerating || employees.length === 0}
               className="gap-2"
               data-testid="button-generate-ai"
@@ -1401,14 +1286,25 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
               ) : (
                 <Wand2 className="w-4 h-4" />
               )}
-              Plan Oluştur
+              {isGenerating ? 'AI Düşünüyor...' : 'AI Plan Oluştur'}
             </Button>
           </div>
         ) : (
           <div className="space-y-3 max-h-[400px] overflow-y-auto">
-            <div className="text-sm font-medium text-green-600 dark:text-green-400">
-              {preview.length} vardiya oluşturulacak
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium text-green-600 dark:text-green-400">
+                {preview.length} vardiya oluşturulacak
+              </div>
+              {isCached && (
+                <Badge variant="secondary" className="text-xs">Önbellekten</Badge>
+              )}
             </div>
+            
+            {aiSummary && (
+              <div className="p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                <strong>AI Özeti:</strong> {aiSummary}
+              </div>
+            )}
             
             <div className="grid grid-cols-7 gap-1">
               {weekDays.map(day => (
@@ -1419,8 +1315,14 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
                     {previewByDay[day.dateStr].map((shift, idx) => (
                       <div 
                         key={idx}
-                        className="text-[10px] bg-primary/10 rounded px-1 py-0.5 truncate"
-                        title={shift.employeeName}
+                        className={`text-[10px] rounded px-1 py-0.5 truncate ${
+                          shift.shiftType === 'morning' 
+                            ? 'bg-amber-100 dark:bg-amber-900/50' 
+                            : shift.shiftType === 'evening'
+                            ? 'bg-blue-100 dark:bg-blue-900/50'
+                            : 'bg-purple-100 dark:bg-purple-900/50'
+                        }`}
+                        title={`${shift.employeeName} - ${shift.slotName}`}
                       >
                         {shift.employeeName?.split(' ')[0]}
                       </div>
@@ -1438,7 +1340,8 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
           </Button>
           {preview.length > 0 && (
             <>
-              <Button variant="outline" onClick={generateAIPlan} disabled={isGenerating}>
+              <Button variant="outline" onClick={() => generateAIPlan(true)} disabled={isGenerating}>
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Yeniden Oluştur
               </Button>
               <Button 

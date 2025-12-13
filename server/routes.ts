@@ -11279,32 +11279,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/shifts/recommendations - Get AI shift recommendations using ShiftScheduler
+  // GET /api/shifts/recommendations - Get AI shift recommendations using OpenAI
   app.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res) => {
     try {
+      const { generateShiftPlan } = await import('./ai');
       const user = req.user!;
       const role = user.role as UserRoleType;
       
-      if (role !== 'supervisor' && role !== 'supervisor_buddy' && role !== 'destek') {
+      // Allowed roles: HQ roles + branch supervisors
+      const allowedRoles = ['supervisor', 'supervisor_buddy', 'destek', 'admin', 'coach', 'muhasebe'];
+      if (!allowedRoles.includes(role)) {
         return res.status(403).json({ message: "Vardiya önerileri görüntüleme yetkiniz yok" });
       }
 
       const weekStart = req.query.weekStart as string;
       const branchId = req.query.branchId as string;
+      const skipCache = req.query.skipCache === 'true';
       
       if (!weekStart || !branchId) {
         return res.status(400).json({ message: "weekStart ve branchId parametreleri gerekli" });
       }
 
       const bid = parseInt(branchId);
+      
+      // Branch users can only see their own branch
       if ((role === 'supervisor' || role === 'supervisor_buddy') && (!user.branchId || user.branchId !== bid)) {
         return res.status(403).json({ message: "Sadece kendi şubenizin vardiyalarını görebilirsiniz" });
       }
 
-      res.json({ recommendations: [], message: "Öneriler hazırlanıyor" });
+      // Calculate week end date
+      const startDate = new Date(weekStart);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      const weekEnd = endDate.toISOString().split('T')[0];
+
+      // Get historical shifts (last 6 weeks)
+      const sixWeeksAgo = new Date(startDate);
+      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
+      const historicalShifts = await storage.getShifts(
+        bid, 
+        undefined, 
+        sixWeeksAgo.toISOString().split('T')[0],
+        weekStart
+      );
+
+      // Get branch employees with string IDs
+      const allEmployees = await storage.getAllEmployees(bid);
+      const employees = allEmployees.map((e: any) => ({
+        id: String(e.id), // Ensure string format for AI
+        name: e.fullName || `${e.firstName} ${e.lastName}`,
+        role: e.role || 'barista',
+      }));
+
+      // Format historical shifts for AI
+      const formattedHistorical = historicalShifts.map((s: any) => ({
+        shiftDate: s.shiftDate,
+        shiftType: s.shiftType || 'morning',
+        assignedToId: s.assignedToId ? String(s.assignedToId) : null,
+        status: s.status || 'draft',
+      }));
+
+      // If no employees, return empty
+      if (employees.length === 0) {
+        return res.json({ 
+          recommendations: [], 
+          summary: 'Şubede personel bulunamadı', 
+          totalShifts: 0,
+          cached: false,
+          weekStart,
+          weekEnd,
+        });
+      }
+
+      // Call AI to generate shift plan
+      const aiPlan = await generateShiftPlan(
+        bid,
+        weekStart,
+        weekEnd,
+        formattedHistorical,
+        employees,
+        undefined, // workloadMetrics
+        user.id,
+        skipCache
+      );
+
+      // Validate and sanitize AI response - ensure valid employee IDs
+      const validEmployeeIds = new Set(employees.map(e => String(e.id)));
+      const validatedShifts = (aiPlan.shifts || [])
+        .filter((shift: any) => {
+          // Must have valid employee ID
+          if (!shift.assignedToId || !validEmployeeIds.has(String(shift.assignedToId))) {
+            return false;
+          }
+          // Must have valid date
+          if (!shift.shiftDate || !/^\d{4}-\d{2}-\d{2}$/.test(shift.shiftDate)) {
+            return false;
+          }
+          return true;
+        })
+        .map((shift: any) => {
+          // Ensure all required fields with defaults
+          const shiftType = shift.shiftType || 'morning';
+          return {
+            shiftDate: shift.shiftDate,
+            assignedToId: String(shift.assignedToId),
+            shiftType,
+            status: 'draft',
+            startTime: shift.startTime || (shiftType === 'morning' ? '07:00:00' : shiftType === 'evening' ? '15:00:00' : '23:00:00'),
+            endTime: shift.endTime || (shiftType === 'morning' ? '15:00:00' : shiftType === 'evening' ? '23:00:00' : '07:00:00'),
+            breakStartTime: shift.breakStartTime || (shiftType === 'morning' ? '11:00:00' : '19:00:00'),
+            breakEndTime: shift.breakEndTime || (shiftType === 'morning' ? '12:00:00' : '20:00:00'),
+          };
+        });
+
+      res.json({
+        recommendations: validatedShifts,
+        summary: aiPlan.summary || '',
+        totalShifts: validatedShifts.length,
+        cached: aiPlan.cached || false,
+        weekStart,
+        weekEnd,
+      });
     } catch (error: Error | unknown) {
       console.error("Error generating shift recommendations:", error);
-      res.status(500).json({ message: "Vardiya önerileri oluşturulamadı" });
+      const message = error instanceof Error ? error.message : "Vardiya önerileri oluşturulamadı";
+      res.status(500).json({ message });
     }
   });
 
