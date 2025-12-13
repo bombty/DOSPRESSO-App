@@ -799,153 +799,20 @@ export default function Vardiyalar() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="live" className="w-full space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-            <Card data-testid="card-live-active">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Canlı Çalışanlar</CardTitle>
-                <UserCheck className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-success">
-                  {activeAttendances?.length || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">şu an giriş yapan</p>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-live-late">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Toplam Vardiyalar</CardTitle>
-                <Timer className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-primary">{todayShifts.length}</div>
-                <p className="text-xs text-muted-foreground">bugün planlanmış</p>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-live-missing">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Henüz Gelmedi</CardTitle>
-                <UserX className="h-4 w-4 text-red-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-destructive">
-                  {(todayShifts.length - (activeAttendances?.length || 0)) > 0 ? todayShifts.length - (activeAttendances?.length || 0) : 0}
-                </div>
-                <p className="text-xs text-muted-foreground">eksik personel</p>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-live-completion">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Doldurulma</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-success" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-success">
-                  {todayShifts.length > 0 ? Math.round(((activeAttendances?.length || 0) / todayShifts.length) * 100) : 0}%
-                </div>
-                <p className="text-xs text-muted-foreground">giriş yapılmış</p>
-              </CardContent>
-            </Card>
+        <TabsContent value="live" className="w-full space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">{format(new Date(), "d MMMM yyyy, EEEE", { locale: tr })}</p>
+            <Badge variant="outline">{todayShifts.length} vardiya</Badge>
           </div>
 
-          {/* Active Check-ins - Grid Layout */}
-          {isSupervisor && (
-            <Card data-testid="card-active-checkins">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-green-500" />
-                  Canlı Giriş Yapanlar
-                </CardTitle>
-                <CardDescription>{activeAttendances?.length || 0} personel şu an faal</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {activeAttendances && activeAttendances.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {activeAttendances.map((attendance) => {
-                      const user = users?.find(u => u.id === attendance.userId);
-                      const checkInTime = attendance.checkInTime ? new Date(attendance.checkInTime) : null;
-                      const duration = checkInTime ? Math.floor((Date.now() - checkInTime.getTime()) / (60 * 1000)) : 0;
-                      return (
-                        <div key={attendance.id} className="p-2 rounded border bg-success/10 dark:bg-success/5/20">
-                          <div className="flex items-start gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-success/100 animate-pulse mt-1 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || 'Bilinmeyen'}</p>
-                              <div className="text-xs text-muted-foreground space-y-0.5 mt-0.5">
-                                <p>📍 {attendance.location_confidence ? Math.round(attendance.location_confidence) + '%' : '-'}</p>
-                                <p>⏱️ {duration}m</p>
-                                <p className="text-success font-medium">{checkInTime ? format(checkInTime, 'HH:mm') : '-'}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <UserX className="h-8 w-8 text-muted-foreground mx-auto mb-1" />
-                    <p className="text-sm text-muted-foreground">Henüz kimse giriş yapmadı</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          <Card data-testid="card-live-timeline">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Bugünkü Zaman Çizelgesi
-              </CardTitle>
-              <CardDescription>{format(new Date(), "d MMMM yyyy, EEEE", { locale: tr })}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {todayShifts.length === 0 ? (
-                <div className="text-center py-12">
-                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Bugün için planlanmış vardiya yok</p>
-                </div>
-              ) : (
-                <div className="w-full space-y-2">
-                  {['morning', 'evening', 'night'].map((type) => {
-                    const typeShifts = todayShifts.filter(s => s.shiftType === type);
-                    if (typeShifts.length === 0) return null;
-                    const ShiftIcon = shiftTypeIcons[type];
-                    return (
-                      <div key={type} className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1.5 px-1">
-                          <div className={cn("p-1 rounded", shiftTypeColors[type])}>
-                            <ShiftIcon className="h-3 w-3" />
-                          </div>
-                          <span className="text-sm font-medium">{shiftTypeLabels[type]}</span>
-                          <Badge variant="secondary" className="text-xs">{typeShifts.length}</Badge>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
-                          {typeShifts.map((shift) => (
-                            <div 
-                              key={shift.id}
-                              className="p-2 rounded border bg-muted/30 text-center"
-                              data-testid={`live-shift-${shift.id}`}
-                            >
-                              <p className="text-xs font-medium truncate">{shift.assignedTo?.fullName || "—"}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {shift.startTime.slice(0, 5)}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <LiveShiftGrid 
+            todayShifts={todayShifts} 
+            activeAttendances={activeAttendances}
+            users={users}
+            shiftTypeIcons={shiftTypeIcons}
+            shiftTypeLabels={shiftTypeLabels}
+            shiftTypeColors={shiftTypeColors}
+          />
 
           <Card data-testid="card-checkin-prompt">
             <CardContent className="pt-6">
@@ -1619,6 +1486,121 @@ function CheckInContent({ user, toast }: { user: any; toast: any }) {
               </ul>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function LiveShiftGrid({ todayShifts, activeAttendances, users, shiftTypeIcons, shiftTypeLabels, shiftTypeColors }: {
+  todayShifts: ShiftWithRelations[];
+  activeAttendances: any[] | undefined;
+  users: User[] | undefined;
+  shiftTypeIcons: Record<string, any>;
+  shiftTypeLabels: Record<string, string>;
+  shiftTypeColors: Record<string, string>;
+}) {
+  const now = new Date();
+  const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const categorizedShifts = useMemo(() => {
+    const completed: ShiftWithRelations[] = [];
+    const active: ShiftWithRelations[] = [];
+    const upcoming: ShiftWithRelations[] = [];
+
+    todayShifts.forEach(shift => {
+      const [startH, startM] = (shift.startTime || '00:00').split(':').map(Number);
+      const [endH, endM] = (shift.endTime || '23:59').split(':').map(Number);
+      const startMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+
+      if (currentTimeMinutes >= endMinutes) {
+        completed.push(shift);
+      } else if (currentTimeMinutes >= startMinutes && currentTimeMinutes < endMinutes) {
+        active.push(shift);
+      } else {
+        upcoming.push(shift);
+      }
+    });
+
+    return { completed, active, upcoming };
+  }, [todayShifts, currentTimeMinutes]);
+
+  const ShiftCard = ({ shift, status }: { shift: ShiftWithRelations; status: 'completed' | 'active' | 'upcoming' }) => {
+    const ShiftIcon = shiftTypeIcons[shift.shiftType];
+    const isActive = activeAttendances?.some(a => a.userId === shift.assignedToId);
+    
+    return (
+      <div className={cn(
+        "p-2 rounded border text-sm",
+        status === 'completed' && "bg-muted/50 opacity-70",
+        status === 'active' && "bg-success/10 border-success/30",
+        status === 'upcoming' && "bg-muted/30"
+      )} data-testid={`live-shift-${shift.id}`}>
+        <div className="flex items-center gap-1.5 mb-1">
+          {ShiftIcon && <ShiftIcon className="w-3 h-3" />}
+          <span className="font-medium truncate">{shift.assignedTo?.fullName || "—"}</span>
+          {status === 'active' && isActive && (
+            <div className="w-2 h-2 rounded-full bg-success animate-pulse ml-auto" />
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {shift.startTime?.slice(0, 5)} - {shift.endTime?.slice(0, 5)}
+        </p>
+      </div>
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3" data-testid="live-shift-grid">
+      <Card>
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
+            Tamamlanan
+            <Badge variant="secondary" className="ml-auto">{categorizedShifts.completed.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 space-y-1.5 max-h-[300px] overflow-y-auto">
+          {categorizedShifts.completed.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">Henüz tamamlanan yok</p>
+          ) : (
+            categorizedShifts.completed.map(shift => <ShiftCard key={shift.id} shift={shift} status="completed" />)
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="ring-2 ring-success/30">
+        <CardHeader className="py-2 px-3 bg-success/5">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Clock className="w-4 h-4 text-success" />
+            Devam Eden
+            <Badge className="ml-auto bg-success">{categorizedShifts.active.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 space-y-1.5 max-h-[300px] overflow-y-auto">
+          {categorizedShifts.active.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">Aktif vardiya yok</p>
+          ) : (
+            categorizedShifts.active.map(shift => <ShiftCard key={shift.id} shift={shift} status="active" />)
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ArrowRight className="w-4 h-4 text-primary" />
+            Yaklaşan
+            <Badge variant="outline" className="ml-auto">{categorizedShifts.upcoming.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 space-y-1.5 max-h-[300px] overflow-y-auto">
+          {categorizedShifts.upcoming.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">Yaklaşan vardiya yok</p>
+          ) : (
+            categorizedShifts.upcoming.map(shift => <ShiftCard key={shift.id} shift={shift} status="upcoming" />)
+          )}
         </CardContent>
       </Card>
     </div>
