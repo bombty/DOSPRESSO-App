@@ -15499,6 +15499,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/job-positions/:id/close - Close job position and send rejection emails
+  app.post('/api/job-positions/:id/close', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      const { selectedApplicationId, closedReason } = req.body;
+
+      if (!isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Pozisyon kapatma yetkiniz yok' });
+      }
+
+      // Close position
+      await db.update(jobPositions)
+        .set({ 
+          status: 'closed', 
+          selectedApplicationId: selectedApplicationId || null,
+          closedAt: new Date(),
+          closedReason: closedReason || 'cancelled',
+          updatedAt: new Date() 
+        })
+        .where(eq(jobPositions.id, id));
+
+      // Send rejection emails to all non-hired candidates
+      const rejectionCandidates = await db.select()
+        .from(jobApplications)
+        .where(and(
+          eq(jobApplications.positionId, id),
+          ...(selectedApplicationId ? [sql`${jobApplications.id} != ${selectedApplicationId}`] : [])
+        ));
+
+      const [position] = await db.select().from(jobPositions).where(eq(jobPositions.id, id));
+
+      for (const candidate of rejectionCandidates) {
+        if (candidate.email && candidate.status !== 'hired') {
+          try {
+            let emailBody = `Sayın ${candidate.fullName},\n\n`;
+            
+            if (closedReason === 'hired') {
+              emailBody += `DOSPRESSO ailesine olan ilginiz ve ${position?.title || 'açık pozisyon'} için başvurunuz için teşekkür ederiz.\n\nMaalesef bu pozisyon için başka bir adayla ilerlemekten karar verdik.\n\n`;
+            } else if (closedReason === 'no_candidates') {
+              emailBody += `DOSPRESSO ailesine olan ilginiz için teşekkür ederiz.\n\n${position?.title || 'Açık pozisyon'} pozisyonu iptal edilmiştir.\n\n`;
+            } else {
+              emailBody += `DOSPRESSO ailesine olan ilginiz için teşekkür ederiz.\n\n${position?.title || 'Açık pozisyon'} pozisyonu kapatılmıştır.\n\n`;
+            }
+
+            emailBody += `Gösterdiğiniz ilgi ve ayırdığınız zaman için teşekkür ederiz.\n\nBaşarılar dileriz,\nDOSPRESSO İnsan Kaynakları Ekibi`;
+
+            await sendNotificationEmail(
+              candidate.email,
+              'DOSPRESSO - Başvuru Sonucu',
+              emailBody
+            );
+          } catch (emailError) {
+            console.error(`Failed to send rejection email to ${candidate.email}:`, emailError);
+          }
+        }
+      }
+
+      res.json({ success: true, message: 'Pozisyon kapatıldı ve ret mailleri gönderildi' });
+    } catch (error: any) {
+      console.error("Error closing job position:", error);
+      res.status(500).json({ message: "Pozisyon kapatılırken hata oluştu" });
+    }
+  });
+
   // GET /api/job-applications - List all applications
   app.get('/api/job-applications', isAuthenticated, async (req: any, res) => {
     try {
@@ -15550,7 +15615,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const result = await db.insert(jobApplications).values(data).returning();
-      res.status(201).json(result[0]);
+      const application = result[0];
+
+      // Send thank you email to applicant
+      if (application.email) {
+        try {
+          const [position] = await db.select().from(jobPositions).where(eq(jobPositions.id, application.positionId));
+          
+          const emailBody = `Sayın ${application.fullName},
+
+DOSPRESSO ailesine başvurunuz için teşekkür ederiz.
+
+Başvurunuz için ${position?.title || 'açık pozisyon'} pozisyonuna ait başvurunuz alındığını bilgilendirmek istiyoruz. 
+
+Başvurunuz dikkatle değerlendirilecektir. Mülakata davet edilmeniz durumunda size email yoluyla bilgi verilecektir.
+
+Başarılar dileriz,
+DOSPRESSO İnsan Kaynakları Ekibi`;
+
+          await sendNotificationEmail(
+            application.email,
+            'DOSPRESSO - Başvuru Alındı',
+            emailBody
+          );
+        } catch (emailError) {
+          console.error(`Failed to send thank you email to ${application.email}:`, emailError);
+          // Don't fail the request if email fails
+        }
+      }
+
+      res.status(201).json(application);
     } catch (error: any) {
       console.error("Error creating application:", error);
       res.status(500).json({ message: "Başvuru oluşturulurken hata oluştu" });
@@ -15887,6 +15981,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error saving interview response:", error);
       res.status(500).json({ message: "Cevap kaydedilirken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/interviews/:id/result - Update interview result (pending/positive/finalist/negative)
+  app.patch('/api/interviews/:id/result', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const id = parseInt(req.params.id);
+      const { result } = req.body;
+
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor') {
+        return res.status(403).json({ message: 'Mülakat sonucu güncelleme yetkiniz yok' });
+      }
+
+      if (!['pending', 'positive', 'finalist', 'negative'].includes(result)) {
+        return res.status(400).json({ message: 'Geçersiz sonuç tipi' });
+      }
+
+      const updateData: any = {
+        result,
+        status: 'completed',
+        updatedAt: new Date(),
+      };
+
+      const resultData = await db.update(interviews)
+        .set(updateData)
+        .where(eq(interviews.id, id))
+        .returning();
+
+      if (resultData.length === 0) {
+        return res.status(404).json({ message: 'Mülakat bulunamadı' });
+      }
+
+      // Update application status based on result
+      const interview = resultData[0];
+      if (interview.applicationId) {
+        let appStatus = 'interview_completed';
+        if (result === 'positive') appStatus = 'offered';
+        else if (result === 'finalist') appStatus = 'finalist';
+        else if (result === 'negative') appStatus = 'rejected';
+
+        await db.update(jobApplications)
+          .set({ status: appStatus, updatedAt: new Date() })
+          .where(eq(jobApplications.id, interview.applicationId));
+      }
+
+      res.json(resultData[0]);
+    } catch (error: any) {
+      console.error("Error updating interview result:", error);
+      res.status(500).json({ message: "Mülakat sonucu güncellenirken hata oluştu" });
     }
   });
 
