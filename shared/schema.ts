@@ -5268,9 +5268,10 @@ export type InterviewStatusType = typeof INTERVIEW_STATUS[keyof typeof INTERVIEW
 
 // Mülakat sonuçları
 export const INTERVIEW_RESULT = {
-  PASSED: "passed",
-  FAILED: "failed",
   PENDING: "pending",
+  POSITIVE: "positive",
+  FINALIST: "finalist",
+  NEGATIVE: "negative",
 } as const;
 
 export type InterviewResultType = typeof INTERVIEW_RESULT[keyof typeof INTERVIEW_RESULT];
@@ -5292,6 +5293,9 @@ export const jobPositions = pgTable("job_positions", {
   status: varchar("status", { length: 30 }).notNull().default("open"), // open, paused, filled, cancelled
   priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
   deadline: date("deadline"), // Son başvuru tarihi
+  selectedApplicationId: integer("selected_application_id").references(() => jobApplications.id), // Seçilen aday
+  closedAt: timestamp("closed_at"), // Pozisyon kapatılma tarihi
+  closedReason: varchar("closed_reason", { length: 100 }), // closed_reason: hired, no_candidates, cancelled
   createdById: varchar("created_by_id").notNull().references(() => users.id),
   assignedToId: varchar("assigned_to_id").references(() => users.id), // İşe alımdan sorumlu kişi
   notes: text("notes"),
