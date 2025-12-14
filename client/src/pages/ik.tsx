@@ -2527,6 +2527,7 @@ function RecruitmentSection() {
   const [selectedPosition, setSelectedPosition] = useState<any>(null);
   const [selectedInterview, setSelectedInterview] = useState<any>(null);
   const [interviewDetailOpen, setInterviewDetailOpen] = useState(false);
+  const [positionClosingOpen, setPositionClosingOpen] = useState(false);
   const [branchFilterId, setBranchFilterId] = useState<string>("all");
   const [positionFilter, setPositionFilter] = useState<string>("all");
   const [interviewStatusFilter, setInterviewStatusFilter] = useState<string>("all");
@@ -2743,11 +2744,10 @@ function RecruitmentSection() {
               {positions.map((position: any) => (
                 <Card 
                   key={position.id}
-                  className="hover-elevate cursor-pointer"
-                  onClick={() => setSelectedPosition(position)}
+                  className="hover-elevate"
                   data-testid={`card-position-${position.id}`}
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold truncate">{position.title}</h3>
@@ -2771,7 +2771,7 @@ function RecruitmentSection() {
                         )}
                       </div>
                     </div>
-                    <div className="mt-3 text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                       {position.branchName ? (
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
@@ -2782,10 +2782,24 @@ function RecruitmentSection() {
                       )}
                     </div>
                     {position.deadline && (
-                      <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         Son: {format(new Date(position.deadline), "dd.MM.yyyy")}
                       </div>
+                    )}
+                    {position.status === 'open' && isHQRole(user?.role as any) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedPosition(position);
+                          setPositionClosingOpen(true);
+                        }}
+                        data-testid={`button-close-position-${position.id}`}
+                        className="w-full"
+                      >
+                        Pozisyonu Kapat
+                      </Button>
                     )}
                   </CardContent>
                 </Card>
@@ -2847,16 +2861,40 @@ function RecruitmentSection() {
                       </TableCell>
                       <TableCell>{app.phone}</TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={
-                            app.status === 'hired' ? 'default' :
-                            app.status === 'rejected' ? 'destructive' :
-                            'secondary'
-                          }
-                          className={app.status === 'hired' ? 'bg-green-600' : ''}
-                        >
-                          {statusLabels[app.status] || app.status}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge 
+                            variant={
+                              app.status === 'hired' ? 'default' :
+                              app.status === 'rejected' ? 'destructive' :
+                              'secondary'
+                            }
+                            className={app.status === 'hired' ? 'bg-green-600' : ''}
+                          >
+                            {statusLabels[app.status] || app.status}
+                          </Badge>
+                          {app.interviewResult && (
+                            <Badge 
+                              variant={
+                                app.interviewResult === 'positive' ? 'default' :
+                                app.interviewResult === 'finalist' ? 'default' :
+                                app.interviewResult === 'negative' ? 'destructive' :
+                                'secondary'
+                              }
+                              className={
+                                app.interviewResult === 'positive' ? 'bg-green-600' :
+                                app.interviewResult === 'finalist' ? 'bg-blue-600' :
+                                app.interviewResult === 'negative' ? '' :
+                                ''
+                              }
+                              data-testid={`badge-result-${app.id}`}
+                            >
+                              {app.interviewResult === 'positive' ? 'Pozitif' :
+                               app.interviewResult === 'finalist' ? 'Finalist' :
+                               app.interviewResult === 'negative' ? 'Negatif' :
+                               'Beklemede'}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {app.createdAt ? format(new Date(app.createdAt), "dd.MM.yyyy") : "-"}
@@ -3015,6 +3053,16 @@ function RecruitmentSection() {
           open={interviewDetailOpen}
           onOpenChange={setInterviewDetailOpen}
           interview={selectedInterview}
+        />
+      )}
+
+      {/* Position Closing Modal */}
+      {selectedPosition && (
+        <PositionClosingModal
+          open={positionClosingOpen}
+          onOpenChange={setPositionClosingOpen}
+          position={selectedPosition}
+          applications={applications}
         />
       )}
 
@@ -3682,6 +3730,137 @@ function ScheduleInterviewDialog({
   );
 }
 
+// Position Closing Modal - Pozisyon kapatma ve ret maili gönderme
+function PositionClosingModal({
+  open,
+  onOpenChange,
+  position,
+  applications,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  position: any;
+  applications: any[];
+}) {
+  const { toast } = useToast();
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string>("");
+  const [closedReason, setClosedReason] = useState<string>("hired");
+  const [confirmRejectionEmails, setConfirmRejectionEmails] = useState(false);
+
+  const closeMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", `/api/job-positions/${position.id}/close`, data);
+    },
+    onSuccess: (response: any) => {
+      toast({ 
+        title: "Başarılı", 
+        description: response.message || "Pozisyon kapatıldı ve ret mailleri gönderildi"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-positions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Pozisyon kapatılırken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirmRejectionEmails) {
+      toast({ 
+        title: "Uyarı", 
+        description: "Ret mailleri gönderileceğini onaylamalısınız",
+        variant: "destructive"
+      });
+      return;
+    }
+    closeMutation.mutate({
+      selectedApplicationId: selectedApplicationId ? parseInt(selectedApplicationId) : undefined,
+      closedReason,
+    });
+  };
+
+  const positionApplications = applications.filter((app: any) => app.positionId === position.id);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Pozisyonu Kapat</DialogTitle>
+          <DialogDescription>
+            {position.title} pozisyonunu kapatın ve başvurucuları bilgilendirin
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Kapatma Sebebi *</label>
+            <Select value={closedReason} onValueChange={setClosedReason}>
+              <SelectTrigger data-testid="select-closed-reason">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hired">İşe Alındı</SelectItem>
+                <SelectItem value="no_candidates">Uygun Aday Yok</SelectItem>
+                <SelectItem value="cancelled">İptal Edildi</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {closedReason === "hired" && (
+            <div>
+              <label className="text-sm font-medium">İşe Alınan Aday</label>
+              <Select value={selectedApplicationId} onValueChange={setSelectedApplicationId}>
+                <SelectTrigger data-testid="select-hired-candidate">
+                  <SelectValue placeholder="Aday seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {positionApplications.map((app: any) => (
+                    <SelectItem key={app.id} value={app.id.toString()}>
+                      {app.firstName} {app.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="confirm-emails"
+              checked={confirmRejectionEmails}
+              onCheckedChange={(checked) => setConfirmRejectionEmails(!!checked)}
+              data-testid="checkbox-confirm-rejection-emails"
+            />
+            <label htmlFor="confirm-emails" className="text-sm cursor-pointer">
+              Ret mailleri gönderileceğini onaylıyorum
+            </label>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              İptal
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={closeMutation.isPending || !confirmRejectionEmails}
+              data-testid="button-submit-close-position"
+            >
+              {closeMutation.isPending ? "Kapatılıyor..." : "Pozisyonu Kapat"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Interview Detail Modal - Mülakat detay görüntüleme ve değerlendirme
 function InterviewDetailModal({
   open,
@@ -3698,6 +3877,7 @@ function InterviewDetailModal({
   const [strengths, setStrengths] = useState(interview.strengths || "");
   const [weaknesses, setWeaknesses] = useState(interview.weaknesses || "");
   const [feedback, setFeedback] = useState(interview.feedback || "");
+  const [interviewResult, setInterviewResult] = useState(interview.result || "pending");
   const [questionRatings, setQuestionRatings] = useState<Record<number, { rating: number; notes: string }>>({});
   const [savingResponse, setSavingResponse] = useState<number | null>(null);
 
@@ -3741,6 +3921,24 @@ function InterviewDetailModal({
       toast({
         title: "Hata",
         description: error.message || "Mülakat güncellenirken hata oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resultMutation = useMutation({
+    mutationFn: async (result: string) => {
+      return apiRequest("PATCH", `/api/interviews/${interview.id}/result`, { result });
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: "Mülakat sonucu güncellendi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/interviews"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Sonuç güncellenirken hata oluştu",
         variant: "destructive",
       });
     },
@@ -3927,17 +4125,23 @@ function InterviewDetailModal({
                  interview.interviewType === 'video' ? 'Video' : interview.interviewType}
               </p>
             </div>
-            {interview.result && (
-              <div>
-                <p className="text-sm text-muted-foreground">Sonuç</p>
-                <Badge 
-                  variant={interview.result === 'hired' ? 'default' : interview.result === 'rejected' ? 'destructive' : 'secondary'}
-                  className={interview.result === 'hired' ? 'bg-green-600' : ''}
-                >
-                  {resultLabels[interview.result] || interview.result}
-                </Badge>
-              </div>
-            )}
+            <div>
+              <p className="text-sm text-muted-foreground">Sonuç</p>
+              <Select value={interviewResult} onValueChange={(value) => {
+                setInterviewResult(value);
+                resultMutation.mutate(value);
+              }}>
+                <SelectTrigger data-testid="select-interview-result">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Beklemede</SelectItem>
+                  <SelectItem value="positive">Pozitif</SelectItem>
+                  <SelectItem value="finalist">Finalist</SelectItem>
+                  <SelectItem value="negative">Negatif</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Interview Questions */}
