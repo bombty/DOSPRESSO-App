@@ -104,6 +104,14 @@ interface TrendData {
   auditCount: number;
 }
 
+interface BranchComparison {
+  branchId: number;
+  branchName: string;
+  avgScore: number;
+  auditCount: number;
+  passRate: number;
+}
+
 interface CorrectiveAction {
   id: number;
   auditInstanceId: number;
@@ -141,6 +149,12 @@ export default function KaliteDenetimi() {
   // Trend data
   const { data: trendData, isLoading: trendLoading } = useQuery<TrendData[]>({
     queryKey: ["/api/audits/analytics/trends"],
+  });
+
+  // Branch comparison (HQ only)
+  const { data: branchComparison } = useQuery<BranchComparison[]>({
+    queryKey: ["/api/audits/analytics/branch-comparison"],
+    enabled: !!isHQ || user?.role === 'admin',
   });
 
   // Audit instances
@@ -545,6 +559,91 @@ export default function KaliteDenetimi() {
             </Card>
           </div>
 
+          {/* Branch Comparison Chart (HQ Only) */}
+          {(isHQ || user?.role === 'admin') && branchComparison && branchComparison.length > 0 && (
+            <Card data-testid="card-branch-comparison">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Şube Karşılaştırması
+                </CardTitle>
+                <CardDescription>Ortalama denetim skorları</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={branchComparison} layout="vertical" margin={{ left: 80 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="branchName" type="category" tick={{ fontSize: 11 }} width={75} />
+                    <Tooltip 
+                      formatter={(value: number, name: string) => [
+                        `${Number(value).toFixed(1)}%`, 
+                        name === 'avgScore' ? 'Ortalama Skor' : 'Geçiş Oranı'
+                      ]}
+                    />
+                    <Bar dataKey="avgScore" fill="#3b82f6" name="Ortalama Skor" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Risk Analysis Section (HQ Only) */}
+          {(isHQ || user?.role === 'admin') && branchComparison && branchComparison.length > 0 && (
+            <Card data-testid="card-risk-analysis">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Risk Analizi
+                </CardTitle>
+                <CardDescription>Dikkat gerektiren şubeler</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {branchComparison
+                  .filter(b => Number(b.avgScore) < 70)
+                  .sort((a, b) => Number(a.avgScore) - Number(b.avgScore))
+                  .slice(0, 5)
+                  .map((branch) => {
+                    const score = Number(branch.avgScore);
+                    const riskLevel = score < 50 ? 'critical' : score < 60 ? 'high' : score < 70 ? 'medium' : 'low';
+                    const riskColors: Record<string, string> = {
+                      critical: 'bg-red-500',
+                      high: 'bg-orange-500',
+                      medium: 'bg-yellow-500',
+                      low: 'bg-green-500',
+                    };
+                    const riskLabels: Record<string, string> = {
+                      critical: 'Kritik',
+                      high: 'Yüksek',
+                      medium: 'Orta',
+                      low: 'Düşük',
+                    };
+                    return (
+                      <div key={branch.branchId} className="flex items-center justify-between p-3 rounded-lg border" data-testid={`risk-branch-${branch.branchId}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-8 rounded ${riskColors[riskLevel]}`} />
+                          <div>
+                            <p className="font-medium text-sm">{branch.branchName}</p>
+                            <p className="text-xs text-muted-foreground">{branch.auditCount} denetim</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={`${riskColors[riskLevel]} text-white`}>{riskLabels[riskLevel]}</Badge>
+                          <span className="text-lg font-bold">{score.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {branchComparison.filter(b => Number(b.avgScore) < 70).length === 0 && (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-green-500 opacity-50" />
+                    <p>Tüm şubeler hedef skorun üzerinde</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Recent Audits Quick List */}
           <Card>
             <CardHeader className="pb-2">
@@ -707,35 +806,37 @@ export default function KaliteDenetimi() {
           ) : (
             <div className="space-y-3">
               {capas.map((capa) => (
-                <Card key={capa.id} className="hover-elevate" data-testid={`card-capa-${capa.id}`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <h3 className="font-medium" data-testid={`text-capa-title-${capa.id}`}>
-                          {capa.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                          {capa.description}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                          <Building2 className="w-3 h-3" />
-                          <span>{capa.branch?.name || `Şube #${capa.branchId}`}</span>
-                          {capa.dueDate && (
-                            <>
-                              <span>•</span>
-                              <Calendar className="w-3 h-3" />
-                              <span>{format(new Date(capa.dueDate), "d MMM", { locale: tr })}</span>
-                            </>
-                          )}
+                <Link key={capa.id} href={`/capa/${capa.id}`}>
+                  <Card className="hover-elevate cursor-pointer" data-testid={`card-capa-${capa.id}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <h3 className="font-medium" data-testid={`text-capa-title-${capa.id}`}>
+                            {capa.title || capa.description?.substring(0, 50) || `CAPA #${capa.id}`}
+                          </h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                            {capa.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                            <Building2 className="w-3 h-3" />
+                            <span>{capa.branch?.name || `Şube #${capa.branchId}`}</span>
+                            {capa.dueDate && (
+                              <>
+                                <span>•</span>
+                                <Calendar className="w-3 h-3" />
+                                <span>{format(new Date(capa.dueDate), "d MMM", { locale: tr })}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {getPriorityBadge(capa.priority)}
+                          {getCapaStatusBadge(capa.status)}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        {getPriorityBadge(capa.priority)}
-                        {getCapaStatusBadge(capa.status)}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}

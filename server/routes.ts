@@ -17271,7 +17271,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // GET /api/corrective-actions/:id - Get single CAPA with updates
+  // GET /api/corrective-actions/:id - Get single CAPA with updates and relations
   app.get('/api/corrective-actions/:id', isAuthenticated, async (req: any, res) => {
     try {
       const capaId = parseInt(req.params.id);
@@ -17281,14 +17281,59 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Aksiyon bulunamadı" });
       }
 
+      // Fetch related entities
+      const [assignedTo] = capa.assignedToId 
+        ? await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(eq(users.id, capa.assignedToId))
+        : [null];
+      
+      const [createdBy] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(eq(users.id, capa.createdById));
+
+      // Fetch audit instance with branch and template
+      const [auditInstance] = capa.auditInstanceId
+        ? await db.select({
+            id: auditInstances.id,
+            auditDate: auditInstances.auditDate,
+            branchId: auditInstances.branchId,
+          }).from(auditInstances).where(eq(auditInstances.id, capa.auditInstanceId))
+        : [null];
+
+      let auditInstanceData = null;
+      if (auditInstance) {
+        const [template] = await db.select({ id: auditTemplates.id, title: auditTemplates.title })
+          .from(auditTemplates).where(eq(auditTemplates.id, (await db.select({ templateId: auditInstances.templateId }).from(auditInstances).where(eq(auditInstances.id, capa.auditInstanceId)))[0]?.templateId || 0));
+        const [branch] = auditInstance.branchId
+          ? await db.select({ id: branches.id, name: branches.name }).from(branches).where(eq(branches.id, auditInstance.branchId))
+          : [null];
+        auditInstanceData = { ...auditInstance, template, branch };
+      }
+
+      // Fetch audit item
+      const [auditItem] = capa.auditItemId
+        ? await db.select({ id: auditTemplateItems.id, itemText: auditTemplateItems.itemText })
+            .from(auditTemplateItems).where(eq(auditTemplateItems.id, capa.auditItemId))
+        : [null];
+
+      // Fetch updates with user info
       const updates = await db.select().from(correctiveActionUpdates)
         .where(eq(correctiveActionUpdates.correctiveActionId, capaId))
         .orderBy(desc(correctiveActionUpdates.createdAt));
 
+      const updatesWithUsers = await Promise.all(updates.map(async (update) => {
+        const [updatedBy] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(eq(users.id, update.updatedById));
+        return { ...update, updatedBy };
+      }));
+
       res.json({
         ...capa,
         slaStatus: capa.dueDate ? getSLAStatus(new Date(capa.dueDate)) : 'on_track',
-        updates,
+        assignedTo,
+        createdBy,
+        auditInstance: auditInstanceData,
+        auditItem,
+        updates: updatesWithUsers,
       });
     } catch (error) {
       console.error("Get corrective action error:", error);
@@ -17337,8 +17382,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(400).json({ message: `${currentCapa.status} durumundan ${status} durumuna geçiş yapılamaz` });
       }
 
-      // HQ approval required for closing
-      if (status === 'closed' && !isHQRole(user.role) && user.role !== 'admin') {
+      // HQ approval required for closing (case-insensitive check)
+      if (status && status.toUpperCase() === 'CLOSED' && !isHQRole(user.role) && user.role !== 'admin') {
         return res.status(403).json({ message: "CAPA kapatma yetkisi sadece HQ kullanıcılarında" });
       }
 
@@ -17374,20 +17419,51 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // POST /api/corrective-actions/:id/updates - Add CAPA update
+  // POST /api/corrective-actions/:id/updates - Add CAPA update with status change
   app.post('/api/corrective-actions/:id/updates', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
       const capaId = parseInt(req.params.id);
-      const { notes, photoUrls } = req.body;
+      const { newStatus, notes, evidence } = req.body;
+
+      // Get current CAPA to record old status
+      const [currentCapa] = await db.select().from(correctiveActions).where(eq(correctiveActions.id, capaId));
+      if (!currentCapa) {
+        return res.status(404).json({ message: "Aksiyon bulunamadı" });
+      }
+
+      // HQ approval required for closing (case-insensitive check)
+      if (newStatus && newStatus.toUpperCase() === 'CLOSED' && !isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "CAPA kapatma yetkisi sadece HQ kullanıcılarında" });
+      }
+
+      // Validate status transition if status is changing
+      if (newStatus && newStatus !== 'update' && !isValidCAPATransition(currentCapa.status, newStatus)) {
+        return res.status(400).json({ message: `${currentCapa.status} durumundan ${newStatus} durumuna geçiş yapılamaz` });
+      }
 
       const [update] = await db.insert(correctiveActionUpdates).values({
         correctiveActionId: capaId,
-        status: 'update',
+        oldStatus: currentCapa.status,
+        newStatus: newStatus || 'update',
         notes,
-        photoUrls: photoUrls || [],
+        evidence: evidence || null,
         updatedById: user.id,
       }).returning();
+
+      // Update the main CAPA status atomically
+      if (newStatus && newStatus !== 'update' && newStatus !== currentCapa.status) {
+        const updateData: any = { 
+          status: newStatus, 
+          updatedAt: new Date() 
+        };
+        if (newStatus.toUpperCase() === 'CLOSED') {
+          updateData.closedDate = new Date();
+        }
+        await db.update(correctiveActions)
+          .set(updateData)
+          .where(eq(correctiveActions.id, capaId));
+      }
 
       res.status(201).json(update);
     } catch (error) {

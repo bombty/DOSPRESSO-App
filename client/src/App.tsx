@@ -97,6 +97,7 @@ import FranchiseAcilis from "@/pages/franchise-acilis";
 import DenetimSablonlari from "@/pages/denetim-sablonlari";
 import DenetimYurutme from "@/pages/denetim-yurutme";
 import Denetimler from "@/pages/denetimler";
+import CapaDetay from "@/pages/capa-detay";
 import BranchFeedback from "@/pages/branch-feedback";
 import KayipEsya from "@/pages/kayip-esya";
 import KayipEsyaHQ from "@/pages/kayip-esya-hq";
@@ -225,6 +226,7 @@ function Router() {
           <Route path="/denetim-sablonlari" component={DenetimSablonlari} />
           <Route path="/denetimler" component={Denetimler} />
           <Route path="/denetim/:id" component={DenetimYurutme} />
+          <Route path="/capa/:id" component={CapaDetay} />
 
           {/* Müşteri İlişkileri */}
           <Route path="/misafir-geri-bildirim" component={MisafirGeriBildirim} />
