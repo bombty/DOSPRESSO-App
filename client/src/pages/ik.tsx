@@ -3960,7 +3960,7 @@ function InterviewDetailModal({
       await saveAllResponses();
       // Then complete the interview
       await apiRequest("POST", `/api/interviews/${interview.id}/complete`, {
-        result: 'pending',
+        result: interviewResult,
         overallNotes: feedback,
         overallScore: rating,
       });
@@ -3977,8 +3977,8 @@ function InterviewDetailModal({
       // Save all responses before hiring
       await saveAllResponses();
       // Call the hire endpoint - handles rejection emails for other candidates automatically
-      const response = await apiRequest("POST", `/api/interviews/${interview.id}/hire`, {});
-      toast({ title: "Başarılı", description: response.message || "Aday işe alındı" });
+      const response: any = await apiRequest("POST", `/api/interviews/${interview.id}/hire`, {});
+      toast({ title: "Başarılı", description: response?.message || "Aday işe alındı" });
       queryClient.invalidateQueries({ queryKey: ["/api/interviews"] });
       queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/job-positions"] });
@@ -3992,15 +3992,17 @@ function InterviewDetailModal({
   const handleReject = async () => {
     try {
       await saveAllResponses();
+      // First update interview with negative result
+      const rejectMutation = await apiRequest("PATCH", `/api/interviews/${interview.id}/result`, { result: 'negative' });
+      // Update interview details
       updateMutation.mutate({
         status: 'completed',
-        result: 'rejected',
         rating,
         strengths,
         weaknesses,
         feedback,
       });
-      await apiRequest("PATCH", `/api/job-applications/${interview.applicationId}`, { status: 'rejected' });
+      queryClient.invalidateQueries({ queryKey: ["/api/interviews"] });
       queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/hr/recruitment-stats"] });
       onOpenChange(false);
