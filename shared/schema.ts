@@ -538,7 +538,7 @@ export type InsertBranch = z.infer<typeof insertBranchSchema>;
 export type Branch = typeof branches.$inferSelect;
 
 // Users table (Username/Password Auth)
-export const users = pgTable("users", {
+export const users: ReturnType<typeof pgTable> = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: varchar("username", { length: 100 }).unique(),
   hashedPassword: varchar("hashed_password", { length: 255 }),
@@ -5277,7 +5277,7 @@ export const INTERVIEW_RESULT = {
 export type InterviewResultType = typeof INTERVIEW_RESULT[keyof typeof INTERVIEW_RESULT];
 
 // Açık Pozisyonlar Tablosu
-export const jobPositions = pgTable("job_positions", {
+export const jobPositions: ReturnType<typeof pgTable> = pgTable("job_positions", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 200 }).notNull(), // Pozisyon adı: Barista, Supervisor vb.
   targetRole: varchar("target_role", { length: 50 }).notNull(), // UserRoleType
@@ -5317,7 +5317,7 @@ export type InsertJobPosition = z.infer<typeof insertJobPositionSchema>;
 export type JobPosition = typeof jobPositions.$inferSelect;
 
 // Başvurular Tablosu
-export const jobApplications = pgTable("job_applications", {
+export const jobApplications: ReturnType<typeof pgTable> = pgTable("job_applications", {
   id: serial("id").primaryKey(),
   positionId: integer("position_id").notNull().references(() => jobPositions.id),
   // Aday bilgileri
