@@ -10,13 +10,18 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
   ArrowLeft, CheckCircle2, Camera, FileText, Star,
-  Save, Send, AlertCircle, Loader2, XCircle 
+  Save, Send, AlertCircle, Loader2, XCircle, 
+  Award, TrendingUp, TrendingDown, Target, ClipboardList,
+  AlertTriangle, Eye
 } from "lucide-react";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 
 type AuditTemplateItem = {
   id: number;
@@ -54,7 +59,10 @@ type AuditInstance = {
   status: string;
   totalScore: number | null;
   maxScore: number | null;
+  percentageScore: number | null;
+  grade: string | null;
   notes: string | null;
+  completedAt: string | null;
   template: {
     id: number;
     title: string;
@@ -62,6 +70,20 @@ type AuditInstance = {
     category: string;
   };
   items: AuditInstanceItem[];
+  branch?: { id: number; name: string };
+  auditor?: { id: string; firstName: string; lastName: string };
+};
+
+type CorrectiveAction = {
+  id: number;
+  auditInstanceId: number;
+  branchId: number;
+  title: string;
+  description: string | null;
+  priority: "low" | "medium" | "high" | "critical";
+  status: "open" | "in_progress" | "pending_review" | "closed" | "escalated";
+  dueDate: string | null;
+  createdAt: string;
 };
 
 export default function DenetimYurutmePage() {
@@ -73,12 +95,23 @@ export default function DenetimYurutmePage() {
   const auditId = parseInt(id || "0");
   const [overallNotes, setOverallNotes] = useState("");
   const [overallActionItems, setOverallActionItems] = useState("");
+  const [activeTab, setActiveTab] = useState("summary");
 
   // Fetch audit instance
   const { data: audit, isLoading } = useQuery<AuditInstance>({
     queryKey: ['/api/audit-instances', auditId],
     queryFn: () => fetch(`/api/audit-instances/${auditId}`, { credentials: 'include' }).then(res => {
       if (!res.ok) throw new Error('Denetim yüklenemedi');
+      return res.json();
+    }),
+    enabled: !!auditId,
+  });
+
+  // Fetch related CAPA actions for completed audits
+  const { data: capaActions } = useQuery<CorrectiveAction[]>({
+    queryKey: ['/api/corrective-actions', { auditInstanceId: auditId }],
+    queryFn: () => fetch(`/api/corrective-actions?auditInstanceId=${auditId}`, { credentials: 'include' }).then(res => {
+      if (!res.ok) return [];
       return res.json();
     }),
     enabled: !!auditId,
@@ -213,50 +246,203 @@ export default function DenetimYurutmePage() {
     currentScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
   }
 
-  return (
-    <div className="p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        <Link href="/denetimler">
-          <Button variant="ghost" size="icon" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">{audit.template.title}</h1>
-          <p className="text-sm text-muted-foreground line-clamp-1">{audit.template.description}</p>
-        </div>
-        <Badge 
-          variant={audit.status === 'completed' ? 'default' : 'secondary'}
-          data-testid="badge-status"
-        >
-          {audit.status === 'completed' ? 'Tamamlandı' : 'Devam Ediyor'}
-        </Badge>
-      </div>
+  // Helper functions for summary view
+  const getGradeInfo = (grade: string | null, score: number) => {
+    const gradeMap: Record<string, { color: string; bgColor: string; label: string }> = {
+      'A': { color: 'text-green-600', bgColor: 'bg-green-500', label: 'Mükemmel' },
+      'B': { color: 'text-blue-600', bgColor: 'bg-blue-500', label: 'İyi' },
+      'C': { color: 'text-yellow-600', bgColor: 'bg-yellow-500', label: 'Orta' },
+      'D': { color: 'text-orange-600', bgColor: 'bg-orange-500', label: 'Zayıf' },
+      'F': { color: 'text-red-600', bgColor: 'bg-red-500', label: 'Başarısız' },
+    };
+    const calculated = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F';
+    return gradeMap[grade || calculated] || gradeMap['F'];
+  };
 
-      {/* Progress Card - Sticky on mobile */}
-      <Card className="sticky top-0 z-10 bg-card/95 backdrop-blur">
-        <CardContent className="p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 text-primary shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground">İlerleme</p>
-                <p className="text-lg font-bold">{answeredItems}/{totalItems}</p>
-              </div>
+  const finalScore = isCompleted ? (audit.percentageScore ?? currentScore) : currentScore;
+  const gradeInfo = getGradeInfo(audit.grade, finalScore);
+  
+  // Categorize items for summary
+  const passedItems = audit.items.filter(item => (item.score ?? 0) >= 70);
+  const failedItems = audit.items.filter(item => item.score !== null && item.score < 70);
+  const strengths = passedItems.filter(item => (item.score ?? 0) >= 90).slice(0, 3);
+  const weaknesses = failedItems.slice(0, 5);
+
+  const getPriorityBadge = (priority: string) => {
+    const colors: Record<string, string> = {
+      'critical': 'bg-red-500 text-white',
+      'high': 'bg-orange-500 text-white',
+      'medium': 'bg-yellow-500 text-black',
+      'low': 'bg-gray-500 text-white',
+    };
+    const labels: Record<string, string> = {
+      'critical': 'Kritik',
+      'high': 'Yüksek',
+      'medium': 'Orta',
+      'low': 'Düşük',
+    };
+    return <Badge className={colors[priority]}>{labels[priority]}</Badge>;
+  };
+
+  const getCapaStatusBadge = (status: string) => {
+    const styles: Record<string, { className: string; label: string }> = {
+      'open': { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', label: 'Açık' },
+      'in_progress': { className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', label: 'İşlemde' },
+      'pending_review': { className: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', label: 'İncelemede' },
+      'closed': { className: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', label: 'Kapatıldı' },
+      'escalated': { className: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', label: 'Eskalasyon' },
+    };
+    const style = styles[status] || styles['open'];
+    return <Badge className={style.className}>{style.label}</Badge>;
+  };
+
+  // Render Summary View for completed audits
+  const renderSummaryView = () => (
+    <div className="space-y-4">
+      {/* Score Card */}
+      <Card data-testid="card-score-summary">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-center gap-4 sm:gap-6">
+            {/* Grade Circle */}
+            <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full ${gradeInfo.bgColor} flex items-center justify-center shrink-0`}>
+              <span className="text-3xl sm:text-4xl font-bold text-white">{audit.grade || (finalScore >= 90 ? 'A' : finalScore >= 80 ? 'B' : finalScore >= 70 ? 'C' : finalScore >= 60 ? 'D' : 'F')}</span>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Skor</p>
-              <p className="text-lg font-bold text-primary">{currentScore}%</p>
+            <div className="flex-1">
+              <p className="text-3xl sm:text-4xl font-bold">{finalScore}%</p>
+              <p className={`text-lg font-medium ${gradeInfo.color}`}>{gradeInfo.label}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {passedItems.length}/{totalItems} madde başarılı
+              </p>
+              {audit.completedAt && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tamamlanma: {format(new Date(audit.completedAt), "d MMM yyyy HH:mm", { locale: tr })}
+                </p>
+              )}
             </div>
           </div>
-          <Progress value={progress} className="h-2 mt-2" data-testid="progress-audit" />
         </CardContent>
       </Card>
 
-      {/* Audit Items */}
-      <div className="w-full space-y-2 sm:space-y-3">
-        <h2 className="text-xl font-semibold">Denetim Maddeleri</h2>
+      {/* Branch & Auditor Info */}
+      <Card>
+        <CardContent className="p-4 grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Şube</p>
+            <p className="font-medium">{audit.branch?.name || `Şube #${audit.branchId}`}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Denetçi</p>
+            <p className="font-medium">{audit.auditor ? `${audit.auditor.firstName} ${audit.auditor.lastName}` : audit.auditorId}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Denetim Tarihi</p>
+            <p className="font-medium">{format(new Date(audit.auditDate), "d MMM yyyy", { locale: tr })}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Kategori</p>
+            <p className="font-medium">{audit.template.category || 'Genel'}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Strengths & Weaknesses */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Strengths */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-500" />
+              Güçlü Yönler
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {strengths.length > 0 ? strengths.map((item, i) => (
+              <div key={i} className="flex items-center justify-between p-2 rounded-md bg-green-50 dark:bg-green-950/30">
+                <span className="text-sm line-clamp-1 flex-1">{item.templateItem.itemText}</span>
+                <Badge className="bg-green-500 text-white shrink-0 ml-2">{item.score}%</Badge>
+              </div>
+            )) : (
+              <p className="text-sm text-muted-foreground">Öne çıkan yüksek puanlı madde yok</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Weaknesses */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-red-500" />
+              İyileştirme Gereken
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {weaknesses.length > 0 ? weaknesses.map((item, i) => (
+              <div key={i} className="flex items-center justify-between p-2 rounded-md bg-red-50 dark:bg-red-950/30">
+                <span className="text-sm line-clamp-1 flex-1">{item.templateItem.itemText}</span>
+                <Badge variant="destructive" className="shrink-0 ml-2">{item.score}%</Badge>
+              </div>
+            )) : (
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="text-sm">Tüm maddeler başarılı!</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* CAPA Actions */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            Düzeltici Aksiyonlar (CAPA)
+          </CardTitle>
+          <CardDescription>Bu denetimden oluşturulan aksiyon öğeleri</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {capaActions && capaActions.length > 0 ? capaActions.map((capa) => (
+            <div key={capa.id} className="flex items-center justify-between p-3 rounded-md border hover-elevate">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{capa.title}</p>
+                {capa.dueDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Son tarih: {format(new Date(capa.dueDate), "d MMM yyyy", { locale: tr })}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {getPriorityBadge(capa.priority)}
+                {getCapaStatusBadge(capa.status)}
+              </div>
+            </div>
+          )) : (
+            <div className="text-center py-4 text-muted-foreground">
+              <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Henüz düzeltici aksiyon oluşturulmadı</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Notes if any */}
+      {audit.notes && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Denetim Notları</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap">{audit.notes}</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  // Render audit items form (for in-progress or detail view)
+  const renderAuditItemsForm = () => (
+    <div className="w-full space-y-2 sm:space-y-3">
+      <h2 className="text-xl font-semibold">Denetim Maddeleri</h2>
         
         {audit.items.map((item, index) => {
           const itemType = item.templateItem.itemType || 'checkbox';
@@ -443,43 +629,42 @@ export default function DenetimYurutmePage() {
             </Card>
           );
         })}
-      </div>
+      
+      {/* Overall Notes and Actions - only for in-progress */}
+      {!isCompleted && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Genel Değerlendirme</CardTitle>
+            <CardDescription>Denetim sonucu genel notlar ve aksiyon öğeleri</CardDescription>
+          </CardHeader>
+          <CardContent className="w-full space-y-2 sm:space-y-3">
+            <div>
+              <Label htmlFor="overall-notes">Genel Notlar</Label>
+              <Textarea
+                id="overall-notes"
+                value={overallNotes}
+                onChange={(e) => setOverallNotes(e.target.value)}
+                placeholder="Denetim hakkında genel gözlemler..."
+                className="h-24"
+                data-testid="textarea-overall-notes"
+              />
+            </div>
+            <div>
+              <Label htmlFor="action-items">Aksiyon Öğeleri</Label>
+              <Textarea
+                id="action-items"
+                value={overallActionItems}
+                onChange={(e) => setOverallActionItems(e.target.value)}
+                placeholder="Yapılması gerekenler (satır satır)..."
+                className="h-24"
+                data-testid="textarea-action-items"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Overall Notes and Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Genel Değerlendirme</CardTitle>
-          <CardDescription>Denetim sonucu genel notlar ve aksiyon öğeleri</CardDescription>
-        </CardHeader>
-        <CardContent className="w-full space-y-2 sm:space-y-3">
-          <div>
-            <Label htmlFor="overall-notes">Genel Notlar</Label>
-            <Textarea
-              id="overall-notes"
-              value={overallNotes}
-              onChange={(e) => setOverallNotes(e.target.value)}
-              disabled={isCompleted}
-              placeholder="Denetim hakkında genel gözlemler..."
-              className="h-24"
-              data-testid="textarea-overall-notes"
-            />
-          </div>
-          <div>
-            <Label htmlFor="action-items">Aksiyon Öğeleri</Label>
-            <Textarea
-              id="action-items"
-              value={overallActionItems}
-              onChange={(e) => setOverallActionItems(e.target.value)}
-              disabled={isCompleted}
-              placeholder="Yapılması gerekenler (satır satır)..."
-              className="h-24"
-              data-testid="textarea-action-items"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Action Buttons */}
+      {/* Action Buttons - only for in-progress */}
       {!isCompleted && (
         <div className="flex gap-2 sm:gap-3 justify-end sticky bottom-4 bg-background p-3 rounded-lg border">
           <Link href="/denetimler">
@@ -508,7 +693,7 @@ export default function DenetimYurutmePage() {
       )}
 
       {/* Warning if incomplete */}
-      {answeredItems < totalItems && audit.status !== 'completed' && (
+      {answeredItems < totalItems && !isCompleted && (
         <Card className="border-orange-500">
           <CardContent className="flex items-center gap-2 py-3">
             <AlertCircle className="h-4 w-4 text-warning" />
@@ -518,6 +703,75 @@ export default function DenetimYurutmePage() {
             </p>
           </CardContent>
         </Card>
+      )}
+    </div>
+  );
+
+  // Main return - use tabs for completed audits, direct form for in-progress
+  return (
+    <div className="p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        <Link href="/denetimler">
+          <Button variant="ghost" size="icon" data-testid="button-back">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold truncate">{audit.template.title}</h1>
+          <p className="text-sm text-muted-foreground line-clamp-1">{audit.template.description}</p>
+        </div>
+        <Badge 
+          variant={isCompleted ? 'default' : 'secondary'}
+          data-testid="badge-status"
+        >
+          {isCompleted ? 'Tamamlandı' : 'Devam Ediyor'}
+        </Badge>
+      </div>
+
+      {/* For completed audits: show tabbed view */}
+      {isCompleted ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="summary" data-testid="tab-summary">
+              <Award className="w-4 h-4 mr-2" />
+              Özet
+            </TabsTrigger>
+            <TabsTrigger value="details" data-testid="tab-details">
+              <Eye className="w-4 h-4 mr-2" />
+              Detaylar
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="summary" className="mt-4">
+            {renderSummaryView()}
+          </TabsContent>
+          <TabsContent value="details" className="mt-4">
+            {renderAuditItemsForm()}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <>
+          {/* Progress Card - Sticky on mobile */}
+          <Card className="sticky top-0 z-10 bg-card/95 backdrop-blur">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">İlerleme</p>
+                    <p className="text-lg font-bold">{answeredItems}/{totalItems}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Skor</p>
+                  <p className="text-lg font-bold text-primary">{currentScore}%</p>
+                </div>
+              </div>
+              <Progress value={progress} className="h-2 mt-2" data-testid="progress-audit" />
+            </CardContent>
+          </Card>
+          {renderAuditItemsForm()}
+        </>
       )}
     </div>
   );
