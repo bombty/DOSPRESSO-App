@@ -125,6 +125,10 @@ export default function KaliteDenetimi() {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+  
+  // Filters for audits tab
+  const [filterBranch, setFilterBranch] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   const isHQ = user?.role && isHQRole(user.role as any);
   const canCreateAudit = user?.role === 'coach' || user?.role === 'admin' || isHQ;
@@ -151,12 +155,12 @@ export default function KaliteDenetimi() {
 
   const { data: templates } = useQuery<AuditTemplate[]>({
     queryKey: ["/api/audit-templates"],
-    enabled: canCreateAudit,
+    enabled: !!canCreateAudit,
   });
 
+  // Always fetch branches for filters
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
-    enabled: canCreateAudit,
   });
 
   const form = useForm<CreateAuditFormValues>({
@@ -257,6 +261,13 @@ export default function KaliteDenetimi() {
     name: c.status === 'open' ? 'Açık' : c.status === 'in_progress' ? 'İşlemde' : c.status === 'pending_review' ? 'İncelemede' : c.status === 'closed' ? 'Kapatıldı' : 'Eskalasyon',
     value: c.count,
   })) || [];
+
+  // Filter audits based on selected filters
+  const filteredAudits = audits?.filter(audit => {
+    if (filterBranch !== "all" && audit.branchId !== parseInt(filterBranch)) return false;
+    if (filterStatus !== "all" && audit.status !== filterStatus) return false;
+    return true;
+  }) || [];
 
   if (statsLoading || auditsLoading) {
     return (
@@ -576,12 +587,63 @@ export default function KaliteDenetimi() {
 
         {/* Audits Tab */}
         <TabsContent value="audits" className="space-y-4 mt-4">
-          {!audits || audits.length === 0 ? (
+          {/* Filters */}
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex flex-wrap gap-3">
+                <div className="flex-1 min-w-[140px]">
+                  <Select value={filterBranch} onValueChange={setFilterBranch}>
+                    <SelectTrigger data-testid="filter-branch">
+                      <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Şube" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tüm Şubeler</SelectItem>
+                      {branches?.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id.toString()}>
+                          {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1 min-w-[140px]">
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger data-testid="filter-status">
+                      <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Durum" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tüm Durumlar</SelectItem>
+                      <SelectItem value="draft">Taslak</SelectItem>
+                      <SelectItem value="in_progress">Devam Ediyor</SelectItem>
+                      <SelectItem value="completed">Tamamlandı</SelectItem>
+                      <SelectItem value="cancelled">İptal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(filterBranch !== "all" || filterStatus !== "all") && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => { setFilterBranch("all"); setFilterStatus("all"); }}
+                    data-testid="button-clear-filters"
+                  >
+                    Filtreleri Temizle
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {filteredAudits.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <FileSearch className="w-12 h-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground" data-testid="text-no-audits">Henüz denetim bulunmuyor</p>
-                {canCreateAudit && (
+                <p className="text-muted-foreground" data-testid="text-no-audits">
+                  {audits && audits.length > 0 ? "Filtre sonucu bulunamadı" : "Henüz denetim bulunmuyor"}
+                </p>
+                {canCreateAudit && !audits?.length && (
                   <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-4" data-testid="button-create-first-audit">
                     <Plus className="w-4 h-4 mr-2" />
                     İlk Denetimi Oluştur
@@ -591,7 +653,7 @@ export default function KaliteDenetimi() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {audits.map((audit) => (
+              {filteredAudits.map((audit) => (
                 <Link key={audit.id} href={`/denetim/${audit.id}`}>
                   <Card className="hover-elevate cursor-pointer" data-testid={`card-audit-${audit.id}`}>
                     <CardContent className="p-4">

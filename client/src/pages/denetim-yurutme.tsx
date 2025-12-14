@@ -214,7 +214,7 @@ export default function DenetimYurutmePage() {
   }
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 max-w-6xl mx-auto">
+    <div className="p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-2 sm:gap-3">
         <Link href="/denetimler">
@@ -222,9 +222,9 @@ export default function DenetimYurutmePage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">{audit.template.title}</h1>
-          <p className="text-muted-foreground">{audit.template.description}</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold truncate">{audit.template.title}</h1>
+          <p className="text-sm text-muted-foreground line-clamp-1">{audit.template.description}</p>
         </div>
         <Badge 
           variant={audit.status === 'completed' ? 'default' : 'secondary'}
@@ -234,26 +234,23 @@ export default function DenetimYurutmePage() {
         </Badge>
       </div>
 
-      {/* Progress Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Star className="h-4 w-4 text-primary" />
-            İlerleme ve Skor
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="w-full space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <div>
-              <p className="text-sm text-muted-foreground">Tamamlanan Maddeler</p>
-              <p className="text-2xl font-bold">{answeredItems} / {totalItems}</p>
+      {/* Progress Card - Sticky on mobile */}
+      <Card className="sticky top-0 z-10 bg-card/95 backdrop-blur">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 text-primary shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">İlerleme</p>
+                <p className="text-lg font-bold">{answeredItems}/{totalItems}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Mevcut Skor</p>
-              <p className="text-2xl font-bold text-primary">{currentScore}/100</p>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Skor</p>
+              <p className="text-lg font-bold text-primary">{currentScore}%</p>
             </div>
           </div>
-          <Progress value={progress} className="h-2" data-testid="progress-audit" />
+          <Progress value={progress} className="h-2 mt-2" data-testid="progress-audit" />
         </CardContent>
       </Card>
 
@@ -302,13 +299,19 @@ export default function DenetimYurutmePage() {
                   <RadioGroup
                     value={item.response || ''}
                     onValueChange={(value) => handleResponseChange(item.templateItemId, value, itemType, item.templateItem.weight)}
-                    className="flex gap-2"
+                    className="flex gap-1 sm:gap-2 justify-between"
                     data-testid={`rating-group-${index}`}
                   >
                     {[1, 2, 3, 4, 5].map((rating) => (
-                      <div key={rating} className="flex items-center space-x-1">
-                        <RadioGroupItem value={String(rating)} id={`rating-${item.id}-${rating}`} disabled={isCompleted} data-testid={`rating-${index}-${rating}`} />
-                        <Label htmlFor={`rating-${item.id}-${rating}`}>{rating}</Label>
+                      <div key={rating} className="flex flex-col items-center">
+                        <RadioGroupItem 
+                          value={String(rating)} 
+                          id={`rating-${item.id}-${rating}`} 
+                          disabled={isCompleted} 
+                          data-testid={`rating-${index}-${rating}`}
+                          className="h-8 w-8 sm:h-6 sm:w-6"
+                        />
+                        <Label htmlFor={`rating-${item.id}-${rating}`} className="text-xs mt-1">{rating}</Label>
                       </div>
                     ))}
                   </RadioGroup>
