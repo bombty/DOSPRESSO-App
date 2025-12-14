@@ -15591,8 +15591,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const results = await query.orderBy(desc(jobApplications.createdAt));
-      // Extract just the jobApplications part
-      const applications = results.map(r => r.job_applications);
+      // Extract just the jobApplications part and add interview result
+      const applications = await Promise.all(results.map(async (r) => {
+        const app = r.job_applications;
+        // Get the latest interview for this application
+        const latestInterview = await db.select()
+          .from(interviews)
+          .where(eq(interviews.applicationId, app.id))
+          .orderBy(desc(interviews.createdAt))
+          .limit(1);
+        
+        return {
+          ...app,
+          interviewResult: latestInterview[0]?.result || null,
+        };
+      }));
       res.json(applications);
     } catch (error: any) {
       console.error("Error fetching applications:", error);
