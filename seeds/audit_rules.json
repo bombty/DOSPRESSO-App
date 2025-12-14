@@ -1,0 +1,84 @@
+{
+  "version": "1.0.0",
+  "description": "DOSPRESSO Kalite Denetimi Puanlama Kuralları",
+  "scoring": {
+    "passingScore": 70,
+    "grades": [
+      { "grade": "A+", "label": "Mükemmel", "minScore": 95, "maxScore": 100, "color": "#22c55e" },
+      { "grade": "A", "label": "Çok İyi", "minScore": 85, "maxScore": 94, "color": "#4ade80" },
+      { "grade": "B", "label": "İyi", "minScore": 75, "maxScore": 84, "color": "#a3e635" },
+      { "grade": "C", "label": "Geçer", "minScore": 70, "maxScore": 74, "color": "#facc15" },
+      { "grade": "D", "label": "Yetersiz", "minScore": 50, "maxScore": 69, "color": "#fb923c" },
+      { "grade": "F", "label": "Başarısız", "minScore": 0, "maxScore": 49, "color": "#ef4444" }
+    ],
+    "criticalItemRule": {
+      "enabled": true,
+      "description": "Kritik maddelerden herhangi biri 0 puan alırsa, genel skor ne olursa olsun denetim başarısız sayılır",
+      "failureScore": 0,
+      "failureGrade": "F"
+    },
+    "weightedSections": true,
+    "maxTotalPoints": 100
+  },
+  "capaRules": {
+    "autoCreateThreshold": 2,
+    "description": "2 veya altında puan alan maddeler için otomatik düzeltici aksiyon oluşturulur",
+    "priorityMapping": [
+      { "score": 0, "priority": "critical", "slaHours": 4 },
+      { "score": 1, "priority": "high", "slaHours": 24 },
+      { "score": 2, "priority": "medium", "slaHours": 72 }
+    ],
+    "criticalItemPriority": "critical",
+    "criticalItemSlaHours": 4
+  },
+  "statusFlow": {
+    "auditStatuses": [
+      { "status": "draft", "label": "Taslak", "color": "#94a3b8" },
+      { "status": "in_progress", "label": "Devam Ediyor", "color": "#3b82f6" },
+      { "status": "pending_review", "label": "İnceleme Bekliyor", "color": "#f59e0b" },
+      { "status": "completed", "label": "Tamamlandı", "color": "#22c55e" },
+      { "status": "cancelled", "label": "İptal Edildi", "color": "#ef4444" }
+    ],
+    "capaStatuses": [
+      { "status": "OPEN", "label": "Açık", "color": "#ef4444" },
+      { "status": "IN_PROGRESS", "label": "Devam Ediyor", "color": "#3b82f6" },
+      { "status": "PENDING_VERIFICATION", "label": "Doğrulama Bekliyor", "color": "#f59e0b" },
+      { "status": "VERIFIED", "label": "Doğrulandı", "color": "#22c55e" },
+      { "status": "CLOSED", "label": "Kapatıldı", "color": "#6b7280" },
+      { "status": "ESCALATED", "label": "Üst Kademeye Aktarıldı", "color": "#dc2626" }
+    ],
+    "allowedTransitions": {
+      "OPEN": ["IN_PROGRESS", "ESCALATED"],
+      "IN_PROGRESS": ["PENDING_VERIFICATION", "ESCALATED"],
+      "PENDING_VERIFICATION": ["VERIFIED", "IN_PROGRESS"],
+      "VERIFIED": ["CLOSED"],
+      "ESCALATED": ["IN_PROGRESS", "CLOSED"]
+    }
+  },
+  "notifications": {
+    "onAuditComplete": {
+      "enabled": true,
+      "recipients": ["branch_supervisor", "hq_coach"]
+    },
+    "onCapaCreated": {
+      "enabled": true,
+      "recipients": ["assigned_user", "branch_supervisor"]
+    },
+    "onCapaSlaWarning": {
+      "enabled": true,
+      "warningHoursBefore": 4,
+      "recipients": ["assigned_user", "branch_supervisor"]
+    },
+    "onCapaSlaBreached": {
+      "enabled": true,
+      "recipients": ["assigned_user", "branch_supervisor", "hq_coach"]
+    }
+  },
+  "permissions": {
+    "canCreateAudit": ["admin", "coach", "supervisor"],
+    "canEditAudit": ["admin", "coach"],
+    "canDeleteAudit": ["admin"],
+    "canApproveCAPA": ["admin", "coach", "supervisor"],
+    "canCloseCAPA": ["admin", "coach"]
+  }
+}

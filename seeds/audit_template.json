@@ -1,0 +1,243 @@
+{
+  "name": "DOSPRESSO Şube Denetim Şablonu v1.0",
+  "description": "Kahve dükkanı şube denetimi için standart kontrol listesi",
+  "version": "1.0.0",
+  "isActive": true,
+  "totalPoints": 100,
+  "passingScore": 70,
+  "sections": [
+    {
+      "sectionName": "Temizlik ve Hijyen",
+      "sectionOrder": 1,
+      "weight": 25,
+      "items": [
+        {
+          "itemCode": "TH-001",
+          "questionTr": "Bar tezgahı temiz ve düzenli mi?",
+          "category": "temizlik",
+          "maxPoints": 5,
+          "isCritical": false,
+          "requiresPhoto": true,
+          "itemOrder": 1
+        },
+        {
+          "itemCode": "TH-002",
+          "questionTr": "Espresso makinesi günlük temizlik yapılmış mı?",
+          "category": "temizlik",
+          "maxPoints": 5,
+          "isCritical": true,
+          "requiresPhoto": true,
+          "itemOrder": 2
+        },
+        {
+          "itemCode": "TH-003",
+          "questionTr": "Değirmen temizliği yapılmış mı?",
+          "category": "temizlik",
+          "maxPoints": 4,
+          "isCritical": false,
+          "requiresPhoto": true,
+          "itemOrder": 3
+        },
+        {
+          "itemCode": "TH-004",
+          "questionTr": "Buzdolabı sıcaklığı uygun mu (2-8°C)?",
+          "category": "hijyen",
+          "maxPoints": 5,
+          "isCritical": true,
+          "requiresPhoto": true,
+          "itemOrder": 4
+        },
+        {
+          "itemCode": "TH-005",
+          "questionTr": "Personel el hijyeni kurallarına uyuyor mu?",
+          "category": "hijyen",
+          "maxPoints": 6,
+          "isCritical": true,
+          "requiresPhoto": false,
+          "itemOrder": 5
+        }
+      ]
+    },
+    {
+      "sectionName": "Ürün Kalitesi",
+      "sectionOrder": 2,
+      "weight": 30,
+      "items": [
+        {
+          "itemCode": "UK-001",
+          "questionTr": "Espresso çekimi standartlara uygun mu (25-30 saniye)?",
+          "category": "kalite",
+          "maxPoints": 6,
+          "isCritical": true,
+          "requiresPhoto": false,
+          "itemOrder": 1
+        },
+        {
+          "itemCode": "UK-002",
+          "questionTr": "Süt köpürtme kalitesi uygun mu?",
+          "category": "kalite",
+          "maxPoints": 5,
+          "isCritical": false,
+          "requiresPhoto": false,
+          "itemOrder": 2
+        },
+        {
+          "itemCode": "UK-003",
+          "questionTr": "İçecek sunumu marka standartlarına uygun mu?",
+          "category": "sunum",
+          "maxPoints": 5,
+          "isCritical": false,
+          "requiresPhoto": true,
+          "itemOrder": 3
+        },
+        {
+          "itemCode": "UK-004",
+          "questionTr": "Kahve çekirdekleri taze mi (açılma tarihi 2 hafta içinde)?",
+          "category": "malzeme",
+          "maxPoints": 5,
+          "isCritical": true,
+          "requiresPhoto": true,
+          "itemOrder": 4
+        },
+        {
+          "itemCode": "UK-005",
+          "questionTr": "Reçete ölçüleri doğru kullanılıyor mu?",
+          "category": "kalite",
+          "maxPoints": 5,
+          "isCritical": false,
+          "requiresPhoto": false,
+          "itemOrder": 5
+        },
+        {
+          "itemCode": "UK-006",
+          "questionTr": "Yiyecek ürünleri son kullanma tarihine uygun mu?",
+          "category": "malzeme",
+          "maxPoints": 4,
+          "isCritical": true,
+          "requiresPhoto": true,
+          "itemOrder": 6
+        }
+      ]
+    },
+    {
+      "sectionName": "Müşteri Hizmeti",
+      "sectionOrder": 3,
+      "weight": 20,
+      "items": [
+        {
+          "itemCode": "MH-001",
+          "questionTr": "Personel müşteriyi güler yüzle karşılıyor mu?",
+          "category": "hizmet",
+          "maxPoints": 5,
+          "isCritical": false,
+          "requiresPhoto": false,
+          "itemOrder": 1
+        },
+        {
+          "itemCode": "MH-002",
+          "questionTr": "Sipariş alma süreci hızlı ve doğru mu?",
+          "category": "hizmet",
+          "maxPoints": 5,
+          "isCritical": false,
+          "requiresPhoto": false,
+          "itemOrder": 2
+        },
+        {
+          "itemCode": "MH-003",
+          "questionTr": "Personel ürün bilgisi yeterli mi?",
+          "category": "hizmet",
+          "maxPoints": 5,
+          "isCritical": false,
+          "requiresPhoto": false,
+          "itemOrder": 3
+        },
+        {
+          "itemCode": "MH-004",
+          "questionTr": "Şikayetlere profesyonel yaklaşım sergileniyor mu?",
+          "category": "hizmet",
+          "maxPoints": 5,
+          "isCritical": false,
+          "requiresPhoto": false,
+          "itemOrder": 4
+        }
+      ]
+    },
+    {
+      "sectionName": "Ekipman Durumu",
+      "sectionOrder": 4,
+      "weight": 15,
+      "items": [
+        {
+          "itemCode": "ED-001",
+          "questionTr": "Espresso makinesi düzgün çalışıyor mu?",
+          "category": "ekipman",
+          "maxPoints": 5,
+          "isCritical": true,
+          "requiresPhoto": false,
+          "itemOrder": 1
+        },
+        {
+          "itemCode": "ED-002",
+          "questionTr": "Değirmen ayarları doğru mu?",
+          "category": "ekipman",
+          "maxPoints": 4,
+          "isCritical": false,
+          "requiresPhoto": false,
+          "itemOrder": 2
+        },
+        {
+          "itemCode": "ED-003",
+          "questionTr": "Bulaşık makinesi düzgün çalışıyor mu?",
+          "category": "ekipman",
+          "maxPoints": 3,
+          "isCritical": false,
+          "requiresPhoto": false,
+          "itemOrder": 3
+        },
+        {
+          "itemCode": "ED-004",
+          "questionTr": "Yazar kasa/POS sistemi çalışıyor mu?",
+          "category": "ekipman",
+          "maxPoints": 3,
+          "isCritical": true,
+          "requiresPhoto": false,
+          "itemOrder": 4
+        }
+      ]
+    },
+    {
+      "sectionName": "Marka Standartları",
+      "sectionOrder": 5,
+      "weight": 10,
+      "items": [
+        {
+          "itemCode": "MS-001",
+          "questionTr": "Personel DOSPRESSO üniforması giyiyor mu?",
+          "category": "marka",
+          "maxPoints": 4,
+          "isCritical": false,
+          "requiresPhoto": true,
+          "itemOrder": 1
+        },
+        {
+          "itemCode": "MS-002",
+          "questionTr": "Mağaza tabelası ve iç mekan görünümü uygun mu?",
+          "category": "marka",
+          "maxPoints": 3,
+          "isCritical": false,
+          "requiresPhoto": true,
+          "itemOrder": 2
+        },
+        {
+          "itemCode": "MS-003",
+          "questionTr": "Menü panoları güncel ve okunaklı mı?",
+          "category": "marka",
+          "maxPoints": 3,
+          "isCritical": false,
+          "requiresPhoto": true,
+          "itemOrder": 3
+        }
+      ]
+    }
+  ]
+}
