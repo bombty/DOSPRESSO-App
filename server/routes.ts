@@ -66,6 +66,8 @@ import {
   trainingCompletions,
   auditTemplates,
   auditTemplateItems,
+  auditInstances,
+  auditInstanceItems,
   qualityAudits,
   auditItemScores,
   customerFeedback,
@@ -16807,6 +16809,738 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error) {
       console.error("AI summary error:", error);
       res.status(500).json({ message: "AI özeti oluşturulamadı" });
+    }
+  });
+
+  // ============================================================
+  // QUALITY AUDIT MODULE - Kalite Kontrol API
+  // ============================================================
+
+  // Import scoring engine
+  const { 
+    computeAuditScore, 
+    getCAPAPriority, 
+    shouldCreateCAPA, 
+    isValidCAPATransition,
+    calculateSLADeadline,
+    getSLAStatus 
+  } = await import('./audit-scoring');
+
+  // GET /api/audit-templates - List all templates
+  app.get('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'supervisor') {
+        return res.status(403).json({ message: "Şablon listesine erişim yetkiniz yok" });
+      }
+
+      const templates = await db.select().from(auditTemplates).orderBy(desc(auditTemplates.createdAt));
+      res.json(templates);
+    } catch (error) {
+      console.error("Get audit templates error:", error);
+      res.status(500).json({ message: "Şablonlar alınamadı" });
+    }
+  });
+
+  // GET /api/audit-templates/:id - Get single template with items
+  app.get('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      const [template] = await db.select().from(auditTemplates).where(eq(auditTemplates.id, templateId));
+      
+      if (!template) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+
+      const items = await db.select().from(auditTemplateItems)
+        .where(eq(auditTemplateItems.templateId, templateId))
+        .orderBy(auditTemplateItems.sectionOrder, auditTemplateItems.itemOrder);
+
+      res.json({ ...template, items });
+    } catch (error) {
+      console.error("Get audit template error:", error);
+      res.status(500).json({ message: "Şablon alınamadı" });
+    }
+  });
+
+  // POST /api/audit-templates - Create new template
+  app.post('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Şablon oluşturma yetkiniz yok" });
+      }
+
+      const data = insertAuditTemplateSchema.parse(req.body);
+      const [template] = await db.insert(auditTemplates).values({
+        ...data,
+        createdById: user.id,
+      }).returning();
+
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Create audit template error:", error);
+      res.status(500).json({ message: "Şablon oluşturulamadı" });
+    }
+  });
+
+  // POST /api/audit-templates/import - Import template from JSON
+  app.post('/api/audit-templates/import', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Şablon import yetkiniz yok" });
+      }
+
+      const { name, description, version, isActive, totalPoints, passingScore, sections } = req.body;
+
+      // Create template
+      const [template] = await db.insert(auditTemplates).values({
+        name,
+        description,
+        version: version || "1.0.0",
+        isActive: isActive !== false,
+        totalPoints: totalPoints || 100,
+        passingScore: passingScore || 70,
+        createdById: user.id,
+      }).returning();
+
+      // Create template items from sections
+      const items: InsertAuditTemplateItem[] = [];
+      for (const section of sections || []) {
+        for (const item of section.items || []) {
+          items.push({
+            templateId: template.id,
+            sectionName: section.sectionName,
+            sectionOrder: section.sectionOrder,
+            sectionWeight: section.weight,
+            itemCode: item.itemCode,
+            questionTr: item.questionTr,
+            questionEn: item.questionEn,
+            category: item.category,
+            maxPoints: item.maxPoints,
+            isCritical: item.isCritical || false,
+            requiresPhoto: item.requiresPhoto || false,
+            itemOrder: item.itemOrder,
+          });
+        }
+      }
+
+      if (items.length > 0) {
+        await db.insert(auditTemplateItems).values(items);
+      }
+
+      const createdItems = await db.select().from(auditTemplateItems)
+        .where(eq(auditTemplateItems.templateId, template.id));
+
+      res.status(201).json({ ...template, items: createdItems });
+    } catch (error) {
+      console.error("Import audit template error:", error);
+      res.status(500).json({ message: "Şablon import edilemedi" });
+    }
+  });
+
+  // PUT /api/audit-templates/:id - Update template
+  app.put('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Şablon güncelleme yetkiniz yok" });
+      }
+
+      const templateId = parseInt(req.params.id);
+      const data = insertAuditTemplateSchema.partial().parse(req.body);
+      
+      const [updated] = await db.update(auditTemplates)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(auditTemplates.id, templateId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Şablon bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update audit template error:", error);
+      res.status(500).json({ message: "Şablon güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/audit-templates/:id - Delete template
+  app.delete('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Şablon silme yetkiniz yok" });
+      }
+
+      const templateId = parseInt(req.params.id);
+      await db.delete(auditTemplates).where(eq(auditTemplates.id, templateId));
+      res.json({ message: "Şablon silindi" });
+    } catch (error) {
+      console.error("Delete audit template error:", error);
+      res.status(500).json({ message: "Şablon silinemedi" });
+    }
+  });
+
+  // ============================================================
+  // AUDIT INSTANCES - Denetim Kayıtları
+  // ============================================================
+
+  // GET /api/audits - List audits with filters
+  app.get('/api/audits', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { branchId, status, dateFrom, dateTo, auditorId } = req.query;
+
+      let query = db.select().from(auditInstances);
+      const conditions: any[] = [];
+
+      // Branch filtering
+      if (isBranchRole(user.role)) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        conditions.push(eq(auditInstances.branchId, user.branchId));
+      } else if (branchId) {
+        conditions.push(eq(auditInstances.branchId, parseInt(branchId)));
+      }
+
+      if (status) {
+        conditions.push(eq(auditInstances.status, status));
+      }
+      if (auditorId) {
+        conditions.push(eq(auditInstances.auditorId, auditorId));
+      }
+      if (dateFrom) {
+        conditions.push(sql`${auditInstances.auditDate} >= ${new Date(dateFrom)}`);
+      }
+      if (dateTo) {
+        conditions.push(sql`${auditInstances.auditDate} <= ${new Date(dateTo)}`);
+      }
+
+      const audits = conditions.length > 0
+        ? await db.select().from(auditInstances).where(and(...conditions)).orderBy(desc(auditInstances.auditDate))
+        : await db.select().from(auditInstances).orderBy(desc(auditInstances.auditDate));
+
+      res.json(audits);
+    } catch (error) {
+      console.error("Get audits error:", error);
+      res.status(500).json({ message: "Denetimler alınamadı" });
+    }
+  });
+
+  // GET /api/audits/:id - Get single audit with responses
+  app.get('/api/audits/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      const [audit] = await db.select().from(auditInstances).where(eq(auditInstances.id, auditId));
+      
+      if (!audit) {
+        return res.status(404).json({ message: "Denetim bulunamadı" });
+      }
+
+      // Get template and items
+      const [template] = await db.select().from(auditTemplates).where(eq(auditTemplates.id, audit.templateId));
+      const templateItems = await db.select().from(auditTemplateItems)
+        .where(eq(auditTemplateItems.templateId, audit.templateId))
+        .orderBy(auditTemplateItems.sectionOrder, auditTemplateItems.itemOrder);
+
+      // Get responses
+      const responses = await db.select().from(auditInstanceItems)
+        .where(eq(auditInstanceItems.instanceId, auditId));
+
+      // Get corrective actions
+      const capas = await db.select().from(correctiveActions)
+        .where(eq(correctiveActions.auditInstanceId, auditId));
+
+      res.json({ 
+        ...audit, 
+        template,
+        templateItems,
+        responses,
+        correctiveActions: capas 
+      });
+    } catch (error) {
+      console.error("Get audit error:", error);
+      res.status(500).json({ message: "Denetim alınamadı" });
+    }
+  });
+
+  // POST /api/audits - Start new audit
+  app.post('/api/audits', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'supervisor') {
+        return res.status(403).json({ message: "Denetim başlatma yetkiniz yok" });
+      }
+
+      const data = insertAuditInstanceSchema.parse(req.body);
+      
+      // Set auditor to current user if not specified
+      const auditorId = data.auditorId || user.id;
+      
+      const [audit] = await db.insert(auditInstances).values({
+        ...data,
+        auditorId,
+        status: 'in_progress',
+        auditDate: new Date(),
+      }).returning();
+
+      res.status(201).json(audit);
+    } catch (error) {
+      console.error("Create audit error:", error);
+      res.status(500).json({ message: "Denetim oluşturulamadı" });
+    }
+  });
+
+  // POST /api/audits/:id/responses - Submit audit responses and calculate score
+  app.post('/api/audits/:id/responses', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const auditId = parseInt(req.params.id);
+      const { responses } = req.body;
+
+      // Get audit
+      const [audit] = await db.select().from(auditInstances).where(eq(auditInstances.id, auditId));
+      if (!audit) {
+        return res.status(404).json({ message: "Denetim bulunamadı" });
+      }
+
+      // Get template items for scoring
+      const templateItems = await db.select().from(auditTemplateItems)
+        .where(eq(auditTemplateItems.templateId, audit.templateId));
+
+      // Group items by section for scoring
+      const sectionMap = new Map<string, any>();
+      for (const item of templateItems) {
+        if (!sectionMap.has(item.sectionName)) {
+          sectionMap.set(item.sectionName, {
+            sectionId: item.sectionOrder,
+            sectionName: item.sectionName,
+            weight: item.sectionWeight || 20,
+            items: []
+          });
+        }
+        const response = responses.find((r: any) => r.templateItemId === item.id);
+        sectionMap.get(item.sectionName).items.push({
+          itemId: item.id,
+          itemCode: item.itemCode,
+          question: item.questionTr,
+          score: response?.score || 0,
+          maxPoints: item.maxPoints,
+          isCritical: item.isCritical,
+          notes: response?.notes,
+        });
+      }
+
+      // Calculate score
+      const scoreResult = computeAuditScore(Array.from(sectionMap.values()));
+
+      // Save responses
+      for (const response of responses) {
+        await db.insert(auditInstanceItems).values({
+          instanceId: auditId,
+          templateItemId: response.templateItemId,
+          score: response.score,
+          notes: response.notes,
+          photoUrls: response.photoUrls || [],
+          scoredById: user.id,
+        }).onConflictDoUpdate({
+          target: [auditInstanceItems.instanceId, auditInstanceItems.templateItemId],
+          set: {
+            score: response.score,
+            notes: response.notes,
+            photoUrls: response.photoUrls || [],
+            scoredById: user.id,
+            updatedAt: new Date(),
+          }
+        });
+      }
+
+      // Update audit with score
+      await db.update(auditInstances).set({
+        totalScore: scoreResult.totalScore,
+        grade: scoreResult.grade,
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(auditInstances.id, auditId));
+
+      // Create CAPA items automatically
+      for (const capaItem of scoreResult.capaItems) {
+        const slaDeadline = calculateSLADeadline(new Date(), capaItem.slaHours);
+        await db.insert(correctiveActions).values({
+          auditInstanceId: auditId,
+          auditItemId: capaItem.itemId,
+          title: `${capaItem.itemCode}: ${capaItem.question}`,
+          description: `Denetimde düşük puan alındı (${capaItem.score} puan). Düzeltici aksiyon gerekli.`,
+          priority: capaItem.priority,
+          status: 'open',
+          dueDate: slaDeadline,
+          createdById: user.id,
+        });
+      }
+
+      res.json({
+        auditId,
+        score: scoreResult,
+        capaCount: scoreResult.capaItems.length,
+      });
+    } catch (error) {
+      console.error("Submit audit responses error:", error);
+      res.status(500).json({ message: "Yanıtlar kaydedilemedi" });
+    }
+  });
+
+  // PUT /api/audits/:id - Update audit status
+  app.put('/api/audits/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const auditId = parseInt(req.params.id);
+      const { status, notes } = req.body;
+
+      const [updated] = await db.update(auditInstances).set({
+        status,
+        notes,
+        updatedAt: new Date(),
+        ...(status === 'completed' ? { completedAt: new Date() } : {}),
+      }).where(eq(auditInstances.id, auditId)).returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update audit error:", error);
+      res.status(500).json({ message: "Denetim güncellenemedi" });
+    }
+  });
+
+  // ============================================================
+  // CORRECTIVE ACTIONS (CAPA) - Düzeltici Aksiyonlar
+  // ============================================================
+
+  // GET /api/corrective-actions - List CAPAs with filters
+  app.get('/api/corrective-actions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { status, priority, branchId, assignedToId } = req.query;
+
+      let conditions: any[] = [];
+
+      // Branch filtering for branch users
+      if (isBranchRole(user.role)) {
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        // Get audits for this branch, then filter CAPAs
+        const branchAudits = await db.select({ id: auditInstances.id })
+          .from(auditInstances)
+          .where(eq(auditInstances.branchId, user.branchId));
+        const auditIds = branchAudits.map(a => a.id);
+        if (auditIds.length > 0) {
+          conditions.push(inArray(correctiveActions.auditInstanceId, auditIds));
+        } else {
+          return res.json([]);
+        }
+      }
+
+      if (status) {
+        conditions.push(eq(correctiveActions.status, status));
+      }
+      if (priority) {
+        conditions.push(eq(correctiveActions.priority, priority));
+      }
+      if (assignedToId) {
+        conditions.push(eq(correctiveActions.assignedToId, assignedToId));
+      }
+
+      const capas = conditions.length > 0
+        ? await db.select().from(correctiveActions).where(and(...conditions)).orderBy(desc(correctiveActions.createdAt))
+        : await db.select().from(correctiveActions).orderBy(desc(correctiveActions.createdAt));
+
+      // Add SLA status to each CAPA
+      const capasWithSLA = capas.map(capa => ({
+        ...capa,
+        slaStatus: capa.dueDate ? getSLAStatus(new Date(capa.dueDate), capa.completedAt ? new Date(capa.completedAt) : undefined) : 'on_track',
+      }));
+
+      res.json(capasWithSLA);
+    } catch (error) {
+      console.error("Get corrective actions error:", error);
+      res.status(500).json({ message: "Aksiyonlar alınamadı" });
+    }
+  });
+
+  // GET /api/corrective-actions/:id - Get single CAPA with updates
+  app.get('/api/corrective-actions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const capaId = parseInt(req.params.id);
+      const [capa] = await db.select().from(correctiveActions).where(eq(correctiveActions.id, capaId));
+      
+      if (!capa) {
+        return res.status(404).json({ message: "Aksiyon bulunamadı" });
+      }
+
+      const updates = await db.select().from(correctiveActionUpdates)
+        .where(eq(correctiveActionUpdates.correctiveActionId, capaId))
+        .orderBy(desc(correctiveActionUpdates.createdAt));
+
+      res.json({
+        ...capa,
+        slaStatus: capa.dueDate ? getSLAStatus(new Date(capa.dueDate)) : 'on_track',
+        updates,
+      });
+    } catch (error) {
+      console.error("Get corrective action error:", error);
+      res.status(500).json({ message: "Aksiyon alınamadı" });
+    }
+  });
+
+  // POST /api/corrective-actions - Create manual CAPA
+  app.post('/api/corrective-actions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const data = insertCorrectiveActionSchema.parse(req.body);
+
+      const { priority, slaHours } = getCAPAPriority(0, false);
+      const dueDate = data.dueDate || calculateSLADeadline(new Date(), slaHours);
+
+      const [capa] = await db.insert(correctiveActions).values({
+        ...data,
+        priority: data.priority || priority,
+        dueDate,
+        createdById: user.id,
+      }).returning();
+
+      res.status(201).json(capa);
+    } catch (error) {
+      console.error("Create corrective action error:", error);
+      res.status(500).json({ message: "Aksiyon oluşturulamadı" });
+    }
+  });
+
+  // PUT /api/corrective-actions/:id - Update CAPA status
+  app.put('/api/corrective-actions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const capaId = parseInt(req.params.id);
+      const { status, assignedToId, notes, resolution, photoUrls } = req.body;
+
+      // Get current CAPA
+      const [currentCapa] = await db.select().from(correctiveActions).where(eq(correctiveActions.id, capaId));
+      if (!currentCapa) {
+        return res.status(404).json({ message: "Aksiyon bulunamadı" });
+      }
+
+      // Validate status transition
+      if (status && !isValidCAPATransition(currentCapa.status, status)) {
+        return res.status(400).json({ message: `${currentCapa.status} durumundan ${status} durumuna geçiş yapılamaz` });
+      }
+
+      // HQ approval required for closing
+      if (status === 'closed' && !isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "CAPA kapatma yetkisi sadece HQ kullanıcılarında" });
+      }
+
+      const updateData: any = { updatedAt: new Date() };
+      if (status) updateData.status = status;
+      if (assignedToId) updateData.assignedToId = assignedToId;
+      if (notes) updateData.notes = notes;
+      if (resolution) updateData.resolution = resolution;
+      if (photoUrls) updateData.photoUrls = photoUrls;
+      if (status === 'completed' || status === 'closed') {
+        updateData.completedAt = new Date();
+      }
+
+      const [updated] = await db.update(correctiveActions)
+        .set(updateData)
+        .where(eq(correctiveActions.id, capaId))
+        .returning();
+
+      // Log status change
+      if (status && status !== currentCapa.status) {
+        await db.insert(correctiveActionUpdates).values({
+          correctiveActionId: capaId,
+          status,
+          notes: notes || `Durum değişikliği: ${currentCapa.status} → ${status}`,
+          updatedById: user.id,
+        });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update corrective action error:", error);
+      res.status(500).json({ message: "Aksiyon güncellenemedi" });
+    }
+  });
+
+  // POST /api/corrective-actions/:id/updates - Add CAPA update
+  app.post('/api/corrective-actions/:id/updates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const capaId = parseInt(req.params.id);
+      const { notes, photoUrls } = req.body;
+
+      const [update] = await db.insert(correctiveActionUpdates).values({
+        correctiveActionId: capaId,
+        status: 'update',
+        notes,
+        photoUrls: photoUrls || [],
+        updatedById: user.id,
+      }).returning();
+
+      res.status(201).json(update);
+    } catch (error) {
+      console.error("Add CAPA update error:", error);
+      res.status(500).json({ message: "Güncelleme eklenemedi" });
+    }
+  });
+
+  // ============================================================
+  // AUDIT ANALYTICS - Denetim Analitikleri
+  // ============================================================
+
+  // GET /api/audits/analytics/dashboard - Dashboard statistics
+  app.get('/api/audits/analytics/dashboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { branchId, dateFrom, dateTo } = req.query;
+
+      let branchFilter = branchId ? parseInt(branchId) : undefined;
+      if (isBranchRole(user.role)) {
+        branchFilter = user.branchId;
+      }
+
+      // Get audit counts by status
+      const statusCounts = await db.select({
+        status: auditInstances.status,
+        count: sql<number>`count(*)::int`,
+      }).from(auditInstances)
+        .where(branchFilter ? eq(auditInstances.branchId, branchFilter) : sql`1=1`)
+        .groupBy(auditInstances.status);
+
+      // Get average scores
+      const scoreStats = await db.select({
+        avgScore: sql<number>`avg(${auditInstances.totalScore})::numeric(5,2)`,
+        minScore: sql<number>`min(${auditInstances.totalScore})`,
+        maxScore: sql<number>`max(${auditInstances.totalScore})`,
+        totalAudits: sql<number>`count(*)::int`,
+      }).from(auditInstances)
+        .where(and(
+          branchFilter ? eq(auditInstances.branchId, branchFilter) : sql`1=1`,
+          eq(auditInstances.status, 'completed')
+        ));
+
+      // Get CAPA counts by status
+      const capaCounts = await db.select({
+        status: correctiveActions.status,
+        count: sql<number>`count(*)::int`,
+      }).from(correctiveActions).groupBy(correctiveActions.status);
+
+      // Get CAPA counts by priority
+      const capaPriorityCounts = await db.select({
+        priority: correctiveActions.priority,
+        count: sql<number>`count(*)::int`,
+      }).from(correctiveActions)
+        .where(sql`${correctiveActions.status} NOT IN ('closed', 'cancelled')`)
+        .groupBy(correctiveActions.priority);
+
+      // Get recent audits
+      const recentAudits = await db.select().from(auditInstances)
+        .where(branchFilter ? eq(auditInstances.branchId, branchFilter) : sql`1=1`)
+        .orderBy(desc(auditInstances.auditDate))
+        .limit(5);
+
+      // Get overdue CAPAs
+      const overdueCAPAs = await db.select().from(correctiveActions)
+        .where(and(
+          sql`${correctiveActions.dueDate} < NOW()`,
+          sql`${correctiveActions.status} NOT IN ('closed', 'completed', 'cancelled')`
+        ))
+        .orderBy(correctiveActions.dueDate)
+        .limit(10);
+
+      res.json({
+        statusCounts: Object.fromEntries(statusCounts.map(s => [s.status, s.count])),
+        scoreStats: scoreStats[0] || { avgScore: 0, minScore: 0, maxScore: 0, totalAudits: 0 },
+        capaCounts: Object.fromEntries(capaCounts.map(c => [c.status, c.count])),
+        capaPriorityCounts: Object.fromEntries(capaPriorityCounts.map(c => [c.priority, c.count])),
+        recentAudits,
+        overdueCAPAs,
+      });
+    } catch (error) {
+      console.error("Get audit analytics error:", error);
+      res.status(500).json({ message: "Analitik verileri alınamadı" });
+    }
+  });
+
+  // GET /api/audits/analytics/trends - Score trends over time
+  app.get('/api/audits/analytics/trends', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { branchId, months } = req.query;
+      const monthCount = parseInt(months as string) || 6;
+
+      let branchFilter = branchId ? parseInt(branchId) : undefined;
+      if (isBranchRole(user.role)) {
+        branchFilter = user.branchId;
+      }
+
+      // Get monthly average scores
+      const trends = await db.select({
+        month: sql<string>`to_char(${auditInstances.auditDate}, 'YYYY-MM')`,
+        avgScore: sql<number>`avg(${auditInstances.totalScore})::numeric(5,2)`,
+        auditCount: sql<number>`count(*)::int`,
+      }).from(auditInstances)
+        .where(and(
+          branchFilter ? eq(auditInstances.branchId, branchFilter) : sql`1=1`,
+          eq(auditInstances.status, 'completed'),
+          sql`${auditInstances.auditDate} >= NOW() - INTERVAL '${sql.raw(String(monthCount))} months'`
+        ))
+        .groupBy(sql`to_char(${auditInstances.auditDate}, 'YYYY-MM')`)
+        .orderBy(sql`to_char(${auditInstances.auditDate}, 'YYYY-MM')`);
+
+      res.json(trends);
+    } catch (error) {
+      console.error("Get audit trends error:", error);
+      res.status(500).json({ message: "Trend verileri alınamadı" });
+    }
+  });
+
+  // GET /api/audits/analytics/branch-comparison - Compare branches
+  app.get('/api/audits/analytics/branch-comparison', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Şube karşılaştırma yetkiniz yok" });
+      }
+
+      const comparison = await db.select({
+        branchId: auditInstances.branchId,
+        avgScore: sql<number>`avg(${auditInstances.totalScore})::numeric(5,2)`,
+        auditCount: sql<number>`count(*)::int`,
+        passRate: sql<number>`(count(*) FILTER (WHERE ${auditInstances.totalScore} >= 70) * 100.0 / NULLIF(count(*), 0))::numeric(5,2)`,
+      }).from(auditInstances)
+        .where(eq(auditInstances.status, 'completed'))
+        .groupBy(auditInstances.branchId)
+        .orderBy(sql`avg(${auditInstances.totalScore}) DESC`);
+
+      // Get branch names
+      const branchIds = comparison.map(c => c.branchId).filter(Boolean) as number[];
+      const branchList = branchIds.length > 0 
+        ? await db.select({ id: branches.id, name: branches.name }).from(branches).where(inArray(branches.id, branchIds))
+        : [];
+      const branchMap = new Map(branchList.map(b => [b.id, b.name]));
+
+      const result = comparison.map(c => ({
+        ...c,
+        branchName: branchMap.get(c.branchId!) || 'Bilinmeyen Şube',
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error("Get branch comparison error:", error);
+      res.status(500).json({ message: "Şube karşılaştırması alınamadı" });
     }
   });
 
