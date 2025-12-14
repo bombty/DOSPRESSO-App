@@ -2721,6 +2721,63 @@ export const insertAuditInstanceItemSchema = createInsertSchema(auditInstanceIte
 export type InsertAuditInstanceItem = z.infer<typeof insertAuditInstanceItemSchema>;
 export type AuditInstanceItem = typeof auditInstanceItems.$inferSelect;
 
+// ========================================
+// CORRECTIVE ACTIONS (CAPA - Müdahale Masası)
+// ========================================
+
+export const correctiveActions = pgTable("corrective_actions", {
+  id: serial("id").primaryKey(),
+  auditInstanceId: integer("audit_instance_id").notNull().references(() => auditInstances.id, { onDelete: "cascade" }),
+  auditItemId: integer("audit_item_id").notNull().references(() => auditTemplateItems.id),
+  priority: varchar("priority", { length: 20 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("OPEN"),
+  actionType: varchar("action_type", { length: 20 }).notNull(),
+  description: text("description").notNull(),
+  actionSlaHours: integer("action_sla_hours").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  completedDate: timestamp("completed_date"),
+  closedDate: timestamp("closed_date"),
+  assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("corrective_actions_audit_instance_idx").on(table.auditInstanceId),
+  index("corrective_actions_priority_idx").on(table.priority),
+  index("corrective_actions_status_idx").on(table.status),
+  index("corrective_actions_due_date_idx").on(table.dueDate),
+]);
+
+export const insertCorrectiveActionSchema = createInsertSchema(correctiveActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCorrectiveAction = z.infer<typeof insertCorrectiveActionSchema>;
+export type CorrectiveAction = typeof correctiveActions.$inferSelect;
+
+export const correctiveActionUpdates = pgTable("corrective_action_updates", {
+  id: serial("id").primaryKey(),
+  correctiveActionId: integer("corrective_action_id").notNull().references(() => correctiveActions.id, { onDelete: "cascade" }),
+  oldStatus: varchar("old_status", { length: 20 }),
+  newStatus: varchar("new_status", { length: 20 }).notNull(),
+  notes: text("notes"),
+  evidence: jsonb("evidence"),
+  updatedById: varchar("updated_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("corrective_action_updates_action_idx").on(table.correctiveActionId),
+]);
+
+export const insertCorrectiveActionUpdateSchema = createInsertSchema(correctiveActionUpdates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCorrectiveActionUpdate = z.infer<typeof insertCorrectiveActionUpdateSchema>;
+export type CorrectiveActionUpdate = typeof correctiveActionUpdates.$inferSelect;
+
 // NEW: Personnel Files - Comprehensive employee records
 export const personnelFiles = pgTable("personnel_files", {
   id: serial("id").primaryKey(),
