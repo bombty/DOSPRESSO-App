@@ -118,6 +118,7 @@ import AdminEmailAyarlari from "@/pages/admin/email-ayarlari";
 import AdminServisMailAyarlari from "@/pages/admin/servis-mail-ayarlari";
 import AdminBannerlar from "@/pages/admin/bannerlar";
 import AdminYapayZekaAyarlari from "@/pages/admin/yapay-zeka-ayarlari";
+import AdminKaliteDenetimSablonlari from "@/pages/admin/kalite-denetim-şablonları";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -270,6 +271,7 @@ function Router() {
           <Route path="/admin/servis-mail-ayarlari" component={AdminServisMailAyarlari} />
           <Route path="/admin/bannerlar" component={AdminBannerlar} />
           <Route path="/admin/yapay-zeka-ayarlari" component={AdminYapayZekaAyarlari} />
+          <Route path="/admin/kalite-denetim-şablonları" component={AdminKaliteDenetimSablonlari} />
         </>
       )}
       <Route component={NotFound} />
