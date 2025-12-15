@@ -44,13 +44,13 @@ export async function seedDefaultAuditTemplate() {
       })
       .returning();
 
-    // Define 6 sections with items
+    // Define 6 sections with weighted items
     const sections = [
       {
         name: "Gıda Güvenliği",
-        weight: 25,
+        sectionWeight: 25,
         items: [
-          { text: "Gıda depolama sıcaklığı uygunluğu", requiresPhoto: true, isCritical: true },
+          { text: "Gıda depolama sıcaklığı uygunluğu", requiresPhoto: true },
           { text: "Çapraz kontaminasyon riski", requiresPhoto: true },
           { text: "El hijyeni ve temizlik prosedürleri", requiresPhoto: false },
           { text: "Tarih kontrolü ve ürün rotasyonu", requiresPhoto: true },
@@ -58,9 +58,9 @@ export async function seedDefaultAuditTemplate() {
       },
       {
         name: "Ürün Standardı",
-        weight: 25,
+        sectionWeight: 25,
         items: [
-          { text: "Ürün ağırlığı/porsiyon standardı", requiresPhoto: true, isCritical: true },
+          { text: "Ürün ağırlığı/porsiyon standardı", requiresPhoto: true },
           { text: "Ürün sunum ve tasarım", requiresPhoto: true },
           { text: "Tat ve kalite kontrol", requiresPhoto: false },
           { text: "Ambalaj ve etiketleme", requiresPhoto: true },
@@ -68,7 +68,7 @@ export async function seedDefaultAuditTemplate() {
       },
       {
         name: "Servis",
-        weight: 15,
+        sectionWeight: 15,
         items: [
           { text: "Müşteri hizmet standardı", requiresPhoto: false },
           { text: "Servis hızı ve sıra yönetimi", requiresPhoto: false },
@@ -77,7 +77,7 @@ export async function seedDefaultAuditTemplate() {
       },
       {
         name: "Operasyon",
-        weight: 15,
+        sectionWeight: 15,
         items: [
           { text: "İş akışı verimliliği", requiresPhoto: false },
           { text: "Vardiya yönetimi ve disiplin", requiresPhoto: false },
@@ -87,21 +87,21 @@ export async function seedDefaultAuditTemplate() {
       },
       {
         name: "Marka",
-        weight: 10,
+        sectionWeight: 10,
         items: [
-          { text: "Mağaza görünüş ve dekorasyon", requiresPhoto: true, isCritical: true },
+          { text: "Mağaza görünüş ve dekorasyon", requiresPhoto: true },
           { text: "Personel kıyafet ve hijyen", requiresPhoto: true },
           { text: "Marka mesajlaşması doğruluğu", requiresPhoto: true },
         ],
       },
       {
-        name: "Ekipman & Kalibrasyonu",
-        weight: 10,
+        name: "Ekipman & Kalibrasyonu (4 Kritik Kategori)",
+        sectionWeight: 10,
         items: [
-          { text: "Kahve Makinesi - Kalibrasyonu Kontrol", requiresPhoto: true, isCritical: true },
-          { text: "Gıda Hazırlık - Kalibrasyonu Kontrol", requiresPhoto: true, isCritical: true },
-          { text: "Cramice - Kalibrasyonu Kontrol", requiresPhoto: true, isCritical: true },
-          { text: "Çay Istasyonu - Kalibrasyonu Kontrol", requiresPhoto: true, isCritical: true },
+          { text: "Kahve Makinesi - Kalibrasyonu Kontrol", requiresPhoto: true },
+          { text: "Gıda Hazırlık - Kalibrasyonu Kontrol", requiresPhoto: true },
+          { text: "Cramice - Kalibrasyonu Kontrol", requiresPhoto: true },
+          { text: "Çay Istasyonu - Kalibrasyonu Kontrol", requiresPhoto: true },
           { text: "Genel ekipman bakım ve temizlik", requiresPhoto: true },
         ],
       },
@@ -109,15 +109,19 @@ export async function seedDefaultAuditTemplate() {
 
     // Insert section items
     let itemOrder = 0;
-    for (let sectionIdx = 0; sectionIdx < sections.length; sectionIdx++) {
-      const section = sections[sectionIdx];
-      for (let itemIdx = 0; itemIdx < section.items.length; itemIdx++) {
-        const item = section.items[itemIdx];
+    let totalItemsCreated = 0;
+
+    for (const section of sections) {
+      // Calculate weight per item in this section
+      const itemsInSection = section.items.length;
+      const weightPerItem = section.sectionWeight / itemsInSection;
+
+      for (const item of section.items) {
         await db.insert(auditTemplateItems).values({
           templateId: template.id,
           itemText: item.text,
           itemType: "rating",
-          weight: section.weight,
+          weight: Math.round(weightPerItem * 100) / 100, // Distribute section weight evenly
           requiresPhoto: item.requiresPhoto,
           sortOrder: itemOrder,
           maxPoints: 5,
@@ -127,10 +131,11 @@ export async function seedDefaultAuditTemplate() {
             : null,
         });
         itemOrder++;
+        totalItemsCreated++;
       }
     }
 
-    console.log(`✅ Default audit template created with ${itemOrder} items`);
+    console.log(`✅ Default audit template created with ${totalItemsCreated} items`);
     return { created: 1, skipped: 0 };
   } catch (error) {
     console.error("❌ Audit template seed error:", error);

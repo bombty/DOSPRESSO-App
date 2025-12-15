@@ -76,12 +76,12 @@ interface AuditInstance {
   createdAt: string;
   branch?: { id: number; name: string };
   auditor?: { id: string; firstName: string; lastName: string };
-  template?: { name: string };
+  template?: { title: string };
 }
 
 interface AuditTemplate {
   id: number;
-  name: string;
+  title: string;
   description: string | null;
   category: string | null;
   isActive: boolean;
@@ -363,7 +363,7 @@ export default function KaliteDenetimi() {
                           <SelectContent>
                             {templates?.filter(t => t.isActive).map((template) => (
                               <SelectItem key={template.id} value={template.id.toString()} data-testid={`option-template-${template.id}`}>
-                                {template.name}
+                                {template.title}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -771,10 +771,10 @@ export default function KaliteDenetimi() {
                             <span>{format(new Date(audit.auditDate), "d MMMM yyyy", { locale: tr })}</span>
                             <span>•</span>
                             <span>{audit.auditor ? `${audit.auditor.firstName} ${audit.auditor.lastName}` : 'Denetçi atanmamış'}</span>
-                            {audit.template?.name && (
+                            {audit.template?.title && (
                               <>
                                 <span>•</span>
-                                <span>{audit.template.name}</span>
+                                <span>{audit.template.title}</span>
                               </>
                             )}
                           </div>
