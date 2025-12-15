@@ -93,9 +93,9 @@ interface Branch {
 }
 
 interface DashboardStats {
-  statusCounts: { status: string; count: number }[];
-  scoreStats: { avgScore: number | null; minScore: number | null; maxScore: number | null; totalAudits: number }[];
-  capaCounts: { status: string; count: number }[];
+  statusCounts: Record<string, number>;
+  scoreStats: { avgScore: number | null; minScore: number | null; maxScore: number | null; totalAudits: number };
+  capaCounts: Record<string, number>;
 }
 
 interface TrendData {
@@ -264,17 +264,17 @@ export default function KaliteDenetimi() {
   };
 
   // Calculate stats from dashboard data
-  const totalAudits = dashboardStats?.scoreStats?.[0]?.totalAudits || 0;
-  const avgScore = dashboardStats?.scoreStats?.[0]?.avgScore || 0;
-  const completedCount = dashboardStats?.statusCounts?.find(s => s.status === 'completed')?.count || 0;
-  const inProgressCount = dashboardStats?.statusCounts?.find(s => s.status === 'in_progress')?.count || 0;
-  const openCapas = dashboardStats?.capaCounts?.filter(c => c.status !== 'closed').reduce((sum, c) => sum + c.count, 0) || 0;
+  const totalAudits = dashboardStats?.scoreStats?.totalAudits || 0;
+  const avgScore = dashboardStats?.scoreStats?.avgScore || 0;
+  const completedCount = dashboardStats?.statusCounts?.completed || 0;
+  const inProgressCount = dashboardStats?.statusCounts?.in_progress || 0;
+  const openCapas = Object.entries(dashboardStats?.capaCounts || {}).reduce((sum, [status, count]) => status !== 'closed' ? sum + count : sum, 0);
 
   // Prepare pie chart data for CAPA status
-  const capaPieData = dashboardStats?.capaCounts?.map(c => ({
-    name: c.status === 'open' ? 'Açık' : c.status === 'in_progress' ? 'İşlemde' : c.status === 'pending_review' ? 'İncelemede' : c.status === 'closed' ? 'Kapatıldı' : 'Eskalasyon',
-    value: c.count,
-  })) || [];
+  const capaPieData = Object.entries(dashboardStats?.capaCounts || {}).map(([status, count]) => ({
+    name: status === 'open' ? 'Açık' : status === 'in_progress' ? 'İşlemde' : status === 'pending_review' ? 'İncelemede' : status === 'closed' ? 'Kapatıldı' : 'Eskalasyon',
+    value: count,
+  }));
 
   // Filter audits based on selected filters
   const filteredAudits = audits?.filter(audit => {
