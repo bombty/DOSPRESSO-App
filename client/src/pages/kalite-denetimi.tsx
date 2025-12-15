@@ -74,7 +74,8 @@ interface AuditInstance {
   status: "draft" | "in_progress" | "completed" | "cancelled";
   notes: string | null;
   createdAt: string;
-  branch?: { name: string };
+  branch?: { id: number; name: string };
+  auditor?: { id: string; firstName: string; lastName: string };
   template?: { name: string };
 }
 
@@ -123,7 +124,8 @@ interface CorrectiveAction {
   assignedTo: string | null;
   dueDate: string | null;
   createdAt: string;
-  branch?: { name: string };
+  branch?: { id: number; name: string };
+  auditor?: { id: string; firstName: string; lastName: string };
 }
 
 const CHART_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
@@ -663,7 +665,7 @@ export default function KaliteDenetimi() {
                         <div>
                           <p className="text-sm font-medium">{audit.branch?.name || `Şube #${audit.branchId}`}</p>
                           <p className="text-xs text-muted-foreground">
-                            {format(new Date(audit.auditDate), "d MMM yyyy", { locale: tr })}
+                            {audit.auditor ? `${audit.auditor.firstName} ${audit.auditor.lastName}` : 'Denetçi atanmamış'} · {format(new Date(audit.auditDate), "d MMM yyyy", { locale: tr })}
                           </p>
                         </div>
                       </div>
@@ -767,6 +769,8 @@ export default function KaliteDenetimi() {
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Calendar className="w-3 h-3" />
                             <span>{format(new Date(audit.auditDate), "d MMMM yyyy", { locale: tr })}</span>
+                            <span>•</span>
+                            <span>{audit.auditor ? `${audit.auditor.firstName} ${audit.auditor.lastName}` : 'Denetçi atanmamış'}</span>
                             {audit.template?.name && (
                               <>
                                 <span>•</span>

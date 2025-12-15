@@ -16994,7 +16994,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const user = req.user;
       const { branchId, status, dateFrom, dateTo, auditorId } = req.query;
 
-      let query = db.select().from(auditInstances);
       const conditions: any[] = [];
 
       // Branch filtering
@@ -17020,9 +17019,39 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         conditions.push(sql`${auditInstances.auditDate} <= ${new Date(dateTo)}`);
       }
 
-      const audits = conditions.length > 0
-        ? await db.select().from(auditInstances).where(and(...conditions)).orderBy(desc(auditInstances.auditDate))
-        : await db.select().from(auditInstances).orderBy(desc(auditInstances.auditDate));
+      const audits = await db.select({
+        id: auditInstances.id,
+        templateId: auditInstances.templateId,
+        auditType: auditInstances.auditType,
+        branchId: auditInstances.branchId,
+        userId: auditInstances.userId,
+        auditorId: auditInstances.auditorId,
+        auditDate: auditInstances.auditDate,
+        status: auditInstances.status,
+        totalScore: auditInstances.totalScore,
+        maxScore: auditInstances.maxScore,
+        notes: auditInstances.notes,
+        actionItems: auditInstances.actionItems,
+        followUpRequired: auditInstances.followUpRequired,
+        followUpDate: auditInstances.followUpDate,
+        completedAt: auditInstances.completedAt,
+        createdAt: auditInstances.createdAt,
+        updatedAt: auditInstances.updatedAt,
+        branch: {
+          id: branches.id,
+          name: branches.name,
+        },
+        auditor: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+        .from(auditInstances)
+        .leftJoin(branches, eq(auditInstances.branchId, branches.id))
+        .leftJoin(users, eq(auditInstances.auditorId, users.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(auditInstances.auditDate));
 
       res.json(audits);
     } catch (error) {
