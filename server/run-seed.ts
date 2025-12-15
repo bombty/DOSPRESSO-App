@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { storage } from "./storage";
 import { seedEquipmentForBranches, seedTrainingModules, seedBranchPersonnel } from "./seed-utils";
+import { seedDefaultAuditTemplate } from "./seed-audit-template";
 import bcrypt from "bcrypt";
 
 async function runSeed() {
@@ -51,6 +52,11 @@ async function runSeed() {
     console.log("\n👥 Seeding personnel...");
     const personnelResult = await seedBranchPersonnel(hashedPassword);
     console.log(`✅ Personnel: ${personnelResult.created} created, ${personnelResult.skipped} skipped (${personnelResult.branches} branches)`);
+    
+    // 4. Seed default audit template
+    console.log("\n📋 Seeding default audit template...");
+    const templateResult = await seedDefaultAuditTemplate();
+    console.log(`✅ Audit template: ${templateResult.created} created, ${templateResult.skipped} skipped`);
     
     console.log("\n✅ Seed process completed successfully!");
     console.log(`\nSummary:`);
