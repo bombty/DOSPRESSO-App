@@ -2571,7 +2571,7 @@ export const auditTemplateItems = pgTable("audit_template_items", {
   sortOrder: integer("sort_order").notNull().default(0),
   // NEW fields for enhanced audit system
   itemType: varchar("item_type", { length: 20 }), // checkbox, rating, text, photo, multiple_choice - nullable for backwards compat
-  weight: integer("weight"), // Scoring weight - nullable
+  weight: numeric("weight", { precision: 5, scale: 2 }), // Scoring weight as percentage (e.g., 6.25) - nullable
   requiresPhoto: boolean("requires_photo"), // nullable
   aiCheckEnabled: boolean("ai_check_enabled"), // nullable
   aiPrompt: text("ai_prompt"), // Custom AI analysis prompt for this item
