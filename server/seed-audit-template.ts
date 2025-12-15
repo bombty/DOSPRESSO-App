@@ -118,10 +118,10 @@ export async function seedDefaultAuditTemplate() {
 
       for (const item of section.items) {
         await db.insert(auditTemplateItems).values({
-          templateId: template.id,
+          templateId: Number(template.id),
           itemText: item.text,
           itemType: "rating",
-          weight: Math.round(weightPerItem * 100) / 100, // Distribute section weight evenly
+          weight: String(Math.round(weightPerItem * 100) / 100),
           requiresPhoto: item.requiresPhoto,
           sortOrder: itemOrder,
           maxPoints: 5,
