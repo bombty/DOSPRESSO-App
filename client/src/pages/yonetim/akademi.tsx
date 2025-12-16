@@ -28,6 +28,7 @@ import {
   Video, ImageIcon, ListOrdered, Sparkles, Search, Copy, EyeOff, GripVertical, Loader2
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 type HubCategory = {
   id: number;
@@ -1419,6 +1420,7 @@ const recipeFormSchema = z.object({
   nameEn: z.string().optional(),
   code: z.string().optional(),
   description: z.string().optional(),
+  photoUrl: z.string().optional(),
   difficulty: z.string().default("easy"),
   estimatedMinutes: z.coerce.number().min(1).default(5),
   categoryId: z.coerce.number({ required_error: "Kategori seçimi zorunlu" }).min(1, "Kategori seçimi zorunlu"),
@@ -1497,6 +1499,7 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
       nameEn: "",
       code: "",
       description: "",
+      photoUrl: "",
       difficulty: "easy",
       estimatedMinutes: 5,
       categoryId: undefined,
@@ -1533,6 +1536,7 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
         nameEn: recipe.nameEn || "",
         code: recipe.code || "",
         description: recipe.description || "",
+        photoUrl: recipe.photoUrl || "",
         difficulty: recipe.difficulty || "easy",
         estimatedMinutes: recipe.estimatedMinutes || 5,
         categoryId: recipe.categoryId || undefined,
@@ -1566,6 +1570,7 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
         nameEn: duplicatingRecipe.nameEn ? duplicatingRecipe.nameEn + " (Copy)" : "",
         code: "",
         description: duplicatingRecipe.description || "",
+        photoUrl: duplicatingRecipe.photoUrl || "",
         difficulty: duplicatingRecipe.difficulty || "easy",
         estimatedMinutes: duplicatingRecipe.estimatedMinutes || 5,
         categoryId: duplicatingRecipe.categoryId || undefined,
@@ -1662,6 +1667,7 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
           nameEn: data.nameEn,
           code,
           description: data.description,
+          photoUrl: data.photoUrl || null,
           difficulty: data.difficulty,
           estimatedMinutes: Number(data.estimatedMinutes),
           categoryId: data.categoryId ? Number(data.categoryId) : null,
@@ -1805,6 +1811,46 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
                       <FormLabel>Açıklama</FormLabel>
                       <FormControl>
                         <Textarea {...field} placeholder="Reçete açıklaması..." rows={3} data-testid="input-recipe-description" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="photoUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reçete Fotoğrafı</FormLabel>
+                      <FormControl>
+                        <div className="flex flex-col items-center gap-3">
+                          {field.value && (
+                            <div className="relative w-32 aspect-[3/4] rounded-lg overflow-hidden border">
+                              <img 
+                                src={field.value} 
+                                alt="Reçete fotoğrafı" 
+                                className="w-full h-full object-cover"
+                              />
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="destructive"
+                                className="absolute top-1 right-1 h-6 w-6"
+                                onClick={() => field.onChange("")}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
+                          <ObjectUploader
+                            onUploadComplete={(url) => field.onChange(url)}
+                            accept="image/*"
+                            directory="recipes"
+                            maxSizeMB={5}
+                            aspectRatio={3/4}
+                            data-testid="uploader-recipe-photo"
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

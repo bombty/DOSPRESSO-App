@@ -6250,7 +6250,7 @@ export class DatabaseStorage implements IStorage {
     return db.select()
       .from(taskRatings)
       .innerJoin(tasks, eq(taskRatings.taskId, tasks.id))
-      .where(eq(tasks.completedById, userId))
+      .where(eq(tasks.assignedToId, userId))
       .orderBy(desc(taskRatings.createdAt));
   }
 
