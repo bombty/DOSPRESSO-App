@@ -62,10 +62,11 @@ function DraggableShiftChip({ shift, employee, canEdit, onClick }: {
 }
 
 // Droppable Day Cell Component
-function DroppableDayCell({ dateStr, children, isOver }: {
+function DroppableDayCell({ dateStr, children, isOver, onDayClick }: {
   dateStr: string;
   children: React.ReactNode;
   isOver?: boolean;
+  onDayClick?: (dateStr: string) => void;
 }) {
   const { setNodeRef, isOver: dropIsOver } = useDroppable({
     id: `day-${dateStr}`,
@@ -75,9 +76,10 @@ function DroppableDayCell({ dateStr, children, isOver }: {
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[80px] p-2 space-y-1 transition-colors ${
+      className={`min-h-[80px] p-2 space-y-1 transition-colors cursor-pointer ${
         dropIsOver ? 'bg-primary/10 ring-2 ring-primary ring-inset' : ''
       }`}
+      onClick={() => onDayClick?.(dateStr)}
       data-testid={`drop-zone-${dateStr}`}
     >
       {children}
@@ -238,6 +240,22 @@ export default function VardiyaPlanlama() {
     setChecklist2('');
     setChecklist3('');
   };
+
+  // Auto-calculate end time when start time changes (fulltime = 8.5 hours, parttime = varies)
+  useEffect(() => {
+    if (!selectedEmployee || !selectedEmployeeDetails) return;
+
+    const isFulltime = selectedEmployeeDetails.employmentType === 'fulltime';
+    const hoursToAdd = isFulltime ? 8.5 : 4; // Fulltime 8:30 saat, parttime 4 saat (for now)
+
+    const [sH, sM] = startTime.split(':').map(Number);
+    const totalMinutes = sH * 60 + sM + Math.floor(hoursToAdd * 60);
+    const endH = Math.floor(totalMinutes / 60) % 24;
+    const endM = totalMinutes % 60;
+    const newEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+    setEndTime(newEndTime);
+  }, [startTime, selectedEmployee, selectedEmployeeDetails]);
 
   // Create shifts mutation for inline form
   const createShiftsMutation = useMutation({
@@ -726,7 +744,7 @@ export default function VardiyaPlanlama() {
                         <div className="text-lg font-bold">{day.dayNum}</div>
                       </div>
 
-                      <DroppableDayCell dateStr={day.dateStr}>
+                      <DroppableDayCell dateStr={day.dateStr} onDayClick={canEditShifts ? toggleDay : undefined}>
                         {/* Preview of new shift being created */}
                         {hasPreview && (
                           <div className="w-full p-1.5 rounded border-2 border-dashed border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-900/20 text-xs mb-1">
