@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,17 +8,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
   User, Calendar, Award, ClipboardCheck, 
-  Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut
+  Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type PersonnelProfile = {
   id: string;
   username: string;
   fullName: string;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   phoneNumber: string | null;
   role: string;
@@ -36,6 +42,7 @@ type PersonnelProfile = {
   absenceCount: number | null;
   totalShifts: number | null;
   completedShifts: number | null;
+  profileImageUrl: string | null;
 };
 
 const roleLabels: Record<string, string> = {
@@ -59,6 +66,30 @@ export default function PersonelProfilPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const isOwnProfile = user?.id === id;
+
+  const updatePhotoMutation = useMutation({
+    mutationFn: async (profileImageUrl: string | null) => {
+      return apiRequest("PUT", `/api/employees/${id}`, { profileImageUrl });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/personnel', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      toast({
+        title: "Başarılı",
+        description: "Profil fotoğrafı güncellendi",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Fotoğraf güncellenemedi",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleLogout = async () => {
     try {
@@ -119,20 +150,78 @@ export default function PersonelProfilPage() {
   return (
     <div className="min-h-screen pb-20">
       <div className="p-3 flex flex-col gap-3 sm:gap-4">
-        {/* Status badges */}
-        <div className="flex items-center gap-2 flex-wrap justify-between">
-          <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
-            {profile.isActive ? "Aktif" : "Pasif"}
-          </Badge>
-          <Button 
-            variant="destructive" 
-            size="sm"
-            onClick={handleLogout}
-            data-testid="button-logout"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Çıkış
-          </Button>
+        {/* Profile Header with Photo */}
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="relative">
+            <Avatar className="w-20 h-20 border-2 border-border">
+              {profile.profileImageUrl ? (
+                <AvatarImage src={profile.profileImageUrl} alt="Profil" className="object-cover" />
+              ) : (
+                <AvatarFallback className="text-xl">
+                  {(profile.firstName?.[0] || "") + (profile.lastName?.[0] || "")}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            {isOwnProfile && profile.profileImageUrl && (
+              <Button
+                type="button"
+                size="icon"
+                variant="destructive"
+                className="absolute -top-1 -right-1 h-5 w-5 rounded-full"
+                onClick={() => updatePhotoMutation.mutate(null)}
+                disabled={updatePhotoMutation.isPending}
+                data-testid="button-remove-profile-photo"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold truncate" data-testid="text-fullname">{profile.fullName}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline">{roleLabels[profile.role] || profile.role}</Badge>
+              {profile.branchName && (
+                <Badge variant="secondary">{profile.branchName}</Badge>
+              )}
+            </div>
+            {isOwnProfile && (
+              <div className="mt-2">
+                <ObjectUploader
+                  onGetUploadParameters={async () => {
+                    const res = await fetch("/api/object-storage/upload-url?directory=profiles&filename=profile.jpg", {
+                      credentials: "include"
+                    });
+                    if (!res.ok) throw new Error("Failed to get upload URL");
+                    return res.json();
+                  }}
+                  onComplete={(result) => {
+                    if (result.successful?.[0]?.uploadURL) {
+                      updatePhotoMutation.mutate(result.successful[0].uploadURL);
+                    }
+                  }}
+                  maxFileSize={3 * 1024 * 1024}
+                  buttonClassName="h-8"
+                >
+                  <Camera className="w-3 h-3 mr-1" />
+                  Fotoğraf Değiştir
+                </ObjectUploader>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant={profile.isActive ? "default" : "secondary"} data-testid="personnel-status">
+              {profile.isActive ? "Aktif" : "Pasif"}
+            </Badge>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleLogout}
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Çıkış
+            </Button>
+          </div>
         </div>
 
       {/* Performance Overview Card */}

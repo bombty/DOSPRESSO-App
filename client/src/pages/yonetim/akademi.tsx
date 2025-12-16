@@ -1843,13 +1843,23 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
                             </div>
                           )}
                           <ObjectUploader
-                            onUploadComplete={(url) => field.onChange(url)}
-                            accept="image/*"
-                            directory="recipes"
-                            maxSizeMB={5}
-                            aspectRatio={3/4}
-                            data-testid="uploader-recipe-photo"
-                          />
+                            onGetUploadParameters={async () => {
+                              const res = await fetch("/api/object-storage/upload-url?directory=recipes&filename=recipe.jpg", {
+                                credentials: "include"
+                              });
+                              if (!res.ok) throw new Error("Failed to get upload URL");
+                              return res.json();
+                            }}
+                            onComplete={(result) => {
+                              if (result.successful?.[0]?.uploadURL) {
+                                field.onChange(result.successful[0].uploadURL);
+                              }
+                            }}
+                            maxFileSize={5 * 1024 * 1024}
+                          >
+                            <ImageIcon className="w-4 h-4 mr-2" />
+                            Fotoğraf Yükle
+                          </ObjectUploader>
                         </div>
                       </FormControl>
                       <FormMessage />

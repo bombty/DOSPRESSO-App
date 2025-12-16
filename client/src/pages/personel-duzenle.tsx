@@ -28,14 +28,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Save, User, Briefcase, GraduationCap, Heart, UserMinus } from "lucide-react";
+import { ArrowLeft, Save, User, Briefcase, GraduationCap, Heart, UserMinus, Trash2, Camera } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User as UserType, Branch } from "@shared/schema";
 import { isHQRole } from "@shared/schema";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const employeeFormSchema = z.object({
+  profileImageUrl: z.string().optional(),
   firstName: z.string().min(1, "Ad gerekli"),
   lastName: z.string().min(1, "Soyad gerekli"),
   email: z.string().email("Geçerli e-posta giriniz").optional().or(z.literal("")),
@@ -95,6 +98,7 @@ export default function PersonelDuzenle() {
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
+      profileImageUrl: "",
       firstName: "",
       lastName: "",
       email: "",
@@ -133,6 +137,7 @@ export default function PersonelDuzenle() {
   useEffect(() => {
     if (employee) {
       form.reset({
+        profileImageUrl: employee.profileImageUrl || "",
         firstName: employee.firstName || "",
         lastName: employee.lastName || "",
         email: employee.email || "",
@@ -293,6 +298,69 @@ export default function PersonelDuzenle() {
             </TabsList>
 
             <TabsContent value="identity" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Profil Fotoğrafı</CardTitle>
+                  <CardDescription>Personelin profil fotoğrafını yükleyin</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="profileImageUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <div className="flex flex-col items-center gap-4">
+                            <div className="relative">
+                              <Avatar className="w-32 h-32 border-2 border-border">
+                                {field.value ? (
+                                  <AvatarImage src={field.value} alt="Profil" className="object-cover" />
+                                ) : (
+                                  <AvatarFallback className="text-2xl">
+                                    {(employee?.firstName?.[0] || "") + (employee?.lastName?.[0] || "")}
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                              {field.value && (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="destructive"
+                                  className="absolute -top-1 -right-1 h-6 w-6 rounded-full"
+                                  onClick={() => field.onChange("")}
+                                  data-testid="button-remove-profile-photo"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <ObjectUploader
+                              onGetUploadParameters={async () => {
+                                const res = await fetch("/api/object-storage/upload-url?directory=profiles&filename=profile.jpg", {
+                                  credentials: "include"
+                                });
+                                if (!res.ok) throw new Error("Failed to get upload URL");
+                                return res.json();
+                              }}
+                              onComplete={(result) => {
+                                if (result.successful?.[0]?.uploadURL) {
+                                  field.onChange(result.successful[0].uploadURL);
+                                }
+                              }}
+                              maxFileSize={3 * 1024 * 1024}
+                            >
+                              <Camera className="w-4 h-4 mr-2" />
+                              Fotoğraf Yükle
+                            </ObjectUploader>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Kimlik Bilgileri</CardTitle>
