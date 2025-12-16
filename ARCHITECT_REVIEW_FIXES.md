@@ -102,6 +102,40 @@
 - [x] No new runtime errors
 - [x] All seeds operational
 
+## Second Architect Review - Bug Fixes (Dec 16, 2025)
+
+### 🔴 CRITICAL BUGS FIXED
+
+#### Bug 1: Premature Dialog Close
+- **Finding:** Delete confirmation dialog closed immediately after mutate() call
+- **Risk:** If delete fails, user has no retry affordance - silent failure
+- **Fix Applied:** 
+  - Removed `setDeleteConfirmId(null)` from onClick handler
+  - Added `setDeleteConfirmId(null)` to deleteMutation.onSuccess
+  - Dialog now closes ONLY on successful deletion
+- **Error Handling:** On failure, toast shows error + dialog stays open for retry
+
+#### Bug 2: Dialog Dismissible During Pending
+- **Finding:** Users could close dialog (ESC/backdrop) while delete was in-flight
+- **Risk:** Duplicate request if user reopens and clicks delete again
+- **Fix Applied:**
+  - onOpenChange now checks `!deleteMutation.isPending` before closing
+  - Cancel button also disabled during pending state
+  - Prevents any form of premature closure
+
+### 🟢 FINAL VERIFICATION
+
+| Check | Status |
+|-------|--------|
+| Dialog closes only on success | ✅ |
+| Dialog stays open during pending | ✅ |
+| Dialog stays open on error (retry) | ✅ |
+| Cancel button disabled during pending | ✅ |
+| Confirm button disabled during pending | ✅ |
+| ESC/backdrop blocked during pending | ✅ |
+| Loading spinner visible | ✅ |
+| Role guard (admin/coach) | ✅ |
+
 ## Final Status: ✅ READY FOR PRODUCTION
 
 All architect findings addressed. System maintains 100% functional integrity while improving:
@@ -109,3 +143,4 @@ All architect findings addressed. System maintains 100% functional integrity whi
 - Accessibility (aria-labels, proper dialogs)
 - Responsiveness (flex-wrap)
 - Data integrity (max-length validation)
+- UX reliability (proper async state handling)

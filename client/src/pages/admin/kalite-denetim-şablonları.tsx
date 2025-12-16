@@ -92,6 +92,7 @@ export default function AdminKaliteDenetimSablonlari() {
       queryClient.invalidateQueries({ queryKey: ["/api/audit-templates"] });
       toast({ title: "Başarılı", description: "Şablon silindi" });
       setSelectedTemplate(null);
+      setDeleteConfirmId(null);
     },
     onError: (error: any) => {
       toast({ title: "Hata", description: error.message, variant: "destructive" });
@@ -250,14 +251,26 @@ export default function AdminKaliteDenetimSablonlari() {
         )}
 
         {/* Delete Confirmation Dialog */}
-        <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <Dialog 
+          open={!!deleteConfirmId} 
+          onOpenChange={(open) => {
+            if (!open && !deleteMutation.isPending) {
+              setDeleteConfirmId(null);
+            }
+          }}
+        >
           <DialogContent data-testid="dialog-delete-confirm">
             <DialogHeader>
               <DialogTitle>Şablonu Sil?</DialogTitle>
               <DialogDescription>Bu işlem geri alınamaz. Şablonu silmek istediğinizden emin misiniz?</DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteConfirmId(null)} data-testid="button-cancel-delete">
+              <Button 
+                variant="outline" 
+                onClick={() => setDeleteConfirmId(null)} 
+                disabled={deleteMutation.isPending}
+                data-testid="button-cancel-delete"
+              >
                 İptal
               </Button>
               <Button
@@ -265,7 +278,6 @@ export default function AdminKaliteDenetimSablonlari() {
                 onClick={() => {
                   if (deleteConfirmId) {
                     deleteMutation.mutate(deleteConfirmId);
-                    setDeleteConfirmId(null);
                   }
                 }}
                 disabled={deleteMutation.isPending}
