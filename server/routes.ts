@@ -11776,6 +11776,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         });
 
+      // COVERAGE VALIDATION: Ensure all active employees get at least 1 shift
+      const plannedEmployees = new Set(validatedShifts.map(s => String(s.assignedToId)));
+      const unplannedEmployees = employees.filter(e => !plannedEmployees.has(String(e.id)));
+      
+      if (unplannedEmployees.length > 0) {
+        console.log(`⚠️ Coverage gap: ${unplannedEmployees.length} employees not planned. Adding filler shifts...`);
+        
+        // Generate week dates
+        const weekDates: string[] = [];
+        const current = new Date(startDate);
+        while (current <= endDate) {
+          weekDates.push(current.toISOString().split('T')[0]);
+          current.setDate(current.getDate() + 1);
+        }
+        
+        // Add shifts to unplanned employees - distribute across week
+        unplannedEmployees.forEach((emp, idx) => {
+          const daysToAssign = Math.ceil((weekDates.length * 3) / unplannedEmployees.length); // ~3 days per employee
+          for (let i = 0; i < daysToAssign && idx * 3 + i < weekDates.length; i++) {
+            const dateIdx = (idx * 3 + i) % weekDates.length;
+            const shiftDate = weekDates[dateIdx];
+            
+            // Check if this employee already has a shift that day
+            const dayKey = shiftDate;
+            const employeeId = String(emp.id);
+            const hasShiftThatDay = validatedShifts.some(s => s.shiftDate === dayKey && s.assignedToId === employeeId);
+            
+            if (!hasShiftThatDay) {
+              // Alternate between morning and evening
+              const shiftType = i % 2 === 0 ? 'evening' : 'morning';
+              validatedShifts.push({
+                shiftDate,
+                assignedToId: employeeId,
+                shiftType,
+                status: 'draft',
+                startTime: shiftType === 'morning' ? '07:00:00' : '15:00:00',
+                endTime: shiftType === 'morning' ? '15:00:00' : '23:00:00',
+                breakStartTime: shiftType === 'morning' ? '11:00:00' : '19:00:00',
+                breakEndTime: shiftType === 'morning' ? '12:00:00' : '20:00:00',
+              });
+              plannedEmployees.add(employeeId);
+              console.log(`✅ Filler: ${emp.name} added to ${shiftDate} (${shiftType})`);
+            }
+          }
+        });
+      }
+
+      console.log(`📊 Final shift plan: ${validatedShifts.length} shifts for ${plannedEmployees.size} employees`);
+
       res.json({
         recommendations: validatedShifts,
         summary: aiPlan.summary || '',
