@@ -38,9 +38,9 @@ interface AuditTemplateItem {
 }
 
 const CreateTemplateSchema = z.object({
-  title: z.string().min(3, "Başlık en az 3 karakter olmalı"),
-  description: z.string().optional(),
-  category: z.string().optional(),
+  title: z.string().min(3, "Başlık en az 3 karakter olmalı").max(200, "Başlık çok uzun"),
+  description: z.string().max(500, "Açıklama çok uzun").optional(),
+  category: z.string().max(100, "Kategori çok uzun").optional(),
 });
 
 type CreateTemplateFormValues = z.infer<typeof CreateTemplateSchema>;
@@ -50,8 +50,9 @@ export default function AdminKaliteDenetimSablonlari() {
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<AuditTemplate | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
-  if (user?.role !== "admin" && user?.role !== "hq_manager") {
+  if (user?.role !== "admin" && user?.role !== "coach") {
     return <Redirect to="/" />;
   }
 
@@ -103,10 +104,10 @@ export default function AdminKaliteDenetimSablonlari() {
     <div className="flex h-screen w-full flex-col">
       {/* Header */}
       <div className="border-b bg-background px-6 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <Link href="/admin">
-              <Button variant="ghost" size="icon" data-testid="button-back">
+              <Button variant="ghost" size="icon" data-testid="button-back" aria-label="Geri dön">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
@@ -235,11 +236,8 @@ export default function AdminKaliteDenetimSablonlari() {
                         size="sm"
                         variant="outline"
                         data-testid={`button-delete-${template.id}`}
-                        onClick={() => {
-                          if (confirm("Şablonu silmek istediğinizden emin misiniz?")) {
-                            deleteMutation.mutate(template.id);
-                          }
-                        }}
+                        onClick={() => setDeleteConfirmId(template.id)}
+                        aria-label={`Şablonu sil: ${template.title}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -250,6 +248,35 @@ export default function AdminKaliteDenetimSablonlari() {
             ))}
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+          <DialogContent data-testid="dialog-delete-confirm">
+            <DialogHeader>
+              <DialogTitle>Şablonu Sil?</DialogTitle>
+              <DialogDescription>Bu işlem geri alınamaz. Şablonu silmek istediğinizden emin misiniz?</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)} data-testid="button-cancel-delete">
+                İptal
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (deleteConfirmId) {
+                    deleteMutation.mutate(deleteConfirmId);
+                    setDeleteConfirmId(null);
+                  }
+                }}
+                disabled={deleteMutation.isPending}
+                data-testid="button-confirm-delete"
+              >
+                {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Sil
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Template Detail Dialog */}
         {selectedTemplate && (
