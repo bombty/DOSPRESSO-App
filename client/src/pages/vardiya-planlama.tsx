@@ -786,7 +786,9 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [startTime, setStartTime] = useState('08:00');
-  const [breakTime, setBreakTime] = useState('11:30');
+  const [endTime, setEndTime] = useState('16:30');
+  const [breakTime, setBreakTime] = useState('12:00');
+  const [employeeTypeFilter, setEmployeeTypeFilter] = useState<'all' | 'fulltime' | 'parttime'>('all');
   const [checklist1, setChecklist1] = useState('');
   const [checklist2, setChecklist2] = useState('');
   const [checklist3, setChecklist3] = useState('');
@@ -813,8 +815,50 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
     });
   }, [weekStart]);
 
+  // Calculate weekly hours for each employee from existing shifts
+  const getEmployeeWeeklyHours = useCallback((employeeId: string) => {
+    if (!Array.isArray(existingShifts)) return 0;
+    const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+    const weekEndStr = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+    
+    const employeeShifts = existingShifts.filter((s: any) => 
+      String(s.assignedToId) === employeeId && 
+      s.shiftDate >= weekStartStr && 
+      s.shiftDate <= weekEndStr
+    );
+    
+    let totalMinutes = 0;
+    employeeShifts.forEach((shift: any) => {
+      if (shift.startTime && shift.endTime) {
+        const [startH, startM] = shift.startTime.split(':').map(Number);
+        const [endH, endM] = shift.endTime.split(':').map(Number);
+        const startMinutes = startH * 60 + startM;
+        const endMinutes = endH * 60 + endM;
+        totalMinutes += endMinutes - startMinutes;
+      }
+    });
+    
+    return Math.round(totalMinutes / 60 * 10) / 10; // Hours with 1 decimal
+  }, [existingShifts, weekStart]);
+
+  // Calculate new shift hours
+  const calculateShiftHours = useCallback(() => {
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    return (endMinutes - startMinutes) / 60;
+  }, [startTime, endTime]);
+
   const availableEmployees = useMemo(() => {
-    if (!selectedDays.length) return employees;
+    let filtered = employees;
+    
+    // Filter by employment type
+    if (employeeTypeFilter !== 'all') {
+      filtered = filtered.filter((emp: any) => emp.employmentType === employeeTypeFilter);
+    }
+    
+    if (!selectedDays.length) return filtered;
     
     const assignedEmployeeIds = new Set<string>();
     selectedDays.forEach(day => {
@@ -826,8 +870,8 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
       });
     });
 
-    return employees.filter((emp: any) => !assignedEmployeeIds.has(String(emp.id)));
-  }, [employees, selectedDays, existingShifts]);
+    return filtered.filter((emp: any) => !assignedEmployeeIds.has(String(emp.id)));
+  }, [employees, selectedDays, existingShifts, employeeTypeFilter]);
 
   const getEmployeeAssignedDays = (employeeId: string) => {
     if (!Array.isArray(existingShifts)) return [];
@@ -860,7 +904,9 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
     setSelectedEmployee('');
     setSelectedDays([]);
     setStartTime('08:00');
-    setBreakTime('11:30');
+    setEndTime('16:30');
+    setBreakTime('12:00');
+    setEmployeeTypeFilter('all');
     setChecklist1('');
     setChecklist2('');
     setChecklist3('');
@@ -868,20 +914,43 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
     setQuickTaskText('');
   };
 
+  // Check if employee would exceed weekly limit with new shifts
+  const checkHoursLimit = useCallback(() => {
+    if (!selectedEmployee) return null;
+    
+    const emp = employees.find((e: any) => String(e.id) === selectedEmployee);
+    if (!emp) return null;
+    
+    const currentHours = getEmployeeWeeklyHours(selectedEmployee);
+    const newShiftHours = calculateShiftHours() * selectedDays.length;
+    const totalHours = currentHours + newShiftHours;
+    const weeklyLimit = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
+    
+    return {
+      currentHours,
+      newShiftHours,
+      totalHours,
+      weeklyLimit,
+      exceedsLimit: totalHours > weeklyLimit,
+      employee: emp,
+    };
+  }, [selectedEmployee, employees, getEmployeeWeeklyHours, calculateShiftHours, selectedDays]);
+
+  const hoursCheck = checkHoursLimit();
+
   const createMutation = useMutation({
     mutationFn: async () => {
-      const [h] = startTime.split(':').map(Number);
-      const endH = (h + 8) % 24;
+      const [startH] = startTime.split(':').map(Number);
       const [bH] = breakTime.split(':').map(Number);
       const breakEndH = (bH + 1) % 24;
-      const shiftType = h < 12 ? 'morning' : 'evening';
+      const shiftType = startH < 12 ? 'morning' : 'evening';
 
       const shifts = selectedDays.map(dateStr => ({
         shiftDate: dateStr,
         startTime: `${startTime}:00`,
-        endTime: `${String(endH).padStart(2, '0')}:30:00`,
+        endTime: `${endTime}:00`,
         breakStartTime: `${breakTime}:00`,
-        breakEndTime: `${String(breakEndH).padStart(2, '0')}:30:00`,
+        breakEndTime: `${String(breakEndH).padStart(2, '0')}:00:00`,
         shiftType,
         assignedToId: selectedEmployee,
         status: 'draft',
@@ -966,7 +1035,33 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
             </div>
           </div>
 
-          {/* Employee Selection - filtered by selected days */}
+          {/* Employee Type Filter */}
+          <div>
+            <label className="text-sm font-medium">Personel Tipi</label>
+            <div className="flex gap-1 mt-1">
+              {[
+                { value: 'all', label: 'Tümü' },
+                { value: 'fulltime', label: 'Tam Zamanlı' },
+                { value: 'parttime', label: 'Part-time' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setEmployeeTypeFilter(opt.value as 'all' | 'fulltime' | 'parttime')}
+                  className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    employeeTypeFilter === opt.value 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                  data-testid={`filter-${opt.value}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Employee Selection - filtered by selected days and type */}
           <div>
             <label className="text-sm font-medium">
               Personel 
@@ -986,48 +1081,83 @@ function AddShiftModal({ open, onClose, weekStart, employees, branchId, existing
                     Bu günlerde tüm personel dolu
                   </div>
                 ) : (
-                  availableEmployees.map((emp: any) => (
-                    <SelectItem key={emp.id} value={String(emp.id)}>
-                      {emp.fullName || `${emp.firstName} ${emp.lastName}`}
-                    </SelectItem>
-                  ))
+                  availableEmployees.map((emp: any) => {
+                    const weeklyHours = getEmployeeWeeklyHours(String(emp.id));
+                    const limit = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
+                    const isPartTime = emp.employmentType === 'parttime';
+                    return (
+                      <SelectItem key={emp.id} value={String(emp.id)}>
+                        <div className="flex items-center gap-2 w-full">
+                          <span className="flex-1">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${isPartTime ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}`}>
+                            {isPartTime ? 'PT' : 'FT'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{weeklyHours}/{limit}s</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })
                 )}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Time Selection */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Hours Warning */}
+          {hoursCheck && (
+            <div className={`p-3 rounded-md text-sm ${hoursCheck.exceedsLimit ? 'bg-destructive/10 border border-destructive/30' : 'bg-muted'}`}>
+              <div className="flex items-center justify-between">
+                <span>Mevcut: {hoursCheck.currentHours}s</span>
+                <span>Yeni: +{hoursCheck.newShiftHours.toFixed(1)}s</span>
+                <span className={hoursCheck.exceedsLimit ? 'text-destructive font-bold' : 'font-medium'}>
+                  Toplam: {hoursCheck.totalHours.toFixed(1)}/{hoursCheck.weeklyLimit}s
+                </span>
+              </div>
+              {hoursCheck.exceedsLimit && (
+                <p className="text-destructive text-xs mt-1">
+                  Haftalık limit aşılıyor! ({hoursCheck.employee.employmentType === 'parttime' ? 'Part-time' : 'Tam zamanlı'})
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Time Selection - Flexible */}
+          <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="text-sm font-medium">Başlangıç</label>
-              <select
+              <Input
+                type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-                data-testid="select-start-time"
-              >
-                {Array.from({ length: 13 }, (_, i) => {
-                  const h = 7 + i;
-                  const t = `${String(h).padStart(2, '0')}:00`;
-                  return <option key={t} value={t}>{t}</option>;
-                })}
-              </select>
+                className="mt-1"
+                data-testid="input-start-time"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Bitiş</label>
+              <Input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="mt-1"
+                data-testid="input-end-time"
+              />
             </div>
             <div>
               <label className="text-sm font-medium">Mola</label>
-              <select
+              <Input
+                type="time"
                 value={breakTime}
                 onChange={(e) => setBreakTime(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-                data-testid="select-break-time"
-              >
-                {Array.from({ length: 10 }, (_, i) => {
-                  const h = 11 + i;
-                  const t = `${String(h).padStart(2, '0')}:30`;
-                  return <option key={t} value={t}>{t}</option>;
-                })}
-              </select>
+                className="mt-1"
+                data-testid="input-break-time"
+              />
             </div>
+          </div>
+          
+          {/* Shift Duration Display */}
+          <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
+            <span>Vardiya Süresi:</span>
+            <span className="font-medium">{calculateShiftHours().toFixed(1)} saat</span>
           </div>
 
           {/* Checklist Selections */}
