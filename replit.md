@@ -6,7 +6,24 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Session Summary (Dec 16, 2025 - Critical Shift Planning System Fixes)
+## Recent Session Summary (Dec 16, 2025 - Test Users & Bug Fixes)
+✅ **PDF Export Fix**: Added jspdf-autotable side-effect import to fix `doc.autoTable is not a function` error
+  - client/src/pages/raporlar.tsx: Line 24 - `import "jspdf-autotable";`
+
+✅ **Test User Infrastructure**: Created comprehensive test user seed script
+  - Script: `tsx server/seed-test-users.ts` (idempotent - safe to run multiple times)
+  - Creates 6 test users per branch (132 total across 22 branches)
+  - Roles: stajyer, bar_buddy, barista, supervisor_buddy, supervisor, yatirimci_branch
+  - Username pattern: `test_{role}_{branch_slug}` (e.g., test_barista_antalya_isiklar)
+  - Password: 0000 (bcrypt hashed)
+  - Includes random badges and training progress data
+  - Fixed investor role assignment (22 users corrected to yatirimci_branch)
+
+📊 **Current User Stats**:
+  - Total: 181 users
+  - barista: 62, supervisor: 26, stajyer: 22, yatirimci_branch: 22, bar_buddy: 22, supervisor_buddy: 22, admin: 3, trainer: 1, coach: 1
+
+## Previous Session Summary (Dec 16, 2025 - Critical Shift Planning System Fixes)
 ✅ **CRITICAL Bug Fixes & AI Coverage Guarantee**:
   - BUG FIX 1: Vardiya sıfırlama NaN hatası - Express route order problem
     - DELETE /api/shifts/reset-weekly MUST be before DELETE /api/shifts/:id 

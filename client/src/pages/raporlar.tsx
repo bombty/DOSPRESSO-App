@@ -18,6 +18,7 @@ import { tr } from "date-fns/locale";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Plus, Download, FileText, Sparkles, CalendarIcon, X } from "lucide-react";
 import jsPDF from "jspdf";
+import "jspdf-autotable";
 import autoTable, { RowInput } from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
