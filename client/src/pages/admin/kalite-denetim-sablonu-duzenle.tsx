@@ -36,6 +36,7 @@ interface AuditTemplateItem {
   itemText: string;
   itemType: string | null;
   weight: string | null;
+  section: string | null;
   requiresPhoto: boolean | null;
   sortOrder: number;
   maxPoints: number;
@@ -52,6 +53,7 @@ const TemplateSchema = z.object({
 const ItemSchema = z.object({
   itemText: z.string().min(3, "Madde metni en az 3 karakter olmalı"),
   itemType: z.string().default("checkbox"),
+  section: z.string().min(1, "Bölüm seçilmelidir"),
   weight: z.string().optional(),
   maxPoints: z.number().min(1).max(100).default(10),
   requiresPhoto: z.boolean().default(false),
@@ -61,14 +63,24 @@ const ItemSchema = z.object({
 type TemplateFormValues = z.infer<typeof TemplateSchema>;
 type ItemFormValues = z.infer<typeof ItemSchema>;
 
-const CATEGORY_OPTIONS = [
-  { value: "gida_guvenligi", label: "Gıda Güvenliği (%25)" },
-  { value: "urun_standardi", label: "Ürün Standardı (%25)" },
-  { value: "servis", label: "Servis (%15)" },
-  { value: "operasyon", label: "Operasyon (%15)" },
-  { value: "marka", label: "Marka (%10)" },
-  { value: "ekipman", label: "Ekipman (%10)" },
+// Template type options (what kind of audit template is this)
+const TEMPLATE_TYPE_OPTIONS = [
+  { value: "magaza_denetimi", label: "Mağaza Denetimi" },
+  { value: "hijyen_denetimi", label: "Hijyen Denetimi" },
+  { value: "ekipman_denetimi", label: "Ekipman Denetimi" },
+  { value: "acilis_denetimi", label: "Açılış Denetimi" },
+  { value: "personel_denetimi", label: "Personel Denetimi" },
   { value: "genel", label: "Genel" },
+];
+
+// Section options for item scoring (6 weighted sections)
+const SECTION_OPTIONS = [
+  { value: "gida_guvenligi", label: "Gıda Güvenliği", weight: 25, color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+  { value: "urun_standardi", label: "Ürün Standardı", weight: 25, color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
+  { value: "servis", label: "Servis", weight: 15, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+  { value: "operasyon", label: "Operasyon", weight: 15, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+  { value: "marka", label: "Marka", weight: 10, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+  { value: "ekipman", label: "Ekipman", weight: 10, color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
 ];
 
 const ITEM_TYPE_OPTIONS = [
@@ -112,6 +124,7 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
     defaultValues: {
       itemText: "",
       itemType: "checkbox",
+      section: "",
       weight: "",
       maxPoints: 10,
       requiresPhoto: false,
@@ -209,6 +222,7 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
     itemForm.reset({
       itemText: item.itemText,
       itemType: item.itemType || "checkbox",
+      section: item.section || "",
       weight: item.weight || "",
       maxPoints: item.maxPoints,
       requiresPhoto: item.requiresPhoto || false,
@@ -323,21 +337,24 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
                       name="category"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Kategori</FormLabel>
+                          <FormLabel>Şablon Türü</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger data-testid="select-category">
-                                <SelectValue placeholder="Kategori seçin" />
+                                <SelectValue placeholder="Şablon türü seçin" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {CATEGORY_OPTIONS.map((opt) => (
+                              {TEMPLATE_TYPE_OPTIONS.map((opt) => (
                                 <SelectItem key={opt.value} value={opt.value}>
                                   {opt.label}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Bu şablonun ne tür bir denetim için kullanılacağını belirtir
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -363,6 +380,32 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
                     />
                   </form>
                 </Form>
+              </CardContent>
+            </Card>
+
+            {/* Section Weights Summary */}
+            <Card className="mt-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Bölüm Ağırlıkları</CardTitle>
+                <CardDescription className="text-xs">6 değerlendirme bölümü ve puanlama ağırlıkları</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {SECTION_OPTIONS.map((section) => {
+                  const itemCount = template.items?.filter(i => i.section === section.value).length || 0;
+                  return (
+                    <div key={section.value} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <Badge className={section.color} variant="outline">
+                          {section.label}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-xs">{itemCount} madde</span>
+                        <span className="font-medium">%{section.weight}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
@@ -401,6 +444,14 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
                               <div className="flex-1 space-y-2">
                                 <p className="font-medium" data-testid={`text-item-${item.id}`}>{item.itemText}</p>
                                 <div className="flex gap-2 flex-wrap">
+                                  {item.section && (
+                                    <Badge 
+                                      className={SECTION_OPTIONS.find(s => s.value === item.section)?.color || ""} 
+                                      data-testid={`badge-section-${item.id}`}
+                                    >
+                                      {SECTION_OPTIONS.find(s => s.value === item.section)?.label || item.section}
+                                    </Badge>
+                                  )}
                                   <Badge variant="outline" data-testid={`badge-type-${item.id}`}>
                                     {ITEM_TYPE_OPTIONS.find(o => o.value === item.itemType)?.label || item.itemType}
                                   </Badge>
@@ -479,6 +530,36 @@ export default function AdminKaliteDenetimSablonuDuzenle() {
                         {...field} 
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={itemForm.control}
+                name="section"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bölüm (Zorunlu)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-section">
+                          <SelectValue placeholder="Bölüm seçin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SECTION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            <span className="flex items-center gap-2">
+                              {opt.label}
+                              <span className="text-xs text-muted-foreground">(%{opt.weight})</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Bu madde hangi değerlendirme bölümüne ait?
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

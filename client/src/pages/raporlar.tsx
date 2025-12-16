@@ -201,6 +201,22 @@ export default function Raporlar() {
     queryKey: ["/api/equipment"],
   });
 
+  // Fetch branch audit scores for quality reports
+  interface BranchAuditScore {
+    id: number;
+    branchId: number;
+    section: string;
+    sectionScore: number;
+    weight: number;
+    itemCount: number;
+    periodType: string;
+    periodStart: string;
+    periodEnd: string;
+  }
+  const { data: branchAuditScores = [] } = useQuery<BranchAuditScore[]>({
+    queryKey: ["/api/branch-audit-scores"],
+  });
+
   // Build comparison data from real API data
   const comparisonData = branches.map((branch) => {
     const branchTasks = allTasks.filter((t: any) => t.branchId === branch.id);
@@ -637,9 +653,10 @@ export default function Raporlar() {
       </div>
 
       <Tabs defaultValue={selectedTab} onValueChange={setSelectedTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="comparison">Şube Karşılaştırması</TabsTrigger>
           <TabsTrigger value="trends">Trend Analizi</TabsTrigger>
+          <TabsTrigger value="quality" data-testid="tab-quality-reports">Kalite Denetim</TabsTrigger>
           <TabsTrigger value="list">Raporlar</TabsTrigger>
         </TabsList>
 
@@ -752,6 +769,134 @@ export default function Raporlar() {
                   <Line type="monotone" dataKey="tasks" stroke="#3b82f6" name="Görevler" />
                 </LineChart>
               </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Kalite Denetim */}
+        <TabsContent value="quality" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle>Kalite Denetim Raporları</CardTitle>
+                <CardDescription>Şube bazında kalite denetim sonuçları ve bölüm skorları</CardDescription>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const doc = new jsPDF();
+                  doc.setFontSize(18);
+                  doc.text("DOSPRESSO Kalite Denetim Raporu", 20, 20);
+                  doc.setFontSize(10);
+                  doc.text(`Tarih: ${format(new Date(), "dd MMMM yyyy", { locale: tr })}`, 20, 30);
+                  
+                  const tableData: RowInput[] = [
+                    ["Gıda Güvenliği", "25%"],
+                    ["Ürün Standardı", "25%"],
+                    ["Servis", "15%"],
+                    ["Operasyon", "15%"],
+                    ["Marka", "10%"],
+                    ["Ekipman", "10%"]
+                  ];
+                  
+                  autoTable(doc, {
+                    startY: 40,
+                    head: [["Bölüm", "Ağırlık"]],
+                    body: tableData,
+                  });
+                  
+                  doc.save("kalite-denetim-raporu.pdf");
+                  toast({
+                    title: "Başarılı",
+                    description: "Rapor PDF olarak indirildi",
+                  });
+                }}
+                data-testid="button-export-quality-pdf"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                PDF
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Section Weights Summary */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                  <div className="p-3 rounded-lg border bg-red-50 dark:bg-red-950 text-center">
+                    <p className="text-xs text-muted-foreground">Gıda Güvenliği</p>
+                    <p className="text-lg font-bold text-red-600">25%</p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-orange-50 dark:bg-orange-950 text-center">
+                    <p className="text-xs text-muted-foreground">Ürün Standardı</p>
+                    <p className="text-lg font-bold text-orange-600">25%</p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-blue-50 dark:bg-blue-950 text-center">
+                    <p className="text-xs text-muted-foreground">Servis</p>
+                    <p className="text-lg font-bold text-blue-600">15%</p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-green-50 dark:bg-green-950 text-center">
+                    <p className="text-xs text-muted-foreground">Operasyon</p>
+                    <p className="text-lg font-bold text-green-600">15%</p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-purple-50 dark:bg-purple-950 text-center">
+                    <p className="text-xs text-muted-foreground">Marka</p>
+                    <p className="text-lg font-bold text-purple-600">10%</p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-900 text-center">
+                    <p className="text-xs text-muted-foreground">Ekipman</p>
+                    <p className="text-lg font-bold text-gray-600">10%</p>
+                  </div>
+                </div>
+                
+                {/* Branch Quality Scores Chart - Using real data */}
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Şube Kalite Skorları</h4>
+                  {(() => {
+                    // Aggregate scores by branch
+                    const branchQualityData = branches.map(branch => {
+                      const branchScores = branchAuditScores.filter(s => s.branchId === branch.id);
+                      const totalWeightedScore = branchScores.reduce((acc, s) => acc + (s.sectionScore * s.weight / 100), 0);
+                      return {
+                        branch: branch.name,
+                        score: branchScores.length > 0 ? Math.round(totalWeightedScore) : 0
+                      };
+                    }).filter(b => b.score > 0);
+                    
+                    return branchQualityData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={branchQualityData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="branch" />
+                          <YAxis domain={[0, 100]} />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="score" fill="#10b981" name="Kalite Skoru" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>Henüz kalite denetim skoru bulunmuyor</p>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Recent Audits Summary */}
+                {branchAuditScores.length > 0 && (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="text-sm font-medium mb-3">Son Denetim Kayıtları</h4>
+                    <p className="text-sm text-muted-foreground">{branchAuditScores.length} adet bölüm skoru kaydı</p>
+                  </div>
+                )}
+                
+                {/* Link to Quality Audit Page */}
+                <div className="flex justify-center">
+                  <Button variant="outline" onClick={() => window.location.href = "/kalite-denetimi"} data-testid="button-go-quality-page">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Kalite Denetim Sayfasına Git
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

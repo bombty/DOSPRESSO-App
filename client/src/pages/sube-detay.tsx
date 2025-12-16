@@ -114,6 +114,30 @@ export default function SubeDetayPage() {
     enabled: !!branchId,
   });
 
+  // Fetch branch audit scores (6-section breakdown)
+  interface AuditScoreResponse {
+    branchId: number;
+    auditCount: number;
+    overallScore: number | null;
+    sections: {
+      gida_guvenligi: number | null;
+      urun_standardi: number | null;
+      servis: number | null;
+      operasyon: number | null;
+      marka: number | null;
+      ekipman: number | null;
+    };
+  }
+  const { data: auditScoreData, isLoading: auditScoresLoading } = useQuery<AuditScoreResponse>({
+    queryKey: ['/api/branch-audit-scores', branchId, 'latest'],
+    enabled: !!branchId,
+    queryFn: async () => {
+      const response = await fetch(`/api/branch-audit-scores/${branchId}/latest`);
+      if (!response.ok) return null;
+      return response.json();
+    }
+  });
+
   // Generate QR token mutation
   const generateQrMutation = useMutation({
     mutationFn: async () => {
@@ -284,6 +308,7 @@ export default function SubeDetayPage() {
           <TabsTrigger value="gorevler" data-testid="tab-tasks">Görevler</TabsTrigger>
           <TabsTrigger value="ekipman" data-testid="tab-equipment">Ekipman</TabsTrigger>
           <TabsTrigger value="arizalar" data-testid="tab-faults">Arızalar</TabsTrigger>
+          <TabsTrigger value="kalite" data-testid="tab-quality">Kalite Denetim</TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="qr-ayarlar" data-testid="tab-qr-settings">
               QR & Lokasyon
@@ -328,12 +353,12 @@ export default function SubeDetayPage() {
 
             <button 
               type="button"
-              onClick={() => handleCardClick("gorevler")}
+              onClick={() => handleCardClick("kalite")}
               className="text-left p-3 rounded-lg border bg-card hover-elevate active-elevate-2 cursor-pointer"
               data-testid="card-metric-quality"
             >
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-xs font-medium text-muted-foreground">Kalite</span>
+                <span className="text-xs font-medium text-muted-foreground">Kalite Denetim</span>
                 <ClipboardCheck className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               <div className="flex items-center gap-2">
@@ -567,6 +592,97 @@ export default function SubeDetayPage() {
                   <p>Aktif arıza bulunmuyor</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Kalite Denetim Tab */}
+        <TabsContent value="kalite" className="w-full space-y-2 sm:space-y-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4" />
+                Kalite Denetim Skorları
+              </CardTitle>
+              <CardDescription>
+                6 bölümlü ağırlıklı değerlendirme sistemi
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Overall Score - from audit data or fallback to branch scores */}
+                <div className="flex items-center justify-between p-4 rounded-lg bg-primary/10">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Genel Kalite Skoru</p>
+                    <p className="text-3xl font-bold text-primary" data-testid="quality-overall-score">
+                      {auditScoreData?.overallScore !== null && auditScoreData?.overallScore !== undefined 
+                        ? Math.round(auditScoreData.overallScore)
+                        : scores.qualityAuditScore.toFixed(0)}
+                    </p>
+                  </div>
+                  <Award className="h-12 w-12 text-primary opacity-20" />
+                </div>
+
+                {/* Section Scores - 6 weighted sections with real data */}
+                {auditScoresLoading ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">Yükleniyor...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(() => {
+                      const sectionConfig = [
+                        { key: 'gida_guvenligi' as const, label: 'Gıda Güvenliği', weight: 25, bg: 'bg-red-50 dark:bg-red-950', dot: 'bg-red-500' },
+                        { key: 'urun_standardi' as const, label: 'Ürün Standardı', weight: 25, bg: 'bg-orange-50 dark:bg-orange-950', dot: 'bg-orange-500' },
+                        { key: 'servis' as const, label: 'Servis', weight: 15, bg: 'bg-blue-50 dark:bg-blue-950', dot: 'bg-blue-500' },
+                        { key: 'operasyon' as const, label: 'Operasyon', weight: 15, bg: 'bg-green-50 dark:bg-green-950', dot: 'bg-green-500' },
+                        { key: 'marka' as const, label: 'Marka', weight: 10, bg: 'bg-purple-50 dark:bg-purple-950', dot: 'bg-purple-500' },
+                        { key: 'ekipman' as const, label: 'Ekipman', weight: 10, bg: 'bg-gray-50 dark:bg-gray-900', dot: 'bg-gray-500' }
+                      ];
+                      return sectionConfig.map(section => {
+                        const sectionScore = auditScoreData?.sections?.[section.key];
+                        return (
+                          <div key={section.key} className={`flex items-center justify-between p-3 rounded-lg border ${section.bg}`}>
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${section.dot}`} />
+                              <span className="font-medium">{section.label}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold" data-testid={`section-score-${section.key}`}>
+                                {sectionScore !== null && sectionScore !== undefined ? `${Math.round(sectionScore)}/100` : '-'}
+                              </span>
+                              <Badge variant="outline" data-testid={`section-weight-${section.key}`}>%{section.weight}</Badge>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+
+                {/* Audit Count and No data message */}
+                {auditScoreData && auditScoreData.auditCount > 0 && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Son {auditScoreData.auditCount} denetimin ortalaması
+                  </p>
+                )}
+                {(!auditScoreData || auditScoreData.auditCount === 0) && !auditScoresLoading && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <ClipboardCheck className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Henüz denetim verisi bulunmuyor</p>
+                  </div>
+                )}
+
+                {/* Link to Quality Control Page */}
+                <div className="flex justify-center pt-4">
+                  <Link href="/kalite-denetimi">
+                    <Button variant="outline" data-testid="button-view-audits">
+                      <ClipboardCheck className="h-4 w-4 mr-2" />
+                      Tüm Denetimleri Görüntüle
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
