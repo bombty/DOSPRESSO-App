@@ -997,10 +997,12 @@ export async function generateShiftPlan(
 
 ⚠️ ZORUNLU KURALLAR (KESİNLİKLE UYULMALI):
 1. STAJYER KURALI: Her stajyer (intern) yanında mutlaka en az 1 barista olmalı. Stajyer asla tek başına çalışamaz!
-2. GÜÇ AYRIMI: Aynı kişi aynı gün hem sabah açılış hem akşam kapanış yapmamalı.
-3. YOĞUNLUK DENGESİ: Sabah vardiyaları (06:00-14:00) daha az personel gerektirir. Akşam vardiyaları (14:00-22:00) en yoğun saatler - daha fazla personel.
-4. HAFTALİK OFF: Her personele haftada en az 1 gün izin verilmeli.
-5. 45 SAAT LİMİTİ: Hiçbir personel haftada 45 saatten fazla çalışmamalı.
+2. GÜÇ AYRIMI: Aynı kişi aynı gün hem sabah açılış (06:00-14:00) hem akşam kapanış (14:00-22:00) yapmamalı. Supervisor buddy'ler her gün zıt vardiyalarda olmalı (biri açılış, biri kapanış).
+3. YOĞUNLUK DENGESİ: Sabah vardiyaları (06:00-14:00) daha az personel gerektirir (1-2 kişi). Akşam vardiyaları (14:00-22:00) en yoğun saatler - daha fazla personel (3+ kişi). Kapanış vardiyalarında MUTLAKA minimum 3 personel olmalı.
+4. HAFTALİK OFF: Her personele haftada en az 1 gün izin verilmeli. Off günlerini Pazar akşamı, Pazartesi, Salı günlerine konsantre et (zayıf satış günleri).
+5. 45 SAAT LİMİTİ: Fulltime personel haftada 45 saatten fazla çalışmamalı.
+6. MOLA DAĞI™IM: Aynı vardiyada mola saatleri farklı olmalı (15 dakika arayla kademeli molalar). Örn: biri 12:00-13:00, diğeri 13:00-14:00.
+7. HAFTA SONUNA YOĞUNLUK: Hafta sonları (Cuma gece, Cumartesi, Pazar) maximum personel ata. Pazartesi-Salı günlerine minimum personel ata (zayıf satış).
 
 Geçmiş Vardiya İstatistikleri (son 6 hafta):
 - Toplam vardiya: ${shiftStats.totalShifts}
@@ -1025,6 +1027,12 @@ Vardiya Tipleri:
 - night: 22:00-06:00 (gece vardiyası, orta yoğunluk)
 
 Her vardiya için tek bir çalışan ata. Stajyerler için aynı vardiyaya ayrıca barista da ata.
+
+ÖNEMLİ: 
+- Aynı personeli aynı gün birden fazla vardiyaya atama! Sadece 1 vardiya/gün.
+- Supervisor buddy'leri (supervisor_buddy role) her zaman zıt vardiyalarda planla: biri 06:00-14:00, diğeri 14:00-22:00
+- Intern'leri asla tek başına planlama - yanına barista ekle
+- Hafta sonlarını staffla, zayıf günleri minimize et
 
 JSON formatında yanıt ver:
 {
