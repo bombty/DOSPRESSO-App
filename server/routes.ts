@@ -75,6 +75,8 @@ import {
   branches,
   maintenanceSchedules,
   maintenanceLogs,
+  equipmentCalibrations,
+  insertEquipmentCalibrationSchema,
   campaigns,
   campaignBranches,
   campaignMetrics,
@@ -6963,6 +6965,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       }
       res.status(500).json({ message: "Bakım kaydı oluşturulurken hata oluştu" });
+    }
+  });
+
+  // ========================================
+  // EQUIPMENT CALIBRATIONS API (Kalibrasyon Takibi)
+  // ========================================
+
+  // GET /api/equipment-calibrations - List calibrations
+  app.get('/api/equipment-calibrations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { equipmentId, result, upcoming } = req.query;
+      
+      let query = db.select({
+        calibration: equipmentCalibrations,
+        equipment: equipment,
+        calibratedBy: users,
+      }).from(equipmentCalibrations)
+        .leftJoin(equipment, eq(equipmentCalibrations.equipmentId, equipment.id))
+        .leftJoin(users, eq(equipmentCalibrations.calibratedById, users.id));
+      
+      const conditions = [];
+      
+      if (equipmentId) {
+        conditions.push(eq(equipmentCalibrations.equipmentId, parseInt(equipmentId as string)));
+      }
+      
+      if (result) {
+        conditions.push(eq(equipmentCalibrations.result, result as string));
+      }
+      
+      if (upcoming === 'true') {
+        const thirtyDaysLater = new Date();
+        thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+        conditions.push(sql`${equipmentCalibrations.nextCalibrationDue} <= ${thirtyDaysLater.toISOString().split('T')[0]}`);
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+      
+      const calibrations = await query.orderBy(desc(equipmentCalibrations.calibrationDate));
+      
+      res.json(calibrations.map(c => ({
+        ...c.calibration,
+        equipment: c.equipment,
+        calibratedBy: c.calibratedBy,
+      })));
+    } catch (error) {
+      console.error("Error fetching calibrations:", error);
+      res.status(500).json({ message: "Kalibrasyon kayıtları yüklenirken hata oluştu" });
+    }
+  });
+
+  // GET /api/equipment-calibrations/:id - Get single calibration
+  app.get('/api/equipment-calibrations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const [calibration] = await db.select({
+        calibration: equipmentCalibrations,
+        equipment: equipment,
+        calibratedBy: users,
+      }).from(equipmentCalibrations)
+        .leftJoin(equipment, eq(equipmentCalibrations.equipmentId, equipment.id))
+        .leftJoin(users, eq(equipmentCalibrations.calibratedById, users.id))
+        .where(eq(equipmentCalibrations.id, parseInt(id)));
+      
+      if (!calibration) {
+        return res.status(404).json({ message: "Kalibrasyon kaydı bulunamadı" });
+      }
+      
+      res.json({
+        ...calibration.calibration,
+        equipment: calibration.equipment,
+        calibratedBy: calibration.calibratedBy,
+      });
+    } catch (error) {
+      console.error("Error fetching calibration:", error);
+      res.status(500).json({ message: "Kalibrasyon kaydı yüklenirken hata oluştu" });
+    }
+  });
+
+  // POST /api/equipment-calibrations - Create calibration
+  app.post('/api/equipment-calibrations', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Only HQ/Technical staff can create calibrations
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Kalibrasyon kaydı oluşturma yetkisi gerekli" });
+      }
+      
+      const validatedData = insertEquipmentCalibrationSchema.parse({
+        ...req.body,
+        calibrationDate: new Date(req.body.calibrationDate),
+      });
+      
+      const [calibration] = await db.insert(equipmentCalibrations).values({
+        ...validatedData,
+        createdById: user.id,
+      }).returning();
+      
+      // Update equipment's last calibration info if needed
+      await db.update(equipment)
+        .set({ updatedAt: new Date() })
+        .where(eq(equipment.id, validatedData.equipmentId));
+      
+      res.status(201).json(calibration);
+    } catch (error: any) {
+      console.error("Error creating calibration:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
+      }
+      res.status(500).json({ message: "Kalibrasyon kaydı oluşturulurken hata oluştu" });
+    }
+  });
+
+  // PATCH /api/equipment-calibrations/:id - Update calibration
+  app.patch('/api/equipment-calibrations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Kalibrasyon güncelleme yetkisi gerekli" });
+      }
+      
+      const [existing] = await db.select().from(equipmentCalibrations).where(eq(equipmentCalibrations.id, parseInt(id)));
+      if (!existing) {
+        return res.status(404).json({ message: "Kalibrasyon kaydı bulunamadı" });
+      }
+      
+      const updateData = { ...req.body, updatedAt: new Date() };
+      if (updateData.calibrationDate) {
+        updateData.calibrationDate = new Date(updateData.calibrationDate);
+      }
+      
+      const [updated] = await db.update(equipmentCalibrations)
+        .set(updateData)
+        .where(eq(equipmentCalibrations.id, parseInt(id)))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating calibration:", error);
+      res.status(500).json({ message: "Kalibrasyon güncellenirken hata oluştu" });
+    }
+  });
+
+  // DELETE /api/equipment-calibrations/:id - Delete calibration
+  app.delete('/api/equipment-calibrations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!isHQRole(user.role as UserRoleType) && user.role !== 'admin') {
+        return res.status(403).json({ message: "Kalibrasyon silme yetkisi gerekli" });
+      }
+      
+      await db.delete(equipmentCalibrations).where(eq(equipmentCalibrations.id, parseInt(id)));
+      
+      res.json({ message: "Kalibrasyon kaydı silindi" });
+    } catch (error) {
+      console.error("Error deleting calibration:", error);
+      res.status(500).json({ message: "Kalibrasyon silinirken hata oluştu" });
+    }
+  });
+
+  // GET /api/equipment-calibrations/due-soon - Get calibrations due in next 30 days
+  app.get('/api/equipment-calibrations-due-soon', isAuthenticated, async (req: any, res) => {
+    try {
+      const thirtyDaysLater = new Date();
+      thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+      
+      const dueSoon = await db.select({
+        calibration: equipmentCalibrations,
+        equipment: equipment,
+        branch: branches,
+      }).from(equipmentCalibrations)
+        .leftJoin(equipment, eq(equipmentCalibrations.equipmentId, equipment.id))
+        .leftJoin(branches, eq(equipment.branchId, branches.id))
+        .where(sql`${equipmentCalibrations.nextCalibrationDue} <= ${thirtyDaysLater.toISOString().split('T')[0]}`)
+        .orderBy(equipmentCalibrations.nextCalibrationDue);
+      
+      res.json(dueSoon.map(d => ({
+        ...d.calibration,
+        equipment: d.equipment,
+        branch: d.branch,
+      })));
+    } catch (error) {
+      console.error("Error fetching due calibrations:", error);
+      res.status(500).json({ message: "Yaklaşan kalibrasyonlar yüklenirken hata oluştu" });
     }
   });
 

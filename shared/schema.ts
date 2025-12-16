@@ -2960,6 +2960,46 @@ export type InsertMaintenanceLog = z.infer<typeof insertMaintenanceLogSchema>;
 export type MaintenanceLog = typeof maintenanceLogs.$inferSelect;
 
 // ========================================
+// EQUIPMENT CALIBRATIONS (Kalibrasyon Takibi)
+// ========================================
+
+export const equipmentCalibrations = pgTable("equipment_calibrations", {
+  id: serial("id").primaryKey(),
+  equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+  calibrationDate: timestamp("calibration_date").notNull(),
+  calibrationType: varchar("calibration_type", { length: 50 }).notNull(), // internal, external, manufacturer
+  result: varchar("result", { length: 20 }).notNull(), // pass, fail, conditional
+  nextCalibrationDue: date("next_calibration_due").notNull(),
+  certificateNumber: varchar("certificate_number", { length: 100 }),
+  calibratedById: varchar("calibrated_by_id").references(() => users.id), // Internal calibration
+  externalProvider: varchar("external_provider", { length: 200 }), // External calibration company
+  measurements: text("measurements"), // JSON: before/after measurements
+  deviations: text("deviations"), // Any deviations noted
+  correctiveActions: text("corrective_actions"), // Actions taken if failed
+  photoUrls: text("photo_urls").array(),
+  notes: text("notes"),
+  auditInstanceId: integer("audit_instance_id").references(() => auditInstances.id), // Link to quality audit
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("equipment_calibrations_equipment_idx").on(table.equipmentId),
+  index("equipment_calibrations_date_idx").on(table.calibrationDate),
+  index("equipment_calibrations_next_due_idx").on(table.nextCalibrationDue),
+  index("equipment_calibrations_result_idx").on(table.result),
+]);
+
+export const insertEquipmentCalibrationSchema = createInsertSchema(equipmentCalibrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdById: true, // Set by server
+});
+
+export type InsertEquipmentCalibration = z.infer<typeof insertEquipmentCalibrationSchema>;
+export type EquipmentCalibration = typeof equipmentCalibrations.$inferSelect;
+
+// ========================================
 // CAMPAIGNS (Kampanya Yönetimi)
 // ========================================
 
