@@ -30,6 +30,16 @@ export function ObjectUploader({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type - images only
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Hata",
+        description: "Sadece resim dosyaları yüklenebilir",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (file.size > maxFileSize) {
       toast({
         title: "Hata",
@@ -55,8 +65,25 @@ export function ObjectUploader({
         throw new Error("Upload failed");
       }
 
-      const uploadURL = url.split("?")[0];
-      onComplete?.({ successful: [{ uploadURL }] });
+      // Finalize the upload - normalize URL and set ACL to public
+      const rawUrl = url.split("?")[0];
+      const finalizeRes = await fetch("/api/objects/finalize", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: rawUrl, visibility: "public" }),
+      });
+      
+      if (!finalizeRes.ok) {
+        throw new Error("Dosya işlenirken hata oluştu");
+      }
+      
+      const { normalizedUrl } = await finalizeRes.json();
+      if (!normalizedUrl || !normalizedUrl.startsWith("/objects/")) {
+        throw new Error("Dosya yolu oluşturulamadı");
+      }
+      
+      onComplete?.({ successful: [{ uploadURL: normalizedUrl }] });
       
       toast({
         title: "Başarılı",

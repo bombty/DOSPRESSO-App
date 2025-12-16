@@ -4723,6 +4723,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Finalize uploaded object - normalize URL and set ACL policy
+  app.post('/api/objects/finalize', isAuthenticated, async (req, res) => {
+    try {
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const user = req.user!;
+      
+      const { url, visibility = "public" } = req.body;
+      if (!url || typeof url !== "string") {
+        return res.status(400).json({ message: "URL is required" });
+      }
+      
+      console.log("[finalize] Input URL:", url);
+      
+      // Normalize the URL and set ACL policy
+      const normalizedPath = await objectStorageService.trySetObjectEntityAclPolicy(url, {
+        owner: user.id,
+        visibility: visibility === "public" ? "public" : "private",
+      });
+      
+      console.log("[finalize] Normalized path:", normalizedPath);
+      
+      // Validate the result - if path doesn't start with /objects/, ACL setting failed
+      if (!normalizedPath || !normalizedPath.startsWith("/objects/")) {
+        console.error("Failed to normalize object path:", url, "->", normalizedPath);
+        return res.status(500).json({ message: "Failed to normalize upload path", debug: { url, normalizedPath } });
+      }
+      
+      res.json({ normalizedUrl: normalizedPath });
+    } catch (error) {
+      console.error("Error finalizing object:", error);
+      res.status(500).json({ message: "Failed to finalize upload" });
+    }
+  });
+
   // Serve private objects with ACL check (for uploaded files)
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
     try {

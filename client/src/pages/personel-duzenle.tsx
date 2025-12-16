@@ -336,10 +336,12 @@ export default function PersonelDuzenle() {
                             </div>
                             <ObjectUploader
                               onGetUploadParameters={async () => {
-                                const res = await fetch("/api/object-storage/upload-url?directory=profiles&filename=profile.jpg", {
-                                  credentials: "include"
+                                const res = await fetch("/api/objects/upload", {
+                                  method: "POST",
+                                  credentials: "include",
+                                  headers: { "Content-Type": "application/json" }
                                 });
-                                if (!res.ok) throw new Error("Failed to get upload URL");
+                                if (!res.ok) throw new Error("Yükleme URL'si alınamadı");
                                 return res.json();
                               }}
                               onComplete={(result) => {
