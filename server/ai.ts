@@ -1026,13 +1026,15 @@ Vardiya Tipleri:
 - evening: 14:00-22:00 (en yoğun saatler, daha fazla personel)
 - night: 22:00-06:00 (gece vardiyası, orta yoğunluk)
 
-Her vardiya için tek bir çalışan ata. Stajyerler için aynı vardiyaya ayrıca barista da ata.
+Tüm personelleri dengeli şekilde haftaya dağıt. Sabah vardiyası (1-2 kişi), akşam vardiyası (3+ kişi). Stajyerler için aynı vardiyaya barista ekle.
 
 ÖNEMLİ: 
 - Aynı personeli aynı gün birden fazla vardiyaya atama! Sadece 1 vardiya/gün.
+- HER personeli en az 1-2 kez haftada planlama (adaletli dağıtım).
 - Supervisor buddy'leri (supervisor_buddy role) her zaman zıt vardiyalarda planla: biri 06:00-14:00, diğeri 14:00-22:00
 - Intern'leri asla tek başına planlama - yanına barista ekle
 - Hafta sonlarını staffla, zayıf günleri minimize et
+- Personel sayısı: ${employees.length} kişi. Tümünü dengeli kullan.
 
 JSON formatında yanıt ver:
 {

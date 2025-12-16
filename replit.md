@@ -6,7 +6,18 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Session Summary (Dec 12, 2025)
+## Recent Session Summary (Dec 16, 2025 - Shift Planning Fixes)
+✅ **AI Shift Planning Bug Fixes & Employee Color Coding**:
+  - BUG FIX 1: Vardiya sıfırlama NaN hatası - shift.id validasyonu eklendi (routes.ts)
+  - BUG FIX 2: AI sadece 1-2 personel planlaması → Tüm aktif personelleri dengeli dağıtım
+    - AI prompt güncellendi: "HER personeli en az 1-2 kez haftada planlama (adaletli dağıtım)"
+    - Personel sayısı dinamik olarak prompt'a eklendi
+  - FEATURE: Personel renkleri - Her personele unique renk (10 renk paleti + hash fonksiyonu)
+    - getEmployeeColor() fonksiyonu - employeeId'ye göre tutarlı renk ataması
+    - Takvimde vardiyalar personel rengiyle gösteriliyor (red, blue, green, yellow, purple, pink, indigo, cyan, orange, teal)
+  - Files Modified: server/routes.ts (11598-11607), server/ai.ts (1032-1040), client/src/pages/vardiya-planlama.tsx (20-58)
+
+## Previous Session Summary (Dec 12, 2025)
 ✅ **İzin Yönetimi ve Resmi Tatiller Sistemi** - Comprehensive leave and holiday management:
   - Database Tables: employee_leaves, public_holidays, leave_records
   - API Endpoints: GET/POST /api/employee-leaves, GET/POST /api/public-holidays (RBAC: HQ/admin only)

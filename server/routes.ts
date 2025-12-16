@@ -11592,12 +11592,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get shifts in the week
       const shifts = await storage.getShifts(branchId, undefined, weekStart, weekEnd);
       
-      // Delete each shift
+      // Delete each shift (with validation)
+      let deletedCount = 0;
       for (const shift of shifts) {
-        await storage.deleteShift(shift.id);
+        if (shift && shift.id && !isNaN(shift.id)) {
+          await storage.deleteShift(shift.id);
+          deletedCount++;
+        }
       }
       
-      res.json({ message: `${shifts.length} vardiya silindi` });
+      res.json({ message: `${deletedCount} vardiya silindi` });
     } catch (error: Error | unknown) {
       console.error("Error resetting weekly shifts:", error);
       res.status(500).json({ message: "Vardiyalar sıfırlanamadı" });

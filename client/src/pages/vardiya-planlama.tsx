@@ -14,6 +14,31 @@ import { tr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus, Trash2, AlertTriangle, Calendar, GripVertical } from "lucide-react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 
+// Helper function to generate consistent color for each employee
+function getEmployeeColor(employeeId: string | number): string {
+  const colors = [
+    'bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700',
+    'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700',
+    'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700',
+    'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-700',
+    'bg-purple-100 dark:bg-purple-900/40 border-purple-300 dark:border-purple-700',
+    'bg-pink-100 dark:bg-pink-900/40 border-pink-300 dark:border-pink-700',
+    'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-700',
+    'bg-cyan-100 dark:bg-cyan-900/40 border-cyan-300 dark:border-cyan-700',
+    'bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700',
+    'bg-teal-100 dark:bg-teal-900/40 border-teal-300 dark:border-teal-700',
+  ];
+  
+  // Hash employee ID to determine color index
+  const id = String(employeeId);
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = ((hash << 5) - hash) + id.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 // Draggable Shift Chip Component
 function DraggableShiftChip({ shift, employee, canEdit, onClick }: {
   shift: any;
@@ -27,11 +52,7 @@ function DraggableShiftChip({ shift, employee, canEdit, onClick }: {
     disabled: !canEdit,
   });
 
-  const hour = parseInt(shift.startTime?.split(':')[0] || '0');
-  const colorClass = hour < 12 
-    ? 'bg-amber-100 dark:bg-amber-900/50 border-amber-300 dark:border-amber-700' 
-    : 'bg-blue-100 dark:bg-blue-900/50 border-blue-300 dark:border-blue-700';
-
+  const colorClass = getEmployeeColor(employee?.id || shift.assignedToId);
   const name = employee?.fullName || employee?.firstName || 'Bilinmiyor';
 
   return (
