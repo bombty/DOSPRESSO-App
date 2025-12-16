@@ -11688,10 +11688,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         skipCache
       );
 
+      // Get existing shifts for the week to check conflicts
+      const existingShifts = await storage.getShifts(bid, undefined, weekStart, weekEnd);
+      const existingShiftsByDayAndEmployee = new Map<string, Set<string>>();
+      existingShifts.forEach((s: any) => {
+        const key = s.shiftDate;
+        if (!existingShiftsByDayAndEmployee.has(key)) {
+          existingShiftsByDayAndEmployee.set(key, new Set());
+        }
+        if (s.assignedToId) {
+          existingShiftsByDayAndEmployee.get(key)!.add(String(s.assignedToId));
+        }
+      });
+
       // Validate and sanitize AI response - ensure valid employee IDs with fallback
       const validEmployeeIds = new Set(employees.map(e => String(e.id)));
       const employeeIdArray = employees.map(e => String(e.id));
       let fallbackIndex = 0;
+      
+      // Track newly assigned shifts to prevent duplicates within AI response
+      const newShiftsByDayAndEmployee = new Map<string, Set<string>>();
       
       const validatedShifts = (aiPlan.shifts || [])
         .filter((shift: any) => {
@@ -11709,6 +11725,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             fallbackIndex++;
           }
           return { ...shift, assignedToId };
+        })
+        .filter((shift: any) => {
+          // Check for conflicts: same employee on same day
+          const dayKey = shift.shiftDate;
+          const employeeId = String(shift.assignedToId);
+          
+          // Check existing shifts in DB
+          const existingForDay = existingShiftsByDayAndEmployee.get(dayKey);
+          if (existingForDay && existingForDay.has(employeeId)) {
+            console.log(`⚠️ Skipping duplicate: ${employeeId} already has shift on ${dayKey} (existing)`);
+            return false;
+          }
+          
+          // Check already added in this batch
+          if (!newShiftsByDayAndEmployee.has(dayKey)) {
+            newShiftsByDayAndEmployee.set(dayKey, new Set());
+          }
+          const newForDay = newShiftsByDayAndEmployee.get(dayKey)!;
+          if (newForDay.has(employeeId)) {
+            console.log(`⚠️ Skipping duplicate: ${employeeId} already assigned on ${dayKey} (in batch)`);
+            return false;
+          }
+          
+          // Mark as assigned
+          newForDay.add(employeeId);
+          return true;
         })
         .map((shift: any) => {
           // Ensure all required fields with defaults
