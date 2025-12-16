@@ -144,7 +144,7 @@ export default function VardiyaPlanlama() {
     queryKey: ['/api/checklists'],
   });
 
-  // Calculate weekly hours for each employee from existing shifts
+  // Calculate weekly hours for each employee from existing shifts (excluding 1-hour breaks)
   const getEmployeeWeeklyHours = useCallback((employeeId: string) => {
     if (!Array.isArray(shifts)) return 0;
     const weekStartStr = format(weekStart, 'yyyy-MM-dd');
@@ -161,18 +161,26 @@ export default function VardiyaPlanlama() {
       if (shift.startTime && shift.endTime) {
         const [sH, sM] = shift.startTime.split(':').map(Number);
         const [eH, eM] = shift.endTime.split(':').map(Number);
-        totalMinutes += (eH * 60 + eM) - (sH * 60 + sM);
+        let shiftMinutes = (eH * 60 + eM) - (sH * 60 + sM);
+        // Subtract 1-hour break for shifts >= 6 hours (fulltime shifts)
+        if (shiftMinutes >= 360) {
+          shiftMinutes -= 60;
+        }
+        totalMinutes += shiftMinutes;
       }
     });
     
     return Math.round(totalMinutes / 60 * 10) / 10;
   }, [shifts, weekStart]);
 
-  // Calculate new shift hours
+  // Calculate new shift hours (excluding 1-hour break)
   const calculateShiftHours = useCallback(() => {
     const [sH, sM] = startTime.split(':').map(Number);
     const [eH, eM] = endTime.split(':').map(Number);
-    return ((eH * 60 + eM) - (sH * 60 + sM)) / 60;
+    const totalMinutes = (eH * 60 + eM) - (sH * 60 + sM);
+    // Subtract 1-hour break for shifts >= 6 hours
+    const workMinutes = totalMinutes >= 360 ? totalMinutes - 60 : totalMinutes;
+    return workMinutes / 60;
   }, [startTime, endTime]);
 
   // Available employees filtered by type and availability
