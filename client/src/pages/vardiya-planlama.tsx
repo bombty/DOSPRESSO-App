@@ -90,11 +90,21 @@ export default function VardiyaPlanlama() {
   const { toast } = useToast();
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
-  const [addModalOpen, setAddModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [periodWeeks, setPeriodWeeks] = useState<1 | 2>(1);
   const [activeShift, setActiveShift] = useState<any>(null);
+
+  // Inline form states (no more modal)
+  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('16:30');
+  const [breakTime, setBreakTime] = useState('12:00');
+  const [employeeTypeFilter, setEmployeeTypeFilter] = useState<'all' | 'fulltime' | 'parttime'>('all');
+  const [checklist1, setChecklist1] = useState('');
+  const [checklist2, setChecklist2] = useState('');
+  const [checklist3, setChecklist3] = useState('');
 
   // Drag sensors
   const sensors = useSensors(
@@ -119,6 +129,152 @@ export default function VardiyaPlanlama() {
     if (!allEmployees || !Array.isArray(allEmployees)) return [];
     return allEmployees.filter((emp: any) => emp.branchId === user?.branchId);
   }, [allEmployees, user?.branchId]);
+
+  const { data: checklists } = useQuery({
+    queryKey: ['/api/checklists'],
+  });
+
+  // Calculate weekly hours for each employee from existing shifts
+  const getEmployeeWeeklyHours = useCallback((employeeId: string) => {
+    if (!Array.isArray(shifts)) return 0;
+    const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+    const weekEndStr = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+    
+    const employeeShifts = shifts.filter((s: any) => 
+      String(s.assignedToId) === employeeId && 
+      s.shiftDate >= weekStartStr && 
+      s.shiftDate <= weekEndStr
+    );
+    
+    let totalMinutes = 0;
+    employeeShifts.forEach((shift: any) => {
+      if (shift.startTime && shift.endTime) {
+        const [sH, sM] = shift.startTime.split(':').map(Number);
+        const [eH, eM] = shift.endTime.split(':').map(Number);
+        totalMinutes += (eH * 60 + eM) - (sH * 60 + sM);
+      }
+    });
+    
+    return Math.round(totalMinutes / 60 * 10) / 10;
+  }, [shifts, weekStart]);
+
+  // Calculate new shift hours
+  const calculateShiftHours = useCallback(() => {
+    const [sH, sM] = startTime.split(':').map(Number);
+    const [eH, eM] = endTime.split(':').map(Number);
+    return ((eH * 60 + eM) - (sH * 60 + sM)) / 60;
+  }, [startTime, endTime]);
+
+  // Available employees filtered by type and availability
+  const availableEmployees = useMemo(() => {
+    let filtered = branchEmployees;
+    
+    if (employeeTypeFilter !== 'all') {
+      filtered = filtered.filter((emp: any) => emp.employmentType === employeeTypeFilter);
+    }
+    
+    if (!selectedDays.length) return filtered;
+    
+    // Filter out employees already assigned on selected days
+    const assignedEmployeeIds = new Set<string>();
+    selectedDays.forEach(day => {
+      const dayShifts = Array.isArray(shifts) 
+        ? shifts.filter((s: any) => s.shiftDate === day)
+        : [];
+      dayShifts.forEach((s: any) => {
+        if (s.assignedToId) assignedEmployeeIds.add(String(s.assignedToId));
+      });
+    });
+
+    return filtered.filter((emp: any) => !assignedEmployeeIds.has(String(emp.id)));
+  }, [branchEmployees, selectedDays, shifts, employeeTypeFilter]);
+
+  // Check if employee would exceed weekly limit with new shifts
+  const hoursCheck = useMemo(() => {
+    if (!selectedEmployee) return null;
+    
+    const emp = branchEmployees.find((e: any) => String(e.id) === selectedEmployee);
+    if (!emp) return null;
+    
+    const currentHours = getEmployeeWeeklyHours(selectedEmployee);
+    const newShiftHours = calculateShiftHours() * selectedDays.length;
+    const totalHours = currentHours + newShiftHours;
+    const weeklyLimit = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
+    
+    return {
+      currentHours,
+      newShiftHours,
+      totalHours,
+      weeklyLimit,
+      exceedsLimit: totalHours > weeklyLimit,
+      employee: emp,
+    };
+  }, [selectedEmployee, branchEmployees, getEmployeeWeeklyHours, calculateShiftHours, selectedDays]);
+
+  // Get selected employee details
+  const selectedEmployeeDetails = useMemo(() => {
+    if (!selectedEmployee) return null;
+    return branchEmployees.find((e: any) => String(e.id) === selectedEmployee);
+  }, [selectedEmployee, branchEmployees]);
+
+  // Toggle day selection
+  const toggleDay = (dateStr: string) => {
+    setSelectedDays(prev => 
+      prev.includes(dateStr) 
+        ? prev.filter(d => d !== dateStr)
+        : [...prev, dateStr]
+    );
+  };
+
+  // Reset inline form
+  const resetInlineForm = () => {
+    setSelectedEmployee('');
+    setSelectedDays([]);
+    setStartTime('08:00');
+    setEndTime('16:30');
+    setBreakTime('12:00');
+    setEmployeeTypeFilter('all');
+    setChecklist1('');
+    setChecklist2('');
+    setChecklist3('');
+  };
+
+  // Create shifts mutation for inline form
+  const createShiftsMutation = useMutation({
+    mutationFn: async () => {
+      const [sH] = startTime.split(':').map(Number);
+      const [bH] = breakTime.split(':').map(Number);
+      const breakEndH = (bH + 1) % 24;
+      const shiftType = sH < 12 ? 'morning' : 'evening';
+
+      const newShifts = selectedDays.map(dateStr => ({
+        shiftDate: dateStr,
+        startTime: `${startTime}:00`,
+        endTime: `${endTime}:00`,
+        breakStartTime: `${breakTime}:00`,
+        breakEndTime: `${String(breakEndH).padStart(2, '0')}:00:00`,
+        shiftType,
+        assignedToId: selectedEmployee,
+        status: 'draft',
+        branchId: user?.branchId || 0,
+        checklistId: checklist1 && checklist1 !== 'none' ? parseInt(checklist1) : null,
+        checklist2Id: checklist2 && checklist2 !== 'none' ? parseInt(checklist2) : null,
+        checklist3Id: checklist3 && checklist3 !== 'none' ? parseInt(checklist3) : null,
+      }));
+
+      return apiRequest('POST', '/api/shifts/bulk-create', { shifts: newShifts });
+    },
+    onSuccess: () => {
+      toast({ title: "Başarılı", description: `${selectedDays.length} vardiya oluşturuldu` });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      resetInlineForm();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const canSaveShift = selectedEmployee && selectedDays.length > 0;
 
   // Period days: 7 for 1 week, 14 for 2 weeks
   const periodDays = useMemo(() => {
@@ -280,10 +436,6 @@ export default function VardiyaPlanlama() {
 
           {canEditShifts && (
             <>
-              <Button variant="outline" onClick={() => setAddModalOpen(true)} className="gap-2" data-testid="button-add-shift">
-                <UserPlus className="w-4 h-4" />
-                Vardiya Ekle
-              </Button>
               <Button onClick={() => setAiModalOpen(true)} className="gap-2" data-testid="button-ai-plan">
                 <Wand2 className="w-4 h-4" />
                 AI Planla
@@ -329,74 +481,301 @@ export default function VardiyaPlanlama() {
         </span>
       </div>
 
-      {/* Calendar Grid with Drag-Drop */}
-      {shiftsLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          {/* Week Headers for 2-week view */}
-          {periodWeeks === 2 && (
-            <div className="grid grid-cols-2 gap-4 mb-2">
-              <div className="text-center text-sm font-medium text-muted-foreground">
-                1. Hafta: {format(weekStart, "d MMM", { locale: tr })} - {format(addDays(weekStart, 6), "d MMM", { locale: tr })}
-              </div>
-              <div className="text-center text-sm font-medium text-muted-foreground">
-                2. Hafta: {format(addDays(weekStart, 7), "d MMM", { locale: tr })} - {format(addDays(weekStart, 13), "d MMM", { locale: tr })}
-              </div>
-            </div>
-          )}
+      {/* Main Content: Inline Form + Calendar Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Left: Inline Shift Form */}
+        {canEditShifts && (
+          <Card className="lg:col-span-4 xl:col-span-3">
+            <CardContent className="p-4 space-y-4">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <UserPlus className="w-4 h-4" />
+                Vardiya Ekle
+              </h3>
 
-          <div className={`grid gap-2 ${periodWeeks === 2 ? 'grid-cols-7 md:grid-cols-14' : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-7'}`}>
-            {periodDays.map((day) => {
-              const isGap = gapsInPeriod.includes(day.dateStr);
-              
-              return (
-                <Card 
-                  key={day.dateStr}
-                  className={`min-h-[120px] ${isToday(day.date) ? 'ring-2 ring-primary' : ''} ${isGap ? 'border-amber-300 dark:border-amber-700' : ''}`}
-                >
-                  <div className={`p-2 border-b text-center ${isGap ? 'bg-amber-50 dark:bg-amber-900/30' : 'bg-muted/30'}`}>
-                    <div className="text-xs text-muted-foreground">{day.shortName}</div>
-                    <div className="text-lg font-bold">{day.dayNum}</div>
-                  </div>
+              {/* Day Selection */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Günler</label>
+                <div className="grid grid-cols-7 gap-1 mt-1">
+                  {weekDays.map(day => {
+                    const isSelected = selectedDays.includes(day.dateStr);
+                    return (
+                      <button
+                        key={day.dateStr}
+                        type="button"
+                        onClick={() => toggleDay(day.dateStr)}
+                        className={`p-1.5 rounded text-center transition-all text-xs ${
+                          isSelected 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'bg-muted hover:bg-muted/80'
+                        }`}
+                        data-testid={`day-toggle-${day.dateStr}`}
+                      >
+                        <div className="text-[10px]">{day.shortName}</div>
+                        <div className="font-bold">{day.dayNum}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                  <DroppableDayCell dateStr={day.dateStr}>
-                    {(periodShifts[day.dateStr] || []).length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-3">-</p>
+              {/* Employee Type Filter */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Personel Tipi</label>
+                <div className="flex gap-1 mt-1">
+                  {[
+                    { value: 'all', label: 'Tümü' },
+                    { value: 'fulltime', label: 'Tam Zamanlı' },
+                    { value: 'parttime', label: 'Part-time' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setEmployeeTypeFilter(opt.value as 'all' | 'fulltime' | 'parttime')}
+                      className={`flex-1 px-2 py-1 text-[10px] font-medium rounded transition-colors ${
+                        employeeTypeFilter === opt.value 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                      data-testid={`filter-${opt.value}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Employee Selection */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Personel {availableEmployees.length < branchEmployees.length && `(${availableEmployees.length} müsait)`}
+                </label>
+                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                  <SelectTrigger className="mt-1 text-xs h-8" data-testid="select-employee">
+                    <SelectValue placeholder="Personel seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableEmployees.length === 0 ? (
+                      <div className="p-2 text-xs text-muted-foreground text-center">
+                        Müsait personel yok
+                      </div>
                     ) : (
-                      (periodShifts[day.dateStr] || []).map((shift: any) => {
-                        const emp = branchEmployees.find((e: any) => e.id === shift.assignedToId);
-                        
+                      availableEmployees.map((emp: any) => {
+                        const weeklyHours = getEmployeeWeeklyHours(String(emp.id));
+                        const limit = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
+                        const isPartTime = emp.employmentType === 'parttime';
                         return (
-                          <DraggableShiftChip
-                            key={shift.id}
-                            shift={shift}
-                            employee={emp}
-                            canEdit={canEditShifts || false}
-                            onClick={() => { if (canEditShifts) setEditingShiftId(shift.id); }}
-                          />
+                          <SelectItem key={emp.id} value={String(emp.id)}>
+                            <div className="flex items-center gap-2">
+                              <span>{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
+                              <Badge variant="outline" className={`text-[9px] px-1 ${isPartTime ? 'border-orange-400' : 'border-blue-400'}`}>
+                                {isPartTime ? 'PT' : 'FT'}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground">{weeklyHours}/{limit}s</span>
+                            </div>
+                          </SelectItem>
                         );
                       })
                     )}
-                  </DroppableDayCell>
-                </Card>
-              );
-            })}
-          </div>
-
-          {/* Drag Overlay */}
-          <DragOverlay>
-            {activeShift && (
-              <div className="p-2 bg-primary text-primary-foreground rounded shadow-lg text-xs">
-                <div className="font-medium">Taşınıyor...</div>
-                <div>{activeShift.startTime?.substring(0, 5)}-{activeShift.endTime?.substring(0, 5)}</div>
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-          </DragOverlay>
-        </DndContext>
-      )}
+
+              {/* Hours Check Warning */}
+              {hoursCheck && (
+                <div className={`p-2 rounded text-xs ${hoursCheck.exceedsLimit ? 'bg-destructive/10 border border-destructive/30' : 'bg-muted'}`}>
+                  <div className="flex justify-between">
+                    <span>Mevcut: {hoursCheck.currentHours}s</span>
+                    <span>+{hoursCheck.newShiftHours.toFixed(1)}s</span>
+                    <span className={hoursCheck.exceedsLimit ? 'text-destructive font-bold' : 'font-medium'}>
+                      {hoursCheck.totalHours.toFixed(1)}/{hoursCheck.weeklyLimit}s
+                    </span>
+                  </div>
+                  {hoursCheck.exceedsLimit && (
+                    <p className="text-destructive text-[10px] mt-1">Haftalık limit aşılıyor!</p>
+                  )}
+                </div>
+              )}
+
+              {/* Time Selection */}
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] font-medium text-muted-foreground">Başlangıç</label>
+                  <Input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="mt-0.5 h-8 text-xs"
+                    data-testid="input-start-time"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-medium text-muted-foreground">Bitiş</label>
+                  <Input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="mt-0.5 h-8 text-xs"
+                    data-testid="input-end-time"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-medium text-muted-foreground">Mola</label>
+                  <Input
+                    type="time"
+                    value={breakTime}
+                    onChange={(e) => setBreakTime(e.target.value)}
+                    className="mt-0.5 h-8 text-xs"
+                    data-testid="input-break-time"
+                  />
+                </div>
+              </div>
+
+              {/* Shift Duration */}
+              <div className="flex justify-between text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                <span>Vardiya Süresi:</span>
+                <span className="font-medium">{calculateShiftHours().toFixed(1)} saat</span>
+              </div>
+
+              {/* Checklists */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Checklistler</label>
+                {[
+                  { value: checklist1, setter: setChecklist1, label: '1' },
+                  { value: checklist2, setter: setChecklist2, label: '2' },
+                  { value: checklist3, setter: setChecklist3, label: '3' },
+                ].map(({ value, setter, label }) => (
+                  <Select key={label} value={value} onValueChange={setter}>
+                    <SelectTrigger className="h-7 text-xs" data-testid={`select-checklist-${label}`}>
+                      <SelectValue placeholder={`${label}. Checklist (opsiyonel)`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Seçilmedi</SelectItem>
+                      {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                        <SelectItem key={cl.id} value={String(cl.id)}>{cl.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ))}
+              </div>
+
+              {/* Save Button */}
+              <Button 
+                className="w-full gap-2"
+                onClick={() => createShiftsMutation.mutate()}
+                disabled={!canSaveShift || createShiftsMutation.isPending}
+                data-testid="button-save-shift"
+              >
+                {createShiftsMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Calendar className="w-4 h-4" />
+                )}
+                {selectedDays.length > 0 ? `${selectedDays.length} Gün Kaydet` : 'Vardiya Kaydet'}
+              </Button>
+
+              {/* Clear Form */}
+              {(selectedEmployee || selectedDays.length > 0) && (
+                <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetInlineForm}>
+                  Formu Temizle
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Right: Calendar Grid */}
+        <div className={`${canEditShifts ? 'lg:col-span-8 xl:col-span-9' : 'lg:col-span-12'}`}>
+          {shiftsLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              {/* Week Headers for 2-week view */}
+              {periodWeeks === 2 && (
+                <div className="grid grid-cols-2 gap-4 mb-2">
+                  <div className="text-center text-sm font-medium text-muted-foreground">
+                    1. Hafta: {format(weekStart, "d MMM", { locale: tr })} - {format(addDays(weekStart, 6), "d MMM", { locale: tr })}
+                  </div>
+                  <div className="text-center text-sm font-medium text-muted-foreground">
+                    2. Hafta: {format(addDays(weekStart, 7), "d MMM", { locale: tr })} - {format(addDays(weekStart, 13), "d MMM", { locale: tr })}
+                  </div>
+                </div>
+              )}
+
+              <div className={`grid gap-2 ${periodWeeks === 2 ? 'grid-cols-7' : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-7'}`}>
+                {periodDays.map((day) => {
+                  const isGap = gapsInPeriod.includes(day.dateStr);
+                  const isSelectedDay = selectedDays.includes(day.dateStr);
+                  const hasPreview = isSelectedDay && selectedEmployee && selectedEmployeeDetails;
+                  
+                  return (
+                    <Card 
+                      key={day.dateStr}
+                      className={`min-h-[100px] transition-all ${isToday(day.date) ? 'ring-2 ring-primary' : ''} ${isGap ? 'border-amber-300 dark:border-amber-700' : ''} ${isSelectedDay ? 'ring-2 ring-green-500 dark:ring-green-400' : ''}`}
+                    >
+                      <div 
+                        className={`p-2 border-b text-center cursor-pointer transition-colors ${
+                          isSelectedDay ? 'bg-green-100 dark:bg-green-900/40' : 
+                          isGap ? 'bg-amber-50 dark:bg-amber-900/30' : 'bg-muted/30'
+                        }`}
+                        onClick={() => canEditShifts && toggleDay(day.dateStr)}
+                        data-testid={`calendar-day-${day.dateStr}`}
+                      >
+                        <div className="text-xs text-muted-foreground">{day.shortName}</div>
+                        <div className="text-lg font-bold">{day.dayNum}</div>
+                      </div>
+
+                      <DroppableDayCell dateStr={day.dateStr}>
+                        {/* Preview of new shift being created */}
+                        {hasPreview && (
+                          <div className="w-full p-1.5 rounded border-2 border-dashed border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-900/20 text-xs mb-1">
+                            <div className="font-medium text-green-700 dark:text-green-300 truncate">
+                              {selectedEmployeeDetails.fullName || `${selectedEmployeeDetails.firstName} ${selectedEmployeeDetails.lastName}`}
+                            </div>
+                            <div className="text-green-600 dark:text-green-400 opacity-80">
+                              {startTime}-{endTime}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Existing shifts */}
+                        {(periodShifts[day.dateStr] || []).length === 0 && !hasPreview ? (
+                          <p className="text-xs text-muted-foreground text-center py-3">-</p>
+                        ) : (
+                          (periodShifts[day.dateStr] || []).map((shift: any) => {
+                            const emp = branchEmployees.find((e: any) => e.id === shift.assignedToId);
+                            
+                            return (
+                              <DraggableShiftChip
+                                key={shift.id}
+                                shift={shift}
+                                employee={emp}
+                                canEdit={canEditShifts || false}
+                                onClick={() => { if (canEditShifts) setEditingShiftId(shift.id); }}
+                              />
+                            );
+                          })
+                        )}
+                      </DroppableDayCell>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Drag Overlay */}
+              <DragOverlay>
+                {activeShift && (
+                  <div className="p-2 bg-primary text-primary-foreground rounded shadow-lg text-xs">
+                    <div className="font-medium">Taşınıyor...</div>
+                    <div>{activeShift.startTime?.substring(0, 5)}-{activeShift.endTime?.substring(0, 5)}</div>
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
+          )}
+        </div>
+      </div>
 
       {/* Edit Shift Modal */}
       {editingShiftId && canEditShifts && (
@@ -408,16 +787,6 @@ export default function VardiyaPlanlama() {
           canEdit={canEditShifts}
         />
       )}
-
-      {/* Add Shift Modal */}
-      <AddShiftModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        weekStart={weekStart}
-        employees={branchEmployees}
-        branchId={user?.branchId || 0}
-        existingShifts={Array.isArray(shifts) ? shifts : []}
-      />
 
       {/* AI Plan Modal */}
       <AIPlanModal
@@ -768,490 +1137,6 @@ function ShiftEditModal({ open, shiftId, employees, onClose, canEdit = true }: {
               </Button>
             </>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AddShiftModal({ open, onClose, weekStart, employees, branchId, existingShifts }: {
-  open: boolean;
-  onClose: () => void;
-  weekStart: Date;
-  employees: any[];
-  branchId: number;
-  existingShifts: any[];
-}) {
-  const { toast } = useToast();
-  const [selectedEmployee, setSelectedEmployee] = useState('');
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [startTime, setStartTime] = useState('08:00');
-  const [endTime, setEndTime] = useState('16:30');
-  const [breakTime, setBreakTime] = useState('12:00');
-  const [employeeTypeFilter, setEmployeeTypeFilter] = useState<'all' | 'fulltime' | 'parttime'>('all');
-  const [checklist1, setChecklist1] = useState('');
-  const [checklist2, setChecklist2] = useState('');
-  const [checklist3, setChecklist3] = useState('');
-  const [selectedTask, setSelectedTask] = useState('');
-  const [quickTaskText, setQuickTaskText] = useState('');
-
-  const { data: checklists } = useQuery({
-    queryKey: ['/api/checklists'],
-  });
-
-  const { data: tasks } = useQuery({
-    queryKey: ['/api/tasks'],
-  });
-
-  const weekDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = addDays(weekStart, i);
-      return {
-        date,
-        dateStr: format(date, 'yyyy-MM-dd'),
-        shortName: format(date, 'EEE', { locale: tr }),
-        dayNum: format(date, 'd'),
-      };
-    });
-  }, [weekStart]);
-
-  // Calculate weekly hours for each employee from existing shifts
-  const getEmployeeWeeklyHours = useCallback((employeeId: string) => {
-    if (!Array.isArray(existingShifts)) return 0;
-    const weekStartStr = format(weekStart, 'yyyy-MM-dd');
-    const weekEndStr = format(addDays(weekStart, 6), 'yyyy-MM-dd');
-    
-    const employeeShifts = existingShifts.filter((s: any) => 
-      String(s.assignedToId) === employeeId && 
-      s.shiftDate >= weekStartStr && 
-      s.shiftDate <= weekEndStr
-    );
-    
-    let totalMinutes = 0;
-    employeeShifts.forEach((shift: any) => {
-      if (shift.startTime && shift.endTime) {
-        const [startH, startM] = shift.startTime.split(':').map(Number);
-        const [endH, endM] = shift.endTime.split(':').map(Number);
-        const startMinutes = startH * 60 + startM;
-        const endMinutes = endH * 60 + endM;
-        totalMinutes += endMinutes - startMinutes;
-      }
-    });
-    
-    return Math.round(totalMinutes / 60 * 10) / 10; // Hours with 1 decimal
-  }, [existingShifts, weekStart]);
-
-  // Calculate new shift hours
-  const calculateShiftHours = useCallback(() => {
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
-    const startMinutes = startH * 60 + startM;
-    const endMinutes = endH * 60 + endM;
-    return (endMinutes - startMinutes) / 60;
-  }, [startTime, endTime]);
-
-  const availableEmployees = useMemo(() => {
-    let filtered = employees;
-    
-    // Filter by employment type
-    if (employeeTypeFilter !== 'all') {
-      filtered = filtered.filter((emp: any) => emp.employmentType === employeeTypeFilter);
-    }
-    
-    if (!selectedDays.length) return filtered;
-    
-    const assignedEmployeeIds = new Set<string>();
-    selectedDays.forEach(day => {
-      const dayShifts = Array.isArray(existingShifts) 
-        ? existingShifts.filter((s: any) => s.shiftDate === day)
-        : [];
-      dayShifts.forEach((s: any) => {
-        if (s.assignedToId) assignedEmployeeIds.add(String(s.assignedToId));
-      });
-    });
-
-    return filtered.filter((emp: any) => !assignedEmployeeIds.has(String(emp.id)));
-  }, [employees, selectedDays, existingShifts, employeeTypeFilter]);
-
-  const getEmployeeAssignedDays = (employeeId: string) => {
-    if (!Array.isArray(existingShifts)) return [];
-    return existingShifts
-      .filter((s: any) => String(s.assignedToId) === employeeId)
-      .map((s: any) => s.shiftDate);
-  };
-
-  const toggleDay = (dateStr: string) => {
-    const newDays = selectedDays.includes(dateStr) 
-      ? selectedDays.filter(d => d !== dateStr)
-      : [...selectedDays, dateStr];
-    
-    setSelectedDays(newDays);
-    
-    if (selectedEmployee) {
-      const assignedDays = getEmployeeAssignedDays(selectedEmployee);
-      if (newDays.some(d => assignedDays.includes(d))) {
-        setSelectedEmployee('');
-      }
-    }
-  };
-
-  const availableTasks = useMemo(() => {
-    if (!tasks || !Array.isArray(tasks)) return [];
-    return tasks.filter((t: any) => t.status === 'pending' || t.status === 'assigned');
-  }, [tasks]);
-
-  const resetForm = () => {
-    setSelectedEmployee('');
-    setSelectedDays([]);
-    setStartTime('08:00');
-    setEndTime('16:30');
-    setBreakTime('12:00');
-    setEmployeeTypeFilter('all');
-    setChecklist1('');
-    setChecklist2('');
-    setChecklist3('');
-    setSelectedTask('');
-    setQuickTaskText('');
-  };
-
-  // Check if employee would exceed weekly limit with new shifts
-  const checkHoursLimit = useCallback(() => {
-    if (!selectedEmployee) return null;
-    
-    const emp = employees.find((e: any) => String(e.id) === selectedEmployee);
-    if (!emp) return null;
-    
-    const currentHours = getEmployeeWeeklyHours(selectedEmployee);
-    const newShiftHours = calculateShiftHours() * selectedDays.length;
-    const totalHours = currentHours + newShiftHours;
-    const weeklyLimit = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
-    
-    return {
-      currentHours,
-      newShiftHours,
-      totalHours,
-      weeklyLimit,
-      exceedsLimit: totalHours > weeklyLimit,
-      employee: emp,
-    };
-  }, [selectedEmployee, employees, getEmployeeWeeklyHours, calculateShiftHours, selectedDays]);
-
-  const hoursCheck = checkHoursLimit();
-
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      const [startH] = startTime.split(':').map(Number);
-      const [bH] = breakTime.split(':').map(Number);
-      const breakEndH = (bH + 1) % 24;
-      const shiftType = startH < 12 ? 'morning' : 'evening';
-
-      const shifts = selectedDays.map(dateStr => ({
-        shiftDate: dateStr,
-        startTime: `${startTime}:00`,
-        endTime: `${endTime}:00`,
-        breakStartTime: `${breakTime}:00`,
-        breakEndTime: `${String(breakEndH).padStart(2, '0')}:00:00`,
-        shiftType,
-        assignedToId: selectedEmployee,
-        status: 'draft',
-        branchId,
-        checklistId: checklist1 && checklist1 !== 'none' ? parseInt(checklist1) : null,
-        checklist2Id: checklist2 && checklist2 !== 'none' ? parseInt(checklist2) : null,
-        checklist3Id: checklist3 && checklist3 !== 'none' ? parseInt(checklist3) : null,
-      }));
-
-      const result = await apiRequest('POST', '/api/shifts/bulk-create', { shifts });
-
-      // Assign task if selected
-      if (selectedTask && selectedTask !== 'none') {
-        await apiRequest('PATCH', `/api/tasks/${selectedTask}`, {
-          assignedToId: parseInt(selectedEmployee),
-          status: 'assigned',
-          dueDate: selectedDays[0],
-        });
-      }
-
-      // Create quick task if text provided
-      if (quickTaskText.trim()) {
-        await apiRequest('POST', '/api/tasks', {
-          title: quickTaskText.trim(),
-          description: quickTaskText.trim(),
-          priority: 'medium',
-          branchId,
-          assignedToId: parseInt(selectedEmployee),
-          dueDate: selectedDays[0],
-          status: 'assigned',
-        });
-      }
-
-      return result;
-    },
-    onSuccess: () => {
-      toast({ title: "Başarılı", description: `${selectedDays.length} vardiya oluşturuldu` });
-      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      resetForm();
-      onClose();
-    },
-    onError: (err: Error) => {
-      toast({ title: "Hata", description: err.message, variant: "destructive" });
-    },
-  });
-
-  const canSave = selectedEmployee && selectedDays.length > 0;
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { resetForm(); onClose(); } }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Vardiya Ekle</DialogTitle>
-          <DialogDescription>Personel seç, günleri işaretle, saati ayarla</DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Day Selection First - so we can filter employees */}
-          <div>
-            <label className="text-sm font-medium">Günler</label>
-            <div className="grid grid-cols-7 gap-1 mt-2">
-              {weekDays.map(day => {
-                const isSelected = selectedDays.includes(day.dateStr);
-                return (
-                  <button
-                    key={day.dateStr}
-                    type="button"
-                    onClick={() => toggleDay(day.dateStr)}
-                    className={`p-2 rounded-md text-center transition-all ${
-                      isSelected 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-muted hover:bg-muted/80'
-                    }`}
-                    data-testid={`day-toggle-${day.dateStr}`}
-                  >
-                    <div className="text-xs">{day.shortName}</div>
-                    <div className="text-sm font-bold">{day.dayNum}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Employee Type Filter */}
-          <div>
-            <label className="text-sm font-medium">Personel Tipi</label>
-            <div className="flex gap-1 mt-1">
-              {[
-                { value: 'all', label: 'Tümü' },
-                { value: 'fulltime', label: 'Tam Zamanlı' },
-                { value: 'parttime', label: 'Part-time' },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setEmployeeTypeFilter(opt.value as 'all' | 'fulltime' | 'parttime')}
-                  className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    employeeTypeFilter === opt.value 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted hover:bg-muted/80'
-                  }`}
-                  data-testid={`filter-${opt.value}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Employee Selection - filtered by selected days and type */}
-          <div>
-            <label className="text-sm font-medium">
-              Personel 
-              {selectedDays.length > 0 && availableEmployees.length < employees.length && (
-                <span className="text-muted-foreground font-normal ml-1">
-                  ({availableEmployees.length} müsait)
-                </span>
-              )}
-            </label>
-            <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-              <SelectTrigger className="mt-1" data-testid="select-employee">
-                <SelectValue placeholder={selectedDays.length ? "Müsait personel seçin" : "Önce gün seçin"} />
-              </SelectTrigger>
-              <SelectContent>
-                {availableEmployees.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground text-center">
-                    Bu günlerde tüm personel dolu
-                  </div>
-                ) : (
-                  availableEmployees.map((emp: any) => {
-                    const weeklyHours = getEmployeeWeeklyHours(String(emp.id));
-                    const limit = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
-                    const isPartTime = emp.employmentType === 'parttime';
-                    return (
-                      <SelectItem key={emp.id} value={String(emp.id)}>
-                        <div className="flex items-center gap-2 w-full">
-                          <span className="flex-1">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${isPartTime ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}`}>
-                            {isPartTime ? 'PT' : 'FT'}
-                          </span>
-                          <span className="text-xs text-muted-foreground">{weeklyHours}/{limit}s</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Hours Warning */}
-          {hoursCheck && (
-            <div className={`p-3 rounded-md text-sm ${hoursCheck.exceedsLimit ? 'bg-destructive/10 border border-destructive/30' : 'bg-muted'}`}>
-              <div className="flex items-center justify-between">
-                <span>Mevcut: {hoursCheck.currentHours}s</span>
-                <span>Yeni: +{hoursCheck.newShiftHours.toFixed(1)}s</span>
-                <span className={hoursCheck.exceedsLimit ? 'text-destructive font-bold' : 'font-medium'}>
-                  Toplam: {hoursCheck.totalHours.toFixed(1)}/{hoursCheck.weeklyLimit}s
-                </span>
-              </div>
-              {hoursCheck.exceedsLimit && (
-                <p className="text-destructive text-xs mt-1">
-                  Haftalık limit aşılıyor! ({hoursCheck.employee.employmentType === 'parttime' ? 'Part-time' : 'Tam zamanlı'})
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Time Selection - Flexible */}
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-sm font-medium">Başlangıç</label>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="mt-1"
-                data-testid="input-start-time"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Bitiş</label>
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="mt-1"
-                data-testid="input-end-time"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Mola</label>
-              <Input
-                type="time"
-                value={breakTime}
-                onChange={(e) => setBreakTime(e.target.value)}
-                className="mt-1"
-                data-testid="input-break-time"
-              />
-            </div>
-          </div>
-          
-          {/* Shift Duration Display */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
-            <span>Vardiya Süresi:</span>
-            <span className="font-medium">{calculateShiftHours().toFixed(1)} saat</span>
-          </div>
-
-          {/* Checklist Selections */}
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium">1. Checklist</label>
-              <Select value={checklist1} onValueChange={setChecklist1}>
-                <SelectTrigger className="mt-1" data-testid="select-checklist-1">
-                  <SelectValue placeholder="Checklist seçin (opsiyonel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Seçilmedi</SelectItem>
-                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
-                    <SelectItem key={cl.id} value={String(cl.id)}>
-                      {cl.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">2. Checklist</label>
-              <Select value={checklist2} onValueChange={setChecklist2}>
-                <SelectTrigger className="mt-1" data-testid="select-checklist-2">
-                  <SelectValue placeholder="Checklist seçin (opsiyonel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Seçilmedi</SelectItem>
-                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
-                    <SelectItem key={cl.id} value={String(cl.id)}>
-                      {cl.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">3. Checklist</label>
-              <Select value={checklist3} onValueChange={setChecklist3}>
-                <SelectTrigger className="mt-1" data-testid="select-checklist-3">
-                  <SelectValue placeholder="Checklist seçin (opsiyonel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Seçilmedi</SelectItem>
-                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
-                    <SelectItem key={cl.id} value={String(cl.id)}>
-                      {cl.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Task Assignment */}
-          <div className="border-t pt-3">
-            <p className="text-sm font-medium mb-2">Görev Ata</p>
-            <div className="flex gap-2 mb-3">
-              <Select value={selectedTask} onValueChange={setSelectedTask}>
-                <SelectTrigger className="text-sm flex-1" data-testid="add-task-select">
-                  <SelectValue placeholder="Mevcut görev seç" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Seçilmedi</SelectItem>
-                  {availableTasks.map((task: { id: number; title: string }) => (
-                    <SelectItem key={task.id} value={String(task.id)}>{task.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Input
-              placeholder="Veya hızlıca görev yaz..."
-              value={quickTaskText}
-              onChange={(e) => setQuickTaskText(e.target.value)}
-              className="text-sm"
-              data-testid="input-quick-task"
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => { resetForm(); onClose(); }}>
-            İptal
-          </Button>
-          <Button 
-            onClick={() => createMutation.mutate()}
-            disabled={!canSave || createMutation.isPending}
-            data-testid="button-save-shifts"
-          >
-            {createMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : null}
-            {selectedDays.length > 0 ? `${selectedDays.length} Gün Kaydet` : 'Kaydet'}
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
