@@ -6,16 +6,24 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Session Summary (Dec 16, 2025 - Shift Planning Fixes)
-✅ **AI Shift Planning Bug Fixes & Employee Color Coding**:
-  - BUG FIX 1: Vardiya sıfırlama NaN hatası - shift.id validasyonu eklendi (routes.ts)
+## Recent Session Summary (Dec 16, 2025 - Shift Planning Critical Fixes)
+✅ **CRITICAL Bug Fixes & Employee Color Coding**:
+  - BUG FIX 1: Vardiya sıfırlama NaN hatası - Express route order problem
+    - DELETE /api/shifts/reset-weekly MUST be before DELETE /api/shifts/:id 
+    - Added isNaN validation in both endpoints (lines 11592, 11568)
+    - routes.ts: Lines 11584-11617 (:id endpoint repositioned AFTER reset-weekly)
+  
   - BUG FIX 2: AI sadece 1-2 personel planlaması → Tüm aktif personelleri dengeli dağıtım
     - AI prompt güncellendi: "HER personeli en az 1-2 kez haftada planlama (adaletli dağıtım)"
-    - Personel sayısı dinamik olarak prompt'a eklendi
-  - FEATURE: Personel renkleri - Her personele unique renk (10 renk paleti + hash fonksiyonu)
-    - getEmployeeColor() fonksiyonu - employeeId'ye göre tutarlı renk ataması
-    - Takvimde vardiyalar personel rengiyle gösteriliyor (red, blue, green, yellow, purple, pink, indigo, cyan, orange, teal)
-  - Files Modified: server/routes.ts (11598-11607), server/ai.ts (1032-1040), client/src/pages/vardiya-planlama.tsx (20-58)
+    - Personel sayısı dinamik: `${employees.length} kişi. Tümünü dengeli kullan.`
+    - server/ai.ts: Lines 1029-1037 (prompt update)
+  
+  - FEATURE: Personel renkleri - Her personele unique renk (10 renk paleti)
+    - getEmployeeColor(employeeId) hash function: consistent color per employee
+    - 10 color palette with dark mode support
+    - client/src/pages/vardiya-planlama.tsx: Lines 17-55
+  
+  - Files Modified: server/routes.ts (route reorder), server/ai.ts (prompt), client/src/pages/vardiya-planlama.tsx (colors)
 
 ## Previous Session Summary (Dec 12, 2025)
 ✅ **İzin Yönetimi ve Resmi Tatiller Sistemi** - Comprehensive leave and holiday management:

@@ -11529,37 +11529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DELETE /api/shifts/:id - Delete a shift
-  app.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const role = user.role as UserRoleType;
-      const id = parseInt(req.params.id);
-      
-      // Only supervisors and HQ can delete shifts
-      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
-        return res.status(403).json({ message: "Vardiya silme yetkiniz yok" });
-      }
-      
-      const shift = await storage.getShift(id);
-      if (!shift) {
-        return res.status(404).json({ message: "Vardiya bulunamadı" });
-      }
-      
-      // Branch staff can only delete their own branch shifts
-      if (isBranchRole(role) && shift.branchId !== user.branchId) {
-        return res.status(403).json({ message: "Bu vardiyayı silme yetkiniz yok" });
-      }
-      
-      await storage.deleteShift(id);
-      res.json({ message: "Vardiya silindi" });
-    } catch (error: Error | unknown) {
-      console.error("Error deleting shift:", error);
-      res.status(500).json({ message: "Vardiya silinemedi" });
-    }
-  });
-
-  // DELETE /api/shifts/reset-weekly - Reset weekly shifts
+  // DELETE /api/shifts/reset-weekly - Reset weekly shifts (MUST be before :id route)
   app.delete('/api/shifts/reset-weekly', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
@@ -11605,6 +11575,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: Error | unknown) {
       console.error("Error resetting weekly shifts:", error);
       res.status(500).json({ message: "Vardiyalar sıfırlanamadı" });
+    }
+  });
+
+  // DELETE /api/shifts/:id - Delete a shift (AFTER reset-weekly to avoid :id matching reset-weekly)
+  app.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const id = parseInt(req.params.id);
+      
+      // Validate ID is a number
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Geçersiz vardiya ID'si" });
+      }
+      
+      // Only supervisors and HQ can delete shifts
+      if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+        return res.status(403).json({ message: "Vardiya silme yetkiniz yok" });
+      }
+      
+      const shift = await storage.getShift(id);
+      if (!shift) {
+        return res.status(404).json({ message: "Vardiya bulunamadı" });
+      }
+      
+      // Branch staff can only delete their own branch shifts
+      if (isBranchRole(role) && shift.branchId !== user.branchId) {
+        return res.status(403).json({ message: "Bu vardiyayı silme yetkiniz yok" });
+      }
+      
+      await storage.deleteShift(id);
+      res.json({ message: "Vardiya silindi" });
+    } catch (error: Error | unknown) {
+      console.error("Error deleting shift:", error);
+      res.status(500).json({ message: "Vardiya silinemedi" });
     }
   });
 
