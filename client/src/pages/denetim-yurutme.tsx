@@ -18,10 +18,11 @@ import {
   ArrowLeft, CheckCircle2, Camera, FileText, Star,
   Save, Send, AlertCircle, Loader2, XCircle, 
   Award, TrendingUp, TrendingDown, Target, ClipboardList,
-  AlertTriangle, Eye
+  AlertTriangle, Eye, Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import jsPDF from "jspdf";
 
 type AuditTemplateItem = {
   id: number;
@@ -204,6 +205,170 @@ export default function DenetimYurutmePage() {
       templateItemId,
       updates: { photoUrl: uploadURL },
     });
+  };
+
+  // PDF Export function for audit reports
+  const generateAuditReportPDF = () => {
+    if (!audit) return;
+    
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(139, 69, 19);
+    doc.text("DOSPRESSO", pageWidth / 2, 20, { align: "center" });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Kalite Denetim Raporu", pageWidth / 2, 28, { align: "center" });
+    
+    // Divider
+    doc.setDrawColor(139, 69, 19);
+    doc.setLineWidth(0.5);
+    doc.line(14, 35, pageWidth - 14, 35);
+    
+    let yPos = 45;
+    
+    // Audit Info
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Denetim #${audit.id}`, 14, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(11);
+    doc.setTextColor(80, 80, 80);
+    
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const maxValueWidth = pageWidth - 75; // Space for value text
+    
+    const checkPageBreak = (neededHeight: number) => {
+      if (yPos + neededHeight > pageHeight - 20) {
+        doc.addPage();
+        yPos = 20;
+      }
+    };
+    
+    const addField = (label: string, value: string) => {
+      checkPageBreak(12);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${label}:`, 14, yPos);
+      doc.setFont("helvetica", "normal");
+      // Truncate long values to fit
+      const displayValue = value || "-";
+      const truncated = displayValue.length > 50 ? displayValue.substring(0, 47) + "..." : displayValue;
+      doc.text(truncated, 65, yPos);
+      yPos += 8;
+    };
+    
+    addField("Şablon", audit.template?.title || "-");
+    addField("Şube", audit.branch?.name || "-");
+    addField("Denetçi", audit.auditor ? `${audit.auditor.firstName} ${audit.auditor.lastName}` : "-");
+    addField("Tarih", audit.auditDate ? format(new Date(audit.auditDate), "dd MMM yyyy HH:mm", { locale: tr }) : "-");
+    addField("Durum", audit.status === 'completed' ? 'Tamamlandı' : 'Devam Ediyor');
+    
+    yPos += 5;
+    
+    // Score section
+    if (audit.percentageScore !== null) {
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, yPos, pageWidth - 14, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text("Sonuç", 14, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(11);
+      addField("Puan", `${audit.percentageScore}%`);
+      addField("Not", audit.grade || "-");
+      addField("Toplam Puan", `${audit.totalScore || 0} / ${audit.maxScore || 0}`);
+    }
+    
+    // Items section
+    yPos += 5;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, yPos, pageWidth - 14, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Denetim Maddeleri", 14, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(10);
+    audit.items.forEach((item, index) => {
+      // Calculate required height for this item
+      const itemText = `${index + 1}. ${item.templateItem?.itemText || 'Bilinmiyor'}`;
+      const splitText = doc.splitTextToSize(itemText, pageWidth - 28);
+      let itemHeight = splitText.length * 5 + 10; // base height
+      if (item.score !== null) itemHeight += 5;
+      if (item.notes) {
+        const notesLines = doc.splitTextToSize(`   Not: ${item.notes}`, pageWidth - 28);
+        itemHeight += notesLines.length * 5;
+      }
+      
+      // Check BEFORE writing if we need a new page
+      checkPageBreak(itemHeight);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(80, 80, 80);
+      doc.text(splitText, 14, yPos);
+      yPos += splitText.length * 5;
+      
+      doc.setFont("helvetica", "normal");
+      const responseText = item.response === 'yes' ? 'Evet' : item.response === 'no' ? 'Hayır' : (item.response || '-');
+      doc.text(`   Cevap: ${responseText}`, 14, yPos);
+      yPos += 5;
+      
+      if (item.score !== null) {
+        doc.text(`   Puan: ${item.score}%`, 14, yPos);
+        yPos += 5;
+      }
+      
+      if (item.notes) {
+        const notesText = doc.splitTextToSize(`   Not: ${item.notes}`, pageWidth - 28);
+        doc.text(notesText, 14, yPos);
+        yPos += notesText.length * 5;
+      }
+      
+      yPos += 3;
+    });
+    
+    // Notes section
+    if (audit.notes) {
+      const notesText = doc.splitTextToSize(audit.notes, pageWidth - 28);
+      const notesHeight = 25 + notesText.length * 5;
+      checkPageBreak(notesHeight);
+      
+      yPos += 5;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, yPos, pageWidth - 14, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Genel Notlar", 14, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(notesText, 14, yPos);
+    }
+    
+    // Footer (already declared above)
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`DOSPRESSO Franchise Management System - ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, pageHeight - 10, { align: "center" });
+    
+    // Save file
+    const fileName = `DOSPRESSO_Denetim_${audit.id}_${format(new Date(), "yyyyMMdd")}.pdf`;
+    doc.save(fileName);
+    
+    toast({ title: "PDF İndirildi", description: fileName });
   };
 
   if (isLoading) {
@@ -721,12 +886,25 @@ export default function DenetimYurutmePage() {
           <h1 className="text-xl sm:text-2xl font-bold truncate">{audit.template.title}</h1>
           <p className="text-sm text-muted-foreground line-clamp-1">{audit.template.description}</p>
         </div>
-        <Badge 
-          variant={isCompleted ? 'default' : 'secondary'}
-          data-testid="badge-status"
-        >
-          {isCompleted ? 'Tamamlandı' : 'Devam Ediyor'}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {isCompleted && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={generateAuditReportPDF}
+              data-testid="button-export-pdf"
+            >
+              <Download className="w-4 h-4 mr-1.5" />
+              PDF
+            </Button>
+          )}
+          <Badge 
+            variant={isCompleted ? 'default' : 'secondary'}
+            data-testid="badge-status"
+          >
+            {isCompleted ? 'Tamamlandı' : 'Devam Ediyor'}
+          </Badge>
+        </div>
       </div>
 
       {/* For completed audits: show tabbed view */}
