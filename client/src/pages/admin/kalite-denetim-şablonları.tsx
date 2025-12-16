@@ -223,7 +223,17 @@ export default function AdminKaliteDenetimSablonlari() {
                     <div className="text-sm text-muted-foreground">
                       <span data-testid={`text-item-count-${template.id}`}>{template.items?.length || 0} madde</span>
                     </div>
-                    <div className="flex gap-2 pt-2 border-t">
+                    <div className="flex gap-2 pt-2 border-t flex-wrap">
+                      <Link href={`/admin/kalite-denetim-sablonu/${template.id}`}>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          data-testid={`button-edit-${template.id}`}
+                        >
+                          <Edit2 className="h-3.5 w-3.5 mr-1" />
+                          Düzenle
+                        </Button>
+                      </Link>
                       <Button
                         size="sm"
                         variant="outline"

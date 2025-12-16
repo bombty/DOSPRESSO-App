@@ -119,6 +119,8 @@ import AdminServisMailAyarlari from "@/pages/admin/servis-mail-ayarlari";
 import AdminBannerlar from "@/pages/admin/bannerlar";
 import AdminYapayZekaAyarlari from "@/pages/admin/yapay-zeka-ayarlari";
 import AdminKaliteDenetimSablonlari from "@/pages/admin/kalite-denetim-şablonları";
+import AdminKaliteDenetimSablonuDuzenle from "@/pages/admin/kalite-denetim-sablonu-duzenle";
+import Setup from "@/pages/setup";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -126,6 +128,7 @@ function Router() {
 
   return (
     <Switch>
+      <Route path="/setup" component={Setup} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />
@@ -272,6 +275,7 @@ function Router() {
           <Route path="/admin/bannerlar" component={AdminBannerlar} />
           <Route path="/admin/yapay-zeka-ayarlari" component={AdminYapayZekaAyarlari} />
           <Route path="/admin/kalite-denetim-şablonları" component={AdminKaliteDenetimSablonlari} />
+          <Route path="/admin/kalite-denetim-sablonu/:id" component={AdminKaliteDenetimSablonuDuzenle} />
         </>
       )}
       <Route component={NotFound} />

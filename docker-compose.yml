@@ -1,0 +1,138 @@
+# DOSPRESSO Franchise Management WebApp
+# Docker Compose Configuration for Self-Hosted Deployment
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # ============================================
+  # Traefik Reverse Proxy (SSL + Let's Encrypt)
+  # ============================================
+  traefik:
+    image: traefik:v3.0
+    container_name: dospresso-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ADMIN_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certificates:/letsencrypt
+    networks:
+      - dospresso-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik-dashboard.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_AUTH:-admin:$$apr1$$xyz$$abc}"
+
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: dospresso-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dospresso}
+      POSTGRES_USER: ${POSTGRES_USER:-dospresso}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - dospresso-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dospresso}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # DOSPRESSO Application
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dospresso-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dospresso}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-dospresso}
+      SESSION_SECRET: ${SESSION_SECRET:-change-this-secret-in-production}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@example.com}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-eu-central-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+    volumes:
+      - app-uploads:/app/uploads
+      - app-backups:/app/backups
+    networks:
+      - dospresso-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dospresso.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.dospresso.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dospresso.loadbalancer.server.port=5000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # Redis (Optional - for session caching)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: dospresso-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - dospresso-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  dospresso-network:
+    driver: bridge
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  postgres-data:
+  app-uploads:
+  app-backups:
+  redis-data:
+  traefik-certificates:

@@ -323,6 +323,17 @@ async function checkProjectAccessByPhaseId(user: any, phaseId: number): Promise<
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
+  // GET /api/health - Public health check for Docker/load balancer
+  app.get('/api/health', async (req, res) => {
+    try {
+      // Simple database ping
+      await db.execute(sql`SELECT 1`);
+      res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    } catch (error) {
+      res.status(503).json({ status: 'error', message: 'Database connection failed' });
+    }
+  });
+
   // POST /api/auth/register - Public registration endpoint
   app.post('/api/auth/register', async (req, res) => {
     try {
@@ -16981,6 +16992,171 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error) {
       console.error("Delete audit template error:", error);
       res.status(500).json({ message: "Şablon silinemedi" });
+    }
+  });
+
+  // ============================================================
+  // AUDIT TEMPLATE ITEMS - Şablon Maddeleri CRUD
+  // ============================================================
+
+  // Zod validation schema for template items
+  const templateItemSchema = z.object({
+    itemText: z.string().min(1, "Madde metni gerekli").max(500),
+    itemType: z.enum(['checkbox', 'rating', 'text', 'photo']).optional().default('checkbox'),
+    weight: z.preprocess(
+      (val) => {
+        if (val === null || val === undefined || val === '') return null;
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        return isNaN(num) ? null : num;
+      },
+      z.number().min(0).max(100).nullable().optional()
+    ),
+    maxPoints: z.preprocess(
+      (val) => typeof val === 'string' ? parseInt(val) : val,
+      z.number().min(1).max(100).optional().default(10)
+    ),
+    requiresPhoto: z.boolean().optional().default(false),
+    sortOrder: z.preprocess(
+      (val) => typeof val === 'string' ? parseInt(val) : val,
+      z.number().int().min(0).optional().default(0)
+    ),
+  });
+
+  // Helper: verify template exists and user has access (HQ roles and admin only for central template management)
+  async function verifyTemplateAccess(templateId: number, user: any): Promise<boolean> {
+    // Audit templates are centrally managed by HQ/admin - this is intentional
+    if (!isHQRole(user.role) && user.role !== 'admin') return false;
+    const [template] = await db.select({ id: auditTemplates.id })
+      .from(auditTemplates)
+      .where(eq(auditTemplates.id, templateId))
+      .limit(1);
+    return !!template;
+  }
+
+  // Helper: verify item belongs to template
+  async function verifyItemOwnership(itemId: number, templateId: number): Promise<boolean> {
+    const [item] = await db.select({ templateId: auditTemplateItems.templateId })
+      .from(auditTemplateItems)
+      .where(eq(auditTemplateItems.id, itemId))
+      .limit(1);
+    return item?.templateId === templateId;
+  }
+
+  // POST /api/audit-templates/:id/items - Add new item to template
+  app.post('/api/audit-templates/:id/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const templateId = parseInt(req.params.id);
+
+      // Verify template access
+      const hasAccess = await verifyTemplateAccess(templateId, user);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Şablona erişim yetkiniz yok" });
+      }
+
+      // Validate request body
+      const validation = templateItemSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Geçersiz veri", 
+          errors: validation.error.flatten().fieldErrors 
+        });
+      }
+
+      const data = validation.data;
+      const [newItem] = await db.insert(auditTemplateItems).values({
+        templateId,
+        itemText: data.itemText,
+        itemType: data.itemType,
+        weight: typeof data.weight === 'number' ? data.weight : null,
+        maxPoints: data.maxPoints,
+        requiresPhoto: data.requiresPhoto,
+        sortOrder: data.sortOrder,
+      }).returning();
+
+      res.status(201).json(newItem);
+    } catch (error) {
+      console.error("Add audit template item error:", error);
+      res.status(500).json({ message: "Madde eklenemedi" });
+    }
+  });
+
+  // PUT /api/audit-templates/:id/items/:itemId - Update item
+  app.put('/api/audit-templates/:id/items/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const templateId = parseInt(req.params.id);
+      const itemId = parseInt(req.params.itemId);
+
+      // Verify template access
+      const hasAccess = await verifyTemplateAccess(templateId, user);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Şablona erişim yetkiniz yok" });
+      }
+
+      // Verify item belongs to this template
+      const isOwned = await verifyItemOwnership(itemId, templateId);
+      if (!isOwned) {
+        return res.status(403).json({ message: "Bu madde bu şablona ait değil" });
+      }
+
+      // Validate request body
+      const validation = templateItemSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Geçersiz veri", 
+          errors: validation.error.flatten().fieldErrors 
+        });
+      }
+
+      const data = validation.data;
+      const [updated] = await db.update(auditTemplateItems)
+        .set({
+          itemText: data.itemText,
+          itemType: data.itemType,
+          weight: typeof data.weight === 'number' ? data.weight : null,
+          maxPoints: data.maxPoints,
+          requiresPhoto: data.requiresPhoto,
+          sortOrder: data.sortOrder,
+        })
+        .where(eq(auditTemplateItems.id, itemId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Madde bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update audit template item error:", error);
+      res.status(500).json({ message: "Madde güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/audit-templates/:id/items/:itemId - Delete item
+  app.delete('/api/audit-templates/:id/items/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const templateId = parseInt(req.params.id);
+      const itemId = parseInt(req.params.itemId);
+
+      // Verify template access
+      const hasAccess = await verifyTemplateAccess(templateId, user);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Şablona erişim yetkiniz yok" });
+      }
+
+      // Verify item belongs to this template
+      const isOwned = await verifyItemOwnership(itemId, templateId);
+      if (!isOwned) {
+        return res.status(403).json({ message: "Bu madde bu şablona ait değil" });
+      }
+
+      await db.delete(auditTemplateItems).where(eq(auditTemplateItems.id, itemId));
+      res.json({ message: "Madde silindi" });
+    } catch (error) {
+      console.error("Delete audit template item error:", error);
+      res.status(500).json({ message: "Madde silinemedi" });
     }
   });
 
