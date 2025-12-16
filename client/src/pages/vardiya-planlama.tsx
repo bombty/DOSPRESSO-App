@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -50,7 +50,15 @@ function DraggableShiftChip({ shift, employee, canEdit, onClick }: {
             <GripVertical className="w-3 h-3 text-muted-foreground" />
           </div>
         )}
-        <button onClick={onClick} disabled={!canEdit} className="flex-1 text-left min-w-0">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (shift?.id) onClick();
+          }} 
+          disabled={!canEdit} 
+          className="flex-1 text-left min-w-0"
+        >
           <div className="font-medium truncate">{name}</div>
           <div className="opacity-70">
             {shift.startTime?.substring(0, 5)}-{shift.endTime?.substring(0, 5)}
@@ -762,6 +770,7 @@ export default function VardiyaPlanlama() {
                           <p className="text-xs text-muted-foreground text-center py-3">-</p>
                         ) : (
                           (periodShifts[day.dateStr] || []).map((shift: any) => {
+                            if (!shift?.id) return null;
                             const emp = branchEmployees.find((e: any) => e.id === shift.assignedToId);
                             
                             return (
@@ -770,7 +779,11 @@ export default function VardiyaPlanlama() {
                                 shift={shift}
                                 employee={emp}
                                 canEdit={canEditShifts || false}
-                                onClick={() => { if (canEditShifts) setEditingShiftId(shift.id); }}
+                                onClick={() => { 
+                                  if (canEditShifts && shift?.id) {
+                                    setEditingShiftId(shift.id); 
+                                  }
+                                }}
                               />
                             );
                           })
