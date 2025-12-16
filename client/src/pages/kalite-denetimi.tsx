@@ -418,7 +418,7 @@ export default function KaliteDenetimi() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={`grid w-full ${(isHQ || user?.role === 'admin') ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <TabsTrigger value="dashboard" data-testid="tab-dashboard">
             <BarChart3 className="w-4 h-4 mr-1 hidden sm:inline" />
             Özet
@@ -431,6 +431,12 @@ export default function KaliteDenetimi() {
             <AlertTriangle className="w-4 h-4 mr-1 hidden sm:inline" />
             CAPA
           </TabsTrigger>
+          {(isHQ || user?.role === 'admin') && (
+            <TabsTrigger value="templates" data-testid="tab-templates">
+              <FileText className="w-4 h-4 mr-1 hidden sm:inline" />
+              Şablonlar
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Dashboard Tab */}
@@ -843,6 +849,76 @@ export default function KaliteDenetimi() {
                 </Link>
               ))}
             </div>
+          )}
+        </TabsContent>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates" className="space-y-4 mt-4">
+          {(isHQ || user?.role === 'admin') ? (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Denetim Şablonları</h2>
+                  <p className="text-sm text-muted-foreground">Kalite denetimi şablonlarını yönetin</p>
+                </div>
+                <Link href="/admin/kalite-denetim-sablonlari">
+                  <Button data-testid="button-manage-templates">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Şablonları Yönet
+                  </Button>
+                </Link>
+              </div>
+
+              {!templates || templates.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <FileText className="w-12 h-12 mx-auto text-muted-foreground opacity-50 mb-3" />
+                    <p className="text-muted-foreground">Henüz şablon oluşturulmamış</p>
+                    <Link href="/admin/kalite-denetim-sablonlari">
+                      <Button variant="outline" className="mt-4" data-testid="button-create-first-template">
+                        <Plus className="w-4 h-4 mr-2" />
+                        İlk Şablonu Oluştur
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {templates.map((template) => (
+                    <Link key={template.id} href={`/admin/kalite-denetim-sablonu/${template.id}`}>
+                      <Card className="hover-elevate cursor-pointer h-full" data-testid={`card-template-${template.id}`}>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-base" data-testid={`text-template-title-${template.id}`}>
+                              {template.title}
+                            </CardTitle>
+                            <Badge variant={template.isActive ? "default" : "secondary"} data-testid={`badge-template-status-${template.id}`}>
+                              {template.isActive ? "Aktif" : "Pasif"}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {template.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">{template.description}</p>
+                          )}
+                          {template.category && (
+                            <Badge variant="outline" className="mt-2">{template.category}</Badge>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <AlertTriangle className="w-12 h-12 mx-auto text-yellow-500 opacity-50 mb-3" />
+                <p className="text-muted-foreground">Şablon yönetimi için yetkiniz bulunmuyor</p>
+                <p className="text-xs text-muted-foreground mt-1">Bu sayfa sadece HQ ve Admin kullanıcıları için görüntülenebilir</p>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
       </Tabs>
