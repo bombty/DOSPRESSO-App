@@ -2572,6 +2572,7 @@ export const auditTemplateItems = pgTable("audit_template_items", {
   // NEW fields for enhanced audit system
   itemType: varchar("item_type", { length: 20 }), // checkbox, rating, text, photo, multiple_choice - nullable for backwards compat
   weight: numeric("weight", { precision: 5, scale: 2 }), // Scoring weight as percentage (e.g., 6.25) - nullable
+  section: varchar("section", { length: 30 }), // gida_guvenligi, urun_standardi, servis, operasyon, marka, ekipman
   requiresPhoto: boolean("requires_photo"), // nullable
   aiCheckEnabled: boolean("ai_check_enabled"), // nullable
   aiPrompt: text("ai_prompt"), // Custom AI analysis prompt for this item
@@ -2601,6 +2602,14 @@ export const qualityAudits = pgTable("quality_audits", {
   totalScore: integer("total_score").notNull().default(0),
   maxPossibleScore: integer("max_possible_score").notNull().default(0),
   percentageScore: integer("percentage_score").notNull().default(0), // 0-100
+  // Section scores (weighted percentages)
+  gidaGuvenligiScore: integer("gida_guvenligi_score"), // Food Safety score 0-100
+  urunStandardiScore: integer("urun_standardi_score"), // Product Standard score 0-100
+  servisScore: integer("servis_score"), // Service score 0-100
+  operasyonScore: integer("operasyon_score"), // Operations score 0-100
+  markaScore: integer("marka_score"), // Brand score 0-100
+  ekipmanScore: integer("ekipman_score"), // Equipment score 0-100
+  weightedTotalScore: integer("weighted_total_score"), // Final weighted score 0-100
   status: varchar("status", { length: 20 }).notNull().default("completed"),
   notes: text("notes"),
   photoUrls: text("photo_urls").array(),
@@ -2639,6 +2648,51 @@ export const insertAuditItemScoreSchema = createInsertSchema(auditItemScores).om
 
 export type InsertAuditItemScore = z.infer<typeof insertAuditItemScoreSchema>;
 export type AuditItemScore = typeof auditItemScores.$inferSelect;
+
+// Audit Section Constants - 6 weighted sections for quality audits
+export const AUDIT_SECTIONS = {
+  gida_guvenligi: { label: "Gıda Güvenliği", weight: 25, color: "red" },
+  urun_standardi: { label: "Ürün Standardı", weight: 25, color: "orange" },
+  servis: { label: "Servis", weight: 15, color: "blue" },
+  operasyon: { label: "Operasyon", weight: 15, color: "green" },
+  marka: { label: "Marka", weight: 10, color: "purple" },
+  ekipman: { label: "Ekipman", weight: 10, color: "gray" },
+} as const;
+
+export type AuditSection = keyof typeof AUDIT_SECTIONS;
+
+// Branch Audit Scores - Aggregated audit scores per branch per period
+export const branchAuditScores = pgTable("branch_audit_scores", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  periodType: varchar("period_type", { length: 20 }).notNull(), // daily, weekly, monthly
+  periodStart: date("period_start").notNull(),
+  periodEnd: date("period_end").notNull(),
+  auditCount: integer("audit_count").notNull().default(0),
+  // Section averages (0-100)
+  gidaGuvenligiAvg: integer("gida_guvenligi_avg"),
+  urunStandardiAvg: integer("urun_standardi_avg"),
+  servisAvg: integer("servis_avg"),
+  operasyonAvg: integer("operasyon_avg"),
+  markaAvg: integer("marka_avg"),
+  ekipmanAvg: integer("ekipman_avg"),
+  // Overall weighted average
+  overallScore: integer("overall_score"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("branch_audit_scores_branch_idx").on(table.branchId),
+  index("branch_audit_scores_period_idx").on(table.periodType, table.periodStart),
+]);
+
+export const insertBranchAuditScoreSchema = createInsertSchema(branchAuditScores).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBranchAuditScore = z.infer<typeof insertBranchAuditScoreSchema>;
+export type BranchAuditScore = typeof branchAuditScores.$inferSelect;
 
 // NEW: Audit Instances - Unified audit execution for both branch and personnel
 export const auditInstances = pgTable("audit_instances", {
