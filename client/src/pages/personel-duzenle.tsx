@@ -1036,15 +1036,9 @@ function SalarySection({ userId }: { userId: string }) {
   const saveSalaryMutation = useMutation({
     mutationFn: async (data: any) => {
       if (salary?.id) {
-        return apiRequest(`/api/salary/employee/${salary.id}`, {
-          method: "PATCH",
-          body: JSON.stringify(data),
-        });
+        return apiRequest("PATCH", `/api/salary/employee/${salary.id}`, data);
       } else {
-        return apiRequest("/api/salary/employee", {
-          method: "POST",
-          body: JSON.stringify({ ...data, userId }),
-        });
+        return apiRequest("POST", "/api/salary/employee", { ...data, userId });
       }
     },
     onSuccess: () => {
