@@ -2,10 +2,12 @@ import { useState, useRef } from "react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import imageCompression from "browser-image-compression";
 
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
+  maxWidthOrHeight?: number;
   onGetUploadParameters: () => Promise<{
     method: "PUT";
     url: string;
@@ -17,6 +19,7 @@ interface ObjectUploaderProps {
 
 export function ObjectUploader({
   maxFileSize = 10485760,
+  maxWidthOrHeight = 800,
   onGetUploadParameters,
   onComplete,
   buttonClassName,
@@ -40,24 +43,23 @@ export function ObjectUploader({
       return;
     }
 
-    if (file.size > maxFileSize) {
-      toast({
-        title: "Hata",
-        description: `Dosya boyutu çok büyük. Maksimum ${Math.floor(maxFileSize / 1024 / 1024)}MB olmalıdır.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsUploading(true);
     try {
+      // Compress and resize image before upload
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: maxFileSize / (1024 * 1024),
+        maxWidthOrHeight: maxWidthOrHeight,
+        useWebWorker: true,
+        fileType: "image/jpeg",
+      });
+      
       const { url } = await onGetUploadParameters();
       
       const response = await fetch(url, {
         method: "PUT",
-        body: file,
+        body: compressedFile,
         headers: {
-          "Content-Type": file.type || "application/octet-stream",
+          "Content-Type": compressedFile.type || "image/jpeg",
         },
       });
 
