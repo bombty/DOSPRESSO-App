@@ -179,6 +179,15 @@ import {
   insertEmployeeLeaveSchema,
   insertPublicHolidaySchema,
   shiftAttendance,
+  // Maaş Yönetimi
+  employeeSalaries,
+  salaryDeductionTypes,
+  salaryDeductions,
+  monthlyPayrolls,
+  insertEmployeeSalarySchema,
+  insertSalaryDeductionTypeSchema,
+  insertSalaryDeductionSchema,
+  insertMonthlyPayrollSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray } from "drizzle-orm";
@@ -18341,6 +18350,609 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error) {
       console.error("Get branch comparison error:", error);
       res.status(500).json({ message: "Şube karşılaştırması alınamadı" });
+    }
+  });
+
+  // ========== MAAŞ YÖNETİMİ API'LERİ ==========
+
+  // Maaş görüntüleme yetki kontrol fonksiyonu
+  const canViewSalary = (viewerRole: string, targetUserId: string, viewerUserId: string, viewerBranchId: number | null, targetBranchId: number | null): boolean => {
+    // Admin ve muhasebe her maaşı görebilir
+    if (viewerRole === 'admin' || viewerRole === 'muhasebe') return true;
+    // Yatırımcı sadece kendi şubesindeki personelin maaşını görebilir
+    if (viewerRole === 'yatirimci_branch') {
+      return viewerBranchId === targetBranchId;
+    }
+    // Diğer roller maaş göremez
+    return false;
+  };
+
+  // GET /api/salary/deduction-types - Kesinti tiplerini getir
+  app.get('/api/salary/deduction-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
+        return res.status(403).json({ message: "Kesinti tiplerine erişim yetkiniz yok" });
+      }
+      const types = await db.select().from(salaryDeductionTypes).where(eq(salaryDeductionTypes.isActive, true));
+      res.json(types);
+    } catch (error) {
+      console.error("Get deduction types error:", error);
+      res.status(500).json({ message: "Kesinti tipleri alınamadı" });
+    }
+  });
+
+  // POST /api/salary/deduction-types - Yeni kesinti tipi oluştur (sadece admin)
+  app.post('/api/salary/deduction-types', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Kesinti tipi oluşturma yetkiniz yok" });
+      }
+      const validated = insertSalaryDeductionTypeSchema.parse(req.body);
+      const [newType] = await db.insert(salaryDeductionTypes).values(validated).returning();
+      res.json(newType);
+    } catch (error) {
+      console.error("Create deduction type error:", error);
+      res.status(500).json({ message: "Kesinti tipi oluşturulamadı" });
+    }
+  });
+
+  // GET /api/salary/employee/:userId - Personelin maaş bilgilerini getir
+  app.get('/api/salary/employee/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const targetUserId = req.params.userId;
+
+      // Hedef kullanıcıyı al
+      const [targetUser] = await db.select().from(users).where(eq(users.id, targetUserId));
+      if (!targetUser) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      // Yetki kontrolü
+      if (!canViewSalary(user.role, targetUserId, user.id, user.branchId, targetUser.branchId)) {
+        return res.status(403).json({ message: "Maaş bilgilerine erişim yetkiniz yok" });
+      }
+
+      // Aktif maaş kaydını getir
+      const [salary] = await db.select().from(employeeSalaries)
+        .where(and(
+          eq(employeeSalaries.userId, targetUserId),
+          eq(employeeSalaries.isActive, true)
+        ))
+        .orderBy(desc(employeeSalaries.effectiveFrom))
+        .limit(1);
+
+      res.json(salary || null);
+    } catch (error) {
+      console.error("Get employee salary error:", error);
+      res.status(500).json({ message: "Maaş bilgileri alınamadı" });
+    }
+  });
+
+  // POST /api/salary/employee - Personele maaş bilgisi ekle
+  app.post('/api/salary/employee', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Maaş bilgisi ekleme yetkiniz yok" });
+      }
+
+      const validated = insertEmployeeSalarySchema.parse({
+        ...req.body,
+        createdById: user.id,
+      });
+
+      // Mevcut aktif kaydı pasif yap
+      await db.update(employeeSalaries)
+        .set({ isActive: false, effectiveTo: new Date().toISOString().split('T')[0] })
+        .where(and(
+          eq(employeeSalaries.userId, validated.userId),
+          eq(employeeSalaries.isActive, true)
+        ));
+
+      const [newSalary] = await db.insert(employeeSalaries).values(validated).returning();
+      res.json(newSalary);
+    } catch (error) {
+      console.error("Create employee salary error:", error);
+      res.status(500).json({ message: "Maaş bilgisi eklenemedi" });
+    }
+  });
+
+  // PATCH /api/salary/employee/:id - Maaş bilgisini güncelle
+  app.patch('/api/salary/employee/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Maaş bilgisi güncelleme yetkiniz yok" });
+      }
+
+      const salaryId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const [updated] = await db.update(employeeSalaries)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(employeeSalaries.id, salaryId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Maaş kaydı bulunamadı" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update employee salary error:", error);
+      res.status(500).json({ message: "Maaş bilgisi güncellenemedi" });
+    }
+  });
+
+  // GET /api/salary/deductions/:userId - Personelin kesintilerini getir
+  app.get('/api/salary/deductions/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const targetUserId = req.params.userId;
+      const { month, year } = req.query;
+
+      // Hedef kullanıcıyı al
+      const [targetUser] = await db.select().from(users).where(eq(users.id, targetUserId));
+      if (!targetUser) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      // Yetki kontrolü
+      if (!canViewSalary(user.role, targetUserId, user.id, user.branchId, targetUser.branchId)) {
+        return res.status(403).json({ message: "Kesinti bilgilerine erişim yetkiniz yok" });
+      }
+
+      // Kesintileri getir
+      let whereConditions = [eq(salaryDeductions.userId, targetUserId)];
+      if (month && year) {
+        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const endDate = `${year}-${String(parseInt(month as string) + 1).padStart(2, '0')}-01`;
+        whereConditions.push(sql`${salaryDeductions.referenceDate} >= ${startDate}`);
+        whereConditions.push(sql`${salaryDeductions.referenceDate} < ${endDate}`);
+      }
+
+      const deductions = await db.select({
+        deduction: salaryDeductions,
+        typeName: salaryDeductionTypes.name,
+        typeCode: salaryDeductionTypes.code,
+      }).from(salaryDeductions)
+        .leftJoin(salaryDeductionTypes, eq(salaryDeductions.deductionTypeId, salaryDeductionTypes.id))
+        .where(and(...whereConditions))
+        .orderBy(desc(salaryDeductions.referenceDate));
+
+      res.json(deductions);
+    } catch (error) {
+      console.error("Get salary deductions error:", error);
+      res.status(500).json({ message: "Kesinti bilgileri alınamadı" });
+    }
+  });
+
+  // POST /api/salary/deductions - Manuel kesinti ekle
+  app.post('/api/salary/deductions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'yatirimci_branch') {
+        return res.status(403).json({ message: "Kesinti ekleme yetkiniz yok" });
+      }
+
+      // Yatırımcı sadece kendi şubesine kesinti ekleyebilir
+      if (user.role === 'yatirimci_branch') {
+        const [targetUser] = await db.select().from(users).where(eq(users.id, req.body.userId));
+        if (!targetUser || targetUser.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu personele kesinti ekleme yetkiniz yok" });
+        }
+      }
+
+      const validated = insertSalaryDeductionSchema.parse({
+        ...req.body,
+        createdById: user.id,
+        isAutomatic: false,
+      });
+
+      const [newDeduction] = await db.insert(salaryDeductions).values(validated).returning();
+      res.json(newDeduction);
+    } catch (error) {
+      console.error("Create salary deduction error:", error);
+      res.status(500).json({ message: "Kesinti eklenemedi" });
+    }
+  });
+
+  // DELETE /api/salary/deductions/:id - Kesinti sil (sadece onaysız olanlar)
+  app.delete('/api/salary/deductions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Kesinti silme yetkiniz yok" });
+      }
+
+      const deductionId = parseInt(req.params.id);
+      const [deduction] = await db.select().from(salaryDeductions).where(eq(salaryDeductions.id, deductionId));
+      
+      if (!deduction) {
+        return res.status(404).json({ message: "Kesinti bulunamadı" });
+      }
+      if (deduction.status === 'approved') {
+        return res.status(400).json({ message: "Onaylanmış kesinti silinemez" });
+      }
+
+      await db.delete(salaryDeductions).where(eq(salaryDeductions.id, deductionId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete salary deduction error:", error);
+      res.status(500).json({ message: "Kesinti silinemedi" });
+    }
+  });
+
+  // GET /api/salary/payroll/:userId - Personelin bordro geçmişini getir
+  app.get('/api/salary/payroll/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const targetUserId = req.params.userId;
+      const { year } = req.query;
+
+      // Hedef kullanıcıyı al
+      const [targetUser] = await db.select().from(users).where(eq(users.id, targetUserId));
+      if (!targetUser) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      // Yetki kontrolü
+      if (!canViewSalary(user.role, targetUserId, user.id, user.branchId, targetUser.branchId)) {
+        return res.status(403).json({ message: "Bordro bilgilerine erişim yetkiniz yok" });
+      }
+
+      let whereConditions = [eq(monthlyPayrolls.userId, targetUserId)];
+      if (year) {
+        whereConditions.push(eq(monthlyPayrolls.year, parseInt(year as string)));
+      }
+
+      const payrolls = await db.select().from(monthlyPayrolls)
+        .where(and(...whereConditions))
+        .orderBy(desc(monthlyPayrolls.year), desc(monthlyPayrolls.month));
+
+      res.json(payrolls);
+    } catch (error) {
+      console.error("Get payroll history error:", error);
+      res.status(500).json({ message: "Bordro geçmişi alınamadı" });
+    }
+  });
+
+  // POST /api/salary/payroll/calculate - Aylık bordro hesapla
+  app.post('/api/salary/payroll/calculate', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Bordro hesaplama yetkiniz yok" });
+      }
+
+      const { userId, month, year } = req.body;
+
+      // Maaş bilgisini al
+      const [salary] = await db.select().from(employeeSalaries)
+        .where(and(
+          eq(employeeSalaries.userId, userId),
+          eq(employeeSalaries.isActive, true)
+        ));
+
+      if (!salary) {
+        return res.status(400).json({ message: "Personelin aktif maaş kaydı bulunamadı" });
+      }
+
+      const [targetUser] = await db.select().from(users).where(eq(users.id, userId));
+      if (!targetUser) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      // Ay içindeki kesintileri al
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const nextMonth = month === 12 ? 1 : month + 1;
+      const nextYear = month === 12 ? year + 1 : year;
+      const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+
+      const deductions = await db.select().from(salaryDeductions)
+        .leftJoin(salaryDeductionTypes, eq(salaryDeductions.deductionTypeId, salaryDeductionTypes.id))
+        .where(and(
+          eq(salaryDeductions.userId, userId),
+          sql`${salaryDeductions.referenceDate} >= ${startDate}`,
+          sql`${salaryDeductions.referenceDate} < ${endDate}`
+        ));
+
+      // Kesintileri kategorilere ayır
+      let lateDeductions = 0;
+      let absenceDeductions = 0;
+      let unpaidLeaveDeductions = 0;
+      let sickLeaveDeductions = 0;
+      let otherDeductions = 0;
+
+      for (const d of deductions) {
+        const typeCode = d.salary_deduction_types?.code || '';
+        const amount = d.salary_deductions.amount || 0;
+
+        if (typeCode === 'late_arrival' || typeCode === 'early_leave') {
+          lateDeductions += amount;
+        } else if (typeCode === 'absence') {
+          absenceDeductions += amount;
+        } else if (typeCode === 'unpaid_leave') {
+          unpaidLeaveDeductions += amount;
+        } else if (typeCode === 'sick_leave_no_report') {
+          sickLeaveDeductions += amount;
+        } else {
+          otherDeductions += amount;
+        }
+      }
+
+      const totalDeductions = lateDeductions + absenceDeductions + unpaidLeaveDeductions + sickLeaveDeductions + otherDeductions;
+
+      // Fazla mesai hesapla (varsa)
+      let overtimeHours = 0;
+      let overtimePay = 0;
+      // TODO: Fazla mesai verilerinden hesapla
+
+      // Vergi ve sigorta hesapla
+      const grossSalary = salary.baseSalary + overtimePay;
+      const taxRate = parseFloat(salary.taxRate || '0') / 100;
+      const insuranceRate = parseFloat(salary.insuranceRate || '0') / 100;
+      const taxAmount = Math.round(grossSalary * taxRate);
+      const insuranceEmployee = Math.round(grossSalary * insuranceRate);
+      const netSalary = grossSalary - totalDeductions - taxAmount - insuranceEmployee;
+
+      // Bordro oluştur veya güncelle
+      const payrollData = {
+        userId,
+        branchId: targetUser.branchId,
+        month,
+        year,
+        baseSalary: salary.baseSalary,
+        workedDays: 22, // TODO: Devam kayıtlarından hesapla
+        workedHours: salary.weeklyHours * 4,
+        overtimeHours,
+        overtimePay,
+        totalDeductions,
+        lateDeductions,
+        absenceDeductions,
+        unpaidLeaveDeductions,
+        sickLeaveDeductions,
+        otherDeductions,
+        taxAmount,
+        insuranceEmployee,
+        insuranceEmployer: 0,
+        unemploymentInsurance: 0,
+        grossSalary,
+        netSalary,
+        status: 'calculated' as const,
+        calculatedAt: new Date(),
+        createdById: user.id,
+      };
+
+      // Mevcut kayıt var mı kontrol et
+      const [existing] = await db.select().from(monthlyPayrolls)
+        .where(and(
+          eq(monthlyPayrolls.userId, userId),
+          eq(monthlyPayrolls.month, month),
+          eq(monthlyPayrolls.year, year)
+        ));
+
+      let payroll;
+      if (existing) {
+        [payroll] = await db.update(monthlyPayrolls)
+          .set({ ...payrollData, updatedAt: new Date() })
+          .where(eq(monthlyPayrolls.id, existing.id))
+          .returning();
+      } else {
+        [payroll] = await db.insert(monthlyPayrolls).values(payrollData).returning();
+      }
+
+      res.json(payroll);
+    } catch (error) {
+      console.error("Calculate payroll error:", error);
+      res.status(500).json({ message: "Bordro hesaplanamadı" });
+    }
+  });
+
+  // POST /api/salary/payroll/:id/approve - Bordro onayla
+  app.post('/api/salary/payroll/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Bordro onaylama yetkiniz yok" });
+      }
+
+      const payrollId = parseInt(req.params.id);
+      const [updated] = await db.update(monthlyPayrolls)
+        .set({
+          status: 'approved',
+          approvedById: user.id,
+          approvedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(monthlyPayrolls.id, payrollId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Bordro bulunamadı" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Approve payroll error:", error);
+      res.status(500).json({ message: "Bordro onaylanamadı" });
+    }
+  });
+
+  // POST /api/salary/payroll/:id/pay - Bordro ödendi olarak işaretle
+  app.post('/api/salary/payroll/:id/pay', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Ödeme işlemi yetkiniz yok" });
+      }
+
+      const payrollId = parseInt(req.params.id);
+      const { paymentReference } = req.body;
+
+      const [updated] = await db.update(monthlyPayrolls)
+        .set({
+          status: 'paid',
+          paidAt: new Date(),
+          paymentReference,
+          updatedAt: new Date(),
+        })
+        .where(eq(monthlyPayrolls.id, payrollId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Bordro bulunamadı" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Mark paid error:", error);
+      res.status(500).json({ message: "Ödeme işlemi yapılamadı" });
+    }
+  });
+
+  // GET /api/salary/branch/:branchId/summary - Şube maaş özeti
+  app.get('/api/salary/branch/:branchId/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const branchId = parseInt(req.params.branchId);
+      const { month, year } = req.query;
+
+      // Yetki kontrolü
+      if (user.role === 'yatirimci_branch' && user.branchId !== branchId) {
+        return res.status(403).json({ message: "Bu şubenin maaş özetine erişim yetkiniz yok" });
+      }
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
+        return res.status(403).json({ message: "Maaş özetine erişim yetkiniz yok" });
+      }
+
+      const currentMonth = month ? parseInt(month as string) : new Date().getMonth() + 1;
+      const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
+
+      // Şube personellerinin bordro özetini al
+      const payrolls = await db.select({
+        payroll: monthlyPayrolls,
+        userName: sql<string>`concat(${users.firstName}, ' ', ${users.lastName})`,
+      }).from(monthlyPayrolls)
+        .leftJoin(users, eq(monthlyPayrolls.userId, users.id))
+        .where(and(
+          eq(monthlyPayrolls.branchId, branchId),
+          eq(monthlyPayrolls.month, currentMonth),
+          eq(monthlyPayrolls.year, currentYear)
+        ));
+
+      // Özet istatistikler
+      const summary = {
+        branchId,
+        month: currentMonth,
+        year: currentYear,
+        totalEmployees: payrolls.length,
+        totalGrossSalary: payrolls.reduce((sum, p) => sum + (p.payroll.grossSalary || 0), 0),
+        totalNetSalary: payrolls.reduce((sum, p) => sum + (p.payroll.netSalary || 0), 0),
+        totalDeductions: payrolls.reduce((sum, p) => sum + (p.payroll.totalDeductions || 0), 0),
+        totalTax: payrolls.reduce((sum, p) => sum + (p.payroll.taxAmount || 0), 0),
+        statusBreakdown: {
+          draft: payrolls.filter(p => p.payroll.status === 'draft').length,
+          calculated: payrolls.filter(p => p.payroll.status === 'calculated').length,
+          approved: payrolls.filter(p => p.payroll.status === 'approved').length,
+          paid: payrolls.filter(p => p.payroll.status === 'paid').length,
+        },
+        employees: payrolls.map(p => ({
+          ...p.payroll,
+          userName: p.userName,
+        })),
+      };
+
+      res.json(summary);
+    } catch (error) {
+      console.error("Get branch salary summary error:", error);
+      res.status(500).json({ message: "Şube maaş özeti alınamadı" });
+    }
+  });
+
+  // POST /api/salary/auto-deductions/calculate - Otomatik kesinti hesapla (geç kalma vb.)
+  app.post('/api/salary/auto-deductions/calculate', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Otomatik kesinti hesaplama yetkiniz yok" });
+      }
+
+      const { branchId, month, year } = req.body;
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const nextMonth = month === 12 ? 1 : month + 1;
+      const nextYear = month === 12 ? year + 1 : year;
+      const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+
+      // Geç kalma kesinti tipini al
+      const [lateType] = await db.select().from(salaryDeductionTypes).where(eq(salaryDeductionTypes.code, 'late_arrival'));
+      if (!lateType) {
+        return res.status(400).json({ message: "Geç kalma kesinti tipi tanımlı değil" });
+      }
+
+      // Devam kayıtlarından geç kalmaları bul
+      let attendanceQuery = db.select({
+        attendance: shiftAttendance,
+        userBranchId: users.branchId,
+      }).from(shiftAttendance)
+        .leftJoin(users, eq(shiftAttendance.userId, users.id))
+        .where(and(
+          sql`${shiftAttendance.checkInTime}::date >= ${startDate}::date`,
+          sql`${shiftAttendance.checkInTime}::date < ${endDate}::date`,
+          isNotNull(shiftAttendance.lateMinutes),
+          sql`${shiftAttendance.lateMinutes} > 0`
+        ));
+
+      if (branchId) {
+        attendanceQuery = attendanceQuery.where(eq(users.branchId, branchId)) as typeof attendanceQuery;
+      }
+
+      const lateAttendances = await attendanceQuery;
+      let createdDeductions = 0;
+
+      for (const record of lateAttendances) {
+        const lateMinutes = record.attendance.lateMinutes || 0;
+        if (lateMinutes <= 0) continue;
+
+        // Bu kayıt için kesinti zaten var mı?
+        const [existing] = await db.select().from(salaryDeductions)
+          .where(and(
+            eq(salaryDeductions.userId, record.attendance.userId),
+            eq(salaryDeductions.referenceId, record.attendance.id),
+            eq(salaryDeductions.referenceType, 'attendance')
+          ));
+
+        if (existing) continue;
+
+        // Kesinti hesapla
+        const perMinuteDeduction = lateType.perMinuteDeduction || 50; // 50 kuruş default
+        const amount = lateMinutes * perMinuteDeduction;
+
+        await db.insert(salaryDeductions).values({
+          userId: record.attendance.userId,
+          deductionTypeId: lateType.id,
+          amount,
+          reason: `${lateMinutes} dakika geç kalma`,
+          referenceDate: new Date(record.attendance.checkInTime!).toISOString().split('T')[0],
+          referenceType: 'attendance',
+          referenceId: record.attendance.id,
+          lateMinutes,
+          isAutomatic: true,
+          status: 'pending',
+          createdById: user.id,
+        });
+
+        createdDeductions++;
+      }
+
+      res.json({ 
+        success: true, 
+        createdDeductions,
+        message: `${createdDeductions} otomatik kesinti oluşturuldu` 
+      });
+    } catch (error) {
+      console.error("Calculate auto deductions error:", error);
+      res.status(500).json({ message: "Otomatik kesinti hesaplanamadı" });
     }
   });
 
