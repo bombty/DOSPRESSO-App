@@ -28,7 +28,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Save, User, Briefcase, GraduationCap, Heart, UserMinus, Trash2, Camera } from "lucide-react";
+import { ArrowLeft, Save, User, Briefcase, GraduationCap, Heart, UserMinus, Trash2, Camera, Wallet } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -295,6 +295,12 @@ export default function PersonelDuzenle() {
                 <UserMinus className="h-3 w-3 mr-1" />
                 Ayrılış
               </TabsTrigger>
+              {(currentUser?.role === 'admin' || currentUser?.role === 'muhasebe') && (
+                <TabsTrigger value="salary" className="text-xs px-2 py-1.5">
+                  <Wallet className="h-3 w-3 mr-1" />
+                  Maaş
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="identity" className="space-y-4 mt-4">
@@ -947,6 +953,12 @@ export default function PersonelDuzenle() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {(currentUser?.role === 'admin' || currentUser?.role === 'muhasebe') && (
+              <TabsContent value="salary" className="space-y-4 mt-4">
+                <SalarySection userId={id || ""} />
+              </TabsContent>
+            )}
           </Tabs>
 
           <div className="flex justify-end gap-2">
@@ -967,5 +979,344 @@ export default function PersonelDuzenle() {
         </form>
       </Form>
     </div>
+  );
+}
+
+// Salary Section Component
+function SalarySection({ userId }: { userId: string }) {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+
+  const { data: salary, isLoading } = useQuery({
+    queryKey: ['/api/salary/employee', userId],
+    queryFn: async () => {
+      const res = await fetch(`/api/salary/employee/${userId}`);
+      if (!res.ok) throw new Error("Maaş bilgileri alınamadı");
+      return res.json();
+    },
+    enabled: !!userId,
+  });
+
+  const salaryForm = useForm({
+    defaultValues: {
+      baseSalary: 0,
+      netSalary: 0,
+      employmentType: "fulltime",
+      weeklyHours: 45,
+      hourlyRate: 0,
+      paymentDay: 1,
+      bankName: "",
+      iban: "",
+      taxRate: "0",
+      insuranceRate: "0",
+      effectiveFrom: new Date().toISOString().split('T')[0],
+      notes: "",
+    },
+  });
+
+  useEffect(() => {
+    if (salary) {
+      salaryForm.reset({
+        baseSalary: salary.baseSalary || 0,
+        netSalary: salary.netSalary || 0,
+        employmentType: salary.employmentType || "fulltime",
+        weeklyHours: salary.weeklyHours || 45,
+        hourlyRate: salary.hourlyRate || 0,
+        paymentDay: salary.paymentDay || 1,
+        bankName: salary.bankName || "",
+        iban: salary.iban || "",
+        taxRate: salary.taxRate || "0",
+        insuranceRate: salary.insuranceRate || "0",
+        effectiveFrom: salary.effectiveFrom || new Date().toISOString().split('T')[0],
+        notes: salary.notes || "",
+      });
+    }
+  }, [salary, salaryForm]);
+
+  const saveSalaryMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (salary?.id) {
+        return apiRequest(`/api/salary/employee/${salary.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        });
+      } else {
+        return apiRequest("/api/salary/employee", {
+          method: "POST",
+          body: JSON.stringify({ ...data, userId }),
+        });
+      }
+    },
+    onSuccess: () => {
+      toast({ title: "Maaş bilgileri kaydedildi" });
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/salary/employee', userId] });
+    },
+    onError: () => {
+      toast({ title: "Maaş bilgileri kaydedilemedi", variant: "destructive" });
+    },
+  });
+
+  const onSaveSalary = (data: any) => {
+    saveSalaryMutation.mutate(data);
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <Skeleton className="h-40 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const employmentType = salaryForm.watch("employmentType");
+
+  return (
+    <Form {...salaryForm}>
+      <form onSubmit={salaryForm.handleSubmit(onSaveSalary)} className="space-y-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Maaş Bilgileri</CardTitle>
+              <CardDescription>Personelin maaş ve ödeme bilgileri</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              {isEditing ? (
+                <>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsEditing(false)}
+                    data-testid="button-cancel-salary"
+                  >
+                    İptal
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    size="sm" 
+                    disabled={saveSalaryMutation.isPending}
+                    data-testid="button-save-salary"
+                  >
+                    {saveSalaryMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsEditing(true)}
+                  data-testid="button-edit-salary"
+                >
+                  Düzenle
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={salaryForm.control}
+              name="employmentType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Çalışma Tipi</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value}
+                    disabled={!isEditing}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-salary-employmentType">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="fulltime">Tam Zamanlı</SelectItem>
+                      <SelectItem value="parttime">Yarı Zamanlı</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={salaryForm.control}
+              name="weeklyHours"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Haftalık Çalışma Saati</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      {...field} 
+                      min={0} 
+                      max={60} 
+                      disabled={!isEditing}
+                      data-testid="input-salary-weeklyHours" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={salaryForm.control}
+              name="baseSalary"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Brüt Maaş (TL)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      {...field} 
+                      onChange={(e) => field.onChange(parseInt(e.target.value) * 100)}
+                      value={Math.round((field.value || 0) / 100)}
+                      disabled={!isEditing}
+                      data-testid="input-salary-baseSalary" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={salaryForm.control}
+              name="netSalary"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Net Maaş (TL)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      {...field} 
+                      onChange={(e) => field.onChange(parseInt(e.target.value) * 100)}
+                      value={Math.round((field.value || 0) / 100)}
+                      disabled={!isEditing}
+                      data-testid="input-salary-netSalary" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {employmentType === "parttime" && (
+              <FormField
+                control={salaryForm.control}
+                name="hourlyRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Saatlik Ücret (TL)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        {...field} 
+                        onChange={(e) => field.onChange(parseInt(e.target.value) * 100)}
+                        value={Math.round((field.value || 0) / 100)}
+                        disabled={!isEditing}
+                        data-testid="input-salary-hourlyRate" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            <FormField
+              control={salaryForm.control}
+              name="paymentDay"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ödeme Günü</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      {...field} 
+                      min={1} 
+                      max={31}
+                      disabled={!isEditing}
+                      data-testid="input-salary-paymentDay" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={salaryForm.control}
+              name="bankName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Banka Adı</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      disabled={!isEditing}
+                      data-testid="input-salary-bankName" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={salaryForm.control}
+              name="iban"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>IBAN</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      maxLength={34}
+                      disabled={!isEditing}
+                      data-testid="input-salary-iban" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={salaryForm.control}
+              name="effectiveFrom"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Geçerlilik Başlangıcı</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="date" 
+                      {...field} 
+                      disabled={!isEditing}
+                      data-testid="input-salary-effectiveFrom" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={salaryForm.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Notlar</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      disabled={!isEditing}
+                      data-testid="input-salary-notes" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+      </form>
+    </Form>
   );
 }
