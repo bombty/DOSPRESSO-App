@@ -521,8 +521,8 @@ export default function PersonelDuzenle() {
                       <FormItem>
                         <FormLabel>Şube</FormLabel>
                         <Select 
-                          onValueChange={(val) => field.onChange(val ? parseInt(val) : null)} 
-                          value={field.value?.toString() || ""}
+                          onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))} 
+                          value={field.value ? field.value.toString() : "none"}
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-branchId">
@@ -530,7 +530,7 @@ export default function PersonelDuzenle() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Şube Yok (HQ)</SelectItem>
+                            <SelectItem value="none">Şube Yok (HQ)</SelectItem>
                             {branches.map((branch) => (
                               <SelectItem key={branch.id} value={branch.id.toString()}>
                                 {branch.name}

@@ -35,9 +35,9 @@ import type { User, Branch } from "@shared/schema";
 
 export default function UserCRM() {
   const { toast } = useToast();
-  const [roleFilter, setRoleFilter] = useState<string>("");
-  const [branchFilter, setBranchFilter] = useState<string>("");
-  const [accountStatusFilter, setAccountStatusFilter] = useState<string>("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [accountStatusFilter, setAccountStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortField, setSortField] = useState<"name" | "email" | "role" | "createdAt">("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -57,9 +57,9 @@ export default function UserCRM() {
   // Build URL with query params for users query
   const buildUsersQueryUrl = () => {
     const params = new URLSearchParams();
-    if (roleFilter) params.append("role", roleFilter);
-    if (branchFilter) params.append("branchId", branchFilter);
-    if (accountStatusFilter) params.append("accountStatus", accountStatusFilter);
+    if (roleFilter && roleFilter !== "all") params.append("role", roleFilter);
+    if (branchFilter && branchFilter !== "all") params.append("branchId", branchFilter);
+    if (accountStatusFilter && accountStatusFilter !== "all") params.append("accountStatus", accountStatusFilter);
     if (searchQuery) params.append("search", searchQuery);
     const queryString = params.toString();
     return queryString ? `/api/admin/users?${queryString}` : "/api/admin/users";
@@ -312,7 +312,7 @@ export default function UserCRM() {
                     <SelectValue placeholder="Tümü" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tümü</SelectItem>
+                    <SelectItem value="all">Tümü</SelectItem>
                     <SelectItem value="hq_admin">HQ Admin</SelectItem>
                     <SelectItem value="hq_staff">HQ Staff</SelectItem>
                     <SelectItem value="accountant">Muhasebe</SelectItem>
@@ -329,7 +329,7 @@ export default function UserCRM() {
                     <SelectValue placeholder="Tümü" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tümü</SelectItem>
+                    <SelectItem value="all">Tümü</SelectItem>
                     {branches.map(branch => (
                       <SelectItem key={branch.id} value={branch.id.toString()}>
                         {branch.name}
@@ -345,7 +345,7 @@ export default function UserCRM() {
                     <SelectValue placeholder="Tümü" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tümü</SelectItem>
+                    <SelectItem value="all">Tümü</SelectItem>
                     <SelectItem value="approved">Onaylandı</SelectItem>
                     <SelectItem value="pending">Beklemede</SelectItem>
                     <SelectItem value="rejected">Reddedildi</SelectItem>
@@ -519,12 +519,12 @@ export default function UserCRM() {
                               </div>
                               <div>
                                 <Label htmlFor="edit-branch">Şube</Label>
-                                <Select value={editBranch ?? undefined} onValueChange={setEditBranch}>
+                                <Select value={editBranch === null ? "none" : (editBranch ?? "none")} onValueChange={(val) => setEditBranch(val === "none" ? null : val)}>
                                   <SelectTrigger id="edit-branch" data-testid="select-edit-branch">
                                     <SelectValue placeholder="Şube seç" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="">Yok</SelectItem>
+                                    <SelectItem value="none">Yok</SelectItem>
                                     {branches.map(branch => (
                                       <SelectItem key={branch.id} value={branch.id.toString()}>
                                         {branch.name}

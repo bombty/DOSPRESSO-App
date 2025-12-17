@@ -560,14 +560,14 @@ Rapor Tarihi: ${format(new Date(), "dd/MM/yyyy HH:mm")}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Atanan Kişi</FormLabel>
-                    <Select value={field.value || ""} onValueChange={field.onChange}>
+                    <Select value={field.value || "none"} onValueChange={(val) => field.onChange(val === "none" ? null : val)}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seçin..." />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Atama Kaldır</SelectItem>
+                        <SelectItem value="none">Atama Kaldır</SelectItem>
                         {users.map((u) => (
                           <SelectItem key={u.id} value={u.id}>
                             {u.name}
