@@ -4735,20 +4735,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "URL is required" });
       }
       
-      console.log("[finalize] Input URL:", url);
-      
       // Normalize the URL and set ACL policy
       const normalizedPath = await objectStorageService.trySetObjectEntityAclPolicy(url, {
         owner: user.id,
         visibility: visibility === "public" ? "public" : "private",
       });
       
-      console.log("[finalize] Normalized path:", normalizedPath);
-      
       // Validate the result - if path doesn't start with /objects/, ACL setting failed
       if (!normalizedPath || !normalizedPath.startsWith("/objects/")) {
         console.error("Failed to normalize object path:", url, "->", normalizedPath);
-        return res.status(500).json({ message: "Failed to normalize upload path", debug: { url, normalizedPath } });
+        return res.status(500).json({ message: "Failed to normalize upload path" });
       }
       
       res.json({ normalizedUrl: normalizedPath });
