@@ -7622,7 +7622,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const { status } = req.query;
       
-      ensurePermission(user, 'overtime', 'view', 'Mesai taleplerini görüntülemek için yetkiniz yok');
+      // Allow HQ roles and self-view for branch staff
+      if (!isHQRole(user.role as UserRoleType) && !isBranchRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: 'Mesai taleplerini görüntülemek için yetkiniz yok' });
+      }
       
       const isBranchStaff = isBranchRole(user.role as UserRoleType);
       const userId = isBranchStaff ? user.id : undefined;
@@ -7631,9 +7634,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(requests);
     } catch (error: Error | unknown) {
       console.error("Error fetching overtime requests:", error);
-      if (error instanceof AuthorizationError) {
-        return res.status(403).json({ message: error.message });
-      }
       res.status(500).json({ message: "Mesai talepleri yüklenirken hata oluştu" });
     }
   });
@@ -16714,7 +16714,29 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       if (!isHQRole(user.role as UserRoleType)) {
         return res.status(403).json({ message: 'Erişim yetkiniz yok' });
       }
-      const result = await db.select()
+      const result = await db.select({
+        id: employeeTerminations.id,
+        userId: employeeTerminations.userId,
+        terminationType: employeeTerminations.terminationType,
+        terminationDate: employeeTerminations.terminationDate,
+        terminationReason: employeeTerminations.terminationReason,
+        lastWorkDay: employeeTerminations.lastWorkDay,
+        noticeGiven: employeeTerminations.noticeGiven,
+        finalSalary: employeeTerminations.finalSalary,
+        severancePayment: employeeTerminations.severancePayment,
+        otherPayments: employeeTerminations.otherPayments,
+        totalPayment: employeeTerminations.totalPayment,
+        returnedItems: employeeTerminations.returnedItems,
+        exitInterview: employeeTerminations.exitInterview,
+        performanceRating: employeeTerminations.performanceRating,
+        recommendation: employeeTerminations.recommendation,
+        processedById: employeeTerminations.processedById,
+        approvedById: employeeTerminations.approvedById,
+        documents: employeeTerminations.documents,
+        createdAt: employeeTerminations.createdAt,
+        updatedAt: employeeTerminations.updatedAt,
+        userName: users.fullName,
+      })
         .from(employeeTerminations)
         .leftJoin(users, eq(employeeTerminations.userId, users.id))
         .orderBy(desc(employeeTerminations.terminationDate));
