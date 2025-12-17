@@ -5814,3 +5814,173 @@ export const leaveRecords = pgTable("leave_records", {
   index("leave_records_date_idx").on(table.startDate),
   index("leave_records_status_idx").on(table.status),
 ]);
+
+export const insertLeaveRecordSchema = createInsertSchema(leaveRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLeaveRecord = z.infer<typeof insertLeaveRecordSchema>;
+export type LeaveRecord = typeof leaveRecords.$inferSelect;
+
+// ========== MAAŞ YÖNETİMİ SİSTEMİ ==========
+
+// Personel Maaş Bilgileri
+export const employeeSalaries = pgTable("employee_salaries", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  baseSalary: integer("base_salary").notNull(), // Brüt maaş (kuruş cinsinden - 100 = 1 TL)
+  netSalary: integer("net_salary"), // Net maaş
+  employmentType: varchar("employment_type", { length: 20 }).notNull().default("fulltime"), // fulltime, parttime
+  weeklyHours: integer("weekly_hours").notNull().default(45), // Haftalık çalışma saati (fulltime: 45, parttime: özel)
+  hourlyRate: integer("hourly_rate"), // Saatlik ücret (part-time için)
+  paymentDay: integer("payment_day").default(1), // Maaş ödeme günü (1-31)
+  bankName: varchar("bank_name", { length: 100 }),
+  iban: varchar("iban", { length: 34 }),
+  taxRate: numeric("tax_rate").default("0"), // Vergi oranı
+  insuranceRate: numeric("insurance_rate").default("0"), // SGK oranı
+  effectiveFrom: date("effective_from").notNull(), // Geçerlilik başlangıcı
+  effectiveTo: date("effective_to"), // Geçerlilik bitişi (null = aktif)
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  createdById: varchar("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_salaries_user_idx").on(table.userId),
+  index("employee_salaries_active_idx").on(table.isActive),
+  index("employee_salaries_effective_idx").on(table.effectiveFrom, table.effectiveTo),
+]);
+
+export const insertEmployeeSalarySchema = createInsertSchema(employeeSalaries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeSalary = z.infer<typeof insertEmployeeSalarySchema>;
+export type EmployeeSalary = typeof employeeSalaries.$inferSelect;
+
+// Maaş Kesintileri Tanımları
+export const salaryDeductionTypes = pgTable("salary_deduction_types", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(), // late_arrival, unpaid_leave, sick_leave_no_report, etc.
+  name: varchar("name", { length: 100 }).notNull(), // Geç Kalma, Ücretsiz İzin, vb.
+  description: text("description"),
+  calculationType: varchar("calculation_type", { length: 20 }).notNull(), // fixed, hourly, daily, percentage
+  defaultAmount: integer("default_amount"), // Sabit kesinti miktarı (kuruş)
+  defaultPercentage: numeric("default_percentage"), // Yüzde bazlı kesinti
+  perMinuteDeduction: integer("per_minute_deduction"), // Dakika başına kesinti (geç kalma için)
+  perHourDeduction: integer("per_hour_deduction"), // Saat başına kesinti
+  perDayDeduction: integer("per_day_deduction"), // Gün başına kesinti
+  isAutomatic: boolean("is_automatic").default(true), // Otomatik hesaplanır mı
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("deduction_types_code_idx").on(table.code),
+  index("deduction_types_active_idx").on(table.isActive),
+]);
+
+export const insertSalaryDeductionTypeSchema = createInsertSchema(salaryDeductionTypes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSalaryDeductionType = z.infer<typeof insertSalaryDeductionTypeSchema>;
+export type SalaryDeductionType = typeof salaryDeductionTypes.$inferSelect;
+
+// Aylık Bordro
+export const monthlyPayrolls = pgTable("monthly_payrolls", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id),
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(),
+  // Brüt hesaplamalar
+  baseSalary: integer("base_salary").notNull(), // Brüt maaş
+  workedDays: integer("worked_days").notNull().default(0), // Çalışılan gün
+  workedHours: integer("worked_hours").notNull().default(0), // Çalışılan saat
+  overtimeHours: integer("overtime_hours").default(0), // Fazla mesai saati
+  overtimePay: integer("overtime_pay").default(0), // Fazla mesai ücreti
+  // Kesintiler
+  totalDeductions: integer("total_deductions").default(0), // Toplam kesinti
+  lateDeductions: integer("late_deductions").default(0), // Geç kalma kesintisi
+  absenceDeductions: integer("absence_deductions").default(0), // Devamsızlık kesintisi
+  unpaidLeaveDeductions: integer("unpaid_leave_deductions").default(0), // Ücretsiz izin kesintisi
+  sickLeaveDeductions: integer("sick_leave_deductions").default(0), // Raporlu izin kesintisi
+  otherDeductions: integer("other_deductions").default(0), // Diğer kesintiler
+  // Vergiler
+  taxAmount: integer("tax_amount").default(0), // Gelir vergisi
+  insuranceEmployee: integer("insurance_employee").default(0), // SGK işçi payı
+  insuranceEmployer: integer("insurance_employer").default(0), // SGK işveren payı
+  unemploymentInsurance: integer("unemployment_insurance").default(0), // İşsizlik sigortası
+  // Sonuç
+  grossSalary: integer("gross_salary").notNull(), // Brüt toplam
+  netSalary: integer("net_salary").notNull(), // Net maaş
+  // Durum
+  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, calculated, approved, paid
+  calculatedAt: timestamp("calculated_at"),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  paidAt: timestamp("paid_at"),
+  paymentReference: varchar("payment_reference", { length: 100 }),
+  notes: text("notes"),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("payrolls_user_idx").on(table.userId),
+  index("payrolls_branch_idx").on(table.branchId),
+  index("payrolls_period_idx").on(table.month, table.year),
+  index("payrolls_status_idx").on(table.status),
+  unique("payrolls_user_period_unique").on(table.userId, table.month, table.year),
+]);
+
+export const insertMonthlyPayrollSchema = createInsertSchema(monthlyPayrolls).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMonthlyPayroll = z.infer<typeof insertMonthlyPayrollSchema>;
+export type MonthlyPayroll = typeof monthlyPayrolls.$inferSelect;
+
+// Uygulanan Maaş Kesintileri
+export const salaryDeductions = pgTable("salary_deductions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  payrollId: integer("payroll_id").references(() => monthlyPayrolls.id, { onDelete: "cascade" }),
+  deductionTypeId: integer("deduction_type_id").notNull().references(() => salaryDeductionTypes.id),
+  amount: integer("amount").notNull(), // Kesinti miktarı (kuruş)
+  reason: text("reason"), // Kesinti sebebi detayı
+  referenceDate: date("reference_date").notNull(), // İlgili tarih
+  referenceType: varchar("reference_type", { length: 50 }), // attendance, leave_request, manual
+  referenceId: integer("reference_id"), // İlgili kaydın ID'si (shiftAttendance.id, leaveRequest.id vb.)
+  lateMinutes: integer("late_minutes"), // Geç kalma dakikası
+  absentHours: integer("absent_hours"), // Devamsızlık saati
+  absentDays: integer("absent_days"), // Devamsızlık günü
+  isAutomatic: boolean("is_automatic").default(true), // Otomatik mi manuel mi
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  notes: text("notes"),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("salary_deductions_user_idx").on(table.userId),
+  index("salary_deductions_payroll_idx").on(table.payrollId),
+  index("salary_deductions_type_idx").on(table.deductionTypeId),
+  index("salary_deductions_date_idx").on(table.referenceDate),
+  index("salary_deductions_status_idx").on(table.status),
+]);
+
+export const insertSalaryDeductionSchema = createInsertSchema(salaryDeductions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSalaryDeduction = z.infer<typeof insertSalaryDeductionSchema>;
+export type SalaryDeduction = typeof salaryDeductions.$inferSelect;
