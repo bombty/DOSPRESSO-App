@@ -12,7 +12,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
   User, Calendar, Award, ClipboardCheck, 
-  Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2
+  Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2, Wallet, Banknote
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -117,6 +117,23 @@ export default function PersonelProfilPage() {
       return res.json();
     },
     enabled: !!id,
+  });
+
+  // Check if user can view salary info (admin, muhasebe, yatirimci_branch for their branch)
+  const canViewSalary = user?.role === 'admin' || user?.role === 'muhasebe' || 
+    (user?.role === 'yatirimci_branch' && profile?.branchId === user?.branchId);
+
+  // Fetch salary info if user has permission
+  const { data: salary } = useQuery({
+    queryKey: ['/api/salary/employee', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/salary/employee/${id}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!id && canViewSalary,
   });
 
   if (isLoading) {
@@ -313,6 +330,86 @@ export default function PersonelProfilPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Salary Information - Only visible to authorized roles */}
+      {canViewSalary && salary && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-primary" />
+                Maaş Bilgileri
+              </CardTitle>
+              <CardDescription>Personelin maaş ve ödeme detayları</CardDescription>
+            </div>
+            {(user?.role === 'admin' || user?.role === 'muhasebe') && (
+              <Link href={`/personel-duzenle/${id}`}>
+                <Button variant="outline" size="sm" data-testid="button-edit-salary">
+                  Düzenle
+                </Button>
+              </Link>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Çalışma Tipi</p>
+                <p className="text-base font-medium" data-testid="salary-employment-type">
+                  {salary.employmentType === 'fulltime' ? 'Tam Zamanlı' : 'Yarı Zamanlı'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Haftalık Saat</p>
+                <p className="text-base font-medium" data-testid="salary-weekly-hours">
+                  {salary.weeklyHours || 45} saat
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Brüt Maaş</p>
+                <p className="text-base font-medium" data-testid="salary-base">
+                  {((salary.baseSalary || 0) / 100).toLocaleString('tr-TR')} TL
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Net Maaş</p>
+                <p className="text-base font-medium" data-testid="salary-net">
+                  {((salary.netSalary || 0) / 100).toLocaleString('tr-TR')} TL
+                </p>
+              </div>
+              {salary.employmentType === 'parttime' && salary.hourlyRate > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Saatlik Ücret</p>
+                  <p className="text-base font-medium" data-testid="salary-hourly">
+                    {((salary.hourlyRate || 0) / 100).toLocaleString('tr-TR')} TL
+                  </p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Ödeme Günü</p>
+                <p className="text-base font-medium" data-testid="salary-payment-day">
+                  Her ayın {salary.paymentDay || 1}. günü
+                </p>
+              </div>
+              {salary.bankName && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Banka</p>
+                  <p className="text-base font-medium" data-testid="salary-bank">
+                    {salary.bankName}
+                  </p>
+                </div>
+              )}
+              {salary.iban && (
+                <div className="md:col-span-2">
+                  <p className="text-sm font-medium text-muted-foreground">IBAN</p>
+                  <p className="text-base font-mono" data-testid="salary-iban">
+                    {salary.iban}
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <Tabs className="w-full flex flex-col gap-3 sm:gap-4">
