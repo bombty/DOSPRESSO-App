@@ -5984,3 +5984,154 @@ export const insertSalaryDeductionSchema = createInsertSchema(salaryDeductions).
 
 export type InsertSalaryDeduction = z.infer<typeof insertSalaryDeductionSchema>;
 export type SalaryDeduction = typeof salaryDeductions.$inferSelect;
+
+// =====================================================
+// BORDRO PARAMETRELERİ - Türkiye Mevzuatı
+// =====================================================
+
+// Bordro Parametreleri (Yıllık vergi dilimleri, SGK oranları, muafiyetler)
+export const payrollParameters = pgTable("payroll_parameters", {
+  id: serial("id").primaryKey(),
+  year: integer("year").notNull(), // 2025, 2026, vb.
+  effectiveFrom: date("effective_from").notNull(), // Yürürlük başlangıcı
+  effectiveTo: date("effective_to"), // Yürürlük bitişi (null = aktif)
+  isActive: boolean("is_active").default(true),
+  
+  // Asgari Ücret
+  minimumWageGross: integer("minimum_wage_gross").notNull(), // Brüt asgari ücret (kuruş)
+  minimumWageNet: integer("minimum_wage_net").notNull(), // Net asgari ücret (kuruş)
+  
+  // SGK Oranları (binde cinsinden - 140 = %14)
+  sgkEmployeeRate: integer("sgk_employee_rate").notNull().default(140), // %14 - SGK işçi payı
+  sgkEmployerRate: integer("sgk_employer_rate").notNull().default(205), // %20.5 - SGK işveren payı
+  unemploymentEmployeeRate: integer("unemployment_employee_rate").notNull().default(10), // %1 - İşsizlik işçi
+  unemploymentEmployerRate: integer("unemployment_employer_rate").notNull().default(20), // %2 - İşsizlik işveren
+  
+  // Damga Vergisi (onbinde cinsinden - 759 = %0.0759)
+  stampTaxRate: integer("stamp_tax_rate").notNull().default(759), // Binde 7.59
+  
+  // Gelir Vergisi Dilimleri (kuruş cinsinden)
+  taxBracket1Limit: integer("tax_bracket_1_limit").notNull(), // İlk dilim üst sınırı
+  taxBracket1Rate: integer("tax_bracket_1_rate").notNull().default(150), // %15
+  taxBracket2Limit: integer("tax_bracket_2_limit").notNull(), // 2. dilim üst sınırı
+  taxBracket2Rate: integer("tax_bracket_2_rate").notNull().default(200), // %20
+  taxBracket3Limit: integer("tax_bracket_3_limit").notNull(), // 3. dilim üst sınırı
+  taxBracket3Rate: integer("tax_bracket_3_rate").notNull().default(270), // %27
+  taxBracket4Limit: integer("tax_bracket_4_limit").notNull(), // 4. dilim üst sınırı
+  taxBracket4Rate: integer("tax_bracket_4_rate").notNull().default(350), // %35
+  taxBracket5Rate: integer("tax_bracket_5_rate").notNull().default(400), // %40 (son dilim)
+  
+  // Yemek Parası Muafiyetleri (kuruş/gün)
+  mealAllowanceTaxExemptDaily: integer("meal_allowance_tax_exempt_daily").notNull(), // Vergi muafiyeti günlük limit
+  mealAllowanceSgkExemptDaily: integer("meal_allowance_sgk_exempt_daily").notNull(), // SGK muafiyeti günlük limit (nakit için)
+  
+  // Ulaşım Yardımı Muafiyeti (kuruş/gün)
+  transportAllowanceExemptDaily: integer("transport_allowance_exempt_daily").default(0),
+  
+  // Diğer Parametreler
+  workingDaysPerMonth: integer("working_days_per_month").default(30), // Aylık çalışma günü
+  workingHoursPerDay: integer("working_hours_per_day").default(8), // Günlük çalışma saati
+  overtimeMultiplier: numeric("overtime_multiplier").default("1.5"), // Fazla mesai çarpanı
+  
+  notes: text("notes"),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("payroll_parameters_year_idx").on(table.year),
+  index("payroll_parameters_active_idx").on(table.isActive),
+  unique("payroll_parameters_year_effective_unique").on(table.year, table.effectiveFrom),
+]);
+
+export const insertPayrollParametersSchema = createInsertSchema(payrollParameters).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPayrollParameters = z.infer<typeof insertPayrollParametersSchema>;
+export type PayrollParameters = typeof payrollParameters.$inferSelect;
+
+// Çalışan Kümülatif Vergi Defteri (Yıl içi matrah takibi)
+export const employeeTaxLedger = pgTable("employee_tax_ledger", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  year: integer("year").notNull(),
+  month: integer("month").notNull(), // 1-12
+  
+  // Aylık Değerler
+  grossSalary: integer("gross_salary").notNull(), // Aylık brüt maaş
+  sgkBase: integer("sgk_base").notNull(), // SGK matrahı
+  taxBase: integer("tax_base").notNull(), // Gelir vergisi matrahı
+  
+  // Kümülatif Değerler (Ocak'tan itibaren toplam)
+  cumulativeTaxBase: integer("cumulative_tax_base").notNull(), // Kümülatif vergi matrahı
+  cumulativeIncomeTax: integer("cumulative_income_tax").notNull(), // Kümülatif gelir vergisi
+  
+  // Uygulanan Vergi Dilimi
+  appliedTaxBracket: integer("applied_tax_bracket").notNull().default(1), // 1-5 arası
+  
+  // Asgari ücret istisnası
+  minimumWageExemption: integer("minimum_wage_exemption").default(0), // Uygulanan istisna tutarı
+  stampTaxExemption: integer("stamp_tax_exemption").default(0), // Damga vergisi istisnası
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_tax_ledger_user_idx").on(table.userId),
+  index("employee_tax_ledger_year_idx").on(table.year),
+  unique("employee_tax_ledger_user_year_month_unique").on(table.userId, table.year, table.month),
+]);
+
+export const insertEmployeeTaxLedgerSchema = createInsertSchema(employeeTaxLedger).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeTaxLedger = z.infer<typeof insertEmployeeTaxLedgerSchema>;
+export type EmployeeTaxLedger = typeof employeeTaxLedger.$inferSelect;
+
+// Çalışan Yan Haklar (Yemek parası, ulaşım, prim vb.)
+export const employeeBenefits = pgTable("employee_benefits", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Yemek Yardımı
+  mealBenefitType: varchar("meal_benefit_type", { length: 20 }).default("none"), // none, card, cash, workplace
+  mealBenefitAmount: integer("meal_benefit_amount").default(0), // Günlük yemek parası (kuruş)
+  
+  // Ulaşım Yardımı
+  transportBenefitType: varchar("transport_benefit_type", { length: 20 }).default("none"), // none, card, cash
+  transportBenefitAmount: integer("transport_benefit_amount").default(0), // Günlük ulaşım parası (kuruş)
+  
+  // Prim/Bonus
+  bonusEligible: boolean("bonus_eligible").default(true), // Prim hakkı var mı
+  bonusPercentage: numeric("bonus_percentage").default("0"), // Sabit prim yüzdesi
+  
+  // Özel İndirimler
+  disabilityDiscount: boolean("disability_discount").default(false), // Engelli indirimi
+  disabilityDegree: integer("disability_degree"), // Engellilik derecesi (1-3)
+  
+  effectiveFrom: date("effective_from").notNull(),
+  effectiveTo: date("effective_to"),
+  isActive: boolean("is_active").default(true),
+  
+  notes: text("notes"),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("employee_benefits_user_idx").on(table.userId),
+  index("employee_benefits_active_idx").on(table.isActive),
+]);
+
+export const insertEmployeeBenefitsSchema = createInsertSchema(employeeBenefits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeBenefits = z.infer<typeof insertEmployeeBenefitsSchema>;
+export type EmployeeBenefits = typeof employeeBenefits.$inferSelect;
