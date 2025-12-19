@@ -109,6 +109,7 @@ import YeniSubeProjeler from "@/pages/yeni-sube-projeler";
 import YeniSubeDetay from "@/pages/yeni-sube-detay";
 import Raporlar from "@/pages/raporlar";
 import Destek from "@/pages/destek";
+import Muhasebe from "@/pages/muhasebe";
 import AdminDashboard from "@/pages/admin/index";
 import AdminYetkilendirme from "@/pages/admin/yetkilendirme";
 import AdminAktiviteLoglar from "@/pages/admin/aktivite-loglari";
@@ -224,6 +225,9 @@ function Router() {
           <Route path="/e2e-raporlar" component={E2EReports} />
           <Route path="/raporlar" component={Raporlar} />
           <Route path="/performans" component={Performance} />
+
+          {/* Muhasebe & Bordro */}
+          <Route path="/muhasebe" component={Muhasebe} />
 
           {/* Kalite & Denetim */}
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />

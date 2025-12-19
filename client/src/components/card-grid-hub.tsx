@@ -29,7 +29,8 @@ import {
   CheckSquare,
   Shield,
   Bot,
-  Star
+  Star,
+  Calculator
 } from "lucide-react";
 
 interface ModuleCard {
@@ -227,6 +228,15 @@ export function CardGridHub() {
       path: "/ik",
       color: "bg-pink-500",
       description: "Personel yönetimi"
+    },
+    { 
+      id: "muhasebe", 
+      icon: Calculator, 
+      label: "Muhasebe", 
+      path: "/muhasebe",
+      color: "bg-emerald-600",
+      description: "Bordro & Maaş Yönetimi",
+      roles: ["admin", "muhasebe"]
     },
     { 
       id: "reports", 

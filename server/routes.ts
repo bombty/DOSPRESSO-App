@@ -18956,6 +18956,342 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // ========== BORDRO PARAMETRELERİ API'LERİ ==========
+
+  // Helper function to convert snake_case to camelCase
+  const snakeToCamel = (str: string): string => 
+    str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+
+  // Helper function to transform object keys from snake_case to camelCase
+  const transformPayrollParams = (row: any) => {
+    const result: any = {};
+    for (const key in row) {
+      result[snakeToCamel(key)] = row[key];
+    }
+    return result;
+  };
+
+  // GET /api/payroll/parameters - Tüm bordro parametrelerini getir
+  app.get('/api/payroll/parameters', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
+        return res.status(403).json({ message: "Bordro parametrelerine erişim yetkiniz yok" });
+      }
+
+      const params = await db.execute(sql`
+        SELECT * FROM payroll_parameters ORDER BY year DESC, effective_from DESC
+      `);
+      res.json(params.rows.map(transformPayrollParams));
+    } catch (error) {
+      console.error("Get payroll parameters error:", error);
+      res.status(500).json({ message: "Bordro parametreleri alınamadı" });
+    }
+  });
+
+  // GET /api/payroll/parameters/:year - Belirli yılın parametrelerini getir
+  app.get('/api/payroll/parameters/:year', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
+        return res.status(403).json({ message: "Bordro parametrelerine erişim yetkiniz yok" });
+      }
+
+      const year = parseInt(req.params.year);
+      const params = await db.execute(sql`
+        SELECT * FROM payroll_parameters WHERE year = ${year} ORDER BY effective_from DESC LIMIT 1
+      `);
+      
+      if (params.rows.length === 0) {
+        return res.status(404).json({ message: "Belirtilen yıl için parametre bulunamadı" });
+      }
+      res.json(transformPayrollParams(params.rows[0]));
+    } catch (error) {
+      console.error("Get payroll parameters by year error:", error);
+      res.status(500).json({ message: "Bordro parametreleri alınamadı" });
+    }
+  });
+
+  // PATCH /api/payroll/parameters/:id - Bordro parametrelerini güncelle (sadece admin/muhasebe)
+  // Zod schema for validating payroll parameter updates (all values in kuruş/per-mille)
+  const payrollParameterUpdateSchema = z.object({
+    minimumWageGross: z.number().int().positive().optional(),
+    minimumWageNet: z.number().int().positive().optional(),
+    taxBracket1Limit: z.number().int().positive().optional(),
+    taxBracket2Limit: z.number().int().positive().optional(),
+    taxBracket3Limit: z.number().int().positive().optional(),
+    taxBracket4Limit: z.number().int().positive().optional(),
+    mealAllowanceTaxExemptDaily: z.number().int().nonnegative().optional(),
+    mealAllowanceSgkExemptDaily: z.number().int().nonnegative().optional(),
+    transportAllowanceExemptDaily: z.number().int().nonnegative().optional(),
+    isActive: z.boolean().optional(),
+    notes: z.string().max(1000).optional(),
+  }).strict();
+
+  app.patch('/api/payroll/parameters/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (user.role !== 'admin' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Bordro parametrelerini düzenleme yetkiniz yok" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Geçersiz ID" });
+      }
+
+      // Validate and parse the request body
+      const parseResult = payrollParameterUpdateSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "Geçersiz parametre verisi", 
+          errors: parseResult.error.flatten() 
+        });
+      }
+
+      const updates = parseResult.data;
+
+      // Only update fields that were provided
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "Güncellenecek alan belirtilmedi" });
+      }
+
+      // Update the parameters
+      await db.execute(sql`
+        UPDATE payroll_parameters SET
+          minimum_wage_gross = COALESCE(${updates.minimumWageGross ?? null}, minimum_wage_gross),
+          minimum_wage_net = COALESCE(${updates.minimumWageNet ?? null}, minimum_wage_net),
+          tax_bracket_1_limit = COALESCE(${updates.taxBracket1Limit ?? null}, tax_bracket_1_limit),
+          tax_bracket_2_limit = COALESCE(${updates.taxBracket2Limit ?? null}, tax_bracket_2_limit),
+          tax_bracket_3_limit = COALESCE(${updates.taxBracket3Limit ?? null}, tax_bracket_3_limit),
+          tax_bracket_4_limit = COALESCE(${updates.taxBracket4Limit ?? null}, tax_bracket_4_limit),
+          meal_allowance_tax_exempt_daily = COALESCE(${updates.mealAllowanceTaxExemptDaily ?? null}, meal_allowance_tax_exempt_daily),
+          meal_allowance_sgk_exempt_daily = COALESCE(${updates.mealAllowanceSgkExemptDaily ?? null}, meal_allowance_sgk_exempt_daily),
+          transport_allowance_exempt_daily = COALESCE(${updates.transportAllowanceExemptDaily ?? null}, transport_allowance_exempt_daily),
+          is_active = COALESCE(${updates.isActive ?? null}, is_active),
+          notes = COALESCE(${updates.notes ?? null}, notes),
+          updated_at = NOW()
+        WHERE id = ${id}
+      `);
+
+      const result = await db.execute(sql`SELECT * FROM payroll_parameters WHERE id = ${id}`);
+      res.json(transformPayrollParams(result.rows[0]));
+    } catch (error) {
+      console.error("Update payroll parameters error:", error);
+      res.status(500).json({ message: "Bordro parametreleri güncellenemedi" });
+    }
+  });
+
+  // POST /api/payroll/calculate - Brüt/Net maaş hesaplama
+  // Zod schema for validating payroll calculation requests (all values in kuruş)
+  const payrollCalculateSchema = z.object({
+    grossSalary: z.number().int().positive().optional(),
+    netSalary: z.number().int().positive().optional(),
+    year: z.number().int().min(2020).max(2030).optional().default(new Date().getFullYear()),
+    cumulativeTaxBase: z.number().int().nonnegative().optional().default(0),
+  }).refine(data => data.grossSalary || data.netSalary, {
+    message: "Brüt veya net maaş belirtilmeli",
+  });
+
+  app.post('/api/payroll/calculate', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
+        return res.status(403).json({ message: "Bordro hesaplama yetkiniz yok" });
+      }
+
+      // Validate and parse the request body
+      const parseResult = payrollCalculateSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "Geçersiz hesaplama verisi", 
+          errors: parseResult.error.flatten() 
+        });
+      }
+
+      const { grossSalary, netSalary, year, cumulativeTaxBase } = parseResult.data;
+
+      // Get parameters for the year
+      const paramsResult = await db.execute(sql`
+        SELECT * FROM payroll_parameters WHERE year = ${year} AND is_active = true ORDER BY effective_from DESC LIMIT 1
+      `);
+
+      if (paramsResult.rows.length === 0) {
+        return res.status(404).json({ message: `${year} yılı için aktif bordro parametresi bulunamadı` });
+      }
+
+      const params = paramsResult.rows[0] as any;
+
+      // Helper function for tax calculation with brackets
+      const calculateIncomeTax = (taxBase: number, cumulative: number): { tax: number; bracket: number } => {
+        const total = cumulative + taxBase;
+        let tax = 0;
+        let bracket = 1;
+        let remaining = taxBase;
+        let processedCumulative = cumulative;
+
+        const brackets = [
+          { limit: params.tax_bracket_1_limit, rate: params.tax_bracket_1_rate / 1000 },
+          { limit: params.tax_bracket_2_limit, rate: params.tax_bracket_2_rate / 1000 },
+          { limit: params.tax_bracket_3_limit, rate: params.tax_bracket_3_rate / 1000 },
+          { limit: params.tax_bracket_4_limit, rate: params.tax_bracket_4_rate / 1000 },
+          { limit: Infinity, rate: params.tax_bracket_5_rate / 1000 },
+        ];
+
+        for (let i = 0; i < brackets.length && remaining > 0; i++) {
+          const bracketLimit = brackets[i].limit;
+          const rate = brackets[i].rate;
+
+          if (processedCumulative >= bracketLimit) {
+            continue; // Already past this bracket
+          }
+
+          const availableInBracket = bracketLimit - processedCumulative;
+          const amountInBracket = Math.min(remaining, availableInBracket);
+
+          tax += amountInBracket * rate;
+          remaining -= amountInBracket;
+          processedCumulative += amountInBracket;
+          bracket = i + 1;
+        }
+
+        return { tax: Math.round(tax), bracket };
+      };
+
+      // Calculate from gross to net
+      if (grossSalary) {
+        const gross = grossSalary;
+        const sgkEmployee = Math.round(gross * params.sgk_employee_rate / 1000);
+        const unemploymentEmployee = Math.round(gross * params.unemployment_employee_rate / 1000);
+        const taxBase = gross - sgkEmployee - unemploymentEmployee;
+        
+        const { tax: incomeTax, bracket: taxBracket } = calculateIncomeTax(taxBase, cumulativeTaxBase);
+        
+        // Stamp tax calculation (with minimum wage exemption)
+        let stampTax = Math.round(gross * params.stamp_tax_rate / 10000);
+        let stampTaxExemption = 0;
+        if (gross <= params.minimum_wage_gross) {
+          stampTaxExemption = stampTax;
+          stampTax = 0;
+        }
+
+        // Minimum wage income tax exemption
+        let minimumWageExemption = 0;
+        const minWageTaxBase = params.minimum_wage_gross - Math.round(params.minimum_wage_gross * (params.sgk_employee_rate + params.unemployment_employee_rate) / 1000);
+        if (gross <= params.minimum_wage_gross) {
+          minimumWageExemption = incomeTax;
+        }
+
+        const totalDeductions = sgkEmployee + unemploymentEmployee + incomeTax + stampTax - minimumWageExemption - stampTaxExemption;
+        const net = gross - totalDeductions;
+
+        // Employer costs
+        const sgkEmployer = Math.round(gross * params.sgk_employer_rate / 1000);
+        const unemploymentEmployer = Math.round(gross * params.unemployment_employer_rate / 1000);
+        const employerCost = gross + sgkEmployer + unemploymentEmployer;
+
+        res.json({
+          grossSalary: gross,
+          netSalary: net,
+          sgkEmployee,
+          unemploymentEmployee,
+          taxBase,
+          incomeTax,
+          taxBracket,
+          stampTax,
+          minimumWageExemption,
+          stampTaxExemption,
+          totalDeductions,
+          sgkEmployer,
+          unemploymentEmployer,
+          employerCost,
+          parameters: {
+            year: params.year,
+            minimumWageGross: params.minimum_wage_gross,
+            minimumWageNet: params.minimum_wage_net,
+          }
+        });
+      }
+      // Calculate from net to gross (Newton-Raphson approximation)
+      else if (netSalary) {
+        const targetNet = netSalary;
+        let gross = targetNet * 1.4; // Initial estimate
+
+        for (let i = 0; i < 20; i++) {
+          const sgkEmployee = Math.round(gross * params.sgk_employee_rate / 1000);
+          const unemploymentEmployee = Math.round(gross * params.unemployment_employee_rate / 1000);
+          const taxBase = gross - sgkEmployee - unemploymentEmployee;
+          const { tax: incomeTax } = calculateIncomeTax(taxBase, cumulativeTaxBase);
+          let stampTax = Math.round(gross * params.stamp_tax_rate / 10000);
+
+          let minimumWageExemption = 0;
+          let stampTaxExemption = 0;
+          if (gross <= params.minimum_wage_gross) {
+            minimumWageExemption = incomeTax;
+            stampTaxExemption = stampTax;
+            stampTax = 0;
+          }
+
+          const calculatedNet = gross - sgkEmployee - unemploymentEmployee - incomeTax - stampTax + minimumWageExemption + stampTaxExemption;
+          const diff = targetNet - calculatedNet;
+
+          if (Math.abs(diff) < 100) break; // Close enough (1 TL)
+          gross += diff * 0.7; // Adjust
+        }
+
+        // Final calculation with found gross
+        const sgkEmployee = Math.round(gross * params.sgk_employee_rate / 1000);
+        const unemploymentEmployee = Math.round(gross * params.unemployment_employee_rate / 1000);
+        const taxBase = gross - sgkEmployee - unemploymentEmployee;
+        const { tax: incomeTax, bracket: taxBracket } = calculateIncomeTax(taxBase, cumulativeTaxBase);
+        let stampTax = Math.round(gross * params.stamp_tax_rate / 10000);
+
+        let minimumWageExemption = 0;
+        let stampTaxExemption = 0;
+        if (gross <= params.minimum_wage_gross) {
+          minimumWageExemption = incomeTax;
+          stampTaxExemption = stampTax;
+          stampTax = 0;
+        }
+
+        const totalDeductions = sgkEmployee + unemploymentEmployee + incomeTax + stampTax - minimumWageExemption - stampTaxExemption;
+        const net = gross - totalDeductions;
+
+        // Employer costs
+        const sgkEmployer = Math.round(gross * params.sgk_employer_rate / 1000);
+        const unemploymentEmployer = Math.round(gross * params.unemployment_employer_rate / 1000);
+        const employerCost = gross + sgkEmployer + unemploymentEmployer;
+
+        res.json({
+          grossSalary: Math.round(gross),
+          netSalary: net,
+          sgkEmployee,
+          unemploymentEmployee,
+          taxBase,
+          incomeTax,
+          taxBracket,
+          stampTax,
+          minimumWageExemption,
+          stampTaxExemption,
+          totalDeductions,
+          sgkEmployer,
+          unemploymentEmployer,
+          employerCost,
+          parameters: {
+            year: params.year,
+            minimumWageGross: params.minimum_wage_gross,
+            minimumWageNet: params.minimum_wage_net,
+          }
+        });
+      } else {
+        res.status(400).json({ message: "Brüt veya net maaş belirtilmeli" });
+      }
+    } catch (error) {
+      console.error("Calculate payroll error:", error);
+      res.status(500).json({ message: "Bordro hesaplanamadı" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
