@@ -6135,3 +6135,81 @@ export const insertEmployeeBenefitsSchema = createInsertSchema(employeeBenefits)
 
 export type InsertEmployeeBenefits = z.infer<typeof insertEmployeeBenefitsSchema>;
 export type EmployeeBenefits = typeof employeeBenefits.$inferSelect;
+
+// ========================================
+// PAYROLL RECORDS - Aylık Bordro Kayıtları
+// ========================================
+
+export const payrollRecords = pgTable("payroll_records", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  
+  // Dönem bilgisi
+  periodYear: integer("period_year").notNull(), // 2024, 2025, etc.
+  periodMonth: integer("period_month").notNull(), // 1-12
+  
+  // Temel maaş (kuruş cinsinden)
+  baseSalary: integer("base_salary").notNull(), // Net baz maaş (kuruş)
+  
+  // Mesai hesaplamaları (kuruş)
+  overtimeMinutes: integer("overtime_minutes").default(0), // Onaylanan toplam mesai dakikası
+  overtimeRate: numeric("overtime_rate").default("1.5"), // Mesai çarpanı (1.5x normal, 2x tatil)
+  overtimeAmount: integer("overtime_amount").default(0), // Mesai ücreti (kuruş)
+  
+  // Prim hesaplamaları (kuruş)
+  bonusType: varchar("bonus_type", { length: 20 }).default("normal"), // kasa_primi, normal
+  bonusBase: integer("bonus_base").default(0), // Prim matrahı (kuruş)
+  bonusPercentage: numeric("bonus_percentage").default("0"), // Prim yüzdesi
+  bonusAmount: integer("bonus_amount").default(0), // Hesaplanan prim (kuruş)
+  
+  // Eksik çalışma kesintisi (kuruş)
+  undertimeMinutes: integer("undertime_minutes").default(0), // 45 saat altı çalışma dakikası
+  undertimeDeduction: integer("undertime_deduction").default(0), // Primden kesilen tutar (kuruş)
+  
+  // Yan haklar (kuruş)
+  mealAllowance: integer("meal_allowance").default(0), // Yemek yardımı
+  transportAllowance: integer("transport_allowance").default(0), // Ulaşım yardımı
+  
+  // Ödenecek net maaş (kuruş)
+  totalNetPayable: integer("total_net_payable").notNull(), // baseSalary + overtime + bonus - undertime + allowances
+  
+  // Brüt maaş ve kesintiler (kayıt amaçlı, kuruş)
+  grossSalary: integer("gross_salary").default(0), // Hesaplanan brüt
+  sgkEmployee: integer("sgk_employee").default(0), // SGK işçi payı
+  sgkEmployer: integer("sgk_employer").default(0), // SGK işveren payı
+  unemploymentEmployee: integer("unemployment_employee").default(0), // İşsizlik işçi
+  unemploymentEmployer: integer("unemployment_employer").default(0), // İşsizlik işveren
+  incomeTax: integer("income_tax").default(0), // Gelir vergisi
+  stampTax: integer("stamp_tax").default(0), // Damga vergisi
+  
+  // Kümülatif vergi matrahı
+  cumulativeTaxBase: integer("cumulative_tax_base").default(0), // Yıl başından bu aya kadar
+  
+  // Durum yönetimi
+  status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, pending_approval, approved, paid
+  
+  // Onay bilgileri
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  paidAt: timestamp("paid_at"),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("payroll_records_user_idx").on(table.userId),
+  index("payroll_records_period_idx").on(table.periodYear, table.periodMonth),
+  index("payroll_records_status_idx").on(table.status),
+  unique("payroll_records_user_period_unique").on(table.userId, table.periodYear, table.periodMonth),
+]);
+
+export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPayrollRecord = z.infer<typeof insertPayrollRecordSchema>;
+export type PayrollRecord = typeof payrollRecords.$inferSelect;

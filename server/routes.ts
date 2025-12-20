@@ -19549,6 +19549,659 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // ========================================
+  // PAYROLL RECORDS API - Bordro Yönetimi
+  // ========================================
+
+  // GET /api/payroll/records - Bordro kayıtlarını listele
+  app.get('/api/payroll/records', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userId = req.user?.id;
+      
+      // Personel sadece kendi bordrosunu görebilir
+      const isAccountant = isHQRole(userRole) || userRole === 'admin' || userRole === 'muhasebe';
+      
+      const { year, month, employeeId, status } = req.query;
+      
+      let query = `
+        SELECT pr.*, 
+               u.first_name, u.last_name, u.username, u.role as employee_role,
+               b.name as branch_name
+        FROM payroll_records pr
+        LEFT JOIN users u ON pr.user_id = u.id
+        LEFT JOIN branches b ON pr.branch_id = b.id
+        WHERE 1=1
+      `;
+      const params: any[] = [];
+      let paramIndex = 1;
+      
+      // Personel sadece kendi kayıtlarını görebilir
+      if (!isAccountant) {
+        query += ` AND pr.user_id = $${paramIndex}`;
+        params.push(userId);
+        paramIndex++;
+      } else if (employeeId) {
+        query += ` AND pr.user_id = $${paramIndex}`;
+        params.push(employeeId);
+        paramIndex++;
+      }
+      
+      if (year) {
+        query += ` AND pr.period_year = $${paramIndex}`;
+        params.push(parseInt(year as string));
+        paramIndex++;
+      }
+      
+      if (month) {
+        query += ` AND pr.period_month = $${paramIndex}`;
+        params.push(parseInt(month as string));
+        paramIndex++;
+      }
+      
+      if (status) {
+        query += ` AND pr.status = $${paramIndex}`;
+        params.push(status);
+        paramIndex++;
+      }
+      
+      query += ` ORDER BY pr.period_year DESC, pr.period_month DESC, u.first_name`;
+      
+      const result = await db.execute(sql.raw(query, params));
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Get payroll records error:", error);
+      res.status(500).json({ message: "Bordro kayıtları alınamadı" });
+    }
+  });
+
+  // GET /api/payroll/records/:id - Tek bordro kaydı
+  app.get('/api/payroll/records/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userId = req.user?.id;
+      const { id } = req.params;
+      const recordId = parseInt(id);
+      
+      if (isNaN(recordId)) {
+        return res.status(400).json({ message: "Geçersiz ID" });
+      }
+      
+      const result = await db.execute(sql`
+        SELECT pr.*, 
+               u.first_name, u.last_name, u.username, u.role as employee_role,
+               b.name as branch_name
+        FROM payroll_records pr
+        LEFT JOIN users u ON pr.user_id = u.id
+        LEFT JOIN branches b ON pr.branch_id = b.id
+        WHERE pr.id = ${recordId}
+      `);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Bordro kaydı bulunamadı" });
+      }
+      
+      const record = result.rows[0] as any;
+      
+      // Personel sadece kendi bordrosunu görebilir
+      const isAccountant = isHQRole(userRole) || userRole === 'admin' || userRole === 'muhasebe';
+      if (!isAccountant && record.user_id !== userId) {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+      
+      res.json(record);
+    } catch (error) {
+      console.error("Get payroll record error:", error);
+      res.status(500).json({ message: "Bordro kaydı alınamadı" });
+    }
+  });
+
+  // GET /api/payroll/employee/:userId/overtime - Personelin onaylı mesai dakikaları
+  app.get('/api/payroll/employee/:userId/overtime', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+      
+      const { userId } = req.params;
+      const { year, month } = req.query;
+      
+      if (!year || !month) {
+        return res.status(400).json({ message: "Yıl ve ay zorunlu" });
+      }
+      
+      const periodStr = `${year}-${String(month).padStart(2, '0')}`;
+      
+      const result = await db.execute(sql`
+        SELECT 
+          COALESCE(SUM(approved_minutes), 0) as total_overtime_minutes,
+          COUNT(*) as request_count
+        FROM overtime_requests
+        WHERE user_id = ${userId}
+          AND status = 'approved'
+          AND applied_to_period = ${periodStr}
+      `);
+      
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Get employee overtime error:", error);
+      res.status(500).json({ message: "Mesai bilgisi alınamadı" });
+    }
+  });
+
+  // GET /api/payroll/employee/:userId/attendance - Personelin çalışma saatleri
+  app.get('/api/payroll/employee/:userId/attendance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+      
+      const { userId } = req.params;
+      const { year, month } = req.query;
+      
+      if (!year || !month) {
+        return res.status(400).json({ message: "Yıl ve ay zorunlu" });
+      }
+      
+      // Ayın ilk ve son günü
+      const startDate = new Date(parseInt(year as string), parseInt(month as string) - 1, 1);
+      const endDate = new Date(parseInt(year as string), parseInt(month as string), 0, 23, 59, 59);
+      
+      const result = await db.execute(sql`
+        SELECT 
+          COALESCE(SUM(total_worked_minutes), 0) as total_worked_minutes,
+          COALESCE(SUM(penalty_minutes), 0) as total_penalty_minutes,
+          COUNT(*) as shift_count
+        FROM shift_attendance
+        WHERE user_id = ${userId}
+          AND status = 'checked_out'
+          AND check_in_time >= ${startDate}
+          AND check_in_time <= ${endDate}
+      `);
+      
+      const row = result.rows[0] as any;
+      const totalWorkedMinutes = parseInt(row.total_worked_minutes) || 0;
+      const shiftCount = parseInt(row.shift_count) || 0;
+      
+      // Haftalık 45 saat = 2700 dakika, aylık yaklaşık 4 hafta = 10800 dakika
+      const expectedMonthlyMinutes = 45 * 60 * 4; // 10800 dakika
+      const undertimeMinutes = Math.max(0, expectedMonthlyMinutes - totalWorkedMinutes);
+      
+      res.json({
+        totalWorkedMinutes,
+        totalPenaltyMinutes: parseInt(row.total_penalty_minutes) || 0,
+        shiftCount,
+        expectedMonthlyMinutes,
+        undertimeMinutes,
+        undertimePercentage: undertimeMinutes > 0 ? Math.round((undertimeMinutes / expectedMonthlyMinutes) * 100) : 0
+      });
+    } catch (error) {
+      console.error("Get employee attendance error:", error);
+      res.status(500).json({ message: "Çalışma saati bilgisi alınamadı" });
+    }
+  });
+
+  // POST /api/payroll/calculate - Bordro hesaplama (kaydetmeden)
+  app.post('/api/payroll/calculate-employee', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+      
+      const { userId, year, month } = req.body;
+      
+      if (!userId || !year || !month) {
+        return res.status(400).json({ message: "Personel, yıl ve ay zorunlu" });
+      }
+      
+      // 1. Personel bilgisi al
+      const userResult = await db.execute(sql`
+        SELECT u.*, b.name as branch_name, b.id as branch_id
+        FROM users u
+        LEFT JOIN branches b ON u.branch_id = b.id
+        WHERE u.id = ${userId}
+      `);
+      
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ message: "Personel bulunamadı" });
+      }
+      
+      const employee = userResult.rows[0] as any;
+      const baseSalary = employee.net_salary || 0; // kuruş cinsinden
+      
+      // 2. Yan hakları al
+      const benefitsResult = await db.execute(sql`
+        SELECT * FROM employee_benefits
+        WHERE user_id = ${userId} AND is_active = true
+        LIMIT 1
+      `);
+      
+      const benefits = benefitsResult.rows[0] as any || {};
+      const mealAllowance = (benefits.meal_benefit_amount || 0) * 22; // 22 iş günü
+      const transportAllowance = (benefits.transport_benefit_amount || 0) * 22;
+      const bonusPercentage = parseFloat(benefits.bonus_percentage || '0');
+      const bonusEligible = benefits.bonus_eligible !== false;
+      
+      // 3. Onaylı mesai al
+      const periodStr = `${year}-${String(month).padStart(2, '0')}`;
+      const overtimeResult = await db.execute(sql`
+        SELECT COALESCE(SUM(approved_minutes), 0) as total_minutes
+        FROM overtime_requests
+        WHERE user_id = ${userId}
+          AND status = 'approved'
+          AND applied_to_period = ${periodStr}
+      `);
+      const overtimeMinutes = parseInt((overtimeResult.rows[0] as any).total_minutes) || 0;
+      
+      // Mesai ücreti hesaplama (saatlik ücret x 1.5)
+      const hourlyRate = baseSalary / (45 * 4); // Aylık ücret / (haftalık saat x 4 hafta)
+      const overtimeAmount = Math.round((overtimeMinutes / 60) * hourlyRate * 1.5);
+      
+      // 4. Çalışma saati kontrolü
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+      
+      const attendanceResult = await db.execute(sql`
+        SELECT COALESCE(SUM(total_worked_minutes), 0) as total_minutes
+        FROM shift_attendance
+        WHERE user_id = ${userId}
+          AND status = 'checked_out'
+          AND check_in_time >= ${startDate}
+          AND check_in_time <= ${endDate}
+      `);
+      const workedMinutes = parseInt((attendanceResult.rows[0] as any).total_minutes) || 0;
+      
+      // Eksik çalışma hesaplama
+      const expectedMonthlyMinutes = 45 * 60 * 4; // 10800 dakika
+      const undertimeMinutes = Math.max(0, expectedMonthlyMinutes - workedMinutes);
+      
+      // 5. Prim hesaplama
+      // Şube personeli: kasa primi, fabrika: normal prim
+      const bonusType = employee.branch_id ? 'kasa_primi' : 'normal';
+      const bonusBase = baseSalary;
+      let bonusAmount = 0;
+      
+      if (bonusEligible && bonusPercentage > 0) {
+        bonusAmount = Math.round(bonusBase * (bonusPercentage / 100));
+      }
+      
+      // Eksik çalışma kesintisi (primden kesilir)
+      let undertimeDeduction = 0;
+      if (undertimeMinutes > 0 && bonusAmount > 0) {
+        const undertimePercentage = undertimeMinutes / expectedMonthlyMinutes;
+        undertimeDeduction = Math.round(bonusAmount * undertimePercentage);
+        undertimeDeduction = Math.min(undertimeDeduction, bonusAmount); // Primden fazla kesilemez
+      }
+      
+      // 6. Toplam net ödenecek
+      const totalNetPayable = baseSalary + overtimeAmount + bonusAmount - undertimeDeduction + mealAllowance + transportAllowance;
+      
+      // 7. Brüt hesaplama (net'ten brüt'e Newton-Raphson)
+      // Parametreleri al
+      const paramsResult = await db.execute(sql`
+        SELECT * FROM payroll_parameters WHERE is_active = true ORDER BY effective_year DESC LIMIT 1
+      `);
+      const params = paramsResult.rows[0] as any || {
+        sgk_employee_rate: '14',
+        unemployment_employee_rate: '1',
+        stamp_tax_rate: '0.759',
+        income_tax_brackets: JSON.stringify([
+          { limit: 11000000, rate: 15 },
+          { limit: 23000000, rate: 20 },
+          { limit: 53000000, rate: 27 },
+          { limit: 100000000, rate: 35 },
+          { limit: null, rate: 40 }
+        ])
+      };
+      
+      const sgkEmployeeRate = parseFloat(params.sgk_employee_rate || '14') / 100;
+      const unemploymentEmployeeRate = parseFloat(params.unemployment_employee_rate || '1') / 100;
+      const stampTaxRate = parseFloat(params.stamp_tax_rate || '0.759') / 100;
+      const incomeTaxBrackets = typeof params.income_tax_brackets === 'string' 
+        ? JSON.parse(params.income_tax_brackets) 
+        : params.income_tax_brackets;
+      
+      // Basit brüt tahmin (net * 1.35)
+      let grossSalary = Math.round(totalNetPayable * 1.35);
+      
+      // SGK ve vergi hesaplama
+      const sgkEmployee = Math.round(grossSalary * sgkEmployeeRate);
+      const unemploymentEmployee = Math.round(grossSalary * unemploymentEmployeeRate);
+      const sgkEmployer = Math.round(grossSalary * 0.205); // %20.5
+      const unemploymentEmployer = Math.round(grossSalary * 0.02); // %2
+      
+      // Gelir vergisi matrahı
+      const taxableBase = grossSalary - sgkEmployee - unemploymentEmployee;
+      
+      // Gelir vergisi hesaplama (kümülatif)
+      let incomeTax = 0;
+      let remaining = taxableBase;
+      for (const bracket of incomeTaxBrackets) {
+        const bracketLimit = bracket.limit ? bracket.limit * 100 : Infinity; // TL'yi kuruşa çevir
+        const rate = bracket.rate / 100;
+        
+        if (remaining <= 0) break;
+        
+        const taxableInBracket = bracket.limit ? Math.min(remaining, bracketLimit) : remaining;
+        incomeTax += Math.round(taxableInBracket * rate);
+        remaining -= taxableInBracket;
+      }
+      
+      // Damga vergisi
+      const stampTax = Math.round(grossSalary * stampTaxRate);
+      
+      res.json({
+        employee: {
+          id: employee.id,
+          firstName: employee.first_name,
+          lastName: employee.last_name,
+          branchName: employee.branch_name,
+          branchId: employee.branch_id
+        },
+        period: { year, month },
+        baseSalary,
+        overtimeMinutes,
+        overtimeAmount,
+        bonusType,
+        bonusBase,
+        bonusPercentage,
+        bonusAmount,
+        undertimeMinutes,
+        undertimeDeduction,
+        mealAllowance,
+        transportAllowance,
+        totalNetPayable,
+        grossSalary,
+        sgkEmployee,
+        sgkEmployer,
+        unemploymentEmployee,
+        unemploymentEmployer,
+        incomeTax,
+        stampTax
+      });
+    } catch (error) {
+      console.error("Calculate employee payroll error:", error);
+      res.status(500).json({ message: "Bordro hesaplanamadı" });
+    }
+  });
+
+  // POST /api/payroll/records - Yeni bordro kaydı oluştur
+  app.post('/api/payroll/records', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const createdById = req.user?.id;
+      
+      if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+      
+      const payrollSchema = z.object({
+        userId: z.string().min(1),
+        branchId: z.number().nullable().optional(),
+        periodYear: z.number().int().min(2020).max(2030),
+        periodMonth: z.number().int().min(1).max(12),
+        baseSalary: z.number().int().min(0),
+        overtimeMinutes: z.number().int().min(0).optional().default(0),
+        overtimeRate: z.string().optional().default("1.5"),
+        overtimeAmount: z.number().int().min(0).optional().default(0),
+        bonusType: z.enum(['kasa_primi', 'normal']).optional().default('normal'),
+        bonusBase: z.number().int().min(0).optional().default(0),
+        bonusPercentage: z.string().optional().default("0"),
+        bonusAmount: z.number().int().min(0).optional().default(0),
+        undertimeMinutes: z.number().int().min(0).optional().default(0),
+        undertimeDeduction: z.number().int().min(0).optional().default(0),
+        mealAllowance: z.number().int().min(0).optional().default(0),
+        transportAllowance: z.number().int().min(0).optional().default(0),
+        totalNetPayable: z.number().int().min(0),
+        grossSalary: z.number().int().min(0).optional().default(0),
+        sgkEmployee: z.number().int().min(0).optional().default(0),
+        sgkEmployer: z.number().int().min(0).optional().default(0),
+        unemploymentEmployee: z.number().int().min(0).optional().default(0),
+        unemploymentEmployer: z.number().int().min(0).optional().default(0),
+        incomeTax: z.number().int().min(0).optional().default(0),
+        stampTax: z.number().int().min(0).optional().default(0),
+        cumulativeTaxBase: z.number().int().min(0).optional().default(0),
+        status: z.enum(['draft', 'pending_approval', 'approved', 'paid']).optional().default('draft'),
+        notes: z.string().nullable().optional(),
+      });
+      
+      const parsed = payrollSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Geçersiz veri", errors: parsed.error.flatten() });
+      }
+      
+      const data = parsed.data;
+      
+      // Aynı dönem için kayıt var mı kontrol et
+      const existingResult = await db.execute(sql`
+        SELECT id FROM payroll_records 
+        WHERE user_id = ${data.userId} 
+          AND period_year = ${data.periodYear} 
+          AND period_month = ${data.periodMonth}
+      `);
+      
+      if (existingResult.rows.length > 0) {
+        return res.status(409).json({ message: "Bu dönem için bordro kaydı zaten mevcut" });
+      }
+      
+      const result = await db.execute(sql`
+        INSERT INTO payroll_records (
+          user_id, branch_id, period_year, period_month,
+          base_salary, overtime_minutes, overtime_rate, overtime_amount,
+          bonus_type, bonus_base, bonus_percentage, bonus_amount,
+          undertime_minutes, undertime_deduction,
+          meal_allowance, transport_allowance,
+          total_net_payable, gross_salary,
+          sgk_employee, sgk_employer, unemployment_employee, unemployment_employer,
+          income_tax, stamp_tax, cumulative_tax_base,
+          status, created_by_id, notes
+        ) VALUES (
+          ${data.userId}, ${data.branchId}, ${data.periodYear}, ${data.periodMonth},
+          ${data.baseSalary}, ${data.overtimeMinutes}, ${data.overtimeRate}, ${data.overtimeAmount},
+          ${data.bonusType}, ${data.bonusBase}, ${data.bonusPercentage}, ${data.bonusAmount},
+          ${data.undertimeMinutes}, ${data.undertimeDeduction},
+          ${data.mealAllowance}, ${data.transportAllowance},
+          ${data.totalNetPayable}, ${data.grossSalary},
+          ${data.sgkEmployee}, ${data.sgkEmployer}, ${data.unemploymentEmployee}, ${data.unemploymentEmployer},
+          ${data.incomeTax}, ${data.stampTax}, ${data.cumulativeTaxBase},
+          ${data.status}, ${createdById}, ${data.notes}
+        ) RETURNING *
+      `);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Create payroll record error:", error);
+      res.status(500).json({ message: "Bordro kaydı oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/payroll/records/:id - Bordro kaydını güncelle
+  app.patch('/api/payroll/records/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+      
+      const { id } = req.params;
+      const recordId = parseInt(id);
+      
+      if (isNaN(recordId)) {
+        return res.status(400).json({ message: "Geçersiz ID" });
+      }
+      
+      // Mevcut kaydı kontrol et
+      const existingResult = await db.execute(sql`
+        SELECT * FROM payroll_records WHERE id = ${recordId}
+      `);
+      
+      if (existingResult.rows.length === 0) {
+        return res.status(404).json({ message: "Bordro kaydı bulunamadı" });
+      }
+      
+      const existing = existingResult.rows[0] as any;
+      
+      // Ödenmiş kayıt güncellenemez
+      if (existing.status === 'paid') {
+        return res.status(400).json({ message: "Ödenmiş bordro kaydı güncellenemez" });
+      }
+      
+      const { 
+        baseSalary, overtimeMinutes, overtimeAmount, bonusAmount,
+        undertimeDeduction, mealAllowance, transportAllowance,
+        totalNetPayable, grossSalary, sgkEmployee, sgkEmployer,
+        unemploymentEmployee, unemploymentEmployer, incomeTax, stampTax,
+        status, notes
+      } = req.body;
+      
+      const result = await db.execute(sql`
+        UPDATE payroll_records SET
+          base_salary = COALESCE(${baseSalary}, base_salary),
+          overtime_minutes = COALESCE(${overtimeMinutes}, overtime_minutes),
+          overtime_amount = COALESCE(${overtimeAmount}, overtime_amount),
+          bonus_amount = COALESCE(${bonusAmount}, bonus_amount),
+          undertime_deduction = COALESCE(${undertimeDeduction}, undertime_deduction),
+          meal_allowance = COALESCE(${mealAllowance}, meal_allowance),
+          transport_allowance = COALESCE(${transportAllowance}, transport_allowance),
+          total_net_payable = COALESCE(${totalNetPayable}, total_net_payable),
+          gross_salary = COALESCE(${grossSalary}, gross_salary),
+          sgk_employee = COALESCE(${sgkEmployee}, sgk_employee),
+          sgk_employer = COALESCE(${sgkEmployer}, sgk_employer),
+          unemployment_employee = COALESCE(${unemploymentEmployee}, unemployment_employee),
+          unemployment_employer = COALESCE(${unemploymentEmployer}, unemployment_employer),
+          income_tax = COALESCE(${incomeTax}, income_tax),
+          stamp_tax = COALESCE(${stampTax}, stamp_tax),
+          status = COALESCE(${status}, status),
+          notes = COALESCE(${notes}, notes),
+          updated_at = NOW()
+        WHERE id = ${recordId}
+        RETURNING *
+      `);
+      
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Update payroll record error:", error);
+      res.status(500).json({ message: "Bordro kaydı güncellenemedi" });
+    }
+  });
+
+  // PATCH /api/payroll/records/:id/approve - Bordro onaylama
+  app.patch('/api/payroll/records/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const approverId = req.user?.id;
+      
+      // Sadece admin ve yöneticiler onaylayabilir
+      if (!isHQRole(userRole) && userRole !== 'admin') {
+        return res.status(403).json({ message: "Bordro onaylama yetkisi yok" });
+      }
+      
+      const { id } = req.params;
+      const recordId = parseInt(id);
+      
+      if (isNaN(recordId)) {
+        return res.status(400).json({ message: "Geçersiz ID" });
+      }
+      
+      const result = await db.execute(sql`
+        UPDATE payroll_records SET
+          status = 'approved',
+          approved_by_id = ${approverId},
+          approved_at = NOW(),
+          updated_at = NOW()
+        WHERE id = ${recordId} AND status IN ('draft', 'pending_approval')
+        RETURNING *
+      `);
+      
+      if (result.rows.length === 0) {
+        return res.status(400).json({ message: "Bordro onaylanamadı (zaten onaylı veya bulunamadı)" });
+      }
+      
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Approve payroll record error:", error);
+      res.status(500).json({ message: "Bordro onaylanamadı" });
+    }
+  });
+
+  // PATCH /api/payroll/records/:id/pay - Bordro ödendi olarak işaretle
+  app.patch('/api/payroll/records/:id/pay', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      
+      if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
+        return res.status(403).json({ message: "Ödeme işaretleme yetkisi yok" });
+      }
+      
+      const { id } = req.params;
+      const recordId = parseInt(id);
+      
+      if (isNaN(recordId)) {
+        return res.status(400).json({ message: "Geçersiz ID" });
+      }
+      
+      const result = await db.execute(sql`
+        UPDATE payroll_records SET
+          status = 'paid',
+          paid_at = NOW(),
+          updated_at = NOW()
+        WHERE id = ${recordId} AND status = 'approved'
+        RETURNING *
+      `);
+      
+      if (result.rows.length === 0) {
+        return res.status(400).json({ message: "Ödeme işaretlenemedi (onaylı değil veya bulunamadı)" });
+      }
+      
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Pay payroll record error:", error);
+      res.status(500).json({ message: "Ödeme işaretlenemedi" });
+    }
+  });
+
+  // DELETE /api/payroll/records/:id - Bordro kaydını sil
+  app.delete('/api/payroll/records/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Silme yetkisi yok" });
+      }
+      
+      const { id } = req.params;
+      const recordId = parseInt(id);
+      
+      if (isNaN(recordId)) {
+        return res.status(400).json({ message: "Geçersiz ID" });
+      }
+      
+      // Ödenmiş kayıt silinemez
+      const existingResult = await db.execute(sql`
+        SELECT status FROM payroll_records WHERE id = ${recordId}
+      `);
+      
+      if (existingResult.rows.length === 0) {
+        return res.status(404).json({ message: "Bordro kaydı bulunamadı" });
+      }
+      
+      const existing = existingResult.rows[0] as any;
+      if (existing.status === 'paid') {
+        return res.status(400).json({ message: "Ödenmiş bordro kaydı silinemez" });
+      }
+      
+      await db.execute(sql`DELETE FROM payroll_records WHERE id = ${recordId}`);
+      
+      res.json({ message: "Bordro kaydı silindi" });
+    } catch (error) {
+      console.error("Delete payroll record error:", error);
+      res.status(500).json({ message: "Bordro kaydı silinemedi" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
