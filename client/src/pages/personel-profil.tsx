@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Link } from "wouter";
@@ -12,8 +13,12 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { 
   User, Calendar, Award, ClipboardCheck, 
-  Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2, Wallet, Banknote
+  Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2, Wallet, Banknote, 
+  Timer, Plus, Loader2
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -135,6 +140,71 @@ export default function PersonelProfilPage() {
     },
     enabled: !!id && canViewSalary,
   });
+
+  // Overtime request state
+  const [overtimeMinutes, setOvertimeMinutes] = useState<string>("");
+  const [overtimeReason, setOvertimeReason] = useState<string>("");
+
+  // Fetch user's overtime requests (only for own profile)
+  const { data: overtimeRequests = [], isLoading: isLoadingOvertime } = useQuery<{
+    id: number;
+    requestedMinutes: number;
+    reason: string;
+    status: string;
+    approvedMinutes: number | null;
+    rejectionReason: string | null;
+    createdAt: string;
+    appliedToPeriod: string | null;
+  }[]>({
+    queryKey: ['/api/overtime-requests', id],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/overtime-requests?userId=${id}`);
+      return res.json();
+    },
+    enabled: !!id && isOwnProfile,
+  });
+
+  // Create overtime request mutation
+  const createOvertimeMutation = useMutation({
+    mutationFn: async (data: { requestedMinutes: number; reason: string }) => {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const res = await apiRequest("POST", "/api/overtime-requests", {
+        requestedMinutes: data.requestedMinutes,
+        reason: data.reason,
+        appliedToPeriod: currentMonth,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/overtime-requests', id] });
+      setOvertimeMinutes("");
+      setOvertimeReason("");
+      toast({
+        title: "Mesai talebi oluşturuldu",
+        description: "Talebiniz onay için gönderildi",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Hata",
+        description: "Mesai talebi oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateOvertimeRequest = () => {
+    const minutes = parseInt(overtimeMinutes);
+    if (isNaN(minutes) || minutes <= 0) {
+      toast({ title: "Geçersiz süre", variant: "destructive" });
+      return;
+    }
+    if (!overtimeReason.trim()) {
+      toast({ title: "Açıklama gerekli", variant: "destructive" });
+      return;
+    }
+    createOvertimeMutation.mutate({ requestedMinutes: minutes, reason: overtimeReason.trim() });
+  };
 
   if (isLoading) {
     return (
@@ -418,6 +488,9 @@ export default function PersonelProfilPage() {
           <TabsTrigger value="performans" data-testid="tab-performance" className="flex-1 min-w-fit">Performans</TabsTrigger>
           <TabsTrigger value="denetimler" data-testid="tab-audits" className="flex-1 min-w-fit">Denetimler</TabsTrigger>
           <TabsTrigger value="vardiyalar" data-testid="tab-shifts" className="flex-1 min-w-fit">Vardiyalar</TabsTrigger>
+          {isOwnProfile && (
+            <TabsTrigger value="mesai" data-testid="tab-overtime" className="flex-1 min-w-fit">Mesai Talepleri</TabsTrigger>
+          )}
           <TabsTrigger value="akademi" data-testid="tab-academy" className="flex-1 min-w-fit">Akademi</TabsTrigger>
         </TabsList>
 
@@ -516,6 +589,117 @@ export default function PersonelProfilPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Overtime Requests Tab - Only for own profile */}
+        {isOwnProfile && (
+          <TabsContent value="mesai" className="flex flex-col gap-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Timer className="h-4 w-4" />
+                  Yeni Mesai Talebi Oluştur
+                </CardTitle>
+                <CardDescription>Fazla mesai talebinizi buradan oluşturabilirsiniz</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="overtime-minutes">Mesai Süresi (dakika)</Label>
+                    <Input
+                      id="overtime-minutes"
+                      type="number"
+                      placeholder="Örn: 60"
+                      value={overtimeMinutes}
+                      onChange={(e) => setOvertimeMinutes(e.target.value)}
+                      min="1"
+                      data-testid="input-overtime-minutes"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <span className="text-sm text-muted-foreground mb-2">
+                      = {Math.floor(parseInt(overtimeMinutes) / 60 || 0)} saat {parseInt(overtimeMinutes) % 60 || 0} dakika
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="overtime-reason">Açıklama</Label>
+                  <Textarea
+                    id="overtime-reason"
+                    placeholder="Mesai sebebinizi açıklayın..."
+                    value={overtimeReason}
+                    onChange={(e) => setOvertimeReason(e.target.value)}
+                    rows={3}
+                    data-testid="input-overtime-reason"
+                  />
+                </div>
+                <Button 
+                  onClick={handleCreateOvertimeRequest}
+                  disabled={createOvertimeMutation.isPending || !overtimeMinutes || !overtimeReason.trim()}
+                  className="w-full"
+                  data-testid="button-create-overtime"
+                >
+                  {createOvertimeMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gönderiliyor...</>
+                  ) : (
+                    <><Plus className="h-4 w-4 mr-2" /> Talep Oluştur</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Mesai Talep Geçmişi</CardTitle>
+                <CardDescription>Oluşturduğunuz mesai talepleri</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingOvertime ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : overtimeRequests.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    Henüz mesai talebi oluşturmadınız.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {overtimeRequests.map((req) => (
+                      <div 
+                        key={req.id} 
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                        data-testid={`overtime-request-${req.id}`}
+                      >
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{Math.floor(req.requestedMinutes / 60)} saat {req.requestedMinutes % 60} dk</span>
+                            <Badge 
+                              variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}
+                            >
+                              {req.status === 'approved' ? 'Onaylandı' : req.status === 'rejected' ? 'Reddedildi' : 'Bekliyor'}
+                            </Badge>
+                            {req.appliedToPeriod && (
+                              <Badge variant="outline">{req.appliedToPeriod}</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{req.reason}</p>
+                          {req.status === 'approved' && req.approvedMinutes !== null && (
+                            <p className="text-sm text-green-600">Onaylanan: {Math.floor(req.approvedMinutes / 60)} saat {req.approvedMinutes % 60} dk</p>
+                          )}
+                          {req.status === 'rejected' && req.rejectionReason && (
+                            <p className="text-sm text-red-600">Red sebebi: {req.rejectionReason}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(req.createdAt), "d MMM yyyy HH:mm", { locale: tr })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="akademi" className="flex flex-col gap-3">
           <Card>

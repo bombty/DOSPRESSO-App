@@ -350,6 +350,60 @@ export default function IKPage() {
   const attendanceSummaries = attendanceSummaryData?.summaries || [];
   const attendanceTotals = attendanceSummaryData?.totals;
 
+  // Overtime requests for approval (managers/admin)
+  type OvertimeRequest = {
+    id: number;
+    userId: string;
+    requestedMinutes: number;
+    reason: string;
+    status: string;
+    appliedToPeriod: string | null;
+    createdAt: string;
+    firstName: string;
+    lastName: string;
+  };
+  
+  const { data: overtimeRequests = [], isLoading: isOvertimeLoading } = useQuery<OvertimeRequest[]>({
+    queryKey: ['/api/overtime-requests'],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/overtime-requests");
+      return res.json();
+    },
+    enabled: !!user && !!canViewAttendance,
+  });
+
+  const pendingOvertimeRequests = overtimeRequests.filter(r => r.status === 'pending');
+  
+  // Overtime approval mutation
+  const approveOvertimeMutation = useMutation({
+    mutationFn: async ({ id, approvedMinutes }: { id: number; approvedMinutes: number }) => {
+      const res = await apiRequest("PATCH", `/api/overtime-requests/${id}/approve`, { approvedMinutes });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/overtime-requests'] });
+      toast({ title: "Mesai talebi onaylandı" });
+    },
+    onError: () => {
+      toast({ title: "Onaylama başarısız", variant: "destructive" });
+    },
+  });
+  
+  // Overtime reject mutation
+  const rejectOvertimeMutation = useMutation({
+    mutationFn: async ({ id, rejectionReason }: { id: number; rejectionReason: string }) => {
+      const res = await apiRequest("PATCH", `/api/overtime-requests/${id}/reject`, { rejectionReason });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/overtime-requests'] });
+      toast({ title: "Mesai talebi reddedildi" });
+    },
+    onError: () => {
+      toast({ title: "Reddetme başarısız", variant: "destructive" });
+    },
+  });
+
   const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
   const handlePrevMonth = () => {
@@ -1413,6 +1467,74 @@ export default function IKPage() {
                     </div>
                   )}
                 </CardContent>
+            </Card>
+
+            {/* Overtime Requests Approval Section */}
+            <Card className="mt-4">
+              <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  <CardTitle>Mesai Talepleri</CardTitle>
+                  {pendingOvertimeRequests.length > 0 && (
+                    <Badge variant="destructive">{pendingOvertimeRequests.length} Bekliyor</Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isOvertimeLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ) : pendingOvertimeRequests.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    Bekleyen mesai talebi bulunmuyor.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingOvertimeRequests.map((req) => (
+                      <div 
+                        key={req.id}
+                        className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg gap-3"
+                        data-testid={`overtime-approval-${req.id}`}
+                      >
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{req.firstName} {req.lastName}</span>
+                            <Badge variant="secondary">{Math.floor(req.requestedMinutes / 60)} saat {req.requestedMinutes % 60} dk</Badge>
+                            {req.appliedToPeriod && (
+                              <Badge variant="outline">{req.appliedToPeriod}</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{req.reason}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(req.createdAt), "d MMM yyyy HH:mm")}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => approveOvertimeMutation.mutate({ id: req.id, approvedMinutes: req.requestedMinutes })}
+                            disabled={approveOvertimeMutation.isPending}
+                            data-testid={`button-approve-overtime-${req.id}`}
+                          >
+                            Onayla
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => rejectOvertimeMutation.mutate({ id: req.id, rejectionReason: "Talep reddedildi" })}
+                            disabled={rejectOvertimeMutation.isPending}
+                            data-testid={`button-reject-overtime-${req.id}`}
+                          >
+                            Reddet
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
             </Card>
           </TabsContent>
         )}
