@@ -19496,7 +19496,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const result = await db.execute(sql`
         SELECT 
           u.id, u.username, u.first_name, u.last_name, u.role, u.email,
-          u.hire_date, u.employment_type, u.is_active, u.net_salary,
+          u.hire_date, u.employment_type, u.is_active, 
+          COALESCE(u.net_salary, 0) as net_salary,
           b.id as branch_id, b.name as branch_name,
           eb.id as benefit_id, eb.meal_benefit_type, eb.meal_benefit_amount,
           eb.transport_benefit_type, eb.transport_benefit_amount,
@@ -19564,50 +19565,43 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       const { year, month, employeeId, status } = req.query;
       
-      let query = `
+      // Build conditions array for dynamic filtering
+      const conditions: any[] = [];
+      
+      // Personel sadece kendi kayıtlarını görebilir
+      if (!isAccountant) {
+        conditions.push(sql`pr.user_id = ${userId}`);
+      } else if (employeeId) {
+        conditions.push(sql`pr.user_id = ${employeeId}`);
+      }
+      
+      if (year) {
+        conditions.push(sql`pr.period_year = ${parseInt(year as string)}`);
+      }
+      
+      if (month) {
+        conditions.push(sql`pr.period_month = ${parseInt(month as string)}`);
+      }
+      
+      if (status) {
+        conditions.push(sql`pr.status = ${status}`);
+      }
+      
+      // Build WHERE clause
+      const whereClause = conditions.length > 0 
+        ? sql`WHERE ${sql.join(conditions, sql` AND `)}`
+        : sql``;
+      
+      const result = await db.execute(sql`
         SELECT pr.*, 
                u.first_name, u.last_name, u.username, u.role as employee_role,
                b.name as branch_name
         FROM payroll_records pr
         LEFT JOIN users u ON pr.user_id = u.id
         LEFT JOIN branches b ON pr.branch_id = b.id
-        WHERE 1=1
-      `;
-      const params: any[] = [];
-      let paramIndex = 1;
-      
-      // Personel sadece kendi kayıtlarını görebilir
-      if (!isAccountant) {
-        query += ` AND pr.user_id = $${paramIndex}`;
-        params.push(userId);
-        paramIndex++;
-      } else if (employeeId) {
-        query += ` AND pr.user_id = $${paramIndex}`;
-        params.push(employeeId);
-        paramIndex++;
-      }
-      
-      if (year) {
-        query += ` AND pr.period_year = $${paramIndex}`;
-        params.push(parseInt(year as string));
-        paramIndex++;
-      }
-      
-      if (month) {
-        query += ` AND pr.period_month = $${paramIndex}`;
-        params.push(parseInt(month as string));
-        paramIndex++;
-      }
-      
-      if (status) {
-        query += ` AND pr.status = $${paramIndex}`;
-        params.push(status);
-        paramIndex++;
-      }
-      
-      query += ` ORDER BY pr.period_year DESC, pr.period_month DESC, u.first_name`;
-      
-      const result = await db.execute(sql.raw(query, params));
+        ${whereClause}
+        ORDER BY pr.period_year DESC, pr.period_month DESC, u.first_name
+      `);
       res.json(result.rows);
     } catch (error) {
       console.error("Get payroll records error:", error);

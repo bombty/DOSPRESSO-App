@@ -30,7 +30,15 @@ import {
   Banknote,
   Receipt,
   Utensils,
-  Bus
+  Bus,
+  FileText,
+  Clock,
+  Plus,
+  Search,
+  Download,
+  Check,
+  XCircle,
+  Loader2
 } from "lucide-react";
 
 interface PayrollParameters {
@@ -64,6 +72,75 @@ interface PayrollParameters {
   notes?: string;
 }
 
+interface Employee {
+  id: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  role: string;
+  net_salary: number;
+  branch_name?: string;
+  branch_id?: number;
+}
+
+interface PayrollRecord {
+  id: number;
+  user_id: string;
+  branch_id?: number;
+  period_year: number;
+  period_month: number;
+  base_salary: number;
+  overtime_minutes: number;
+  overtime_amount: number;
+  bonus_type: string;
+  bonus_amount: number;
+  undertime_minutes: number;
+  undertime_deduction: number;
+  meal_allowance: number;
+  transport_allowance: number;
+  total_net_payable: number;
+  gross_salary: number;
+  sgk_employee: number;
+  sgk_employer: number;
+  income_tax: number;
+  stamp_tax: number;
+  status: 'draft' | 'pending_approval' | 'approved' | 'paid';
+  first_name?: string;
+  last_name?: string;
+  branch_name?: string;
+  created_at?: string;
+}
+
+interface PayrollCalculation {
+  employee: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    branchName?: string;
+    branchId?: number;
+  };
+  period: { year: number; month: number };
+  baseSalary: number;
+  overtimeMinutes: number;
+  overtimeAmount: number;
+  bonusType: string;
+  bonusBase: number;
+  bonusPercentage: string;
+  bonusAmount: number;
+  undertimeMinutes: number;
+  undertimeDeduction: number;
+  mealAllowance: number;
+  transportAllowance: number;
+  totalNetPayable: number;
+  grossSalary: number;
+  sgkEmployee: number;
+  sgkEmployer: number;
+  unemploymentEmployee: number;
+  unemploymentEmployer: number;
+  incomeTax: number;
+  stampTax: number;
+}
+
 function formatCurrency(value: number): string {
   return (value / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -71,6 +148,21 @@ function formatCurrency(value: number): string {
 function formatPercent(value: number): string {
   return (value / 10).toFixed(1);
 }
+
+const MONTHS = [
+  { value: 1, label: "Ocak" },
+  { value: 2, label: "Şubat" },
+  { value: 3, label: "Mart" },
+  { value: 4, label: "Nisan" },
+  { value: 5, label: "Mayıs" },
+  { value: 6, label: "Haziran" },
+  { value: 7, label: "Temmuz" },
+  { value: 8, label: "Ağustos" },
+  { value: 9, label: "Eylül" },
+  { value: 10, label: "Ekim" },
+  { value: 11, label: "Kasım" },
+  { value: 12, label: "Aralık" },
+];
 
 export default function Muhasebe() {
   const { user } = useAuth();
@@ -82,6 +174,11 @@ export default function Muhasebe() {
   const [calcNet, setCalcNet] = useState<string>("");
   const [calcCumulativeTaxBase, setCalcCumulativeTaxBase] = useState<string>("0");
   const [calcResult, setCalcResult] = useState<any>(null);
+  
+  // Bordro tab state
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+  const [payrollCalc, setPayrollCalc] = useState<PayrollCalculation | null>(null);
 
   const canEdit = user?.role === 'admin' || user?.role === 'muhasebe';
 
@@ -89,8 +186,124 @@ export default function Muhasebe() {
     queryKey: ['/api/payroll/parameters'],
   });
 
+  // Employees for payroll
+  const { data: employees = [] } = useQuery<Employee[]>({
+    queryKey: ['/api/employees-with-salary'],
+  });
+
+  // Payroll records for selected period - read year/month from queryKey context
+  const { data: payrollRecords = [], isLoading: isLoadingRecords } = useQuery<PayrollRecord[]>({
+    queryKey: ['/api/payroll/records', selectedYear, selectedMonth],
+    queryFn: async ({ queryKey }) => {
+      const [, year, month] = queryKey as [string, number, number];
+      const response = await apiRequest("GET", `/api/payroll/records?year=${year}&month=${month}`);
+      return response.json();
+    },
+  });
+
   const currentYearParams = parameters.find(p => p.year === selectedYear);
   const activeParams = parameters.find(p => p.isActive);
+
+  // Calculate payroll mutation
+  const calculateMutation = useMutation({
+    mutationFn: async (params: { userId: string; year: number; month: number }) => {
+      const response = await apiRequest("POST", '/api/payroll/calculate-employee', {
+        userId: params.userId,
+        year: params.year,
+        month: params.month,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setPayrollCalc(data);
+    },
+    onError: () => {
+      toast({ title: "Bordro hesaplanamadı", variant: "destructive" });
+    },
+  });
+  
+  const calculateEmployeePayroll = () => {
+    if (!selectedEmployeeId) {
+      toast({ title: "Personel seçin", variant: "destructive" });
+      return;
+    }
+    calculateMutation.mutate({ userId: selectedEmployeeId, year: selectedYear, month: selectedMonth });
+  };
+
+  // Save payroll record mutation with period in variables
+  const saveMutation = useMutation({
+    mutationFn: async (params: { calc: PayrollCalculation; year: number; month: number }) => {
+      return apiRequest("POST", '/api/payroll/records', {
+        userId: params.calc.employee.id,
+        branchId: params.calc.employee.branchId || null,
+        periodYear: params.year,
+        periodMonth: params.month,
+        baseSalary: params.calc.baseSalary,
+        overtimeMinutes: params.calc.overtimeMinutes,
+        overtimeRate: "1.5",
+        overtimeAmount: params.calc.overtimeAmount,
+        bonusType: params.calc.bonusType,
+        bonusBase: params.calc.bonusBase || params.calc.baseSalary,
+        bonusPercentage: params.calc.bonusPercentage || "0",
+        bonusAmount: params.calc.bonusAmount,
+        undertimeMinutes: params.calc.undertimeMinutes,
+        undertimeDeduction: params.calc.undertimeDeduction,
+        mealAllowance: params.calc.mealAllowance,
+        transportAllowance: params.calc.transportAllowance,
+        totalNetPayable: params.calc.totalNetPayable,
+        grossSalary: params.calc.grossSalary,
+        sgkEmployee: params.calc.sgkEmployee,
+        sgkEmployer: params.calc.sgkEmployer,
+        unemploymentEmployee: params.calc.unemploymentEmployee || 0,
+        unemploymentEmployer: params.calc.unemploymentEmployer || 0,
+        incomeTax: params.calc.incomeTax,
+        stampTax: params.calc.stampTax,
+        status: 'draft',
+      });
+    },
+    onSuccess: (_, variables) => {
+      toast({ title: "Bordro kaydedildi" });
+      setPayrollCalc(null);
+      setSelectedEmployeeId("");
+      queryClient.invalidateQueries({ queryKey: ['/api/payroll/records', variables.year, variables.month] });
+    },
+    onError: (err: any) => {
+      toast({ title: err.message || "Bordro kaydedilemedi", variant: "destructive" });
+    },
+  });
+
+  const savePayrollRecord = () => {
+    if (!payrollCalc) return;
+    saveMutation.mutate({ calc: payrollCalc, year: selectedYear, month: selectedMonth });
+  };
+
+  // Approve payroll mutation with period in variables
+  const approveMutation = useMutation({
+    mutationFn: async (params: { recordId: number; year: number; month: number }) => {
+      return apiRequest("PATCH", `/api/payroll/records/${params.recordId}/approve`);
+    },
+    onSuccess: (_, variables) => {
+      toast({ title: "Bordro onaylandı" });
+      queryClient.invalidateQueries({ queryKey: ['/api/payroll/records', variables.year, variables.month] });
+    },
+    onError: () => {
+      toast({ title: "Onaylama başarısız", variant: "destructive" });
+    },
+  });
+
+  // Mark as paid mutation with period in variables
+  const payMutation = useMutation({
+    mutationFn: async (params: { recordId: number; year: number; month: number }) => {
+      return apiRequest("PATCH", `/api/payroll/records/${params.recordId}/pay`);
+    },
+    onSuccess: (_, variables) => {
+      toast({ title: "Ödendi olarak işaretlendi" });
+      queryClient.invalidateQueries({ queryKey: ['/api/payroll/records', variables.year, variables.month] });
+    },
+    onError: () => {
+      toast({ title: "İşlem başarısız", variant: "destructive" });
+    },
+  });
 
   const updateMutation = useMutation({
     mutationFn: async (data: PayrollParameters) => {
@@ -189,8 +402,12 @@ export default function Muhasebe() {
           </div>
         </div>
 
-        <Tabs defaultValue="parameters" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="bordro" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="bordro" data-testid="tab-bordro">
+              <FileText className="h-4 w-4 mr-2" />
+              Bordro
+            </TabsTrigger>
             <TabsTrigger value="parameters" data-testid="tab-parameters">
               <Settings className="h-4 w-4 mr-2" />
               Parametreler
@@ -204,6 +421,266 @@ export default function Muhasebe() {
               Raporlar
             </TabsTrigger>
           </TabsList>
+
+          {/* BORDRO TAB */}
+          <TabsContent value="bordro" className="space-y-4 mt-4">
+            {/* Period Selection */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Dönem ve Personel Seçimi
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Yıl</Label>
+                    <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+                      <SelectTrigger data-testid="select-bordro-year">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2024">2024</SelectItem>
+                        <SelectItem value="2025">2025</SelectItem>
+                        <SelectItem value="2026">2026</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ay</Label>
+                    <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
+                      <SelectTrigger data-testid="select-bordro-month">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MONTHS.map(m => (
+                          <SelectItem key={m.value} value={m.value.toString()}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Personel</Label>
+                    <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId} disabled={employees.length === 0}>
+                      <SelectTrigger data-testid="select-bordro-employee">
+                        <SelectValue placeholder={employees.length === 0 ? "Personel yükleniyor..." : "Personel seçin..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            {emp.first_name} {emp.last_name} {emp.branch_name ? `(${emp.branch_name})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button 
+                  onClick={calculateEmployeePayroll} 
+                  disabled={!selectedEmployeeId || calculateMutation.isPending || employees.length === 0}
+                  className="w-full"
+                  data-testid="button-calculate-employee-payroll"
+                >
+                  {calculateMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Hesaplanıyor...</>
+                  ) : (
+                    <><Calculator className="h-4 w-4 mr-2" /> Bordro Hesapla</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Calculation Result */}
+            {payrollCalc && (
+              <Card className="border-green-200 dark:border-green-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      {payrollCalc.employee.firstName} {payrollCalc.employee.lastName} - {MONTHS[selectedMonth - 1]?.label} {selectedYear}
+                    </span>
+                    <Badge>{payrollCalc.bonusType === 'kasa_primi' ? 'Kasa Primi' : 'Normal Prim'}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div className="text-xs text-muted-foreground">Net Maaş</div>
+                      <div className="text-lg font-bold">{formatCurrency(payrollCalc.baseSalary)} TL</div>
+                    </div>
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <div className="text-xs text-muted-foreground">Mesai ({Math.round(payrollCalc.overtimeMinutes / 60)} saat)</div>
+                      <div className="text-lg font-bold text-green-600">+{formatCurrency(payrollCalc.overtimeAmount)} TL</div>
+                    </div>
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                      <div className="text-xs text-muted-foreground">Prim</div>
+                      <div className="text-lg font-bold text-purple-600">+{formatCurrency(payrollCalc.bonusAmount)} TL</div>
+                    </div>
+                    {payrollCalc.undertimeDeduction > 0 && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <div className="text-xs text-muted-foreground">Eksik Çalışma Kesintisi</div>
+                        <div className="text-lg font-bold text-red-600">-{formatCurrency(payrollCalc.undertimeDeduction)} TL</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {(payrollCalc.mealAllowance > 0 || payrollCalc.transportAllowance > 0) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Yemek Yardımı:</span>
+                        <span>+{formatCurrency(payrollCalc.mealAllowance)} TL</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Ulaşım Yardımı:</span>
+                        <span>+{formatCurrency(payrollCalc.transportAllowance)} TL</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Card className="bg-primary/10">
+                      <CardContent className="pt-4">
+                        <div className="text-sm text-muted-foreground">Ödenecek Net</div>
+                        <div className="text-2xl font-bold">{formatCurrency(payrollCalc.totalNetPayable)} TL</div>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-muted/50">
+                      <CardContent className="pt-4">
+                        <div className="text-sm text-muted-foreground">Hesaplanan Brüt</div>
+                        <div className="text-xl font-medium">{formatCurrency(payrollCalc.grossSalary)} TL</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">SGK İşçi:</span>
+                      <span className="text-red-600">-{formatCurrency(payrollCalc.sgkEmployee)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">SGK İşveren:</span>
+                      <span>{formatCurrency(payrollCalc.sgkEmployer)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Gelir Vergisi:</span>
+                      <span className="text-red-600">-{formatCurrency(payrollCalc.incomeTax)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Damga Vergisi:</span>
+                      <span className="text-red-600">-{formatCurrency(payrollCalc.stampTax)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={savePayrollRecord} 
+                      disabled={saveMutation.isPending}
+                      className="flex-1"
+                      data-testid="button-save-payroll"
+                    >
+                      {saveMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Kaydediliyor...</>
+                      ) : (
+                        <><Save className="h-4 w-4 mr-2" /> Taslak Olarak Kaydet</>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setPayrollCalc(null)}
+                      data-testid="button-cancel-payroll"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Existing Records */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  {MONTHS[selectedMonth - 1]?.label} {selectedYear} Bordro Kayıtları
+                </CardTitle>
+                <CardDescription>
+                  {payrollRecords.length} kayıt bulundu
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingRecords ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : payrollRecords.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Bu dönem için bordro kaydı yok.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {payrollRecords.map((record) => (
+                      <div 
+                        key={record.id} 
+                        className="flex items-center justify-between p-3 border rounded-lg hover-elevate"
+                        data-testid={`payroll-record-${record.id}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <div className="font-medium">{record.first_name} {record.last_name}</div>
+                            <div className="text-sm text-muted-foreground">{record.branch_name || 'Merkez'}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="font-bold">{formatCurrency(record.total_net_payable)} TL</div>
+                            <div className="text-xs text-muted-foreground">Net Ödeme</div>
+                          </div>
+                          <Badge 
+                            variant={
+                              record.status === 'paid' ? 'default' :
+                              record.status === 'approved' ? 'secondary' :
+                              record.status === 'pending_approval' ? 'outline' : 'outline'
+                            }
+                          >
+                            {record.status === 'paid' ? 'Ödendi' :
+                             record.status === 'approved' ? 'Onaylı' :
+                             record.status === 'pending_approval' ? 'Onay Bekliyor' : 'Taslak'}
+                          </Badge>
+                          {record.status === 'draft' && canEdit && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => approveMutation.mutate({ recordId: record.id, year: selectedYear, month: selectedMonth })}
+                              disabled={approveMutation.isPending}
+                              data-testid={`button-approve-${record.id}`}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {record.status === 'approved' && canEdit && (
+                            <Button 
+                              size="sm"
+                              onClick={() => payMutation.mutate({ recordId: record.id, year: selectedYear, month: selectedMonth })}
+                              disabled={payMutation.isPending}
+                              data-testid={`button-pay-${record.id}`}
+                            >
+                              <Banknote className="h-4 w-4 mr-1" />
+                              Ödendi
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="parameters" className="space-y-4 mt-4">
             {currentYearParams ? (
