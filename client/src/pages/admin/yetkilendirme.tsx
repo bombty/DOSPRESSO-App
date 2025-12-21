@@ -149,16 +149,28 @@ export default function AdminYetkilendirme() {
   });
 
   useEffect(() => {
-    if (rolePermissions.length > 0) {
-      const loaded: PermissionState = {};
-      rolePermissions.forEach((perm: any) => {
-        const actions = perm.actions || [];
-        loaded[perm.module] = {
-          view: actions.includes('view') || perm.canView || false,
-          edit: actions.includes('edit') || perm.canEdit || false,
-        };
+    if (selectedRole) {
+      // Initialize all modules with default view=false, edit=false
+      const defaultPermissions: PermissionState = {};
+      
+      MODULE_GROUPS.forEach((group) => {
+        group.modules.forEach((mod) => {
+          defaultPermissions[mod.key] = { view: false, edit: false };
+        });
       });
-      setPermissions(loaded);
+      
+      // Override with loaded permissions
+      if (rolePermissions.length > 0) {
+        rolePermissions.forEach((perm: any) => {
+          const actions = perm.actions || [];
+          defaultPermissions[perm.module] = {
+            view: actions.includes('view') || perm.canView || false,
+            edit: actions.includes('edit') || perm.canEdit || false,
+          };
+        });
+      }
+      
+      setPermissions(defaultPermissions);
       setHasChanges(false);
     }
   }, [rolePermissions, selectedRole]);

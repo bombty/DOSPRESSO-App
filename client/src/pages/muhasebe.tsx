@@ -186,7 +186,7 @@ export default function Muhasebe() {
   const canEdit = user?.role === 'admin' || user?.role === 'muhasebe';
   
   // Check if user has access to accounting module
-  const { data: hasAccess = false } = useQuery<boolean>({
+  const { data: hasAccess = false, isLoading: isLoadingAccess } = useQuery<boolean>({
     queryKey: ['/api/muhasebe/access'],
   });
 
@@ -208,6 +208,14 @@ export default function Muhasebe() {
       return response.json();
     },
   });
+
+  if (isLoadingAccess) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Skeleton className="w-full max-w-md h-24" />
+      </div>
+    );
+  }
 
   if (!hasAccess) {
     return (
