@@ -215,6 +215,23 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
     ],
   },
+  // Both: Accounting (Muhasebe)
+  {
+    id: "accounting",
+    titleTr: "Muhasebe",
+    icon: "Calculator",
+    scope: "both",
+    items: [
+      {
+        id: "accounting-main",
+        titleTr: "Muhasebe",
+        path: "/muhasebe",
+        icon: "Calculator",
+        moduleKey: "accounting",
+        scope: "both",
+      },
+    ],
+  },
   // HQ-Only: Quality
   {
     id: "quality",
@@ -330,10 +347,28 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
 
 // ========================================
 // MENU SERVICE
-// Server-side RBAC filtering
+// Server-side RBAC filtering with dynamic permissions support
 // ========================================
 
-function canAccessModule(role: UserRoleType, moduleKey: PermissionModule): boolean {
+// Dynamic permissions type from database
+export type DynamicPermissions = Array<{ role: string; module: string; actions: string[] }>;
+
+function canAccessModule(
+  role: UserRoleType, 
+  moduleKey: PermissionModule,
+  dynamicPermissions?: DynamicPermissions
+): boolean {
+  // First check dynamic permissions from database (takes priority)
+  if (dynamicPermissions) {
+    const dynamicPerm = dynamicPermissions.find(
+      p => p.role === role && p.module === moduleKey
+    );
+    if (dynamicPerm && dynamicPerm.actions.length > 0) {
+      return true;
+    }
+  }
+  
+  // Fallback to static PERMISSIONS matrix
   const rolePermissions = PERMISSIONS[role];
   if (!rolePermissions) return false;
   const modulePermissions = rolePermissions[moduleKey];
@@ -348,7 +383,8 @@ function isScopeAllowed(scope: SidebarMenuScope, userScope: 'branch' | 'hq' | 'a
 
 export function buildMenuForUser(
   user: { id: string; role: UserRoleType },
-  badges: Record<string, number> = {}
+  badges: Record<string, number> = {},
+  dynamicPermissions?: DynamicPermissions
 ): SidebarMenuResponse {
   const role = user.role;
   
@@ -372,8 +408,8 @@ export function buildMenuForUser(
       items: section.items.filter(item => {
         // Check scope
         if (!isScopeAllowed(item.scope, userScope)) return false;
-        // Check module permission
-        if (!canAccessModule(role, item.moduleKey)) return false;
+        // Check module permission (with dynamic permissions support)
+        if (!canAccessModule(role, item.moduleKey, dynamicPermissions)) return false;
         return true;
       }),
     }))

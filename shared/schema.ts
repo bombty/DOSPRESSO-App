@@ -160,7 +160,8 @@ export type PermissionModule =
   | 'complaints'
   | 'leave_requests'
   | 'overtime_requests'
-  | 'admin_settings';
+  | 'admin_settings'
+  | 'accounting';
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -187,6 +188,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create', 'edit', 'approve'],
     overtime_requests: ['view', 'create', 'edit', 'approve'],
     admin_settings: ['view'],
+    accounting: ['view', 'create', 'edit', 'delete'],
   },
   // HQ ROLES
   muhasebe: {
@@ -211,6 +213,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view'],
     overtime_requests: ['view'],
     admin_settings: [],
+    accounting: ['view', 'create', 'edit', 'delete'],
   },
   satinalma: {
     dashboard: ['view'],
@@ -234,6 +237,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    accounting: [],
   },
   coach: {
     dashboard: ['view'],
@@ -257,6 +261,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'approve'],
     overtime_requests: ['view', 'approve'],
     admin_settings: [],
+    accounting: [],
   },
   teknik: {
     dashboard: ['view'],
@@ -280,6 +285,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    accounting: [],
   },
   destek: {
     dashboard: ['view'],
@@ -303,6 +309,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    accounting: [],
   },
   fabrika: {
     dashboard: ['view'],
@@ -326,6 +333,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    accounting: [],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -349,6 +357,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    accounting: [],
   },
   // BRANCH ROLES
   supervisor: {
@@ -373,6 +382,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create', 'approve'],
     overtime_requests: ['view', 'create', 'approve'],
     admin_settings: [],
+    accounting: [],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -396,6 +406,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
     admin_settings: [],
+    accounting: [],
   },
   barista: {
     dashboard: ['view'],
@@ -419,6 +430,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
     admin_settings: [],
+    accounting: [],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -442,6 +454,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
     admin_settings: [],
+    accounting: [],
   },
   stajyer: {
     dashboard: ['view'],
@@ -465,6 +478,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
     admin_settings: [],
+    accounting: [],
   },
   yatirimci_branch: {
     dashboard: ['view'],
@@ -488,6 +502,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    accounting: [],
   },
 };
 

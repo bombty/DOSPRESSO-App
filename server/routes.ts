@@ -5785,13 +5785,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messages: messageCount,
       };
       
-      // Build menu using the new service
+      // Fetch dynamic permissions from database for this role
+      let dynamicPermissions: Array<{ role: string; module: string; actions: string[] }> = [];
+      try {
+        const allPermissions = await storage.getRolePermissions();
+        dynamicPermissions = allPermissions.filter(p => p.role === userRole);
+      } catch (e) {
+        console.error("Error fetching dynamic permissions:", e);
+        // Continue with static permissions if dynamic fails
+      }
+      
+      // Build menu using the new service with dynamic permissions
       const menuResponse = buildMenuForUser(
         { id: user.id, role: userRole },
-        badges
+        badges,
+        dynamicPermissions
       );
       
-      console.log(`[/api/me/menu v2] User: ${user.username}, Role: ${userRole}, Scope: ${menuResponse.meta.scope}, Sections: ${menuResponse.sections.length}`);
+      console.log(`[/api/me/menu v2] User: ${user.username}, Role: ${userRole}, Scope: ${menuResponse.meta.scope}, Sections: ${menuResponse.sections.length}, DynamicPerms: ${dynamicPermissions.length}`);
       
       return res.status(200).json(menuResponse);
     } catch (error) {
