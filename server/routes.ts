@@ -7567,6 +7567,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== USER PERMISSIONS ROUTES =====
+  
+  // GET /api/user/permissions - Get current user's permissions (for frontend permission checks)
+  app.get('/api/user/permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userRole = user.role;
+      
+      // Define default permissions per role (same structure as admin endpoint)
+      const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
+        admin: {
+          'academy.general': ['view', 'edit'], 'academy.hq': ['view', 'edit'], 'academy.analytics': ['view', 'edit'],
+          'academy.badges': ['view', 'edit'], 'academy.certificates': ['view', 'edit'], 'academy.leaderboard': ['view', 'edit'],
+          'academy.quizzes': ['view', 'edit'], 'academy.learning_paths': ['view', 'edit'], 'academy.ai': ['view', 'edit'],
+          'academy.social': ['view', 'edit'], 'academy.supervisor': ['view', 'edit'],
+        },
+        coach: {
+          'academy.general': ['view', 'edit'], 'academy.hq': ['view', 'edit'], 'academy.analytics': ['view', 'edit'],
+          'academy.badges': ['view', 'edit'], 'academy.certificates': ['view', 'edit'], 'academy.leaderboard': ['view', 'edit'],
+          'academy.quizzes': ['view', 'edit'], 'academy.learning_paths': ['view', 'edit'], 'academy.ai': ['view', 'edit'],
+          'academy.social': ['view', 'edit'], 'academy.supervisor': ['view', 'edit'],
+        },
+        supervisor: {
+          'academy.general': ['view'], 'academy.analytics': ['view'], 'academy.badges': ['view'], 
+          'academy.certificates': ['view'], 'academy.leaderboard': ['view'], 'academy.quizzes': ['view'],
+          'academy.learning_paths': ['view'], 'academy.supervisor': ['view', 'edit'],
+        },
+        supervisor_buddy: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'], 
+          'academy.leaderboard': ['view'], 'academy.quizzes': ['view'],
+        },
+        barista: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'], 
+          'academy.leaderboard': ['view'], 'academy.quizzes': ['view'], 'academy.learning_paths': ['view'],
+        },
+        bar_buddy: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'], 
+          'academy.leaderboard': ['view'], 'academy.quizzes': ['view'],
+        },
+        stajyer: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.quizzes': ['view'],
+        },
+        muhasebe: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
+        },
+        teknik: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
+        },
+        destek: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
+        },
+        satinalma: {
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
+        },
+        yatirimci_branch: {
+          'academy.analytics': ['view'],
+        },
+        yatirimci_hq: {
+          'academy.analytics': ['view'],
+        },
+        fabrika: {
+          'academy.general': ['view'], 'academy.badges': ['view'],
+        },
+      };
+
+      const roleDefaults = DEFAULT_ROLE_PERMISSIONS[userRole] || {};
+      
+      // Get any DB overrides
+      const dbPermissions = await storage.getRolePermissions();
+      const userDbPerms = dbPermissions.filter((p: any) => p.role === userRole);
+      
+      // Merge defaults with DB overrides
+      const permMap = new Map<string, string[]>();
+      for (const [mod, actions] of Object.entries(roleDefaults)) {
+        permMap.set(mod, actions);
+      }
+      for (const p of userDbPerms) {
+        permMap.set(p.module, p.actions || []);
+      }
+      
+      const result = Array.from(permMap.entries()).map(([module, actions]) => ({
+        module,
+        actions,
+        canView: actions.includes('view'),
+        canEdit: actions.includes('edit'),
+      }));
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching user permissions:", error);
+      res.status(500).json({ message: "İzinler yüklenirken hata oluştu" });
+    }
+  });
+
   // ===== ROLE PERMISSIONS ROUTES =====
   
   // GET /api/admin/role-permissions - Get all role permissions and modules
@@ -7581,12 +7675,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Define default module permissions for each role
+      // Academy sub-modules: academy.general, academy.hq, academy.analytics, academy.badges, 
+      // academy.certificates, academy.leaderboard, academy.quizzes, academy.learning_paths, 
+      // academy.ai, academy.social, academy.supervisor
       const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
         admin: {
           dashboard: ['view', 'edit'], tasks: ['view', 'edit'], checklists: ['view', 'edit'], branches: ['view', 'edit'],
           equipment: ['view', 'edit'], faults: ['view', 'edit'], equipment_analytics: ['view', 'edit'],
           quality_audit: ['view', 'edit'], audit_templates: ['view', 'edit'], capa: ['view', 'edit'],
-          academy: ['view', 'edit'], academy_management: ['view', 'edit'], knowledge_base: ['view', 'edit'], ai_assistant: ['view', 'edit'],
+          // Academy sub-modules - Admin has full access
+          'academy.general': ['view', 'edit'], 'academy.hq': ['view', 'edit'], 'academy.analytics': ['view', 'edit'],
+          'academy.badges': ['view', 'edit'], 'academy.certificates': ['view', 'edit'], 'academy.leaderboard': ['view', 'edit'],
+          'academy.quizzes': ['view', 'edit'], 'academy.learning_paths': ['view', 'edit'], 'academy.ai': ['view', 'edit'],
+          'academy.social': ['view', 'edit'], 'academy.supervisor': ['view', 'edit'],
           shifts: ['view', 'edit'], shift_planning: ['view', 'edit'], hr: ['view', 'edit'], attendance: ['view', 'edit'], leave_requests: ['view', 'edit'],
           accounting: ['view', 'edit'], reports: ['view', 'edit'], e2e_reports: ['view', 'edit'], cash_reports: ['view', 'edit'], hr_reports: ['view', 'edit'],
           lost_found: ['view', 'edit'], lost_found_hq: ['view', 'edit'],
@@ -7596,46 +7697,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         muhasebe: {
           dashboard: ['view'], accounting: ['view', 'edit'], reports: ['view'], cash_reports: ['view', 'edit'], hr_reports: ['view'],
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
         },
         coach: {
-          dashboard: ['view'], tasks: ['view', 'edit'], academy: ['view', 'edit'], academy_management: ['view', 'edit'], knowledge_base: ['view', 'edit'],
-          checklists: ['view'], hr: ['view'], quality_audit: ['view', 'edit'], audit_templates: ['view', 'edit'], capa: ['view', 'edit'],
+          dashboard: ['view'], tasks: ['view', 'edit'], checklists: ['view'], hr: ['view'], 
+          quality_audit: ['view', 'edit'], audit_templates: ['view', 'edit'], capa: ['view', 'edit'],
+          // Coach has full Academy access including HQ management
+          'academy.general': ['view', 'edit'], 'academy.hq': ['view', 'edit'], 'academy.analytics': ['view', 'edit'],
+          'academy.badges': ['view', 'edit'], 'academy.certificates': ['view', 'edit'], 'academy.leaderboard': ['view', 'edit'],
+          'academy.quizzes': ['view', 'edit'], 'academy.learning_paths': ['view', 'edit'], 'academy.ai': ['view', 'edit'],
+          'academy.social': ['view', 'edit'], 'academy.supervisor': ['view', 'edit'],
         },
         teknik: {
           dashboard: ['view'], equipment: ['view', 'edit'], faults: ['view', 'edit'], equipment_analytics: ['view'],
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
         },
         destek: {
           dashboard: ['view'], support: ['view', 'edit'], notifications: ['view', 'edit'], announcements: ['view'],
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
         },
         satinalma: {
           dashboard: ['view'], equipment: ['view', 'edit'], faults: ['view'], projects: ['view', 'edit'], new_branch_projects: ['view', 'edit'],
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'],
         },
         supervisor: {
           dashboard: ['view'], tasks: ['view', 'edit'], checklists: ['view', 'edit'], shifts: ['view'], shift_planning: ['view'], attendance: ['view', 'edit'],
           hr: ['view'], leave_requests: ['view', 'edit'], equipment: ['view'], faults: ['view', 'edit'], lost_found: ['view', 'edit'],
-          quality_audit: ['view', 'edit'], academy: ['view'],
+          quality_audit: ['view', 'edit'],
+          // Supervisor can access analytics and supervisor view
+          'academy.general': ['view'], 'academy.analytics': ['view'], 'academy.badges': ['view'], 
+          'academy.certificates': ['view'], 'academy.leaderboard': ['view'], 'academy.quizzes': ['view'],
+          'academy.learning_paths': ['view'], 'academy.supervisor': ['view', 'edit'],
         },
         supervisor_buddy: {
           dashboard: ['view'], tasks: ['view'], checklists: ['view', 'edit'], shifts: ['view'], attendance: ['view'], equipment: ['view'], faults: ['view', 'edit'],
-          lost_found: ['view', 'edit'], academy: ['view'],
+          lost_found: ['view', 'edit'],
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'], 
+          'academy.leaderboard': ['view'], 'academy.quizzes': ['view'],
         },
         barista: {
-          dashboard: ['view'], tasks: ['view'], checklists: ['view'], shifts: ['view'], academy: ['view'], lost_found: ['view'],
+          dashboard: ['view'], tasks: ['view'], checklists: ['view'], shifts: ['view'], lost_found: ['view'],
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'], 
+          'academy.leaderboard': ['view'], 'academy.quizzes': ['view'], 'academy.learning_paths': ['view'],
         },
         bar_buddy: {
-          dashboard: ['view'], tasks: ['view'], checklists: ['view'], shifts: ['view'], academy: ['view'], lost_found: ['view'],
+          dashboard: ['view'], tasks: ['view'], checklists: ['view'], shifts: ['view'], lost_found: ['view'],
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.certificates': ['view'], 
+          'academy.leaderboard': ['view'], 'academy.quizzes': ['view'],
         },
         stajyer: {
-          dashboard: ['view'], academy: ['view'], lost_found: ['view'],
+          dashboard: ['view'], lost_found: ['view'],
+          'academy.general': ['view'], 'academy.badges': ['view'], 'academy.quizzes': ['view'],
         },
         yatirimci_branch: {
           dashboard: ['view'], attendance: ['view'], shifts: ['view'], hr: ['view'],
+          'academy.analytics': ['view'],
         },
         fabrika: {
           dashboard: ['view'], equipment: ['view', 'edit'], faults: ['view'], quality_audit: ['view'],
+          'academy.general': ['view'], 'academy.badges': ['view'],
         },
         yatirimci_hq: {
           dashboard: ['view'], reports: ['view'], branches: ['view'], accounting: ['view'],
+          'academy.analytics': ['view'],
         },
       };
 

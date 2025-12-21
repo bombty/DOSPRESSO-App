@@ -53,6 +53,7 @@ import AcademyAIAssistant from "@/pages/academy-ai-assistant";
 import AcademyAdaptiveEngine from "@/pages/academy-adaptive-engine";
 import AcademySocialGroups from "@/pages/academy-social-groups";
 import AcademyAdvancedAnalytics from "@/pages/academy-advanced-analytics";
+import AcademySuite from "@/pages/academy-suite";
 import BadgeCollection from "@/pages/badge-collection";
 import GorevDetay from "@/pages/gorev-detay";
 import SubeGorevler from "@/pages/sube-gorevler";
@@ -175,28 +176,13 @@ function Router() {
           {/* Bilgi & İletişim */}
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
-          <Route path="/akademi" component={Academy} />
-          <Route path="/akademi-supervisor" component={AcademySupervisor} />
-          <Route path="/akademi-hq" component={AcademyHQ} />
+          
+          {/* Unified Academy Suite - Tüm akademi bölümleri tek sayfada */}
+          <Route path="/akademi" component={AcademySuite} />
           <Route path="/akademi-modul/:id" component={ModuleDetail} />
-          <Route path="/akademi-analytics" component={AcademyAnalytics} />
-          <Route path="/akademi-badges" component={AcademyBadges} />
-          <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />
-          <Route path="/akademi-leaderboard" component={AcademyLeaderboard} />
-          <Route path="/akademi-branch-analytics" component={AcademyBranchAnalytics} />
-          <Route path="/akademi-team-competitions" component={AcademyTeamCompetitions} />
-          <Route path="/akademi-certificates" component={AcademyCertificates} />
-          <Route path="/akademi-cohort-analytics" component={AcademyCohortAnalytics} />
-          <Route path="/akademi-learning-paths" component={AcademyLearningPaths} />
-          <Route path="/akademi-learning-path/:pathId" component={AcademyLearningPathDetail} />
-          <Route path="/akademi-achievements" component={AcademyAchievements} />
-          <Route path="/akademi-progress-overview" component={AcademyProgressOverview} />
-          <Route path="/akademi-streak-tracker" component={AcademyStreakTracker} />
-          <Route path="/akademi-ai-assistant" component={AcademyAIAssistant} />
-          <Route path="/akademi-adaptive-engine" component={AcademyAdaptiveEngine} />
-          <Route path="/akademi-social-groups" component={AcademySocialGroups} />
-          <Route path="/akademi-advanced-analytics" component={AcademyAdvancedAnalytics} />
           <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
+          <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />
+          <Route path="/akademi-learning-path/:pathId" component={AcademyLearningPathDetail} />
           <Route path="/recete/:id" component={ReceteDetay} />
           {/* DEPRECATED: Training moved to /akademi-hq - these routes redirect */}
           <Route path="/egitim/:id" component={ModuleDetail} />

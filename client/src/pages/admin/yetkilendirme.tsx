@@ -97,13 +97,20 @@ const MODULE_GROUPS = [
     ]
   },
   {
-    name: "Akademi",
+    name: "Akademi Paketi",
     icon: GraduationCap,
     modules: [
-      { key: "academy", label: "Akademi" },
-      { key: "academy_management", label: "Akademi Yönetimi" },
-      { key: "knowledge_base", label: "Bilgi Bankası" },
-      { key: "ai_assistant", label: "AI Asistan" },
+      { key: "academy.general", label: "Genel Eğitimler" },
+      { key: "academy.hq", label: "HQ Yönetim Paneli" },
+      { key: "academy.analytics", label: "Analitik & Raporlar" },
+      { key: "academy.badges", label: "Rozetler & Başarılar" },
+      { key: "academy.certificates", label: "Sertifikalar" },
+      { key: "academy.leaderboard", label: "Sıralama" },
+      { key: "academy.quizzes", label: "Quizler & Sınavlar" },
+      { key: "academy.learning_paths", label: "Öğrenme Yolları" },
+      { key: "academy.ai", label: "AI Asistan" },
+      { key: "academy.social", label: "Sosyal & Takımlar" },
+      { key: "academy.supervisor", label: "Supervisor Görünümü" },
     ]
   },
   {
