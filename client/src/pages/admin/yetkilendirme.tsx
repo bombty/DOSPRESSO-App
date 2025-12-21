@@ -25,7 +25,8 @@ import {
   MessageSquare,
   Settings,
   FileText,
-  ChevronRight
+  ChevronRight,
+  Calculator
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 
@@ -92,6 +93,13 @@ const MODULE_GROUPS = [
       { key: "hr", label: "İK Yönetimi" },
       { key: "attendance", label: "Devam Takibi" },
       { key: "leave_requests", label: "İzin Talepleri" },
+    ]
+  },
+  {
+    name: "Muhasebe & Mali",
+    icon: Calculator,
+    modules: [
+      { key: "accounting", label: "Muhasebe" },
     ]
   },
   {

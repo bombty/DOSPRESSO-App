@@ -7626,6 +7626,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/muhasebe/access - Check if user has access to accounting module
+  app.get('/api/muhasebe/access', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userRole = user.role;
+      
+      // Default roles with access: admin and muhasebe
+      const hasDefaultAccess = userRole === 'admin' || userRole === 'muhasebe';
+      
+      if (hasDefaultAccess) {
+        return res.json(true);
+      }
+      
+      // For other roles, check if they have explicit permission in database
+      const permissions = await storage.getRolePermissions();
+      const hasExplicitAccess = permissions.some((p: any) => 
+        p.role === userRole && p.module === 'accounting' && p.canView
+      );
+      
+      res.json(hasExplicitAccess);
+    } catch (error) {
+      console.error("Error checking accounting access:", error);
+      res.status(500).json(false);
+    }
+  });
+
   app.get('/api/overtime-requests', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;

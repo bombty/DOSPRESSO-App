@@ -184,6 +184,11 @@ export default function Muhasebe() {
   const [payrollCalc, setPayrollCalc] = useState<PayrollCalculation | null>(null);
 
   const canEdit = user?.role === 'admin' || user?.role === 'muhasebe';
+  
+  // Check if user has access to accounting module
+  const { data: hasAccess = false } = useQuery<boolean>({
+    queryKey: ['/api/muhasebe/access'],
+  });
 
   const { data: parameters = [], isLoading } = useQuery<PayrollParameters[]>({
     queryKey: ['/api/payroll/parameters'],
@@ -203,6 +208,26 @@ export default function Muhasebe() {
       return response.json();
     },
   });
+
+  if (!hasAccess) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Yetkisiz Erişim
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Bu modüle erişim izniniz yok. Erişim talep etmek için yöneticiye başvurunuz.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const currentYearParams = parameters.find(p => p.year === selectedYear);
   const activeParams = parameters.find(p => p.isActive);
