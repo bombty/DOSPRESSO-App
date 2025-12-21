@@ -30,6 +30,38 @@ export async function seedPermissionModules() {
     { moduleKey: 'complaints', moduleName: 'Şikayetler', category: 'shared', description: 'Şikayet yönetimi' },
     { moduleKey: 'leave_requests', moduleName: 'İzin Talepleri', category: 'shared', description: 'İzin talep yönetimi' },
     { moduleKey: 'overtime_requests', moduleName: 'Mesai Talepleri', category: 'shared', description: 'Mesai talep yönetimi' },
+    // Ekipman & Arıza Modülleri
+    { moduleKey: 'faults', moduleName: 'Arıza Yönetimi', category: 'shared', description: 'Arıza takibi ve yönetimi' },
+    { moduleKey: 'equipment_analytics', moduleName: 'Ekipman Analitik', category: 'hq', description: 'Ekipman analitik raporları' },
+    // Kalite & Denetim Modülleri
+    { moduleKey: 'quality_audit', moduleName: 'Kalite Denetimi', category: 'hq', description: 'Kalite denetim yönetimi' },
+    { moduleKey: 'audit_templates', moduleName: 'Denetim Şablonları', category: 'hq', description: 'Denetim şablon yönetimi' },
+    { moduleKey: 'capa', moduleName: 'CAPA Yönetimi', category: 'hq', description: 'Düzeltici ve önleyici faaliyetler' },
+    // Vardiya & İK Modülleri
+    { moduleKey: 'shifts', moduleName: 'Vardiyalar', category: 'shared', description: 'Vardiya yönetimi' },
+    { moduleKey: 'shift_planning', moduleName: 'Vardiya Planlama', category: 'hq', description: 'Vardiya planlama' },
+    // Finans Modülleri
+    { moduleKey: 'accounting', moduleName: 'Muhasebe', category: 'hq', description: 'Muhasebe işlemleri' },
+    // Raporlama Modülleri
+    { moduleKey: 'reports', moduleName: 'Performans Raporları', category: 'hq', description: 'Performans raporları' },
+    { moduleKey: 'e2e_reports', moduleName: 'E2E Raporlar', category: 'hq', description: 'Uçtan uca raporlar' },
+    { moduleKey: 'cash_reports', moduleName: 'Kasa Raporları', category: 'hq', description: 'Kasa raporları' },
+    { moduleKey: 'hr_reports', moduleName: 'İK Raporları', category: 'hq', description: 'İK raporları' },
+    // Kayıp Eşya Modülleri
+    { moduleKey: 'lost_found', moduleName: 'Kayıp Eşya', category: 'shared', description: 'Kayıp eşya takibi' },
+    { moduleKey: 'lost_found_hq', moduleName: 'Kayıp Eşya (HQ)', category: 'hq', description: 'Merkez kayıp eşya yönetimi' },
+    // Proje Modülleri
+    { moduleKey: 'projects', moduleName: 'Projeler', category: 'hq', description: 'Proje yönetimi' },
+    { moduleKey: 'new_branch_projects', moduleName: 'Yeni Şube Açılış', category: 'hq', description: 'Yeni şube açılış projeleri' },
+    // İletişim & Destek Modülleri
+    { moduleKey: 'support', moduleName: 'Destek Talepleri', category: 'shared', description: 'Destek talepleri' },
+    { moduleKey: 'notifications', moduleName: 'Bildirimler', category: 'shared', description: 'Bildirim sistemi' },
+    // Admin Modülleri
+    { moduleKey: 'settings', moduleName: 'Ayarlar', category: 'admin', description: 'Sistem ayarları' },
+    { moduleKey: 'menu_management', moduleName: 'Menü Yönetimi', category: 'admin', description: 'Menü yönetimi' },
+    { moduleKey: 'content_management', moduleName: 'İçerik Yönetimi', category: 'admin', description: 'İçerik yönetimi' },
+    { moduleKey: 'admin_panel', moduleName: 'Admin Panel', category: 'admin', description: 'Admin paneli erişimi' },
+    { moduleKey: 'authorization', moduleName: 'Yetkilendirme', category: 'admin', description: 'Rol ve yetki yönetimi' },
     // Akademi Paketi - Alt Modüller
     { moduleKey: 'academy.general', moduleName: 'Genel Akademi', category: 'academy', description: 'Temel akademi erişimi ve modüller' },
     { moduleKey: 'academy.hq', moduleName: 'HQ Akademi', category: 'academy', description: 'Merkez eğitim yönetimi' },
