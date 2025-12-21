@@ -19255,10 +19255,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
   // Helper function to check if user has accounting access (dynamic permissions)
   const hasAccountingAccess = async (userRole: string): Promise<boolean> => {
-    if (userRole === 'admin' || userRole === 'muhasebe' || isHQRole(userRole as UserRoleType)) {
+    // Legacy default access roles
+    if (userRole === 'admin' || userRole === 'muhasebe' || userRole === 'yatirimci_branch' || isHQRole(userRole as UserRoleType)) {
       return true;
     }
-    // Check dynamic permissions
+    // Check dynamic permissions for other roles
     const permissions = await storage.getRolePermissions();
     return permissions.some((p: any) => 
       p.role === userRole && p.module === 'accounting' && (p.actions || []).includes('view')
