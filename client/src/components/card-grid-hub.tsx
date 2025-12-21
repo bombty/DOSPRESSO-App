@@ -52,10 +52,20 @@ export function CardGridHub() {
   const isBranch = user && isBranchRole(user.role as any);
 
   // Fetch menu items from API (dynamic permissions)
-  const { data: menuModules = [] } = useQuery<any[]>({
+  const { data: menuResponse } = useQuery<any>({
     queryKey: ["/api/me/menu"],
     enabled: !!user,
   });
+  
+  // Flatten sections.items into a single array of modules
+  const menuModules = menuResponse?.sections?.flatMap((section: any) => 
+    section.items?.map((item: any) => ({
+      id: item.id,
+      label: item.titleTr,
+      path: item.path,
+      description: item.description || section.titleTr,
+    })) || []
+  ) || [];
 
   // Fetch counts for badges
   const { data: faults = [] } = useQuery<any[]>({
@@ -337,95 +347,206 @@ export function CardGridHub() {
   ];
 
   // Eğer API'den modüller gelmişse onları kullan, yoksa statik fallback
-  const getIcon = (moduleId: string) => {
+  const getIcon = (moduleId: string | undefined | null) => {
+    if (!moduleId) return Coffee;
     const iconMap: Record<string, any> = {
       "akademi": GraduationCap,
       "akademi-hq": GraduationCap,
       "academy": GraduationCap,
       "academy-hq": GraduationCap,
+      "academy-main": GraduationCap,
       "tasklar": ClipboardList,
       "tasks": ClipboardList,
       "tasks-hq": ClipboardList,
+      "tasks-main": ClipboardList,
       "ariza": Wrench,
       "arızalar": Wrench,
       "faults": Wrench,
+      "faults-main": Wrench,
       "vardiya": Calendar,
       "vardiyalar": Calendar,
       "shifts": Calendar,
       "shifts-hq": Calendar,
+      "shifts-main": Calendar,
       "checklistler": CheckSquare,
       "checklists": CheckSquare,
       "checklists-hq": CheckSquare,
+      "checklists-main": CheckSquare,
       "kayip-esya": Briefcase,
       "kayip-esya-hq": Briefcase,
       "lost-found": Briefcase,
+      "lost-found-hq": Briefcase,
       "ekipman": Coffee,
       "equipment": Coffee,
+      "equipment-main": Coffee,
       "destek": MessageSquare,
       "support": MessageSquare,
       "hq-destek": MessageSquare,
+      "support-main": MessageSquare,
       "ik": Users,
       "hr": Users,
+      "hr-main": Users,
       "muhasebe": Calculator,
+      "accounting": Calculator,
+      "accounting-main": Calculator,
       "raporlar": BarChart3,
       "reports": BarChart3,
+      "reports-main": BarChart3,
       "bilgi-bankasi": BookOpen,
       "knowledge": BookOpen,
+      "knowledge-main": BookOpen,
       "performans": BarChart3,
       "performance": BarChart3,
+      "performance-main": BarChart3,
       "projeler": FolderKanban,
       "projects": FolderKanban,
+      "projects-main": FolderKanban,
       "ayarlar": Settings,
       "settings": Settings,
+      "settings-main": Settings,
       "yonetim": Settings,
       "admin": Shield,
+      "admin-main": Shield,
       "ai-asistan": Bot,
+      "ai-assistant": Bot,
+      "ai-main": Bot,
       "kalite-denetimi": Star,
       "quality": Star,
+      "quality-main": Star,
       "kullanicilar": Users,
       "users": Users,
+      "users-main": Users,
+      "dashboard": Building2,
+      "dashboard-main": Building2,
+      "branch-dashboard": Building2,
+      "branches": Building2,
+      "branches-list": Building2,
+      "qr-scan": Coffee,
+      "tasks-list": ClipboardList,
+      "training-academy": GraduationCap,
+      "knowledge-base": BookOpen,
+      "performance-dashboard": BarChart3,
+      "quality-control": Star,
+      "ai-chat": Bot,
+      "project-list": FolderKanban,
+      "notifications": MessageSquare,
+      "messages": MessageSquare,
+      "hq-support": MessageSquare,
     };
     return iconMap[moduleId.toLowerCase()] || Coffee;
   };
 
-  const getColor = (moduleId: string) => {
+  const getColor = (moduleId: string | undefined | null) => {
+    if (!moduleId) return "bg-slate-400";
     const colorMap: Record<string, string> = {
       "akademi": "bg-blue-500",
       "akademi-hq": "bg-blue-500",
       "academy": "bg-blue-500",
+      "academy-main": "bg-blue-500",
       "tasklar": "bg-green-500",
       "tasks": "bg-green-500",
+      "tasks-main": "bg-green-500",
       "ariza": "bg-orange-500",
       "arızalar": "bg-orange-500",
+      "faults": "bg-orange-500",
+      "faults-main": "bg-orange-500",
       "vardiya": "bg-purple-500",
+      "shifts": "bg-purple-500",
+      "shifts-main": "bg-purple-500",
       "checklistler": "bg-teal-500",
+      "checklists": "bg-teal-500",
+      "checklists-main": "bg-teal-500",
       "kayip-esya": "bg-yellow-600",
+      "lost-found": "bg-yellow-600",
+      "lost-found-hq": "bg-yellow-600",
       "ekipman": "bg-amber-600",
+      "equipment": "bg-amber-600",
+      "equipment-main": "bg-amber-600",
       "destek": "bg-blue-500",
+      "support": "bg-rose-500",
+      "support-main": "bg-rose-500",
       "ik": "bg-pink-500",
+      "hr": "bg-pink-500",
+      "hr-main": "bg-pink-500",
       "muhasebe": "bg-emerald-600",
+      "accounting": "bg-emerald-600",
+      "accounting-main": "bg-emerald-600",
       "raporlar": "bg-cyan-500",
+      "reports": "bg-cyan-500",
+      "reports-main": "bg-cyan-500",
       "bilgi-bankasi": "bg-emerald-500",
+      "knowledge": "bg-emerald-500",
+      "knowledge-main": "bg-emerald-500",
       "performans": "bg-cyan-500",
+      "performance": "bg-cyan-500",
+      "performance-main": "bg-cyan-500",
       "projeler": "bg-violet-600",
+      "projects": "bg-violet-600",
+      "projects-main": "bg-violet-600",
       "ayarlar": "bg-slate-600",
+      "settings": "bg-slate-600",
+      "settings-main": "bg-slate-600",
       "admin": "bg-red-600",
+      "admin-main": "bg-red-600",
       "ai-asistan": "bg-violet-500",
+      "ai-assistant": "bg-violet-500",
+      "ai-main": "bg-violet-500",
       "kalite-denetimi": "bg-amber-500",
+      "quality": "bg-amber-500",
+      "quality-main": "bg-amber-500",
       "kullanicilar": "bg-sky-500",
+      "users": "bg-sky-500",
+      "users-main": "bg-sky-500",
+      "dashboard": "bg-indigo-500",
+      "dashboard-main": "bg-indigo-500",
+      "branch-dashboard": "bg-indigo-500",
+      "branches": "bg-indigo-500",
+      "branches-list": "bg-indigo-500",
+      "qr-scan": "bg-gray-500",
+      "tasks-list": "bg-green-500",
+      "training-academy": "bg-blue-500",
+      "knowledge-base": "bg-emerald-500",
+      "performance-dashboard": "bg-cyan-500",
+      "quality-control": "bg-amber-500",
+      "ai-chat": "bg-violet-500",
+      "project-list": "bg-violet-600",
+      "notifications": "bg-rose-500",
+      "messages": "bg-blue-400",
+      "hq-support": "bg-rose-500",
     };
     return colorMap[moduleId.toLowerCase()] || "bg-slate-400";
   };
 
+  // Badge mapping for dynamic modules
+  const getBadge = (moduleId: string | undefined | null): number | undefined => {
+    if (!moduleId) return undefined;
+    const id = moduleId.toLowerCase();
+    if (id.includes('task') || id.includes('gorev')) return pendingTasks > 0 ? pendingTasks : undefined;
+    if (id.includes('fault') || id.includes('ariza')) return openFaults > 0 ? openFaults : undefined;
+    return undefined;
+  };
+
+  // Helper to normalize module key from id, label, or path
+  const normalizeModuleKey = (m: any): string => {
+    if (m.id) return m.id;
+    if (m.label) return m.label.toLowerCase().replace(/\s+/g, '-');
+    if (m.path) return m.path.replace(/^\//, '').replace(/\//g, '-');
+    return 'unknown-module';
+  };
+
   const modules = menuModules && menuModules.length > 0 
-    ? menuModules.map(m => ({
-        id: m.id || m.label?.toLowerCase().replace(/\s+/g, '-'),
-        icon: getIcon(m.id),
-        label: m.label,
-        path: m.path,
-        color: getColor(m.id),
-        description: m.description,
-      }))
+    ? menuModules.map(m => {
+        const moduleKey = normalizeModuleKey(m);
+        return {
+          id: moduleKey,
+          icon: getIcon(moduleKey),
+          label: m.label,
+          path: m.path,
+          color: getColor(moduleKey),
+          description: m.description,
+          badge: getBadge(moduleKey),
+        };
+      })
     : (isHQ ? hqModules : branchModules);
 
   return (
