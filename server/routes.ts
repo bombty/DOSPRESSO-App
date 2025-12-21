@@ -19816,18 +19816,28 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const employee = userResult.rows[0] as any;
       const baseSalary = employee.net_salary || 0; // kuruş cinsinden
       
-      // 2. Yan hakları al
+      // 2. Yan hakları al - Önce users tablosundan varsayılan değerleri, sonra employee_benefits'ten özel değerleri
+      const userMealAllowance = employee.meal_allowance || 0; // users tablosundan (kuruş/ay)
+      const userTransportAllowance = employee.transport_allowance || 0; // users tablosundan (kuruş/ay)
+      const userBonusBase = employee.bonus_base || 0; // users tablosundan (kuruş)
+      
       const benefitsResult = await db.execute(sql`
         SELECT * FROM employee_benefits
         WHERE user_id = ${userId} AND is_active = true
         LIMIT 1
       `);
       
-      const benefits = benefitsResult.rows[0] as any || {};
-      const mealAllowance = (benefits.meal_benefit_amount || 0) * 22; // 22 iş günü
-      const transportAllowance = (benefits.transport_benefit_amount || 0) * 22;
-      const bonusPercentage = parseFloat(benefits.bonus_percentage || '0');
-      const bonusEligible = benefits.bonus_eligible !== false;
+      const benefits = benefitsResult.rows[0] as any;
+      // employee_benefits kaydı varsa (0 dahil geçerli) onu kullan, yoksa users tablosundan varsayılanları
+      const hasBenefitsRecord = benefitsResult.rows.length > 0;
+      const mealAllowance = hasBenefitsRecord && benefits.meal_benefit_amount !== null && benefits.meal_benefit_amount !== undefined
+        ? benefits.meal_benefit_amount * 22 // 22 iş günü (günlük değerden aylığa)
+        : userMealAllowance; // users tablosundan aylık değer
+      const transportAllowance = hasBenefitsRecord && benefits.transport_benefit_amount !== null && benefits.transport_benefit_amount !== undefined
+        ? benefits.transport_benefit_amount * 22
+        : userTransportAllowance; // users tablosundan aylık değer
+      const bonusPercentage = parseFloat(benefits?.bonus_percentage || '0');
+      const bonusEligible = benefits?.bonus_eligible !== false;
       
       // 3. Onaylı mesai al
       const periodStr = `${year}-${String(month).padStart(2, '0')}`;
@@ -19865,7 +19875,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       // 5. Prim hesaplama
       // Şube personeli: kasa primi, fabrika: normal prim
       const bonusType = employee.branch_id ? 'kasa_primi' : 'normal';
-      const bonusBase = baseSalary;
+      // Prim matrahı: users tablosundan varsa onu kullan, yoksa base salary
+      const bonusBase = userBonusBase > 0 ? userBonusBase : baseSalary;
       let bonusAmount = 0;
       
       if (bonusEligible && bonusPercentage > 0) {
