@@ -183,7 +183,7 @@ export default function Muhasebe() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [payrollCalc, setPayrollCalc] = useState<PayrollCalculation | null>(null);
 
-  const canEdit = user?.role === 'admin' || user?.role === 'muhasebe' || user?.role === 'hq_muhasebe';
+  const canEdit = user?.role === 'admin' || user?.role === 'muhasebe';
 
   const { data: parameters = [], isLoading } = useQuery<PayrollParameters[]>({
     queryKey: ['/api/payroll/parameters'],
