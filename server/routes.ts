@@ -7622,6 +7622,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         barista: {
           dashboard: ['view'], tasks: ['view'], checklists: ['view'], shifts: ['view'], academy: ['view'], lost_found: ['view'],
         },
+        bar_buddy: {
+          dashboard: ['view'], tasks: ['view'], checklists: ['view'], shifts: ['view'], academy: ['view'], lost_found: ['view'],
+        },
+        stajyer: {
+          dashboard: ['view'], academy: ['view'], lost_found: ['view'],
+        },
+        yatirimci_branch: {
+          dashboard: ['view'], attendance: ['view'], shifts: ['view'], hr: ['view'],
+        },
+        fabrika: {
+          dashboard: ['view'], equipment: ['view', 'edit'], faults: ['view'], quality_audit: ['view'],
+        },
+        yatirimci_hq: {
+          dashboard: ['view'], reports: ['view'], branches: ['view'], accounting: ['view'],
+        },
       };
 
       // Get role's default permissions

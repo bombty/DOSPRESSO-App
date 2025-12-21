@@ -482,7 +482,7 @@ export default function AdminYetkilendirme() {
             </div>
             <div>
               <Label>Rol Kapsamı</Label>
-              <Select value={newRoleScope} onValueChange={(v: any) => setNewRoleScope(v)}>
+              <Select value={newRoleScope} onValueChange={(v) => setNewRoleScope(v as "admin" | "hq" | "branch")}>
                 <SelectTrigger data-testid="select-role-scope">
                   <SelectValue />
                 </SelectTrigger>
