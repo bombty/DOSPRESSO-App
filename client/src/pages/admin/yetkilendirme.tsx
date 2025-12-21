@@ -26,7 +26,9 @@ import {
   Settings,
   FileText,
   ChevronRight,
-  Calculator
+  Calculator,
+  Package,
+  FolderKanban
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 
@@ -76,12 +78,22 @@ const MODULE_GROUPS = [
     ]
   },
   {
+    name: "Kalite & Denetim",
+    icon: Shield,
+    modules: [
+      { key: "quality_audit", label: "Kalite Denetimi" },
+      { key: "audit_templates", label: "Denetim Şablonları" },
+      { key: "capa", label: "CAPA Yönetimi" },
+    ]
+  },
+  {
     name: "Akademi",
     icon: GraduationCap,
     modules: [
       { key: "academy", label: "Akademi" },
       { key: "academy_management", label: "Akademi Yönetimi" },
       { key: "knowledge_base", label: "Bilgi Bankası" },
+      { key: "ai_assistant", label: "AI Asistan" },
     ]
   },
   {
@@ -113,22 +125,41 @@ const MODULE_GROUPS = [
     ]
   },
   {
+    name: "Kayıp & Eşya",
+    icon: Package,
+    modules: [
+      { key: "lost_found", label: "Kayıp Eşya" },
+      { key: "lost_found_hq", label: "Kayıp Eşya (HQ)" },
+    ]
+  },
+  {
+    name: "Projeler",
+    icon: FolderKanban,
+    modules: [
+      { key: "projects", label: "Projeler" },
+      { key: "new_branch_projects", label: "Yeni Şube Açılış" },
+    ]
+  },
+  {
     name: "Destek & İletişim",
     icon: MessageSquare,
     modules: [
       { key: "support", label: "Destek Talepleri" },
       { key: "notifications", label: "Bildirimler" },
       { key: "announcements", label: "Duyurular" },
+      { key: "messages", label: "Mesajlar" },
     ]
   },
   {
-    name: "Yönetim",
+    name: "Yönetim & Admin",
     icon: Settings,
     modules: [
       { key: "settings", label: "Ayarlar" },
       { key: "users", label: "Kullanıcılar" },
       { key: "menu_management", label: "Menü Yönetimi" },
       { key: "content_management", label: "İçerik Yönetimi" },
+      { key: "admin_panel", label: "Admin Panel" },
+      { key: "authorization", label: "Yetkilendirme" },
     ]
   },
 ];
@@ -145,6 +176,11 @@ export default function AdminYetkilendirme() {
 
   const { data: rolePermissions = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/role-permissions", selectedRole],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/role-permissions?role=${encodeURIComponent(selectedRole || '')}`);
+      if (!response.ok) throw new Error('Failed to fetch permissions');
+      return response.json();
+    },
     enabled: user?.role === "admin" && !!selectedRole,
   });
 

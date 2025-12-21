@@ -146,7 +146,7 @@ export default function KayipEsyaPage() {
     setSelectedItem(item);
   };
 
-  const formatDate = (date) => {
+  const formatDate = (date: string | Date | null) => {
     if (!date) return "-";
     try {
       return format(new Date(date), "dd MMM yyyy HH:mm", { locale: tr });
@@ -185,7 +185,7 @@ export default function KayipEsyaPage() {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <Card className="hover-elevate">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ export default function KayipEsyaPage() {
 
         <TabsContent value="bulunan" className="mt-3">
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => <ItemSkeleton key={i} />)}
             </div>
           ) : foundItems.length === 0 ? (
@@ -250,7 +250,7 @@ export default function KayipEsyaPage() {
               <p className="text-sm">Bekleyen bulunan eşya yok</p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {foundItems.map((item) => (
                 <Card key={item.id} className="hover-elevate cursor-pointer" data-testid={`card-item-${item.id}`} onClick={() => openDetailDialog(item)}>
                   <CardContent className="p-3 space-y-2">
@@ -314,7 +314,7 @@ export default function KayipEsyaPage() {
 
         <TabsContent value="teslim" className="mt-3">
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => <ItemSkeleton key={i} />)}
             </div>
           ) : handedOverItems.length === 0 ? (
@@ -323,7 +323,7 @@ export default function KayipEsyaPage() {
               <p className="text-sm">Henüz teslim edilen eşya yok</p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {handedOverItems.map((item) => (
                 <Card key={item.id} className="hover-elevate opacity-80" data-testid={`card-item-${item.id}`}>
                   <CardContent className="p-3 space-y-2">

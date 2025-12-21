@@ -6,7 +6,28 @@ DOSPRESSO is a web-based platform designed to centralize and streamline coffee s
 ## User Preferences
 Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
 
-## Recent Session Summary (Dec 16, 2025 - Test Users & Bug Fixes)
+## Recent Session Summary (Dec 21, 2025 - Module Authorization & Grid System)
+✅ **Module Authorization System (Modüller)**:
+  - All dashboard features are now called "Modüller" (Modules)
+  - Each module has role-based access control via admin/yetkilendirme page
+  - 11 module groups with 30+ modules: Operations, Equipment, Quality Audit, Academy, HR, Accounting, Reports, Lost&Found, Projects, Support, Admin
+  - Default permissions defined per role in server/routes.ts (lines 7586-7628)
+  - Admin can grant/revoke module access from /admin/yetkilendirme
+  - Files: client/src/pages/admin/yetkilendirme.tsx, server/routes.ts
+
+✅ **Responsive Grid System**:
+  - Standard grid pattern for all module pages: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3`
+  - Stat cards: `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3`
+  - Applied to: kayip-esya.tsx, kayip-esya-hq.tsx
+
+📋 **IMPORTANT: New Module Checklist**
+When adding a new module/feature:
+1. Add to MODULE_GROUPS in client/src/pages/admin/yetkilendirme.tsx
+2. Add default permissions in server/routes.ts DEFAULT_ROLE_PERMISSIONS object
+3. Use responsive grid layout: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3`
+4. Never use `flex flex-col` for card lists - always use grid
+
+## Previous Session Summary (Dec 16, 2025 - Test Users & Bug Fixes)
 ✅ **PDF Export Fix**: Added jspdf-autotable side-effect import to fix `doc.autoTable is not a function` error
   - client/src/pages/raporlar.tsx: Line 24 - `import "jspdf-autotable";`
 

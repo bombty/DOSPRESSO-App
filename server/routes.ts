@@ -7580,23 +7580,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
       }
 
-      // Fetch permissions from database
-      const permissions = await storage.getRolePermissions();
+      // Define default module permissions for each role
+      const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
+        admin: {
+          dashboard: ['view', 'edit'], tasks: ['view', 'edit'], checklists: ['view', 'edit'], branches: ['view', 'edit'],
+          equipment: ['view', 'edit'], faults: ['view', 'edit'], equipment_analytics: ['view', 'edit'],
+          quality_audit: ['view', 'edit'], audit_templates: ['view', 'edit'], capa: ['view', 'edit'],
+          academy: ['view', 'edit'], academy_management: ['view', 'edit'], knowledge_base: ['view', 'edit'], ai_assistant: ['view', 'edit'],
+          shifts: ['view', 'edit'], shift_planning: ['view', 'edit'], hr: ['view', 'edit'], attendance: ['view', 'edit'], leave_requests: ['view', 'edit'],
+          accounting: ['view', 'edit'], reports: ['view', 'edit'], e2e_reports: ['view', 'edit'], cash_reports: ['view', 'edit'], hr_reports: ['view', 'edit'],
+          lost_found: ['view', 'edit'], lost_found_hq: ['view', 'edit'],
+          projects: ['view', 'edit'], new_branch_projects: ['view', 'edit'],
+          support: ['view', 'edit'], notifications: ['view', 'edit'], announcements: ['view', 'edit'], messages: ['view', 'edit'],
+          settings: ['view', 'edit'], users: ['view', 'edit'], menu_management: ['view', 'edit'], content_management: ['view', 'edit'], admin_panel: ['view', 'edit'], authorization: ['view', 'edit'],
+        },
+        muhasebe: {
+          dashboard: ['view'], accounting: ['view', 'edit'], reports: ['view'], cash_reports: ['view', 'edit'], hr_reports: ['view'],
+        },
+        coach: {
+          dashboard: ['view'], tasks: ['view', 'edit'], academy: ['view', 'edit'], academy_management: ['view', 'edit'], knowledge_base: ['view', 'edit'],
+          checklists: ['view'], hr: ['view'], quality_audit: ['view', 'edit'], audit_templates: ['view', 'edit'], capa: ['view', 'edit'],
+        },
+        teknik: {
+          dashboard: ['view'], equipment: ['view', 'edit'], faults: ['view', 'edit'], equipment_analytics: ['view'],
+        },
+        destek: {
+          dashboard: ['view'], support: ['view', 'edit'], notifications: ['view', 'edit'], announcements: ['view'],
+        },
+        satinalma: {
+          dashboard: ['view'], equipment: ['view', 'edit'], faults: ['view'], projects: ['view', 'edit'], new_branch_projects: ['view', 'edit'],
+        },
+        supervisor: {
+          dashboard: ['view'], tasks: ['view', 'edit'], checklists: ['view', 'edit'], shifts: ['view'], shift_planning: ['view'], attendance: ['view', 'edit'],
+          hr: ['view'], leave_requests: ['view', 'edit'], equipment: ['view'], faults: ['view', 'edit'], lost_found: ['view', 'edit'],
+          quality_audit: ['view', 'edit'], academy: ['view'],
+        },
+        supervisor_buddy: {
+          dashboard: ['view'], tasks: ['view'], checklists: ['view', 'edit'], shifts: ['view'], attendance: ['view'], equipment: ['view'], faults: ['view', 'edit'],
+          lost_found: ['view', 'edit'], academy: ['view'],
+        },
+        barista: {
+          dashboard: ['view'], tasks: ['view'], checklists: ['view'], shifts: ['view'], academy: ['view'], lost_found: ['view'],
+        },
+      };
+
+      // Get role's default permissions
+      const roleDefaults = roleFilter && DEFAULT_ROLE_PERMISSIONS[roleFilter as string] 
+        ? DEFAULT_ROLE_PERMISSIONS[roleFilter as string] 
+        : {};
+
+      // Fetch explicit permissions from database (overrides)
+      const dbPermissions = await storage.getRolePermissions();
+      const dbFiltered = roleFilter 
+        ? dbPermissions.filter((p: any) => p.role === roleFilter)
+        : dbPermissions;
+
+      // Create map of DB permissions for easy lookup
+      const dbPermMap = new Map<string, string[]>();
+      dbFiltered.forEach((p: any) => {
+        dbPermMap.set(p.module, p.actions || []);
+      });
+
+      // Merge: Start with defaults, override with DB permissions
+      const mergedPerms: Array<{ module: string; actions: string[]; canView: boolean; canEdit: boolean }> = [];
       
-      // Filter by role if provided
-      const filtered = roleFilter 
-        ? permissions.filter((p: any) => p.role === roleFilter)
-        : permissions;
+      // Add all default permissions
+      for (const [module, actions] of Object.entries(roleDefaults)) {
+        const dbActions = dbPermMap.get(module);
+        const finalActions = dbActions !== undefined ? dbActions : actions;
+        mergedPerms.push({
+          module,
+          actions: finalActions,
+          canView: finalActions.includes('view'),
+          canEdit: finalActions.includes('edit'),
+        });
+        dbPermMap.delete(module); // Remove from map so we don't add it twice
+      }
+
+      // Add any DB-only permissions (not in defaults)
+      for (const [module, actions] of dbPermMap.entries()) {
+        mergedPerms.push({
+          module,
+          actions,
+          canView: actions.includes('view'),
+          canEdit: actions.includes('edit'),
+        });
+      }
       
-      // Convert storage format to UI format with canView/canEdit
-      const formattedPerms = filtered.map((p: any) => ({
-        module: p.module,
-        actions: p.actions || [],
-        canView: (p.actions || []).includes('view'),
-        canEdit: (p.actions || []).includes('edit'),
-      }));
-      
-      res.json(formattedPerms);
+      res.json(mergedPerms);
     } catch (error) {
       console.error("Error fetching role permissions:", error);
       res.status(500).json({ message: "Rol yetkileri yüklenirken hata oluştu" });

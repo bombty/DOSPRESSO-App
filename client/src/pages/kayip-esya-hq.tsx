@@ -80,7 +80,7 @@ export default function KayipEsyaHQPage() {
     };
   }, [items]);
 
-  const formatDate = (date) => {
+  const formatDate = (date: string | Date | null) => {
     if (!date) return "-";
     try {
       return format(new Date(date), "dd MMM yyyy HH:mm", { locale: tr });
@@ -104,7 +104,7 @@ export default function KayipEsyaHQPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-5 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <Card className="hover-elevate">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
@@ -212,7 +212,7 @@ export default function KayipEsyaHQPage() {
         </CardHeader>
         <CardContent className="p-3">
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {Array.from({ length: 6 }).map((_, i) => <ItemSkeleton key={i} />)}
             </div>
           ) : filteredItems.length === 0 ? (
@@ -221,7 +221,7 @@ export default function KayipEsyaHQPage() {
               <p className="text-sm">Kayıt bulunamadı</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {filteredItems.map((item) => (
                 <Card
                   key={item.id}
