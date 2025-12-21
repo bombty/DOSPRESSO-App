@@ -51,6 +51,12 @@ export function CardGridHub() {
   const isHQ = user && isHQRole(user.role as any);
   const isBranch = user && isBranchRole(user.role as any);
 
+  // Fetch menu items from API (dynamic permissions)
+  const { data: menuModules = [] } = useQuery<any[]>({
+    queryKey: ["/api/me/menu"],
+    enabled: !!user,
+  });
+
   // Fetch counts for badges
   const { data: faults = [] } = useQuery<any[]>({
     queryKey: ["/api/faults"],
@@ -330,7 +336,97 @@ export function CardGridHub() {
     },
   ];
 
-  const modules = isHQ ? hqModules : branchModules;
+  // Eğer API'den modüller gelmişse onları kullan, yoksa statik fallback
+  const getIcon = (moduleId: string) => {
+    const iconMap: Record<string, any> = {
+      "akademi": GraduationCap,
+      "akademi-hq": GraduationCap,
+      "academy": GraduationCap,
+      "academy-hq": GraduationCap,
+      "tasklar": ClipboardList,
+      "tasks": ClipboardList,
+      "tasks-hq": ClipboardList,
+      "ariza": Wrench,
+      "arızalar": Wrench,
+      "faults": Wrench,
+      "vardiya": Calendar,
+      "vardiyalar": Calendar,
+      "shifts": Calendar,
+      "shifts-hq": Calendar,
+      "checklistler": CheckSquare,
+      "checklists": CheckSquare,
+      "checklists-hq": CheckSquare,
+      "kayip-esya": Briefcase,
+      "kayip-esya-hq": Briefcase,
+      "lost-found": Briefcase,
+      "ekipman": Coffee,
+      "equipment": Coffee,
+      "destek": MessageSquare,
+      "support": MessageSquare,
+      "hq-destek": MessageSquare,
+      "ik": Users,
+      "hr": Users,
+      "muhasebe": Calculator,
+      "raporlar": BarChart3,
+      "reports": BarChart3,
+      "bilgi-bankasi": BookOpen,
+      "knowledge": BookOpen,
+      "performans": BarChart3,
+      "performance": BarChart3,
+      "projeler": FolderKanban,
+      "projects": FolderKanban,
+      "ayarlar": Settings,
+      "settings": Settings,
+      "yonetim": Settings,
+      "admin": Shield,
+      "ai-asistan": Bot,
+      "kalite-denetimi": Star,
+      "quality": Star,
+      "kullanicilar": Users,
+      "users": Users,
+    };
+    return iconMap[moduleId.toLowerCase()] || Coffee;
+  };
+
+  const getColor = (moduleId: string) => {
+    const colorMap: Record<string, string> = {
+      "akademi": "bg-blue-500",
+      "akademi-hq": "bg-blue-500",
+      "academy": "bg-blue-500",
+      "tasklar": "bg-green-500",
+      "tasks": "bg-green-500",
+      "ariza": "bg-orange-500",
+      "arızalar": "bg-orange-500",
+      "vardiya": "bg-purple-500",
+      "checklistler": "bg-teal-500",
+      "kayip-esya": "bg-yellow-600",
+      "ekipman": "bg-amber-600",
+      "destek": "bg-blue-500",
+      "ik": "bg-pink-500",
+      "muhasebe": "bg-emerald-600",
+      "raporlar": "bg-cyan-500",
+      "bilgi-bankasi": "bg-emerald-500",
+      "performans": "bg-cyan-500",
+      "projeler": "bg-violet-600",
+      "ayarlar": "bg-slate-600",
+      "admin": "bg-red-600",
+      "ai-asistan": "bg-violet-500",
+      "kalite-denetimi": "bg-amber-500",
+      "kullanicilar": "bg-sky-500",
+    };
+    return colorMap[moduleId.toLowerCase()] || "bg-slate-400";
+  };
+
+  const modules = menuModules && menuModules.length > 0 
+    ? menuModules.map(m => ({
+        id: m.id || m.label?.toLowerCase().replace(/\s+/g, '-'),
+        icon: getIcon(m.id),
+        label: m.label,
+        path: m.path,
+        color: getColor(m.id),
+        description: m.description,
+      }))
+    : (isHQ ? hqModules : branchModules);
 
   return (
     <div className="p-3 pb-24 space-y-4">
