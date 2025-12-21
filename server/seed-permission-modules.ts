@@ -30,6 +30,18 @@ export async function seedPermissionModules() {
     { moduleKey: 'complaints', moduleName: 'Şikayetler', category: 'shared', description: 'Şikayet yönetimi' },
     { moduleKey: 'leave_requests', moduleName: 'İzin Talepleri', category: 'shared', description: 'İzin talep yönetimi' },
     { moduleKey: 'overtime_requests', moduleName: 'Mesai Talepleri', category: 'shared', description: 'Mesai talep yönetimi' },
+    // Akademi Paketi - Alt Modüller
+    { moduleKey: 'academy.general', moduleName: 'Genel Akademi', category: 'academy', description: 'Temel akademi erişimi ve modüller' },
+    { moduleKey: 'academy.hq', moduleName: 'HQ Akademi', category: 'academy', description: 'Merkez eğitim yönetimi' },
+    { moduleKey: 'academy.analytics', moduleName: 'Akademi Analitik', category: 'academy', description: 'Eğitim istatistikleri ve raporlar' },
+    { moduleKey: 'academy.badges', moduleName: 'Rozetler', category: 'academy', description: 'Rozet ve başarı sistemi' },
+    { moduleKey: 'academy.certificates', moduleName: 'Sertifikalar', category: 'academy', description: 'Sertifika yönetimi' },
+    { moduleKey: 'academy.leaderboard', moduleName: 'Liderlik Tablosu', category: 'academy', description: 'Sıralama ve yarışmalar' },
+    { moduleKey: 'academy.quizzes', moduleName: 'Quizler', category: 'academy', description: 'Quiz ve sınav sistemi' },
+    { moduleKey: 'academy.learning_paths', moduleName: 'Öğrenme Yolları', category: 'academy', description: 'Kariyer ve öğrenme yolları' },
+    { moduleKey: 'academy.ai', moduleName: 'AI Asistan', category: 'academy', description: 'Yapay zeka destekli eğitim' },
+    { moduleKey: 'academy.social', moduleName: 'Sosyal', category: 'academy', description: 'Takım yarışmaları ve gruplar' },
+    { moduleKey: 'academy.supervisor', moduleName: 'Supervisor Görünümü', category: 'academy', description: 'Supervisor eğitim takibi' },
   ];
   
   let insertedCount = 0;

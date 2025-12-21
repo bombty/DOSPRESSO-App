@@ -12782,7 +12782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/academy/quiz-stats', isAuthenticated, async (req: any, res) => {
     try {
       const totalAttempts = await db.select({ count: sql<number>`count(*)` }).from(userQuizAttempts);
-      const passedAttempts = await db.select({ count: sql<number>`count(*)` }).from(userQuizAttempts).where(eq(userQuizAttempts.passed, true));
+      const passedAttempts = await db.select({ count: sql<number>`count(*)` }).from(userQuizAttempts).where(eq(userQuizAttempts.isPassed, true));
       
       const total = Number(totalAttempts[0]?.count || 0);
       const passed = Number(passedAttempts[0]?.count || 0);
