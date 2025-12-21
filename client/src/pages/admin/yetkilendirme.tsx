@@ -250,9 +250,12 @@ export default function AdminYetkilendirme() {
       return apiRequest("PUT", "/api/admin/role-permissions", updates);
     },
     onSuccess: () => {
+      // Invalidate permission queries
       queryClient.invalidateQueries({ queryKey: ["/api/admin/role-permissions"] });
+      // Invalidate all sidebar-menu caches so users see updated menus
+      queryClient.invalidateQueries({ queryKey: ["sidebar-menu"] });
       setHasChanges(false);
-      toast({ title: "Yetkiler kaydedildi" });
+      toast({ title: "Yetkiler kaydedildi", description: "Menü değişiklikleri etkilenen kullanıcılar için yenilenecek." });
     },
     onError: () => {
       toast({ title: "Hata", description: "Yetkiler kaydedilemedi", variant: "destructive" });

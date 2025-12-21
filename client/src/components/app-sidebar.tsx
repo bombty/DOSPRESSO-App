@@ -95,6 +95,7 @@ export function AppSidebar() {
   const { user } = useAuth();
 
   // Fetch menu from server (v2 API - pre-filtered by role)
+  // Short staleTime + refetchInterval ensures permission changes reflect quickly
   const { data: menuData, isLoading: isMenuLoading, isError } = useQuery<SidebarMenuResponse>({
     queryKey: ["sidebar-menu", user?.id],
     queryFn: async () => {
@@ -102,10 +103,11 @@ export function AppSidebar() {
       if (!res.ok) throw new Error("Menu fetch failed");
       return res.json();
     },
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 10 * 1000, // 10 seconds - shorter for faster permission updates
+    gcTime: 2 * 60 * 1000, // 2 minutes
     retry: 2,
     refetchOnWindowFocus: true,
+    refetchInterval: 60 * 1000, // Refetch every 60 seconds to catch permission changes
     enabled: !!user,
   });
 
