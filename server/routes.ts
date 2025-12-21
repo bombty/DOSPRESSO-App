@@ -19253,11 +19253,24 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     return result;
   };
 
+  // Helper function to check if user has accounting access (dynamic permissions)
+  const hasAccountingAccess = async (userRole: string): Promise<boolean> => {
+    if (userRole === 'admin' || userRole === 'muhasebe' || isHQRole(userRole as UserRoleType)) {
+      return true;
+    }
+    // Check dynamic permissions
+    const permissions = await storage.getRolePermissions();
+    return permissions.some((p: any) => 
+      p.role === userRole && p.module === 'accounting' && (p.actions || []).includes('view')
+    );
+  };
+
   // GET /api/payroll/parameters - Tüm bordro parametrelerini getir
   app.get('/api/payroll/parameters', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
+      const canAccess = await hasAccountingAccess(user.role);
+      if (!canAccess) {
         return res.status(403).json({ message: "Bordro parametrelerine erişim yetkiniz yok" });
       }
 
@@ -19275,7 +19288,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.get('/api/payroll/parameters/:year', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
+      const canAccess = await hasAccountingAccess(user.role);
+      if (!canAccess) {
         return res.status(403).json({ message: "Bordro parametrelerine erişim yetkiniz yok" });
       }
 
@@ -19771,7 +19785,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   app.get('/api/employees-with-salary', isAuthenticated, async (req: any, res) => {
     try {
       const userRole = req.user?.role;
-      if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
+      const canAccess = await hasAccountingAccess(userRole);
+      if (!canAccess) {
         return res.status(403).json({ message: "Yetkisiz erişim" });
       }
 
