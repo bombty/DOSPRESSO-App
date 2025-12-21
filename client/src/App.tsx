@@ -125,20 +125,36 @@ import AdminKaliteDenetimSablonuDuzenle from "@/pages/admin/kalite-denetim-sablo
 import Setup from "@/pages/setup";
 import NotFound from "@/pages/not-found";
 
-function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+const PUBLIC_PATH_PREFIXES = [
+  "/login", 
+  "/register", 
+  "/forgot-password", 
+  "/reset-password", 
+  "/feedback", 
+  "/setup"
+];
+
+function isPublicPath(path: string) {
+  return PUBLIC_PATH_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));
+}
+
+function AuthCatchAllToLogin() {
   const [location, setLocation] = useLocation();
-  const [redirected, setRedirected] = useState(false);
-  
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && !redirected) {
-      const next = encodeURIComponent(location);
-      sessionStorage.setItem("postLoginRedirect", location);
-      setRedirected(true);
-      setLocation(`/login?next=${next}`);
-    }
-  }, [isLoading, isAuthenticated, location, setLocation, redirected]);
-  
+    if (isPublicPath(location)) return;
+    
+    sessionStorage.setItem("postLoginRedirect", location);
+    const next = encodeURIComponent(location);
+    setLocation(`/login?next=${next}`);
+  }, [location, setLocation]);
+
+  return null;
+}
+
+function Router() {
+  const { isAuthenticated, isLoading } = useAuth();
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -146,25 +162,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
-  if (!isAuthenticated) {
-    return null;
-  }
-  
-  return <>{children}</>;
-}
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  return (
-    <AuthGuard>
-      <Component />
-    </AuthGuard>
-  );
-}
-
-function Router() {
   return (
     <Switch>
+      {/* Public routes */}
       <Route path="/setup" component={Setup} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
@@ -172,115 +173,122 @@ function Router() {
       <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/feedback" component={MusteriFeedbackPublic} />
 
-      {/* Protected routes - wrapped with AuthGuard */}
-      <Route path="/">{() => <ProtectedRoute component={Dashboard} />}</Route>
-      <Route path="/subeler/:id/nfc">{() => <ProtectedRoute component={SubeNFCDetay} />}</Route>
-      <Route path="/subeler/:id">{() => <ProtectedRoute component={SubeDetay} />}</Route>
-      <Route path="/subeler">{() => <ProtectedRoute component={Subeler} />}</Route>
-      <Route path="/personel/:id">{() => <ProtectedRoute component={PersonelProfil} />}</Route>
-      <Route path="/personel-detay/:id">{() => <ProtectedRoute component={PersonelDetay} />}</Route>
-      <Route path="/personel-duzenle/:id">{() => <ProtectedRoute component={PersonelDuzenle} />}</Route>
-      <Route path="/personel-onboarding">{() => <ProtectedRoute component={PersonelOnboarding} />}</Route>
-      <Route path="/vardiyalar">{() => <ProtectedRoute component={Vardiyalar} />}</Route>
-      <Route path="/vardiya-planlama">{() => <ProtectedRoute component={VardiyaPlanlama} />}</Route>
-      <Route path="/vardiyalarim">{() => <ProtectedRoute component={Vardiyalarim} />}</Route>
-      <Route path="/vardiya-checkin">{() => <ProtectedRoute component={VardiyaCheckin} />}</Route>
-      <Route path="/nfc-giris">{() => <ProtectedRoute component={NFCGiris} />}</Route>
-      <Route path="/personel-musaitlik">{() => <ProtectedRoute component={PersonelMusaitlik} />}</Route>
-      <Route path="/devam-takibi">{() => <ProtectedRoute component={Attendance} />}</Route>
-      <Route path="/gorevler">{() => <ProtectedRoute component={Tasks} />}</Route>
-      <Route path="/gorev-detay/:id">{() => <ProtectedRoute component={GorevDetay} />}</Route>
-      <Route path="/sube-gorevler/:id">{() => <ProtectedRoute component={SubeGorevler} />}</Route>
-      <Route path="/checklistler">{() => <ProtectedRoute component={Checklists} />}</Route>
-      <Route path="/ekipman/:id">{() => <ProtectedRoute component={EquipmentDetail} />}</Route>
-      <Route path="/ekipman">{() => <ProtectedRoute component={Equipment} />}</Route>
-      <Route path="/ariza">{() => <ProtectedRoute component={FaultHub} />}</Route>
-      <Route path="/ariza-detay/:id">{() => <ProtectedRoute component={FaultDetail} />}</Route>
-      <Route path="/ariza-yeni">{() => <ProtectedRoute component={NewFaultReport} />}</Route>
-      <Route path="/ekipman-analitics">{() => <ProtectedRoute component={EquipmentAnalytics} />}</Route>
-      <Route path="/qr-tara">{() => <ProtectedRoute component={QRScanner} />}</Route>
-      <Route path="/bilgi-bankasi">{() => <ProtectedRoute component={KnowledgeBase} />}</Route>
-      <Route path="/akademi">{() => <ProtectedRoute component={AcademySuite} />}</Route>
-      <Route path="/akademi-modul/:id">{() => <ProtectedRoute component={ModuleDetail} />}</Route>
-      <Route path="/akademi-quiz/:quizId">{() => <ProtectedRoute component={AcademyQuiz} />}</Route>
-      <Route path="/akademi-rozet-koleksiyonum">{() => <ProtectedRoute component={BadgeCollection} />}</Route>
-      <Route path="/akademi-learning-path/:pathId">{() => <ProtectedRoute component={AcademyLearningPathDetail} />}</Route>
-      <Route path="/akademi-hq">{() => <ProtectedRoute component={AcademyHQ} />}</Route>
-      <Route path="/akademi-supervisor">{() => <ProtectedRoute component={AcademySupervisor} />}</Route>
-      <Route path="/akademi-analytics">{() => <ProtectedRoute component={AcademyAnalytics} />}</Route>
-      <Route path="/akademi-badges">{() => <ProtectedRoute component={AcademyBadges} />}</Route>
-      <Route path="/akademi-leaderboard">{() => <ProtectedRoute component={AcademyLeaderboard} />}</Route>
-      <Route path="/akademi-certificates">{() => <ProtectedRoute component={AcademyCertificates} />}</Route>
-      <Route path="/akademi-learning-paths">{() => <ProtectedRoute component={AcademyLearningPaths} />}</Route>
-      <Route path="/akademi-ai-assistant">{() => <ProtectedRoute component={AcademyAIAssistant} />}</Route>
-      <Route path="/akademi-team-competitions">{() => <ProtectedRoute component={AcademyTeamCompetitions} />}</Route>
-      <Route path="/akademi-achievements">{() => <ProtectedRoute component={AcademyAchievements} />}</Route>
-      <Route path="/akademi-progress-overview">{() => <ProtectedRoute component={AcademyProgressOverview} />}</Route>
-      <Route path="/akademi-streak-tracker">{() => <ProtectedRoute component={AcademyStreakTracker} />}</Route>
-      <Route path="/akademi-adaptive-engine">{() => <ProtectedRoute component={AcademyAdaptiveEngine} />}</Route>
-      <Route path="/akademi-social-groups">{() => <ProtectedRoute component={AcademySocialGroups} />}</Route>
-      <Route path="/akademi-advanced-analytics">{() => <ProtectedRoute component={AcademyAdvancedAnalytics} />}</Route>
-      <Route path="/akademi-branch-analytics">{() => <ProtectedRoute component={AcademyBranchAnalytics} />}</Route>
-      <Route path="/akademi-cohort-analytics">{() => <ProtectedRoute component={AcademyCohortAnalytics} />}</Route>
-      <Route path="/recete/:id">{() => <ProtectedRoute component={ReceteDetay} />}</Route>
-      <Route path="/egitim/:id">{() => <ProtectedRoute component={ModuleDetail} />}</Route>
-      <Route path="/egitim-ata">{() => <ProtectedRoute component={TrainingAssign} />}</Route>
-      <Route path="/egitim">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi-hq'; return null; }}</Route>
-      <Route path="/bildirimler">{() => <ProtectedRoute component={Notifications} />}</Route>
-      <Route path="/duyurular">{() => <ProtectedRoute component={Announcements} />}</Route>
-      <Route path="/mesajlar">{() => <ProtectedRoute component={Mesajlar} />}</Route>
-      <Route path="/proje-gorev/:id">{() => <ProtectedRoute component={ProjeGorevDetay} />}</Route>
-      <Route path="/projeler/:id">{() => <ProtectedRoute component={ProjeDetay} />}</Route>
-      <Route path="/projeler">{() => <ProtectedRoute component={Projeler} />}</Route>
-      <Route path="/yeni-sube-projeler">{() => <ProtectedRoute component={YeniSubeProjeler} />}</Route>
-      <Route path="/yeni-sube-detay/:id">{() => <ProtectedRoute component={YeniSubeDetay} />}</Route>
-      <Route path="/ik">{() => <ProtectedRoute component={IK} />}</Route>
-      <Route path="/izin-talepleri">{() => <ProtectedRoute component={LeaveRequests} />}</Route>
-      <Route path="/mesai-talepleri">{() => <ProtectedRoute component={OvertimeRequests} />}</Route>
-      <Route path="/ik-raporlari">{() => <ProtectedRoute component={HRReports} />}</Route>
-      <Route path="/kasa-raporlari">{() => <ProtectedRoute component={CashReports} />}</Route>
-      <Route path="/e2e-raporlar">{() => <ProtectedRoute component={E2EReports} />}</Route>
-      <Route path="/raporlar">{() => <ProtectedRoute component={Raporlar} />}</Route>
-      <Route path="/performans">{() => <ProtectedRoute component={Performance} />}</Route>
-      <Route path="/muhasebe">{() => <ProtectedRoute component={Muhasebe} />}</Route>
-      <Route path="/kalite-denetimi">{() => <ProtectedRoute component={KaliteDenetimi} />}</Route>
-      <Route path="/denetim-sablonlari">{() => <ProtectedRoute component={DenetimSablonlari} />}</Route>
-      <Route path="/denetimler">{() => <ProtectedRoute component={Denetimler} />}</Route>
-      <Route path="/denetim/:id">{() => <ProtectedRoute component={DenetimYurutme} />}</Route>
-      <Route path="/capa/:id">{() => <ProtectedRoute component={CapaDetay} />}</Route>
-      <Route path="/misafir-geri-bildirim">{() => <ProtectedRoute component={MisafirGeriBildirim} />}</Route>
-      <Route path="/sikayetler">{() => <ProtectedRoute component={Sikayetler} />}</Route>
-      <Route path="/hq-destek">{() => <ProtectedRoute component={HQSupport} />}</Route>
-      <Route path="/ai-asistan">{() => <ProtectedRoute component={AIAssistant} />}</Route>
-      <Route path="/kampanya-yonetimi">{() => <ProtectedRoute component={KampanyaYonetimi} />}</Route>
-      <Route path="/franchise-acilis">{() => <ProtectedRoute component={FranchiseAcilis} />}</Route>
-      <Route path="/yonetim/menu">{() => <ProtectedRoute component={AdminMenuManagement} />}</Route>
-      <Route path="/yonetim/icerik">{() => <ProtectedRoute component={AdminContentManagement} />}</Route>
-      <Route path="/yonetim/ayarlar">{() => <ProtectedRoute component={Settings} />}</Route>
-      <Route path="/yonetim/kullanicilar">{() => <ProtectedRoute component={UserCRM} />}</Route>
-      <Route path="/yonetim/ai-maliyetler">{() => <ProtectedRoute component={AICostDashboard} />}</Route>
-      <Route path="/yonetim/checklistler">{() => <ProtectedRoute component={AdminChecklistManagement} />}</Route>
-      <Route path="/yonetim/ekipman-servis">{() => <ProtectedRoute component={EkipmanServis} />}</Route>
-      <Route path="/yonetim/servis-talepleri">{() => <ProtectedRoute component={ServiceRequestsManagement} />}</Route>
-      <Route path="/yonetim/ekipman-yonetimi">{() => <ProtectedRoute component={EquipmentManagement} />}</Route>
-      <Route path="/yonetim/rol-yetkileri">{() => <ProtectedRoute component={RolYetkileri} />}</Route>
-      <Route path="/yonetim/akademi">{() => <ProtectedRoute component={AdminAcademy} />}</Route>
-      <Route path="/muhasebe-geribildirimi">{() => <ProtectedRoute component={BranchFeedback} />}</Route>
-      <Route path="/kayip-esya">{() => <ProtectedRoute component={KayipEsya} />}</Route>
-      <Route path="/kayip-esya-hq">{() => <ProtectedRoute component={KayipEsyaHQ} />}</Route>
-      <Route path="/destek">{() => <ProtectedRoute component={Destek} />}</Route>
-      <Route path="/admin/yetkilendirme">{() => <ProtectedRoute component={AdminYetkilendirme} />}</Route>
-      <Route path="/admin/aktivite-loglari">{() => <ProtectedRoute component={AdminAktiviteLoglar} />}</Route>
-      <Route path="/admin/yedekleme">{() => <ProtectedRoute component={AdminYedekleme} />}</Route>
-      <Route path="/admin/kullanicilar">{() => <ProtectedRoute component={AdminKullanicilar} />}</Route>
-      <Route path="/admin/email-ayarlari">{() => <ProtectedRoute component={AdminEmailAyarlari} />}</Route>
-      <Route path="/admin/servis-mail-ayarlari">{() => <ProtectedRoute component={AdminServisMailAyarlari} />}</Route>
-      <Route path="/admin/bannerlar">{() => <ProtectedRoute component={AdminBannerlar} />}</Route>
-      <Route path="/admin/yapay-zeka-ayarlari">{() => <ProtectedRoute component={AdminYapayZekaAyarlari} />}</Route>
-      <Route path="/admin/kalite-denetim-sablonlari">{() => <ProtectedRoute component={AdminKaliteDenetimSablonlari} />}</Route>
-      <Route path="/admin/kalite-denetim-sablonu/:id">{() => <ProtectedRoute component={AdminKaliteDenetimSablonuDuzenle} />}</Route>
-      <Route path="/admin/seed">{() => <ProtectedRoute component={AdminSeed} />}</Route>
-      <Route path="/admin">{() => <ProtectedRoute component={AdminDashboard} />}</Route>
+      {/* Auth guard - catch-all for unauthenticated users */}
+      {!isAuthenticated && <Route component={AuthCatchAllToLogin} />}
+
+      {/* Protected routes - only rendered when authenticated */}
+      {isAuthenticated && (
+        <>
+          <Route path="/" component={Dashboard} />
+          <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
+          <Route path="/subeler/:id" component={SubeDetay} />
+          <Route path="/subeler" component={Subeler} />
+          <Route path="/personel/:id" component={PersonelProfil} />
+          <Route path="/personel-detay/:id" component={PersonelDetay} />
+          <Route path="/personel-duzenle/:id" component={PersonelDuzenle} />
+          <Route path="/personel-onboarding" component={PersonelOnboarding} />
+          <Route path="/vardiyalar" component={Vardiyalar} />
+          <Route path="/vardiya-planlama" component={VardiyaPlanlama} />
+          <Route path="/vardiyalarim" component={Vardiyalarim} />
+          <Route path="/vardiya-checkin" component={VardiyaCheckin} />
+          <Route path="/nfc-giris" component={NFCGiris} />
+          <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
+          <Route path="/devam-takibi" component={Attendance} />
+          <Route path="/gorevler" component={Tasks} />
+          <Route path="/gorev-detay/:id" component={GorevDetay} />
+          <Route path="/sube-gorevler/:id" component={SubeGorevler} />
+          <Route path="/checklistler" component={Checklists} />
+          <Route path="/ekipman/:id" component={EquipmentDetail} />
+          <Route path="/ekipman" component={Equipment} />
+          <Route path="/ariza" component={FaultHub} />
+          <Route path="/ariza-detay/:id" component={FaultDetail} />
+          <Route path="/ariza-yeni" component={NewFaultReport} />
+          <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
+          <Route path="/qr-tara" component={QRScanner} />
+          <Route path="/bilgi-bankasi" component={KnowledgeBase} />
+          <Route path="/akademi" component={AcademySuite} />
+          <Route path="/akademi-modul/:id" component={ModuleDetail} />
+          <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
+          <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />
+          <Route path="/akademi-learning-path/:pathId" component={AcademyLearningPathDetail} />
+          <Route path="/akademi-hq" component={AcademyHQ} />
+          <Route path="/akademi-supervisor" component={AcademySupervisor} />
+          <Route path="/akademi-analytics" component={AcademyAnalytics} />
+          <Route path="/akademi-badges" component={AcademyBadges} />
+          <Route path="/akademi-leaderboard" component={AcademyLeaderboard} />
+          <Route path="/akademi-certificates" component={AcademyCertificates} />
+          <Route path="/akademi-learning-paths" component={AcademyLearningPaths} />
+          <Route path="/akademi-ai-assistant" component={AcademyAIAssistant} />
+          <Route path="/akademi-team-competitions" component={AcademyTeamCompetitions} />
+          <Route path="/akademi-achievements" component={AcademyAchievements} />
+          <Route path="/akademi-progress-overview" component={AcademyProgressOverview} />
+          <Route path="/akademi-streak-tracker" component={AcademyStreakTracker} />
+          <Route path="/akademi-adaptive-engine" component={AcademyAdaptiveEngine} />
+          <Route path="/akademi-social-groups" component={AcademySocialGroups} />
+          <Route path="/akademi-advanced-analytics" component={AcademyAdvancedAnalytics} />
+          <Route path="/akademi-branch-analytics" component={AcademyBranchAnalytics} />
+          <Route path="/akademi-cohort-analytics" component={AcademyCohortAnalytics} />
+          <Route path="/recete/:id" component={ReceteDetay} />
+          <Route path="/egitim/:id" component={ModuleDetail} />
+          <Route path="/egitim-ata" component={TrainingAssign} />
+          <Route path="/egitim">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi-hq'; return null; }}</Route>
+          <Route path="/bildirimler" component={Notifications} />
+          <Route path="/duyurular" component={Announcements} />
+          <Route path="/mesajlar" component={Mesajlar} />
+          <Route path="/proje-gorev/:id" component={ProjeGorevDetay} />
+          <Route path="/projeler/:id" component={ProjeDetay} />
+          <Route path="/projeler" component={Projeler} />
+          <Route path="/yeni-sube-projeler" component={YeniSubeProjeler} />
+          <Route path="/yeni-sube-detay/:id" component={YeniSubeDetay} />
+          <Route path="/ik" component={IK} />
+          <Route path="/izin-talepleri" component={LeaveRequests} />
+          <Route path="/mesai-talepleri" component={OvertimeRequests} />
+          <Route path="/ik-raporlari" component={HRReports} />
+          <Route path="/kasa-raporlari" component={CashReports} />
+          <Route path="/e2e-raporlar" component={E2EReports} />
+          <Route path="/raporlar" component={Raporlar} />
+          <Route path="/performans" component={Performance} />
+          <Route path="/muhasebe" component={Muhasebe} />
+          <Route path="/kalite-denetimi" component={KaliteDenetimi} />
+          <Route path="/denetim-sablonlari" component={DenetimSablonlari} />
+          <Route path="/denetimler" component={Denetimler} />
+          <Route path="/denetim/:id" component={DenetimYurutme} />
+          <Route path="/capa/:id" component={CapaDetay} />
+          <Route path="/misafir-geri-bildirim" component={MisafirGeriBildirim} />
+          <Route path="/sikayetler" component={Sikayetler} />
+          <Route path="/hq-destek" component={HQSupport} />
+          <Route path="/ai-asistan" component={AIAssistant} />
+          <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
+          <Route path="/franchise-acilis" component={FranchiseAcilis} />
+          <Route path="/yonetim/menu" component={AdminMenuManagement} />
+          <Route path="/yonetim/icerik" component={AdminContentManagement} />
+          <Route path="/yonetim/ayarlar" component={Settings} />
+          <Route path="/yonetim/kullanicilar" component={UserCRM} />
+          <Route path="/yonetim/ai-maliyetler" component={AICostDashboard} />
+          <Route path="/yonetim/checklistler" component={AdminChecklistManagement} />
+          <Route path="/yonetim/ekipman-servis" component={EkipmanServis} />
+          <Route path="/yonetim/servis-talepleri" component={ServiceRequestsManagement} />
+          <Route path="/yonetim/ekipman-yonetimi" component={EquipmentManagement} />
+          <Route path="/yonetim/rol-yetkileri" component={RolYetkileri} />
+          <Route path="/yonetim/akademi" component={AdminAcademy} />
+          <Route path="/muhasebe-geribildirimi" component={BranchFeedback} />
+          <Route path="/kayip-esya" component={KayipEsya} />
+          <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />
+          <Route path="/destek" component={Destek} />
+          <Route path="/admin/yetkilendirme" component={AdminYetkilendirme} />
+          <Route path="/admin/aktivite-loglari" component={AdminAktiviteLoglar} />
+          <Route path="/admin/yedekleme" component={AdminYedekleme} />
+          <Route path="/admin/kullanicilar" component={AdminKullanicilar} />
+          <Route path="/admin/email-ayarlari" component={AdminEmailAyarlari} />
+          <Route path="/admin/servis-mail-ayarlari" component={AdminServisMailAyarlari} />
+          <Route path="/admin/bannerlar" component={AdminBannerlar} />
+          <Route path="/admin/yapay-zeka-ayarlari" component={AdminYapayZekaAyarlari} />
+          <Route path="/admin/kalite-denetim-sablonlari" component={AdminKaliteDenetimSablonlari} />
+          <Route path="/admin/kalite-denetim-sablonu/:id" component={AdminKaliteDenetimSablonuDuzenle} />
+          <Route path="/admin/seed" component={AdminSeed} />
+          <Route path="/admin" component={AdminDashboard} />
+        </>
+      )}
       
       <Route component={NotFound} />
     </Switch>
