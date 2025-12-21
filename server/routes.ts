@@ -19498,6 +19498,9 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           u.id, u.username, u.first_name, u.last_name, u.role, u.email,
           u.hire_date, u.employment_type, u.is_active, 
           COALESCE(u.net_salary, 0) as net_salary,
+          COALESCE(u.meal_allowance, 0) as meal_allowance,
+          COALESCE(u.transport_allowance, 0) as transport_allowance,
+          COALESCE(u.bonus_base, 0) as bonus_base,
           b.id as branch_id, b.name as branch_name,
           eb.id as benefit_id, eb.meal_benefit_type, eb.meal_benefit_amount,
           eb.transport_benefit_type, eb.transport_benefit_amount,
@@ -19517,7 +19520,54 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // PATCH /api/users/:id/salary - Personel maaş bilgilerini güncelle
+  // PUT /api/users/:id/compensation - Personel maaş ve yan haklarını güncelle
+  app.put('/api/users/:id/compensation', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
+        return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+
+      const { id } = req.params;
+      const { netSalary, mealAllowance, transportAllowance, bonusBase } = req.body;
+
+      // Validate all values are non-negative integers (kuruş)
+      const validateValue = (val: any, name: string) => {
+        if (val !== undefined && (typeof val !== 'number' || val < 0 || !Number.isInteger(val))) {
+          throw new Error(`Geçersiz ${name} değeri`);
+        }
+        return val ?? null;
+      };
+
+      const safeNetSalary = validateValue(netSalary, 'net maaş');
+      const safeMealAllowance = validateValue(mealAllowance, 'yemek yardımı');
+      const safeTransportAllowance = validateValue(transportAllowance, 'ulaşım yardımı');
+      const safeBonusBase = validateValue(bonusBase, 'prim');
+
+      const result = await db.execute(sql`
+        UPDATE users 
+        SET 
+          net_salary = COALESCE(${safeNetSalary}, net_salary),
+          meal_allowance = COALESCE(${safeMealAllowance}, meal_allowance),
+          transport_allowance = COALESCE(${safeTransportAllowance}, transport_allowance),
+          bonus_base = COALESCE(${safeBonusBase}, bonus_base),
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING id, username, first_name, last_name, net_salary, meal_allowance, transport_allowance, bonus_base
+      `);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+
+      res.json(result.rows[0]);
+    } catch (error: any) {
+      console.error("Update user compensation error:", error);
+      res.status(400).json({ message: error.message || "Maaş bilgileri güncellenemedi" });
+    }
+  });
+  
+  // PATCH /api/users/:id/salary - Personel maaş bilgilerini güncelle (legacy)
   app.patch('/api/users/:id/salary', isAuthenticated, async (req: any, res) => {
     try {
       const userRole = req.user?.role;
