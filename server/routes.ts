@@ -7573,22 +7573,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/role-permissions', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
+      const { role: roleFilter } = req.query;
       
       // Admin-only access
       if (user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
       }
 
-      // Fetch both permissions and modules from database
-      const [permissions, modules] = await Promise.all([
-        storage.getRolePermissions(),
-        storage.getPermissionModules(),
-      ]);
+      // Fetch permissions from database
+      const permissions = await storage.getRolePermissions();
       
-      res.json({
-        permissions,
-        modules,
-      });
+      // Filter by role if provided
+      const filtered = roleFilter 
+        ? permissions.filter((p: any) => p.role === roleFilter)
+        : permissions;
+      
+      // Convert storage format to UI format with canView/canEdit
+      const formattedPerms = filtered.map((p: any) => ({
+        module: p.module,
+        actions: p.actions || [],
+        canView: (p.actions || []).includes('view'),
+        canEdit: (p.actions || []).includes('edit'),
+      }));
+      
+      res.json(formattedPerms);
     } catch (error) {
       console.error("Error fetching role permissions:", error);
       res.status(500).json({ message: "Rol yetkileri yüklenirken hata oluştu" });
@@ -7642,7 +7650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For other roles, check if they have explicit permission in database
       const permissions = await storage.getRolePermissions();
       const hasExplicitAccess = permissions.some((p: any) => 
-        p.role === userRole && p.module === 'accounting' && p.canView
+        p.role === userRole && p.module === 'accounting' && (p.actions || []).includes('view')
       );
       
       res.json(hasExplicitAccess);

@@ -144,7 +144,7 @@ export default function AdminYetkilendirme() {
   const [showPermissions, setShowPermissions] = useState(false);
 
   const { data: rolePermissions = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/role-permissions", selectedRole],
+    queryKey: ["/api/admin/role-permissions", selectedRole],
     enabled: user?.role === "admin" && !!selectedRole,
   });
 
@@ -152,9 +152,10 @@ export default function AdminYetkilendirme() {
     if (rolePermissions.length > 0) {
       const loaded: PermissionState = {};
       rolePermissions.forEach((perm: any) => {
-        loaded[perm.moduleKey] = {
-          view: perm.canView ?? false,
-          edit: perm.canEdit ?? false,
+        const actions = perm.actions || [];
+        loaded[perm.module] = {
+          view: actions.includes('view') || perm.canView || false,
+          edit: actions.includes('edit') || perm.canEdit || false,
         };
       });
       setPermissions(loaded);
@@ -167,10 +168,20 @@ export default function AdminYetkilendirme() {
   }
 
   const saveMutation = useMutation({
-    mutationFn: (data: { role: string; permissions: PermissionState }) =>
-      apiRequest("POST", "/api/admin/role-permissions/bulk", data),
+    mutationFn: (data: { role: string; permissions: PermissionState }) => {
+      // Convert {view, edit} format to {actions} format for storage
+      const updates = Object.entries(data.permissions).map(([module, perms]) => ({
+        role: data.role,
+        module,
+        actions: [
+          ...(perms.view ? ['view'] : []),
+          ...(perms.edit ? ['edit'] : []),
+        ],
+      }));
+      return apiRequest("PUT", "/api/admin/role-permissions", updates);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/role-permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/role-permissions"] });
       setHasChanges(false);
       toast({ title: "Yetkiler kaydedildi" });
     },
