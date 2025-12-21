@@ -79,6 +79,9 @@ interface Employee {
   username: string;
   role: string;
   net_salary: number;
+  meal_allowance: number;
+  transport_allowance: number;
+  bonus_base: number;
   branch_name?: string;
   branch_id?: number;
 }
@@ -403,10 +406,14 @@ export default function Muhasebe() {
         </div>
 
         <Tabs defaultValue="bordro" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="bordro" data-testid="tab-bordro">
               <FileText className="h-4 w-4 mr-2" />
               Bordro
+            </TabsTrigger>
+            <TabsTrigger value="salaries" data-testid="tab-salaries">
+              <Banknote className="h-4 w-4 mr-2" />
+              Maaş Ayarları
             </TabsTrigger>
             <TabsTrigger value="parameters" data-testid="tab-parameters">
               <Settings className="h-4 w-4 mr-2" />
@@ -680,6 +687,11 @@ export default function Muhasebe() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* MAAŞ AYARLARI TAB */}
+          <TabsContent value="salaries" className="space-y-4 mt-4">
+            <SalarySettingsSection employees={employees} />
           </TabsContent>
 
           <TabsContent value="parameters" className="space-y-4 mt-4">
@@ -1188,6 +1200,239 @@ export default function Muhasebe() {
               data-testid="button-save-params"
             >
               <Save className="h-4 w-4 mr-2" />
+              Kaydet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Maaş Ayarları Bölümü Component
+function SalarySettingsSection({ employees }: { employees: Employee[] }) {
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [formValues, setFormValues] = useState({
+    netSalary: 0,
+    mealAllowance: 0,
+    transportAllowance: 0,
+    bonusBase: 0,
+  });
+
+  const formatCurrency = (valueInKurus: number) => {
+    return (valueInKurus / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const updateCompensationMutation = useMutation({
+    mutationFn: async ({ userId, data }: { userId: string; data: typeof formValues }) => {
+      const res = await apiRequest("PUT", `/api/users/${userId}/compensation`, {
+        netSalary: data.netSalary,
+        mealAllowance: data.mealAllowance,
+        transportAllowance: data.transportAllowance,
+        bonusBase: data.bonusBase,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/employees-with-salary'] });
+      toast({ title: "Maaş bilgileri güncellendi" });
+      setEditingEmployee(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Güncelleme başarısız", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const filteredEmployees = employees.filter(emp => {
+    const name = `${emp.first_name} ${emp.last_name}`.toLowerCase();
+    return name.includes(searchTerm.toLowerCase());
+  });
+
+  const handleEdit = (emp: Employee) => {
+    setEditingEmployee(emp);
+    setFormValues({
+      netSalary: emp.net_salary || 0,
+      mealAllowance: emp.meal_allowance || 0,
+      transportAllowance: emp.transport_allowance || 0,
+      bonusBase: emp.bonus_base || 0,
+    });
+  };
+
+  const handleSave = () => {
+    if (!editingEmployee) return;
+    updateCompensationMutation.mutate({ userId: editingEmployee.id, data: formValues });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Personel Maaş Ayarları
+          </CardTitle>
+          <CardDescription>
+            Net maaş, yemek yardımı, ulaşım yardımı ve prim ayarlarını düzenleyin
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Personel ara..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+              data-testid="input-search-employee"
+            />
+          </div>
+
+          <div className="border rounded-lg overflow-hidden">
+            <div className="max-h-[400px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium">Personel</th>
+                    <th className="px-4 py-2 text-left font-medium">Şube</th>
+                    <th className="px-4 py-2 text-right font-medium">Net Maaş</th>
+                    <th className="px-4 py-2 text-right font-medium">Yemek</th>
+                    <th className="px-4 py-2 text-right font-medium">Ulaşım</th>
+                    <th className="px-4 py-2 text-right font-medium">Prim</th>
+                    <th className="px-4 py-2 text-center font-medium">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {filteredEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                        {searchTerm ? "Sonuç bulunamadı" : "Personel yükleniyor..."}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEmployees.map((emp) => (
+                      <tr key={emp.id} className="hover-elevate" data-testid={`row-employee-${emp.id}`}>
+                        <td className="px-4 py-2">
+                          <div className="font-medium">{emp.first_name} {emp.last_name}</div>
+                          <div className="text-xs text-muted-foreground">{emp.role}</div>
+                        </td>
+                        <td className="px-4 py-2 text-muted-foreground">{emp.branch_name || '-'}</td>
+                        <td className="px-4 py-2 text-right font-medium">
+                          {emp.net_salary > 0 ? `${formatCurrency(emp.net_salary)} TL` : '-'}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {emp.meal_allowance > 0 ? `${formatCurrency(emp.meal_allowance)} TL` : '-'}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {emp.transport_allowance > 0 ? `${formatCurrency(emp.transport_allowance)} TL` : '-'}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {emp.bonus_base > 0 ? `${formatCurrency(emp.bonus_base)} TL` : '-'}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => handleEdit(emp)}
+                            data-testid={`button-edit-salary-${emp.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingEmployee} onOpenChange={(open) => !open && setEditingEmployee(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Maaş Bilgilerini Düzenle</DialogTitle>
+            <DialogDescription>
+              {editingEmployee?.first_name} {editingEmployee?.last_name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Banknote className="h-4 w-4 text-green-600" />
+                Net Maaş (TL)
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={(formValues.netSalary / 100).toFixed(2)}
+                onChange={(e) => setFormValues({ ...formValues, netSalary: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                data-testid="input-net-salary"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Utensils className="h-4 w-4 text-orange-600" />
+                Yemek Yardımı (TL)
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={(formValues.mealAllowance / 100).toFixed(2)}
+                onChange={(e) => setFormValues({ ...formValues, mealAllowance: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                data-testid="input-meal-allowance"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Bus className="h-4 w-4 text-blue-600" />
+                Ulaşım Yardımı (TL)
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={(formValues.transportAllowance / 100).toFixed(2)}
+                onChange={(e) => setFormValues({ ...formValues, transportAllowance: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                data-testid="input-transport-allowance"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-purple-600" />
+                Prim Matrahı (TL)
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={(formValues.bonusBase / 100).toFixed(2)}
+                onChange={(e) => setFormValues({ ...formValues, bonusBase: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                data-testid="input-bonus-base"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingEmployee(null)} data-testid="button-cancel-salary">
+              <X className="h-4 w-4 mr-2" />
+              İptal
+            </Button>
+            <Button 
+              onClick={handleSave}
+              disabled={updateCompensationMutation.isPending}
+              data-testid="button-save-salary"
+            >
+              {updateCompensationMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
               Kaydet
             </Button>
           </DialogFooter>
