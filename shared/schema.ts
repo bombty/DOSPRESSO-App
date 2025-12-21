@@ -585,6 +585,11 @@ export const users = pgTable("users", {
   disabilityLevel: varchar("disability_level", { length: 50 }), // Yok, etc.
   leaveStartDate: date("leave_start_date"), // When employee left
   leaveReason: text("leave_reason"), // Reason for leaving
+  // Salary/Compensation fields (kuruş cinsinden)
+  netSalary: integer("net_salary").default(0), // Aylık net maaş
+  mealAllowance: integer("meal_allowance").default(0), // Yemek yardımı
+  transportAllowance: integer("transport_allowance").default(0), // Ulaşım yardımı
+  bonusBase: integer("bonus_base").default(0), // Prim matrahı
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
