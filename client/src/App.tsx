@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -125,9 +125,44 @@ import AdminKaliteDenetimSablonuDuzenle from "@/pages/admin/kalite-denetim-sablo
 import Setup from "@/pages/setup";
 import NotFound from "@/pages/not-found";
 
-function Router() {
+function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location, setLocation] = useLocation();
+  const [redirected, setRedirected] = useState(false);
+  
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !redirected) {
+      const next = encodeURIComponent(location);
+      sessionStorage.setItem("postLoginRedirect", location);
+      setRedirected(true);
+      setLocation(`/login?next=${next}`);
+    }
+  }, [isLoading, isAuthenticated, location, setLocation, redirected]);
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return null;
+  }
+  
+  return <>{children}</>;
+}
 
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  return (
+    <AuthGuard>
+      <Component />
+    </AuthGuard>
+  );
+}
+
+function Router() {
   return (
     <Switch>
       <Route path="/setup" component={Setup} />
@@ -136,17 +171,12 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/feedback" component={MusteriFeedbackPublic} />
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Login} />
-      ) : (
-        <>
-          {/* Ana Sayfa */}
-          <Route path="/" component={Dashboard} />
 
-          {/* Personel & Vardiya */}
-          <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
-          <Route path="/subeler/:id" component={SubeDetay} />
-          <Route path="/subeler" component={Subeler} />
+      {/* Protected routes - wrapped with AuthGuard */}
+      <Route path="/">{() => <ProtectedRoute component={Dashboard} />}</Route>
+      <Route path="/subeler/:id/nfc">{() => <ProtectedRoute component={SubeNFCDetay} />}</Route>
+      <Route path="/subeler/:id">{() => <ProtectedRoute component={SubeDetay} />}</Route>
+      <Route path="/subeler">{() => <ProtectedRoute component={Subeler} />}</Route>
           <Route path="/personel/:id" component={PersonelProfil} />
           <Route path="/personel-detay/:id" component={PersonelDetay} />
           <Route path="/personel-duzenle/:id" component={PersonelDuzenle} />
@@ -250,7 +280,6 @@ function Router() {
           <Route path="/ai-asistan" component={AIAssistant} />
           <Route path="/kampanya-yonetimi" component={KampanyaYonetimi} />
           <Route path="/franchise-acilis" component={FranchiseAcilis} />
-          <Route path="/admin/seed" component={AdminSeed} />
           <Route path="/yonetim/menu" component={AdminMenuManagement} />
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
           <Route path="/yonetim/ayarlar" component={Settings} />
@@ -273,8 +302,7 @@ function Router() {
           {/* Şube Destek Talebi */}
           <Route path="/destek" component={Destek} />
 
-          {/* Admin Panel */}
-          <Route path="/admin" component={AdminDashboard} />
+          {/* Admin Panel - spesifik route'lar önce */}
           <Route path="/admin/yetkilendirme" component={AdminYetkilendirme} />
           <Route path="/admin/aktivite-loglari" component={AdminAktiviteLoglar} />
           <Route path="/admin/yedekleme" component={AdminYedekleme} />
@@ -285,6 +313,8 @@ function Router() {
           <Route path="/admin/yapay-zeka-ayarlari" component={AdminYapayZekaAyarlari} />
           <Route path="/admin/kalite-denetim-sablonlari" component={AdminKaliteDenetimSablonlari} />
           <Route path="/admin/kalite-denetim-sablonu/:id" component={AdminKaliteDenetimSablonuDuzenle} />
+          <Route path="/admin/seed" component={AdminSeed} />
+          <Route path="/admin" component={AdminDashboard} />
         </>
       )}
       <Route component={NotFound} />

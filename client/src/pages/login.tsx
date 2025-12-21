@@ -40,6 +40,25 @@ export default function Login() {
     },
   });
 
+  const getRedirectTarget = () => {
+    const params = new URLSearchParams(window.location.search);
+    const nextFromUrl = params.get("next");
+    const nextFromStorage = sessionStorage.getItem("postLoginRedirect");
+    sessionStorage.removeItem("postLoginRedirect");
+    
+    const target = nextFromUrl ? decodeURIComponent(nextFromUrl) : nextFromStorage;
+    
+    const safeTarget = (t: string | null): string => {
+      if (!t) return "/";
+      if (t.startsWith("//")) return "/";
+      if (t.includes(":")) return "/";
+      if (!t.startsWith("/")) return "/";
+      if (!/^\/[A-Za-z0-9/_\-?=&%]*$/.test(t)) return "/";
+      return t;
+    };
+    return safeTarget(target);
+  };
+
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormData) => {
       const response = await apiRequest("POST", "/api/login", data);
@@ -56,9 +75,12 @@ export default function Login() {
         description: "Hoş geldiniz!",
       });
       
+      // Get redirect target and navigate
+      const target = getRedirectTarget();
+      
       // Small delay to ensure cookie is set
       setTimeout(() => {
-        navigate("/");
+        navigate(target);
       }, 100);
     },
     onError: (error) => {

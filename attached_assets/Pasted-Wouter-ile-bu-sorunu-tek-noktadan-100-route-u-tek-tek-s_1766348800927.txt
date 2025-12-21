@@ -1,0 +1,129 @@
+Wouter ile bu sorunu tek noktadan, 100+ route’u tek tek sarmadan çözmenin en “minimal değişiklikli” yolu şudur:
+	•	Public route’lar (login/register/feedback) aynen kalsın.
+	•	Auth yokken, Switch içinde public route’lardan sonra bir tane catch-all guard route ekle: /:rest*
+	•	Bu guard route, kullanıcının gitmek istediği path’i “next” olarak saklar ve /login’e yönlendirir.
+	•	Login başarılı olunca next’e geri döndürür.
+
+Aşağıda birebir uygulanabilir örnek veriyorum.
+
+⸻
+
+1) App.tsx’te minimal değişiklik (catch-all guard)
+
+import { Switch, Route, useLocation } from "wouter";
+import { useAuth } from "./auth/useAuth";
+
+// Auth yokken yakalayıp login'e atan component
+function AuthCatchAllToLogin() {
+  const [location, setLocation] = useLocation();
+
+  // Login'e gelirken hedefi taşıyalım (query veya sessionStorage)
+  // query kullanmak en pratik: /login?next=/gorevler
+  const next = encodeURIComponent(location);
+  // alternatif / destek: sessionStorage
+  sessionStorage.setItem("postLoginRedirect", location);
+
+  // Redirect component yok: setLocation ile yönlendir
+  // replace yoksa dert değil; ama loop'u engellemek için login'de kontrol edeceğiz
+  setLocation(`/login?next=${next}`);
+
+  return null;
+}
+
+function Router() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // İsteğe bağlı: loading ekranı route çözümünü bozmasın
+  if (isLoading) return <div>Yükleniyor...</div>;
+
+  return (
+    <Switch>
+      {/* PUBLIC ROUTES */}
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/feedback" component={MusteriFeedbackPublic} />
+
+      {/* AUTH YOKKEN: her şeyi yakala ve /login'e yönlendir */}
+      {!isAuthenticated && (
+        <Route path="/:rest*" component={AuthCatchAllToLogin} />
+      )}
+
+      {/* AUTH VARSA: protected route'lar mevcut yapı ile devam */}
+      {isAuthenticated && (
+        <>
+          <Route path="/" component={Dashboard} />
+          <Route path="/gorevler" component={Tasks} />
+          <Route path="/ekipman" component={Equipment} />
+          {/* ... 100+ protected route */}
+        </>
+      )}
+
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+Bu neden çalışır?
+	•	Auth yokken /gorevler public route’lara uymayacak.
+	•	Sonra /:rest* route’u her şeyi yakalayacak ve /login?next=...’e gönderecek.
+	•	Böylece 404’e düşmez.
+
+⸻
+
+2) Login sonrası otomatik geri dönüş (Login component içinde)
+
+Login component’inde başarılı girişten sonra:
+	•	Önce URL’de next parametresi var mı bak.
+	•	Yoksa sessionStorage’dan al.
+	•	O da yoksa / (veya dashboard) yönlendir.
+
+import { useLocation } from "wouter";
+
+function getNextFromUrl(search: string) {
+  const params = new URLSearchParams(search);
+  const next = params.get("next");
+  return next ? decodeURIComponent(next) : null;
+}
+
+export function Login() {
+  const [, setLocation] = useLocation();
+
+  async function onLoginSuccess() {
+    const nextFromUrl = getNextFromUrl(window.location.search);
+    const nextFromStorage = sessionStorage.getItem("postLoginRedirect");
+    sessionStorage.removeItem("postLoginRedirect");
+
+    const target = nextFromUrl || nextFromStorage || "/";
+    setLocation(target);
+  }
+
+  // ... login form, submit -> auth -> onLoginSuccess()
+  return (
+    <div>
+      {/* form */}
+    </div>
+  );
+}
+
+
+⸻
+
+3) Loop / güvenlik notu (önemli ama kısa)
+
+next parametresi için küçük bir güvenlik filtresi eklemek iyi olur (open redirect olmasın):
+
+const safeTarget = (t: string) => (t.startsWith("/") ? t : "/");
+
+Login’de target = safeTarget(target) yap.
+
+⸻
+
+Sonuç
+
+Bu çözüm:
+	•	Wouter ile uyumlu (Redirect yok, useLocation var).
+	•	100+ route’u tek tek sarmayı gerektirmez.
+	•	Mevcut yapıyı büyük ölçüde korur.
+	•	/gorevler → login → başarılı giriş → /gorevler akışını sağlar.
+
+İstersen bir sonraki adımda, senin public sayfaların listesine göre (login/register/feedback dışında başka public var mı?) AuthCatchAllToLogin’i “public whitelist” ile daha da sağlamlaştıracak şekilde düzenleyebilirim.
