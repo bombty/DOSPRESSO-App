@@ -183,7 +183,7 @@ export default function Muhasebe() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [payrollCalc, setPayrollCalc] = useState<PayrollCalculation | null>(null);
 
-  const canEdit = user?.role === 'admin' || user?.role === 'muhasebe';
+  const canEdit = user?.role === 'admin' || user?.role === 'muhasebe' || user?.role === 'hq_muhasebe';
 
   const { data: parameters = [], isLoading } = useQuery<PayrollParameters[]>({
     queryKey: ['/api/payroll/parameters'],
@@ -691,7 +691,7 @@ export default function Muhasebe() {
 
           {/* MAAŞ AYARLARI TAB */}
           <TabsContent value="salaries" className="space-y-4 mt-4">
-            <SalarySettingsSection employees={employees} />
+            <SalarySettingsSection employees={employees} canEdit={canEdit} />
           </TabsContent>
 
           <TabsContent value="parameters" className="space-y-4 mt-4">
@@ -1210,7 +1210,7 @@ export default function Muhasebe() {
 }
 
 // Maaş Ayarları Bölümü Component
-function SalarySettingsSection({ employees }: { employees: Employee[] }) {
+function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; canEdit: boolean }) {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -1251,6 +1251,7 @@ function SalarySettingsSection({ employees }: { employees: Employee[] }) {
   });
 
   const handleEdit = (emp: Employee) => {
+    if (!canEdit) return;
     setEditingEmployee(emp);
     setFormValues({
       netSalary: emp.net_salary || 0,
@@ -1331,14 +1332,16 @@ function SalarySettingsSection({ employees }: { employees: Employee[] }) {
                           {emp.bonus_base > 0 ? `${formatCurrency(emp.bonus_base)} TL` : '-'}
                         </td>
                         <td className="px-4 py-2 text-center">
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            onClick={() => handleEdit(emp)}
-                            data-testid={`button-edit-salary-${emp.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              onClick={() => handleEdit(emp)}
+                              data-testid={`button-edit-salary-${emp.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))
