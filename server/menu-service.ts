@@ -358,13 +358,30 @@ function canAccessModule(
   moduleKey: PermissionModule,
   dynamicPermissions?: DynamicPermissions
 ): boolean {
+  // Normalize for case-insensitive comparison
+  const normalizedRole = role.trim().toLowerCase();
+  const normalizedModuleKey = moduleKey.trim().toLowerCase();
+  
   // First check dynamic permissions from database (takes priority)
-  if (dynamicPermissions) {
+  if (dynamicPermissions && dynamicPermissions.length > 0) {
     const dynamicPerm = dynamicPermissions.find(
-      p => p.role === role && p.module === moduleKey
+      p => p.role.trim().toLowerCase() === normalizedRole && 
+           p.module.trim().toLowerCase() === normalizedModuleKey
     );
-    if (dynamicPerm && dynamicPerm.actions.length > 0) {
-      return true;
+    
+    if (dynamicPerm) {
+      // Handle both array and string formats for actions
+      const actions = dynamicPerm.actions as string[] | string;
+      const hasActions = Array.isArray(actions) 
+        ? actions.length > 0 
+        : (typeof actions === 'string' && actions.length > 0);
+      
+      // Debug log for troubleshooting
+      console.log(`[canAccessModule] Role: ${role}, Module: ${moduleKey}, DynamicPerm found: ${!!dynamicPerm}, Actions: ${JSON.stringify(actions)}, HasActions: ${hasActions}`);
+      
+      if (hasActions) {
+        return true;
+      }
     }
   }
   
@@ -372,7 +389,14 @@ function canAccessModule(
   const rolePermissions = PERMISSIONS[role];
   if (!rolePermissions) return false;
   const modulePermissions = rolePermissions[moduleKey];
-  return modulePermissions && modulePermissions.length > 0;
+  const staticResult = modulePermissions && modulePermissions.length > 0;
+  
+  // Debug log for static fallback
+  if (moduleKey === 'accounting') {
+    console.log(`[canAccessModule STATIC] Role: ${role}, Module: ${moduleKey}, StaticPerms: ${JSON.stringify(modulePermissions)}, Result: ${staticResult}`);
+  }
+  
+  return staticResult;
 }
 
 function isScopeAllowed(scope: SidebarMenuScope, userScope: 'branch' | 'hq' | 'admin'): boolean {

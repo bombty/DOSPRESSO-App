@@ -5821,8 +5821,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const userRole = user.role as UserRoleType;
       
-      // Use new menu service
-      const menuResponse = buildMenuForUser({ id: user.id, role: userRole }, {});
+      // Fetch dynamic permissions from database for this role
+      let dynamicPermissions: Array<{ role: string; module: string; actions: string[] }> = [];
+      try {
+        const allPermissions = await storage.getRolePermissions();
+        dynamicPermissions = allPermissions.filter(p => p.role === userRole);
+      } catch (e) {
+        console.error("Error fetching dynamic permissions for legacy menu:", e);
+      }
+      
+      // Use new menu service with dynamic permissions
+      const menuResponse = buildMenuForUser({ id: user.id, role: userRole }, {}, dynamicPermissions);
       
       // Convert to legacy format for backwards compatibility
       res.json({
