@@ -28,19 +28,26 @@ import {
   ChevronRight,
   Calculator,
   Package,
-  FolderKanban
+  FolderKanban,
+  Plus,
+  X
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const ROLE_GROUPS = {
-  admin: { label: "Admin", color: "bg-red-500", roles: ["admin"] },
+  admin: { label: "Admin", color: "bg-red-500", roles: ["admin"], scope: "admin" },
   hq: { 
     label: "HQ Rolleri", 
     color: "bg-blue-500", 
-    roles: ["muhasebe", "teknik", "destek", "coach", "satinalma", "yatirimci_hq"] 
+    roles: ["muhasebe", "teknik", "destek", "coach", "satinalma", "yatirimci_hq"],
+    scope: "hq"
   },
-  fabrika: { label: "Fabrika", color: "bg-orange-500", roles: ["fabrika"] },
-  sube: { label: "Şube Rolleri", color: "bg-green-500", roles: ["supervisor", "supervisor_buddy", "barista"] },
+  fabrika: { label: "Fabrika", color: "bg-orange-500", roles: ["fabrika"], scope: "hq" },
+  sube: { label: "Şube Rolleri", color: "bg-green-500", roles: ["supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer", "yatirimci_branch"], scope: "branch" },
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -55,6 +62,9 @@ const ROLE_LABELS: Record<string, string> = {
   supervisor: "Supervisor",
   supervisor_buddy: "Supervisor Buddy",
   barista: "Barista",
+  bar_buddy: "Bar Buddy",
+  stajyer: "Stajyer",
+  yatirimci_branch: "Yatırımcı Şube",
 };
 
 const MODULE_GROUPS = [
@@ -173,6 +183,10 @@ export default function AdminYetkilendirme() {
   const [permissions, setPermissions] = useState<PermissionState>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
+  const [isNewRoleDialogOpen, setIsNewRoleDialogOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleScope, setNewRoleScope] = useState<"admin" | "hq" | "branch">("hq");
+  const [newRoleDescription, setNewRoleDescription] = useState("");
 
   const { data: rolePermissions = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/role-permissions", selectedRole],
@@ -263,6 +277,30 @@ export default function AdminYetkilendirme() {
     }
   };
 
+  const createRoleMutation = useMutation({
+    mutationFn: (data: { roleName: string; scope: string; description: string }) =>
+      apiRequest("POST", "/api/admin/roles", data),
+    onSuccess: () => {
+      toast({ title: "Rol oluşturuldu" });
+      setIsNewRoleDialogOpen(false);
+      setNewRoleName("");
+      setNewRoleScope("hq");
+      setNewRoleDescription("");
+      window.location.reload();
+    },
+    onError: (err) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleCreateRole = () => {
+    if (!newRoleName.trim()) {
+      toast({ title: "Hata", description: "Rol adı gerekli", variant: "destructive" });
+      return;
+    }
+    createRoleMutation.mutate({ roleName: newRoleName.trim().toLowerCase(), scope: newRoleScope, description: newRoleDescription });
+  };
+
   const handleRoleSelect = (role: string) => {
     setSelectedRole(role);
     setPermissions({});
@@ -278,13 +316,25 @@ export default function AdminYetkilendirme() {
     <div className="h-[calc(100vh-120px)] flex flex-col md:flex-row">
       {/* Rol Listesi - Mobilde tam ekran, masaüstünde sidebar */}
       <div className={`${showPermissions ? 'hidden md:block' : 'block'} w-full md:w-56 md:border-r bg-muted/30 p-3 space-y-4 md:h-full`}>
-        <div className="flex items-center gap-2">
-          <Link href="/admin">
-            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-back-admin">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <h2 className="font-semibold text-sm">Roller</h2>
+        <div className="flex items-center gap-2 justify-between">
+          <div className="flex items-center gap-2">
+            <Link href="/admin">
+              <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-back-admin">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <h2 className="font-semibold text-sm">Roller</h2>
+          </div>
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-8 w-8"
+            onClick={() => setIsNewRoleDialogOpen(true)}
+            data-testid="button-new-role"
+            title="Yeni Rol Ekle"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
 
         <ScrollArea className="h-[calc(100vh-200px)] md:h-[calc(100%-60px)]">
@@ -413,6 +463,54 @@ export default function AdminYetkilendirme() {
           </div>
         )}
       </div>
+
+      {/* Rol Ekle Modal */}
+      <Dialog open={isNewRoleDialogOpen} onOpenChange={setIsNewRoleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Yeni Rol Ekle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Rol Adı</Label>
+              <Input
+                placeholder="örn: lead_barista, quality_manager"
+                value={newRoleName}
+                onChange={(e) => setNewRoleName(e.target.value)}
+                data-testid="input-role-name"
+              />
+            </div>
+            <div>
+              <Label>Rol Kapsamı</Label>
+              <Select value={newRoleScope} onValueChange={(v: any) => setNewRoleScope(v)}>
+                <SelectTrigger data-testid="select-role-scope">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="hq">HQ</SelectItem>
+                  <SelectItem value="branch">Şube</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Açıklama (İsteğe Bağlı)</Label>
+              <Input
+                placeholder="Rol için açıklama girin"
+                value={newRoleDescription}
+                onChange={(e) => setNewRoleDescription(e.target.value)}
+                data-testid="input-role-description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewRoleDialogOpen(false)}>İptal</Button>
+            <Button onClick={handleCreateRole} disabled={createRoleMutation.isPending} data-testid="button-create-role">
+              {createRoleMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

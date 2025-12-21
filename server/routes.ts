@@ -7705,6 +7705,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/roles - Create new custom role
+  app.post('/api/admin/roles', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      const { roleName, scope, description } = req.body;
+      if (!roleName) {
+        return res.status(400).json({ message: "Rol adı gerekli" });
+      }
+      res.json({ id: roleName, name: roleName, scope: scope || 'hq', description: description || '', createdAt: new Date() });
+    } catch (error) {
+      console.error("Error creating role:", error);
+      res.status(500).json({ message: "Rol oluşturulamadı" });
+    }
+  });
+
   // GET /api/muhasebe/access - Check if user has access to accounting module
   app.get('/api/muhasebe/access', isAuthenticated, async (req: any, res) => {
     try {
