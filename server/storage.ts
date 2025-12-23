@@ -6471,6 +6471,7 @@ export class DatabaseStorage implements IStorage {
     branches: Array<{ id: number; name: string; address: string | null }>;
     equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
   }> {
+    console.log("[Search] Starting search for:", query, "isHQ:", isHQ, "userBranchId:", userBranchId);
     const searchPattern = `%${query.toLowerCase()}%`;
     
     // Search users - HQ sees all, branch sees own branch only
@@ -6514,8 +6515,28 @@ export class DatabaseStorage implements IStorage {
           .limit(maxPerCategory)
         : Promise.resolve([]);
 
-    // Search recipes - temporarily disabled to debug
-    const recipesQuery = Promise.resolve([]);
+    // Search recipes - all users can see recipes
+    // Wrapped in try-catch to handle any ORM issues gracefully
+    let recipesQueryPromise: Promise<any[]>;
+    try {
+      recipesQueryPromise = db.select({
+          id: recipes.id,
+          nameTr: recipes.nameTr,
+          code: recipes.code,
+          categoryId: recipes.categoryId,
+        })
+        .from(recipes)
+        .where(
+          or(
+            sql`LOWER(${recipes.nameTr}) LIKE ${searchPattern}`,
+            sql`LOWER(${recipes.code}) LIKE ${searchPattern}`
+          )
+        )
+        .limit(maxPerCategory);
+    } catch (e) {
+      console.error("Recipes query build error:", e);
+      recipesQueryPromise = Promise.resolve([]);
+    }
 
     // Search tasks - HQ sees all, branch sees own
     // If branch user has no branchId, return empty results for tasks
@@ -6601,13 +6622,15 @@ export class DatabaseStorage implements IStorage {
         : Promise.resolve([]);
 
     // Execute all queries in parallel
+    console.log("[Search] Executing all queries in parallel...");
     const [usersResult, recipesResult, tasksResult, branchesResult, equipmentResult] = await Promise.all([
       usersQuery,
-      recipesQuery,
+      recipesQueryPromise,
       tasksQuery,
       branchesQuery,
       equipmentQuery,
     ]);
+    console.log("[Search] Queries completed. Users:", usersResult.length, "Recipes:", recipesResult.length, "Tasks:", tasksResult.length, "Branches:", branchesResult.length, "Equipment:", equipmentResult.length);
 
     return {
       users: usersResult,
