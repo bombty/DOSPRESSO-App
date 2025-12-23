@@ -50,9 +50,16 @@ export function AppHeader({ notificationCount = 0, user, branchName, onQRClick }
   
   const debouncedQuery = useDebounce(searchQuery, 300);
   
-  // Search query
+  // Search query - use proper queryFn to pass q parameter
   const { data: searchResults, isLoading: isSearching } = useQuery<SearchResults>({
     queryKey: ['/api/search', debouncedQuery],
+    queryFn: async () => {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Search failed');
+      return res.json();
+    },
     enabled: debouncedQuery.length >= 2,
   });
 

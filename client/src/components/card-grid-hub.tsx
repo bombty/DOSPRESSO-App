@@ -407,6 +407,10 @@ export function CardGridHub() {
       "yonetim": Settings,
       "admin": Shield,
       "admin-main": Shield,
+      "yetkilendirme": Shield,
+      "authorization": Shield,
+      "rol-yetkileri": Shield,
+      "role-permissions": Shield,
       "ai-asistan": Bot,
       "ai-assistant": Bot,
       "ai-main": Bot,
@@ -488,6 +492,10 @@ export function CardGridHub() {
       "settings-main": "bg-slate-600",
       "admin": "bg-red-600",
       "admin-main": "bg-red-600",
+      "yetkilendirme": "bg-red-600",
+      "authorization": "bg-red-600",
+      "rol-yetkileri": "bg-red-600",
+      "role-permissions": "bg-red-600",
       "ai-asistan": "bg-violet-500",
       "ai-assistant": "bg-violet-500",
       "ai-main": "bg-violet-500",
@@ -557,8 +565,9 @@ export function CardGridHub() {
       {/* Shift Checklists - Branch users only */}
       {isBranch && <ShiftChecklistCard />}
 
-      {/* Analytics Card - Branch supervisors only */}
-      {isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy') && <EnhancedAnalyticsCard />}
+      {/* Analytics Card - Branch supervisors + HQ roles */}
+      {(isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) && <EnhancedAnalyticsCard />}
+      {isHQ && <EnhancedAnalyticsCard />}
 
       {/* Equipment Health Alert */}
       {criticalEquipment.length > 0 && (

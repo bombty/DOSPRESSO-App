@@ -131,14 +131,11 @@ function CoreMetricsGrid({
   inModal?: boolean;
   periodLabel?: string;
 }) {
-  const [, navigate] = useLocation();
-  
   return (
     <div className="space-y-3">
       <div className={`grid ${inModal ? 'grid-cols-4' : 'grid-cols-2'} gap-2`}>
         <div 
-          className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20 cursor-pointer hover-elevate" 
-          onClick={() => navigate('/tasks')} 
+          className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20" 
           data-testid="card-pending-tasks"
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -150,8 +147,7 @@ function CoreMetricsGrid({
         </div>
 
         <div 
-          className="p-2 bg-green-500/10 rounded border border-green-500/20 cursor-pointer hover-elevate" 
-          onClick={() => navigate('/tasks')} 
+          className="p-2 bg-green-500/10 rounded border border-green-500/20" 
           data-testid="card-completed-tasks"
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -163,10 +159,9 @@ function CoreMetricsGrid({
         </div>
 
         <div 
-          className={`p-2 rounded border cursor-pointer hover-elevate ${
+          className={`p-2 rounded border ${
             activeFaults > 0 ? 'bg-destructive/10 border-destructive/20' : 'bg-green-500/10 border-green-500/20'
           }`}
-          onClick={() => navigate('/faults')} 
           data-testid="card-active-faults"
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -178,10 +173,9 @@ function CoreMetricsGrid({
         </div>
 
         <div 
-          className={`p-2 rounded border cursor-pointer hover-elevate ${
+          className={`p-2 rounded border ${
             overdueChecklists > 0 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-green-500/10 border-green-500/20'
           }`}
-          onClick={() => navigate('/checklists')} 
           data-testid="card-overdue-checklists"
         >
           <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -193,7 +187,7 @@ function CoreMetricsGrid({
         </div>
       </div>
 
-      <div className="p-2 bg-background/50 rounded border border-primary/10 cursor-pointer hover-elevate" onClick={() => navigate('/equipment')} data-testid="card-avg-health">
+      <div className="p-2 bg-background/50 rounded border border-primary/10" data-testid="card-avg-health">
         <div className="flex justify-between items-center mb-1">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Wrench className="h-3 w-3" /> Ekipman Sağlığı
@@ -220,7 +214,7 @@ function CoreMetricsGrid({
 
 export function EnhancedAnalyticsCard() {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState<'daily' | 'weekly' | 'monthly' | null>(null);
   const [activePdfTab, setActivePdfTab] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -240,7 +234,7 @@ export function EnhancedAnalyticsCard() {
 
   // PDF generation function
   const generatePDF = async (period: 'daily' | 'weekly' | 'monthly') => {
-    setIsPdfGenerating(true);
+    setGeneratingPdf(period);
     
     try {
       const doc = new jsPDF();
@@ -428,7 +422,7 @@ export function EnhancedAnalyticsCard() {
     } catch (error) {
       console.error('PDF oluşturma hatası:', error);
     } finally {
-      setIsPdfGenerating(false);
+      setGeneratingPdf(null);
     }
   };
 
@@ -735,11 +729,11 @@ export function EnhancedAnalyticsCard() {
               size="sm"
               variant="outline"
               onClick={() => generatePDF('daily')}
-              disabled={isPdfGenerating}
+              disabled={generatingPdf !== null}
               className="flex-1 min-w-[100px]"
               data-testid="button-download-daily-pdf"
             >
-              {isPdfGenerating ? (
+              {generatingPdf === 'daily' ? (
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               ) : (
                 <Download className="h-3 w-3 mr-1" />
@@ -750,11 +744,11 @@ export function EnhancedAnalyticsCard() {
               size="sm"
               variant="outline"
               onClick={() => generatePDF('weekly')}
-              disabled={isPdfGenerating}
+              disabled={generatingPdf !== null}
               className="flex-1 min-w-[100px]"
               data-testid="button-download-weekly-pdf"
             >
-              {isPdfGenerating ? (
+              {generatingPdf === 'weekly' ? (
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               ) : (
                 <Download className="h-3 w-3 mr-1" />
@@ -765,11 +759,11 @@ export function EnhancedAnalyticsCard() {
               size="sm"
               variant="outline"
               onClick={() => generatePDF('monthly')}
-              disabled={isPdfGenerating}
+              disabled={generatingPdf !== null}
               className="flex-1 min-w-[100px]"
               data-testid="button-download-monthly-pdf"
             >
-              {isPdfGenerating ? (
+              {generatingPdf === 'monthly' ? (
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               ) : (
                 <Download className="h-3 w-3 mr-1" />

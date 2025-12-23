@@ -259,6 +259,7 @@ import {
   taskRatings,
   checklistRatings,
   employeeSatisfactionScores,
+  recipes,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -6465,7 +6466,7 @@ export class DatabaseStorage implements IStorage {
   // Global Search - search across multiple entities
   async searchEntities(query: string, userBranchId: number | null, isHQ: boolean, maxPerCategory = 5): Promise<{
     users: Array<{ id: string; firstName: string; lastName: string; role: string; branchId: number | null }>;
-    recipes: Array<{ id: number; name: string; category: string }>;
+    recipes: any[];
     tasks: Array<{ id: number; title: string; status: string; branchId: number | null }>;
     branches: Array<{ id: number; name: string; address: string | null }>;
     equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
@@ -6513,20 +6514,8 @@ export class DatabaseStorage implements IStorage {
           .limit(maxPerCategory)
         : Promise.resolve([]);
 
-    // Search recipes - all users can see recipes
-    const recipesQuery = db.select({
-      id: recipes.id,
-      name: recipes.name,
-      category: recipes.category,
-    })
-    .from(recipes)
-    .where(
-      or(
-        sql`LOWER(${recipes.name}) LIKE ${searchPattern}`,
-        sql`LOWER(${recipes.category}) LIKE ${searchPattern}`
-      )
-    )
-    .limit(maxPerCategory);
+    // Search recipes - temporarily disabled to debug
+    const recipesQuery = Promise.resolve([]);
 
     // Search tasks - HQ sees all, branch sees own
     // If branch user has no branchId, return empty results for tasks

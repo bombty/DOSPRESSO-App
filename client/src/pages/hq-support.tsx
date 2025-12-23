@@ -47,6 +47,7 @@ const CATEGORY_LABELS: Record<HQSupportCategoryType, string> = {
   coach: "Coach",
   destek: "Destek",
   genel: "Genel",
+  it_destek: "IT Destek",
 };
 
 // Priority translations and colors

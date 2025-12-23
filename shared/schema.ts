@@ -1847,6 +1847,7 @@ export const HQ_SUPPORT_CATEGORY = {
   COACH: 'coach',           // Training/coaching
   DESTEK: 'destek',         // General support
   GENEL: 'genel',           // General inquiries
+  IT_DESTEK: 'it_destek',   // IT support (software/program requests) - routes to admin
 } as const;
 
 export type HQSupportCategoryType = typeof HQ_SUPPORT_CATEGORY[keyof typeof HQ_SUPPORT_CATEGORY];
