@@ -209,37 +209,7 @@ export default function Muhasebe() {
     },
   });
 
-  if (isLoadingAccess) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <Skeleton className="w-full max-w-md h-24" />
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              Yetkisiz Erişim
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Bu modüle erişim izniniz yok. Erişim talep etmek için yöneticiye başvurunuz.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const currentYearParams = parameters.find(p => p.year === selectedYear);
-  const activeParams = parameters.find(p => p.isActive);
-
+  // ALL MUTATIONS MUST BE DECLARED BEFORE ANY EARLY RETURNS (React hooks rule)
   // Calculate payroll mutation
   const calculateMutation = useMutation({
     mutationFn: async (params: { userId: string; year: number; month: number }) => {
@@ -257,14 +227,6 @@ export default function Muhasebe() {
       toast({ title: "Bordro hesaplanamadı", variant: "destructive" });
     },
   });
-  
-  const calculateEmployeePayroll = () => {
-    if (!selectedEmployeeId) {
-      toast({ title: "Personel seçin", variant: "destructive" });
-      return;
-    }
-    calculateMutation.mutate({ userId: selectedEmployeeId, year: selectedYear, month: selectedMonth });
-  };
 
   // Save payroll record mutation with period in variables
   const saveMutation = useMutation({
@@ -307,11 +269,6 @@ export default function Muhasebe() {
       toast({ title: err.message || "Bordro kaydedilemedi", variant: "destructive" });
     },
   });
-
-  const savePayrollRecord = () => {
-    if (!payrollCalc) return;
-    saveMutation.mutate({ calc: payrollCalc, year: selectedYear, month: selectedMonth });
-  };
 
   // Approve payroll mutation with period in variables
   const approveMutation = useMutation({
@@ -369,6 +326,52 @@ export default function Muhasebe() {
       toast({ title: "Güncelleme başarısız", variant: "destructive" });
     },
   });
+
+  // EARLY RETURNS - After all hooks are declared
+  if (isLoadingAccess) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Skeleton className="w-full max-w-md h-24" />
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Yetkisiz Erişim
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Bu modüle erişim izniniz yok. Erişim talep etmek için yöneticiye başvurunuz.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Helper functions - after early returns is OK
+  const currentYearParams = parameters.find(p => p.year === selectedYear);
+  const activeParams = parameters.find(p => p.isActive);
+  
+  const calculateEmployeePayroll = () => {
+    if (!selectedEmployeeId) {
+      toast({ title: "Personel seçin", variant: "destructive" });
+      return;
+    }
+    calculateMutation.mutate({ userId: selectedEmployeeId, year: selectedYear, month: selectedMonth });
+  };
+
+  const savePayrollRecord = () => {
+    if (!payrollCalc) return;
+    saveMutation.mutate({ calc: payrollCalc, year: selectedYear, month: selectedMonth });
+  };
 
   const calculatePayroll = async () => {
     if (!calcGross && !calcNet) {
