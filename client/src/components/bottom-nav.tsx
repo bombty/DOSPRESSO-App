@@ -21,9 +21,9 @@ export function BottomNav() {
   // Check if user has HR access
   const hasHRAccess = userRole && PERMISSIONS[userRole as keyof typeof PERMISSIONS]?.hr?.length > 0;
   
-  // Build nav items based on user role
+  // Build nav items based on user role - all roles use "/" for dashboard
   const allNavItems: NavItem[] = [
-    { icon: Home, label: "Ana Sayfa", path: isHQ ? "/" : "/sube-dashboard" },
+    { icon: Home, label: "Ana Sayfa", path: "/" },
     { icon: GraduationCap, label: "Akademi", path: isHQ ? "/akademi-hq" : "/akademi" },
     // İK - show only for roles with HR access (supervisor, supervisor_buddy, admin, etc.)
     ...(hasHRAccess ? [{ icon: Users, label: "İK", path: "/ik" }] : []),
@@ -35,7 +35,7 @@ export function BottomNav() {
   const navItems = allNavItems.slice(0, 5);
 
   const isActive = (path: string) => {
-    if (path === "/" || path === "/sube-dashboard") return location === "/" || location === "/sube-dashboard";
+    if (path === "/") return location === "/";
     return location.startsWith(path);
   };
 

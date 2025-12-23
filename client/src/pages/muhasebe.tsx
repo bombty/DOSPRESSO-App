@@ -442,26 +442,26 @@ export default function Muhasebe() {
         </div>
 
         <Tabs defaultValue="bordro" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="bordro" data-testid="tab-bordro">
-              <FileText className="h-4 w-4 mr-2" />
-              Bordro
+          <TabsList className="flex flex-wrap gap-1 h-auto p-1 w-full">
+            <TabsTrigger value="bordro" data-testid="tab-bordro" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="truncate">Bordro</span>
             </TabsTrigger>
-            <TabsTrigger value="salaries" data-testid="tab-salaries">
-              <Banknote className="h-4 w-4 mr-2" />
-              Maaş Ayarları
+            <TabsTrigger value="salaries" data-testid="tab-salaries" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
+              <Banknote className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="truncate">Maaşlar</span>
             </TabsTrigger>
-            <TabsTrigger value="parameters" data-testid="tab-parameters">
-              <Settings className="h-4 w-4 mr-2" />
-              Parametreler
+            <TabsTrigger value="parameters" data-testid="tab-parameters" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
+              <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="truncate">Parametreler</span>
             </TabsTrigger>
-            <TabsTrigger value="calculator" data-testid="tab-calculator">
-              <Calculator className="h-4 w-4 mr-2" />
-              Hesaplama
+            <TabsTrigger value="calculator" data-testid="tab-calculator" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
+              <Calculator className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="truncate">Hesaplama</span>
             </TabsTrigger>
-            <TabsTrigger value="reports" data-testid="tab-reports">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Raporlar
+            <TabsTrigger value="reports" data-testid="tab-reports" className="flex-1 min-w-[80px] text-xs sm:text-sm px-2 py-1.5">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="truncate">Raporlar</span>
             </TabsTrigger>
           </TabsList>
 
