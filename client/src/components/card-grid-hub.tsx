@@ -543,18 +543,20 @@ export function CardGridHub() {
   };
 
   const baseModules = menuModules && menuModules.length > 0 
-    ? menuModules.map(m => {
-        const moduleKey = normalizeModuleKey(m);
-        return {
-          id: moduleKey,
-          icon: getIcon(moduleKey),
-          label: m.label,
-          path: m.path,
-          color: getColor(moduleKey),
-          description: m.description,
-          badge: getBadge(moduleKey),
-        };
-      })
+    ? menuModules
+        .filter(m => m.path !== '/' && m.path !== '/sube-dashboard')
+        .map(m => {
+          const moduleKey = normalizeModuleKey(m);
+          return {
+            id: moduleKey,
+            icon: getIcon(moduleKey),
+            label: m.label,
+            path: m.path,
+            color: getColor(moduleKey),
+            description: m.description,
+            badge: getBadge(moduleKey),
+          };
+        })
     : (isHQ ? hqModules : branchModules);
 
   // Admin kullanıcıları için Admin Panel kartını her zaman ekle
