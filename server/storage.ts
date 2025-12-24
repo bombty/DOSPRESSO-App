@@ -6463,7 +6463,7 @@ export class DatabaseStorage implements IStorage {
     return query;
   }
 
-  // Global Search - search across multiple entities
+  // Global Search - search across multiple entities using raw SQL for stability
   async searchEntities(query: string, userBranchId: number | null, isHQ: boolean, maxPerCategory = 5): Promise<{
     users: Array<{ id: string; firstName: string; lastName: string; role: string; branchId: number | null }>;
     recipes: any[];
@@ -6474,161 +6474,88 @@ export class DatabaseStorage implements IStorage {
     console.log("[Search] Starting search for:", query, "isHQ:", isHQ, "userBranchId:", userBranchId);
     const searchPattern = `%${query.toLowerCase()}%`;
     
-    // Search users - HQ sees all, branch sees own branch only
-    // If branch user has no branchId, return empty results for users
-    const usersQuery = isHQ 
-      ? db.select({
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          role: users.role,
-          branchId: users.branchId,
-        })
-        .from(users)
-        .where(
-          or(
-            sql`LOWER(${users.firstName}) LIKE ${searchPattern}`,
-            sql`LOWER(${users.lastName}) LIKE ${searchPattern}`,
-            sql`LOWER(${users.username}) LIKE ${searchPattern}`
-          )
-        )
-        .limit(maxPerCategory)
-      : userBranchId 
-        ? db.select({
-            id: users.id,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            role: users.role,
-            branchId: users.branchId,
-          })
-          .from(users)
-          .where(
-            and(
-              eq(users.branchId, userBranchId),
-              or(
-                sql`LOWER(${users.firstName}) LIKE ${searchPattern}`,
-                sql`LOWER(${users.lastName}) LIKE ${searchPattern}`,
-                sql`LOWER(${users.username}) LIKE ${searchPattern}`
-              )
-            )
-          )
-          .limit(maxPerCategory)
-        : Promise.resolve([]);
+    // Use raw SQL queries to avoid Drizzle ORM field ordering issues
+    const safeRawQuery = async <T>(queryFn: () => Promise<T[]>, name: string): Promise<T[]> => {
+      try {
+        return await queryFn();
+      } catch (e: any) {
+        console.error(`[Search] ${name} query failed:`, e.message);
+        return [] as T[];
+      }
+    };
 
-    // Search recipes - all users can see recipes
-    // Wrapped in try-catch to handle any ORM issues gracefully
-    let recipesQueryPromise: Promise<any[]>;
-    try {
-      recipesQueryPromise = db.select({
-          id: recipes.id,
-          nameTr: recipes.nameTr,
-          code: recipes.code,
-          categoryId: recipes.categoryId,
-        })
-        .from(recipes)
-        .where(
-          or(
-            sql`LOWER(${recipes.nameTr}) LIKE ${searchPattern}`,
-            sql`LOWER(${recipes.code}) LIKE ${searchPattern}`
-          )
-        )
-        .limit(maxPerCategory);
-    } catch (e) {
-      console.error("Recipes query build error:", e);
-      recipesQueryPromise = Promise.resolve([]);
-    }
+    // Search users
+    const usersPromise = safeRawQuery(async () => {
+      if (!isHQ && !userBranchId) return [];
+      const result = await db.execute(sql`
+        SELECT id, first_name as "firstName", last_name as "lastName", role, branch_id as "branchId"
+        FROM users 
+        WHERE (LOWER(first_name) LIKE ${searchPattern} 
+          OR LOWER(last_name) LIKE ${searchPattern}
+          OR LOWER(username) LIKE ${searchPattern})
+        ${isHQ ? sql`` : sql`AND branch_id = ${userBranchId}`}
+        LIMIT ${maxPerCategory}
+      `);
+      return result.rows as any[];
+    }, "users");
 
-    // Search tasks - HQ sees all, branch sees own
-    // If branch user has no branchId, return empty results for tasks
-    const tasksQuery = isHQ
-      ? db.select({
-          id: tasks.id,
-          title: tasks.title,
-          status: tasks.status,
-          branchId: tasks.branchId,
-        })
-        .from(tasks)
-        .where(sql`LOWER(${tasks.title}) LIKE ${searchPattern}`)
-        .limit(maxPerCategory)
-      : userBranchId
-        ? db.select({
-            id: tasks.id,
-            title: tasks.title,
-            status: tasks.status,
-            branchId: tasks.branchId,
-          })
-          .from(tasks)
-          .where(
-            and(
-              eq(tasks.branchId, userBranchId),
-              sql`LOWER(${tasks.title}) LIKE ${searchPattern}`
-            )
-          )
-          .limit(maxPerCategory)
-        : Promise.resolve([]);
+    // Search recipes - all users can see
+    const recipesPromise = safeRawQuery(async () => {
+      const result = await db.execute(sql`
+        SELECT id, name_tr as "nameTr", code, category_id as "categoryId"
+        FROM recipes 
+        WHERE LOWER(name_tr) LIKE ${searchPattern} OR LOWER(code) LIKE ${searchPattern}
+        LIMIT ${maxPerCategory}
+      `);
+      return result.rows as any[];
+    }, "recipes");
+
+    // Search tasks
+    const tasksPromise = safeRawQuery(async () => {
+      if (!isHQ && !userBranchId) return [];
+      const result = await db.execute(sql`
+        SELECT id, title, status, branch_id as "branchId"
+        FROM tasks 
+        WHERE LOWER(title) LIKE ${searchPattern}
+        ${isHQ ? sql`` : sql`AND branch_id = ${userBranchId}`}
+        LIMIT ${maxPerCategory}
+      `);
+      return result.rows as any[];
+    }, "tasks");
 
     // Search branches - HQ only
-    const branchesQuery = isHQ 
-      ? db.select({
-          id: branches.id,
-          name: branches.name,
-          address: branches.address,
-        })
-        .from(branches)
-        .where(
-          or(
-            sql`LOWER(${branches.name}) LIKE ${searchPattern}`,
-            sql`LOWER(${branches.address}) LIKE ${searchPattern}`
-          )
-        )
-        .limit(maxPerCategory)
-      : Promise.resolve([]);
+    const branchesPromise = safeRawQuery(async () => {
+      if (!isHQ) return [];
+      const result = await db.execute(sql`
+        SELECT id, name, address
+        FROM branches 
+        WHERE LOWER(name) LIKE ${searchPattern} OR LOWER(COALESCE(address, '')) LIKE ${searchPattern}
+        LIMIT ${maxPerCategory}
+      `);
+      return result.rows as any[];
+    }, "branches");
 
-    // Search equipment - HQ sees all, branch sees own
-    // If branch user has no branchId, return empty results for equipment
-    const equipmentQuery = isHQ
-      ? db.select({
-          id: equipment.id,
-          name: equipment.name,
-          type: equipment.equipmentType,
-          branchId: equipment.branchId,
-        })
-        .from(equipment)
-        .where(
-          or(
-            sql`LOWER(${equipment.name}) LIKE ${searchPattern}`,
-            sql`LOWER(${equipment.equipmentType}) LIKE ${searchPattern}`
-          )
-        )
-        .limit(maxPerCategory)
-      : userBranchId
-        ? db.select({
-            id: equipment.id,
-            name: equipment.name,
-            type: equipment.equipmentType,
-            branchId: equipment.branchId,
-          })
-          .from(equipment)
-          .where(
-            and(
-              eq(equipment.branchId, userBranchId),
-              or(
-                sql`LOWER(${equipment.name}) LIKE ${searchPattern}`,
-                sql`LOWER(${equipment.equipmentType}) LIKE ${searchPattern}`
-              )
-            )
-          )
-          .limit(maxPerCategory)
-        : Promise.resolve([]);
+    // Search equipment
+    const equipmentPromise = safeRawQuery(async () => {
+      if (!isHQ && !userBranchId) return [];
+      const result = await db.execute(sql`
+        SELECT id, name, equipment_type as "type", branch_id as "branchId"
+        FROM equipment 
+        WHERE (LOWER(name) LIKE ${searchPattern} OR LOWER(equipment_type) LIKE ${searchPattern})
+        ${isHQ ? sql`` : sql`AND branch_id = ${userBranchId}`}
+        LIMIT ${maxPerCategory}
+      `);
+      return result.rows as any[];
+    }, "equipment");
 
     // Execute all queries in parallel
     console.log("[Search] Executing all queries in parallel...");
     const [usersResult, recipesResult, tasksResult, branchesResult, equipmentResult] = await Promise.all([
-      usersQuery,
-      recipesQueryPromise,
-      tasksQuery,
-      branchesQuery,
-      equipmentQuery,
+      usersPromise,
+      recipesPromise,
+      tasksPromise,
+      branchesPromise,
+      equipmentPromise,
     ]);
     console.log("[Search] Queries completed. Users:", usersResult.length, "Recipes:", recipesResult.length, "Tasks:", tasksResult.length, "Branches:", branchesResult.length, "Equipment:", equipmentResult.length);
 
