@@ -21,7 +21,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Notifications**: In-app + email async notifications with manager alerts on critical events.
 
 ### Feature Specifications
-- **Authentication & RBAC**: A 14-role system with granular permissions and branch-level data filtering, including a module authorization system for access control.
+- **Authentication & RBAC**: A 14-role system with dual-layer granular permissions (module-level view/edit toggles + action-level scope control) and branch-level data filtering. The module authorization system at `/admin/yetkilendirme` supports 54 permission modules and 53 granular actions with scope-based access (self/branch/global) for sensitive data like payroll and salary information.
 - **Equipment Management**: Comprehensive lifecycle management, health monitoring, maintenance scheduling, and service contact management.
 - **Unified Fault System**: Creation, assignment, workflow, escalation, photo documentation, cost tracking, and QR-integrated reporting with intelligent routing and professional PDF export.
 - **SLA Monitoring**: Real-time tracking with automated breach alerts.
