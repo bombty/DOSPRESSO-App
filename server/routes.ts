@@ -199,6 +199,7 @@ import { sendNotificationEmail } from "./email";
 import { startReminderSystem } from "./reminders";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+import { resolvePermissionScope, applyScopeFilter, getUserPermissions, getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant } from "./permission-service";
 
 // Multer configuration for file uploads (memory storage)
 const uploadStorage = multer.memoryStorage();
@@ -19782,13 +19783,42 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // GET /api/employees-with-salary - Maaş bilgileri ile personel listesi
+  // GET /api/employees-with-salary - Maaş bilgileri ile personel listesi (SCOPE-AWARE)
   app.get('/api/employees-with-salary', isAuthenticated, async (req: any, res) => {
     try {
-      const userRole = req.user?.role;
-      const canAccess = await hasAccountingAccess(userRole);
-      if (!canAccess) {
+      const user = req.user;
+      const userRole = user?.role;
+      const userId = user?.id;
+      const userBranchId = user?.branchId;
+      
+      // Check permission for viewing salary info
+      const permission = await resolvePermissionScope(
+        { id: userId, role: userRole, branchId: userBranchId },
+        'accounting',
+        'view_salary'
+      );
+      
+      if (!permission.hasPermission) {
+        return res.status(403).json({ message: "Maaş bilgilerini görüntüleme yetkiniz yok" });
+      }
+      
+      const scopeFilter = applyScopeFilter(permission.scope, { id: userId, role: userRole, branchId: userBranchId });
+      
+      if (!scopeFilter.canAccess) {
         return res.status(403).json({ message: "Yetkisiz erişim" });
+      }
+      
+      // Build query based on scope
+      let whereClause = sql`u.is_active = true`;
+      
+      if (!scopeFilter.isGlobal) {
+        if (scopeFilter.userId) {
+          // SELF scope - only own data
+          whereClause = sql`u.is_active = true AND u.id = ${scopeFilter.userId}`;
+        } else if (scopeFilter.branchId) {
+          // BRANCH scope - only branch data
+          whereClause = sql`u.is_active = true AND u.branch_id = ${scopeFilter.branchId}`;
+        }
       }
 
       const result = await db.execute(sql`
@@ -19807,7 +19837,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         FROM users u
         LEFT JOIN branches b ON u.branch_id = b.id
         LEFT JOIN employee_benefits eb ON u.id = eb.user_id AND eb.is_active = true
-        WHERE u.is_active = true
+        WHERE ${whereClause}
         ORDER BY u.first_name, u.last_name
       `);
       
@@ -19902,24 +19932,45 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // PAYROLL RECORDS API - Bordro Yönetimi
   // ========================================
 
-  // GET /api/payroll/records - Bordro kayıtlarını listele
+  // GET /api/payroll/records - Bordro kayıtlarını listele (SCOPE-AWARE)
   app.get('/api/payroll/records', isAuthenticated, async (req: any, res) => {
     try {
-      const userRole = req.user?.role;
-      const userId = req.user?.id;
+      const user = req.user;
+      const userRole = user?.role;
+      const userId = user?.id;
+      const userBranchId = user?.branchId;
       
-      // Personel sadece kendi bordrosunu görebilir
-      const isAccountant = isHQRole(userRole) || userRole === 'admin' || userRole === 'muhasebe';
+      // Check permission for viewing payroll
+      const permission = await resolvePermissionScope(
+        { id: userId, role: userRole, branchId: userBranchId },
+        'accounting',
+        'view_payroll'
+      );
+      
+      if (!permission.hasPermission) {
+        return res.status(403).json({ message: "Bordro görüntüleme yetkiniz yok" });
+      }
+      
+      const scopeFilter = applyScopeFilter(permission.scope, { id: userId, role: userRole, branchId: userBranchId });
       
       const { year, month, employeeId, status } = req.query;
       
       // Build conditions array for dynamic filtering
       const conditions: any[] = [];
       
-      // Personel sadece kendi kayıtlarını görebilir
-      if (!isAccountant) {
-        conditions.push(sql`pr.user_id = ${userId}`);
-      } else if (employeeId) {
+      // Apply scope-based filtering
+      if (!scopeFilter.isGlobal) {
+        if (scopeFilter.userId) {
+          // SELF scope - only own records
+          conditions.push(sql`pr.user_id = ${scopeFilter.userId}`);
+        } else if (scopeFilter.branchId) {
+          // BRANCH scope - only branch records
+          conditions.push(sql`pr.branch_id = ${scopeFilter.branchId}`);
+        }
+      }
+      
+      // Additional filters from query params (only if user has broader scope)
+      if (scopeFilter.isGlobal && employeeId) {
         conditions.push(sql`pr.user_id = ${employeeId}`);
       }
       
@@ -19957,16 +20008,29 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // GET /api/payroll/records/:id - Tek bordro kaydı
+  // GET /api/payroll/records/:id - Tek bordro kaydı (SCOPE-AWARE)
   app.get('/api/payroll/records/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userRole = req.user?.role;
-      const userId = req.user?.id;
+      const user = req.user;
+      const userRole = user?.role;
+      const userId = user?.id;
+      const userBranchId = user?.branchId;
       const { id } = req.params;
       const recordId = parseInt(id);
       
       if (isNaN(recordId)) {
         return res.status(400).json({ message: "Geçersiz ID" });
+      }
+      
+      // Check permission for viewing payroll
+      const permission = await resolvePermissionScope(
+        { id: userId, role: userRole, branchId: userBranchId },
+        'accounting',
+        'view_payroll'
+      );
+      
+      if (!permission.hasPermission) {
+        return res.status(403).json({ message: "Bordro görüntüleme yetkiniz yok" });
       }
       
       const result = await db.execute(sql`
@@ -19985,10 +20049,16 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       const record = result.rows[0] as any;
       
-      // Personel sadece kendi bordrosunu görebilir
-      const isAccountant = isHQRole(userRole) || userRole === 'admin' || userRole === 'muhasebe';
-      if (!isAccountant && record.user_id !== userId) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
+      // Apply scope-based access control
+      const scopeFilter = applyScopeFilter(permission.scope, { id: userId, role: userRole, branchId: userBranchId });
+      
+      if (!scopeFilter.isGlobal) {
+        if (scopeFilter.userId && record.user_id !== scopeFilter.userId) {
+          return res.status(403).json({ message: "Bu bordro kaydına erişim yetkiniz yok" });
+        }
+        if (scopeFilter.branchId && record.branch_id !== scopeFilter.branchId) {
+          return res.status(403).json({ message: "Bu şubenin bordro kayıtlarına erişim yetkiniz yok" });
+        }
       }
       
       res.json(record);
@@ -20552,6 +20622,106 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error) {
       console.error("Delete payroll record error:", error);
       res.status(500).json({ message: "Bordro kaydı silinemedi" });
+    }
+  });
+
+  // ========================================
+  // GRANULAR PERMISSION MANAGEMENT API
+  // ========================================
+
+  // GET /api/admin/permission-actions - Tüm aksiyonları modüle göre gruplu getir
+  app.get('/api/admin/permission-actions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const groupedActions = await getAllActionsGroupedByModule();
+      res.json(groupedActions);
+    } catch (error) {
+      console.error("Get permission actions error:", error);
+      res.status(500).json({ message: "Aksiyon listesi alınamadı" });
+    }
+  });
+
+  // GET /api/admin/role-grants/:role - Rol için tüm izinleri getir
+  app.get('/api/admin/role-grants/:role', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const { role } = req.params;
+      const grants = await getRoleGrants(role);
+      res.json(grants);
+    } catch (error) {
+      console.error("Get role grants error:", error);
+      res.status(500).json({ message: "Rol izinleri alınamadı" });
+    }
+  });
+
+  // POST /api/admin/role-grants - İzin ekle veya güncelle
+  app.post('/api/admin/role-grants', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const { role, actionId, scope, isActive } = req.body;
+      
+      if (!role || !actionId || !scope) {
+        return res.status(400).json({ message: "role, actionId ve scope gerekli" });
+      }
+      
+      const validScopes = ['self', 'branch', 'global'];
+      if (!validScopes.includes(scope)) {
+        return res.status(400).json({ message: "Geçersiz scope değeri" });
+      }
+      
+      const grantId = await upsertPermissionGrant(role, actionId, scope, isActive ?? true);
+      res.json({ success: true, grantId });
+    } catch (error) {
+      console.error("Upsert role grant error:", error);
+      res.status(500).json({ message: "İzin güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/admin/role-grants/:role/:actionId - İzin sil
+  app.delete('/api/admin/role-grants/:role/:actionId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      }
+      
+      const { role, actionId } = req.params;
+      await deletePermissionGrant(role, parseInt(actionId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete role grant error:", error);
+      res.status(500).json({ message: "İzin silinemedi" });
+    }
+  });
+
+  // GET /api/user/permissions - Mevcut kullanıcının tüm izinlerini getir
+  app.get('/api/user/permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const permissions = await getUserPermissions(user?.role);
+      
+      // Map to array format for frontend
+      const permissionArray = Array.from(permissions.entries()).map(([key, scope]) => {
+        const [moduleKey, actionKey] = key.split(':');
+        return { moduleKey, actionKey, scope };
+      });
+      
+      res.json(permissionArray);
+    } catch (error) {
+      console.error("Get user permissions error:", error);
+      res.status(500).json({ message: "İzinler alınamadı" });
     }
   });
 

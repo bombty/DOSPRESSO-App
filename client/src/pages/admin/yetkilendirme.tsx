@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
   Shield, 
   Users, 
@@ -30,13 +32,40 @@ import {
   Package,
   FolderKanban,
   Plus,
-  X
+  X,
+  Eye,
+  Lock,
+  Globe
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type PermissionAction = {
+  id: number;
+  moduleKey: string;
+  actionKey: string;
+  labelTr: string;
+  description: string | null;
+};
+
+type RoleGrant = {
+  id: number;
+  actionId: number;
+  scope: string;
+  isActive: boolean;
+  moduleKey: string;
+  actionKey: string;
+  labelTr: string;
+};
+
+const SCOPE_LABELS: Record<string, { label: string; icon: any; color: string }> = {
+  self: { label: "Kendisi", icon: Lock, color: "text-orange-500" },
+  branch: { label: "Şubesi", icon: Building2, color: "text-blue-500" },
+  global: { label: "Tümü", icon: Globe, color: "text-green-500" },
+};
 
 const ROLE_GROUPS = {
   admin: { label: "Admin", color: "bg-red-500", roles: ["admin"], scope: "admin" },
@@ -194,6 +223,67 @@ export default function AdminYetkilendirme() {
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleScope, setNewRoleScope] = useState<"admin" | "hq" | "branch">("hq");
   const [newRoleDescription, setNewRoleDescription] = useState("");
+  const [expandedModules, setExpandedModules] = useState<string[]>([]);
+
+  // Fetch all granular permission actions grouped by module
+  const { data: permissionActions = {} } = useQuery<Record<string, PermissionAction[]>>({
+    queryKey: ["/api/admin/permission-actions"],
+    enabled: user?.role === "admin",
+  });
+
+  // Fetch role-specific grants
+  const { data: roleGrants = [], refetch: refetchGrants } = useQuery<RoleGrant[]>({
+    queryKey: ["/api/admin/role-grants", selectedRole],
+    enabled: user?.role === "admin" && !!selectedRole,
+  });
+
+  // Mutation for updating grants
+  const updateGrantMutation = useMutation({
+    mutationFn: (data: { role: string; actionId: number; scope: string; isActive?: boolean }) =>
+      apiRequest("POST", "/api/admin/role-grants", data),
+    onSuccess: () => {
+      refetchGrants();
+      toast({ title: "İzin güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "İzin güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  // Mutation for removing grants
+  const removeGrantMutation = useMutation({
+    mutationFn: (data: { role: string; actionId: number }) =>
+      apiRequest("DELETE", `/api/admin/role-grants/${data.role}/${data.actionId}`),
+    onSuccess: () => {
+      refetchGrants();
+      toast({ title: "İzin kaldırıldı" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "İzin kaldırılamadı", variant: "destructive" });
+    },
+  });
+
+  // Get current grant for an action
+  const getActionGrant = (actionId: number): RoleGrant | undefined => {
+    return roleGrants.find(g => g.actionId === actionId);
+  };
+
+  // Handle scope change for an action
+  const handleScopeChange = (actionId: number, scope: string) => {
+    if (!selectedRole) return;
+    updateGrantMutation.mutate({ role: selectedRole, actionId, scope });
+  };
+
+  // Handle removing a grant
+  const handleRemoveGrant = (actionId: number) => {
+    if (!selectedRole) return;
+    removeGrantMutation.mutate({ role: selectedRole, actionId });
+  };
+
+  // Check if module has granular actions
+  const hasGranularActions = (moduleKey: string): boolean => {
+    return !!permissionActions[moduleKey] && permissionActions[moduleKey].length > 0;
+  };
 
   const { data: rolePermissions = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/role-permissions", selectedRole],
@@ -456,6 +546,95 @@ export default function AdminYetkilendirme() {
                               </div>
                             </div>
                           </div>
+                          
+                          {/* Detaylı İzinler Accordion */}
+                          {hasGranularActions(module.key) && (
+                            <Accordion type="single" collapsible className="mt-1">
+                              <AccordionItem value={module.key} className="border-none">
+                                <AccordionTrigger className="py-1 text-xs text-muted-foreground hover:no-underline" data-testid={`accordion-${module.key}`}>
+                                  <div className="flex items-center gap-1">
+                                    <Eye className="h-3 w-3" />
+                                    Detaylı İzinler ({permissionActions[module.key]?.length || 0})
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-1 pt-2">
+                                  <div className="space-y-2 pl-2 border-l-2 border-muted">
+                                    {permissionActions[module.key]?.map((action) => {
+                                      const grant = getActionGrant(action.id);
+                                      return (
+                                        <div key={action.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-muted/30">
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium truncate">{action.labelTr}</p>
+                                            {action.description && (
+                                              <p className="text-[10px] text-muted-foreground truncate">{action.description}</p>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            {grant ? (
+                                              <>
+                                                <RadioGroup
+                                                  value={grant.scope}
+                                                  onValueChange={(v) => handleScopeChange(action.id, v)}
+                                                  className="flex gap-1"
+                                                >
+                                                  {Object.entries(SCOPE_LABELS).map(([scope, { label, icon: Icon, color }]) => (
+                                                    <div key={scope} className="flex items-center">
+                                                      <RadioGroupItem
+                                                        value={scope}
+                                                        id={`${action.id}-${scope}`}
+                                                        className="peer sr-only"
+                                                      />
+                                                      <Label
+                                                        htmlFor={`${action.id}-${scope}`}
+                                                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] cursor-pointer border transition-colors ${
+                                                          grant.scope === scope 
+                                                            ? `${color} border-current bg-current/10` 
+                                                            : "border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground"
+                                                        }`}
+                                                        data-testid={`scope-${action.actionKey}-${scope}`}
+                                                      >
+                                                        <Icon className="h-2.5 w-2.5" />
+                                                        <span className="hidden sm:inline">{label}</span>
+                                                      </Label>
+                                                    </div>
+                                                  ))}
+                                                </RadioGroup>
+                                                <Button
+                                                  size="icon"
+                                                  variant="ghost"
+                                                  className="h-5 w-5 text-destructive hover:text-destructive"
+                                                  onClick={() => handleRemoveGrant(action.id)}
+                                                  data-testid={`remove-grant-${action.actionKey}`}
+                                                >
+                                                  <X className="h-3 w-3" />
+                                                </Button>
+                                              </>
+                                            ) : (
+                                              <div className="flex gap-1">
+                                                {Object.entries(SCOPE_LABELS).map(([scope, { label, icon: Icon, color }]) => (
+                                                  <Button
+                                                    key={scope}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-5 px-1.5 text-[10px]"
+                                                    onClick={() => handleScopeChange(action.id, scope)}
+                                                    data-testid={`add-grant-${action.actionKey}-${scope}`}
+                                                  >
+                                                    <Icon className={`h-2.5 w-2.5 mr-0.5 ${color}`} />
+                                                    <span className="hidden sm:inline">{label}</span>
+                                                  </Button>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
+                          )}
                         </div>
                       ))}
                     </div>
