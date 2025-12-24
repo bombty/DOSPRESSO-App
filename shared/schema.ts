@@ -16,7 +16,8 @@ import {
   customType,
   uniqueIndex,
   unique,
-  check
+  check,
+  pgEnum
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -2011,15 +2012,29 @@ export const announcements = pgTable("announcements", {
   createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   message: text("message").notNull(),
+  summary: text("summary"),
+  category: varchar("category", { length: 30 }).notNull().default("general"), // new_product, general, policy, campaign, urgent, training, event
   targetRoles: text("target_roles").array(),
   targetBranches: integer("target_branches").array(),
   priority: text("priority").notNull().default("normal"),
   attachments: text("attachments").array().default(sql`ARRAY[]::text[]`),
+  
+  // Banner görseli ve ayarları
+  bannerImageUrl: text("banner_image_url"),
+  bannerTitle: varchar("banner_title", { length: 100 }),
+  bannerSubtitle: varchar("banner_subtitle", { length: 200 }),
+  showOnDashboard: boolean("show_on_dashboard").default(false),
+  bannerPriority: integer("banner_priority").default(0),
+  isPinned: boolean("is_pinned").default(false),
+  
   publishedAt: timestamp("published_at").defaultNow(),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   publishedIdx: index("announcements_published_idx").on(table.publishedAt),
+  categoryIdx: index("announcements_category_idx").on(table.category),
+  dashboardIdx: index("announcements_dashboard_idx").on(table.showOnDashboard),
 }));
 
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
