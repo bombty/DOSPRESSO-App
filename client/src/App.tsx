@@ -119,6 +119,7 @@ import AdminKullanicilar from "@/pages/admin/kullanicilar";
 import AdminEmailAyarlari from "@/pages/admin/email-ayarlari";
 import AdminServisMailAyarlari from "@/pages/admin/servis-mail-ayarlari";
 import AdminBannerlar from "@/pages/admin/bannerlar";
+import AdminDuyurular from "@/pages/admin/duyurular";
 import AdminYapayZekaAyarlari from "@/pages/admin/yapay-zeka-ayarlari";
 import AdminKaliteDenetimSablonlari from "@/pages/admin/kalite-denetim-şablonları";
 import AdminKaliteDenetimSablonuDuzenle from "@/pages/admin/kalite-denetim-sablonu-duzenle";
@@ -282,6 +283,7 @@ function Router() {
           <Route path="/admin/email-ayarlari" component={AdminEmailAyarlari} />
           <Route path="/admin/servis-mail-ayarlari" component={AdminServisMailAyarlari} />
           <Route path="/admin/bannerlar" component={AdminBannerlar} />
+          <Route path="/admin/duyurular" component={AdminDuyurular} />
           <Route path="/admin/yapay-zeka-ayarlari" component={AdminYapayZekaAyarlari} />
           <Route path="/admin/kalite-denetim-sablonlari" component={AdminKaliteDenetimSablonlari} />
           <Route path="/admin/kalite-denetim-sablonu/:id" component={AdminKaliteDenetimSablonuDuzenle} />
