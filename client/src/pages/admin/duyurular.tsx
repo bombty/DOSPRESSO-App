@@ -512,6 +512,7 @@ export default function AdminDuyurular() {
                   type="datetime-local"
                   value={formData.expiresAt}
                   onChange={(e) => setFormData(prev => ({ ...prev, expiresAt: e.target.value }))}
+                  onClick={(e) => e.stopPropagation()}
                   data-testid="input-announcement-expires"
                 />
                 <p className="text-xs text-muted-foreground">
