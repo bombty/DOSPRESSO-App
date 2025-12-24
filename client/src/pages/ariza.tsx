@@ -46,18 +46,18 @@ const updateFaultSchema = z.object({
 });
 
 const PRIORITY_COLORS: Record<string, string> = {
-  kritik: "bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive",
-  yuksek: "bg-warning/10 text-warning dark:bg-warning/5 dark:text-warning",
-  default: "bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary",
+  kritik: "bg-red-500 text-white",
+  yuksek: "bg-orange-500 text-white",
+  default: "bg-blue-500 text-white",
 };
 
 const STAGE_COLORS: Record<string, string> = {
-  bekliyor: "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-200",
-  isleme_alindi: "bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary",
-  devam_ediyor: "bg-warning/20 text-warning dark:bg-warning/5 dark:text-warning",
-  servis_cagrildi: "bg-warning/10 text-warning dark:bg-warning/5 dark:text-warning",
-  kargoya_verildi: "bg-secondary/10 text-secondary dark:bg-secondary/5 dark:text-secondary",
-  kapatildi: "bg-success/10 text-success dark:bg-success/5 dark:text-success",
+  bekliyor: "bg-slate-500 text-white",
+  isleme_alindi: "bg-blue-500 text-white",
+  devam_ediyor: "bg-amber-500 text-white",
+  servis_cagrildi: "bg-purple-500 text-white",
+  kargoya_verildi: "bg-indigo-500 text-white",
+  kapatildi: "bg-green-500 text-white",
 };
 
 const getPriorityColor = (priority: string | null): string => 
