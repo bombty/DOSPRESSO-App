@@ -542,7 +542,7 @@ export function CardGridHub() {
     return 'unknown-module';
   };
 
-  const modules = menuModules && menuModules.length > 0 
+  const baseModules = menuModules && menuModules.length > 0 
     ? menuModules.map(m => {
         const moduleKey = normalizeModuleKey(m);
         return {
@@ -556,6 +556,20 @@ export function CardGridHub() {
         };
       })
     : (isHQ ? hqModules : branchModules);
+
+  // Admin kullanıcıları için Admin Panel kartını her zaman ekle
+  const adminModule = {
+    id: "admin",
+    icon: Shield,
+    label: "Admin Panel",
+    path: "/admin",
+    color: "bg-red-600",
+    description: "Sistem yönetimi",
+  };
+
+  const modules = user?.role === 'admin' && !baseModules.some(m => m.id === 'admin' || m.path === '/admin')
+    ? [...baseModules, adminModule]
+    : baseModules;
 
   return (
     <div className="p-3 pb-24 space-y-4">
