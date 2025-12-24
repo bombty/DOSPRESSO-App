@@ -3857,6 +3857,69 @@ export type InsertPermissionModule = z.infer<typeof insertPermissionModuleSchema
 export type PermissionModule_DB = typeof permissionModules.$inferSelect;
 
 // ========================================
+// PERMISSION ACTIONS - Modül İçi Granüler Aksiyonlar
+// ========================================
+
+export const PermissionScope = {
+  SELF: "self",       // Sadece kendi verilerini görebilir
+  BRANCH: "branch",   // Şube genelini görebilir
+  GLOBAL: "global",   // Tüm şubeleri görebilir
+} as const;
+
+export type PermissionScopeType = typeof PermissionScope[keyof typeof PermissionScope];
+
+export const permissionActions = pgTable("permission_actions", {
+  id: serial("id").primaryKey(),
+  moduleKey: varchar("module_key", { length: 50 }).notNull(), // accounting, hr, employees, etc.
+  actionKey: varchar("action_key", { length: 50 }).notNull(), // view_salary, edit_salary, etc.
+  labelTr: varchar("label_tr", { length: 100 }).notNull(), // "Maaş Görüntüle"
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("permission_actions_module_key_idx").on(table.moduleKey),
+  unique("permission_actions_module_action_unique").on(table.moduleKey, table.actionKey),
+]);
+
+export const insertPermissionActionSchema = createInsertSchema(permissionActions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPermissionAction = z.infer<typeof insertPermissionActionSchema>;
+export type PermissionAction = typeof permissionActions.$inferSelect;
+
+// ========================================
+// ROLE PERMISSION GRANTS - Rol-Aksiyon-Scope İlişkileri
+// ========================================
+
+export const rolePermissionGrants = pgTable("role_permission_grants", {
+  id: serial("id").primaryKey(),
+  role: varchar("role", { length: 50 }).notNull(), // admin, muhasebe, supervisor, etc.
+  actionId: integer("action_id").notNull().references(() => permissionActions.id, { onDelete: "cascade" }),
+  scope: varchar("scope", { length: 20 }).notNull().default("self"), // self, branch, global
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("role_permission_grants_role_idx").on(table.role),
+  index("role_permission_grants_action_idx").on(table.actionId),
+  unique("role_permission_grants_role_action_unique").on(table.role, table.actionId),
+]);
+
+export const insertRolePermissionGrantSchema = createInsertSchema(rolePermissionGrants).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateRolePermissionGrantSchema = insertRolePermissionGrantSchema.partial();
+
+export type InsertRolePermissionGrant = z.infer<typeof insertRolePermissionGrantSchema>;
+export type UpdateRolePermissionGrant = z.infer<typeof updateRolePermissionGrantSchema>;
+export type RolePermissionGrant = typeof rolePermissionGrants.$inferSelect;
+
+// ========================================
 // ROLE MODULE PERMISSIONS - Rol-Modül-Aksiyon İlişkileri  
 // ========================================
 
