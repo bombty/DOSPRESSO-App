@@ -20725,6 +20725,310 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // ========================================
+  // DUYURU (ANNOUNCEMENTS) API
+  // ========================================
+
+  // GET /api/announcements - Tüm yayınlanmış duyuruları getir
+  app.get('/api/announcements', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { category, limit = 50 } = req.query;
+      
+      const now = new Date();
+      let query = db.select({
+        announcement: announcements,
+        readStatus: announcementReadStatus
+      })
+        .from(announcements)
+        .leftJoin(announcementReadStatus, and(
+          eq(announcementReadStatus.announcementId, announcements.id),
+          eq(announcementReadStatus.userId, user.id)
+        ))
+        .where(and(
+          lte(announcements.publishedAt, now),
+          or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now))
+        ))
+        .orderBy(desc(announcements.isPinned), desc(announcements.publishedAt))
+        .limit(parseInt(limit as string));
+      
+      const results = await query;
+      
+      // Filter by category if provided
+      let filtered = results;
+      if (category) {
+        filtered = results.filter(r => r.announcement.category === category);
+      }
+      
+      // Filter by target roles/branches
+      filtered = filtered.filter(r => {
+        const ann = r.announcement;
+        // If no targeting, show to all
+        if (!ann.targetRoles?.length && !ann.targetBranches?.length) return true;
+        // Check role match
+        if (ann.targetRoles?.length && ann.targetRoles.includes(user.role)) return true;
+        // Check branch match
+        if (ann.targetBranches?.length && ann.targetBranches.includes(user.branchId)) return true;
+        return false;
+      });
+      
+      res.json(filtered.map(r => ({
+        ...r.announcement,
+        isRead: !!r.readStatus
+      })));
+    } catch (error) {
+      console.error("Get announcements error:", error);
+      res.status(500).json({ message: "Duyurular alınamadı" });
+    }
+  });
+
+  // GET /api/announcements/banners - Dashboard için aktif banner'ları getir
+  app.get('/api/announcements/banners', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const now = new Date();
+      
+      const results = await db.select()
+        .from(announcements)
+        .where(and(
+          eq(announcements.showOnDashboard, true),
+          lte(announcements.publishedAt, now),
+          or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now))
+        ))
+        .orderBy(desc(announcements.bannerPriority), desc(announcements.publishedAt))
+        .limit(5);
+      
+      // Filter by target roles/branches
+      const filtered = results.filter(ann => {
+        if (!ann.targetRoles?.length && !ann.targetBranches?.length) return true;
+        if (ann.targetRoles?.length && ann.targetRoles.includes(user.role)) return true;
+        if (ann.targetBranches?.length && ann.targetBranches.includes(user.branchId)) return true;
+        return false;
+      });
+      
+      res.json(filtered);
+    } catch (error) {
+      console.error("Get announcement banners error:", error);
+      res.status(500).json({ message: "Banner'lar alınamadı" });
+    }
+  });
+
+  // GET /api/announcements/unread-count - Okunmamış duyuru sayısı
+  app.get('/api/announcements/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const now = new Date();
+      
+      // Get all valid announcements
+      const allAnnouncements = await db.select({ id: announcements.id, targetRoles: announcements.targetRoles, targetBranches: announcements.targetBranches })
+        .from(announcements)
+        .where(and(
+          lte(announcements.publishedAt, now),
+          or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now))
+        ));
+      
+      // Filter by targeting
+      const visibleIds = allAnnouncements.filter(ann => {
+        if (!ann.targetRoles?.length && !ann.targetBranches?.length) return true;
+        if (ann.targetRoles?.length && ann.targetRoles.includes(user.role)) return true;
+        if (ann.targetBranches?.length && ann.targetBranches.includes(user.branchId)) return true;
+        return false;
+      }).map(a => a.id);
+      
+      if (visibleIds.length === 0) {
+        return res.json({ count: 0 });
+      }
+      
+      // Get read status
+      const readAnnouncements = await db.select({ announcementId: announcementReadStatus.announcementId })
+        .from(announcementReadStatus)
+        .where(eq(announcementReadStatus.userId, user.id));
+      
+      const readIds = new Set(readAnnouncements.map(r => r.announcementId));
+      const unreadCount = visibleIds.filter(id => !readIds.has(id)).length;
+      
+      res.json({ count: unreadCount });
+    } catch (error) {
+      console.error("Get unread count error:", error);
+      res.status(500).json({ message: "Sayı alınamadı" });
+    }
+  });
+
+  // GET /api/announcements/:id - Tek duyuru detayı
+  app.get('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user;
+      
+      const [result] = await db.select({
+        announcement: announcements,
+        readStatus: announcementReadStatus
+      })
+        .from(announcements)
+        .leftJoin(announcementReadStatus, and(
+          eq(announcementReadStatus.announcementId, announcements.id),
+          eq(announcementReadStatus.userId, user.id)
+        ))
+        .where(eq(announcements.id, parseInt(id)));
+      
+      if (!result) {
+        return res.status(404).json({ message: "Duyuru bulunamadı" });
+      }
+      
+      res.json({
+        ...result.announcement,
+        isRead: !!result.readStatus
+      });
+    } catch (error) {
+      console.error("Get announcement error:", error);
+      res.status(500).json({ message: "Duyuru alınamadı" });
+    }
+  });
+
+  // POST /api/announcements/:id/read - Duyuruyu okundu olarak işaretle
+  app.post('/api/announcements/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user;
+      
+      // Upsert read status
+      await db.insert(announcementReadStatus)
+        .values({
+          announcementId: parseInt(id),
+          userId: user.id
+        })
+        .onConflictDoNothing();
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark announcement read error:", error);
+      res.status(500).json({ message: "Okundu işaretlenemedi" });
+    }
+  });
+
+  // ========================================
+  // ADMIN DUYURU API
+  // ========================================
+
+  // GET /api/admin/announcements - Tüm duyuruları getir (admin)
+  app.get('/api/admin/announcements', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const allowedRoles = ['admin', 'coach', 'destek'];
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      
+      const results = await db.select()
+        .from(announcements)
+        .orderBy(desc(announcements.createdAt));
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Admin get announcements error:", error);
+      res.status(500).json({ message: "Duyurular alınamadı" });
+    }
+  });
+
+  // POST /api/admin/announcements - Yeni duyuru oluştur
+  app.post('/api/admin/announcements', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const allowedRoles = ['admin', 'coach', 'destek'];
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      
+      const { title, message, summary, category, targetRoles, targetBranches, priority, 
+              bannerImageUrl, bannerTitle, bannerSubtitle, showOnDashboard, bannerPriority,
+              isPinned, expiresAt } = req.body;
+      
+      if (!title || !message) {
+        return res.status(400).json({ message: "Başlık ve mesaj gerekli" });
+      }
+      
+      const [newAnnouncement] = await db.insert(announcements)
+        .values({
+          createdById: req.user.id,
+          title,
+          message,
+          summary,
+          category: category || 'general',
+          targetRoles,
+          targetBranches,
+          priority: priority || 'normal',
+          bannerImageUrl,
+          bannerTitle,
+          bannerSubtitle,
+          showOnDashboard: showOnDashboard || false,
+          bannerPriority: bannerPriority || 0,
+          isPinned: isPinned || false,
+          expiresAt: expiresAt ? new Date(expiresAt) : null
+        })
+        .returning();
+      
+      res.json(newAnnouncement);
+    } catch (error) {
+      console.error("Create announcement error:", error);
+      res.status(500).json({ message: "Duyuru oluşturulamadı" });
+    }
+  });
+
+  // PATCH /api/admin/announcements/:id - Duyuru güncelle
+  app.patch('/api/admin/announcements/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const allowedRoles = ['admin', 'coach', 'destek'];
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      
+      const { id } = req.params;
+      const updates = req.body;
+      
+      if (updates.expiresAt) {
+        updates.expiresAt = new Date(updates.expiresAt);
+      }
+      
+      updates.updatedAt = new Date();
+      
+      const [updated] = await db.update(announcements)
+        .set(updates)
+        .where(eq(announcements.id, parseInt(id)))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Duyuru bulunamadı" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update announcement error:", error);
+      res.status(500).json({ message: "Duyuru güncellenemedi" });
+    }
+  });
+
+  // DELETE /api/admin/announcements/:id - Duyuru sil
+  app.delete('/api/admin/announcements/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const allowedRoles = ['admin', 'coach', 'destek'];
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      
+      const { id } = req.params;
+      
+      await db.delete(announcements)
+        .where(eq(announcements.id, parseInt(id)));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete announcement error:", error);
+      res.status(500).json({ message: "Duyuru silinemedi" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
