@@ -20842,7 +20842,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       
       // Get read status
-      const readAnnouncements = await db.select({ announcementId: announcementReadStatus.announcementId })
+      const readAnnouncements = await db.select()
         .from(announcementReadStatus)
         .where(eq(announcementReadStatus.userId, user.id));
       
@@ -20852,7 +20852,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.json({ count: unreadCount });
     } catch (error) {
       console.error("Get unread count error:", error);
-      res.status(500).json({ message: "Sayı alınamadı" });
+      res.status(500).json({ count: 0 });
     }
   });
 
