@@ -222,7 +222,7 @@ export default function AdminDuyurular() {
         ? formData.targetRoles 
         : null,
       targetBranches: formData.targetBranches.length > 0 ? formData.targetBranches : null,
-      expiresAt: formData.expiresAt || null,
+      expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
     };
 
     if (editingAnnouncement) {
