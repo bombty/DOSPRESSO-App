@@ -84,6 +84,8 @@ import {
   onboardingDocuments,
   licenseRenewals,
   threadParticipants,
+  announcements,
+  announcementReadStatus,
   hasPermission,
   isHQRole,
   isBranchRole,
@@ -190,7 +192,7 @@ import {
   insertMonthlyPayrollSchema,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
 import { analyzeTaskPhoto, analyzeFaultPhoto, analyzeDressCodePhoto, generateArticleEmbeddings, generateEmbedding, answerQuestionWithRAG, answerTechnicalQuestion, generateAISummary, generateQuizQuestionsFromLesson, generateFlashcardsFromLesson, evaluateBranchPerformance, diagnoseFault, generateTrainingModule, processUploadedFile, generateBranchSummaryReport, generateArticleDraft } from "./ai";
 import multer from "multer";
 import { generateTrainingMaterialBundle } from "./ai-motor";
