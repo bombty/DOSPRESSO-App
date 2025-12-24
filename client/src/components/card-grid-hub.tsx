@@ -8,6 +8,7 @@ import { QuickTaskModal } from "@/components/quick-task-modal";
 import { ShiftStatusCard } from "@/components/shift-status-card";
 import { ShiftChecklistCard } from "@/components/shift-checklist-card";
 import { EnhancedAnalyticsCard } from "@/components/enhanced-analytics-card";
+import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
 import { 
   GraduationCap, 
   Wrench, 
@@ -575,6 +576,9 @@ export function CardGridHub() {
 
   return (
     <div className="p-3 pb-24 space-y-4">
+      {/* Announcement Banners */}
+      <AnnouncementBannerCarousel />
+
       {/* Shift Status - Branch users only */}
       {isBranch && <ShiftStatusCard />}
 
