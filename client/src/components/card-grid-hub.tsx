@@ -31,7 +31,8 @@ import {
   Shield,
   Bot,
   Star,
-  Calculator
+  Calculator,
+  Megaphone
 } from "lucide-react";
 
 interface ModuleCard {
@@ -188,6 +189,14 @@ export function CardGridHub() {
   ];
 
   const hqModules: ModuleCard[] = [
+    { 
+      id: "announcements", 
+      icon: Megaphone, 
+      label: "Duyurular", 
+      path: "/admin/duyurular",
+      color: "bg-red-500",
+      description: "Duyuru yönetimi"
+    },
     { 
       id: "tasks-hq", 
       icon: ClipboardList, 
@@ -545,8 +554,8 @@ export function CardGridHub() {
 
   const baseModules = menuModules && menuModules.length > 0 
     ? menuModules
-        .filter(m => m.path !== '/' && m.path !== '/sube-dashboard')
-        .map(m => {
+        .filter((m: any) => m.path !== '/' && m.path !== '/sube-dashboard')
+        .map((m: any) => {
           const moduleKey = normalizeModuleKey(m);
           return {
             id: moduleKey,
@@ -570,7 +579,7 @@ export function CardGridHub() {
     description: "Sistem yönetimi",
   };
 
-  const modules = user?.role === 'admin' && !baseModules.some(m => m.id === 'admin' || m.path === '/admin')
+  const modules = user?.role === 'admin' && !baseModules.some((m: any) => m.id === 'admin' || m.path === '/admin')
     ? [...baseModules, adminModule]
     : baseModules;
 
@@ -634,12 +643,12 @@ export function CardGridHub() {
 
       {/* Card Grid */}
       <div className="grid grid-cols-3 gap-2">
-        {modules.filter((module) => {
+        {modules.filter((module: any) => {
           if (module.roles && module.roles.length > 0) {
             return module.roles.includes(user?.role || '');
           }
           return true;
-        }).map((module) => {
+        }).map((module: any) => {
           const Icon = module.icon;
           return (
             <button

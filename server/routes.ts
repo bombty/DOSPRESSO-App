@@ -21010,6 +21010,50 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // POST /api/ai/generate-image - DALL-E ile görsel oluştur
+  app.post('/api/ai/generate-image', isAuthenticated, async (req: any, res) => {
+    try {
+      const { prompt } = req.body;
+      if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+        return res.status(400).json({ message: "Görsel açıklaması gerekli" });
+      }
+
+      // OpenAI DALL-E API'sini çağır (Replit AI Integrations üzerinden)
+      const response = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          model: "dall-e-3",
+          size: "1024x1024",
+          quality: "standard",
+          n: 1
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("DALL-E error:", error);
+        return res.status(500).json({ message: "Görsel oluşturulamadı", error: error.error?.message });
+      }
+
+      const data = await response.json();
+      const imageUrl = data.data[0]?.url;
+      
+      if (!imageUrl) {
+        return res.status(500).json({ message: "Görsel URL alınamadı" });
+      }
+
+      res.json({ imageUrl });
+    } catch (error) {
+      console.error("AI image generation error:", error);
+      res.status(500).json({ message: "AI görsel oluşturma başarısız", error: String(error) });
+    }
+  });
+
   // DELETE /api/admin/announcements/:id - Duyuru sil
   app.delete('/api/admin/announcements/:id', isAuthenticated, async (req: any, res) => {
     try {

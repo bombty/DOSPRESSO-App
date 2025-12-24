@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImageCropper } from "@/components/ImageCropper";
 import { 
   Megaphone, 
   ArrowLeft, 
@@ -35,7 +36,9 @@ import {
   ShoppingBag,
   BookOpen,
   PartyPopper,
-  FileText
+  FileText,
+  Sparkles,
+  Loader
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -98,6 +101,10 @@ export default function AdminDuyurular() {
   const [createDialog, setCreateDialog] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [activeTab, setActiveTab] = useState("all");
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperImage, setCropperImage] = useState<string>("");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     message: "",
@@ -188,6 +195,44 @@ export default function AdminDuyurular() {
       isPinned: false,
       expiresAt: "",
     });
+    setAiPrompt("");
+  };
+
+  const handleImageCrop = (croppedImage: string) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.src = croppedImage;
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          setFormData(prev => ({ ...prev, bannerImageUrl: croppedImage }));
+        }
+      }, "image/jpeg");
+    };
+  };
+
+  const handleGenerateImage = async () => {
+    if (!aiPrompt.trim()) {
+      toast({ title: "Hata", description: "Lütfen görsel açıklaması girin", variant: "destructive" });
+      return;
+    }
+
+    setIsGeneratingImage(true);
+    try {
+      const response: any = await apiRequest("POST", "/api/ai/generate-image", { prompt: aiPrompt });
+      setFormData(prev => ({ ...prev, bannerImageUrl: response.imageUrl }));
+      setAiPrompt("");
+      toast({ title: "Başarılı", description: "Banner görseli oluşturuldu" });
+    } catch (error) {
+      toast({ title: "Hata", description: "Görsel oluşturulamadı", variant: "destructive" });
+    } finally {
+      setIsGeneratingImage(false);
+    }
   };
 
   const handleEdit = (announcement: Announcement) => {
@@ -571,25 +616,68 @@ export default function AdminDuyurular() {
                         </Button>
                       </div>
                     ) : (
-                      <ObjectUploader
-                        onGetUploadParameters={async () => {
-                          const response = await fetch("/api/objects/upload", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                          });
-                          const data = await response.json();
-                          return { method: "PUT" as const, url: data.url };
-                        }}
-                        onComplete={(result) => {
-                          if (result.successful && result.successful[0]) {
-                            setFormData(prev => ({ ...prev, bannerImageUrl: result.successful[0].uploadURL }));
-                          }
-                        }}
-                        buttonClassName="w-full"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Görsel Yükle
-                      </ObjectUploader>
+                      <div className="space-y-2">
+                        <ObjectUploader
+                          onGetUploadParameters={async () => {
+                            const response = await fetch("/api/objects/upload", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                            });
+                            const data = await response.json();
+                            return { method: "PUT" as const, url: data.url };
+                          }}
+                          onComplete={(result) => {
+                            if (result.successful && result.successful[0]) {
+                              const imageUrl = result.successful[0].uploadURL;
+                              setCropperImage(imageUrl);
+                              setCropperOpen(true);
+                            }
+                          }}
+                          buttonClassName="w-full"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Görsel Yükle ve Kırp
+                        </ObjectUploader>
+                        
+                        <div className="relative">
+                          <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t"></div>
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="px-2 bg-background text-muted-foreground">Veya</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="aiPrompt">AI ile Görsel Oluştur</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="aiPrompt"
+                              placeholder="Örn: Kahveli masaüstü, modern tasarım, sıcak renkler"
+                              value={aiPrompt}
+                              onChange={(e) => setAiPrompt(e.target.value)}
+                              disabled={isGeneratingImage}
+                              data-testid="input-ai-prompt"
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              onClick={handleGenerateImage}
+                              disabled={isGeneratingImage || !aiPrompt.trim()}
+                              data-testid="button-generate-image"
+                            >
+                              {isGeneratingImage ? (
+                                <Loader className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            DALL-E ile banner görseli oluştur
+                          </p>
+                        </div>
+                      </div>
                     )}
                     <p className="text-xs text-muted-foreground">
                       Önerilen boyut: 1200x400px (3:1 oran)
@@ -708,6 +796,16 @@ export default function AdminDuyurular() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImageCropper
+        open={cropperOpen}
+        imageSrc={cropperImage}
+        onClose={() => {
+          setCropperOpen(false);
+          setCropperImage("");
+        }}
+        onCropComplete={handleImageCrop}
+      />
     </div>
   );
 }
