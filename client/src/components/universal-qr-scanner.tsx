@@ -137,7 +137,7 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
           setLocation(`/ekipman/${id}`);
         }, 1500);
       } else if (type === 'fault' || type === 'ariza') {
-        // Fault reporting - redirect to fault page with equipment info
+        // Fault reporting - redirect to fault creation form with equipment info
         setScanStatus('success');
         setScanMessage('Arıza bildirim formu açılıyor...');
         toast({
@@ -147,7 +147,7 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
         
         setTimeout(() => {
           onClose();
-          setLocation(`/ariza?equipmentId=${id}`);
+          setLocation(`/ariza-yeni?equipmentId=${id}`);
         }, 1500);
       } else {
         setScanStatus('error');

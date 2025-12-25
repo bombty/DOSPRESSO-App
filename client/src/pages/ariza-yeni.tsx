@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { compressImage } from "@/lib/image-utils";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,8 +39,13 @@ export default function NewFaultReport() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const [isUploading, setIsUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  
+  // Parse URL parameters for QR code flow
+  const urlParams = new URLSearchParams(searchString);
+  const urlEquipmentId = urlParams.get("equipmentId");
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
@@ -90,7 +95,7 @@ export default function NewFaultReport() {
         priorityLevel: data.priority === "yuksek" ? "red" : data.priority === "dusuk" ? "green" : "yellow",
         troubleshootingCompleted: false,
       });
-      return response;
+      return response as unknown as { id: number };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/faults"] });
@@ -146,9 +151,41 @@ export default function NewFaultReport() {
   const selectedBranch = branches.find(b => b.id === form.watch("branchId"));
   const selectedEquipment = equipment.find(eq => eq.id === form.watch("equipmentId"));
 
-  if (form.watch("equipmentId") && selectedEquipment) {
-    form.setValue("equipmentName", (selectedEquipment as any).equipmentName || "");
-  }
+  // Auto-fill equipment when coming from QR code scan or when equipment is selected
+  useEffect(() => {
+    // QR code flow - URL has equipmentId parameter
+    if (urlEquipmentId && equipment.length > 0) {
+      const eqId = parseInt(urlEquipmentId);
+      if (!isNaN(eqId)) {
+        const eq = equipment.find(e => e.id === eqId);
+        if (eq) {
+          form.setValue("equipmentId", eqId);
+          form.setValue("equipmentName", eq.equipmentType || "");
+          if (eq.branchId) {
+            form.setValue("branchId", eq.branchId);
+          }
+          toast({
+            title: "Ekipman Seçildi",
+            description: `${eq.equipmentType} - QR kod ile otomatik dolduruldu`,
+          });
+        } else {
+          toast({
+            title: "Uyarı",
+            description: "QR koddaki ekipman bulunamadı",
+            variant: "destructive",
+          });
+        }
+      }
+    }
+  }, [urlEquipmentId, equipment]);
+
+  // Update equipment name when user selects equipment from dropdown (not QR flow)
+  useEffect(() => {
+    const eqId = form.watch("equipmentId");
+    if (eqId && !urlEquipmentId && selectedEquipment) {
+      form.setValue("equipmentName", selectedEquipment.equipmentType || "");
+    }
+  }, [form.watch("equipmentId"), selectedEquipment, urlEquipmentId]);
 
   return (
     <div className="grid grid-cols-1 gap-2 sm:gap-3 max-w-2xl mx-auto">
