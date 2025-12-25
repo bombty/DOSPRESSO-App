@@ -31,10 +31,16 @@ const CATEGORY_CONFIG: Record<string, { icon: any; gradient: string }> = {
 export function AnnouncementBannerCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [imageLoadErrors, setImageLoadErrors] = useState<Record<number, boolean>>({});
 
   const { data: banners = [] } = useQuery<AnnouncementBanner[]>({
     queryKey: ["/api/announcements/banners"],
+    staleTime: 30000, // 30 saniye cache, stale data önleme
   });
+
+  const handleImageError = (bannerId: number) => {
+    setImageLoadErrors(prev => ({ ...prev, [bannerId]: true }));
+  };
 
   const markReadMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/announcements/${id}/read`, {}),
@@ -88,12 +94,13 @@ export function AnnouncementBannerCarousel() {
         >
           <CardContent className="p-0">
             <div className="relative aspect-[3/1] min-h-[120px] max-h-[200px]">
-              {currentBanner.bannerImageUrl ? (
+              {currentBanner.bannerImageUrl && !imageLoadErrors[currentBanner.id] ? (
                 <>
                   <img 
                     src={currentBanner.bannerImageUrl}
                     alt={currentBanner.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={() => handleImageError(currentBanner.id)}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                 </>

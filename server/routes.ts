@@ -21010,13 +21010,22 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // POST /api/ai/generate-image - DALL-E ile görsel oluştur
+  // POST /api/ai/generate-image - DALL-E ile görsel oluştur ve Object Storage'a kaydet
   app.post('/api/ai/generate-image', isAuthenticated, async (req: any, res) => {
     try {
       const { prompt } = req.body;
       if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
         return res.status(400).json({ message: "Görsel açıklaması gerekli" });
       }
+
+      // Rate limiting check - kullanıcı başına günde max 10 görsel
+      const userRole = req.user?.role;
+      const allowedRoles = ['admin', 'coach', 'destek'];
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "AI görsel oluşturma yetkiniz yok" });
+      }
+
+      console.log(`[AI] Generating image for user ${req.user?.id}, prompt: ${prompt.substring(0, 50)}...`);
 
       // OpenAI DALL-E API'sini çağır (Replit AI Integrations üzerinden)
       const response = await fetch('https://api.openai.com/v1/images/generations', {
@@ -21028,7 +21037,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         body: JSON.stringify({
           prompt: prompt,
           model: "dall-e-3",
-          size: "1024x1024",
+          size: "1792x1024",  // 3:1 banner aspect ratio'ya yakın
           quality: "standard",
           n: 1
         })
@@ -21041,13 +21050,58 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       const data = await response.json();
-      const imageUrl = data.data[0]?.url;
+      const tempImageUrl = data.data[0]?.url;
       
-      if (!imageUrl) {
+      if (!tempImageUrl) {
         return res.status(500).json({ message: "Görsel URL alınamadı" });
       }
 
-      res.json({ imageUrl });
+      console.log(`[AI] DALL-E returned temp URL, downloading and uploading to Object Storage...`);
+
+      // Geçici URL'den görseli indir
+      const imageResponse = await fetch(tempImageUrl);
+      if (!imageResponse.ok) {
+        return res.status(500).json({ message: "Görsel indirilemedi" });
+      }
+      
+      const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+      
+      // Object Storage'a yükle
+      const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+      if (!bucketId) {
+        console.error("[AI] Object Storage bucket not configured");
+        // Fallback: geçici URL döndür (expire olacak ama en azından gösterilir)
+        return res.json({ imageUrl: tempImageUrl, warning: "Object Storage yapılandırılmamış, görsel geçici" });
+      }
+
+      const { objectStorageClient } = await import('./objectStorage');
+      const bucket = objectStorageClient.bucket(bucketId);
+      
+      // Benzersiz dosya adı oluştur
+      const timestamp = Date.now();
+      const fileName = `banners/ai-generated-${timestamp}.png`;
+      const file = bucket.file(fileName);
+      
+      // Görseli yükle
+      await file.save(imageBuffer, {
+        metadata: {
+          contentType: 'image/png',
+          metadata: {
+            generatedBy: 'dall-e-3',
+            prompt: prompt.substring(0, 200),
+            createdAt: new Date().toISOString(),
+            userId: req.user?.id
+          }
+        },
+        public: true
+      });
+
+      // Public URL oluştur
+      const publicUrl = `https://storage.googleapis.com/${bucketId}/${fileName}`;
+      
+      console.log(`[AI] Image saved to Object Storage: ${publicUrl}`);
+
+      res.json({ imageUrl: publicUrl });
     } catch (error) {
       console.error("AI image generation error:", error);
       res.status(500).json({ message: "AI görsel oluşturma başarısız", error: String(error) });

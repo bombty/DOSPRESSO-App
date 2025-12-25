@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { AlertCircle, TrendingUp, TrendingDown, Minus, ListTodo, Zap, Wrench, Award, AlertTriangle, User, CheckCircle2, Clock, Download, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -218,6 +219,7 @@ export function EnhancedAnalyticsCard() {
   const [activePdfTab, setActivePdfTab] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
   const role = user?.role;
 
   const { data: daily, isLoading: dailyLoading } = useQuery<DailyAnalytics>({
@@ -421,6 +423,11 @@ export function EnhancedAnalyticsCard() {
       
     } catch (error) {
       console.error('PDF oluşturma hatası:', error);
+      toast({
+        title: "PDF oluşturulamadı",
+        description: "Rapor oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.",
+        variant: "destructive"
+      });
     } finally {
       setGeneratingPdf(null);
     }

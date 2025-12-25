@@ -2049,11 +2049,12 @@ export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type Announcement = typeof announcements.$inferSelect;
 
 // Announcement Read Status table - Track who has read each announcement
+// Note: Column names match database schema (camelCase)
 export const announcementReadStatus = pgTable("announcement_read_status", {
   id: serial("id").primaryKey(),
-  announcementId: integer("announcement_id").notNull().references(() => announcements.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  readAt: timestamp("read_at").defaultNow(),
+  announcementId: integer("announcementId").notNull().references(() => announcements.id, { onDelete: "cascade" }),
+  userId: varchar("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  readAt: timestamp("readAt").defaultNow(),
 }, (table) => [
   index("announcement_read_user_idx").on(table.userId),
   index("announcement_read_announcement_idx").on(table.announcementId),
