@@ -291,6 +291,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     scope: "hq",
     items: [
       {
+        id: "announcements",
+        titleTr: "Duyurular",
+        path: "/admin/duyurular",
+        icon: "Megaphone",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      {
         id: "users",
         titleTr: "Kullanıcılar",
         path: "/yonetim/kullanicilar",

@@ -446,6 +446,8 @@ export function CardGridHub() {
       "notifications": MessageSquare,
       "messages": MessageSquare,
       "hq-support": MessageSquare,
+      "announcements": Megaphone,
+      "duyurular": Megaphone,
     };
     return iconMap[moduleId.toLowerCase()] || Coffee;
   };
@@ -531,6 +533,8 @@ export function CardGridHub() {
       "notifications": "bg-rose-500",
       "messages": "bg-blue-400",
       "hq-support": "bg-rose-500",
+      "announcements": "bg-red-500",
+      "duyurular": "bg-red-500",
     };
     return colorMap[moduleId.toLowerCase()] || "bg-slate-400";
   };

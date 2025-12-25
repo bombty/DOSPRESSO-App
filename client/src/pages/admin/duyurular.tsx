@@ -458,13 +458,14 @@ export default function AdminDuyurular() {
           resetForm();
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>
               {editingAnnouncement ? "Duyuru Düzenle" : "Yeni Duyuru Oluştur"}
             </DialogTitle>
           </DialogHeader>
           
+          <ScrollArea className="flex-1 pr-4 -mr-4">
           <Tabs defaultValue="content" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="content">İçerik</TabsTrigger>
@@ -774,8 +775,9 @@ export default function AdminDuyurular() {
               </div>
             </TabsContent>
           </Tabs>
+          </ScrollArea>
           
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-4 flex-shrink-0">
             <Button 
               variant="outline" 
               onClick={() => {
