@@ -224,10 +224,12 @@ export default function GorevDetay() {
 
   const statusLabels: Record<string, string> = {
     beklemede: "Bekliyor",
+    goruldu: "Görüldü",
     devam_ediyor: "Devam Ediyor",
     foto_bekleniyor: "Fotoğraf Bekleniyor",
+    tamamlandi: "Tamamlandı - Onay Bekliyor",
     incelemede: "İncelemede",
-    onaylandi: "Tamamlandı",
+    onaylandi: "Onaylandı",
     reddedildi: "Reddedildi",
     basarisiz: "Başarısız",
     "gecikmiş": "Gecikmiş",
@@ -241,10 +243,17 @@ export default function GorevDetay() {
 
   const isAssignee = currentUser?.id === task.assignedToId;
   const isAssigner = currentUser?.id === task.assignedById;
+  const isHQ = currentUser?.role && !['barista', 'senior_barista', 'supervisor', 'supervisor_buddy'].includes(currentUser.role);
+  
   const canAcknowledge = isAssignee && !task.acknowledgedAt && task.status !== "onaylandi" && task.status !== "basarisiz";
-  const canStartProgress = isAssignee && task.acknowledgedAt && task.status === "beklemede";
+  const canStartProgress = isAssignee && (task.status === "beklemede" || task.status === "goruldu");
   const canMarkFailed = isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz";
-  const canComplete = isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz";
+  const canComplete = isAssignee && (task.status === "devam_ediyor" || task.status === "beklemede");
+  
+  // Assigner/HQ can approve or reject completed tasks
+  const canApprove = (isAssigner || isHQ) && (task.status === "tamamlandi" || task.status === "incelemede");
+  const canReject = (isAssigner || isHQ) && (task.status === "tamamlandi" || task.status === "incelemede");
+  const canRate = (isAssigner || isHQ) && task.status === "onaylandi";
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
@@ -447,6 +456,46 @@ export default function GorevDetay() {
             </Card>
           )}
         </>
+      )}
+
+      {/* Assigner/HQ Approval Section - Shows when task is completed */}
+      {(canApprove || canReject) && (
+        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-900/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              Onay Bekliyor
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">
+              Atanan kişi görevi tamamladı. Onaylamanız veya düzeltme için reddetmeniz gerekiyor.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {canApprove && (
+                <Button
+                  onClick={() => updateStatusMutation.mutate({ status: "onaylandi", note: "Görev onaylandı" })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-approve-task"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Onayla
+                </Button>
+              )}
+              {canReject && (
+                <Button
+                  variant="destructive"
+                  onClick={() => updateStatusMutation.mutate({ status: "reddedildi", note: "Görev reddedildi, düzeltme gerekli" })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-reject-task"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reddet
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Failure Note Display */}
@@ -674,7 +723,7 @@ export default function GorevDetay() {
           <DialogHeader>
             <DialogTitle>Görevi Tamamlamak Emin misin?</DialogTitle>
             <DialogDescription>
-              Görevin tamamlandı olarak işaretlenecek. Bu işlem geri alınamaz.
+              Görev tamamlandı olarak işaretlenecek ve atayan kişinin onayına gönderilecek.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -687,7 +736,7 @@ export default function GorevDetay() {
             </Button>
             <Button 
               onClick={() => {
-                updateStatusMutation.mutate({ status: "onaylandi" });
+                updateStatusMutation.mutate({ status: "tamamlandi", note: "Görev tamamlandı, onay bekleniyor" });
                 setShowCompleteDialog(false);
               }}
               disabled={updateStatusMutation.isPending}

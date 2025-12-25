@@ -1363,18 +1363,19 @@ export default function Tasks() {
 }
 
 function RatingDisplay({ taskId, onRateClick }: { taskId: number; onRateClick: () => void }) {
-  const { data: taskRating } = useQuery({
+  const { data: taskRating } = useQuery<{ rawRating?: number }>({
     queryKey: [`/api/tasks/${taskId}/rating`],
   });
 
-  if (taskRating?.rawRating) {
+  const rating = taskRating?.rawRating;
+  if (rating) {
     return (
       <div className="flex items-center gap-1">
-        <span className="font-medium text-[10px]">{taskRating.rawRating}/5</span>
+        <span className="font-medium text-[10px]">{rating}/5</span>
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
-            className={`h-2.5 w-2.5 ${i < taskRating.rawRating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+            className={`h-2.5 w-2.5 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
           />
         ))}
       </div>
