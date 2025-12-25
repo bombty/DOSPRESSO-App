@@ -370,41 +370,34 @@ function canAccessModule(
   const normalizedRole = role.trim().toLowerCase();
   const normalizedModuleKey = moduleKey.trim().toLowerCase();
   
-  // First check dynamic permissions from database (takes priority)
+  // If dynamic permissions exist for this role, use ONLY dynamic permissions (no static fallback)
+  // This ensures that when permissions are revoked in the database, modules are hidden
   if (dynamicPermissions && dynamicPermissions.length > 0) {
     const dynamicPerm = dynamicPermissions.find(
       p => p.role.trim().toLowerCase() === normalizedRole && 
            p.module.trim().toLowerCase() === normalizedModuleKey
     );
     
-    if (dynamicPerm) {
-      // Handle both array and string formats for actions
-      const actions = dynamicPerm.actions as string[] | string;
-      const hasActions = Array.isArray(actions) 
-        ? actions.length > 0 
-        : (typeof actions === 'string' && actions.length > 0);
-      
-      // Debug log for troubleshooting
-      console.log(`[canAccessModule] Role: ${role}, Module: ${moduleKey}, DynamicPerm found: ${!!dynamicPerm}, Actions: ${JSON.stringify(actions)}, HasActions: ${hasActions}`);
-      
-      if (hasActions) {
-        return true;
-      }
+    // If no dynamic permission record for this module, deny access
+    if (!dynamicPerm) {
+      return false;
     }
+    
+    // Handle both array and string formats for actions
+    const actions = dynamicPerm.actions as string[] | string;
+    const hasActions = Array.isArray(actions) 
+      ? actions.length > 0 
+      : (typeof actions === 'string' && actions.length > 0);
+    
+    // Only allow access if there are actual actions granted
+    return hasActions;
   }
   
-  // Fallback to static PERMISSIONS matrix
+  // Fallback to static PERMISSIONS matrix ONLY when no dynamic permissions exist at all
   const rolePermissions = PERMISSIONS[role];
   if (!rolePermissions) return false;
   const modulePermissions = rolePermissions[moduleKey];
-  const staticResult = modulePermissions && modulePermissions.length > 0;
-  
-  // Debug log for static fallback
-  if (moduleKey === 'accounting') {
-    console.log(`[canAccessModule STATIC] Role: ${role}, Module: ${moduleKey}, StaticPerms: ${JSON.stringify(modulePermissions)}, Result: ${staticResult}`);
-  }
-  
-  return staticResult;
+  return modulePermissions && modulePermissions.length > 0;
 }
 
 function isScopeAllowed(scope: SidebarMenuScope, userScope: 'branch' | 'hq' | 'admin'): boolean {
