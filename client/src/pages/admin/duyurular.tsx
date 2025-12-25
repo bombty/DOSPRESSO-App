@@ -224,12 +224,29 @@ export default function AdminDuyurular() {
 
     setIsGeneratingImage(true);
     try {
-      const response: any = await apiRequest("POST", "/api/ai/generate-image", { prompt: aiPrompt });
-      setFormData(prev => ({ ...prev, bannerImageUrl: response.imageUrl }));
+      const response = await apiRequest("POST", "/api/ai/generate-image", { prompt: aiPrompt });
+      const data = await response.json();
+      
+      if (!data.imageUrl) {
+        toast({ title: "Hata", description: "Görsel URL'si alınamadı", variant: "destructive" });
+        return;
+      }
+      
+      setFormData(prev => ({ ...prev, bannerImageUrl: data.imageUrl }));
       setAiPrompt("");
-      toast({ title: "Başarılı", description: "Banner görseli oluşturuldu" });
-    } catch (error) {
-      toast({ title: "Hata", description: "Görsel oluşturulamadı", variant: "destructive" });
+      
+      if (data.warning) {
+        toast({ 
+          title: "Uyarı", 
+          description: "Görsel geçici olarak kaydedildi. Object Storage yapılandırılmamış, görsel 1 saat içinde silinebilir.", 
+          variant: "destructive" 
+        });
+      } else {
+        toast({ title: "Başarılı", description: "Banner görseli oluşturuldu ve kaydedildi" });
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || "Görsel oluşturulamadı";
+      toast({ title: "Hata", description: errorMessage, variant: "destructive" });
     } finally {
       setIsGeneratingImage(false);
     }

@@ -20765,12 +20765,20 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       // Filter by target roles/branches
       filtered = filtered.filter(r => {
         const ann = r.announcement;
-        // If no targeting, show to all
-        if (!ann.targetRoles?.length && !ann.targetBranches?.length) return true;
-        // Check role match
-        if (ann.targetRoles?.length && ann.targetRoles.includes(user.role)) return true;
-        // Check branch match
-        if (ann.targetBranches?.length && ann.targetBranches.includes(user.branchId)) return true;
+        // Hedefleme yoksa veya "all" seçildiyse herkese göster
+        const hasNoTargeting = !ann.targetRoles?.length && !ann.targetBranches?.length;
+        const targetRolesLower = ann.targetRoles?.map(role => role.toLowerCase()) || [];
+        const isTargetAll = targetRolesLower.includes("all");
+        if (hasNoTargeting || isTargetAll) return true;
+        // Kullanıcının rolü hedeflenmiş mi? (case-insensitive)
+        const userRoleLower = user.role?.toLowerCase();
+        if (targetRolesLower.length && userRoleLower && targetRolesLower.includes(userRoleLower)) return true;
+        // Kullanıcının şubesi hedeflenmiş mi? (string/number normalize)
+        if (ann.targetBranches?.length && user.branchId !== undefined && user.branchId !== null) {
+          const userBranchStr = String(user.branchId);
+          const matchesBranch = ann.targetBranches.some(b => String(b) === userBranchStr);
+          if (matchesBranch) return true;
+        }
         return false;
       });
       
@@ -20797,18 +20805,37 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           lte(announcements.publishedAt, now),
           or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now))
         ))
-        .orderBy(desc(announcements.bannerPriority), desc(announcements.publishedAt))
-        .limit(5);
+        .orderBy(
+          desc(announcements.isPinned),        // Sabitlenmiş olanlar önce
+          desc(announcements.bannerPriority),   // Sonra önceliğe göre
+          desc(announcements.publishedAt)       // Son olarak tarihe göre
+        )
+        .limit(10);
       
       // Filter by target roles/branches
       const filtered = results.filter(ann => {
-        if (!ann.targetRoles?.length && !ann.targetBranches?.length) return true;
-        if (ann.targetRoles?.length && ann.targetRoles.includes(user.role)) return true;
-        if (ann.targetBranches?.length && ann.targetBranches.includes(user.branchId)) return true;
+        // Hedefleme yoksa veya "all" seçildiyse herkese göster
+        const hasNoTargeting = !ann.targetRoles?.length && !ann.targetBranches?.length;
+        const targetRolesLower = ann.targetRoles?.map(r => r.toLowerCase()) || [];
+        const isTargetAll = targetRolesLower.includes("all");
+        if (hasNoTargeting || isTargetAll) return true;
+        
+        // Kullanıcının rolü hedeflenmiş mi? (case-insensitive)
+        const userRoleLower = user.role?.toLowerCase();
+        if (targetRolesLower.length && userRoleLower && targetRolesLower.includes(userRoleLower)) return true;
+        
+        // Kullanıcının şubesi hedeflenmiş mi? (string/number normalize)
+        if (ann.targetBranches?.length && user.branchId !== undefined && user.branchId !== null) {
+          const userBranchStr = String(user.branchId);
+          const matchesBranch = ann.targetBranches.some(b => String(b) === userBranchStr);
+          if (matchesBranch) return true;
+        }
+        
         return false;
       });
       
-      res.json(filtered);
+      // Limit to 5 after filtering
+      res.json(filtered.slice(0, 5));
     } catch (error) {
       console.error("Get announcement banners error:", error);
       res.status(500).json({ message: "Banner'lar alınamadı" });
@@ -20831,9 +20858,20 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       // Filter by targeting
       const visibleIds = allAnnouncements.filter(ann => {
-        if (!ann.targetRoles?.length && !ann.targetBranches?.length) return true;
-        if (ann.targetRoles?.length && ann.targetRoles.includes(user.role)) return true;
-        if (ann.targetBranches?.length && ann.targetBranches.includes(user.branchId)) return true;
+        // Hedefleme yoksa veya "all" seçildiyse herkese göster
+        const hasNoTargeting = !ann.targetRoles?.length && !ann.targetBranches?.length;
+        const targetRolesLower = ann.targetRoles?.map(role => role.toLowerCase()) || [];
+        const isTargetAll = targetRolesLower.includes("all");
+        if (hasNoTargeting || isTargetAll) return true;
+        // Kullanıcının rolü hedeflenmiş mi? (case-insensitive)
+        const userRoleLower = user.role?.toLowerCase();
+        if (targetRolesLower.length && userRoleLower && targetRolesLower.includes(userRoleLower)) return true;
+        // Kullanıcının şubesi hedeflenmiş mi? (string/number normalize)
+        if (ann.targetBranches?.length && user.branchId !== undefined && user.branchId !== null) {
+          const userBranchStr = String(user.branchId);
+          const matchesBranch = ann.targetBranches.some(b => String(b) === userBranchStr);
+          if (matchesBranch) return true;
+        }
         return false;
       }).map(a => a.id);
       

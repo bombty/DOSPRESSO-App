@@ -222,20 +222,35 @@ export function EnhancedAnalyticsCard() {
   const { toast } = useToast();
   const role = user?.role;
 
-  const { data: daily, isLoading: dailyLoading } = useQuery<DailyAnalytics>({
+  const { data: daily, isLoading: dailyLoading, isError: dailyError } = useQuery<DailyAnalytics>({
     queryKey: ["/api/analytics/daily"],
   });
 
-  const { data: weekly, isLoading: weeklyLoading } = useQuery<WeeklyAnalytics>({
+  const { data: weekly, isLoading: weeklyLoading, isError: weeklyError } = useQuery<WeeklyAnalytics>({
     queryKey: ["/api/analytics/weekly"],
   });
 
-  const { data: monthly, isLoading: monthlyLoading } = useQuery<MonthlyAnalytics>({
+  const { data: monthly, isLoading: monthlyLoading, isError: monthlyError } = useQuery<MonthlyAnalytics>({
     queryKey: ["/api/analytics/monthly"],
   });
 
+  // Check if any query is loading or has error
+  const isAnyLoading = dailyLoading || weeklyLoading || monthlyLoading;
+  const hasAnyError = dailyError || weeklyError || monthlyError;
+
   // PDF generation function
   const generatePDF = async (period: 'daily' | 'weekly' | 'monthly') => {
+    // Pre-check: Validate data exists before generating PDF
+    const targetData = period === 'daily' ? daily : period === 'weekly' ? weekly : monthly;
+    if (!targetData) {
+      toast({
+        title: "PDF oluşturulamadı",
+        description: "Rapor verileri henüz yüklenmedi. Lütfen sayfayı yenileyip tekrar deneyin.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setGeneratingPdf(period);
     
     try {
@@ -732,15 +747,20 @@ export function EnhancedAnalyticsCard() {
           
           {/* PDF Download Buttons */}
           <div className="flex flex-wrap gap-2 pb-2 border-b">
+            {hasAnyError && (
+              <div className="w-full text-xs text-destructive mb-1">
+                Bazı veriler yüklenemedi. Sayfayı yenileyip tekrar deneyin.
+              </div>
+            )}
             <Button
               size="sm"
               variant="outline"
               onClick={() => generatePDF('daily')}
-              disabled={generatingPdf !== null}
+              disabled={generatingPdf !== null || dailyLoading || !daily}
               className="flex-1 min-w-[100px]"
               data-testid="button-download-daily-pdf"
             >
-              {generatingPdf === 'daily' ? (
+              {generatingPdf === 'daily' || dailyLoading ? (
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               ) : (
                 <Download className="h-3 w-3 mr-1" />
@@ -751,11 +771,11 @@ export function EnhancedAnalyticsCard() {
               size="sm"
               variant="outline"
               onClick={() => generatePDF('weekly')}
-              disabled={generatingPdf !== null}
+              disabled={generatingPdf !== null || weeklyLoading || !weekly}
               className="flex-1 min-w-[100px]"
               data-testid="button-download-weekly-pdf"
             >
-              {generatingPdf === 'weekly' ? (
+              {generatingPdf === 'weekly' || weeklyLoading ? (
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               ) : (
                 <Download className="h-3 w-3 mr-1" />
@@ -766,11 +786,11 @@ export function EnhancedAnalyticsCard() {
               size="sm"
               variant="outline"
               onClick={() => generatePDF('monthly')}
-              disabled={generatingPdf !== null}
+              disabled={generatingPdf !== null || monthlyLoading || !monthly}
               className="flex-1 min-w-[100px]"
               data-testid="button-download-monthly-pdf"
             >
-              {generatingPdf === 'monthly' ? (
+              {generatingPdf === 'monthly' || monthlyLoading ? (
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               ) : (
                 <Download className="h-3 w-3 mr-1" />
