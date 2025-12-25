@@ -613,7 +613,12 @@ export function CardGridHub() {
           </CardHeader>
           <CardContent className="space-y-2">
             {criticalEquipment.slice(0, 3).map((eq: any) => (
-              <div key={eq.id} className="flex items-center justify-between text-xs p-2 bg-background/50 rounded border border-destructive/20">
+              <div 
+                key={eq.id} 
+                className="flex items-center justify-between text-xs p-2 bg-background/50 rounded border border-destructive/20 hover-elevate cursor-pointer"
+                onClick={() => setLocation(`/ekipman?id=${eq.id}`)}
+                data-testid={`equipment-critical-${eq.id}`}
+              >
                 <span className="font-medium truncate">{eq.equipmentType}</span>
                 <span className="text-destructive font-bold">{Math.round(eq.healthScore || 0)}%</span>
               </div>
@@ -693,13 +698,21 @@ export function CardGridHub() {
           <p className="text-xs font-medium text-muted-foreground mb-2">Hızlı Bakış</p>
           <div className="flex gap-4 text-sm">
             {pendingTasks > 0 && (
-              <div className="flex items-center gap-1.5">
+              <div 
+                className="flex items-center gap-1.5 hover-elevate cursor-pointer px-2 py-1 rounded"
+                onClick={() => setLocation("/gorevler")}
+                data-testid="link-pending-tasks"
+              >
                 <div className="w-2 h-2 rounded-full bg-yellow-500" />
                 <span>{pendingTasks} bekleyen görev</span>
               </div>
             )}
             {openFaults > 0 && (
-              <div className="flex items-center gap-1.5">
+              <div 
+                className="flex items-center gap-1.5 hover-elevate cursor-pointer px-2 py-1 rounded"
+                onClick={() => setLocation("/ariza")}
+                data-testid="link-open-faults"
+              >
                 <div className="w-2 h-2 rounded-full bg-orange-500" />
                 <span>{openFaults} açık arıza</span>
               </div>

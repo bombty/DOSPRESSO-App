@@ -136,6 +136,19 @@ export function UniversalQRScanner({ isOpen, onClose }: UniversalQRScannerProps)
           onClose();
           setLocation(`/ekipman/${id}`);
         }, 1500);
+      } else if (type === 'fault' || type === 'ariza') {
+        // Fault reporting - redirect to fault page with equipment info
+        setScanStatus('success');
+        setScanMessage('Arıza bildirim formu açılıyor...');
+        toast({
+          title: "Başarılı",
+          description: `Ekipman #${id} için arıza bildirim formu açılıyor...`,
+        });
+        
+        setTimeout(() => {
+          onClose();
+          setLocation(`/ariza?equipmentId=${id}`);
+        }, 1500);
       } else {
         setScanStatus('error');
         setScanMessage(`Bilinmeyen kod türü: ${type}`);
