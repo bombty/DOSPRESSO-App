@@ -155,19 +155,19 @@ export default function AdminKullanicilar() {
   const counts = getCategoryCounts();
 
   return (
-    <div className="p-4 pb-24 space-y-4">
+    <div className="p-3 sm:p-4 pb-24 space-y-3 sm:space-y-4">
       <div className="flex items-center gap-2">
         <Link href="/admin">
           <Button variant="ghost" size="icon" data-testid="button-back-admin">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Kullanıcı Yönetimi
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5 flex-shrink-0" />
+            <span className="truncate">Kullanıcı Yönetimi</span>
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {filteredUsers.length} / {users.length} kullanıcı
           </p>
         </div>
@@ -175,21 +175,21 @@ export default function AdminKullanicilar() {
 
       {/* Kategori Filtreleri */}
       <Tabs value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as CategoryFilter)}>
-        <TabsList className="w-full grid grid-cols-4">
-          <TabsTrigger value="all" className="text-xs" data-testid="tab-filter-all">
+        <TabsList className="w-full grid grid-cols-4 h-auto">
+          <TabsTrigger value="all" className="text-[10px] sm:text-xs px-1 sm:px-2 py-1.5" data-testid="tab-filter-all">
             Tümü ({counts.all})
           </TabsTrigger>
-          <TabsTrigger value="hq" className="text-xs" data-testid="tab-filter-hq">
-            <Briefcase className="h-3 w-3 mr-1" />
-            HQ ({counts.hq})
+          <TabsTrigger value="hq" className="text-[10px] sm:text-xs px-1 sm:px-2 py-1.5" data-testid="tab-filter-hq">
+            <Briefcase className="h-3 w-3 mr-0.5 sm:mr-1 flex-shrink-0" />
+            <span className="hidden xs:inline">HQ</span> ({counts.hq})
           </TabsTrigger>
-          <TabsTrigger value="fabrika" className="text-xs" data-testid="tab-filter-fabrika">
-            <Factory className="h-3 w-3 mr-1" />
-            Fabrika ({counts.fabrika})
+          <TabsTrigger value="fabrika" className="text-[10px] sm:text-xs px-1 sm:px-2 py-1.5" data-testid="tab-filter-fabrika">
+            <Factory className="h-3 w-3 mr-0.5 sm:mr-1 flex-shrink-0" />
+            <span className="hidden xs:inline">Fab.</span> ({counts.fabrika})
           </TabsTrigger>
-          <TabsTrigger value="sube" className="text-xs" data-testid="tab-filter-sube">
-            <Store className="h-3 w-3 mr-1" />
-            Şube ({counts.sube})
+          <TabsTrigger value="sube" className="text-[10px] sm:text-xs px-1 sm:px-2 py-1.5" data-testid="tab-filter-sube">
+            <Store className="h-3 w-3 mr-0.5 sm:mr-1 flex-shrink-0" />
+            <span className="hidden xs:inline">Şube</span> ({counts.sube})
           </TabsTrigger>
         </TabsList>
       </Tabs>

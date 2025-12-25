@@ -515,15 +515,17 @@ export default function SubeDetayPage() {
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {recentTasks.slice(0, 10).map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-3 rounded-lg border" data-testid={`task-${task.id}`}>
-                      <div>
-                        <p className="font-medium">{task.description}</p>
-                        <p className="text-sm text-muted-foreground">{task.assignedTo}</p>
+                    <Link key={task.id} href={`/gorev-detay/${task.id}`}>
+                      <div className="flex items-center justify-between p-3 rounded-lg border hover-elevate active-elevate-2 cursor-pointer" data-testid={`task-${task.id}`}>
+                        <div>
+                          <p className="font-medium">{task.description}</p>
+                          <p className="text-sm text-muted-foreground">{task.assignedTo}</p>
+                        </div>
+                        <Badge variant={task.status === 'tamamlandi' ? "default" : "secondary"}>
+                          {task.status === 'tamamlandi' ? 'Tamamlandı' : 'Bekliyor'}
+                        </Badge>
                       </div>
-                      <Badge variant={task.status === 'tamamlandi' ? "default" : "secondary"}>
-                        {task.status === 'tamamlandi' ? 'Tamamlandı' : 'Bekliyor'}
-                      </Badge>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

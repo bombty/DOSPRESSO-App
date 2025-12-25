@@ -3451,8 +3451,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const branchId = req.query.branchId && req.query.branchId !== 'all' 
         ? parseInt(req.query.branchId as string) 
         : undefined;
-      const metrics = await storage.getPerformanceMetrics(branchId);
-      res.json(metrics);
+      
+      // First try stored metrics
+      const storedMetrics = await storage.getPerformanceMetrics(branchId);
+      
+      // If no stored metrics, calculate real-time from database
+      if (storedMetrics.length === 0) {
+        const taskList = await db.select().from(tasks).where(branchId ? eq(tasks.branchId, branchId) : undefined).limit(200);
+        const faultList = await db.select().from(equipmentFaults).where(branchId ? eq(equipmentFaults.branchId, branchId) : undefined).limit(100);
+        
+        const tasksTotal = taskList.length;
+        const tasksCompleted = taskList.filter((t: any) => t.status === 'completed').length;
+        const completionRate = tasksTotal > 0 ? Math.round((tasksCompleted / tasksTotal) * 100) : 0;
+        
+        const faultsReported = faultList.length;
+        const faultsResolved = faultList.filter((f: any) => f.stage === 'resolved').length;
+        
+        // Create a synthetic performance metric from real data
+        const now = new Date();
+        const realTimeMetric = {
+          id: 1,
+          branchId: branchId || null,
+          date: now.toISOString().split('T')[0],
+          completionRate,
+          tasksCompleted,
+          tasksTotal,
+          averageAiScore: 0,
+          taskScore: Math.round(completionRate * 0.4),
+          photoScore: 0,
+          timeScore: 0,
+          supervisorScore: 0,
+          faultsReported,
+          faultsResolved,
+          notes: 'Gerçek zamanlı hesaplanmış'
+        };
+        
+        return res.json([realTimeMetric]);
+      }
+      
+      res.json(storedMetrics);
     } catch (error) {
       console.error("Error fetching performance metrics:", error);
       res.status(500).json({ message: "Failed to fetch performance metrics" });
@@ -12433,7 +12470,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const equips = await db.select().from(equipment).where(branchId ? eq(equipment.branchId, branchId) : undefined).limit(100);
       const criticalEquipment = equips.filter((e: any) => e.healthScore && e.healthScore < 50).length;
-      const avgHealth = equips.length > 0 ? Math.round(equips.reduce((acc: number, e: any) => acc + (e.healthScore || 100), 0) / equips.length) : 100;
+      
+      // Calculate avgHealth with fault penalty: each active fault reduces health by 5%, min 0
+      const baseHealth = equips.length > 0 ? Math.round(equips.reduce((acc: number, e: any) => acc + (e.healthScore || 100), 0) / equips.length) : 100;
+      const faultPenalty = activeFaults * 5;
+      const avgHealth = Math.max(0, Math.min(100, baseHealth - faultPenalty));
 
       const summary = await generateBranchSummary(pendingTasks, activeFaults, overdueChecklists, 0, criticalEquipment, avgHealth, 'daily', user.id);
 
@@ -12471,8 +12512,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
       const overdueChecklists = taskList.filter((t: any) => t.dueDate && new Date(t.dueDate) < today && t.status !== 'completed').length;
       const checklistCompletionRate = taskList.length > 0 ? Math.round((completedTasks / taskList.length) * 100) : 100;
-      const avgHealth = equips.length > 0 ? Math.round(equips.reduce((acc: number, e: any) => acc + (e.healthScore || 100), 0) / equips.length) : 100;
       const criticalEquipment = equips.filter((e: any) => e.healthScore && e.healthScore < 50).length;
+      
+      // Calculate avgHealth with fault penalty: each active fault reduces health by 5%, min 0
+      const baseHealth = equips.length > 0 ? Math.round(equips.reduce((acc: number, e: any) => acc + (e.healthScore || 100), 0) / equips.length) : 100;
+      const faultPenalty = activeFaults * 5;
+      const avgHealth = Math.max(0, Math.min(100, baseHealth - faultPenalty));
 
       // Employee performance calculation
       const employees = branchId 
@@ -12550,11 +12595,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resolvedFaults = faults.filter((f: any) => f.stage === 'resolved').length;
       const activeFaults = faults.filter((f: any) => !['resolved', 'cancelled'].includes(f.stage)).length;
       
-      // Equipment health metrics
-      const avgHealth = equips.length > 0 
+      // Equipment health metrics with fault penalty
+      const criticalEquipment = equips.filter((e: any) => e.healthScore && e.healthScore < 50).length;
+      const baseHealth = equips.length > 0 
         ? Math.round(equips.reduce((acc: number, e: any) => acc + (e.healthScore || 100), 0) / equips.length) 
         : 100;
-      const criticalEquipment = equips.filter((e: any) => e.healthScore && e.healthScore < 50).length;
+      const faultPenalty = activeFaults * 5;
+      const avgHealth = Math.max(0, Math.min(100, baseHealth - faultPenalty));
       
       // Top 3 faulty equipment
       const equipFaultCounts: Record<number, { name: string, count: number }> = {};

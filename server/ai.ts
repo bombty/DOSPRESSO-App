@@ -2320,14 +2320,14 @@ export async function generateBranchSummaryReport(
       messages: [
         {
           role: "system",
-          content: `Sen DOSPRESSO kahve franchise yönetim sisteminin AI raporlama asistanısın. Kısa, önemli, ve işletmeci için kullanışlı raporlar hazırlarsın. Türkçe kullan.`
+          content: `Sen DOSPRESSO kahve franchise yönetim sisteminin AI raporlama asistanısın. Kısa, önemli, ve işletmeci için kullanışlı raporlar hazırlarsın. Somut öneriler ve aksiyonlar sun. Türkçe kullan.`
         },
         {
           role: "user",
-          content: `${data.branchName} şubesi için ${period === 'daily' ? 'günlük' : period === 'weekly' ? 'haftalık' : 'aylık'} kısa bir özet raporu hazırla. Veriler: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev, ${data.overdueChecklists} geciken checklist, ${data.maintenanceReminders} bakım hatırlatması, ${data.criticalEquipment} kritik ekipman, ${data.totalAbsences} devamsızlık, ${data.slaBreaches} SLA ihlali, ortalama ekipman sağlığı %${data.averageEquipmentHealth}. Maksimum 2-3 satır, HTML olmadan düz metin.`
+          content: `${data.branchName} şubesi için ${period === 'daily' ? 'günlük' : period === 'weekly' ? 'haftalık' : 'aylık'} özet ve öneri raporu hazırla. Veriler: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev, ${data.overdueChecklists} geciken checklist, ${data.maintenanceReminders} bakım hatırlatması, ${data.criticalEquipment} kritik ekipman, ${data.totalAbsences} devamsızlık, ${data.slaBreaches} SLA ihlali, ortalama ekipman sağlığı %${data.averageEquipmentHealth}. Önce kısa durum özeti ver, sonra 1-2 somut aksiyon önerisi ekle (örn: "Öneri: Geciken checklistleri tamamlayın" veya "Öneri: Kritik ekipmanları öncelikli olarak kontrol edin"). Maksimum 4 satır, düz metin.`
         }
       ],
-      max_tokens: 150,
+      max_tokens: 250,
       temperature: 0.7
     });
 

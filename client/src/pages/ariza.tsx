@@ -290,7 +290,12 @@ export default function FaultHub() {
             <h3 className="text-sm font-medium mb-2">Son Arızalar</h3>
             <div className="flex flex-col gap-3 sm:gap-4">
               {faults.slice(0, RECENT_FAULTS_LIMIT).map((fault: EquipmentFault) => (
-                <Card key={fault.id} className="hover-elevate" data-testid={`card-recent-fault-${fault.id}`}>
+                <Card 
+                  key={fault.id}
+                  className="hover-elevate cursor-pointer" 
+                  data-testid={`card-recent-fault-${fault.id}`}
+                  onClick={() => handleUpdateFault(fault)}
+                >
                   <CardContent className="p-3">
                     <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
                     <p className="text-xs text-muted-foreground mt-1">{format(new Date(fault.createdAt || new Date()), "dd MMM HH:mm", { locale: tr })}</p>
