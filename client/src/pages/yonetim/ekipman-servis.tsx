@@ -39,6 +39,21 @@ const PRIORITY_VARIANTS = {
   'kritik': 'bg-destructive/10 border-destructive/30 dark:bg-destructive/5 dark:border-destructive/40',
 } as const;
 
+interface SelectedEquipment {
+  id: number;
+  equipmentType: string;
+  branchId?: number;
+  [key: string]: unknown;
+}
+
+interface AIDiagnosis {
+  diagnosis: string;
+  troubleshootingSteps?: string[];
+  estimatedSeverity?: string;
+  estimatedRepairTime?: string;
+  recommendedAction?: string;
+}
+
 interface UnifiedRequest {
   id: number;
   type: 'fault' | 'service'; // Arıza vs Servis Talebi
@@ -79,13 +94,13 @@ export default function EkipmanServis() {
   
   // Form states
   const [createBranch, setCreateBranch] = useState<string>('');
-  const [createEquipment, setCreateEquipment] = useState<unknown>(null);
+  const [createEquipment, setCreateEquipment] = useState<SelectedEquipment | null>(null);
   const [createType, setCreateType] = useState<'fault' | 'service'>('fault');
   
   // Fault fields
   const [faultDescription, setFaultDescription] = useState<string>('');
   const [faultSeverity, setFaultSeverity] = useState<string>('medium');
-  const [aiDiagnosis, setAiDiagnosis] = useState<unknown>(null);
+  const [aiDiagnosis, setAiDiagnosis] = useState<AIDiagnosis | null>(null);
   const [loadingAiDiagnosis, setLoadingAiDiagnosis] = useState(false);
   
   // Service fields
@@ -395,7 +410,8 @@ export default function EkipmanServis() {
         equipmentType: createEquipment.equipmentType,
         faultDescription,
       });
-      setAiDiagnosis(response);
+      const data = await response.json();
+      setAiDiagnosis(data as AIDiagnosis);
       toast({
         title: 'Başarılı',
         description: 'AI arıza analizi tamamlandı',
@@ -712,11 +728,11 @@ export default function EkipmanServis() {
                       <p className="text-sm font-medium text-primary dark:text-primary">AI Tanısı</p>
                       <p className="text-sm text-primary dark:text-primary mt-1">{aiDiagnosis.diagnosis}</p>
                     </div>
-                    {aiDiagnosis.troubleshootingSteps?.length > 0 && (
+                    {(aiDiagnosis.troubleshootingSteps?.length ?? 0) > 0 && (
                       <div>
                         <p className="text-sm font-medium text-primary dark:text-primary">Sorun Giderme Adımları</p>
                         <ul className="text-sm text-primary dark:text-primary mt-1 list-disc list-inside space-y-1">
-                          {aiDiagnosis.troubleshootingSteps.map((step: string, idx: number) => (
+                          {aiDiagnosis.troubleshootingSteps?.map((step: string, idx: number) => (
                             <li key={idx}>{step}</li>
                           ))}
                         </ul>

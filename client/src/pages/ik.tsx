@@ -1697,7 +1697,26 @@ function AddEmployeeDialog({
     lastName: z.string().min(1, "Soyad zorunludur"),
   });
 
-  const form = useForm<z.infer<typeof createEmployeeSchema>>({
+  type CreateEmployeeForm = {
+    username: string;
+    hashedPassword: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    branchId?: number;
+    hireDate: string;
+    probationEndDate: string;
+    birthDate: string;
+    phoneNumber: string;
+    emergencyContactName: string;
+    emergencyContactPhone: string;
+    notes: string;
+    employmentType: string;
+    weeklyHours: number;
+  };
+
+  const form = useForm<CreateEmployeeForm>({
     resolver: zodResolver(createEmployeeSchema),
     defaultValues: {
       username: "",
@@ -1720,7 +1739,7 @@ function AddEmployeeDialog({
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof createEmployeeSchema>) => {
+    mutationFn: async (data: CreateEmployeeForm) => {
       return apiRequest("POST", "/api/employees", data);
     },
     onSuccess: () => {
@@ -1741,7 +1760,7 @@ function AddEmployeeDialog({
     },
   });
 
-  const onSubmit = (data: z.infer<typeof createEmployeeSchema>) => {
+  const onSubmit = (data: CreateEmployeeForm) => {
     createMutation.mutate(data);
   };
 
@@ -2093,7 +2112,7 @@ function EditEmployeeDialog({
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       return apiRequest(`/api/employees/${employee.id}`, "PUT", data);
     },
     onSuccess: () => {
@@ -2113,7 +2132,7 @@ function EditEmployeeDialog({
     },
   });
 
-  const onSubmit = (data) => {
+  const onSubmit = (data: Record<string, unknown>) => {
     updateMutation.mutate(data);
   };
 
