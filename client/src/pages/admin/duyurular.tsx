@@ -777,7 +777,7 @@ export default function AdminDuyurular() {
           </Tabs>
           </ScrollArea>
           
-          <DialogFooter className="mt-4 flex-shrink-0">
+          <DialogFooter className="mt-4 flex-shrink-0 pt-4 border-t">
             <Button 
               variant="outline" 
               onClick={() => {
