@@ -1536,6 +1536,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/tasks/:id/status - Update task status (başla, tamamla, başarısız)
+  app.post('/api/tasks/:id/status', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { status, note } = req.body;
+      
+      if (isNaN(taskId)) {
+        return res.status(400).json({ message: "Geçersiz görev ID'si" });
+      }
+      
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Görev bulunamadı" });
+      }
+      
+      const isAssigner = task.assignedById === user.id;
+      const isAssignee = task.assignedToId === user.id;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      
+      // Valid status transitions
+      const validStatuses = ['beklemede', 'devam_ediyor', 'tamamlandi', 'incelemede', 'basarisiz', 'onaylandi', 'reddedildi'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: `Geçersiz durum: ${status}` });
+      }
+      
+      // Define allowed transitions based on role
+      const currentStatus = task.status;
+      let allowed = false;
+      let transitionMessage = "";
+      
+      // Assignee can: start task, complete task, mark as failed
+      if (isAssignee) {
+        if (status === 'devam_ediyor' && (currentStatus === 'beklemede' || currentStatus === 'goruldu')) {
+          allowed = true;
+          transitionMessage = "Görev başlatıldı";
+        } else if (status === 'tamamlandi' && (currentStatus === 'devam_ediyor' || currentStatus === 'goruldu' || currentStatus === 'beklemede')) {
+          allowed = true;
+          transitionMessage = "Görev tamamlandı, onay bekleniyor";
+        } else if (status === 'incelemede' && (currentStatus === 'devam_ediyor' || currentStatus === 'tamamlandi')) {
+          allowed = true;
+          transitionMessage = "Görev incelemeye gönderildi";
+        } else if (status === 'basarisiz' && currentStatus !== 'onaylandi') {
+          allowed = true;
+          transitionMessage = "Görev başarısız olarak işaretlendi";
+        }
+      }
+      
+      // Assigner/HQ can: approve, reject, reassign
+      if (isAssigner || isHQ) {
+        if (status === 'onaylandi' && (currentStatus === 'tamamlandi' || currentStatus === 'incelemede')) {
+          allowed = true;
+          transitionMessage = "Görev onaylandı";
+        } else if (status === 'reddedildi' && (currentStatus === 'tamamlandi' || currentStatus === 'incelemede')) {
+          allowed = true;
+          transitionMessage = "Görev reddedildi";
+        } else if (status === 'beklemede') {
+          // Can reset to pending
+          allowed = true;
+          transitionMessage = "Görev yeniden atandı";
+        }
+      }
+      
+      if (!allowed) {
+        return res.status(403).json({ 
+          message: `Bu durum geçişine izniniz yok: ${currentStatus} -> ${status}` 
+        });
+      }
+      
+      // Update task status
+      const updates: any = { status };
+      if (status === 'tamamlandi' || status === 'incelemede') {
+        updates.completedAt = new Date();
+      }
+      
+      const updatedTask = await storage.updateTask(taskId, updates);
+      
+      // Add status history entry
+      try {
+        await storage.addNoteToTask(taskId, note || transitionMessage, user.id);
+      } catch (historyError) {
+        console.error("Error adding status history:", historyError);
+      }
+      
+      // Send notifications based on status change
+      try {
+        const actor = await storage.getUser(user.id);
+        const actorName = actor?.firstName && actor?.lastName
+          ? `${actor.firstName} ${actor.lastName}`
+          : 'Kullanıcı';
+        
+        // Notify assigner when task is completed by assignee
+        if ((status === 'tamamlandi' || status === 'incelemede') && isAssignee && task.assignedById) {
+          await storage.createNotification({
+            userId: task.assignedById,
+            type: 'task_completed',
+            title: 'Görev Tamamlandı',
+            message: `${actorName} görevi tamamladı: "${task.description?.substring(0, 40)}..."`,
+            link: `/gorev-detay/${taskId}`,
+          });
+        }
+        
+        // Notify assignee when task is approved/rejected by assigner
+        if ((status === 'onaylandi' || status === 'reddedildi') && task.assignedToId) {
+          await storage.createNotification({
+            userId: task.assignedToId,
+            type: status === 'onaylandi' ? 'task_verified' : 'task_rejected',
+            title: status === 'onaylandi' ? 'Görev Onaylandı ✓' : 'Görev Reddedildi',
+            message: `${actorName} görevinizi ${status === 'onaylandi' ? 'onayladı' : 'reddetti'}: "${task.description?.substring(0, 40)}..."`,
+            link: `/gorev-detay/${taskId}`,
+          });
+        }
+      } catch (notifError) {
+        console.error("Error sending status notification:", notifError);
+      }
+      
+      res.json({ ...updatedTask, message: transitionMessage });
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      res.status(500).json({ message: "Görev durumu güncellenemedi" });
+    }
+  });
+
   app.post('/api/tasks/:id/note', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
@@ -1641,12 +1764,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Sadece tamamlanan görevler puanlanabilir" });
       }
       
-      // Check if already rated
-      const existingRating = await storage.getTaskRating(taskId);
-      if (existingRating) {
-        return res.status(400).json({ message: "Bu görev zaten puanlanmış" });
-      }
-      
       // Calculate max rating based on late delivery
       const maxRating = storage.computeMaxRating(task);
       const isLate = task.dueDate && task.completedAt && new Date(task.completedAt) > new Date(task.dueDate);
@@ -1656,16 +1773,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const finalRating = Math.min(rating, maxRating);
       const penaltyApplied = rawRating > maxRating ? 1 : 0;
       
-      const taskRating = await storage.createTaskRating({
-        taskId,
-        ratedById: user.id,
-        ratedUserId: task.assignedToId!,
-        rawRating,
-        finalRating,
-        penaltyApplied,
-        isLate: !!isLate,
-        feedback: feedback || null,
-      });
+      // Check if already rated - if so, update instead of create (upsert logic)
+      const existingRating = await storage.getTaskRating(taskId);
+      let taskRating;
+      
+      if (existingRating) {
+        // Update existing rating
+        taskRating = await storage.updateTaskRating(existingRating.id, {
+          rawRating,
+          finalRating,
+          penaltyApplied,
+          isLate: !!isLate,
+          feedback: feedback || null,
+        });
+      } else {
+        // Create new rating
+        taskRating = await storage.createTaskRating({
+          taskId,
+          ratedById: user.id,
+          ratedUserId: task.assignedToId!,
+          rawRating,
+          finalRating,
+          penaltyApplied,
+          isLate: !!isLate,
+          feedback: feedback || null,
+        });
+      }
       
       // Update employee satisfaction score
       if (task.assignedToId) {

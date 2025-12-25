@@ -6232,6 +6232,14 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async updateTaskRating(id: number, updates: Partial<InsertTaskRating>): Promise<TaskRating> {
+    const [updated] = await db.update(taskRatings)
+      .set(updates)
+      .where(eq(taskRatings.id, id))
+      .returning();
+    return updated;
+  }
+
   async getTaskRating(taskId: number): Promise<TaskRating | undefined> {
     const [rating] = await db.select()
       .from(taskRatings)
