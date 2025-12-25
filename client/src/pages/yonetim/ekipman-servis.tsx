@@ -292,7 +292,7 @@ export default function EkipmanServis() {
         });
       } else {
         if (!serviceProvider) throw new Error('Servis sağlayıcı zorunludur');
-        const response: any = await apiRequest('POST', '/api/service-requests/', {
+        const response = await apiRequest('POST', '/api/service-requests/', {
           branchId: parseInt(createBranch),
           equipmentId: createEquipment.id,
           equipmentName: createEquipment.equipmentType,
@@ -302,31 +302,39 @@ export default function EkipmanServis() {
           notes,
           status: 'talep_edildi',
         });
+        const data = await response.json();
         
-        // Upload photos if provided
-        if (response && response.id && (photo1File || photo2File)) {
-          if (photo1File) {
+        // Helper function to convert File to base64 and upload
+        const uploadPhoto = async (file: File, photoNumber: number, requestId: number): Promise<void> => {
+          return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = async (event) => {
-              const base64 = (event.target?.result as string).split(',')[1];
-              await apiRequest('POST', `/api/service-requests/${response.id}/upload-photo`, {
-                photoData: base64,
-                photoNumber: 1,
-              });
+              try {
+                const base64 = (event.target?.result as string).split(',')[1];
+                await apiRequest('POST', `/api/service-requests/${requestId}/upload-photo`, {
+                  photoData: base64,
+                  photoNumber,
+                });
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
             };
-            reader.readAsDataURL(photo1File);
+            reader.onerror = () => reject(new Error('Fotoğraf okunamadı'));
+            reader.readAsDataURL(file);
+          });
+        };
+        
+        // Upload photos if provided - await all uploads before continuing
+        if (data && data.id && (photo1File || photo2File)) {
+          const uploadPromises: Promise<void>[] = [];
+          if (photo1File) {
+            uploadPromises.push(uploadPhoto(photo1File, 1, data.id));
           }
           if (photo2File) {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-              const base64 = (event.target?.result as string).split(',')[1];
-              await apiRequest('POST', `/api/service-requests/${response.id}/upload-photo`, {
-                photoData: base64,
-                photoNumber: 2,
-              });
-            };
-            reader.readAsDataURL(photo2File);
+            uploadPromises.push(uploadPhoto(photo2File, 2, data.id));
           }
+          await Promise.all(uploadPromises);
         }
       }
     },

@@ -4112,8 +4112,9 @@ function InterviewDetailModal({
       // Save all responses before hiring
       await saveAllResponses();
       // Call the hire endpoint - handles rejection emails for other candidates automatically
-      const response: any = await apiRequest("POST", `/api/interviews/${interview.id}/hire`, {});
-      toast({ title: "Başarılı", description: response?.message || "Aday işe alındı" });
+      const response = await apiRequest("POST", `/api/interviews/${interview.id}/hire`, {});
+      const data = await response.json();
+      toast({ title: "Başarılı", description: data?.message || "Aday işe alındı" });
       queryClient.invalidateQueries({ queryKey: ["/api/interviews"] });
       queryClient.invalidateQueries({ queryKey: ["/api/job-applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/job-positions"] });
