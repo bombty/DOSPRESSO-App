@@ -1562,41 +1562,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: `Geçersiz durum: ${status}` });
       }
       
-      // Define allowed transitions based on role
+      // Define allowed transitions based on role with strict state machine
       const currentStatus = task.status;
       let allowed = false;
       let transitionMessage = "";
       
-      // Assignee can: start task, complete task, mark as failed
+      // Terminal states - no transitions allowed from these (except supervisor retry)
+      const terminalStates = ['onaylandi', 'basarisiz'];
+      const isTerminal = terminalStates.includes(currentStatus);
+      
+      // Block all transitions from terminal states (except HQ reset)
+      if (isTerminal && !(isHQ && status === 'beklemede')) {
+        return res.status(400).json({ 
+          message: `Bu görev terminal durumda (${currentStatus}). Değişiklik yapılamaz.` 
+        });
+      }
+      
+      // Assignee can: start task, complete task, mark as failed (only from active states)
       if (isAssignee) {
-        if (status === 'devam_ediyor' && (currentStatus === 'beklemede' || currentStatus === 'goruldu')) {
+        if (status === 'devam_ediyor' && (currentStatus === 'beklemede' || currentStatus === 'goruldu' || currentStatus === 'reddedildi')) {
           allowed = true;
           transitionMessage = "Görev başlatıldı";
         } else if (status === 'tamamlandi' && (currentStatus === 'devam_ediyor' || currentStatus === 'goruldu' || currentStatus === 'beklemede')) {
           allowed = true;
           transitionMessage = "Görev tamamlandı, onay bekleniyor";
-        } else if (status === 'incelemede' && (currentStatus === 'devam_ediyor' || currentStatus === 'tamamlandi')) {
+        } else if (status === 'incelemede' && currentStatus === 'devam_ediyor') {
           allowed = true;
           transitionMessage = "Görev incelemeye gönderildi";
-        } else if (status === 'basarisiz' && currentStatus !== 'onaylandi') {
+        } else if (status === 'basarisiz' && ['beklemede', 'goruldu', 'devam_ediyor', 'reddedildi'].includes(currentStatus)) {
+          // Can only mark failed from active (non-terminal, non-completed) states
           allowed = true;
           transitionMessage = "Görev başarısız olarak işaretlendi";
         }
       }
       
-      // Assigner/HQ can: approve, reject, reassign
+      // Assigner/HQ can: approve, reject (only from completed states), or reset (only HQ)
       if (isAssigner || isHQ) {
         if (status === 'onaylandi' && (currentStatus === 'tamamlandi' || currentStatus === 'incelemede')) {
           allowed = true;
           transitionMessage = "Görev onaylandı";
         } else if (status === 'reddedildi' && (currentStatus === 'tamamlandi' || currentStatus === 'incelemede')) {
           allowed = true;
-          transitionMessage = "Görev reddedildi";
-        } else if (status === 'beklemede') {
-          // Can reset to pending
-          allowed = true;
-          transitionMessage = "Görev yeniden atandı";
+          transitionMessage = "Görev reddedildi, düzeltme bekleniyor";
         }
+      }
+      
+      // Only HQ can reset to pending (supervisor retry) - includes all terminal states
+      if (isHQ && status === 'beklemede' && ['reddedildi', 'basarisiz', 'onaylandi'].includes(currentStatus)) {
+        allowed = true;
+        transitionMessage = "Görev yeniden atandı (HQ tarafından)";
       }
       
       if (!allowed) {
