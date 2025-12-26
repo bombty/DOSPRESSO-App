@@ -2933,6 +2933,15 @@ export class DatabaseStorage implements IStorage {
     return this.getTasks(branchId);
   }
 
+  // Get tasks where user is the checker and status is pending check
+  async getTasksByChecker(checkerId: string, status?: string): Promise<Task[]> {
+    const conditions = [eq(tasks.checkerId, checkerId)];
+    if (status) {
+      conditions.push(eq(tasks.status, status));
+    }
+    return db.select().from(tasks).where(and(...conditions)).orderBy(desc(tasks.createdAt));
+  }
+
   async getShiftsByBranch(branchId: number): Promise<Shift[]> {
     return this.getShifts(branchId);
   }

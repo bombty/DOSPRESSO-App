@@ -138,9 +138,29 @@ async function checkOverdueTaskNotifications() {
       const taskKey = task.id;
       const lastNotified = sentOverdueNotifications.get(taskKey);
       
-      // Only send notification once per hour per task
+      // First check in-memory cache
       if (lastNotified && (now.getTime() - lastNotified) < OVERDUE_REMINDER_INTERVAL) {
         continue;
+      }
+      
+      // Database-backed deduplication: check if notification was already sent recently
+      // This handles server restarts where in-memory cache is cleared
+      if (task.assignedToId) {
+        try {
+          const recentNotifications = await storage.getNotifications(task.assignedToId);
+          const recentOverdue = recentNotifications.find((n: any) => 
+            n.type === 'task_overdue' && 
+            n.link?.includes(`taskId=${task.id}`) &&
+            n.createdAt && (now.getTime() - new Date(n.createdAt).getTime()) < OVERDUE_REMINDER_INTERVAL
+          );
+          if (recentOverdue) {
+            // Update in-memory cache from DB to prevent future DB queries
+            sentOverdueNotifications.set(taskKey, new Date(recentOverdue.createdAt).getTime());
+            continue;
+          }
+        } catch (dbError) {
+          // If DB check fails, rely on in-memory cache only
+        }
       }
 
       const daysOverdue = Math.ceil((now.getTime() - new Date(task.dueDate!).getTime()) / (24 * 60 * 60 * 1000));

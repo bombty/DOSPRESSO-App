@@ -755,7 +755,7 @@ export type UpdateChecklist = z.infer<typeof updateChecklistSchema>;
 // ========================================
 
 // Task status enum
-export const taskStatusEnum = ["beklemede", "devam_ediyor", "foto_bekleniyor", "incelemede", "onaylandi", "reddedildi", "gecikmiş"] as const;
+export const taskStatusEnum = ["beklemede", "goruldu", "devam_ediyor", "foto_bekleniyor", "incelemede", "kontrol_bekliyor", "onaylandi", "reddedildi", "gecikmiş"] as const;
 export type TaskStatus = typeof taskStatusEnum[number];
 
 // Task priority enum
@@ -791,6 +791,12 @@ export const tasks = pgTable("tasks", {
   failureNote: text("failure_note"), // Required when status is "basarisiz"
   statusUpdatedAt: timestamp("status_updated_at"), // Last status change time
   statusUpdatedById: varchar("status_updated_by_id").references(() => users.id, { onDelete: "set null" }),
+  startedAt: timestamp("started_at"), // When task was started
+  // Onboarding checker fields
+  isOnboarding: boolean("is_onboarding").default(false), // Is this an onboarding task
+  checkerId: varchar("checker_id").references(() => users.id, { onDelete: "set null" }), // Who will verify completion
+  checkedAt: timestamp("checked_at"), // When checker verified
+  checkerNote: text("checker_note"), // Checker's verification note
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -810,6 +816,9 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
     (val) => (val ? new Date(val as string | Date) : null),
     z.date().nullable().optional()
   ),
+  // Onboarding checker fields
+  isOnboarding: z.boolean().optional(),
+  checkerId: z.string().nullable().optional(),
 });
 
 export const updateTaskSchema = createInsertSchema(tasks).omit({
@@ -821,6 +830,18 @@ export const updateTaskSchema = createInsertSchema(tasks).omit({
   priority: z.enum(taskPriorityEnum).optional(),
   branchId: z.number().nullable().optional(),
   dueDate: z.preprocess(
+    (val) => (val ? new Date(val as string | Date) : null),
+    z.date().nullable().optional()
+  ),
+  // Onboarding checker fields
+  isOnboarding: z.boolean().optional(),
+  checkerId: z.string().nullable().optional(),
+  checkerNote: z.string().nullable().optional(),
+  checkedAt: z.preprocess(
+    (val) => (val ? new Date(val as string | Date) : null),
+    z.date().nullable().optional()
+  ),
+  startedAt: z.preprocess(
     (val) => (val ? new Date(val as string | Date) : null),
     z.date().nullable().optional()
   ),
