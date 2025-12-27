@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Building2, Store, Camera } from "lucide-react";
+import { Plus, Building2, Store, Camera, UserCheck, GraduationCap } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
 // Role hierarchy for task assignment
@@ -64,6 +65,8 @@ const quickTaskSchema = z.object({
   dueDate: z.string().optional(),
   assignedToId: z.string().optional(),
   photoUrl: z.string().optional(),
+  isOnboarding: z.boolean().optional(),
+  checkerId: z.string().optional(),
 });
 
 type QuickTaskFormData = z.infer<typeof quickTaskSchema>;
@@ -135,8 +138,33 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
       dueDate: "",
       assignedToId: "",
       photoUrl: "",
+      isOnboarding: false,
+      checkerId: "",
     },
   });
+
+  // Get supervisors/supervisor_buddies for checker selection
+  const availableCheckers = useMemo(() => {
+    if (!employees.length) return [];
+    
+    // If assignee is selected, get checkers from same branch (supervisors)
+    const assigneeId = form.watch("assignedToId");
+    const assignee = employees.find(e => e.id === assigneeId);
+    
+    if (assignee?.branchId) {
+      // Return supervisors from same branch
+      return employees.filter(e => 
+        (e.role === 'supervisor' || e.role === 'supervisor_buddy') && 
+        e.branchId === assignee.branchId &&
+        e.id !== assigneeId
+      );
+    }
+    
+    // For HQ tasks, return all supervisors
+    return employees.filter(e => 
+      (e.role === 'supervisor' || e.role === 'supervisor_buddy')
+    );
+  }, [employees, form.watch("assignedToId")]);
 
   const createMutation = useMutation({
     mutationFn: async (data: QuickTaskFormData) => {
@@ -156,6 +184,8 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
         assignedToId: data.assignedToId || null,
         photoUrl: data.photoUrl || null,
+        isOnboarding: data.isOnboarding || false,
+        checkerId: data.checkerId || null,
       });
     },
     onSuccess: () => {
@@ -417,6 +447,82 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
                 </FormItem>
               )}
             />
+
+            {/* Onboarding Task Checkbox */}
+            <FormField
+              control={form.control}
+              name="isOnboarding"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-is-onboarding"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="flex items-center gap-1 cursor-pointer">
+                      <GraduationCap className="h-4 w-4" />
+                      Onboarding Görevi
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      Bu görev yeni personel eğitimi için mi?
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* Checker Selection - shown when isOnboarding is true or assignee is selected */}
+            {(form.watch("isOnboarding") || form.watch("assignedToId")) && availableCheckers.length > 0 && (
+              <FormField
+                control={form.control}
+                name="checkerId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1">
+                      <UserCheck className="h-4 w-4" />
+                      Kontrol Edici (İsteğe Bağlı)
+                    </FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-checker">
+                          <SelectValue placeholder="Kontrol edici seçin..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {availableCheckers.map((checker) => (
+                          <SelectItem 
+                            key={checker.id} 
+                            value={checker.id}
+                            data-testid={`option-checker-${checker.id}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-5 w-5">
+                                <AvatarImage src={checker.profilePhoto} />
+                                <AvatarFallback className="text-[8px]">
+                                  {(checker.firstName?.[0] || '') + (checker.lastName?.[0] || checker.username[0])}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>
+                                {checker.firstName && checker.lastName 
+                                  ? `${checker.firstName} ${checker.lastName}` 
+                                  : checker.username}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Görev tamamlandığında kontrol edecek kişi
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

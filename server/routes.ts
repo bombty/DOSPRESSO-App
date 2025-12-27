@@ -1506,8 +1506,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Sadece göreve atanan kişi kontrol isteyebilir" });
       }
       
-      // Must be devam_ediyor to request check
-      if (task.status !== 'devam_ediyor') {
+      // Must be devam_ediyor or tamamlandi to request check
+      if (task.status !== 'devam_ediyor' && task.status !== 'tamamlandi') {
         return res.status(400).json({ 
           message: `Bu görev kontrol istenemez. Mevcut durum: ${task.status}` 
         });

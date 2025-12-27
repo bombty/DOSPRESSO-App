@@ -32,7 +32,8 @@ import {
   Bot,
   Star,
   Calculator,
-  Megaphone
+  Megaphone,
+  UserCheck
 } from "lucide-react";
 
 interface ModuleCard {
@@ -91,6 +92,18 @@ export function CardGridHub() {
   const openFaults = faults.filter((f) => f.currentStage !== "kapatildi").length;
   const pendingTasks = tasks.filter((t) => t.status === "beklemede").length;
 
+  // Fetch pending checks for current user (checker role)
+  const { data: pendingChecks = [] } = useQuery<any[]>({
+    queryKey: ["/api/tasks/pending-checks"],
+    queryFn: async () => {
+      const res = await fetch("/api/tasks/pending-checks");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user,
+  });
+  const pendingChecksCount = pendingChecks.length;
+
   // Module definitions - different for HQ vs Branch users
   const branchModules: ModuleCard[] = [
     { 
@@ -109,6 +122,16 @@ export function CardGridHub() {
       color: "bg-green-500",
       badge: pendingTasks,
       description: "Günlük işler"
+    },
+    { 
+      id: "pending-checks", 
+      icon: UserCheck, 
+      label: "Bekleyen Kontroller", 
+      path: "/gorevler?status=kontrol_bekliyor",
+      color: "bg-amber-500",
+      badge: pendingChecksCount,
+      description: "Kontrol bekleyen görevler",
+      roles: ["supervisor", "supervisor_buddy"]
     },
     { 
       id: "faults", 

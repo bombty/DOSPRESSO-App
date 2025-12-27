@@ -29,7 +29,10 @@ import {
   MessageSquare,
   Send,
   Image as ImageIcon,
-  Star
+  Star,
+  UserCheck,
+  GraduationCap,
+  ClipboardCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -81,6 +84,16 @@ export default function GorevDetay() {
     enabled: !!task?.assignedById,
   });
 
+  // Checker user query
+  const { data: checkerUser } = useQuery<UserType>({
+    queryKey: ["/api/users", task?.checkerId],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${task!.checkerId}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!(task as any)?.checkerId,
+  });
 
   const { data: taskHistory } = useQuery<TaskStatusHistory[]>({
     queryKey: ["/api/tasks", id, "history"],
@@ -173,6 +186,54 @@ export default function GorevDetay() {
     },
   });
 
+  // Checker request - assignee requests verification from checker
+  const requestCheckMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/tasks/${id}/request-check`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Başarılı", description: "Kontrol talebi gönderildi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Kontrol talebi gönderilemedi", variant: "destructive" });
+    },
+  });
+
+  // Checker verify - checker approves the task
+  const checkerVerifyMutation = useMutation({
+    mutationFn: async (note?: string) => {
+      return apiRequest("POST", `/api/tasks/${id}/checker-verify`, { note });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Başarılı", description: "Görev kontrol edildi ve onaylandı" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Kontrol onayı başarısız", variant: "destructive" });
+    },
+  });
+
+  // Checker reject - checker rejects the task back to assignee
+  const checkerRejectMutation = useMutation({
+    mutationFn: async (note: string) => {
+      return apiRequest("POST", `/api/tasks/${id}/checker-reject`, { note });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Başarılı", description: "Görev düzeltme için geri gönderildi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Kontrol reddi başarısız", variant: "destructive" });
+    },
+  });
+
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
     addNoteMutation.mutate(newNote);
@@ -227,6 +288,7 @@ export default function GorevDetay() {
     goruldu: "Görüldü",
     devam_ediyor: "Devam Ediyor",
     foto_bekleniyor: "Fotoğraf Bekleniyor",
+    kontrol_bekliyor: "Kontrol Bekliyor",
     tamamlandi: "Tamamlandı - Onay Bekliyor",
     incelemede: "İncelemede",
     onaylandi: "Onaylandı",
@@ -255,6 +317,24 @@ export default function GorevDetay() {
   const canReject = (isAssigner || isHQ) && (task.status === "tamamlandi" || task.status === "incelemede");
   const canRate = (isAssigner || isHQ) && task.status === "onaylandi";
 
+  // Checker permissions
+  const taskExt = task as any; // Extended task with checker fields
+  const isChecker = currentUser?.id === taskExt.checkerId;
+  const hasChecker = !!taskExt.checkerId;
+  const isOnboarding = !!taskExt.isOnboarding;
+  
+  // Assignee can request check when task is in progress or completed and has a checker assigned
+  // This allows requesting check at any point after starting the task
+  const canRequestCheck = isAssignee && hasChecker && 
+    (task.status === "devam_ediyor" || task.status === "tamamlandi");
+  
+  // Checker can verify or reject when task is awaiting check
+  const canCheckerVerify = isChecker && task.status === "kontrol_bekliyor";
+  const canCheckerReject = isChecker && task.status === "kontrol_bekliyor";
+  
+  // For onboarding tasks with checker, hide direct complete button to enforce checker path
+  const mustUseCheckerPath = isOnboarding && hasChecker;
+
   return (
     <div className="flex flex-col gap-3 sm:gap-4 p-3">
       {/* Header */}
@@ -276,17 +356,36 @@ export default function GorevDetay() {
           </div>
         </div>
         
-        {/* Acknowledgment indicator */}
-        {task.acknowledgedAt ? (
-          <Badge variant="outline" className="gap-1">
-            <Eye className="h-3 w-3" />
-            Görüldü
-          </Badge>
-        ) : (
-          <Badge variant="secondary" className="gap-1">
-            Görülmedi
-          </Badge>
-        )}
+        {/* Status indicators */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Onboarding badge */}
+          {isOnboarding && (
+            <Badge className="bg-blue-500/10 text-blue-600 gap-1">
+              <GraduationCap className="h-3 w-3" />
+              Onboarding
+            </Badge>
+          )}
+          
+          {/* Kontrol Bekliyor badge */}
+          {task.status === "kontrol_bekliyor" && (
+            <Badge className="bg-amber-500/10 text-amber-600 gap-1">
+              <ClipboardCheck className="h-3 w-3" />
+              Kontrol Bekliyor
+            </Badge>
+          )}
+          
+          {/* Acknowledgment indicator */}
+          {task.acknowledgedAt ? (
+            <Badge variant="outline" className="gap-1">
+              <Eye className="h-3 w-3" />
+              Görüldü
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="gap-1">
+              Görülmedi
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Compact Summary Grid */}
@@ -434,14 +533,46 @@ export default function GorevDetay() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
-                <Button
-                  onClick={() => setShowCompleteDialog(true)}
-                  disabled={updateStatusMutation.isPending}
-                  data-testid="button-complete-task"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Tamamlandı
-                </Button>
+                {/* For onboarding tasks with checker: show Kontrole Gönder instead of Tamamlandı */}
+                {mustUseCheckerPath ? (
+                  <>
+                    <Button
+                      onClick={() => requestCheckMutation.mutate()}
+                      disabled={requestCheckMutation.isPending}
+                      data-testid="button-request-check"
+                    >
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Kontrole Gönder
+                    </Button>
+                    <p className="text-xs text-muted-foreground w-full mt-1">
+                      Bu onboarding görevi için kontrol edici onayı gereklidir.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    {/* Request Check button - shown when checker is assigned but not required */}
+                    {canRequestCheck && (
+                      <Button
+                        variant="outline"
+                        onClick={() => requestCheckMutation.mutate()}
+                        disabled={requestCheckMutation.isPending}
+                        data-testid="button-request-check"
+                      >
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Kontrole Gönder
+                      </Button>
+                    )}
+                    
+                    <Button
+                      onClick={() => setShowCompleteDialog(true)}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="button-complete-task"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Tamamlandı
+                    </Button>
+                  </>
+                )}
                 
                 <Button
                   variant="destructive"
@@ -456,6 +587,100 @@ export default function GorevDetay() {
             </Card>
           )}
         </>
+      )}
+
+      {/* Request Check Section - Shows for assignee when task is completed and has checker */}
+      {isAssignee && hasChecker && task.status === "tamamlandi" && (
+        <Card className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-900/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserCheck className="h-4 w-4 text-blue-500" />
+              {isOnboarding ? "Onboarding Kontrolü" : "Kontrol Talebi"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">
+              Görev tamamlandı. Kontrol edici onayı için gönderin.
+            </p>
+            <Button
+              onClick={() => requestCheckMutation.mutate()}
+              disabled={requestCheckMutation.isPending}
+              data-testid="button-request-check-completed"
+            >
+              <UserCheck className="h-4 w-4 mr-2" />
+              Kontrole Gönder
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Checker Verification Section - Shows for checker when task is awaiting check */}
+      {(canCheckerVerify || canCheckerReject) && (
+        <Card className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-900/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserCheck className="h-4 w-4 text-blue-500" />
+              Kontrol Bekliyor
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">
+              {isOnboarding ? "Onboarding görevi" : "Görev"} kontrol edilmenizi bekliyor.
+              {checkerUser && ` Atanan: ${assignedUser?.firstName} ${assignedUser?.lastName}`}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {canCheckerVerify && (
+                <Button
+                  onClick={() => checkerVerifyMutation.mutate()}
+                  disabled={checkerVerifyMutation.isPending}
+                  data-testid="button-checker-verify"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Kontrol Edildi - Onayla
+                </Button>
+              )}
+              {canCheckerReject && (
+                <Button
+                  variant="destructive"
+                  onClick={() => checkerRejectMutation.mutate("Düzeltme gerekli")}
+                  disabled={checkerRejectMutation.isPending}
+                  data-testid="button-checker-reject"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Düzeltme İste
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Checker Info Card - Shows when task has a checker assigned */}
+      {hasChecker && checkerUser && (
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <UserCheck className="h-5 w-5 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium">Kontrol Edici</p>
+                <p className="text-sm text-muted-foreground">
+                  {checkerUser.firstName} {checkerUser.lastName}
+                </p>
+              </div>
+              {taskExt.checkedAt && (
+                <Badge variant="outline" className="ml-auto gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Kontrol Edildi - {new Date(taskExt.checkedAt).toLocaleDateString("tr-TR")}
+                </Badge>
+              )}
+            </div>
+            {taskExt.checkerNote && (
+              <p className="mt-2 text-sm text-muted-foreground border-l-2 border-blue-300 pl-2">
+                {taskExt.checkerNote}
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Assigner/HQ Approval Section - Shows when task is completed */}
