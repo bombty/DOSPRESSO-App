@@ -21690,6 +21690,125 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // ========================================
+  // TASK STEPS - Görev Adım API'leri
+  // ========================================
+  
+  app.get('/api/tasks/:taskId/steps', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.taskId);
+      const steps = await storage.getTaskSteps(taskId);
+      res.json(steps);
+    } catch (error) {
+      console.error("Get task steps error:", error);
+      res.status(500).json({ message: "Adımlar getirilemedi" });
+    }
+  });
+
+  app.post('/api/tasks/:taskId/steps', isAuthenticated, async (req: any, res) => {
+    try {
+      const taskId = parseInt(req.params.taskId);
+      const step = await storage.createTaskStep({ ...req.body, taskId });
+      res.json(step);
+    } catch (error) {
+      console.error("Create task step error:", error);
+      res.status(500).json({ message: "Adım oluşturulamadı" });
+    }
+  });
+
+  app.patch('/api/task-steps/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const step = await storage.updateTaskStep(id, req.body);
+      res.json(step);
+    } catch (error) {
+      console.error("Update task step error:", error);
+      res.status(500).json({ message: "Adım güncellenemedi" });
+    }
+  });
+
+  app.delete('/api/task-steps/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteTaskStep(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete task step error:", error);
+      res.status(500).json({ message: "Adım silinemedi" });
+    }
+  });
+
+  // ========================================
+  // ROLE TEMPLATES - Rol Şablonları API'leri
+  // ========================================
+
+  app.get('/api/role-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const domain = req.query.domain as string | undefined;
+      const templates = await storage.getRoleTemplates(domain);
+      res.json(templates);
+    } catch (error) {
+      console.error("Get role templates error:", error);
+      res.status(500).json({ message: "Şablonlar getirilemedi" });
+    }
+  });
+
+  app.get('/api/role-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const template = await storage.getRoleTemplate(id);
+      if (!template) return res.status(404).json({ message: "Şablon bulunamadı" });
+      res.json(template);
+    } catch (error) {
+      console.error("Get role template error:", error);
+      res.status(500).json({ message: "Şablon getirilemedi" });
+    }
+  });
+
+  app.post('/api/role-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const template = await storage.createRoleTemplate(req.body);
+      res.json(template);
+    } catch (error) {
+      console.error("Create role template error:", error);
+      res.status(500).json({ message: "Şablon oluşturulamadı" });
+    }
+  });
+
+  app.patch('/api/role-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      const template = await storage.updateRoleTemplate(id, req.body);
+      res.json(template);
+    } catch (error) {
+      console.error("Update role template error:", error);
+      res.status(500).json({ message: "Şablon güncellenemedi" });
+    }
+  });
+
+  app.delete('/api/role-templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      await storage.deleteRoleTemplate(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete role template error:", error);
+      res.status(500).json({ message: "Şablon silinemedi" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

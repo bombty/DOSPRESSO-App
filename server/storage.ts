@@ -137,6 +137,10 @@ import type {
   InsertTrendMetric,
   AIReportSummary,
   InsertAIReportSummary,
+  TaskStep,
+  InsertTaskStep,
+  RoleTemplate,
+  InsertRoleTemplate,
 } from "@shared/schema";
 import {
   users,
@@ -234,6 +238,8 @@ import {
   userBadges,
   quizzes,
   quizResults,
+  taskSteps,
+  roleTemplates,
   CareerLevel,
   InsertCareerLevel,
   ExamRequest,
@@ -6647,6 +6653,67 @@ export class DatabaseStorage implements IStorage {
   async createAISummary(summary: InsertAIReportSummary): Promise<AIReportSummary> {
     const [created] = await db.insert(aiReportSummaries).values(summary).returning();
     return created;
+  }
+
+  // ========================================
+  // TASK STEPS - Görev Adım Takibi
+  // ========================================
+
+  async getTaskSteps(taskId: number): Promise<TaskStep[]> {
+    return db.select().from(taskSteps)
+      .where(eq(taskSteps.taskId, taskId))
+      .orderBy(asc(taskSteps.order));
+  }
+
+  async createTaskStep(step: InsertTaskStep): Promise<TaskStep> {
+    const [created] = await db.insert(taskSteps).values(step).returning();
+    return created;
+  }
+
+  async updateTaskStep(id: number, updates: Partial<InsertTaskStep>): Promise<TaskStep | undefined> {
+    const [updated] = await db.update(taskSteps)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(taskSteps.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTaskStep(id: number): Promise<void> {
+    await db.delete(taskSteps).where(eq(taskSteps.id, id));
+  }
+
+  // ========================================
+  // ROLE TEMPLATES - Rol Şablonları
+  // ========================================
+
+  async getRoleTemplates(domain?: string): Promise<RoleTemplate[]> {
+    if (domain) {
+      return db.select().from(roleTemplates)
+        .where(and(eq(roleTemplates.domain, domain), eq(roleTemplates.isActive, true)));
+    }
+    return db.select().from(roleTemplates).where(eq(roleTemplates.isActive, true));
+  }
+
+  async getRoleTemplate(id: number): Promise<RoleTemplate | undefined> {
+    const [template] = await db.select().from(roleTemplates).where(eq(roleTemplates.id, id));
+    return template;
+  }
+
+  async createRoleTemplate(template: InsertRoleTemplate): Promise<RoleTemplate> {
+    const [created] = await db.insert(roleTemplates).values(template).returning();
+    return created;
+  }
+
+  async updateRoleTemplate(id: number, updates: Partial<InsertRoleTemplate>): Promise<RoleTemplate | undefined> {
+    const [updated] = await db.update(roleTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(roleTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRoleTemplate(id: number): Promise<void> {
+    await db.update(roleTemplates).set({ isActive: false }).where(eq(roleTemplates.id, id));
   }
 }
 

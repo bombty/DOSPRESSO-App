@@ -6334,3 +6334,73 @@ export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit
 
 export type InsertPayrollRecord = z.infer<typeof insertPayrollRecordSchema>;
 export type PayrollRecord = typeof payrollRecords.$inferSelect;
+
+// ========================================
+// TASK STEPS - Görev Adım Takibi
+// ========================================
+
+export const taskSteps = pgTable("task_steps", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  authorId: varchar("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, in_progress, completed
+  
+  order: integer("order").notNull().default(0),
+  
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("task_steps_task_idx").on(table.taskId),
+  index("task_steps_author_idx").on(table.authorId),
+  index("task_steps_order_idx").on(table.taskId, table.order),
+]);
+
+export const insertTaskStepSchema = createInsertSchema(taskSteps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTaskStep = z.infer<typeof insertTaskStepSchema>;
+export type TaskStep = typeof taskSteps.$inferSelect;
+
+// ========================================
+// ROLE TEMPLATES - Rol Şablonları
+// ========================================
+
+export const roleTemplates = pgTable("role_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  description: text("description"),
+  
+  domain: varchar("domain", { length: 30 }).notNull(), // hq, factory, branch
+  baseRole: varchar("base_role", { length: 50 }).notNull(), // admin, supervisor, barista, etc.
+  
+  permissions: jsonb("permissions").notNull().default({}), // { moduleKey: ['view', 'edit'] }
+  
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("role_templates_domain_idx").on(table.domain),
+  index("role_templates_base_role_idx").on(table.baseRole),
+]);
+
+export const insertRoleTemplateSchema = createInsertSchema(roleTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRoleTemplate = z.infer<typeof insertRoleTemplateSchema>;
+export type RoleTemplate = typeof roleTemplates.$inferSelect;
