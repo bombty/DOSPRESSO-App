@@ -258,19 +258,34 @@ export function EnhancedAnalyticsCard() {
       const pageWidth = doc.internal.pageSize.getWidth();
       let yPos = 15;
       
-      // Load and add logo
-      const img = new Image();
-      img.src = dospressoLogo;
-      await new Promise((resolve) => {
-        img.onload = resolve;
-        img.onerror = resolve;
-      });
-      
+      // Load and add logo with proper error handling
       try {
-        doc.addImage(img, 'JPEG', pageWidth / 2 - 25, yPos, 50, 20);
-        yPos += 28;
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        const logoLoaded = await new Promise<boolean>((resolve) => {
+          img.onload = () => {
+            // Verify image actually loaded with dimensions
+            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+              resolve(true);
+            } else {
+              resolve(false);
+            }
+          };
+          img.onerror = () => resolve(false);
+          // Set timeout for slow loading
+          setTimeout(() => resolve(false), 3000);
+          img.src = dospressoLogo;
+        });
+        
+        if (logoLoaded) {
+          doc.addImage(img, 'JPEG', pageWidth / 2 - 25, yPos, 50, 20);
+          yPos += 28;
+        } else {
+          yPos += 5;
+        }
       } catch {
-        // Logo yüklenemezse devam et
+        // Logo yüklenemezse sessizce devam et
         yPos += 5;
       }
       
