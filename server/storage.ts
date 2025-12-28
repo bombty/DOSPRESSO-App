@@ -141,6 +141,16 @@ import type {
   InsertTaskStep,
   RoleTemplate,
   InsertRoleTemplate,
+  FactoryProduct,
+  InsertFactoryProduct,
+  ProductionBatch,
+  InsertProductionBatch,
+  BranchOrder,
+  InsertBranchOrder,
+  BranchOrderItem,
+  InsertBranchOrderItem,
+  FactoryInventory,
+  InsertFactoryInventory,
 } from "@shared/schema";
 import {
   users,
@@ -240,6 +250,11 @@ import {
   quizResults,
   taskSteps,
   roleTemplates,
+  factoryProducts,
+  productionBatches,
+  branchOrders,
+  branchOrderItems,
+  factoryInventory,
   CareerLevel,
   InsertCareerLevel,
   ExamRequest,
@@ -6714,6 +6729,164 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRoleTemplate(id: number): Promise<void> {
     await db.update(roleTemplates).set({ isActive: false }).where(eq(roleTemplates.id, id));
+  }
+
+  // ========================================
+  // FACTORY PRODUCTS - Fabrika Ürünleri
+  // ========================================
+
+  async getFactoryProducts(category?: string): Promise<FactoryProduct[]> {
+    if (category) {
+      return db.select().from(factoryProducts)
+        .where(and(eq(factoryProducts.category, category), eq(factoryProducts.isActive, true)))
+        .orderBy(asc(factoryProducts.name));
+    }
+    return db.select().from(factoryProducts)
+      .where(eq(factoryProducts.isActive, true))
+      .orderBy(asc(factoryProducts.name));
+  }
+
+  async getFactoryProduct(id: number): Promise<FactoryProduct | undefined> {
+    const [product] = await db.select().from(factoryProducts).where(eq(factoryProducts.id, id));
+    return product;
+  }
+
+  async createFactoryProduct(product: InsertFactoryProduct): Promise<FactoryProduct> {
+    const [created] = await db.insert(factoryProducts).values(product).returning();
+    return created;
+  }
+
+  async updateFactoryProduct(id: number, updates: Partial<InsertFactoryProduct>): Promise<FactoryProduct | undefined> {
+    const [updated] = await db.update(factoryProducts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(factoryProducts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFactoryProduct(id: number): Promise<void> {
+    await db.update(factoryProducts).set({ isActive: false }).where(eq(factoryProducts.id, id));
+  }
+
+  // ========================================
+  // PRODUCTION BATCHES - Üretim Partileri
+  // ========================================
+
+  async getProductionBatches(productId?: number, status?: string): Promise<ProductionBatch[]> {
+    const conditions: SQL[] = [];
+    if (productId) conditions.push(eq(productionBatches.productId, productId));
+    if (status) conditions.push(eq(productionBatches.status, status));
+    
+    return db.select().from(productionBatches)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(productionBatches.createdAt));
+  }
+
+  async getProductionBatch(id: number): Promise<ProductionBatch | undefined> {
+    const [batch] = await db.select().from(productionBatches).where(eq(productionBatches.id, id));
+    return batch;
+  }
+
+  async createProductionBatch(batch: InsertProductionBatch): Promise<ProductionBatch> {
+    const [created] = await db.insert(productionBatches).values(batch).returning();
+    return created;
+  }
+
+  async updateProductionBatch(id: number, updates: Partial<InsertProductionBatch>): Promise<ProductionBatch | undefined> {
+    const [updated] = await db.update(productionBatches)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(productionBatches.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ========================================
+  // BRANCH ORDERS - Şube Siparişleri
+  // ========================================
+
+  async getBranchOrders(branchId?: number, status?: string): Promise<BranchOrder[]> {
+    const conditions: SQL[] = [];
+    if (branchId) conditions.push(eq(branchOrders.branchId, branchId));
+    if (status) conditions.push(eq(branchOrders.status, status));
+    
+    return db.select().from(branchOrders)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(branchOrders.createdAt));
+  }
+
+  async getBranchOrder(id: number): Promise<BranchOrder | undefined> {
+    const [order] = await db.select().from(branchOrders).where(eq(branchOrders.id, id));
+    return order;
+  }
+
+  async createBranchOrder(order: InsertBranchOrder): Promise<BranchOrder> {
+    const [created] = await db.insert(branchOrders).values(order).returning();
+    return created;
+  }
+
+  async updateBranchOrder(id: number, updates: Partial<InsertBranchOrder>): Promise<BranchOrder | undefined> {
+    const [updated] = await db.update(branchOrders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(branchOrders.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ========================================
+  // BRANCH ORDER ITEMS - Sipariş Kalemleri
+  // ========================================
+
+  async getBranchOrderItems(orderId: number): Promise<BranchOrderItem[]> {
+    return db.select().from(branchOrderItems).where(eq(branchOrderItems.orderId, orderId));
+  }
+
+  async createBranchOrderItem(item: InsertBranchOrderItem): Promise<BranchOrderItem> {
+    const [created] = await db.insert(branchOrderItems).values(item).returning();
+    return created;
+  }
+
+  async updateBranchOrderItem(id: number, updates: Partial<InsertBranchOrderItem>): Promise<BranchOrderItem | undefined> {
+    const [updated] = await db.update(branchOrderItems)
+      .set(updates)
+      .where(eq(branchOrderItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBranchOrderItem(id: number): Promise<void> {
+    await db.delete(branchOrderItems).where(eq(branchOrderItems.id, id));
+  }
+
+  // ========================================
+  // FACTORY INVENTORY - Fabrika Stok
+  // ========================================
+
+  async getFactoryInventory(productId?: number): Promise<FactoryInventory[]> {
+    if (productId) {
+      return db.select().from(factoryInventory).where(eq(factoryInventory.productId, productId));
+    }
+    return db.select().from(factoryInventory);
+  }
+
+  async updateFactoryInventory(productId: number, batchId: number | null, quantity: number, userId: string): Promise<FactoryInventory> {
+    const existing = await db.select().from(factoryInventory)
+      .where(and(
+        eq(factoryInventory.productId, productId),
+        batchId ? eq(factoryInventory.batchId, batchId) : sql`${factoryInventory.batchId} IS NULL`
+      ));
+    
+    if (existing.length > 0) {
+      const [updated] = await db.update(factoryInventory)
+        .set({ quantity, lastUpdatedById: userId, updatedAt: new Date() })
+        .where(eq(factoryInventory.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(factoryInventory)
+        .values({ productId, batchId, quantity, lastUpdatedById: userId })
+        .returning();
+      return created;
+    }
   }
 }
 

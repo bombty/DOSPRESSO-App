@@ -6404,3 +6404,168 @@ export const insertRoleTemplateSchema = createInsertSchema(roleTemplates).omit({
 
 export type InsertRoleTemplate = z.infer<typeof insertRoleTemplateSchema>;
 export type RoleTemplate = typeof roleTemplates.$inferSelect;
+
+// ========================================
+// FACTORY PRODUCTION - Fabrika Üretim Modülü
+// ========================================
+
+// Ürün Kategorileri
+export const ProductionCategory = {
+  KAHVE_CEKIRDEGI: 'kahve_cekirdegi',
+  SIROP: 'sirop',
+  SUT_URUNLERI: 'sut_urunleri',
+  TATLI: 'tatli',
+  AMBALAJ: 'ambalaj',
+  DIGER: 'diger',
+} as const;
+
+export type ProductionCategoryType = typeof ProductionCategory[keyof typeof ProductionCategory];
+
+// Fabrika Ürünleri
+export const factoryProducts = pgTable("factory_products", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  sku: varchar("sku", { length: 50 }).notNull().unique(),
+  category: varchar("category", { length: 50 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(), // kg, lt, adet
+  unitPrice: integer("unit_price").default(0), // Kuruş cinsinden
+  minStock: integer("min_stock").default(0),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("factory_products_category_idx").on(table.category),
+  index("factory_products_sku_idx").on(table.sku),
+]);
+
+export const insertFactoryProductSchema = createInsertSchema(factoryProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryProduct = z.infer<typeof insertFactoryProductSchema>;
+export type FactoryProduct = typeof factoryProducts.$inferSelect;
+
+// Üretim Partileri
+export const productionBatches = pgTable("production_batches", {
+  id: serial("id").primaryKey(),
+  batchNumber: varchar("batch_number", { length: 50 }).notNull().unique(),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  
+  quantity: integer("quantity").notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(),
+  
+  productionDate: date("production_date").notNull(),
+  expiryDate: date("expiry_date"),
+  
+  status: varchar("status", { length: 30 }).notNull().default("planned"), // planned, in_progress, completed, quality_check, approved, rejected
+  qualityScore: integer("quality_score"), // 0-100
+  qualityNotes: text("quality_notes"),
+  
+  producedById: varchar("produced_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("production_batches_product_idx").on(table.productId),
+  index("production_batches_status_idx").on(table.status),
+  index("production_batches_date_idx").on(table.productionDate),
+]);
+
+export const insertProductionBatchSchema = createInsertSchema(productionBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductionBatch = z.infer<typeof insertProductionBatchSchema>;
+export type ProductionBatch = typeof productionBatches.$inferSelect;
+
+// Şube Sipariş Talepleri
+export const branchOrders = pgTable("branch_orders", {
+  id: serial("id").primaryKey(),
+  orderNumber: varchar("order_number", { length: 50 }).notNull().unique(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, confirmed, preparing, shipped, delivered, cancelled
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  
+  requestedById: varchar("requested_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  processedById: varchar("processed_by_id").references(() => users.id, { onDelete: "set null" }),
+  
+  requestedDeliveryDate: date("requested_delivery_date"),
+  actualDeliveryDate: date("actual_delivery_date"),
+  
+  totalAmount: integer("total_amount").default(0), // Kuruş
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("branch_orders_branch_idx").on(table.branchId),
+  index("branch_orders_status_idx").on(table.status),
+  index("branch_orders_date_idx").on(table.createdAt),
+]);
+
+export const insertBranchOrderSchema = createInsertSchema(branchOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBranchOrder = z.infer<typeof insertBranchOrderSchema>;
+export type BranchOrder = typeof branchOrders.$inferSelect;
+
+// Sipariş Kalemleri
+export const branchOrderItems = pgTable("branch_order_items", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull().references(() => branchOrders.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  
+  quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price").notNull(), // Kuruş
+  totalPrice: integer("total_price").notNull(), // Kuruş
+  
+  deliveredQuantity: integer("delivered_quantity").default(0),
+  batchId: integer("batch_id").references(() => productionBatches.id, { onDelete: "set null" }),
+  
+  notes: text("notes"),
+}, (table) => [
+  index("branch_order_items_order_idx").on(table.orderId),
+  index("branch_order_items_product_idx").on(table.productId),
+]);
+
+export const insertBranchOrderItemSchema = createInsertSchema(branchOrderItems).omit({
+  id: true,
+});
+
+export type InsertBranchOrderItem = z.infer<typeof insertBranchOrderItemSchema>;
+export type BranchOrderItem = typeof branchOrderItems.$inferSelect;
+
+// Fabrika Stok
+export const factoryInventory = pgTable("factory_inventory", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  batchId: integer("batch_id").references(() => productionBatches.id, { onDelete: "set null" }),
+  
+  quantity: integer("quantity").notNull().default(0),
+  reservedQuantity: integer("reserved_quantity").default(0), // Siparişler için ayrılan
+  
+  lastUpdatedById: varchar("last_updated_by_id").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("factory_inventory_product_idx").on(table.productId),
+  unique("factory_inventory_product_batch_unique").on(table.productId, table.batchId),
+]);
+
+export const insertFactoryInventorySchema = createInsertSchema(factoryInventory).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryInventory = z.infer<typeof insertFactoryInventorySchema>;
+export type FactoryInventory = typeof factoryInventory.$inferSelect;

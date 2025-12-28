@@ -21809,6 +21809,231 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // ========================================
+  // FACTORY PRODUCTION - Fabrika Üretim API'leri
+  // ========================================
+
+  // Factory Products
+  app.get('/api/factory/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const products = await storage.getFactoryProducts(category);
+      res.json(products);
+    } catch (error) {
+      console.error("Get factory products error:", error);
+      res.status(500).json({ message: "Ürünler getirilemedi" });
+    }
+  });
+
+  app.get('/api/factory/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const product = await storage.getFactoryProduct(id);
+      if (!product) return res.status(404).json({ message: "Ürün bulunamadı" });
+      res.json(product);
+    } catch (error) {
+      console.error("Get factory product error:", error);
+      res.status(500).json({ message: "Ürün getirilemedi" });
+    }
+  });
+
+  app.post('/api/factory/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const product = await storage.createFactoryProduct(req.body);
+      res.json(product);
+    } catch (error) {
+      console.error("Create factory product error:", error);
+      res.status(500).json({ message: "Ürün oluşturulamadı" });
+    }
+  });
+
+  app.patch('/api/factory/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      const product = await storage.updateFactoryProduct(id, req.body);
+      res.json(product);
+    } catch (error) {
+      console.error("Update factory product error:", error);
+      res.status(500).json({ message: "Ürün güncellenemedi" });
+    }
+  });
+
+  app.delete('/api/factory/products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      await storage.deleteFactoryProduct(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete factory product error:", error);
+      res.status(500).json({ message: "Ürün silinemedi" });
+    }
+  });
+
+  // Production Batches
+  app.get('/api/factory/batches', isAuthenticated, async (req: any, res) => {
+    try {
+      const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
+      const status = req.query.status as string | undefined;
+      const batches = await storage.getProductionBatches(productId, status);
+      res.json(batches);
+    } catch (error) {
+      console.error("Get production batches error:", error);
+      res.status(500).json({ message: "Partiler getirilemedi" });
+    }
+  });
+
+  app.get('/api/factory/batches/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const batch = await storage.getProductionBatch(id);
+      if (!batch) return res.status(404).json({ message: "Parti bulunamadı" });
+      res.json(batch);
+    } catch (error) {
+      console.error("Get production batch error:", error);
+      res.status(500).json({ message: "Parti getirilemedi" });
+    }
+  });
+
+  app.post('/api/factory/batches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const batch = await storage.createProductionBatch({
+        ...req.body,
+        producedById: req.user.id
+      });
+      res.json(batch);
+    } catch (error) {
+      console.error("Create production batch error:", error);
+      res.status(500).json({ message: "Parti oluşturulamadı" });
+    }
+  });
+
+  app.patch('/api/factory/batches/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      const batch = await storage.updateProductionBatch(id, req.body);
+      res.json(batch);
+    } catch (error) {
+      console.error("Update production batch error:", error);
+      res.status(500).json({ message: "Parti güncellenemedi" });
+    }
+  });
+
+  // Branch Orders
+  app.get('/api/factory/orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const status = req.query.status as string | undefined;
+      const orders = await storage.getBranchOrders(branchId, status);
+      res.json(orders);
+    } catch (error) {
+      console.error("Get branch orders error:", error);
+      res.status(500).json({ message: "Siparişler getirilemedi" });
+    }
+  });
+
+  app.get('/api/factory/orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const order = await storage.getBranchOrder(id);
+      if (!order) return res.status(404).json({ message: "Sipariş bulunamadı" });
+      const items = await storage.getBranchOrderItems(id);
+      res.json({ ...order, items });
+    } catch (error) {
+      console.error("Get branch order error:", error);
+      res.status(500).json({ message: "Sipariş getirilemedi" });
+    }
+  });
+
+  app.post('/api/factory/orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const { items, ...orderData } = req.body;
+      const orderNumber = `ORD-${Date.now()}`;
+      const order = await storage.createBranchOrder({
+        ...orderData,
+        orderNumber,
+        requestedById: req.user.id
+      });
+      
+      if (items && Array.isArray(items)) {
+        for (const item of items) {
+          await storage.createBranchOrderItem({
+            ...item,
+            orderId: order.id
+          });
+        }
+      }
+      
+      res.json(order);
+    } catch (error) {
+      console.error("Create branch order error:", error);
+      res.status(500).json({ message: "Sipariş oluşturulamadı" });
+    }
+  });
+
+  app.patch('/api/factory/orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates: any = { ...req.body };
+      
+      if (req.body.status && ['confirmed', 'preparing', 'shipped', 'delivered'].includes(req.body.status)) {
+        updates.processedById = req.user.id;
+      }
+      
+      const order = await storage.updateBranchOrder(id, updates);
+      res.json(order);
+    } catch (error) {
+      console.error("Update branch order error:", error);
+      res.status(500).json({ message: "Sipariş güncellenemedi" });
+    }
+  });
+
+  // Factory Inventory
+  app.get('/api/factory/inventory', isAuthenticated, async (req: any, res) => {
+    try {
+      const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
+      const inventory = await storage.getFactoryInventory(productId);
+      res.json(inventory);
+    } catch (error) {
+      console.error("Get factory inventory error:", error);
+      res.status(500).json({ message: "Stok bilgisi getirilemedi" });
+    }
+  });
+
+  app.post('/api/factory/inventory', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const { productId, batchId, quantity } = req.body;
+      const inventory = await storage.updateFactoryInventory(productId, batchId, quantity, req.user.id);
+      res.json(inventory);
+    } catch (error) {
+      console.error("Update factory inventory error:", error);
+      res.status(500).json({ message: "Stok güncellenemedi" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
