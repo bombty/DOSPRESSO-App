@@ -347,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Simple database ping
       await db.execute(sql`SELECT 1`);
       res.json({ status: 'ok', timestamp: new Date().toISOString() });
-    } catch (error) {
+    } catch (error: any) {
       res.status(503).json({ status: 'error', message: 'Database connection failed' });
     }
   });
@@ -575,7 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       res.json(user);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
@@ -607,7 +607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const users = await storage.getAllEmployees(branchFilter);
       res.json(sanitizeUsersForRole(users, user.role as UserRoleType));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
     }
@@ -712,7 +712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Type', mimeType);
       res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours cache
       res.send(Buffer.from(value));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error serving public file:", error);
       res.status(500).json({ message: "Failed to serve file" });
     }
@@ -753,7 +753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.setHeader('Content-Type', mimeType);
       res.send(Buffer.from(value));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error serving file:", error);
       res.status(500).json({ message: "Failed to serve file" });
     }
@@ -770,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         city: b.city,
       }));
       res.json(publicBranches);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching public branches:", error);
       res.status(500).json({ message: "Failed to fetch branches" });
     }
@@ -798,7 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fallback: return all branches for unrecognized roles (safety)
       const branches = await storage.getBranches();
       res.json(branches);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching branches:", error);
       res.status(500).json({ message: "Failed to fetch branches" });
     }
@@ -821,7 +821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Branch not found" });
       }
       res.json(branch);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching branch:", error);
       res.status(500).json({ message: "Failed to fetch branch" });
     }
@@ -866,7 +866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Cache for 60 seconds
       setCachedResponse(cacheKey, response, 60);
       res.json(response);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching branch details:", error);
       res.status(500).json({ message: "Şube detayları alınırken hata oluştu" });
     }
@@ -936,7 +936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(profile);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching personnel profile:", error);
       res.status(500).json({ message: "Personel profili alınırken hata oluştu" });
     }
@@ -1011,7 +1011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(branch);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating branch settings:", error);
       res.status(500).json({ message: "Şube ayarları güncellenemedi" });
     }
@@ -1029,7 +1029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteBranch(id);
       res.json({ message: "Branch deleted successfully" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting branch:", error);
       res.status(500).json({ message: "Failed to delete branch" });
     }
@@ -1056,7 +1056,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ success: true, qrCodeToken });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating QR code:", error);
       res.status(500).json({ message: "QR kod oluşturulamadı" });
     }
@@ -1096,7 +1096,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // HQ users can access all or filter by branch/assignedTo
       const tasks = await storage.getTasks(requestedBranchId, requestedAssignedToId);
       res.json(tasks);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching tasks:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1133,7 +1133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(task);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching task:", error);
       res.status(500).json({ message: "Görev alınamadı" });
     }
@@ -1299,7 +1299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(task);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error starting task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1369,7 +1369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(task);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error verifying task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1445,7 +1445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(task);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error rejecting task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1479,7 +1479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       
       res.json(enrichedTasks);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error getting pending checks:", error);
       res.status(500).json({ message: "Kontrol bekleyen görevler alınamadı" });
     }
@@ -1554,7 +1554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error requesting check:", error);
       res.status(500).json({ message: "Kontrol isteği gönderilemedi" });
     }
@@ -1618,7 +1618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error verifying task by checker:", error);
       res.status(500).json({ message: "Görev onaylanamadı" });
     }
@@ -1683,7 +1683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error rejecting task by checker:", error);
       res.status(500).json({ message: "Görev reddedilemedi" });
     }
@@ -1695,7 +1695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const rating = await storage.getTaskRating(id);
       res.json(rating || {});
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error getting task rating:", error);
       res.status(500).json({ message: "Rating alınamadı" });
     }
@@ -1714,7 +1714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const rating = await storage.rateTask(id, score, user.id);
       res.json(rating);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error rating task:", error);
       res.status(500).json({ message: "Görev değerlendirilemedi" });
     }
@@ -1768,7 +1768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating task status:", error);
       res.status(500).json({ message: "Görev durumu güncellenemedi" });
     }
@@ -1846,7 +1846,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updatedTask);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error starting task:", error);
       res.status(500).json({ message: "Görev başlatılamadı" });
     }
@@ -1983,7 +1983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ ...updatedTask, message: transitionMessage });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating task status:", error);
       res.status(500).json({ message: "Görev durumu güncellenemedi" });
     }
@@ -2020,7 +2020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.addNoteToTask(taskId, note.trim(), user.id);
       
       res.json({ success: true, message: "Not eklendi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding note to task:", error);
       res.status(500).json({ message: "Not eklenemedi" });
     }
@@ -2055,7 +2055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const history = await storage.getTaskStatusHistory(taskId);
       res.json(history);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching task history:", error);
       res.status(500).json({ message: "Görev geçmişi alınamadı" });
     }
@@ -2144,7 +2144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxRating,
         message: penaltyApplied ? 'Geç teslim nedeniyle puan sınırlandırıldı (max: ' + maxRating + ')' : undefined,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error rating task:", error);
       res.status(500).json({ message: "Görev puanlanamadı" });
     }
@@ -2180,7 +2180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         canRate: task.assignedById === user.id && task.status === 'onaylandi' && !rating,
         isLate: task.dueDate && task.completedAt && new Date(task.completedAt) > new Date(task.dueDate),
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching task rating:", error);
       res.status(500).json({ message: "Görev puanı alınamadı" });
     }
@@ -2226,7 +2226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(score);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching satisfaction score:", error);
       res.status(500).json({ message: "Performans skoru alınamadı" });
     }
@@ -2253,7 +2253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const ratings = await storage.getUserTaskRatings(targetUserId);
       res.json(ratings);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching user task ratings:", error);
       res.status(500).json({ message: "Görev puanları alınamadı" });
     }
@@ -2280,7 +2280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const ratings = await storage.getReceivedRatings(targetUserId);
       res.json(ratings);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching received ratings:", error);
       res.status(500).json({ message: "Alınan puanlar getirilemedi" });
     }
@@ -2318,7 +2318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       
       res.json(enriched);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching top performers:", error);
       res.status(500).json({ message: "En iyi performanslar alınamadı" });
     }
@@ -2330,7 +2330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ensurePermission(user, 'checklists', 'view');
       const checklists = await storage.getChecklists();
       res.json(checklists);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching checklists:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2439,7 +2439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const tasks = await storage.getChecklistTasks(id);
       res.json({ ...checklist, tasks });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching checklist:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2455,7 +2455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteChecklist(id);
       res.json({ message: "Checklist silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting checklist:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2469,7 +2469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const checklistId = req.query.checklistId ? parseInt(req.query.checklistId as string) : undefined;
       const tasks = await storage.getChecklistTasks(checklistId);
       res.json(tasks);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching checklist tasks:", error);
       res.status(500).json({ message: "Failed to fetch checklist tasks" });
     }
@@ -2564,7 +2564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const taskId = parseInt(req.params.taskId);
       await storage.deleteChecklistTask(taskId);
       res.json({ message: "Task silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting checklist task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2579,7 +2579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const equipmentType = req.params.equipmentType;
       const steps = await storage.getEquipmentTroubleshootingSteps(equipmentType);
       res.json(steps);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching troubleshooting steps:", error);
       res.status(500).json({ message: "Sorun giderme adımları yüklenirken hata oluştu" });
     }
@@ -2610,7 +2610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const faults = await storage.getFaults(requestedBranchId);
       const paginated = faults.slice(offset, offset + limit);
       res.json({ data: paginated, total: faults.length, limit, offset });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching faults:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2784,7 +2784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If no photo URL provided, just return existing fault
         res.json(existingFault);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating fault photo:", error);
       res.status(500).json({ message: "Failed to update fault photo" });
     }
@@ -2813,7 +2813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Fault not found" });
       }
       res.json(fault);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error resolving fault:", error);
       res.status(500).json({ message: "Failed to resolve fault" });
     }
@@ -2864,7 +2864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       invalidateCache('critical-equipment');
       
       res.json(fault);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error changing fault stage:", error);
       res.status(500).json({ message: "Failed to change fault stage" });
     }
@@ -2918,7 +2918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       invalidateCache('critical-equipment');
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating fault:", error);
       res.status(500).json({ message: "Failed to update fault" });
     }
@@ -2949,7 +2949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const history = await storage.getFaultStageHistory(id);
       res.json(history);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching fault history:", error);
       res.status(500).json({ message: "Failed to fetch fault history" });
     }
@@ -2989,7 +2989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const equipment = await storage.getEquipment(requestedBranchId);
       setCachedResponse(cacheKey, equipment, 30);
       res.json(equipment);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching equipment:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -3023,7 +3023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       setCachedResponse(cacheKey, criticalEquipment, 30);
       res.json(criticalEquipment);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching critical equipment:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -3067,7 +3067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         faults: equipmentFaults,
         comments
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching equipment:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -3107,7 +3107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       invalidateCache('critical-equipment');
       
       res.json({ ...equipment, qrCodeUrl });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating equipment:", error);
       res.status(500).json({ message: "Failed to create equipment" });
     }
@@ -3149,7 +3149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       invalidateCache('critical-equipment');
       
       res.json(equipment);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating equipment:", error);
       res.status(500).json({ message: "Failed to update equipment" });
     }
@@ -3177,7 +3177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const qrCodeUrl = await generateEquipmentQR(equipment.id);
           await storage.updateEquipment(equipment.id, { qrCodeUrl });
           successCount++;
-        } catch (error) {
+        } catch (error: any) {
           console.error(`QR generation failed for equipment ${equipment.id}:`, error);
         }
       }
@@ -3187,7 +3187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         generated: successCount,
         total: allEquipment.length
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Bulk QR generation error:", error);
       res.status(500).json({ message: "QR kod oluşturma başarısız" });
     }
@@ -3693,7 +3693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isPublished = req.query.isPublished === 'true' ? true : undefined;
       const articles = await storage.getArticles(category, equipmentTypeId, isPublished);
       res.json(articles);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching articles:", error);
       res.status(500).json({ message: "Failed to fetch articles" });
     }
@@ -3751,7 +3751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ message: "Makale yeniden indekslendi", articleId: id });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error reindexing article:", error);
       res.status(500).json({ message: "Makale yeniden indekslenemedi" });
     }
@@ -3789,7 +3789,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               recentFaults: equipmentFaults.length > 0 ? equipmentFaults : undefined
             };
           }
-        } catch (error) {
+        } catch (error: any) {
           console.warn("Failed to fetch equipment context:", error);
           // Continue without equipment context
         }
@@ -3953,7 +3953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(storedMetrics);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching performance metrics:", error);
       res.status(500).json({ message: "Failed to fetch performance metrics" });
     }
@@ -3964,7 +3964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metrics = await storage.getPerformanceMetrics();
       const latest = metrics.slice(0, 10);
       res.json(latest);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching latest performance metrics:", error);
       res.status(500).json({ message: "Failed to fetch latest performance metrics" });
     }
@@ -4004,7 +4004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.json(sanitizeUsersForRole(employees, role as UserRoleType));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching employees:", error);
       res.status(500).json({ message: "Çalışanlar yüklenirken hata oluştu" });
     }
@@ -4028,7 +4028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.json(sanitizeUsersForRole(terminatedEmployees, role as UserRoleType));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching terminated employees:", error);
       res.status(500).json({ message: "Ayrılan personeller yüklenirken hata oluştu" });
     }
@@ -4058,7 +4058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.json(sanitizeUserForRole(employee, role as UserRoleType));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching employee:", error);
       res.status(500).json({ message: "Çalışan bilgileri yüklenirken hata oluştu" });
     }
@@ -4116,7 +4116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.json(sanitizeUserForRole(updated, role as UserRoleType));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating employee:", error);
       res.status(500).json({ message: "Çalışan güncellenirken hata oluştu" });
     }
@@ -4146,7 +4146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const warnings = await storage.getEmployeeWarnings(employeeId);
       res.json(warnings);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching employee warnings:", error);
       res.status(500).json({ message: "Uyarı kayıtları yüklenirken hata oluştu" });
     }
@@ -4176,7 +4176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const trainingProgress = await storage.getUserTrainingProgress(employeeId);
       res.json(trainingProgress);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching employee training:", error);
       res.status(500).json({ message: "Eğitim bilgileri yüklenirken hata oluştu" });
     }
@@ -4208,7 +4208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const status = req.query.status as string | undefined;
       const tasks = await storage.getTasks(employee.branchId!, employeeId, status);
       res.json(tasks);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching employee tasks:", error);
       res.status(500).json({ message: "Görev kayıtları yüklenirken hata oluştu" });
     }
@@ -4289,7 +4289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trainingProgress,
         recentTasks: allTasks.slice(0, 10), // Last 10 tasks
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching employee detail:", error);
       res.status(500).json({ message: "Çalışan detayları yüklenirken hata oluştu" });
     }
@@ -4326,7 +4326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.status(201).json(sanitizeUserForRole(newEmployee, role as UserRoleType));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating employee:", error);
       res.status(500).json({ message: "Çalışan eklenirken hata oluştu" });
     }
@@ -4356,7 +4356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete employee (cascades to warnings via foreign key)
       await storage.deleteUser(employeeId);
       res.json({ message: "Çalışan silindi", deletedId: employeeId });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting employee:", error);
       res.status(500).json({ message: "Çalışan silinirken hata oluştu" });
     }
@@ -4418,7 +4418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json({ message: "Şifre başarıyla sıfırlandı" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error resetting password:", error);
       res.status(500).json({ message: "Şifre sıfırlanırken hata oluştu" });
     }
@@ -4463,7 +4463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const warning = await storage.createEmployeeWarning(parsed.data);
       res.status(201).json(warning);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating employee warning:", error);
       res.status(500).json({ message: "Uyarı kaydedilirken hata oluştu" });
     }
@@ -4486,7 +4486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const summary = await storage.getAllTrainingProgressSummary();
       res.json(summary);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching training progress summary:", error);
       res.status(500).json({ message: "Eğitim durumu getirilemedi" });
     }
@@ -4500,7 +4500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const modules = await storage.getTrainingModules(isAdminOrCoach ? undefined : true);
       res.json(modules);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching training modules:", error);
       res.status(500).json({ message: "Failed to fetch training modules" });
     }
@@ -4525,7 +4525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Module already contains all JSONB fields (steps, scenarioTasks, supervisorChecklist, learningObjectives)
       res.json(module);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching training module:", error);
       res.status(500).json({ message: "Failed to fetch training module" });
     }
@@ -4593,7 +4593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteTrainingModule(moduleId);
       
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting training module:", error);
       res.status(500).json({ message: "Failed to delete training module" });
     }
@@ -4925,7 +4925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       res.json({ objectives });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating objectives:", error);
       res.status(500).json({ message: "Failed to generate objectives" });
     }
@@ -4976,7 +4976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const lessons = await storage.getModuleLessons(moduleId);
       res.json(lessons);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching module lessons:", error);
       res.status(500).json({ message: "Ders listesi getirilemedi" });
     }
@@ -5046,7 +5046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteModuleLesson(lessonId);
       
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting module lesson:", error);
       res.status(500).json({ message: "Ders silinemedi" });
     }
@@ -5117,7 +5117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         flashcardCount: flashcards.length,
         message: `${quizQuestions.length} quiz sorusu ve ${flashcards.length} flashcard oluşturuldu`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating AI materials:", error);
       res.status(500).json({ message: "AI materyal oluşturulamadı" });
     }
@@ -5154,7 +5154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       const progress = await storage.getUserTrainingProgress(userId);
       res.json(progress);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching training progress:", error);
       res.status(500).json({ message: "Failed to fetch training progress" });
     }
@@ -5216,7 +5216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error approving quiz attempt:", error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to approve quiz attempt" });
     }
@@ -5229,7 +5229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ method: "PUT", url: uploadURL });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error getting upload URL:", error);
       res.status(500).json({ message: "Failed to get upload URL" });
     }
@@ -5260,7 +5260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ normalizedUrl: normalizedPath });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error finalizing object:", error);
       res.status(500).json({ message: "Failed to finalize upload" });
     }
@@ -5363,7 +5363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteShiftAttendance(id);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting attendance record:", error);
       res.status(500).json({ message: "Yoklama kaydı silinemedi" });
     }
@@ -5461,7 +5461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const trades = await storage.getShiftTradeRequests(filters);
       res.json(trades);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching shift trade requests:", error);
       res.status(500).json({ message: "Takas talepleri alınamadı" });
     }
@@ -5494,7 +5494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedTrade = updated.find(t => t.id === id);
       
       res.json(updatedTrade);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error responding to shift trade request:", error);
       res.status(500).json({ message: "Takas talebi yanıtlanamadı" });
     }
@@ -5575,7 +5575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const templates = await storage.getShiftTemplates(user.branchId);
       res.json(templates);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching shift templates:", error);
       res.status(500).json({ message: "Şablonlar getirilemedi" });
     }
@@ -5598,7 +5598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(template);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching shift template:", error);
       res.status(500).json({ message: "Şablon getirilemedi" });
     }
@@ -5692,7 +5692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteShiftTemplate(id);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting shift template:", error);
       res.status(500).json({ message: "Şablon silinemedi" });
     }
@@ -5765,7 +5765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate as string | undefined
       );
       res.json(availability);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching employee availability:", error);
       res.status(500).json({ message: "Müsaitlik bilgileri getirilemedi" });
     }
@@ -5790,7 +5790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(availability);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching availability:", error);
       res.status(500).json({ message: "Müsaitlik kaydı getirilemedi" });
     }
@@ -5864,7 +5864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteAvailability(id);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting availability:", error);
       res.status(500).json({ message: "Müsaitlik kaydı silinemedi" });
     }
@@ -6145,7 +6145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             console.log(`✅ Dress code analyzed for attendance ${attendance.id}: ${analysis.score}/100`);
-          } catch (error) {
+          } catch (error: any) {
             console.error("Error analyzing dress code:", error);
             await storage.updateShiftAttendance(attendance.id, {
               aiDressCodeStatus: 'error',
@@ -6244,7 +6244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const stats = await storage.calculateAttendanceStats(targetUserId, monthNum, yearNum);
       res.json(stats);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching attendance stats:", error);
       res.status(500).json({ message: "İstatistikler getirilemedi" });
     }
@@ -6308,7 +6308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[/api/me/menu v2] User: ${user.username}, Role: ${userRole}, Scope: ${menuResponse.meta.scope}, Sections: ${menuResponse.sections.length}, DynamicPerms: ${dynamicPermissions.length}`);
       
       return res.status(200).json(menuResponse);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching user menu:", error);
       res.status(500).json({ message: "Failed to fetch menu" });
     }
@@ -6361,7 +6361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ),
         rules: [],
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching menu:", error);
       res.status(500).json({ message: "Failed to fetch menu" });
     }
@@ -6376,7 +6376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const menu = await storage.listMenu();
       res.json(menu);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching menu:", error);
       res.status(500).json({ message: "Failed to fetch menu" });
     }
@@ -6431,7 +6431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteMenuSection(id);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting menu section:", error);
       res.status(500).json({ message: "Failed to delete menu section" });
     }
@@ -6450,7 +6450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       await storage.reorderMenuSections(sectionIds);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error reordering menu sections:", error);
       res.status(500).json({ message: "Failed to reorder menu sections" });
     }
@@ -6505,7 +6505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteMenuItem(id);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting menu item:", error);
       res.status(500).json({ message: "Failed to delete menu item" });
     }
@@ -6524,7 +6524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       await storage.reorderMenuItems(sectionId, itemIds);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error reordering menu items:", error);
       res.status(500).json({ message: "Failed to reorder menu items" });
     }
@@ -6559,7 +6559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteVisibilityRule(id);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting visibility rule:", error);
       res.status(500).json({ message: "Failed to delete visibility rule" });
     }
@@ -6577,7 +6577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const contents = await storage.listPageContent();
       res.json(contents);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching page content:", error);
       res.status(500).json({ message: "Failed to fetch page content" });
     }
@@ -6596,7 +6596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "İçerik bulunamadı" });
       }
       res.json(content);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching page content:", error);
       res.status(500).json({ message: "Failed to fetch page content" });
     }
@@ -6667,7 +6667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.deletePageContent(req.params.slug);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting page content:", error);
       res.status(500).json({ message: "Failed to delete page content" });
     }
@@ -6689,7 +6689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         logoUrl: branding?.logoUrl || null,
         updatedAt: branding?.updatedAt || null,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching branding:", error);
       res.status(500).json({ message: "Failed to fetch branding" });
     }
@@ -6780,7 +6780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const allUsers = await storage.getAllUsersWithFilters(filters);
       res.json(allUsers);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
     }
@@ -6905,7 +6905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ message: "Kullanıcı onaylandı", user: updated });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error approving user:", error);
       res.status(500).json({ message: "Onay işlemi sırasında hata oluştu" });
     }
@@ -6957,7 +6957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ message: "Kullanıcı reddedildi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error rejecting user:", error);
       res.status(500).json({ message: "Red işlemi sırasında hata oluştu" });
     }
@@ -6983,7 +6983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const pendingUsers = await storage.getAllUsersWithFilters(filters);
       res.json(pendingUsers);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching pending users:", error);
       res.status(500).json({ message: "Bekleyen kullanıcılar yüklenemedi" });
     }
@@ -7027,7 +7027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename=users_${Date.now()}.csv`);
       res.send('\uFEFF' + csv); // Add BOM for Excel UTF-8 support
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error exporting users:", error);
       res.status(500).json({ message: "Export başarısız" });
     }
@@ -7050,7 +7050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.deleteUser(id);
       res.json({ message: "Kullanıcı silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting user:", error);
       res.status(500).json({ message: "Kullanıcı silinemedi" });
     }
@@ -7138,7 +7138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const audits = await query.orderBy(desc(qualityAudits.auditDate));
       res.json(audits);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching quality audits:", error);
       res.status(500).json({ message: "Denetimler yüklenirken hata oluştu" });
     }
@@ -7194,7 +7194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const scores = await query.orderBy(desc(branchAuditScores.periodStart));
       res.json(scores);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching branch audit scores:", error);
       res.status(500).json({ message: "Şube denetim skorları yüklenirken hata oluştu" });
     }
@@ -7274,7 +7274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sections: avgScores,
         lastAuditDate: recentAudits[0]?.auditDate,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching latest branch audit scores:", error);
       res.status(500).json({ message: "Şube denetim skorları yüklenirken hata oluştu" });
     }
@@ -7335,7 +7335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: a.status,
         })),
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching quality audit summary:", error);
       res.status(500).json({ message: "Denetim özeti yüklenirken hata oluştu" });
     }
@@ -7365,7 +7365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const feedback = await query.orderBy(desc(customerFeedback.feedbackDate));
       res.json(feedback);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching customer feedback:", error);
       res.status(500).json({ message: "Geri bildirimler yüklenirken hata oluştu" });
     }
@@ -7415,7 +7415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error reviewing feedback:", error);
       res.status(500).json({ message: "Geri bildirim güncellenirken hata oluştu" });
     }
@@ -7439,7 +7439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .where(eq(customerFeedback.branchId, parseInt(branchId)));
 
       res.json(stats[0] || { avgRating: 0, totalCount: 0, rating5: 0, rating4: 0, rating3: 0, rating2: 0, rating1: 0 });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching feedback stats:", error);
       res.status(500).json({ message: "İstatistikler yüklenirken hata oluştu" });
     }
@@ -7462,7 +7462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const schedules = await query.orderBy(maintenanceSchedules.nextMaintenanceDate);
       res.json(schedules);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching maintenance schedules:", error);
       res.status(500).json({ message: "Bakım planları yüklenirken hata oluştu" });
     }
@@ -7504,7 +7504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const logs = await query.orderBy(desc(maintenanceLogs.performedDate));
       res.json(logs);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching maintenance logs:", error);
       res.status(500).json({ message: "Bakım geçmişi yüklenirken hata oluştu" });
     }
@@ -7575,7 +7575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         equipment: c.equipment,
         calibratedBy: c.calibratedBy,
       })));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching calibrations:", error);
       res.status(500).json({ message: "Kalibrasyon kayıtları yüklenirken hata oluştu" });
     }
@@ -7604,7 +7604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         equipment: calibration.equipment,
         calibratedBy: calibration.calibratedBy,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching calibration:", error);
       res.status(500).json({ message: "Kalibrasyon kaydı yüklenirken hata oluştu" });
     }
@@ -7671,7 +7671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating calibration:", error);
       res.status(500).json({ message: "Kalibrasyon güncellenirken hata oluştu" });
     }
@@ -7690,7 +7690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.delete(equipmentCalibrations).where(eq(equipmentCalibrations.id, parseInt(id)));
       
       res.json({ message: "Kalibrasyon kaydı silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting calibration:", error);
       res.status(500).json({ message: "Kalibrasyon silinirken hata oluştu" });
     }
@@ -7717,7 +7717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         equipment: d.equipment,
         branch: d.branch,
       })));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching due calibrations:", error);
       res.status(500).json({ message: "Yaklaşan kalibrasyonlar yüklenirken hata oluştu" });
     }
@@ -7759,7 +7759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(allCampaigns);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching campaigns:", error);
       res.status(500).json({ message: "Kampanyalar yüklenirken hata oluştu" });
     }
@@ -7815,7 +7815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.insert(campaignBranches).values(values).onConflictDoNothing();
 
       res.json({ message: "Şubeler kampanyaya eklendi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding branches to campaign:", error);
       res.status(500).json({ message: "Şubeler eklenirken hata oluştu" });
     }
@@ -7831,7 +7831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(campaignBranches.campaignId, parseInt(id)));
 
       res.json(branches);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching campaign branches:", error);
       res.status(500).json({ message: "Şubeler yüklenirken hata oluştu" });
     }
@@ -7858,7 +7858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const processes = await query.orderBy(desc(franchiseOnboarding.expectedOpeningDate));
       res.json(processes);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching onboarding processes:", error);
       res.status(500).json({ message: "Açılış süreçleri yüklenirken hata oluştu" });
     }
@@ -7896,7 +7896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(onboardingDocuments.onboardingId, parseInt(id)));
 
       res.json(documents);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching onboarding documents:", error);
       res.status(500).json({ message: "Belgeler yüklenirken hata oluştu" });
     }
@@ -7943,7 +7943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const renewals = await query.orderBy(licenseRenewals.expiryDate);
       res.json(renewals);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching license renewals:", error);
       res.status(500).json({ message: "Lisanslar yüklenirken hata oluştu" });
     }
@@ -7987,7 +7987,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settings = await storage.getSiteSettings(category as string | undefined);
       
       res.json(settings);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching site settings:", error);
       res.status(500).json({ message: "Ayarlar yüklenirken hata oluştu" });
     }
@@ -8011,7 +8011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(setting);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching site setting:", error);
       res.status(500).json({ message: "Ayar yüklenirken hata oluştu" });
     }
@@ -8064,7 +8064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const setting = await storage.updateSiteSetting(key, value, user.id);
       
       res.json(setting);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating site setting:", error);
       res.status(500).json({ message: "Ayar güncellenirken hata oluştu" });
     }
@@ -8084,7 +8084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteSiteSetting(key);
       
       res.json({ message: "Ayar silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting site setting:", error);
       res.status(500).json({ message: "Ayar silinirken hata oluştu" });
     }
@@ -8178,7 +8178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       
       res.json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching user permissions:", error);
       res.status(500).json({ message: "İzinler yüklenirken hata oluştu" });
     }
@@ -8330,7 +8330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(mergedPerms);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching role permissions:", error);
       res.status(500).json({ message: "Rol yetkileri yüklenirken hata oluştu" });
     }
@@ -8379,7 +8379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Rol adı gerekli" });
       }
       res.json({ id: roleName, name: roleName, scope: scope || 'hq', description: description || '', createdAt: new Date() });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating role:", error);
       res.status(500).json({ message: "Rol oluşturulamadı" });
     }
@@ -8405,7 +8405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       res.json(hasExplicitAccess);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking accounting access:", error);
       res.status(500).json(false);
     }
@@ -9826,7 +9826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const attendances = await storage.getRecentShiftAttendances(user.id, 30);
       res.json(attendances);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching recent shift attendances:", error);
       res.status(500).json({ message: "Vardiyalar yüklenirken hata oluştu" });
     }
@@ -9842,7 +9842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.checkSLABreaches();
       res.json({ message: "SLA kontrolleri tamamlandı" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking SLA breaches:", error);
       res.status(500).json({ message: "SLA kontrolleri yapılırken hata oluştu" });
     }
@@ -9983,7 +9983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         summaries,
         totals,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching monthly attendance summary:", error);
       res.status(500).json({ message: "Aylık mesai özeti yüklenirken hata oluştu" });
     }
@@ -10953,7 +10953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Training reminder job error:", error);
       }
     }, 6 * 60 * 60 * 1000); // Every 6 hours
@@ -11962,7 +11962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       console.log('✅ Badge seeding complete');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Badge seeding error:', error);
     }
   };
@@ -13215,7 +13215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const categories = await db.select().from(academyHubCategories).orderBy(academyHubCategories.displayOrder);
       res.json(categories);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Hub categories error:", error);
       res.status(500).json({ message: "Hub kategorileri yüklenemedi" });
     }
@@ -13226,7 +13226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const categories = await db.select().from(recipeCategories).orderBy(recipeCategories.displayOrder);
       res.json(categories);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Recipe categories error:", error);
       res.status(500).json({ message: "Reçete kategorileri yüklenemedi" });
     }
@@ -13305,7 +13305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await db.delete(recipeCategories).where(eq(recipeCategories.id, parseInt(id)));
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete recipe category error:", error);
       res.status(500).json({ message: "Kategori silinemedi" });
     }
@@ -13322,7 +13322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
       
       res.json({ totalAttempts: total, passRate });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Quiz stats error:", error);
       res.json({ totalAttempts: 0, passRate: 0 });
     }
@@ -13345,7 +13345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       
       res.json(quizzesWithCount);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get quizzes error:", error);
       res.status(500).json({ message: "Quizler yüklenemedi" });
     }
@@ -13372,7 +13372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
       
       res.status(201).json(newQuiz);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create quiz error:", error);
       res.status(500).json({ message: "Quiz oluşturulamadı" });
     }
@@ -13395,7 +13395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update quiz error:", error);
       res.status(500).json({ message: "Quiz güncellenemedi" });
     }
@@ -13427,7 +13427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
       
       res.status(201).json(newQuestion);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add question error:", error);
       res.status(500).json({ message: "Soru eklenemedi" });
     }
@@ -13445,7 +13445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const allRecipes = await query.orderBy(recipes.displayOrder);
       res.json(allRecipes);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Recipes error:", error);
       res.status(500).json({ message: "Reçeteler yüklenemedi" });
     }
@@ -13475,7 +13475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentVersion,
         sizes 
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Recipe detail error:", error);
       res.status(500).json({ message: "Reçete detayı yüklenemedi" });
     }
@@ -13486,7 +13486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const missions = await db.select().from(dailyMissions).where(eq(dailyMissions.isActive, true));
       res.json(missions);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Daily missions error:", error);
       res.status(500).json({ message: "Günlük görevler yüklenemedi" });
     }
@@ -13505,7 +13505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ));
       
       res.json(progress);
-    } catch (error) {
+    } catch (error: any) {
       console.error("User missions error:", error);
       res.status(500).json({ message: "Görev ilerlemesi yüklenemedi" });
     }
@@ -13529,7 +13529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(20);
       
       res.json(leaderboard);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Leaderboard error:", error);
       res.status(500).json({ message: "Liderlik tablosu yüklenemedi" });
     }
@@ -13550,7 +13550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
       
       res.status(201).json(recipe);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create recipe error:", error);
       res.status(500).json({ message: "Reçete oluşturulamadı" });
     }
@@ -13585,7 +13585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(201).json(recipe);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create recipe error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -13635,7 +13635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(recipe);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update recipe error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -13657,7 +13657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.delete(recipes).where(eq(recipes.id, parseInt(id)));
       
       res.json({ success: true, message: "Reçete silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete recipe error:", error);
       res.status(500).json({ message: "Reçete silinemedi" });
     }
@@ -13693,7 +13693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(recipes.id, data.recipeId!));
       
       res.status(201).json(version);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create recipe version error:", error);
       res.status(500).json({ message: "Reçete versiyonu oluşturulamadı" });
     }
@@ -13712,7 +13712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         estimated_minutes: 5
       }));
       res.json(recommended);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Recommended quizzes error:", error);
       res.json([]);
     }
@@ -13744,7 +13744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       res.json(results);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Global search error:", error);
       res.status(500).json({ message: "Arama sırasında hata oluştu" });
     }
@@ -13825,7 +13825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       
       res.json(projectsWithStats);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get projects error:", error);
       res.status(500).json({ message: "Projeler alınamadı" });
     }
@@ -13874,7 +13874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(201).json(project);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create project error:", error);
       res.status(500).json({ message: "Proje oluşturulamadı" });
     }
@@ -13959,7 +13959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         comments: commentList.map(c => ({ ...c.comment, user: c.user })),
         milestones: milestoneList,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get project detail error:", error);
       res.status(500).json({ message: "Proje detayları alınamadı" });
     }
@@ -13994,7 +13994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update project error:", error);
       res.status(500).json({ message: "Proje güncellenemedi" });
     }
@@ -14049,7 +14049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(member);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add project member error:", error);
       res.status(500).json({ message: "Üye eklenemedi" });
     }
@@ -14073,7 +14073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(projectMembers.id, parseInt(memberId)));
       
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Remove project member error:", error);
       res.status(500).json({ message: "Üye çıkarılamadı" });
     }
@@ -14121,7 +14121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(task);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create project task error:", error);
       res.status(500).json({ message: "Görev oluşturulamadı" });
     }
@@ -14162,7 +14162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update project task error:", error);
       res.status(500).json({ message: "Görev güncellenemedi" });
     }
@@ -14176,7 +14176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.delete(projectTasks).where(eq(projectTasks.id, parseInt(id)));
       
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete project task error:", error);
       res.status(500).json({ message: "Görev silinemedi" });
     }
@@ -14206,7 +14206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).from(users).where(eq(users.id, user.id));
       
       res.status(201).json({ ...comment, user: commentUser });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add project comment error:", error);
       res.status(500).json({ message: "Yorum eklenemedi" });
     }
@@ -14227,7 +14227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(projectMilestones.orderIndex, projectMilestones.dueDate);
       
       res.json(milestones);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get project milestones error:", error);
       res.status(500).json({ message: "Kilometre taşları alınamadı" });
     }
@@ -14246,7 +14246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [milestone] = await db.insert(projectMilestones).values(data).returning();
       
       res.status(201).json(milestone);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create milestone error:", error);
       res.status(500).json({ message: "Kilometre taşı oluşturulamadı" });
     }
@@ -14284,7 +14284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update milestone error:", error);
       res.status(500).json({ message: "Kilometre taşı güncellenemedi" });
     }
@@ -14298,7 +14298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.delete(projectMilestones).where(eq(projectMilestones.id, parseInt(id)));
       
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete milestone error:", error);
       res.status(500).json({ message: "Kilometre taşı silinemedi" });
     }
@@ -14328,7 +14328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(projectTasks.orderIndex);
       
       res.json(subtasks.map(s => ({ ...s.task, assignee: s.assignee })));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get subtasks error:", error);
       res.status(500).json({ message: "Alt görevler alınamadı" });
     }
@@ -14356,7 +14356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [subtask] = await db.insert(projectTasks).values(data).returning();
       
       res.status(201).json(subtask);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create subtask error:", error);
       res.status(500).json({ message: "Alt görev oluşturulamadı" });
     }
@@ -14384,7 +14384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(projectTaskDependencies.taskId, parseInt(id)));
       
       res.json(dependencies.map(d => ({ ...d.dependency, dependsOnTask: d.dependsOnTask })));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get dependencies error:", error);
       res.status(500).json({ message: "Bağımlılıklar alınamadı" });
     }
@@ -14410,7 +14410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [dependency] = await db.insert(projectTaskDependencies).values(data).returning();
       
       res.status(201).json(dependency);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add dependency error:", error);
       res.status(500).json({ message: "Bağımlılık eklenemedi" });
     }
@@ -14424,7 +14424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.delete(projectTaskDependencies).where(eq(projectTaskDependencies.id, parseInt(id)));
       
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete dependency error:", error);
       res.status(500).json({ message: "Bağımlılık silinemedi" });
     }
@@ -14496,7 +14496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dependencies: dependencies.map(d => ({ ...d.dependency, dependsOnTask: d.dependsOnTask })),
         comments: comments.map(c => ({ ...c.comment, user: c.user })),
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get task details error:", error);
       res.status(500).json({ message: "Görev detayları alınamadı" });
     }
@@ -14533,7 +14533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).from(users).where(eq(users.id, user.id));
       
       res.status(201).json({ ...comment, user: commentUser });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add task comment error:", error);
       res.status(500).json({ message: "Yorum eklenemedi" });
     }
@@ -14571,7 +14571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(users.firstName);
       
       res.json(hqUsers);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get HQ users error:", error);
       res.status(500).json({ message: "HQ kullanıcıları alınamadı" });
     }
@@ -14626,7 +14626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(enrichedTickets);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get tickets error:", error);
       res.status(500).json({ message: "Talepler alınamadı" });
     }
@@ -14647,7 +14647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const ticket = await storage.createHQSupportTicket(ticketData);
       res.status(201).json(ticket);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create ticket error:", error);
       res.status(500).json({ message: "Talep oluşturulamadı" });
     }
@@ -14681,7 +14681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json({ ticket, messages: enrichedMessages });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get ticket details error:", error);
       res.status(500).json({ message: "Talep detayları alınamadı" });
     }
@@ -14705,7 +14705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateHQSupportTicket(ticketId, updates);
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update ticket error:", error);
       res.status(500).json({ message: "Talep güncellenemedi" });
     }
@@ -14731,7 +14731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(message);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add message error:", error);
       res.status(500).json({ message: "Mesaj eklenemedi" });
     }
@@ -14768,7 +14768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(enriched);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get category assignments error:", error);
       res.status(500).json({ message: "Kategori atamaları alınamadı" });
     }
@@ -14789,7 +14789,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(assignment);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create category assignment error:", error);
       res.status(500).json({ message: "Kategori ataması oluşturulamadı" });
     }
@@ -14806,7 +14806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteHQSupportCategoryAssignment(parseInt(req.params.id));
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete category assignment error:", error);
       res.status(500).json({ message: "Kategori ataması silinemedi" });
     }
@@ -14837,7 +14837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       res.json({ ...result, smtpPassword: result.smtpPassword ? "********" : "" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get email settings error:", error);
       res.status(500).json({ message: "Ayarlar alınamadı" });
     }
@@ -14868,7 +14868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ message: "Ayarlar kaydedildi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Save email settings error:", error);
       res.status(500).json({ message: "Ayarlar kaydedilemedi" });
     }
@@ -14882,7 +14882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ message: "Test e-postası gönderildi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Test email error:", error);
       res.status(500).json({ message: "Test e-postası gönderilemedi" });
     }
@@ -14913,7 +14913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       res.json({ ...result, smtpPassword: result.smtpPassword ? "********" : "" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get service email settings error:", error);
       res.status(500).json({ message: "Servis mail ayarları alınamadı" });
     }
@@ -14944,7 +14944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ message: "Servis mail ayarları kaydedildi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Save service email settings error:", error);
       res.status(500).json({ message: "Servis mail ayarları kaydedilemedi" });
     }
@@ -14958,7 +14958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ message: "Test e-postası servis adresine gönderildi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Test service email error:", error);
       res.status(500).json({ message: "Test e-postası gönderilemedi" });
     }
@@ -15011,7 +15011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Service request email sent to ${serviceEmail} for fault ${faultId} by user ${user.id}`);
       
       res.json({ message: "Servis talebi e-postası gönderildi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Send service request email error:", error);
       res.status(500).json({ message: "Servis talebi gönderilemedi: " + (error as Error).message });
     }
@@ -15032,7 +15032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orderBy: (b, { desc }) => [desc(b.createdAt)],
       });
       res.json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get banners error:", error);
       res.status(500).json({ message: "Bannerlar alınamadı" });
     }
@@ -15072,7 +15072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
       
       res.status(201).json(banner);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create banner error:", error);
       res.status(500).json({ message: "Banner oluşturulamadı" });
     }
@@ -15118,7 +15118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(banner);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update banner error:", error);
       res.status(500).json({ message: "Banner güncellenemedi" });
     }
@@ -15133,7 +15133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await db.delete(banners).where(eq(banners.id, parseInt(req.params.id)));
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete banner error:", error);
       res.status(500).json({ message: "Banner silinemedi" });
     }
@@ -15160,7 +15160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(filtered);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get active banners error:", error);
       res.status(500).json({ message: "Bannerlar alınamadı" });
     }
@@ -15212,7 +15212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       res.json(maskedSettings);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get AI settings error:", error);
       res.status(500).json({ message: "AI ayarları alınamadı" });
     }
@@ -15269,7 +15269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ success: true, id: result.id });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Save AI settings error:", error);
       res.status(500).json({ message: "AI ayarları kaydedilemedi" });
     }
@@ -15320,7 +15320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({ success: false, message: "Bilinmeyen sağlayıcı" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Test AI connection error:", error);
       res.status(500).json({ success: false, message: "Bağlantı testi başarısız" });
     }
@@ -15381,7 +15381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       
       res.json(projectsWithProgress);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get new shop projects error:", error);
       res.status(500).json({ message: "Projeler alınamadı" });
     }
@@ -15439,7 +15439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(201).json(newProject);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create new shop project error:", error);
       res.status(500).json({ message: "Proje oluşturulamadı" });
     }
@@ -15529,7 +15529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendors,
         risks,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get new shop project error:", error);
       res.status(500).json({ message: "Proje detayı alınamadı" });
     }
@@ -15580,7 +15580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update phase error:", error);
       res.status(500).json({ message: "Faz güncellenemedi" });
     }
@@ -15616,7 +15616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [newPhase] = await db.insert(projectPhases).values(phaseData).returning();
       res.status(201).json(newPhase);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create phase error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -15642,7 +15642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(projectBudgetLines.category, projectBudgetLines.createdAt);
       
       res.json(lines);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get budget lines error:", error);
       res.status(500).json({ message: "Bütçe kalemleri alınamadı" });
     }
@@ -15666,7 +15666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [line] = await db.insert(projectBudgetLines).values(data).returning();
       res.status(201).json(line);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add budget line error:", error);
       res.status(500).json({ message: "Bütçe kalemi eklenemedi" });
     }
@@ -15688,7 +15688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update budget line error:", error);
       res.status(500).json({ message: "Bütçe kalemi güncellenemedi" });
     }
@@ -15706,7 +15706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await db.delete(projectBudgetLines).where(eq(projectBudgetLines.id, lineId));
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete budget line error:", error);
       res.status(500).json({ message: "Bütçe kalemi silinemedi" });
     }
@@ -15729,7 +15729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(projectVendors.vendorType);
       
       res.json(vendorList);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get vendors error:", error);
       res.status(500).json({ message: "Tedarikçiler alınamadı" });
     }
@@ -15753,7 +15753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [vendor] = await db.insert(projectVendors).values(data).returning();
       res.status(201).json(vendor);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add vendor error:", error);
       res.status(500).json({ message: "Tedarikçi eklenemedi" });
     }
@@ -15775,7 +15775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update vendor error:", error);
       res.status(500).json({ message: "Tedarikçi güncellenemedi" });
     }
@@ -15793,7 +15793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await db.delete(projectVendors).where(eq(projectVendors.id, vendorId));
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete vendor error:", error);
       res.status(500).json({ message: "Tedarikçi silinemedi" });
     }
@@ -15816,7 +15816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(projectRisks.severity));
       
       res.json(riskList);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get risks error:", error);
       res.status(500).json({ message: "Riskler alınamadı" });
     }
@@ -15850,7 +15850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [risk] = await db.insert(projectRisks).values(data).returning();
       res.status(201).json(risk);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add risk error:", error);
       res.status(500).json({ message: "Risk eklenemedi" });
     }
@@ -15892,7 +15892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update risk error:", error);
       res.status(500).json({ message: "Risk güncellenemedi" });
     }
@@ -15910,7 +15910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await db.delete(projectRisks).where(eq(projectRisks.id, riskId));
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete risk error:", error);
       res.status(500).json({ message: "Risk silinemedi" });
     }
@@ -15947,7 +15947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Return all subtasks as flat array - frontend handles categorization
       res.json(subtasks);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get phase subtasks error:", error);
       res.status(500).json({ message: "Alt görevler alınamadı" });
     }
@@ -15978,7 +15978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [subtask] = await db.insert(phaseSubTasks).values(data).returning();
       res.status(201).json(subtask);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create phase subtask error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -16018,7 +16018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update phase subtask error:", error);
       res.status(500).json({ message: "Alt görev güncellenemedi" });
     }
@@ -16045,7 +16045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Reorder phase subtask error:", error);
       res.status(500).json({ message: "Sıralama güncellenemedi" });
     }
@@ -16066,7 +16066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await db.delete(phaseSubTasks).where(eq(phaseSubTasks.id, subtaskId));
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete phase subtask error:", error);
       res.status(500).json({ message: "Alt görev silinemedi" });
     }
@@ -16108,7 +16108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(phaseAssignments.phaseId, phaseId));
       
       res.json(assignments);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get phase assignments error:", error);
       res.status(500).json({ message: "Atamalar alınamadı" });
     }
@@ -16140,7 +16140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [assignment] = await db.insert(phaseAssignments).values(data).returning();
       res.status(201).json(assignment);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create phase assignment error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -16168,7 +16168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update phase assignment error:", error);
       res.status(500).json({ message: "Atama güncellenemedi" });
     }
@@ -16189,7 +16189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await db.delete(phaseAssignments).where(eq(phaseAssignments.id, assignmentId));
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete phase assignment error:", error);
       res.status(500).json({ message: "Atama silinemedi" });
     }
@@ -16223,7 +16223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(procurementItems.createdAt));
       
       res.json(items);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get procurement items error:", error);
       res.status(500).json({ message: "Tedarik kalemleri alınamadı" });
     }
@@ -16251,7 +16251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(procurementProposals.proposedPrice);
       
       res.json({ ...item, proposals });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get procurement item error:", error);
       res.status(500).json({ message: "Tedarik kalemi alınamadı" });
     }
@@ -16276,7 +16276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [item] = await db.insert(procurementItems).values(data).returning();
       res.status(201).json(item);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create procurement item error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -16304,7 +16304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update procurement item error:", error);
       res.status(500).json({ message: "Tedarik kalemi güncellenemedi" });
     }
@@ -16330,7 +16330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [proposal] = await db.insert(procurementProposals).values(data).returning();
       res.status(201).json(proposal);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create procurement proposal error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -16358,7 +16358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update procurement proposal error:", error);
       res.status(500).json({ message: "Teklif güncellenemedi" });
     }
@@ -16405,7 +16405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
       
       res.json(updatedItem);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Select proposal error:", error);
       res.status(500).json({ message: "Teklif seçilemedi" });
     }
@@ -16426,7 +16426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await db.delete(procurementProposals).where(eq(procurementProposals.id, proposalId));
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete procurement proposal error:", error);
       res.status(500).json({ message: "Teklif silinemedi" });
     }
@@ -16456,7 +16456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ));
       
       res.json(externalUsersList);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get external users error:", error);
       res.status(500).json({ message: "Dış kullanıcılar alınamadı" });
     }
@@ -16529,7 +16529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(externalUsers.id, externalUserId));
       
       res.status(201).json({ access, user: fullExternalUser });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Invite external user error:", error);
       res.status(500).json({ message: "Dış kullanıcı davet edilemedi" });
     }
@@ -16555,7 +16555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ));
       
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Remove external user error:", error);
       res.status(500).json({ message: "Dış kullanıcı kaldırılamadı" });
     }
@@ -16600,7 +16600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ success: true, updated: updated.length, details: updated });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update terminations error:", error);
       res.status(500).json({ message: "İşten ayrılma güncelleme hatası" });
     }
@@ -16671,7 +16671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ success: true, imported: created.length, details: created });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Import employees error:", error);
       res.status(500).json({ message: "Personel ekleme hatası" });
     }
@@ -18009,7 +18009,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Rapor bulunamadı" });
       }
       res.json(report);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get report error:", error);
       res.status(500).json({ message: "Rapor alınamadı" });
     }
@@ -18030,7 +18030,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const updated = await storage.updateReport(reportId, req.body);
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update report error:", error);
       res.status(500).json({ message: "Rapor güncellenemedi" });
     }
@@ -18051,7 +18051,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       await storage.deleteReport(reportId);
       res.json({ message: "Rapor silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete report error:", error);
       res.status(500).json({ message: "Rapor silinemedi" });
     }
@@ -18063,7 +18063,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const reportId = parseInt(req.params.reportId);
       const comparisons = await storage.getBranchComparisons(reportId);
       res.json(comparisons);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get branch comparisons error:", error);
       res.status(500).json({ message: "Karşılaştırmalar alınamadı" });
     }
@@ -18078,7 +18078,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         branchId ? parseInt(branchId) : undefined
       );
       res.json(metrics);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get trend metrics error:", error);
       res.status(500).json({ message: "Trendler alınamadı" });
     }
@@ -18140,7 +18140,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       });
 
       res.json(aiSummary);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI summary error:", error);
       res.status(500).json({ message: "AI özeti oluşturulamadı" });
     }
@@ -18170,7 +18170,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const templates = await db.select().from(auditTemplates).orderBy(desc(auditTemplates.createdAt));
       res.json(templates);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get audit templates error:", error);
       res.status(500).json({ message: "Şablonlar alınamadı" });
     }
@@ -18191,7 +18191,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .orderBy(auditTemplateItems.sectionOrder, auditTemplateItems.itemOrder);
 
       res.json({ ...template, items });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get audit template error:", error);
       res.status(500).json({ message: "Şablon alınamadı" });
     }
@@ -18212,7 +18212,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }).returning();
 
       res.status(201).json(template);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create audit template error:", error);
       res.status(500).json({ message: "Şablon oluşturulamadı" });
     }
@@ -18268,7 +18268,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .where(eq(auditTemplateItems.templateId, template.id));
 
       res.status(201).json({ ...template, items: createdItems });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Import audit template error:", error);
       res.status(500).json({ message: "Şablon import edilemedi" });
     }
@@ -18295,7 +18295,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update audit template error:", error);
       res.status(500).json({ message: "Şablon güncellenemedi" });
     }
@@ -18312,7 +18312,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const templateId = parseInt(req.params.id);
       await db.delete(auditTemplates).where(eq(auditTemplates.id, templateId));
       res.json({ message: "Şablon silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete audit template error:", error);
       res.status(500).json({ message: "Şablon silinemedi" });
     }
@@ -18398,7 +18398,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }).returning();
 
       res.status(201).json(newItem);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add audit template item error:", error);
       res.status(500).json({ message: "Madde eklenemedi" });
     }
@@ -18450,7 +18450,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update audit template item error:", error);
       res.status(500).json({ message: "Madde güncellenemedi" });
     }
@@ -18477,7 +18477,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       await db.delete(auditTemplateItems).where(eq(auditTemplateItems.id, itemId));
       res.json({ message: "Madde silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete audit template item error:", error);
       res.status(500).json({ message: "Madde silinemedi" });
     }
@@ -18553,7 +18553,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .orderBy(desc(auditInstances.auditDate));
 
       res.json(audits);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get audits error:", error);
       res.status(500).json({ message: "Denetimler alınamadı" });
     }
@@ -18590,7 +18590,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         responses,
         correctiveActions: capas 
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get audit error:", error);
       res.status(500).json({ message: "Denetim alınamadı" });
     }
@@ -18630,7 +18630,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }).returning();
 
       res.status(201).json(audit);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create audit error:", error);
       res.status(500).json({ message: "Denetim oluşturulamadı" });
     }
@@ -18729,7 +18729,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         score: scoreResult,
         capaCount: scoreResult.capaItems.length,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Submit audit responses error:", error);
       res.status(500).json({ message: "Yanıtlar kaydedilemedi" });
     }
@@ -18750,7 +18750,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }).where(eq(auditInstances.id, auditId)).returning();
 
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update audit error:", error);
       res.status(500).json({ message: "Denetim güncellenemedi" });
     }
@@ -18806,7 +18806,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }));
 
       res.json(capasWithSLA);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get corrective actions error:", error);
       res.status(500).json({ message: "Aksiyonlar alınamadı" });
     }
@@ -18876,7 +18876,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         auditItem,
         updates: updatesWithUsers,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get corrective action error:", error);
       res.status(500).json({ message: "Aksiyon alınamadı" });
     }
@@ -18899,7 +18899,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }).returning();
 
       res.status(201).json(capa);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create corrective action error:", error);
       res.status(500).json({ message: "Aksiyon oluşturulamadı" });
     }
@@ -18954,7 +18954,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update corrective action error:", error);
       res.status(500).json({ message: "Aksiyon güncellenemedi" });
     }
@@ -19007,7 +19007,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       res.status(201).json(update);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Add CAPA update error:", error);
       res.status(500).json({ message: "Güncelleme eklenemedi" });
     }
@@ -19085,7 +19085,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         recentAudits,
         overdueCAPAs,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get audit analytics error:", error);
       res.status(500).json({ message: "Analitik verileri alınamadı" });
     }
@@ -19118,7 +19118,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .orderBy(sql`to_char(${auditInstances.auditDate}, 'YYYY-MM')`);
 
       res.json(trends);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get audit trends error:", error);
       res.status(500).json({ message: "Trend verileri alınamadı" });
     }
@@ -19155,7 +19155,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }));
 
       res.json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get branch comparison error:", error);
       res.status(500).json({ message: "Şube karşılaştırması alınamadı" });
     }
@@ -19184,7 +19184,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       const types = await db.select().from(salaryDeductionTypes).where(eq(salaryDeductionTypes.isActive, true));
       res.json(types);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get deduction types error:", error);
       res.status(500).json({ message: "Kesinti tipleri alınamadı" });
     }
@@ -19200,7 +19200,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const validated = insertSalaryDeductionTypeSchema.parse(req.body);
       const [newType] = await db.insert(salaryDeductionTypes).values(validated).returning();
       res.json(newType);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create deduction type error:", error);
       res.status(500).json({ message: "Kesinti tipi oluşturulamadı" });
     }
@@ -19233,7 +19233,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .limit(1);
 
       res.json(salary || null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get employee salary error:", error);
       res.status(500).json({ message: "Maaş bilgileri alınamadı" });
     }
@@ -19262,7 +19262,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const [newSalary] = await db.insert(employeeSalaries).values(validated).returning();
       res.json(newSalary);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create employee salary error:", error);
       res.status(500).json({ message: "Maaş bilgisi eklenemedi" });
     }
@@ -19288,7 +19288,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Maaş kaydı bulunamadı" });
       }
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update employee salary error:", error);
       res.status(500).json({ message: "Maaş bilgisi güncellenemedi" });
     }
@@ -19331,7 +19331,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .orderBy(desc(salaryDeductions.referenceDate));
 
       res.json(deductions);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get salary deductions error:", error);
       res.status(500).json({ message: "Kesinti bilgileri alınamadı" });
     }
@@ -19361,7 +19361,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const [newDeduction] = await db.insert(salaryDeductions).values(validated).returning();
       res.json(newDeduction);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create salary deduction error:", error);
       res.status(500).json({ message: "Kesinti eklenemedi" });
     }
@@ -19387,7 +19387,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       await db.delete(salaryDeductions).where(eq(salaryDeductions.id, deductionId));
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete salary deduction error:", error);
       res.status(500).json({ message: "Kesinti silinemedi" });
     }
@@ -19421,7 +19421,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .orderBy(desc(monthlyPayrolls.year), desc(monthlyPayrolls.month));
 
       res.json(payrolls);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get payroll history error:", error);
       res.status(500).json({ message: "Bordro geçmişi alınamadı" });
     }
@@ -19493,10 +19493,47 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const totalDeductions = lateDeductions + absenceDeductions + unpaidLeaveDeductions + sickLeaveDeductions + otherDeductions;
 
-      // Fazla mesai hesapla (varsa)
-      let overtimeHours = 0;
-      let overtimePay = 0;
-      // TODO: Fazla mesai verilerinden hesapla
+      // Çalışılan günleri hesapla (shiftAttendance kayıtlarından)
+      const attendanceRecords = await db.select()
+        .from(shiftAttendance)
+        .leftJoin(shifts, eq(shiftAttendance.shiftId, shifts.id))
+        .where(and(
+          eq(shiftAttendance.userId, userId),
+          sql`${shifts.shiftDate} >= ${startDate}`,
+          sql`${shifts.shiftDate} < ${endDate}`,
+          or(
+            eq(shiftAttendance.status, 'checked_out'),
+            eq(shiftAttendance.status, 'checked_in')
+          )
+        ));
+      
+      // Benzersiz çalışılan günleri say
+      const workedDaysSet = new Set(attendanceRecords.map(r => r.shifts?.shiftDate));
+      const calculatedWorkedDays = workedDaysSet.size;
+      
+      // Toplam çalışılan dakikayı hesapla
+      const totalWorkedMinutes = attendanceRecords.reduce((sum, r) => {
+        return sum + (r.shift_attendance.totalWorkedMinutes || 0);
+      }, 0);
+
+      // Fazla mesai hesapla (onaylanmış overtimeRequests'lerden)
+      const periodStr = `${year}-${String(month).padStart(2, '0')}`;
+      const overtimeRecords = await db.select()
+        .from(overtimeRequests)
+        .where(and(
+          eq(overtimeRequests.userId, userId),
+          eq(overtimeRequests.status, 'approved'),
+          eq(overtimeRequests.appliedToPeriod, periodStr)
+        ));
+      
+      const totalOvertimeMinutes = overtimeRecords.reduce((sum, r) => {
+        return sum + (r.approvedMinutes || 0);
+      }, 0);
+      const overtimeHours = Math.round(totalOvertimeMinutes / 60 * 10) / 10; // 1 ondalık basamak
+      
+      // Fazla mesai ücreti hesapla (1.5x saatlik ücret)
+      const hourlyRate = Math.round(salary.baseSalary / (salary.weeklyHours * 4.33));
+      const overtimePay = Math.round(overtimeHours * hourlyRate * 1.5);
 
       // Vergi ve sigorta hesapla
       const grossSalary = salary.baseSalary + overtimePay;
@@ -19513,8 +19550,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         month,
         year,
         baseSalary: salary.baseSalary,
-        workedDays: 22, // TODO: Devam kayıtlarından hesapla
-        workedHours: salary.weeklyHours * 4,
+        workedDays: calculatedWorkedDays,
+        workedHours: Math.round(totalWorkedMinutes / 60),
         overtimeHours,
         overtimePay,
         totalDeductions,
@@ -19553,7 +19590,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       res.json(payroll);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Calculate payroll error:", error);
       res.status(500).json({ message: "Bordro hesaplanamadı" });
     }
@@ -19582,7 +19619,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Bordro bulunamadı" });
       }
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Approve payroll error:", error);
       res.status(500).json({ message: "Bordro onaylanamadı" });
     }
@@ -19613,7 +19650,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Bordro bulunamadı" });
       }
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Mark paid error:", error);
       res.status(500).json({ message: "Ödeme işlemi yapılamadı" });
     }
@@ -19672,7 +19709,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       };
 
       res.json(summary);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get branch salary summary error:", error);
       res.status(500).json({ message: "Şube maaş özeti alınamadı" });
     }
@@ -19758,7 +19795,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         createdDeductions,
         message: `${createdDeductions} otomatik kesinti oluşturuldu` 
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Calculate auto deductions error:", error);
       res.status(500).json({ message: "Otomatik kesinti hesaplanamadı" });
     }
@@ -19805,7 +19842,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         SELECT * FROM payroll_parameters ORDER BY year DESC, effective_from DESC
       `);
       res.json(params.rows.map(transformPayrollParams));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get payroll parameters error:", error);
       res.status(500).json({ message: "Bordro parametreleri alınamadı" });
     }
@@ -19829,7 +19866,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Belirtilen yıl için parametre bulunamadı" });
       }
       res.json(transformPayrollParams(params.rows[0]));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get payroll parameters by year error:", error);
       res.status(500).json({ message: "Bordro parametreleri alınamadı" });
     }
@@ -19899,7 +19936,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const result = await db.execute(sql`SELECT * FROM payroll_parameters WHERE id = ${id}`);
       res.json(transformPayrollParams(result.rows[0]));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update payroll parameters error:", error);
       res.status(500).json({ message: "Bordro parametreleri güncellenemedi" });
     }
@@ -20109,7 +20146,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       } else {
         res.status(400).json({ message: "Brüt veya net maaş belirtilmeli" });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Calculate payroll error:", error);
       res.status(500).json({ message: "Bordro hesaplanamadı" });
     }
@@ -20137,7 +20174,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       `);
       
       res.json(result.rows);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get employee benefits error:", error);
       res.status(500).json({ message: "Yan haklar alınamadı" });
     }
@@ -20162,7 +20199,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       `);
       
       res.json(result.rows[0] || null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get employee benefit error:", error);
       res.status(500).json({ message: "Yan haklar alınamadı" });
     }
@@ -20235,7 +20272,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       `);
       
       res.json(result.rows[0]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create employee benefit error:", error);
       res.status(500).json({ message: "Yan hak kaydı oluşturulamadı" });
     }
@@ -20302,7 +20339,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       `);
       
       res.json(result.rows[0]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update employee benefit error:", error);
       res.status(500).json({ message: "Yan hak kaydı güncellenemedi" });
     }
@@ -20367,7 +20404,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       `);
       
       res.json(result.rows);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get employees with salary error:", error);
       res.status(500).json({ message: "Personel maaş listesi alınamadı" });
     }
@@ -20447,7 +20484,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       res.json(result.rows[0]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update user salary error:", error);
       res.status(500).json({ message: "Maaş güncellenemedi" });
     }
@@ -20527,7 +20564,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         ORDER BY pr.period_year DESC, pr.period_month DESC, u.first_name
       `);
       res.json(result.rows);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get payroll records error:", error);
       res.status(500).json({ message: "Bordro kayıtları alınamadı" });
     }
@@ -20587,7 +20624,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       
       res.json(record);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get payroll record error:", error);
       res.status(500).json({ message: "Bordro kaydı alınamadı" });
     }
@@ -20621,7 +20658,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       `);
       
       res.json(result.rows[0]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get employee overtime error:", error);
       res.status(500).json({ message: "Mesai bilgisi alınamadı" });
     }
@@ -20674,7 +20711,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         undertimeMinutes,
         undertimePercentage: undertimeMinutes > 0 ? Math.round((undertimeMinutes / expectedMonthlyMinutes) * 100) : 0
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get employee attendance error:", error);
       res.status(500).json({ message: "Çalışma saati bilgisi alınamadı" });
     }
@@ -20870,7 +20907,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         incomeTax,
         stampTax
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Calculate employee payroll error:", error);
       res.status(500).json({ message: "Bordro hesaplanamadı" });
     }
@@ -20960,7 +20997,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       `);
       
       res.status(201).json(result.rows[0]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create payroll record error:", error);
       res.status(500).json({ message: "Bordro kaydı oluşturulamadı" });
     }
@@ -21030,7 +21067,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       `);
       
       res.json(result.rows[0]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update payroll record error:", error);
       res.status(500).json({ message: "Bordro kaydı güncellenemedi" });
     }
@@ -21069,7 +21106,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       
       res.json(result.rows[0]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Approve payroll record error:", error);
       res.status(500).json({ message: "Bordro onaylanamadı" });
     }
@@ -21105,7 +21142,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       
       res.json(result.rows[0]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Pay payroll record error:", error);
       res.status(500).json({ message: "Ödeme işaretlenemedi" });
     }
@@ -21144,7 +21181,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       await db.execute(sql`DELETE FROM payroll_records WHERE id = ${recordId}`);
       
       res.json({ message: "Bordro kaydı silindi" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete payroll record error:", error);
       res.status(500).json({ message: "Bordro kaydı silinemedi" });
     }
@@ -21164,7 +21201,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       const groupedActions = await getAllActionsGroupedByModule();
       res.json(groupedActions);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get permission actions error:", error);
       res.status(500).json({ message: "Aksiyon listesi alınamadı" });
     }
@@ -21181,7 +21218,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const { role } = req.params;
       const grants = await getRoleGrants(role);
       res.json(grants);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get role grants error:", error);
       res.status(500).json({ message: "Rol izinleri alınamadı" });
     }
@@ -21208,7 +21245,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       const grantId = await upsertPermissionGrant(role, actionId, scope, isActive ?? true);
       res.json({ success: true, grantId });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upsert role grant error:", error);
       res.status(500).json({ message: "İzin güncellenemedi" });
     }
@@ -21225,7 +21262,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const { role, actionId } = req.params;
       await deletePermissionGrant(role, parseInt(actionId));
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete role grant error:", error);
       res.status(500).json({ message: "İzin silinemedi" });
     }
@@ -21244,7 +21281,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       });
       
       res.json(permissionArray);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get user permissions error:", error);
       res.status(500).json({ message: "İzinler alınamadı" });
     }
@@ -21309,7 +21346,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         ...r.announcement,
         isRead: !!r.readStatus
       })));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get announcements error:", error);
       res.status(500).json({ message: "Duyurular alınamadı" });
     }
@@ -21359,7 +21396,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       // Limit to 5 after filtering
       res.json(filtered.slice(0, 5));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get announcement banners error:", error);
       res.status(500).json({ message: "Banner'lar alınamadı" });
     }
@@ -21411,7 +21448,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const unreadCount = visibleIds.filter(id => !readIds.has(id)).length;
       
       res.json({ count: unreadCount });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get unread count error:", error);
       res.status(500).json({ count: 0 });
     }
@@ -21442,7 +21479,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         ...result.announcement,
         isRead: !!result.readStatus
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get announcement error:", error);
       res.status(500).json({ message: "Duyuru alınamadı" });
     }
@@ -21463,7 +21500,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .onConflictDoNothing();
       
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Mark announcement read error:", error);
       res.status(500).json({ message: "Okundu işaretlenemedi" });
     }
@@ -21487,7 +21524,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .orderBy(desc(announcements.createdAt));
       
       res.json(results);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Admin get announcements error:", error);
       res.status(500).json({ message: "Duyurular alınamadı" });
     }
@@ -21531,7 +21568,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .returning();
       
       res.json(newAnnouncement);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create announcement error:", error);
       res.status(500).json({ message: "Duyuru oluşturulamadı" });
     }
@@ -21565,7 +21602,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update announcement error:", error);
       res.status(500).json({ message: "Duyuru güncellenemedi" });
     }
@@ -21663,7 +21700,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       console.log(`[AI] Image saved to Object Storage: ${publicUrl}`);
 
       res.json({ imageUrl: publicUrl });
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI image generation error:", error);
       res.status(500).json({ message: "AI görsel oluşturma başarısız", error: String(error) });
     }
@@ -21684,7 +21721,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .where(eq(announcements.id, parseInt(id)));
       
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete announcement error:", error);
       res.status(500).json({ message: "Duyuru silinemedi" });
     }
@@ -21699,7 +21736,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const taskId = parseInt(req.params.taskId);
       const steps = await storage.getTaskSteps(taskId);
       res.json(steps);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get task steps error:", error);
       res.status(500).json({ message: "Adımlar getirilemedi" });
     }
@@ -21710,7 +21747,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const taskId = parseInt(req.params.taskId);
       const step = await storage.createTaskStep({ ...req.body, taskId });
       res.json(step);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create task step error:", error);
       res.status(500).json({ message: "Adım oluşturulamadı" });
     }
@@ -21721,7 +21758,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const id = parseInt(req.params.id);
       const step = await storage.updateTaskStep(id, req.body);
       res.json(step);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update task step error:", error);
       res.status(500).json({ message: "Adım güncellenemedi" });
     }
@@ -21732,7 +21769,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const id = parseInt(req.params.id);
       await storage.deleteTaskStep(id);
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete task step error:", error);
       res.status(500).json({ message: "Adım silinemedi" });
     }
@@ -21747,7 +21784,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const domain = req.query.domain as string | undefined;
       const templates = await storage.getRoleTemplates(domain);
       res.json(templates);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get role templates error:", error);
       res.status(500).json({ message: "Şablonlar getirilemedi" });
     }
@@ -21759,7 +21796,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const template = await storage.getRoleTemplate(id);
       if (!template) return res.status(404).json({ message: "Şablon bulunamadı" });
       res.json(template);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get role template error:", error);
       res.status(500).json({ message: "Şablon getirilemedi" });
     }
@@ -21773,7 +21810,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       const template = await storage.createRoleTemplate(req.body);
       res.json(template);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create role template error:", error);
       res.status(500).json({ message: "Şablon oluşturulamadı" });
     }
@@ -21788,7 +21825,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const id = parseInt(req.params.id);
       const template = await storage.updateRoleTemplate(id, req.body);
       res.json(template);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update role template error:", error);
       res.status(500).json({ message: "Şablon güncellenemedi" });
     }
@@ -21803,7 +21840,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const id = parseInt(req.params.id);
       await storage.deleteRoleTemplate(id);
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete role template error:", error);
       res.status(500).json({ message: "Şablon silinemedi" });
     }
@@ -21819,7 +21856,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const category = req.query.category as string | undefined;
       const products = await storage.getFactoryProducts(category);
       res.json(products);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get factory products error:", error);
       res.status(500).json({ message: "Ürünler getirilemedi" });
     }
@@ -21831,7 +21868,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const product = await storage.getFactoryProduct(id);
       if (!product) return res.status(404).json({ message: "Ürün bulunamadı" });
       res.json(product);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get factory product error:", error);
       res.status(500).json({ message: "Ürün getirilemedi" });
     }
@@ -21845,7 +21882,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       const product = await storage.createFactoryProduct(req.body);
       res.json(product);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create factory product error:", error);
       res.status(500).json({ message: "Ürün oluşturulamadı" });
     }
@@ -21860,7 +21897,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const id = parseInt(req.params.id);
       const product = await storage.updateFactoryProduct(id, req.body);
       res.json(product);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update factory product error:", error);
       res.status(500).json({ message: "Ürün güncellenemedi" });
     }
@@ -21875,7 +21912,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const id = parseInt(req.params.id);
       await storage.deleteFactoryProduct(id);
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete factory product error:", error);
       res.status(500).json({ message: "Ürün silinemedi" });
     }
@@ -21888,7 +21925,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const status = req.query.status as string | undefined;
       const batches = await storage.getProductionBatches(productId, status);
       res.json(batches);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get production batches error:", error);
       res.status(500).json({ message: "Partiler getirilemedi" });
     }
@@ -21900,7 +21937,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const batch = await storage.getProductionBatch(id);
       if (!batch) return res.status(404).json({ message: "Parti bulunamadı" });
       res.json(batch);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get production batch error:", error);
       res.status(500).json({ message: "Parti getirilemedi" });
     }
@@ -21917,7 +21954,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         producedById: req.user.id
       });
       res.json(batch);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create production batch error:", error);
       res.status(500).json({ message: "Parti oluşturulamadı" });
     }
@@ -21932,7 +21969,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const id = parseInt(req.params.id);
       const batch = await storage.updateProductionBatch(id, req.body);
       res.json(batch);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update production batch error:", error);
       res.status(500).json({ message: "Parti güncellenemedi" });
     }
@@ -21945,7 +21982,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const status = req.query.status as string | undefined;
       const orders = await storage.getBranchOrders(branchId, status);
       res.json(orders);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get branch orders error:", error);
       res.status(500).json({ message: "Siparişler getirilemedi" });
     }
@@ -21958,7 +21995,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       if (!order) return res.status(404).json({ message: "Sipariş bulunamadı" });
       const items = await storage.getBranchOrderItems(id);
       res.json({ ...order, items });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get branch order error:", error);
       res.status(500).json({ message: "Sipariş getirilemedi" });
     }
@@ -21984,7 +22021,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       
       res.json(order);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Create branch order error:", error);
       res.status(500).json({ message: "Sipariş oluşturulamadı" });
     }
@@ -22001,7 +22038,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       
       const order = await storage.updateBranchOrder(id, updates);
       res.json(order);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update branch order error:", error);
       res.status(500).json({ message: "Sipariş güncellenemedi" });
     }
@@ -22013,7 +22050,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
       const inventory = await storage.getFactoryInventory(productId);
       res.json(inventory);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get factory inventory error:", error);
       res.status(500).json({ message: "Stok bilgisi getirilemedi" });
     }
@@ -22028,7 +22065,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const { productId, batchId, quantity } = req.body;
       const inventory = await storage.updateFactoryInventory(productId, batchId, quantity, req.user.id);
       res.json(inventory);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update factory inventory error:", error);
       res.status(500).json({ message: "Stok güncellenemedi" });
     }
