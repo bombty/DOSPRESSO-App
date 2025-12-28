@@ -38,7 +38,10 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { StarRating } from "@/components/star-rating";
-import type { Task, User as UserType, TaskStatusHistory, TaskRating } from "@shared/schema";
+import type { Task, User as UserType, TaskStatusHistory, TaskRating, TaskStep } from "@shared/schema";
+import { ListChecks, Plus, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface RatingResponse extends TaskRating {}
 
@@ -53,6 +56,7 @@ export default function GorevDetay() {
   const [ratingValue, setRatingValue] = useState(0);
   const [ratingFeedback, setRatingFeedback] = useState("");
   const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [newStepTitle, setNewStepTitle] = useState("");
 
   const { data: task, isLoading } = useQuery<Task>({
     queryKey: ["/api/tasks", id],
@@ -113,6 +117,65 @@ export default function GorevDetay() {
       return response.json();
     },
     enabled: !!id,
+  });
+
+  // Task Steps Query
+  const { data: taskSteps = [] } = useQuery<TaskStep[]>({
+    queryKey: ["/api/tasks", id, "steps"],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks/${id}/steps`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
+  // Task Steps Mutations
+  const addStepMutation = useMutation({
+    mutationFn: async (title: string) => {
+      const maxOrder = taskSteps.reduce((max, s) => Math.max(max, s.order), 0);
+      return apiRequest("POST", `/api/tasks/${id}/steps`, { 
+        title, 
+        order: maxOrder + 1,
+        status: "pending"
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "steps"] });
+      setNewStepTitle("");
+      toast({ title: "Başarılı", description: "Adım eklendi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Adım eklenemedi", variant: "destructive" });
+    },
+  });
+
+  const toggleStepMutation = useMutation({
+    mutationFn: async ({ stepId, completed }: { stepId: number; completed: boolean }) => {
+      return apiRequest("PATCH", `/api/task-steps/${stepId}`, { 
+        status: completed ? "completed" : "pending",
+        completedAt: completed ? new Date().toISOString() : null
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "steps"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Adım güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  const deleteStepMutation = useMutation({
+    mutationFn: async (stepId: number) => {
+      return apiRequest("DELETE", `/api/task-steps/${stepId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id, "steps"] });
+      toast({ title: "Başarılı", description: "Adım silindi" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Adım silinemedi", variant: "destructive" });
+    },
   });
 
   const ratingMutation = useMutation({
@@ -808,6 +871,112 @@ export default function GorevDetay() {
               )}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Task Steps - Inline Stepper */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ListChecks className="h-4 w-4" />
+            Görev Adımları
+            {taskSteps.length > 0 && (
+              <Badge variant="secondary" className="ml-auto text-xs">
+                {taskSteps.filter(s => s.status === "completed").length}/{taskSteps.length}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Step List */}
+          {taskSteps.length > 0 ? (
+            <div className="space-y-2">
+              {taskSteps.map((step, idx) => (
+                <div 
+                  key={step.id} 
+                  className="flex items-center gap-3 p-2 rounded-lg border bg-card hover-elevate"
+                  data-testid={`task-step-${step.id}`}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-xs text-muted-foreground w-5">{idx + 1}.</span>
+                    <Checkbox
+                      checked={step.status === "completed"}
+                      onCheckedChange={(checked) => 
+                        toggleStepMutation.mutate({ stepId: step.id, completed: !!checked })
+                      }
+                      disabled={toggleStepMutation.isPending || task.status === "onaylandi" || task.status === "basarisiz"}
+                      data-testid={`checkbox-step-${step.id}`}
+                    />
+                    <span className={`text-sm flex-1 truncate ${step.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+                      {step.title}
+                    </span>
+                  </div>
+                  {step.completedAt && (
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(step.completedAt).toLocaleDateString("tr-TR")}
+                    </span>
+                  )}
+                  {isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteStepMutation.mutate(step.id)}
+                      disabled={deleteStepMutation.isPending}
+                      data-testid={`button-delete-step-${step.id}`}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              Henüz adım eklenmedi
+            </p>
+          )}
+
+          {/* Add Step Form - Only for assignee when task is not completed */}
+          {isAssignee && task.status !== "onaylandi" && task.status !== "basarisiz" && (
+            <div className="flex gap-2 pt-2 border-t">
+              <Input
+                placeholder="Yeni adım ekle..."
+                value={newStepTitle}
+                onChange={(e) => setNewStepTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newStepTitle.trim()) {
+                    addStepMutation.mutate(newStepTitle.trim());
+                  }
+                }}
+                className="flex-1 h-8 text-sm"
+                data-testid="input-new-step"
+              />
+              <Button
+                size="sm"
+                onClick={() => newStepTitle.trim() && addStepMutation.mutate(newStepTitle.trim())}
+                disabled={addStepMutation.isPending || !newStepTitle.trim()}
+                data-testid="button-add-step"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Ekle
+              </Button>
+            </div>
+          )}
+
+          {/* Progress Bar */}
+          {taskSteps.length > 0 && (
+            <div className="pt-2">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ 
+                    width: `${(taskSteps.filter(s => s.status === "completed").length / taskSteps.length) * 100}%` 
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
