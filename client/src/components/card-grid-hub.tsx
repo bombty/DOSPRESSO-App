@@ -33,7 +33,8 @@ import {
   Star,
   Calculator,
   Megaphone,
-  UserCheck
+  UserCheck,
+  MapPin
 } from "lucide-react";
 
 interface ModuleCard {
@@ -209,6 +210,15 @@ export function CardGridHub() {
       description: "Performans metrikleri",
       roles: ["supervisor", "supervisor_buddy", "yatirimci_branch", "admin"]
     },
+    { 
+      id: "live-tracking", 
+      icon: MapPin, 
+      label: "Canlı Takip", 
+      path: "/canli-takip",
+      color: "bg-emerald-500",
+      description: "Personel konum takibi",
+      roles: ["supervisor", "manager"]
+    },
   ];
 
   const hqModules: ModuleCard[] = [
@@ -326,6 +336,14 @@ export function CardGridHub() {
       path: "/hq-destek",
       color: "bg-rose-500",
       description: "Destek talepleri"
+    },
+    { 
+      id: "live-tracking-hq", 
+      icon: MapPin, 
+      label: "Canlı Takip", 
+      path: "/canli-takip",
+      color: "bg-emerald-500",
+      description: "Personel konum takibi"
     },
     { 
       id: "settings", 

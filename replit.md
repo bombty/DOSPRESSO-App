@@ -46,7 +46,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **State Management**: TanStack Query for server state and localStorage for theme persistence.
 - **Photo Upload**: Persistent storage on AWS S3 via an ObjectUploader component.
 - **Backup System**: Daily automatic backups to object storage.
-- **Live Tracking**: Real-time employee location tracking with in-memory cache for supervisors.
+- **Live Tracking**: Real-time employee location tracking with in-memory cache for supervisors. Dashboard at `/canli-takip` with 30-second auto-refresh, role-based branch access (HQ sees all, branch roles see own branch only), and coordinate masking for privacy.
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
 - **Gamification**: Integrated badges, career progression, leaderboards, team competitions, adaptive difficulty, certificates, and daily learning streak tracker.
 - **Layout System**: Responsive flex-based layouts with standardized gaps.
