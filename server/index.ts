@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { startSLACheckSystem } from "./reminders";
 import { seedRolePermissions } from "./seed-role-permissions";
 import { seedPermissionModules } from "./seed-permission-modules";
+import { seedRoleTemplates } from "./seed-role-templates";
 import { seedAdminMenu } from "./seed-admin-menu";
 import { seedServiceRequests } from "./seed-service-requests";
 import { seedMoreRecipes } from "./seed-more-recipes";
@@ -101,6 +102,11 @@ app.use((req, res, next) => {
     // Seed role permissions from PERMISSIONS constant (idempotent)
     await seedRolePermissions().catch((error) => {
       console.error("Error seeding role permissions:", error);
+    });
+    
+    // Seed default role templates (idempotent)
+    await seedRoleTemplates().catch((error) => {
+      console.error("Error seeding role templates:", error);
     });
     
     // Seed admin menu structure (idempotent)
