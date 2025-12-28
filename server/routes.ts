@@ -10686,9 +10686,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const branchId = parseInt(req.params.branchId);
       
-      // Only supervisors, coaches and admins can see branch tracking
-      if (user.role !== 'supervisor' && user.role !== 'admin' && user.role !== 'genel_mudur' && user.role !== 'coach' && user.role !== 'manager') {
+      // HQ roles can view any branch
+      const hqRoles = ['admin', 'genel_mudur', 'coach'];
+      const branchRoles = ['supervisor', 'manager'];
+      
+      // Check role-based access
+      if (!hqRoles.includes(user.role) && !branchRoles.includes(user.role)) {
         return res.status(403).json({ message: "Erişim yetkisi yok" });
+      }
+      
+      // Branch-scoped roles can only view their own branch
+      if (branchRoles.includes(user.role)) {
+        if (!user.branchId || user.branchId !== branchId) {
+          return res.status(403).json({ message: "Sadece kendi şubenizi görüntüleyebilirsiniz" });
+        }
       }
       
       const activeEmployees = getActiveBranchEmployees(branchId);
@@ -10707,13 +10718,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userMap = new Map(userDetails.map(u => [u.id, u]));
       
+      // For branch-scoped roles, mask precise coordinates
+      const shouldMaskCoords = branchRoles.includes(user.role);
+      
       res.json(activeEmployees.map(emp => ({
         userId: emp.userId,
         branchId: emp.branchId,
-        latitude: emp.latitude,
-        longitude: emp.longitude,
-        accuracy: emp.accuracy,
-        timestamp: emp.timestamp,
+        latitude: shouldMaskCoords ? undefined : emp.latitude,
+        longitude: shouldMaskCoords ? undefined : emp.longitude,
+        accuracy: shouldMaskCoords ? undefined : emp.accuracy,
+        timestamp: emp.timestamp || new Date().toISOString(),
         lastUpdate: emp.lastUpdate,
         user: userMap.get(emp.userId) || null,
       })));

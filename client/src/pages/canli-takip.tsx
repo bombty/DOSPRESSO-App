@@ -13,9 +13,9 @@ import { tr } from "date-fns/locale";
 interface ActiveEmployee {
   userId: string;
   branchId: number;
-  latitude: number;
-  longitude: number;
-  timestamp: string;
+  latitude?: number;
+  longitude?: number;
+  timestamp?: string;
   accuracy?: number;
   lastUpdate: string;
   user?: {
