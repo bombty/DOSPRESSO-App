@@ -10686,18 +10686,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user!;
       const branchId = parseInt(req.params.branchId);
       
-      // Only supervisors and admins can see branch tracking
-      if (user.role !== 'supervisor' && user.role !== 'admin' && user.role !== 'genel_mudur') {
+      // Only supervisors, coaches and admins can see branch tracking
+      if (user.role !== 'supervisor' && user.role !== 'admin' && user.role !== 'genel_mudur' && user.role !== 'coach' && user.role !== 'manager') {
         return res.status(403).json({ message: "Erişim yetkisi yok" });
       }
       
       const activeEmployees = getActiveBranchEmployees(branchId);
+      
+      // Get user details for each active employee
+      const userIds = activeEmployees.map(emp => emp.userId);
+      const userDetails = userIds.length > 0 
+        ? await db.select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            role: users.role,
+            profilePhotoUrl: users.profilePhotoUrl,
+          }).from(users).where(inArray(users.id, userIds))
+        : [];
+      
+      const userMap = new Map(userDetails.map(u => [u.id, u]));
+      
       res.json(activeEmployees.map(emp => ({
         userId: emp.userId,
+        branchId: emp.branchId,
         latitude: emp.latitude,
         longitude: emp.longitude,
         accuracy: emp.accuracy,
+        timestamp: emp.timestamp,
         lastUpdate: emp.lastUpdate,
+        user: userMap.get(emp.userId) || null,
       })));
     } catch (error: Error | unknown) {
       console.error("Error fetching branch tracking:", error);
