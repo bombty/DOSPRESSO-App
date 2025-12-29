@@ -20,6 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -165,10 +166,17 @@ function PhaseSwimlanesPreview({ phases }: { phases: ProjectPhase[] }) {
   );
 }
 
+// Roles that can see budget information
+const BUDGET_VISIBLE_ROLES = ["admin", "muhasebe", "genel_mudur"];
+
 export default function Projeler() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("all");
+  
+  // Check if current user can see budget info
+  const canSeeBudget = user?.role && BUDGET_VISIBLE_ROLES.includes(user.role);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isNewShopCreateOpen, setIsNewShopCreateOpen] = useState(false);
   const [newProject, setNewProject] = useState({
@@ -526,7 +534,7 @@ export default function Projeler() {
                         </FormItem>
                       )} />
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className={`grid ${canSeeBudget ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                         <FormField control={newShopForm.control} name="targetOpeningDate" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Hedef Açılış Tarihi</FormLabel>
@@ -534,13 +542,15 @@ export default function Projeler() {
                             <FormMessage />
                           </FormItem>
                         )} />
-                        <FormField control={newShopForm.control} name="estimatedBudget" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tahmini Bütçe (₺)</FormLabel>
-                            <FormControl><Input type="number" placeholder="1500000" data-testid="input-new-shop-budget" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
+                        {canSeeBudget && (
+                          <FormField control={newShopForm.control} name="estimatedBudget" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tahmini Bütçe (₺)</FormLabel>
+                              <FormControl><Input type="number" placeholder="1500000" data-testid="input-new-shop-budget" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                        )}
                       </div>
 
                       <div className="border-t pt-4 mt-4">
@@ -716,15 +726,17 @@ export default function Projeler() {
 
                       <PhaseSwimlanesPreview phases={project.phases || []} />
 
-                      <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className={`grid ${canSeeBudget ? 'grid-cols-2' : 'grid-cols-1'} gap-2 text-sm`}>
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Calendar className="h-4 w-4" />
                           <span>{project.targetOpeningDate ? format(new Date(project.targetOpeningDate), "d MMM yyyy", { locale: tr }) : "Belirlenmedi"}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Wallet className="h-4 w-4" />
-                          <span>{formatCurrency(project.estimatedBudget)}</span>
-                        </div>
+                        {canSeeBudget && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Wallet className="h-4 w-4" />
+                            <span>{formatCurrency(project.estimatedBudget)}</span>
+                          </div>
+                        )}
                       </div>
 
                       {project.franchiseeName && (

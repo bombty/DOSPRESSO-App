@@ -1429,6 +1429,40 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(equipmentFaults).orderBy(desc(equipmentFaults.createdAt));
   }
 
+  async getFaultsWithDetails(branchId?: number): Promise<(EquipmentFault & { branchName?: string; reportedByName?: string })[]> {
+    const query = db
+      .select({
+        fault: equipmentFaults,
+        branchName: branches.name,
+        reporterFirstName: users.firstName,
+        reporterLastName: users.lastName,
+      })
+      .from(equipmentFaults)
+      .leftJoin(branches, eq(equipmentFaults.branchId, branches.id))
+      .leftJoin(users, eq(equipmentFaults.reportedById, users.id))
+      .orderBy(desc(equipmentFaults.createdAt));
+    
+    if (branchId) {
+      const results = await query.where(eq(equipmentFaults.branchId, branchId));
+      return results.map(r => ({
+        ...r.fault,
+        branchName: r.branchName || undefined,
+        reportedByName: r.reporterFirstName && r.reporterLastName 
+          ? `${r.reporterFirstName} ${r.reporterLastName}` 
+          : undefined,
+      }));
+    }
+    
+    const results = await query;
+    return results.map(r => ({
+      ...r.fault,
+      branchName: r.branchName || undefined,
+      reportedByName: r.reporterFirstName && r.reporterLastName 
+        ? `${r.reporterFirstName} ${r.reporterLastName}` 
+        : undefined,
+    }));
+  }
+
   async getFault(id: number): Promise<EquipmentFault | undefined> {
     const [fault] = await db.select().from(equipmentFaults).where(eq(equipmentFaults.id, id));
     return fault;

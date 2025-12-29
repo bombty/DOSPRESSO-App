@@ -15,11 +15,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Loader2, Plus } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Loader2, Plus, Building2, User, MapPin, X, Image } from "lucide-react";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useLocation } from "wouter";
 import type { EquipmentFault } from "@shared/schema";
+
+// Extended fault type with details
+interface ExtendedFault extends EquipmentFault {
+  branchName?: string;
+  reportedByName?: string;
+}
 
 // Constants
 const SLA_CRITICAL_HOURS = 2.5;
@@ -111,8 +117,9 @@ export default function FaultHub() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [selectedFault, setSelectedFault] = useState<EquipmentFault | null>(null);
+  const [selectedFault, setSelectedFault] = useState<ExtendedFault | null>(null);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [managePage, setManagePage] = useState(1);
   const debouncedSearch = useDebounce(searchText, 300);
@@ -120,7 +127,7 @@ export default function FaultHub() {
   const { data: rawFaults } = useQuery<unknown>({
     queryKey: ["/api/faults"],
   });
-  const faults = (Array.isArray(rawFaults) ? rawFaults : (rawFaults as any)?.data || []) as EquipmentFault[];
+  const faults = (Array.isArray(rawFaults) ? rawFaults : (rawFaults as any)?.data || []) as ExtendedFault[];
   const isFaultsLoading = false;
 
   const { data: users = [] } = useQuery<any[]>({
@@ -289,16 +296,37 @@ export default function FaultHub() {
           <div>
             <h3 className="text-sm font-medium mb-2">Son Arızalar</h3>
             <div className="flex flex-col gap-3 sm:gap-4">
-              {faults.slice(0, RECENT_FAULTS_LIMIT).map((fault: EquipmentFault) => (
+              {faults.slice(0, RECENT_FAULTS_LIMIT).map((fault: ExtendedFault) => (
                 <Card 
                   key={fault.id}
                   className="hover-elevate cursor-pointer" 
                   data-testid={`card-recent-fault-${fault.id}`}
-                  onClick={() => handleUpdateFault(fault)}
+                  onClick={() => {
+                    setSelectedFault(fault);
+                    setIsDetailDialogOpen(true);
+                  }}
                 >
                   <CardContent className="p-3">
-                    <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{format(new Date(fault.createdAt || new Date()), "dd MMM HH:mm", { locale: tr })}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm line-clamp-1">{fault.equipmentName}</p>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          {fault.branchName && (
+                            <span className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {fault.branchName}
+                            </span>
+                          )}
+                          <span>{format(new Date(fault.createdAt || new Date()), "dd MMM HH:mm", { locale: tr })}</span>
+                        </div>
+                        {fault.reportedByName && (
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {fault.reportedByName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                     <div className="flex flex-wrap gap-1 mt-2">
                       <Badge className={getPriorityColor(fault.priority)}>{fault.priority === "kritik" ? "Kritik" : "Yüksek"}</Badge>
                       <Badge className={getStageColor(fault.currentStage)}>{STAGE_LABELS[fault.currentStage]}</Badge>
@@ -618,6 +646,135 @@ export default function FaultHub() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Fault Detail Modal */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
+              Arıza Detayı
+            </DialogTitle>
+          </DialogHeader>
+          {selectedFault && (
+            <div className="space-y-4">
+              {/* Equipment Info */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Ekipman</h4>
+                <p className="font-semibold text-lg">{selectedFault.equipmentName}</p>
+              </div>
+
+              {/* Branch & Reporter */}
+              <div className="grid grid-cols-2 gap-3">
+                {selectedFault.branchName && (
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <Building2 className="h-3 w-3" /> Şube
+                    </h4>
+                    <p className="text-sm font-medium">{selectedFault.branchName}</p>
+                  </div>
+                )}
+                {selectedFault.reportedByName && (
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <User className="h-3 w-3" /> Bildiren
+                    </h4>
+                    <p className="text-sm font-medium">{selectedFault.reportedByName}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Date */}
+              <div className="space-y-1">
+                <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> Bildirim Tarihi
+                </h4>
+                <p className="text-sm">{format(new Date(selectedFault.createdAt || new Date()), "dd MMMM yyyy HH:mm", { locale: tr })}</p>
+              </div>
+
+              {/* Status Badges */}
+              <div className="flex flex-wrap gap-2">
+                <Badge className={getPriorityColor(selectedFault.priority)}>
+                  {selectedFault.priority === "kritik" ? "Kritik" : selectedFault.priority === "yuksek" ? "Yüksek" : selectedFault.priority}
+                </Badge>
+                <Badge className={getStageColor(selectedFault.currentStage)}>
+                  {STAGE_LABELS[selectedFault.currentStage] || selectedFault.currentStage}
+                </Badge>
+              </div>
+
+              {/* Description */}
+              {selectedFault.description && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">Açıklama</h4>
+                  <p className="text-sm bg-muted/50 p-3 rounded-md">{selectedFault.description}</p>
+                </div>
+              )}
+
+              {/* Photo */}
+              {selectedFault.photoUrl && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                    <Image className="h-3 w-3" /> Fotoğraf
+                  </h4>
+                  <img 
+                    src={selectedFault.photoUrl} 
+                    alt="Arıza fotoğrafı" 
+                    className="w-full rounded-md border max-h-48 object-cover"
+                  />
+                </div>
+              )}
+
+              {/* AI Analysis */}
+              {selectedFault.aiAnalysis && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">AI Analizi</h4>
+                  <p className="text-sm bg-blue-50 dark:bg-blue-950 p-3 rounded-md">{selectedFault.aiAnalysis}</p>
+                </div>
+              )}
+
+              {/* Cost Info */}
+              {(selectedFault.estimatedCost || selectedFault.actualCost) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {selectedFault.estimatedCost && (
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-medium text-muted-foreground">Tahmini Maliyet</h4>
+                      <p className="text-sm font-medium">{parseFloat(selectedFault.estimatedCost).toLocaleString('tr-TR')} TL</p>
+                    </div>
+                  )}
+                  {selectedFault.actualCost && (
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-medium text-muted-foreground">Gerçek Maliyet</h4>
+                      <p className="text-sm font-medium">{parseFloat(selectedFault.actualCost).toLocaleString('tr-TR')} TL</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setIsDetailDialogOpen(false)}
+                  data-testid="button-close-detail"
+                >
+                  Kapat
+                </Button>
+                <Button 
+                  className="flex-1"
+                  onClick={() => {
+                    setIsDetailDialogOpen(false);
+                    handleUpdateFault(selectedFault);
+                  }}
+                  data-testid="button-edit-fault"
+                >
+                  Düzenle
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

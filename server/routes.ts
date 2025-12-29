@@ -2600,14 +2600,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (requestedBranchId && requestedBranchId !== branchId) {
           return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
         }
-        // Force branch users to see only their branch
-        const faults = await storage.getFaults(branchId);
+        // Force branch users to see only their branch - include details
+        const faults = await storage.getFaultsWithDetails(branchId);
         const paginated = faults.slice(offset, offset + limit);
         return res.json({ data: paginated, total: faults.length, limit, offset });
       }
       
-      // HQ users can access all or filter by branch
-      const faults = await storage.getFaults(requestedBranchId);
+      // HQ users can access all or filter by branch - include details
+      const faults = await storage.getFaultsWithDetails(requestedBranchId);
       const paginated = faults.slice(offset, offset + limit);
       res.json({ data: paginated, total: faults.length, limit, offset });
     } catch (error: any) {

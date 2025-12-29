@@ -1137,6 +1137,10 @@ export default function YeniSubeDetay() {
   const isProjectOwner = project?.owner?.id === user?.id;
   const canManageProject = isHQRole(user?.role) || isProjectOwner;
   const isAdmin = user?.role === 'admin';
+  
+  // Roles that can see budget information
+  const BUDGET_VISIBLE_ROLES = ["admin", "muhasebe", "genel_mudur"];
+  const canSeeBudget = user?.role && BUDGET_VISIBLE_ROLES.includes(user.role);
 
   const totalPlanned = project.budgetLines?.reduce((sum, bl) => sum + (bl.plannedAmount || 0), 0) || 0;
   const totalActual = project.budgetLines?.reduce((sum, bl) => sum + (bl.actualAmount || 0), 0) || 0;
@@ -1215,10 +1219,12 @@ export default function YeniSubeDetay() {
             <Eye className="h-4 w-4" />
             <span className="hidden sm:inline">Genel Bakış</span>
           </TabsTrigger>
-          <TabsTrigger value="budget" className="gap-1" data-testid="tab-budget">
-            <Wallet className="h-4 w-4" />
-            <span className="hidden sm:inline">Bütçe</span>
-          </TabsTrigger>
+          {canSeeBudget && (
+            <TabsTrigger value="budget" className="gap-1" data-testid="tab-budget">
+              <Wallet className="h-4 w-4" />
+              <span className="hidden sm:inline">Bütçe</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="vendors" className="gap-1" data-testid="tab-vendors">
             <Truck className="h-4 w-4" />
             <span className="hidden sm:inline">Tedarikçiler</span>
@@ -1253,18 +1259,20 @@ export default function YeniSubeDetay() {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <Card data-testid="card-estimated-budget">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                  <Wallet className="h-4 w-4" />
-                  <span className="text-sm">Tahmini Bütçe</span>
-                </div>
-                <p className="text-2xl font-bold" data-testid="text-estimated-budget">
-                  {formatCurrency(project.estimatedBudget)}
-                </p>
-              </CardContent>
-            </Card>
+          <div className={`grid grid-cols-1 ${canSeeBudget ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4 mt-6`}>
+            {canSeeBudget && (
+              <Card data-testid="card-estimated-budget">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <Wallet className="h-4 w-4" />
+                    <span className="text-sm">Tahmini Bütçe</span>
+                  </div>
+                  <p className="text-2xl font-bold" data-testid="text-estimated-budget">
+                    {formatCurrency(project.estimatedBudget)}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             
             <Card data-testid="card-vendor-count">
               <CardContent className="p-4">
@@ -1292,6 +1300,7 @@ export default function YeniSubeDetay() {
           </div>
         </TabsContent>
 
+        {canSeeBudget && (
         <TabsContent value="budget" className="space-y-4" data-testid="tab-content-budget">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card data-testid="card-budget-planned">
@@ -1399,6 +1408,7 @@ export default function YeniSubeDetay() {
             </ScrollArea>
           </Card>
         </TabsContent>
+        )}
 
         <TabsContent value="vendors" className="space-y-4" data-testid="tab-content-vendors">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
