@@ -125,6 +125,7 @@ import AdminDuyurular from "@/pages/admin/duyurular";
 import AdminYapayZekaAyarlari from "@/pages/admin/yapay-zeka-ayarlari";
 import AdminKaliteDenetimSablonlari from "@/pages/admin/kalite-denetim-şablonları";
 import AdminKaliteDenetimSablonuDuzenle from "@/pages/admin/kalite-denetim-sablonu-duzenle";
+import AdminTopluVeriYonetimi from "@/pages/admin/toplu-veri-yonetimi";
 import Setup from "@/pages/setup";
 import NotFound from "@/pages/not-found";
 
@@ -291,6 +292,7 @@ function Router() {
           <Route path="/admin/yapay-zeka-ayarlari" component={AdminYapayZekaAyarlari} />
           <Route path="/admin/kalite-denetim-sablonlari" component={AdminKaliteDenetimSablonlari} />
           <Route path="/admin/kalite-denetim-sablonu/:id" component={AdminKaliteDenetimSablonuDuzenle} />
+          <Route path="/admin/toplu-veri-yonetimi" component={AdminTopluVeriYonetimi} />
           <Route path="/admin/seed" component={AdminSeed} />
           <Route path="/admin" component={AdminDashboard} />
         </>

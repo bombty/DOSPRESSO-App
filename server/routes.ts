@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
+import * as XLSX from "xlsx";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "./security";
 import { buildMenuForUser } from "./menu-service";
 import { 
@@ -22100,6 +22101,598 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Update factory inventory error:", error);
       res.status(500).json({ message: "Stok güncellenemedi" });
+    }
+  });
+
+  // ========================================
+  // TOPLU VERİ YÖNETİMİ - Bulk Data Management API'leri
+  // ========================================
+
+  // Download Excel template for equipment
+  app.get('/api/bulk/template/equipment', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'teknik'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const headers = [
+        'Ekipman Adı*', 'Model', 'Seri No', 'Şube ID*', 'Kategori*', 
+        'Durum', 'Garanti Bitiş Tarihi', 'Son Bakım Tarihi', 'Açıklama'
+      ];
+      
+      const sampleData = [
+        ['Espresso Makinesi', 'La Marzocco Linea', 'LM-2024-001', '1', 'espresso_machine', 'active', '2025-12-31', '2024-06-15', 'Ana bar espresso makinesi'],
+        ['Kahve Değirmeni', 'Mahlkönig E65S', 'MK-2024-002', '1', 'grinder', 'active', '2025-06-30', '2024-06-01', 'Filtre kahve değirmeni']
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+      ws['!cols'] = headers.map(() => ({ wch: 20 }));
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ekipmanlar');
+      
+      // Add category reference sheet
+      const categories = [
+        ['Kategori Kodu', 'Açıklama'],
+        ['espresso_machine', 'Espresso Makinesi'],
+        ['grinder', 'Kahve Değirmeni'],
+        ['refrigerator', 'Buzdolabı'],
+        ['freezer', 'Dondurucu'],
+        ['oven', 'Fırın'],
+        ['dishwasher', 'Bulaşık Makinesi'],
+        ['water_filter', 'Su Filtresi'],
+        ['ice_machine', 'Buz Makinesi'],
+        ['blender', 'Blender'],
+        ['pos', 'POS Cihazı'],
+        ['other', 'Diğer']
+      ];
+      const wsCategories = XLSX.utils.aoa_to_sheet(categories);
+      XLSX.utils.book_append_sheet(wb, wsCategories, 'Kategoriler');
+
+      // Add branch reference
+      const branchesData = await storage.getAllBranches();
+      const branchSheet = [['Şube ID', 'Şube Adı'], ...branchesData.map(b => [b.id, b.name])];
+      const wsBranches = XLSX.utils.aoa_to_sheet(branchSheet);
+      XLSX.utils.book_append_sheet(wb, wsBranches, 'Şubeler');
+
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=ekipman_sablonu.xlsx');
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Download equipment template error:", error);
+      res.status(500).json({ message: "Şablon indirilemedi" });
+    }
+  });
+
+  // Download Excel template for personnel
+  app.get('/api/bulk/template/personnel', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'muhasebe'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const headers = [
+        'Ad*', 'Soyad*', 'Email*', 'Telefon', 'Rol*', 'Şube ID', 
+        'İşe Başlama Tarihi', 'Tam Zamanlı mı (E/H)', 'Çalışma Saati/Hafta'
+      ];
+      
+      const sampleData = [
+        ['Ahmet', 'Yılmaz', 'ahmet@dospresso.com', '5321234567', 'barista', '1', '2024-01-15', 'E', '45'],
+        ['Ayşe', 'Demir', 'ayse@dospresso.com', '5339876543', 'supervisor', '1', '2023-06-01', 'E', '45']
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+      ws['!cols'] = headers.map(() => ({ wch: 20 }));
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Personel');
+      
+      // Add role reference sheet
+      const roles = [
+        ['Rol Kodu', 'Açıklama'],
+        ['admin', 'Admin'],
+        ['muhasebe', 'Muhasebe'],
+        ['satinalma', 'Satın Alma'],
+        ['coach', 'Coach'],
+        ['teknik', 'Teknik'],
+        ['destek', 'Destek'],
+        ['fabrika', 'Fabrika'],
+        ['yatirimci_hq', 'Yatırımcı (HQ)'],
+        ['stajyer', 'Stajyer'],
+        ['bar_buddy', 'Bar Buddy'],
+        ['barista', 'Barista'],
+        ['supervisor_buddy', 'Supervisor Buddy'],
+        ['supervisor', 'Supervisor'],
+        ['yatirimci_branch', 'Yatırımcı (Şube)']
+      ];
+      const wsRoles = XLSX.utils.aoa_to_sheet(roles);
+      XLSX.utils.book_append_sheet(wb, wsRoles, 'Roller');
+
+      // Add branch reference
+      const branchesData = await storage.getAllBranches();
+      const branchSheet = [['Şube ID', 'Şube Adı'], ...branchesData.map(b => [b.id, b.name])];
+      const wsBranches = XLSX.utils.aoa_to_sheet(branchSheet);
+      XLSX.utils.book_append_sheet(wb, wsBranches, 'Şubeler');
+
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=personel_sablonu.xlsx');
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Download personnel template error:", error);
+      res.status(500).json({ message: "Şablon indirilemedi" });
+    }
+  });
+
+  // Download Excel template for branches
+  app.get('/api/bulk/template/branches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const headers = [
+        'Şube Adı*', 'Adres*', 'Şehir*', 'Telefon', 'Email', 
+        'Aktif mi (E/H)', 'Açılış Tarihi', 'Enlem', 'Boylam'
+      ];
+      
+      const sampleData = [
+        ['Kadıköy Şubesi', 'Bahariye Cad. No:45', 'İstanbul', '02161234567', 'kadikoy@dospresso.com', 'E', '2024-01-01', '40.9833', '29.0333'],
+        ['Beşiktaş Şubesi', 'Barbaros Bulvarı No:78', 'İstanbul', '02127654321', 'besiktas@dospresso.com', 'E', '2024-03-15', '41.0422', '29.0083']
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+      ws['!cols'] = headers.map(() => ({ wch: 22 }));
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Şubeler');
+
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=sube_sablonu.xlsx');
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Download branch template error:", error);
+      res.status(500).json({ message: "Şablon indirilemedi" });
+    }
+  });
+
+  // Export equipment data
+  app.get('/api/bulk/export/equipment', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'teknik'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const equipmentList = await storage.getAllEquipment();
+      const branchesData = await storage.getAllBranches();
+      const branchMap = new Map(branchesData.map(b => [b.id, b.name]));
+
+      const headers = ['ID', 'Ekipman Adı', 'Model', 'Seri No', 'Şube ID', 'Şube Adı', 'Kategori', 'Durum', 'Garanti Bitiş', 'Son Bakım', 'Açıklama'];
+      
+      const data = equipmentList.map(eq => [
+        eq.id,
+        eq.name,
+        eq.model || '',
+        eq.serialNumber || '',
+        eq.branchId,
+        branchMap.get(eq.branchId) || '',
+        eq.category,
+        eq.status,
+        eq.warrantyEndDate || '',
+        eq.lastMaintenanceDate || '',
+        eq.description || ''
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      ws['!cols'] = headers.map(() => ({ wch: 18 }));
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ekipmanlar');
+
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=ekipman_listesi_${new Date().toISOString().split('T')[0]}.xlsx`);
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Export equipment error:", error);
+      res.status(500).json({ message: "Dışa aktarma başarısız" });
+    }
+  });
+
+  // Export personnel data
+  app.get('/api/bulk/export/personnel', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'muhasebe'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const usersData = await storage.getAllUsers();
+      const branchesData = await storage.getAllBranches();
+      const branchMap = new Map(branchesData.map(b => [b.id, b.name]));
+
+      const headers = ['ID', 'Ad', 'Soyad', 'Email', 'Telefon', 'Rol', 'Şube ID', 'Şube Adı', 'İşe Başlama', 'Tam Zamanlı', 'Aktif'];
+      
+      const data = usersData.map(u => [
+        u.id,
+        u.firstName || '',
+        u.lastName || '',
+        u.email || '',
+        u.phone || '',
+        u.role,
+        u.branchId || '',
+        u.branchId ? (branchMap.get(u.branchId) || '') : '',
+        u.hireDate || '',
+        u.isFullTime ? 'Evet' : 'Hayır',
+        u.isActive ? 'Evet' : 'Hayır'
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      ws['!cols'] = headers.map(() => ({ wch: 18 }));
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Personel');
+
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=personel_listesi_${new Date().toISOString().split('T')[0]}.xlsx`);
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Export personnel error:", error);
+      res.status(500).json({ message: "Dışa aktarma başarısız" });
+    }
+  });
+
+  // Export branch data
+  app.get('/api/bulk/export/branches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const branchesData = await storage.getAllBranches();
+
+      const headers = ['ID', 'Şube Adı', 'Adres', 'Şehir', 'Telefon', 'Email', 'Aktif', 'Açılış Tarihi', 'Enlem', 'Boylam'];
+      
+      const data = branchesData.map(b => [
+        b.id,
+        b.name,
+        b.address || '',
+        b.city || '',
+        b.phone || '',
+        b.email || '',
+        b.isActive ? 'Evet' : 'Hayır',
+        b.openingDate || '',
+        b.latitude || '',
+        b.longitude || ''
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      ws['!cols'] = headers.map(() => ({ wch: 18 }));
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Şubeler');
+
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=sube_listesi_${new Date().toISOString().split('T')[0]}.xlsx`);
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Export branches error:", error);
+      res.status(500).json({ message: "Dışa aktarma başarısız" });
+    }
+  });
+
+  // Import equipment data
+  app.post('/api/bulk/import/equipment', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'teknik'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { data } = req.body;
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return res.status(400).json({ message: "Geçersiz veri formatı" });
+      }
+
+      const results = { success: 0, failed: 0, errors: [] as string[] };
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        try {
+          const name = row['Ekipman Adı*'] || row['Ekipman Adı'];
+          const branchIdRaw = row['Şube ID*'] || row['Şube ID'];
+          const branchId = parseInt(branchIdRaw);
+
+          // Validate required fields
+          if (!name || typeof name !== 'string' || name.trim() === '') {
+            results.errors.push(`Satır ${i + 2}: Ekipman adı zorunludur`);
+            results.failed++;
+            continue;
+          }
+
+          if (!branchIdRaw || isNaN(branchId)) {
+            results.errors.push(`Satır ${i + 2}: Geçerli bir şube ID gerekli (sayı olmalı)`);
+            results.failed++;
+            continue;
+          }
+
+          const validCategories = ['espresso_machine', 'grinder', 'refrigerator', 'freezer', 'oven', 'dishwasher', 'water_filter', 'ice_machine', 'blender', 'pos', 'other'];
+          const category = row['Kategori*'] || row['Kategori'] || 'other';
+          if (!validCategories.includes(category)) {
+            results.errors.push(`Satır ${i + 2}: Geçersiz kategori: ${category}`);
+            results.failed++;
+            continue;
+          }
+
+          const equipmentData = {
+            name: name.trim(),
+            model: row['Model'] || null,
+            serialNumber: row['Seri No'] || null,
+            branchId,
+            category,
+            status: row['Durum'] || 'active',
+            warrantyEndDate: row['Garanti Bitiş Tarihi'] || null,
+            lastMaintenanceDate: row['Son Bakım Tarihi'] || null,
+            description: row['Açıklama'] || null
+          };
+
+          await storage.createEquipment(equipmentData);
+          results.success++;
+        } catch (err: any) {
+          results.errors.push(`Satır ${i + 2}: ${err.message || 'Bilinmeyen hata'}`);
+          results.failed++;
+        }
+      }
+
+      res.json(results);
+    } catch (error: any) {
+      console.error("Import equipment error:", error);
+      res.status(500).json({ message: "İçe aktarma başarısız" });
+    }
+  });
+
+  // Import personnel data
+  app.post('/api/bulk/import/personnel', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'muhasebe'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { data } = req.body;
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return res.status(400).json({ message: "Geçersiz veri formatı" });
+      }
+
+      const results = { success: 0, failed: 0, errors: [] as string[] };
+
+      const validRoles = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq', 'stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'yatirimci_branch'];
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        try {
+          const firstName = (row['Ad*'] || row['Ad'] || '').toString().trim();
+          const lastName = (row['Soyad*'] || row['Soyad'] || '').toString().trim();
+          const email = (row['Email*'] || row['Email'] || '').toString().trim().toLowerCase();
+          const role = (row['Rol*'] || row['Rol'] || '').toString().trim().toLowerCase();
+          
+          if (!firstName || !lastName) {
+            results.errors.push(`Satır ${i + 2}: Ad ve soyad zorunludur`);
+            results.failed++;
+            continue;
+          }
+
+          if (!email || !email.includes('@')) {
+            results.errors.push(`Satır ${i + 2}: Geçerli bir email adresi gerekli`);
+            results.failed++;
+            continue;
+          }
+
+          if (!role || !validRoles.includes(role)) {
+            results.errors.push(`Satır ${i + 2}: Geçersiz rol: ${role}. Geçerli roller: ${validRoles.join(', ')}`);
+            results.failed++;
+            continue;
+          }
+
+          // Check if user already exists
+          const existingUser = await storage.getUserByEmail(email);
+          if (existingUser) {
+            results.errors.push(`Satır ${i + 2}: Bu email zaten kayıtlı: ${email}`);
+            results.failed++;
+            continue;
+          }
+
+          // Validate branchId if provided
+          const branchIdRaw = row['Şube ID'];
+          let branchId: number | null = null;
+          if (branchIdRaw && branchIdRaw !== '') {
+            branchId = parseInt(branchIdRaw);
+            if (isNaN(branchId)) {
+              results.errors.push(`Satır ${i + 2}: Geçersiz şube ID: ${branchIdRaw}`);
+              results.failed++;
+              continue;
+            }
+          }
+
+          const isFullTime = (row['Tam Zamanlı mı (E/H)'] || 'E').toString().toUpperCase() === 'E';
+          const weeklyHoursRaw = row['Çalışma Saati/Hafta'];
+          let weeklyHours = isFullTime ? 45 : 25;
+          if (weeklyHoursRaw && weeklyHoursRaw !== '') {
+            const parsed = parseInt(weeklyHoursRaw);
+            if (!isNaN(parsed) && parsed > 0 && parsed <= 60) {
+              weeklyHours = parsed;
+            }
+          }
+          
+          const userData = {
+            firstName,
+            lastName,
+            email,
+            phone: row['Telefon'] || null,
+            role,
+            branchId,
+            hireDate: row['İşe Başlama Tarihi'] || null,
+            isFullTime,
+            weeklyHours,
+            isActive: true,
+            password: 'Dospresso2024!' // Default password
+          };
+
+          await storage.createUser(userData);
+          results.success++;
+        } catch (err: any) {
+          results.errors.push(`Satır ${i + 2}: ${err.message || 'Bilinmeyen hata'}`);
+          results.failed++;
+        }
+      }
+
+      res.json(results);
+    } catch (error: any) {
+      console.error("Import personnel error:", error);
+      res.status(500).json({ message: "İçe aktarma başarısız" });
+    }
+  });
+
+  // Import branch data
+  app.post('/api/bulk/import/branches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { data } = req.body;
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return res.status(400).json({ message: "Geçersiz veri formatı" });
+      }
+
+      const results = { success: 0, failed: 0, errors: [] as string[] };
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        try {
+          const name = (row['Şube Adı*'] || row['Şube Adı'] || '').toString().trim();
+          const address = (row['Adres*'] || row['Adres'] || '').toString().trim();
+          const city = (row['Şehir*'] || row['Şehir'] || '').toString().trim();
+          
+          if (!name) {
+            results.errors.push(`Satır ${i + 2}: Şube adı zorunludur`);
+            results.failed++;
+            continue;
+          }
+
+          if (!address) {
+            results.errors.push(`Satır ${i + 2}: Adres zorunludur`);
+            results.failed++;
+            continue;
+          }
+
+          if (!city) {
+            results.errors.push(`Satır ${i + 2}: Şehir zorunludur`);
+            results.failed++;
+            continue;
+          }
+
+          const isActive = (row['Aktif mi (E/H)'] || 'E').toString().toUpperCase() === 'E';
+          
+          // Validate coordinates if provided
+          const latRaw = row['Enlem'];
+          const lonRaw = row['Boylam'];
+          let latitude: string | null = null;
+          let longitude: string | null = null;
+          
+          if (latRaw && latRaw !== '') {
+            const lat = parseFloat(latRaw);
+            if (isNaN(lat) || lat < -90 || lat > 90) {
+              results.errors.push(`Satır ${i + 2}: Geçersiz enlem değeri: ${latRaw}`);
+              results.failed++;
+              continue;
+            }
+            latitude = lat.toString();
+          }
+          
+          if (lonRaw && lonRaw !== '') {
+            const lon = parseFloat(lonRaw);
+            if (isNaN(lon) || lon < -180 || lon > 180) {
+              results.errors.push(`Satır ${i + 2}: Geçersiz boylam değeri: ${lonRaw}`);
+              results.failed++;
+              continue;
+            }
+            longitude = lon.toString();
+          }
+          
+          const branchData = {
+            name,
+            address,
+            city,
+            phone: row['Telefon'] || null,
+            email: row['Email'] || null,
+            isActive,
+            openingDate: row['Açılış Tarihi'] || null,
+            latitude,
+            longitude
+          };
+
+          await storage.createBranch(branchData);
+          results.success++;
+        } catch (err: any) {
+          results.errors.push(`Satır ${i + 2}: ${err.message || 'Bilinmeyen hata'}`);
+          results.failed++;
+        }
+      }
+
+      res.json(results);
+    } catch (error: any) {
+      console.error("Import branches error:", error);
+      res.status(500).json({ message: "İçe aktarma başarısız" });
+    }
+  });
+
+  // Parse uploaded Excel file
+  app.post('/api/bulk/parse', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'teknik', 'muhasebe'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { fileData, fileName } = req.body;
+      if (!fileData) {
+        return res.status(400).json({ message: "Dosya verisi bulunamadı" });
+      }
+
+      // Parse base64 data
+      const base64Data = fileData.split(',')[1] || fileData;
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const data = XLSX.utils.sheet_to_json(worksheet);
+
+      res.json({ 
+        data, 
+        headers: data.length > 0 ? Object.keys(data[0] as object) : [],
+        rowCount: data.length
+      });
+    } catch (error: any) {
+      console.error("Parse Excel error:", error);
+      res.status(500).json({ message: "Dosya okunamadı: " + error.message });
     }
   });
 
