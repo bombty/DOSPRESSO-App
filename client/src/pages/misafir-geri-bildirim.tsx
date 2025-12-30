@@ -202,12 +202,12 @@ export default function MisafirGeriBildirim() {
               {branchInfo.staff.length > 0 && (
                 <div className="space-y-2">
                   <Label>Hizmet Aldığınız Personel (Opsiyonel)</Label>
-                  <Select value={staffId} onValueChange={setStaffId}>
+                  <Select value={staffId} onValueChange={(val) => setStaffId(val === "_none" ? "" : val)}>
                     <SelectTrigger data-testid="select-staff">
                       <SelectValue placeholder="Personel seçin..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Belirtmek istemiyorum</SelectItem>
+                      <SelectItem value="_none">Belirtmek istemiyorum</SelectItem>
                       {branchInfo.staff.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.firstName} {s.lastName}
