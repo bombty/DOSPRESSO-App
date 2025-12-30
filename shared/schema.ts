@@ -163,7 +163,8 @@ export type PermissionModule =
   | 'overtime_requests'
   | 'admin_settings'
   | 'bulk_data'
-  | 'accounting';
+  | 'accounting'
+  | 'customer_satisfaction'; // Misafir Geri Bildirim modülü
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -192,6 +193,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: ['view'],
     bulk_data: ['view', 'edit'],
     accounting: ['view', 'create', 'edit', 'delete'],
+    customer_satisfaction: ['view', 'create', 'edit', 'delete', 'approve'],
   },
   // HQ ROLES
   muhasebe: {
@@ -218,6 +220,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: ['view', 'edit'],
     accounting: ['view', 'create', 'edit', 'delete'],
+    customer_satisfaction: ['view'],
   },
   satinalma: {
     dashboard: ['view'],
@@ -243,6 +246,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: [],
   },
   coach: {
     dashboard: ['view'],
@@ -268,6 +272,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: ['view', 'edit'],
     accounting: [],
+    customer_satisfaction: ['view', 'create', 'edit', 'approve'],
   },
   teknik: {
     dashboard: ['view'],
@@ -293,6 +298,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: ['view', 'edit'],
     accounting: [],
+    customer_satisfaction: [],
   },
   destek: {
     dashboard: ['view'],
@@ -318,6 +324,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: ['view', 'create', 'edit'],
   },
   fabrika: {
     dashboard: ['view'],
@@ -343,6 +350,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: [],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -368,6 +376,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: ['view'],
   },
   // BRANCH ROLES
   supervisor: {
@@ -394,6 +403,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: ['view', 'create', 'edit'],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -419,6 +429,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: ['view'],
   },
   barista: {
     dashboard: ['view'],
@@ -444,6 +455,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: [],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -469,6 +481,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: [],
   },
   stajyer: {
     dashboard: ['view'],
@@ -494,6 +507,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: [],
   },
   yatirimci_branch: {
     dashboard: ['view'],
@@ -519,6 +533,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     admin_settings: [],
     bulk_data: [],
     accounting: [],
+    customer_satisfaction: ['view'],
   },
 };
 
@@ -557,6 +572,10 @@ export const branches = pgTable("branches", {
   geoRadius: integer("geo_radius").default(50),
   wifiSsid: varchar("wifi_ssid", { length: 100 }),
   checkInMethod: varchar("check_in_method", { length: 20 }).default("both"), // rfid, qr, or both
+  // Customer Feedback QR & Social Media Integration
+  feedbackQrToken: varchar("feedback_qr_token", { length: 64 }), // Unique token for customer feedback QR
+  googleMapsUrl: text("google_maps_url"), // Google Maps/Business URL for review aggregation
+  instagramHandle: varchar("instagram_handle", { length: 100 }), // Instagram handle for review tracking
 });
 
 export const insertBranchSchema = createInsertSchema(branches).omit({
@@ -2941,38 +2960,104 @@ export type InsertPersonnelFile = z.infer<typeof insertPersonnelFileSchema>;
 export type PersonnelFile = typeof personnelFiles.$inferSelect;
 
 // ========================================
-// GUEST FEEDBACK (Misafir Geri Bildirimi)
+// GUEST FEEDBACK (Misafir Geri Bildirimi) - Enhanced with SLA, Categories, Social Media
 // ========================================
 
 export const customerFeedback = pgTable("customer_feedback", {
   id: serial("id").primaryKey(),
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
-  rating: integer("rating").notNull(), // 1-5 yıldız
+  
+  // Source of feedback
+  source: varchar("source", { length: 30 }).notNull().default("qr_code"), // qr_code, google, instagram, in_person, phone, email
+  externalReviewId: varchar("external_review_id", { length: 255 }), // External review ID (Google/Instagram)
+  externalReviewUrl: text("external_review_url"), // Link to external review
+  
+  // Overall rating and category ratings (1-5)
+  rating: integer("rating").notNull(), // Overall rating 1-5
+  serviceRating: integer("service_rating"), // Hizmet puanı 1-5
+  cleanlinessRating: integer("cleanliness_rating"), // Temizlik puanı 1-5
+  productRating: integer("product_rating"), // Ürün kalitesi puanı 1-5
+  staffRating: integer("staff_rating"), // Personel puanı 1-5
+  
+  // Staff attribution (optional)
+  staffId: varchar("staff_id").references(() => users.id, { onDelete: "set null" }), // Which staff served the customer
+  
+  // Customer info
   comment: text("comment"),
   feedbackDate: timestamp("feedback_date").defaultNow(),
-  customerName: varchar("customer_name", { length: 100 }), // Opsiyonel
-  customerEmail: varchar("customer_email", { length: 200 }), // Opsiyonel
+  customerName: varchar("customer_name", { length: 100 }), // Optional
+  customerEmail: varchar("customer_email", { length: 200 }), // Optional
+  customerPhone: varchar("customer_phone", { length: 20 }), // Optional
   isAnonymous: boolean("is_anonymous").notNull().default(true),
-  status: varchar("status", { length: 20 }).notNull().default("new"), // new, reviewed, resolved
+  
+  // Priority & SLA
+  priority: varchar("priority", { length: 20 }).notNull().default("medium"), // low, medium, high, critical
+  responseDeadline: timestamp("response_deadline"), // Calculated from priority
+  slaBreached: boolean("sla_breached").notNull().default(false),
+  
+  // Status tracking
+  status: varchar("status", { length: 20 }).notNull().default("new"), // new, in_progress, awaiting_response, resolved, closed
   reviewedById: varchar("reviewed_by_id").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"),
+  resolvedAt: timestamp("resolved_at"),
+  
+  // Customer satisfaction after resolution
+  resolutionSatisfaction: integer("resolution_satisfaction"), // 1-5 rating after resolution
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("customer_feedback_branch_idx").on(table.branchId),
   index("customer_feedback_date_idx").on(table.feedbackDate),
   index("customer_feedback_rating_idx").on(table.rating),
+  index("customer_feedback_source_idx").on(table.source),
+  index("customer_feedback_status_idx").on(table.status),
+  index("customer_feedback_staff_idx").on(table.staffId),
+  index("customer_feedback_sla_idx").on(table.responseDeadline),
 ]);
 
 export const insertCustomerFeedbackSchema = createInsertSchema(customerFeedback).omit({
   id: true,
   feedbackDate: true,
+  createdAt: true,
+  updatedAt: true,
 }).extend({
   rating: z.number().int().min(1, "Rating must be at least 1").max(5, "Rating must be at most 5"),
-  comment: z.string().max(1000, "Comment too long").optional().transform(val => val?.trim() || null),
+  serviceRating: z.number().int().min(1).max(5).optional().nullable(),
+  cleanlinessRating: z.number().int().min(1).max(5).optional().nullable(),
+  productRating: z.number().int().min(1).max(5).optional().nullable(),
+  staffRating: z.number().int().min(1).max(5).optional().nullable(),
+  comment: z.string().max(2000, "Comment too long").optional().transform(val => val?.trim() || null),
 });
 
 export type InsertCustomerFeedback = z.infer<typeof insertCustomerFeedbackSchema>;
 export type CustomerFeedback = typeof customerFeedback.$inferSelect;
+
+// ========================================
+// FEEDBACK RESPONSES (Yanıt Geçmişi)
+// ========================================
+
+export const feedbackResponses = pgTable("feedback_responses", {
+  id: serial("id").primaryKey(),
+  feedbackId: integer("feedback_id").notNull().references(() => customerFeedback.id, { onDelete: "cascade" }),
+  responderId: varchar("responder_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  responseType: varchar("response_type", { length: 30 }).notNull(), // defense, reply, internal_note, customer_contact
+  content: text("content").notNull(),
+  isVisibleToCustomer: boolean("is_visible_to_customer").notNull().default(false), // Whether customer can see this
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("feedback_responses_feedback_idx").on(table.feedbackId),
+  index("feedback_responses_responder_idx").on(table.responderId),
+]);
+
+export const insertFeedbackResponseSchema = createInsertSchema(feedbackResponses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFeedbackResponse = z.infer<typeof insertFeedbackResponseSchema>;
+export type FeedbackResponse = typeof feedbackResponses.$inferSelect;
 
 // ========================================
 // MAINTENANCE SCHEDULES (Proaktif Bakım)

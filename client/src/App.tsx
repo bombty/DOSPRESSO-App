@@ -127,6 +127,8 @@ import AdminKaliteDenetimSablonlari from "@/pages/admin/kalite-denetim-şablonla
 import AdminKaliteDenetimSablonuDuzenle from "@/pages/admin/kalite-denetim-sablonu-duzenle";
 import AdminTopluVeriYonetimi from "@/pages/admin/toplu-veri-yonetimi";
 import Setup from "@/pages/setup";
+import MisafirGeriBildirimPublic from "@/pages/misafir-geri-bildirim";
+import MisafirMemnuniyeti from "@/pages/misafir-memnuniyeti";
 import NotFound from "@/pages/not-found";
 
 const PUBLIC_PATH_PREFIXES = [
@@ -135,6 +137,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/forgot-password", 
   "/reset-password", 
   "/feedback", 
+  "/misafir-geri-bildirim",
   "/setup"
 ];
 
@@ -176,6 +179,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/feedback" component={MusteriFeedbackPublic} />
+      <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
 
       {/* Auth guard - catch-all for unauthenticated users */}
       {!isAuthenticated && <Route component={AuthCatchAllToLogin} />}
@@ -261,6 +265,7 @@ function Router() {
           <Route path="/denetim/:id" component={DenetimYurutme} />
           <Route path="/capa/:id" component={CapaDetay} />
           <Route path="/misafir-geri-bildirim" component={MisafirGeriBildirim} />
+          <Route path="/misafir-memnuniyeti" component={MisafirMemnuniyeti} />
           <Route path="/sikayetler" component={Sikayetler} />
           <Route path="/hq-destek" component={HQSupport} />
           <Route path="/ai-asistan" component={AIAssistant} />

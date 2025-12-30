@@ -40,6 +40,8 @@ import {
   insertCorrectiveActionSchema,
   insertCorrectiveActionUpdateSchema,
   insertCustomerFeedbackSchema,
+  feedbackResponses,
+  insertFeedbackResponseSchema,
   insertMaintenanceScheduleSchema,
   insertMaintenanceLogSchema,
   insertCampaignSchema,
@@ -22693,6 +22695,534 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Parse Excel error:", error);
       res.status(500).json({ message: "Dosya okunamadı: " + error.message });
+    }
+  });
+
+  // ========================================
+  // CUSTOMER SATISFACTION (Misafir Geri Bildirim) API
+  // ========================================
+
+  // Get branch by feedback QR token (public - no auth required)
+  app.get('/api/feedback/branch/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      const branch = await db.select({
+        id: branches.id,
+        name: branches.name,
+        city: branches.city,
+      }).from(branches).where(eq(branches.feedbackQrToken, token)).limit(1);
+
+      if (branch.length === 0) {
+        return res.status(404).json({ message: "Şube bulunamadı" });
+      }
+
+      // Get active staff for this branch (for optional selection)
+      const staff = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      }).from(users)
+        .where(and(
+          eq(users.branchId, branch[0].id),
+          eq(users.isActive, true),
+          sql`${users.role} IN ('barista', 'bar_buddy', 'supervisor', 'supervisor_buddy')`
+        ));
+
+      res.json({ branch: branch[0], staff });
+    } catch (error: any) {
+      console.error("Error fetching branch by token:", error);
+      res.status(500).json({ message: "Sunucu hatası" });
+    }
+  });
+
+  // Submit customer feedback (public - no auth required)
+  app.post('/api/feedback/submit', async (req, res) => {
+    try {
+      const { 
+        branchToken, 
+        rating, 
+        serviceRating, 
+        cleanlinessRating, 
+        productRating, 
+        staffRating,
+        staffId,
+        comment,
+        customerName,
+        customerEmail,
+        customerPhone,
+        isAnonymous = true
+      } = req.body;
+
+      // Validate token and get branch
+      const branch = await db.select().from(branches)
+        .where(eq(branches.feedbackQrToken, branchToken)).limit(1);
+
+      if (branch.length === 0) {
+        return res.status(404).json({ message: "Geçersiz QR kod" });
+      }
+
+      // Calculate priority based on rating
+      let priority = 'medium';
+      if (rating <= 2) priority = 'critical';
+      else if (rating === 3) priority = 'high';
+      else if (rating === 4) priority = 'medium';
+      else priority = 'low';
+
+      // Calculate SLA deadline based on priority
+      const now = new Date();
+      let responseDeadline = new Date(now);
+      switch (priority) {
+        case 'critical': responseDeadline.setHours(now.getHours() + 4); break;
+        case 'high': responseDeadline.setHours(now.getHours() + 12); break;
+        case 'medium': responseDeadline.setHours(now.getHours() + 24); break;
+        case 'low': responseDeadline.setHours(now.getHours() + 48); break;
+      }
+
+      const [feedback] = await db.insert(customerFeedback).values({
+        branchId: branch[0].id,
+        source: 'qr_code',
+        rating,
+        serviceRating: serviceRating || null,
+        cleanlinessRating: cleanlinessRating || null,
+        productRating: productRating || null,
+        staffRating: staffRating || null,
+        staffId: staffId || null,
+        comment: comment || null,
+        customerName: isAnonymous ? null : customerName,
+        customerEmail: isAnonymous ? null : customerEmail,
+        customerPhone: isAnonymous ? null : customerPhone,
+        isAnonymous,
+        priority,
+        responseDeadline,
+        status: 'new',
+      }).returning();
+
+      res.json({ 
+        success: true, 
+        message: "Geri bildiriminiz alındı. Teşekkür ederiz!",
+        feedbackId: feedback.id 
+      });
+    } catch (error: any) {
+      console.error("Error submitting feedback:", error);
+      res.status(500).json({ message: "Geri bildirim gönderilemedi" });
+    }
+  });
+
+  // Get all feedback (HQ sees all, branch manager sees own branch)
+  app.get('/api/customer-feedback', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+
+      if (!hasPermission(userRole, 'customer_satisfaction', 'view')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { status, source, branchId, priority, slaBreached, startDate, endDate } = req.query;
+
+      let query = db.select({
+        id: customerFeedback.id,
+        branchId: customerFeedback.branchId,
+        branchName: branches.name,
+        source: customerFeedback.source,
+        rating: customerFeedback.rating,
+        serviceRating: customerFeedback.serviceRating,
+        cleanlinessRating: customerFeedback.cleanlinessRating,
+        productRating: customerFeedback.productRating,
+        staffRating: customerFeedback.staffRating,
+        staffId: customerFeedback.staffId,
+        comment: customerFeedback.comment,
+        customerName: customerFeedback.customerName,
+        isAnonymous: customerFeedback.isAnonymous,
+        priority: customerFeedback.priority,
+        status: customerFeedback.status,
+        slaBreached: customerFeedback.slaBreached,
+        responseDeadline: customerFeedback.responseDeadline,
+        feedbackDate: customerFeedback.feedbackDate,
+        reviewedAt: customerFeedback.reviewedAt,
+        resolvedAt: customerFeedback.resolvedAt,
+        externalReviewUrl: customerFeedback.externalReviewUrl,
+      })
+      .from(customerFeedback)
+      .leftJoin(branches, eq(customerFeedback.branchId, branches.id))
+      .orderBy(desc(customerFeedback.feedbackDate));
+
+      // Apply filters
+      const conditions: SQL<unknown>[] = [];
+
+      // Branch-level users can only see their own branch
+      if (isBranchRole(userRole) && userBranchId) {
+        conditions.push(eq(customerFeedback.branchId, userBranchId));
+      } else if (branchId) {
+        conditions.push(eq(customerFeedback.branchId, parseInt(branchId as string)));
+      }
+
+      if (status) conditions.push(eq(customerFeedback.status, status as string));
+      if (source) conditions.push(eq(customerFeedback.source, source as string));
+      if (priority) conditions.push(eq(customerFeedback.priority, priority as string));
+      if (slaBreached === 'true') conditions.push(eq(customerFeedback.slaBreached, true));
+      if (startDate) conditions.push(gte(customerFeedback.feedbackDate, new Date(startDate as string)));
+      if (endDate) conditions.push(lte(customerFeedback.feedbackDate, new Date(endDate as string)));
+
+      const result = conditions.length > 0 
+        ? await query.where(and(...conditions))
+        : await query;
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching feedback:", error);
+      res.status(500).json({ message: "Geri bildirimler yüklenemedi" });
+    }
+  });
+
+  // Get feedback statistics - MUST be before /:id route
+  app.get('/api/customer-feedback/stats/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+
+      if (!hasPermission(userRole, 'customer_satisfaction', 'view')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { branchId: queryBranchId } = req.query;
+      const targetBranchId = isBranchRole(userRole) ? userBranchId : (queryBranchId ? parseInt(queryBranchId as string) : null);
+
+      const whereClause = targetBranchId ? eq(customerFeedback.branchId, targetBranchId) : undefined;
+
+      // Get counts by status
+      const statusCounts = await db.select({
+        status: customerFeedback.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(customerFeedback)
+      .where(whereClause)
+      .groupBy(customerFeedback.status);
+
+      // Get counts by source
+      const sourceCounts = await db.select({
+        source: customerFeedback.source,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(customerFeedback)
+      .where(whereClause)
+      .groupBy(customerFeedback.source);
+
+      // Get average ratings
+      const avgRatings = await db.select({
+        avgRating: sql<number>`ROUND(AVG(${customerFeedback.rating})::numeric, 2)`,
+        avgService: sql<number>`ROUND(AVG(${customerFeedback.serviceRating})::numeric, 2)`,
+        avgCleanliness: sql<number>`ROUND(AVG(${customerFeedback.cleanlinessRating})::numeric, 2)`,
+        avgProduct: sql<number>`ROUND(AVG(${customerFeedback.productRating})::numeric, 2)`,
+        avgStaff: sql<number>`ROUND(AVG(${customerFeedback.staffRating})::numeric, 2)`,
+        totalCount: sql<number>`count(*)::int`,
+        slaBreachedCount: sql<number>`SUM(CASE WHEN ${customerFeedback.slaBreached} THEN 1 ELSE 0 END)::int`,
+      })
+      .from(customerFeedback)
+      .where(whereClause);
+
+      res.json({
+        statusCounts: statusCounts.reduce((acc, item) => ({ ...acc, [item.status]: item.count }), {}),
+        sourceCounts: sourceCounts.reduce((acc, item) => ({ ...acc, [item.source]: item.count }), {}),
+        ...avgRatings[0],
+      });
+    } catch (error: any) {
+      console.error("Error fetching stats:", error);
+      res.status(500).json({ message: "İstatistikler yüklenemedi" });
+    }
+  });
+
+  // Get single feedback with responses
+  app.get('/api/customer-feedback/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userRole = req.user?.role;
+
+      const feedbackId = parseInt(id);
+      if (isNaN(feedbackId)) {
+        return res.status(400).json({ message: "Geçersiz geri bildirim ID'si" });
+      }
+
+      if (!hasPermission(userRole, 'customer_satisfaction', 'view')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const feedback = await db.select({
+        id: customerFeedback.id,
+        branchId: customerFeedback.branchId,
+        branchName: branches.name,
+        source: customerFeedback.source,
+        externalReviewId: customerFeedback.externalReviewId,
+        externalReviewUrl: customerFeedback.externalReviewUrl,
+        rating: customerFeedback.rating,
+        serviceRating: customerFeedback.serviceRating,
+        cleanlinessRating: customerFeedback.cleanlinessRating,
+        productRating: customerFeedback.productRating,
+        staffRating: customerFeedback.staffRating,
+        staffId: customerFeedback.staffId,
+        comment: customerFeedback.comment,
+        customerName: customerFeedback.customerName,
+        customerEmail: customerFeedback.customerEmail,
+        customerPhone: customerFeedback.customerPhone,
+        isAnonymous: customerFeedback.isAnonymous,
+        priority: customerFeedback.priority,
+        status: customerFeedback.status,
+        slaBreached: customerFeedback.slaBreached,
+        responseDeadline: customerFeedback.responseDeadline,
+        feedbackDate: customerFeedback.feedbackDate,
+        reviewedById: customerFeedback.reviewedById,
+        reviewedAt: customerFeedback.reviewedAt,
+        reviewNotes: customerFeedback.reviewNotes,
+        resolvedAt: customerFeedback.resolvedAt,
+        resolutionSatisfaction: customerFeedback.resolutionSatisfaction,
+      })
+      .from(customerFeedback)
+      .leftJoin(branches, eq(customerFeedback.branchId, branches.id))
+      .where(eq(customerFeedback.id, feedbackId))
+      .limit(1);
+
+      if (feedback.length === 0) {
+        return res.status(404).json({ message: "Geri bildirim bulunamadı" });
+      }
+
+      // Get responses
+      const responses = await db.select({
+        id: feedbackResponses.id,
+        responseType: feedbackResponses.responseType,
+        content: feedbackResponses.content,
+        isVisibleToCustomer: feedbackResponses.isVisibleToCustomer,
+        createdAt: feedbackResponses.createdAt,
+        responderName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`.as('responderName'),
+      })
+      .from(feedbackResponses)
+      .leftJoin(users, eq(feedbackResponses.responderId, users.id))
+      .where(eq(feedbackResponses.feedbackId, parseInt(id)))
+      .orderBy(feedbackResponses.createdAt);
+
+      // Get staff name if assigned
+      let staffName = null;
+      if (feedback[0].staffId) {
+        const staff = await db.select({
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }).from(users).where(eq(users.id, feedback[0].staffId)).limit(1);
+        if (staff.length > 0) {
+          staffName = `${staff[0].firstName} ${staff[0].lastName}`;
+        }
+      }
+
+      res.json({ ...feedback[0], staffName, responses });
+    } catch (error: any) {
+      console.error("Error fetching feedback detail:", error);
+      res.status(500).json({ message: "Detay yüklenemedi" });
+    }
+  });
+
+  // Add response/defense to feedback
+  app.post('/api/customer-feedback/:id/response', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { responseType, content, isVisibleToCustomer = false } = req.body;
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+
+      const feedbackId = parseInt(id);
+      if (isNaN(feedbackId)) {
+        return res.status(400).json({ message: "Geçersiz geri bildirim ID'si" });
+      }
+
+      if (!hasPermission(userRole, 'customer_satisfaction', 'edit')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const [response] = await db.insert(feedbackResponses).values({
+        feedbackId,
+        responderId: userId,
+        responseType,
+        content,
+        isVisibleToCustomer,
+      }).returning();
+
+      // Update feedback status
+      const newStatus = responseType === 'defense' ? 'in_progress' : 
+                        responseType === 'customer_contact' ? 'awaiting_response' : 
+                        'in_progress';
+
+      await db.update(customerFeedback)
+        .set({ 
+          status: newStatus, 
+          reviewedById: userId,
+          reviewedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(customerFeedback.id, parseInt(id)));
+
+      res.json({ success: true, response });
+    } catch (error: any) {
+      console.error("Error adding response:", error);
+      res.status(500).json({ message: "Yanıt eklenemedi" });
+    }
+  });
+
+  // Update feedback status
+  app.patch('/api/customer-feedback/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, reviewNotes } = req.body;
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+
+      const feedbackId = parseInt(id);
+      if (isNaN(feedbackId)) {
+        return res.status(400).json({ message: "Geçersiz geri bildirim ID'si" });
+      }
+
+      if (!hasPermission(userRole, 'customer_satisfaction', 'edit')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const updateData: any = { 
+        status, 
+        reviewedById: userId,
+        reviewedAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      if (reviewNotes) updateData.reviewNotes = reviewNotes;
+      if (status === 'resolved' || status === 'closed') {
+        updateData.resolvedAt = new Date();
+      }
+
+      await db.update(customerFeedback)
+        .set(updateData)
+        .where(eq(customerFeedback.id, parseInt(id)));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      res.status(500).json({ message: "Durum güncellenemedi" });
+    }
+  });
+
+  // Add manual external review (Google/Instagram)
+  app.post('/api/customer-feedback/external', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+
+      if (!hasPermission(userRole, 'customer_satisfaction', 'create')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { 
+        branchId, 
+        source, 
+        externalReviewId,
+        externalReviewUrl,
+        rating, 
+        comment,
+        customerName
+      } = req.body;
+
+      // Calculate priority
+      let priority = 'medium';
+      if (rating <= 2) priority = 'critical';
+      else if (rating === 3) priority = 'high';
+      else if (rating === 4) priority = 'medium';
+      else priority = 'low';
+
+      // SLA deadline
+      const now = new Date();
+      let responseDeadline = new Date(now);
+      switch (priority) {
+        case 'critical': responseDeadline.setHours(now.getHours() + 4); break;
+        case 'high': responseDeadline.setHours(now.getHours() + 12); break;
+        case 'medium': responseDeadline.setHours(now.getHours() + 24); break;
+        case 'low': responseDeadline.setHours(now.getHours() + 48); break;
+      }
+
+      const [feedback] = await db.insert(customerFeedback).values({
+        branchId,
+        source,
+        externalReviewId: externalReviewId || null,
+        externalReviewUrl: externalReviewUrl || null,
+        rating,
+        comment: comment || null,
+        customerName: customerName || null,
+        isAnonymous: !customerName,
+        priority,
+        responseDeadline,
+        status: 'new',
+      }).returning();
+
+      res.json({ success: true, feedback });
+    } catch (error: any) {
+      console.error("Error adding external review:", error);
+      res.status(500).json({ message: "Harici yorum eklenemedi" });
+    }
+  });
+
+  // Generate QR code for branch feedback
+  app.get('/api/branches/:id/feedback-qr', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userRole = req.user?.role;
+
+      if (!hasPermission(userRole, 'branches', 'view')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const branch = await db.select().from(branches).where(eq(branches.id, parseInt(id))).limit(1);
+      if (branch.length === 0) {
+        return res.status(404).json({ message: "Şube bulunamadı" });
+      }
+
+      // Generate token if not exists
+      let token = branch[0].feedbackQrToken;
+      if (!token) {
+        token = crypto.randomBytes(16).toString('hex');
+        await db.update(branches).set({ feedbackQrToken: token }).where(eq(branches.id, parseInt(id)));
+      }
+
+      // Generate QR code
+      const feedbackUrl = `${req.protocol}://${req.get('host')}/misafir-geri-bildirim/${token}`;
+      const qrDataUrl = await QRCode.toDataURL(feedbackUrl, { width: 300 });
+
+      res.json({ 
+        token, 
+        url: feedbackUrl, 
+        qrCode: qrDataUrl,
+        branchName: branch[0].name 
+      });
+    } catch (error: any) {
+      console.error("Error generating feedback QR:", error);
+      res.status(500).json({ message: "QR kod oluşturulamadı" });
+    }
+  });
+
+  // Check and update SLA breaches (can be called periodically)
+  app.post('/api/customer-feedback/check-sla', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!['admin', 'coach', 'destek'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const now = new Date();
+      
+      // Find feedbacks with passed deadline that aren't resolved/closed
+      const result = await db.update(customerFeedback)
+        .set({ slaBreached: true, updatedAt: new Date() })
+        .where(and(
+          eq(customerFeedback.slaBreached, false),
+          lte(customerFeedback.responseDeadline, now),
+          sql`${customerFeedback.status} NOT IN ('resolved', 'closed')`
+        ))
+        .returning({ id: customerFeedback.id });
+
+      res.json({ updated: result.length });
+    } catch (error: any) {
+      console.error("Error checking SLA:", error);
+      res.status(500).json({ message: "SLA kontrolü başarısız" });
     }
   });
 

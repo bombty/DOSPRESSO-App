@@ -247,6 +247,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "dashboard",
         scope: "hq",
       },
+      {
+        id: "customer-satisfaction",
+        titleTr: "Misafir Memnuniyeti",
+        path: "/misafir-memnuniyeti",
+        icon: "MessageSquareHeart",
+        moduleKey: "customer_satisfaction",
+        scope: "hq",
+      },
     ],
   },
   // HQ-Only: AI Assistant
