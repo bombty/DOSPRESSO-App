@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import * as XLSX from "xlsx";
+import QRCode from "qrcode";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "./security";
 import { buildMenuForUser } from "./menu-service";
 import { 
