@@ -61,6 +61,11 @@ const translations: Record<string, Record<string, string>> = {
     locationFailed: "Şubeden çok uzaktasınız",
     verifyingLocation: "Konum doğrulanıyor...",
     error: "Bir hata oluştu. Lütfen tekrar deneyin.",
+    feedbackTypeLabel: "Bildirim Türü",
+    feedbackOption: "Geri Bildirim",
+    complaintOption: "Şikayet",
+    requiresContact: "Cevap Bekliyorum",
+    requiresContactDesc: "Size geri dönüş yapmamızı istiyorsanız işaretleyin",
   },
   en: {
     title: "Feedback Form",
@@ -103,6 +108,11 @@ const translations: Record<string, Record<string, string>> = {
     locationFailed: "You are too far from the branch",
     verifyingLocation: "Verifying location...",
     error: "An error occurred. Please try again.",
+    feedbackTypeLabel: "Feedback Type",
+    feedbackOption: "Feedback",
+    complaintOption: "Complaint",
+    requiresContact: "I want a response",
+    requiresContactDesc: "Check if you want us to contact you back",
   },
   zh: {
     title: "反馈表",
@@ -145,6 +155,11 @@ const translations: Record<string, Record<string, string>> = {
     locationFailed: "您离分店太远",
     verifyingLocation: "正在验证位置...",
     error: "发生错误。请重试。",
+    feedbackTypeLabel: "反馈类型",
+    feedbackOption: "反馈",
+    complaintOption: "投诉",
+    requiresContact: "我需要回复",
+    requiresContactDesc: "如果您希望我们联系您，请勾选",
   },
   ar: {
     title: "نموذج التعليقات",
@@ -187,6 +202,11 @@ const translations: Record<string, Record<string, string>> = {
     locationFailed: "أنت بعيد جداً عن الفرع",
     verifyingLocation: "جاري التحقق من الموقع...",
     error: "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    feedbackTypeLabel: "نوع الملاحظات",
+    feedbackOption: "ملاحظات",
+    complaintOption: "شكوى",
+    requiresContact: "أريد رداً",
+    requiresContactDesc: "حدد إذا كنت تريد منا الاتصال بك",
   },
   de: {
     title: "Feedback-Formular",
@@ -229,6 +249,11 @@ const translations: Record<string, Record<string, string>> = {
     locationFailed: "Sie sind zu weit von der Filiale entfernt",
     verifyingLocation: "Standort wird überprüft...",
     error: "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    feedbackTypeLabel: "Feedback-Typ",
+    feedbackOption: "Feedback",
+    complaintOption: "Beschwerde",
+    requiresContact: "Ich möchte eine Antwort",
+    requiresContactDesc: "Ankreuzen, wenn Sie möchten, dass wir Sie kontaktieren",
   },
   ko: {
     title: "피드백 양식",
@@ -271,6 +296,11 @@ const translations: Record<string, Record<string, string>> = {
     locationFailed: "지점에서 너무 멀리 있습니다",
     verifyingLocation: "위치 확인 중...",
     error: "오류가 발생했습니다. 다시 시도해 주세요.",
+    feedbackTypeLabel: "피드백 유형",
+    feedbackOption: "피드백",
+    complaintOption: "불만",
+    requiresContact: "답변을 원합니다",
+    requiresContactDesc: "연락을 원하시면 체크하세요",
   },
   fr: {
     title: "Formulaire de commentaires",
@@ -313,6 +343,11 @@ const translations: Record<string, Record<string, string>> = {
     locationFailed: "Vous êtes trop loin de l'établissement",
     verifyingLocation: "Vérification de la localisation...",
     error: "Une erreur s'est produite. Veuillez réessayer.",
+    feedbackTypeLabel: "Type de commentaire",
+    feedbackOption: "Commentaire",
+    complaintOption: "Réclamation",
+    requiresContact: "Je souhaite une réponse",
+    requiresContactDesc: "Cochez si vous souhaitez que nous vous contactions",
   },
 };
 
@@ -378,6 +413,8 @@ export default function MisafirGeriBildirim() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [feedbackType, setFeedbackType] = useState<'feedback' | 'complaint'>('feedback');
+  const [requiresContact, setRequiresContact] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -546,6 +583,8 @@ export default function MisafirGeriBildirim() {
       userLatitude: userLocation?.lat || null,
       userLongitude: userLocation?.lng || null,
       language: lang,
+      feedbackType,
+      requiresContact,
     });
   };
 
@@ -743,6 +782,35 @@ export default function MisafirGeriBildirim() {
                 </div>
               )}
 
+              {/* Feedback Type Selection */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  {t.feedbackTypeLabel}
+                </Label>
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant={feedbackType === 'feedback' ? 'default' : 'outline'}
+                    className={`flex-1 ${feedbackType === 'feedback' ? 'bg-amber-600 hover:bg-amber-700' : ''}`}
+                    onClick={() => setFeedbackType('feedback')}
+                    data-testid="button-feedback-type-feedback"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    {t.feedbackOption}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={feedbackType === 'complaint' ? 'default' : 'outline'}
+                    className={`flex-1 ${feedbackType === 'complaint' ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                    onClick={() => setFeedbackType('complaint')}
+                    data-testid="button-feedback-type-complaint"
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    {t.complaintOption}
+                  </Button>
+                </div>
+              </div>
+
               {/* Overall Rating */}
               <div className="bg-amber-50/50 rounded-xl p-4 border border-amber-100">
                 <StarRating
@@ -897,6 +965,22 @@ export default function MisafirGeriBildirim() {
                 <Label htmlFor="anonymous" className="text-sm cursor-pointer">
                   {t.anonymous}
                 </Label>
+              </div>
+
+              {/* Requires Contact Checkbox */}
+              <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <Checkbox
+                  id="requiresContact"
+                  checked={requiresContact}
+                  onCheckedChange={(checked) => setRequiresContact(!!checked)}
+                  data-testid="checkbox-requires-contact"
+                />
+                <div className="flex flex-col">
+                  <Label htmlFor="requiresContact" className="text-sm cursor-pointer font-medium text-blue-800">
+                    {t.requiresContact}
+                  </Label>
+                  <span className="text-xs text-blue-600">{t.requiresContactDesc}</span>
+                </div>
               </div>
 
               {/* Contact Info (if not anonymous) */}

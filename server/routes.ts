@@ -22756,7 +22756,9 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         deviceFingerprint,
         userLatitude,
         userLongitude,
-        language = 'tr'
+        language = 'tr',
+        feedbackType = 'feedback', // feedback or complaint
+        requiresContact = false
       } = req.body;
 
       // Get user IP
@@ -22842,12 +22844,20 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         }
       }
 
-      // Calculate priority based on rating
+      // Calculate priority based on rating and feedback type
       let priority = 'medium';
-      if (rating <= 2) priority = 'critical';
-      else if (rating === 3) priority = 'high';
-      else if (rating === 4) priority = 'medium';
-      else priority = 'low';
+      if (feedbackType === 'complaint') {
+        // Complaints get higher priority
+        if (rating <= 2) priority = 'critical';
+        else if (rating <= 3) priority = 'critical';
+        else priority = 'high';
+      } else {
+        // Regular feedback
+        if (rating <= 2) priority = 'critical';
+        else if (rating === 3) priority = 'high';
+        else if (rating === 4) priority = 'medium';
+        else priority = 'low';
+      }
 
       // Calculate SLA deadline based on priority
       const now = new Date();
@@ -22885,6 +22895,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         isSuspicious,
         suspiciousReasons: suspiciousReasons.length > 0 ? suspiciousReasons : null,
         feedbackLanguage: language,
+        feedbackType,
+        requiresContact,
       }).returning();
 
       res.json({ 
@@ -22908,7 +22920,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
 
-      const { status, source, branchId, priority, slaBreached, startDate, endDate, suspicious } = req.query;
+      const { status, source, branchId, priority, slaBreached, startDate, endDate, suspicious, feedbackType, requiresContact } = req.query;
 
       let query = db.select({
         id: customerFeedback.id,
@@ -22937,6 +22949,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         suspiciousReasons: customerFeedback.suspiciousReasons,
         distanceFromBranch: customerFeedback.distanceFromBranch,
         feedbackLanguage: customerFeedback.feedbackLanguage,
+        feedbackType: customerFeedback.feedbackType,
+        requiresContact: customerFeedback.requiresContact,
       })
       .from(customerFeedback)
       .leftJoin(branches, eq(customerFeedback.branchId, branches.id))
@@ -22960,6 +22974,9 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       if (endDate) conditions.push(lte(customerFeedback.feedbackDate, new Date(endDate as string)));
       if (suspicious === 'suspicious') conditions.push(eq(customerFeedback.isSuspicious, true));
       if (suspicious === 'normal') conditions.push(eq(customerFeedback.isSuspicious, false));
+      if (feedbackType) conditions.push(eq(customerFeedback.feedbackType, feedbackType as string));
+      if (requiresContact === 'true') conditions.push(eq(customerFeedback.requiresContact, true));
+      if (requiresContact === 'false') conditions.push(eq(customerFeedback.requiresContact, false));
 
       const result = conditions.length > 0 
         ? await query.where(and(...conditions))

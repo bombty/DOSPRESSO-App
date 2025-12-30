@@ -69,6 +69,8 @@ interface Feedback {
   suspiciousReasons?: string[];
   distanceFromBranch?: number;
   feedbackLanguage?: string;
+  feedbackType?: string;
+  requiresContact?: boolean;
 }
 
 interface FeedbackStats {
@@ -127,7 +129,7 @@ export default function MisafirMemnuniyeti() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showAddExternalDialog, setShowAddExternalDialog] = useState(false);
   const [showResponseDialog, setShowResponseDialog] = useState(false);
-  const [filters, setFilters] = useState({ status: '', source: '', branchId: '', priority: '', suspicious: '' });
+  const [filters, setFilters] = useState({ status: '', source: '', branchId: '', priority: '', suspicious: '', feedbackType: '', requiresContact: '' });
   const [responseContent, setResponseContent] = useState('');
   const [responseType, setResponseType] = useState('defense');
   const [qrDataMap, setQrDataMap] = useState<Record<number, BranchQRData>>({});
@@ -149,11 +151,13 @@ export default function MisafirMemnuniyeti() {
     if (filters.branchId) params.append('branchId', filters.branchId);
     if (filters.priority) params.append('priority', filters.priority);
     if (filters.suspicious) params.append('suspicious', filters.suspicious);
+    if (filters.feedbackType) params.append('feedbackType', filters.feedbackType);
+    if (filters.requiresContact) params.append('requiresContact', filters.requiresContact);
     return params.toString();
   };
 
   const { data: feedbacks = [], isLoading } = useQuery<Feedback[]>({
-    queryKey: ['/api/customer-feedback', filters.status, filters.source, filters.branchId, filters.priority, filters.suspicious],
+    queryKey: ['/api/customer-feedback', filters.status, filters.source, filters.branchId, filters.priority, filters.suspicious, filters.feedbackType, filters.requiresContact],
     queryFn: async () => {
       const params = buildQueryParams();
       const url = params ? `/api/customer-feedback?${params}` : '/api/customer-feedback';
@@ -420,6 +424,26 @@ export default function MisafirMemnuniyeti() {
                     <SelectItem value="normal">Normal</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={filters.feedbackType || "_all"} onValueChange={(v) => setFilters({ ...filters, feedbackType: v === "_all" ? "" : v })}>
+                  <SelectTrigger className="w-[140px]" data-testid="filter-feedback-type">
+                    <SelectValue placeholder="Tür" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">Tümü</SelectItem>
+                    <SelectItem value="feedback">Geri Bildirim</SelectItem>
+                    <SelectItem value="complaint">Şikayet</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filters.requiresContact || "_all"} onValueChange={(v) => setFilters({ ...filters, requiresContact: v === "_all" ? "" : v })}>
+                  <SelectTrigger className="w-[140px]" data-testid="filter-requires-contact">
+                    <SelectValue placeholder="Cevap" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">Tümü</SelectItem>
+                    <SelectItem value="true">Cevap Bekliyor</SelectItem>
+                    <SelectItem value="false">Cevap Beklemiyor</SelectItem>
+                  </SelectContent>
+                </Select>
                 {branches.length > 0 && (
                   <Select value={filters.branchId || "_all"} onValueChange={(v) => setFilters({ ...filters, branchId: v === "_all" ? "" : v })}>
                     <SelectTrigger className="w-[160px]" data-testid="filter-branch">
@@ -478,6 +502,16 @@ export default function MisafirMemnuniyeti() {
                                     <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">
                                       <AlertTriangle className="h-3 w-3 mr-1" />
                                       Şüpheli
+                                    </Badge>
+                                  )}
+                                  {fb.feedbackType === 'complaint' && (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Şikayet
+                                    </Badge>
+                                  )}
+                                  {fb.requiresContact && (
+                                    <Badge variant="outline" className="text-xs border-blue-500 text-blue-600">
+                                      Cevap Bekliyor
                                     </Badge>
                                   )}
                                 </div>
@@ -670,11 +704,17 @@ export default function MisafirMemnuniyeti() {
                 <Building2 className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">{selectedFeedback.branchName}</span>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <StarDisplay rating={selectedFeedback.rating} size="md" />
                 <Badge variant={statusLabels[selectedFeedback.status]?.variant}>
                   {statusLabels[selectedFeedback.status]?.label}
                 </Badge>
+                {selectedFeedback.feedbackType === 'complaint' && (
+                  <Badge variant="destructive">Şikayet</Badge>
+                )}
+                {selectedFeedback.requiresContact && (
+                  <Badge variant="outline" className="border-blue-500 text-blue-600">Cevap Bekliyor</Badge>
+                )}
               </div>
               {selectedFeedback.comment && (
                 <div>

@@ -3020,6 +3020,12 @@ export const customerFeedback = pgTable("customer_feedback", {
   // Language used for feedback
   feedbackLanguage: varchar("feedback_language", { length: 5 }).default("tr"),
   
+  // Feedback type: feedback or complaint
+  feedbackType: varchar("feedback_type", { length: 20 }).notNull().default("feedback"), // feedback, complaint
+  
+  // Contact preference
+  requiresContact: boolean("requires_contact").notNull().default(false), // Customer wants to be contacted back
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -3044,6 +3050,8 @@ export const insertCustomerFeedbackSchema = createInsertSchema(customerFeedback)
   productRating: z.number().int().min(1).max(5).optional().nullable(),
   staffRating: z.number().int().min(1).max(5).optional().nullable(),
   comment: z.string().max(2000, "Comment too long").optional().transform(val => val?.trim() || null),
+  feedbackType: z.enum(["feedback", "complaint"]).optional().default("feedback"),
+  requiresContact: z.boolean().optional().default(false),
 });
 
 export type InsertCustomerFeedback = z.infer<typeof insertCustomerFeedbackSchema>;
