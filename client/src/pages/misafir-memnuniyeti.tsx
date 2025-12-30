@@ -64,6 +64,11 @@ interface Feedback {
   reviewedAt?: string;
   resolvedAt?: string;
   externalReviewUrl?: string;
+  photoUrls?: string[];
+  isSuspicious?: boolean;
+  suspiciousReasons?: string[];
+  distanceFromBranch?: number;
+  feedbackLanguage?: string;
 }
 
 interface FeedbackStats {
@@ -122,7 +127,7 @@ export default function MisafirMemnuniyeti() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showAddExternalDialog, setShowAddExternalDialog] = useState(false);
   const [showResponseDialog, setShowResponseDialog] = useState(false);
-  const [filters, setFilters] = useState({ status: '', source: '', branchId: '', priority: '' });
+  const [filters, setFilters] = useState({ status: '', source: '', branchId: '', priority: '', suspicious: '' });
   const [responseContent, setResponseContent] = useState('');
   const [responseType, setResponseType] = useState('defense');
   const [qrDataMap, setQrDataMap] = useState<Record<number, BranchQRData>>({});
@@ -143,11 +148,12 @@ export default function MisafirMemnuniyeti() {
     if (filters.source) params.append('source', filters.source);
     if (filters.branchId) params.append('branchId', filters.branchId);
     if (filters.priority) params.append('priority', filters.priority);
+    if (filters.suspicious) params.append('suspicious', filters.suspicious);
     return params.toString();
   };
 
   const { data: feedbacks = [], isLoading } = useQuery<Feedback[]>({
-    queryKey: ['/api/customer-feedback', filters.status, filters.source, filters.branchId, filters.priority],
+    queryKey: ['/api/customer-feedback', filters.status, filters.source, filters.branchId, filters.priority, filters.suspicious],
     queryFn: async () => {
       const params = buildQueryParams();
       const url = params ? `/api/customer-feedback?${params}` : '/api/customer-feedback';
@@ -404,6 +410,16 @@ export default function MisafirMemnuniyeti() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Select value={filters.suspicious || "_all"} onValueChange={(v) => setFilters({ ...filters, suspicious: v === "_all" ? "" : v })}>
+                  <SelectTrigger className="w-[140px]" data-testid="filter-suspicious">
+                    <SelectValue placeholder="Şüpheli" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">Tümü</SelectItem>
+                    <SelectItem value="suspicious">Şüpheli</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
+                  </SelectContent>
+                </Select>
                 {branches.length > 0 && (
                   <Select value={filters.branchId || "_all"} onValueChange={(v) => setFilters({ ...filters, branchId: v === "_all" ? "" : v })}>
                     <SelectTrigger className="w-[160px]" data-testid="filter-branch">
@@ -457,6 +473,12 @@ export default function MisafirMemnuniyeti() {
                                   </span>
                                   {fb.slaBreached && (
                                     <Badge variant="destructive" className="text-xs">SLA Aşıldı</Badge>
+                                  )}
+                                  {fb.isSuspicious && (
+                                    <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">
+                                      <AlertTriangle className="h-3 w-3 mr-1" />
+                                      Şüpheli
+                                    </Badge>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-3 mb-2">

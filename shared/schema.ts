@@ -3005,6 +3005,21 @@ export const customerFeedback = pgTable("customer_feedback", {
   // Customer satisfaction after resolution
   resolutionSatisfaction: integer("resolution_satisfaction"), // 1-5 rating after resolution
   
+  // Photo attachments
+  photoUrls: text("photo_urls").array(), // Array of uploaded photo URLs
+  
+  // Anti-fraud / Suspicious detection
+  deviceFingerprint: varchar("device_fingerprint", { length: 50 }), // Browser fingerprint
+  userIp: varchar("user_ip", { length: 50 }), // IP address
+  userLatitude: real("user_latitude"), // GPS latitude
+  userLongitude: real("user_longitude"), // GPS longitude
+  distanceFromBranch: real("distance_from_branch"), // Calculated distance in meters
+  isSuspicious: boolean("is_suspicious").notNull().default(false), // Flagged for review
+  suspiciousReasons: text("suspicious_reasons").array(), // Why it's suspicious
+  
+  // Language used for feedback
+  feedbackLanguage: varchar("feedback_language", { length: 5 }).default("tr"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

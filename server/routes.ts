@@ -22750,8 +22750,17 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         customerName,
         customerEmail,
         customerPhone,
-        isAnonymous = true
+        isAnonymous = true,
+        photoUrls = [],
+        deviceFingerprint,
+        userLatitude,
+        userLongitude,
+        language = 'tr'
       } = req.body;
+
+      // Get user IP
+      const userIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
+                     req.socket.remoteAddress || 'unknown';
 
       // Validate token and get branch
       const branch = await db.select().from(branches)
@@ -22759,6 +22768,77 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       if (branch.length === 0) {
         return res.status(404).json({ message: "Geçersiz QR kod" });
+      }
+
+      // Calculate distance from branch if coordinates available
+      let distanceFromBranch: number | null = null;
+      if (userLatitude && userLongitude && branch[0].latitude && branch[0].longitude) {
+        const R = 6371000; // Earth's radius in meters
+        const dLat = (branch[0].latitude - userLatitude) * Math.PI / 180;
+        const dLon = (branch[0].longitude - userLongitude) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(userLatitude * Math.PI / 180) * Math.cos(branch[0].latitude * Math.PI / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        distanceFromBranch = R * c;
+      }
+
+      // Suspicious detection
+      const suspiciousReasons: string[] = [];
+      let isSuspicious = false;
+
+      // Check 1: Same IP submitted multiple feedbacks today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const sameIpCount = await db.select({ count: sql<number>`count(*)` })
+        .from(customerFeedback)
+        .where(and(
+          eq(customerFeedback.branchId, branch[0].id),
+          sql`${customerFeedback.userIp} = ${userIp}`,
+          sql`${customerFeedback.feedbackDate} >= ${today}`
+        ));
+      
+      if (sameIpCount[0]?.count > 0) {
+        suspiciousReasons.push('same_ip_multiple_submissions');
+        isSuspicious = true;
+      }
+
+      // Check 2: Same fingerprint submitted today
+      if (deviceFingerprint) {
+        const sameFingerprintCount = await db.select({ count: sql<number>`count(*)` })
+          .from(customerFeedback)
+          .where(and(
+            eq(customerFeedback.branchId, branch[0].id),
+            sql`${customerFeedback.deviceFingerprint} = ${deviceFingerprint}`,
+            sql`${customerFeedback.feedbackDate} >= ${today}`
+          ));
+        
+        if (sameFingerprintCount[0]?.count > 0) {
+          suspiciousReasons.push('same_device_multiple_submissions');
+          isSuspicious = true;
+        }
+      }
+
+      // Check 3: Too far from branch (> 500m)
+      if (distanceFromBranch !== null && distanceFromBranch > 500) {
+        suspiciousReasons.push('too_far_from_branch');
+        isSuspicious = true;
+      }
+
+      // Check 4: Perfect 5-star rating with no comment (potential fake)
+      if (rating === 5 && serviceRating === 5 && cleanlinessRating === 5 && 
+          productRating === 5 && staffRating === 5 && !comment) {
+        suspiciousReasons.push('perfect_rating_no_comment');
+        // Only flag as suspicious if combined with other factors
+      }
+
+      // Check 5: Staff giving feedback to themselves
+      if (staffId) {
+        // This would require more complex checking - if the device belongs to staff
+        // For now, just flag high staff ratings as worth reviewing
+        if (staffRating === 5) {
+          suspiciousReasons.push('high_staff_rating_selected');
+        }
       }
 
       // Calculate priority based on rating
@@ -22795,6 +22875,15 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         priority,
         responseDeadline,
         status: 'new',
+        photoUrls: photoUrls.length > 0 ? photoUrls : null,
+        deviceFingerprint: deviceFingerprint || null,
+        userIp,
+        userLatitude: userLatitude || null,
+        userLongitude: userLongitude || null,
+        distanceFromBranch,
+        isSuspicious,
+        suspiciousReasons: suspiciousReasons.length > 0 ? suspiciousReasons : null,
+        feedbackLanguage: language,
       }).returning();
 
       res.json({ 
@@ -22818,7 +22907,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
 
-      const { status, source, branchId, priority, slaBreached, startDate, endDate } = req.query;
+      const { status, source, branchId, priority, slaBreached, startDate, endDate, suspicious } = req.query;
 
       let query = db.select({
         id: customerFeedback.id,
@@ -22842,6 +22931,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         reviewedAt: customerFeedback.reviewedAt,
         resolvedAt: customerFeedback.resolvedAt,
         externalReviewUrl: customerFeedback.externalReviewUrl,
+        photoUrls: customerFeedback.photoUrls,
+        isSuspicious: customerFeedback.isSuspicious,
+        suspiciousReasons: customerFeedback.suspiciousReasons,
+        distanceFromBranch: customerFeedback.distanceFromBranch,
+        feedbackLanguage: customerFeedback.feedbackLanguage,
       })
       .from(customerFeedback)
       .leftJoin(branches, eq(customerFeedback.branchId, branches.id))
@@ -22863,6 +22957,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       if (slaBreached === 'true') conditions.push(eq(customerFeedback.slaBreached, true));
       if (startDate) conditions.push(gte(customerFeedback.feedbackDate, new Date(startDate as string)));
       if (endDate) conditions.push(lte(customerFeedback.feedbackDate, new Date(endDate as string)));
+      if (suspicious === 'suspicious') conditions.push(eq(customerFeedback.isSuspicious, true));
+      if (suspicious === 'normal') conditions.push(eq(customerFeedback.isSuspicious, false));
 
       const result = conditions.length > 0 
         ? await query.where(and(...conditions))
