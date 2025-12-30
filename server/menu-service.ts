@@ -299,6 +299,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
       },
       {
+        id: "bulk-data",
+        titleTr: "Toplu Veri Yönetimi",
+        path: "/admin/toplu-veri-yonetimi",
+        icon: "Database",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      {
         id: "users",
         titleTr: "Kullanıcılar",
         path: "/yonetim/kullanicilar",

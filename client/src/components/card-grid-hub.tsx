@@ -402,8 +402,7 @@ export function CardGridHub() {
       label: "Toplu Veri Yönetimi", 
       path: "/admin/toplu-veri-yonetimi",
       color: "bg-indigo-600",
-      description: "Excel ile veri aktarımı",
-      roles: ["admin", "coach", "teknik", "muhasebe"]
+      description: "Excel ile veri aktarımı"
     },
   ];
 
