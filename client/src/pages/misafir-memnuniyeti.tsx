@@ -34,7 +34,10 @@ import {
   Sparkles,
   Brush,
   Package,
-  User
+  User,
+  Download,
+  Printer,
+  RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -81,6 +84,13 @@ interface Branch {
   city: string;
 }
 
+interface BranchQRData {
+  token: string;
+  url: string;
+  qrCode: string;
+  branchName: string;
+}
+
 const sourceLabels: Record<string, { label: string; icon: any; color: string }> = {
   qr_code: { label: 'QR Kod', icon: QrCode, color: 'bg-blue-500' },
   google: { label: 'Google', icon: MapPin, color: 'bg-red-500' },
@@ -115,6 +125,8 @@ export default function MisafirMemnuniyeti() {
   const [filters, setFilters] = useState({ status: '', source: '', branchId: '', priority: '' });
   const [responseContent, setResponseContent] = useState('');
   const [responseType, setResponseType] = useState('defense');
+  const [qrDataMap, setQrDataMap] = useState<Record<number, BranchQRData>>({});
+  const [loadingQr, setLoadingQr] = useState<Record<number, boolean>>({});
 
   const [externalForm, setExternalForm] = useState({
     branchId: '',
@@ -194,6 +206,62 @@ export default function MisafirMemnuniyeti() {
       toast({ title: "Harici yorum eklendi" });
     },
   });
+
+  const loadBranchQR = async (branchId: number) => {
+    if (qrDataMap[branchId] || loadingQr[branchId]) return;
+    
+    setLoadingQr(prev => ({ ...prev, [branchId]: true }));
+    try {
+      const res = await fetch(`/api/branches/${branchId}/feedback-qr`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setQrDataMap(prev => ({ ...prev, [branchId]: data }));
+      }
+    } catch (error) {
+      console.error("QR yüklenemedi:", error);
+    } finally {
+      setLoadingQr(prev => ({ ...prev, [branchId]: false }));
+    }
+  };
+
+  const downloadQR = (branchId: number, branchName: string) => {
+    const qrData = qrDataMap[branchId];
+    if (!qrData) return;
+    
+    const link = document.createElement('a');
+    link.download = `${branchName.replace(/\s+/g, '-')}-QR.png`;
+    link.href = qrData.qrCode;
+    link.click();
+  };
+
+  const printQR = (branchId: number, branchName: string) => {
+    const qrData = qrDataMap[branchId];
+    if (!qrData) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>${branchName} - Müşteri Geri Bildirim QR Kodu</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
+              img { max-width: 300px; }
+              h1 { font-size: 24px; margin-bottom: 20px; }
+              p { font-size: 14px; color: #666; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <h1>DOSPRESSO ${branchName}</h1>
+            <img src="${qrData.qrCode}" alt="QR Kod" />
+            <p>Bu QR kodu okutarak görüşlerinizi bizimle paylaşın!</p>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
 
   const StarDisplay = ({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' }) => (
     <div className="flex gap-0.5">
@@ -292,6 +360,10 @@ export default function MisafirMemnuniyeti() {
         <TabsList>
           <TabsTrigger value="list">Geri Bildirimler</TabsTrigger>
           <TabsTrigger value="analytics">Analitik</TabsTrigger>
+          <TabsTrigger value="qr-codes">
+            <QrCode className="h-4 w-4 mr-1" />
+            Şube QR Kodları
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
@@ -480,6 +552,88 @@ export default function MisafirMemnuniyeti() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="qr-codes" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                Şube QR Kodları
+              </CardTitle>
+              <CardDescription>
+                Her şube için özel QR kod oluşturun. Müşteriler bu kodu okutarak o şube hakkında geri bildirim verebilir.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {branches.map((branch) => (
+                  <Card key={branch.id} className="overflow-hidden" data-testid={`qr-card-${branch.id}`}>
+                    <CardContent className="p-4">
+                      <div className="flex flex-col items-center text-center">
+                        <h3 className="font-semibold mb-2">{branch.name}</h3>
+                        <p className="text-sm text-muted-foreground mb-3">{branch.city}</p>
+                        
+                        {qrDataMap[branch.id] ? (
+                          <>
+                            <img 
+                              src={qrDataMap[branch.id].qrCode} 
+                              alt={`${branch.name} QR Kod`}
+                              className="w-40 h-40 mb-3"
+                            />
+                            <p className="text-xs text-muted-foreground mb-3 break-all max-w-full">
+                              {qrDataMap[branch.id].url}
+                            </p>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => downloadQR(branch.id, branch.name)}
+                                data-testid={`button-download-qr-${branch.id}`}
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                İndir
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => printQR(branch.id, branch.name)}
+                                data-testid={`button-print-qr-${branch.id}`}
+                              >
+                                <Printer className="h-4 w-4 mr-1" />
+                                Yazdır
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <Button 
+                            onClick={() => loadBranchQR(branch.id)}
+                            disabled={loadingQr[branch.id]}
+                            data-testid={`button-generate-qr-${branch.id}`}
+                          >
+                            {loadingQr[branch.id] ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Yükleniyor...
+                              </>
+                            ) : (
+                              <>
+                                <QrCode className="h-4 w-4 mr-2" />
+                                QR Kod Oluştur
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {branches.length === 0 && (
+                <p className="text-center text-muted-foreground py-8">Şube bulunamadı</p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
