@@ -299,46 +299,46 @@ export default function MisafirMemnuniyeti() {
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Filter className="h-4 w-4 text-muted-foreground" />
-                <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
+                <Select value={filters.status || "_all"} onValueChange={(v) => setFilters({ ...filters, status: v === "_all" ? "" : v })}>
                   <SelectTrigger className="w-[140px]" data-testid="filter-status">
                     <SelectValue placeholder="Durum" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tümü</SelectItem>
+                    <SelectItem value="_all">Tümü</SelectItem>
                     {Object.entries(statusLabels).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={filters.source} onValueChange={(v) => setFilters({ ...filters, source: v })}>
+                <Select value={filters.source || "_all"} onValueChange={(v) => setFilters({ ...filters, source: v === "_all" ? "" : v })}>
                   <SelectTrigger className="w-[140px]" data-testid="filter-source">
                     <SelectValue placeholder="Kaynak" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tümü</SelectItem>
+                    <SelectItem value="_all">Tümü</SelectItem>
                     {Object.entries(sourceLabels).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={filters.priority} onValueChange={(v) => setFilters({ ...filters, priority: v })}>
+                <Select value={filters.priority || "_all"} onValueChange={(v) => setFilters({ ...filters, priority: v === "_all" ? "" : v })}>
                   <SelectTrigger className="w-[140px]" data-testid="filter-priority">
                     <SelectValue placeholder="Öncelik" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tümü</SelectItem>
+                    <SelectItem value="_all">Tümü</SelectItem>
                     {Object.entries(priorityLabels).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {branches.length > 0 && (
-                  <Select value={filters.branchId} onValueChange={(v) => setFilters({ ...filters, branchId: v })}>
+                  <Select value={filters.branchId || "_all"} onValueChange={(v) => setFilters({ ...filters, branchId: v === "_all" ? "" : v })}>
                     <SelectTrigger className="w-[160px]" data-testid="filter-branch">
                       <SelectValue placeholder="Şube" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tüm Şubeler</SelectItem>
+                      <SelectItem value="_all">Tüm Şubeler</SelectItem>
                       {branches.map((b) => (
                         <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                       ))}
