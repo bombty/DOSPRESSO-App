@@ -201,6 +201,7 @@ const MODULE_GROUPS = [
     icon: Settings,
     modules: [
       { key: "settings", label: "Ayarlar" },
+      { key: "bulk_data", label: "Toplu Veri Yönetimi" },
       { key: "users", label: "Kullanıcılar" },
       { key: "menu_management", label: "Menü Yönetimi" },
       { key: "content_management", label: "İçerik Yönetimi" },

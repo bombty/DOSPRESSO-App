@@ -162,6 +162,7 @@ export type PermissionModule =
   | 'leave_requests'
   | 'overtime_requests'
   | 'admin_settings'
+  | 'bulk_data'
   | 'accounting';
 
 // Permission Matrix: Define what each role can do
@@ -189,6 +190,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create', 'edit', 'approve'],
     overtime_requests: ['view', 'create', 'edit', 'approve'],
     admin_settings: ['view'],
+    bulk_data: ['view', 'edit'],
     accounting: ['view', 'create', 'edit', 'delete'],
   },
   // HQ ROLES
@@ -214,6 +216,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view'],
     overtime_requests: ['view'],
     admin_settings: [],
+    bulk_data: ['view', 'edit'],
     accounting: ['view', 'create', 'edit', 'delete'],
   },
   satinalma: {
@@ -238,6 +241,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
   coach: {
@@ -262,6 +266,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'approve'],
     overtime_requests: ['view', 'approve'],
     admin_settings: [],
+    bulk_data: ['view', 'edit'],
     accounting: [],
   },
   teknik: {
@@ -286,6 +291,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    bulk_data: ['view', 'edit'],
     accounting: [],
   },
   destek: {
@@ -310,6 +316,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
   fabrika: {
@@ -334,6 +341,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
   yatirimci_hq: {
@@ -358,6 +366,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
   // BRANCH ROLES
@@ -383,6 +392,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create', 'approve'],
     overtime_requests: ['view', 'create', 'approve'],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
   supervisor_buddy: {
@@ -407,6 +417,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
   barista: {
@@ -431,6 +442,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
   bar_buddy: {
@@ -455,6 +467,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
   stajyer: {
@@ -479,6 +492,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: ['view', 'create'],
     overtime_requests: ['view', 'create'],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
   yatirimci_branch: {
@@ -503,6 +517,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     leave_requests: [],
     overtime_requests: [],
     admin_settings: [],
+    bulk_data: [],
     accounting: [],
   },
 };
