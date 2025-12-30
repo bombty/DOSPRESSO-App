@@ -34,7 +34,8 @@ import {
   Calculator,
   Megaphone,
   UserCheck,
-  MapPin
+  MapPin,
+  Database
 } from "lucide-react";
 
 interface ModuleCard {
@@ -395,6 +396,15 @@ export function CardGridHub() {
       color: "bg-sky-500",
       description: "Kullanıcı yönetimi"
     },
+    { 
+      id: "bulk-data", 
+      icon: Database, 
+      label: "Toplu Veri Yönetimi", 
+      path: "/admin/toplu-veri-yonetimi",
+      color: "bg-indigo-600",
+      description: "Excel ile veri aktarımı",
+      roles: ["admin", "coach", "teknik", "muhasebe"]
+    },
   ];
 
   // Eğer API'den modüller gelmişse onları kullan, yoksa statik fallback
@@ -489,6 +499,9 @@ export function CardGridHub() {
       "hq-support": MessageSquare,
       "announcements": Megaphone,
       "duyurular": Megaphone,
+      "bulk-data": Database,
+      "toplu-veri": Database,
+      "toplu-veri-yonetimi": Database,
     };
     return iconMap[moduleId.toLowerCase()] || Coffee;
   };
@@ -576,6 +589,9 @@ export function CardGridHub() {
       "hq-support": "bg-rose-500",
       "announcements": "bg-red-500",
       "duyurular": "bg-red-500",
+      "bulk-data": "bg-indigo-600",
+      "toplu-veri": "bg-indigo-600",
+      "toplu-veri-yonetimi": "bg-indigo-600",
     };
     return colorMap[moduleId.toLowerCase()] || "bg-slate-400";
   };
