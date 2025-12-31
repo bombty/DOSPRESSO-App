@@ -37,8 +37,15 @@ import {
   User,
   Download,
   Printer,
-  RefreshCw
+  RefreshCw,
+  Settings,
+  Image,
+  Eye,
+  EyeOff,
+  Languages,
+  Save
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -98,6 +105,39 @@ interface BranchQRData {
   branchName: string;
 }
 
+interface FormSettings {
+  id?: number;
+  branchId: number;
+  bannerUrl: string | null;
+  logoUrl: string | null;
+  primaryColor: string;
+  backgroundColor: string;
+  welcomeMessageTr: string;
+  welcomeMessageEn: string;
+  welcomeMessageZh: string;
+  welcomeMessageAr: string;
+  welcomeMessageDe: string;
+  welcomeMessageKo: string;
+  welcomeMessageFr: string;
+  showServiceRating: boolean;
+  showCleanlinessRating: boolean;
+  showProductRating: boolean;
+  showStaffRating: boolean;
+  showStaffSelection: boolean;
+  showPhotoUpload: boolean;
+  showFeedbackTypeSelection: boolean;
+  showContactPreference: boolean;
+  showCommentField: boolean;
+  requireComment: boolean;
+  allowAnonymous: boolean;
+  defaultAnonymous: boolean;
+  requireLocationVerification: boolean;
+  maxDistanceFromBranch: number;
+  availableLanguages: string[];
+  defaultLanguage: string;
+  isActive: boolean;
+}
+
 const sourceLabels: Record<string, { label: string; icon: any; color: string }> = {
   qr_code: { label: 'QR Kod', icon: QrCode, color: 'bg-blue-500' },
   google: { label: 'Google', icon: MapPin, color: 'bg-red-500' },
@@ -134,6 +174,9 @@ export default function MisafirMemnuniyeti() {
   const [responseType, setResponseType] = useState('defense');
   const [qrDataMap, setQrDataMap] = useState<Record<number, BranchQRData>>({});
   const [loadingQr, setLoadingQr] = useState<Record<number, boolean>>({});
+  const [selectedSettingsBranchId, setSelectedSettingsBranchId] = useState<number | null>(null);
+  const [formSettings, setFormSettings] = useState<FormSettings | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const [externalForm, setExternalForm] = useState({
     branchId: '',
@@ -273,6 +316,48 @@ export default function MisafirMemnuniyeti() {
     }
   };
 
+  const loadFormSettings = async (branchId: number) => {
+    setSelectedSettingsBranchId(branchId);
+    try {
+      const res = await fetch(`/api/feedback-form-settings/branch/${branchId}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setFormSettings(data);
+      }
+    } catch (error) {
+      console.error("Form ayarları yüklenemedi:", error);
+    }
+  };
+
+  const saveFormSettings = async () => {
+    if (!selectedSettingsBranchId || !formSettings) return;
+    
+    setSavingSettings(true);
+    try {
+      const res = await fetch(`/api/feedback-form-settings/${selectedSettingsBranchId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(formSettings),
+      });
+      
+      if (res.ok) {
+        toast({ title: "Ayarlar kaydedildi" });
+      } else {
+        toast({ title: "Hata", description: "Ayarlar kaydedilemedi", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Ayarlar kaydedilemedi:", error);
+      toast({ title: "Hata", description: "Ayarlar kaydedilemedi", variant: "destructive" });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const updateFormSetting = <K extends keyof FormSettings>(key: K, value: FormSettings[K]) => {
+    setFormSettings(prev => prev ? { ...prev, [key]: value } : null);
+  };
+
   const StarDisplay = ({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' }) => (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((star) => (
@@ -373,6 +458,10 @@ export default function MisafirMemnuniyeti() {
           <TabsTrigger value="qr-codes">
             <QrCode className="h-4 w-4 mr-1" />
             Şube QR Kodları
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            <Settings className="h-4 w-4 mr-1" />
+            Form Ayarları
           </TabsTrigger>
         </TabsList>
 
@@ -688,6 +777,350 @@ export default function MisafirMemnuniyeti() {
               {branches.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">Şube bulunamadı</p>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Geri Bildirim Formu Ayarları
+              </CardTitle>
+              <CardDescription>
+                Her şube için geri bildirim formunu özelleştirin. Banner, soru seçimi, dil ayarları ve daha fazlası.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1">
+                  <Label className="mb-2 block">Şube Seçin</Label>
+                  <div className="space-y-2">
+                    {branches.map((branch) => (
+                      <Button
+                        key={branch.id}
+                        variant={selectedSettingsBranchId === branch.id ? "default" : "outline"}
+                        className="w-full justify-start"
+                        onClick={() => loadFormSettings(branch.id)}
+                        data-testid={`button-settings-branch-${branch.id}`}
+                      >
+                        <Building2 className="h-4 w-4 mr-2" />
+                        {branch.name}
+                      </Button>
+                    ))}
+                  </div>
+                  {branches.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Şube bulunamadı</p>
+                  )}
+                </div>
+
+                <div className="lg:col-span-2">
+                  {formSettings ? (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">
+                          {branches.find(b => b.id === selectedSettingsBranchId)?.name} Ayarları
+                        </h3>
+                        <Button onClick={saveFormSettings} disabled={savingSettings} data-testid="button-save-settings">
+                          {savingSettings ? (
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Kaydet
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="bannerUrl">Banner Görseli URL</Label>
+                          <Input
+                            id="bannerUrl"
+                            value={formSettings.bannerUrl || ''}
+                            onChange={(e) => updateFormSetting('bannerUrl', e.target.value || null)}
+                            placeholder="https://example.com/banner.jpg"
+                            data-testid="input-banner-url"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="logoUrl">Logo URL</Label>
+                          <Input
+                            id="logoUrl"
+                            value={formSettings.logoUrl || ''}
+                            onChange={(e) => updateFormSetting('logoUrl', e.target.value || null)}
+                            placeholder="https://example.com/logo.png"
+                            data-testid="input-logo-url"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="primaryColor">Ana Renk</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="primaryColor"
+                              type="color"
+                              value={formSettings.primaryColor}
+                              onChange={(e) => updateFormSetting('primaryColor', e.target.value)}
+                              className="w-14 h-9 p-1"
+                              data-testid="input-primary-color"
+                            />
+                            <Input
+                              value={formSettings.primaryColor}
+                              onChange={(e) => updateFormSetting('primaryColor', e.target.value)}
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="backgroundColor">Arka Plan Rengi</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="backgroundColor"
+                              type="color"
+                              value={formSettings.backgroundColor}
+                              onChange={(e) => updateFormSetting('backgroundColor', e.target.value)}
+                              className="w-14 h-9 p-1"
+                              data-testid="input-background-color"
+                            />
+                            <Input
+                              value={formSettings.backgroundColor}
+                              onChange={(e) => updateFormSetting('backgroundColor', e.target.value)}
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <Eye className="h-4 w-4" />
+                          Soru Görünürlük Ayarları
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="h-4 w-4 text-muted-foreground" />
+                              <span>Hizmet Puanı</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.showServiceRating}
+                              onCheckedChange={(v) => updateFormSetting('showServiceRating', v)}
+                              data-testid="switch-service-rating"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Brush className="h-4 w-4 text-muted-foreground" />
+                              <span>Temizlik Puanı</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.showCleanlinessRating}
+                              onCheckedChange={(v) => updateFormSetting('showCleanlinessRating', v)}
+                              data-testid="switch-cleanliness-rating"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                              <span>Ürün Kalitesi Puanı</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.showProductRating}
+                              onCheckedChange={(v) => updateFormSetting('showProductRating', v)}
+                              data-testid="switch-product-rating"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <span>Personel Puanı</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.showStaffRating}
+                              onCheckedChange={(v) => updateFormSetting('showStaffRating', v)}
+                              data-testid="switch-staff-rating"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              <span>Personel Seçimi</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.showStaffSelection}
+                              onCheckedChange={(v) => updateFormSetting('showStaffSelection', v)}
+                              data-testid="switch-staff-selection"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Image className="h-4 w-4 text-muted-foreground" />
+                              <span>Fotoğraf Yükleme</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.showPhotoUpload}
+                              onCheckedChange={(v) => updateFormSetting('showPhotoUpload', v)}
+                              data-testid="switch-photo-upload"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                              <span>Şikayet/Geri Bildirim Seçimi</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.showFeedbackTypeSelection}
+                              onCheckedChange={(v) => updateFormSetting('showFeedbackTypeSelection', v)}
+                              data-testid="switch-feedback-type"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                              <span>Cevap Bekliyorum Seçeneği</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.showContactPreference}
+                              onCheckedChange={(v) => updateFormSetting('showContactPreference', v)}
+                              data-testid="switch-contact-preference"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                              <span>Yorum Alanı</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.showCommentField}
+                              onCheckedChange={(v) => updateFormSetting('showCommentField', v)}
+                              data-testid="switch-comment-field"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                              <span>Yorum Zorunlu</span>
+                            </div>
+                            <Switch
+                              checked={formSettings.requireComment}
+                              onCheckedChange={(v) => updateFormSetting('requireComment', v)}
+                              data-testid="switch-require-comment"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <Languages className="h-4 w-4" />
+                          Karşılama Mesajları
+                        </h4>
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-sm">Türkçe</Label>
+                            <Input
+                              value={formSettings.welcomeMessageTr}
+                              onChange={(e) => updateFormSetting('welcomeMessageTr', e.target.value)}
+                              data-testid="input-welcome-tr"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-sm">English</Label>
+                            <Input
+                              value={formSettings.welcomeMessageEn}
+                              onChange={(e) => updateFormSetting('welcomeMessageEn', e.target.value)}
+                              data-testid="input-welcome-en"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-sm">Deutsch</Label>
+                            <Input
+                              value={formSettings.welcomeMessageDe}
+                              onChange={(e) => updateFormSetting('welcomeMessageDe', e.target.value)}
+                              data-testid="input-welcome-de"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Diğer Ayarlar</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <span>Anonim Gönderime İzin Ver</span>
+                            <Switch
+                              checked={formSettings.allowAnonymous}
+                              onCheckedChange={(v) => updateFormSetting('allowAnonymous', v)}
+                              data-testid="switch-allow-anonymous"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <span>Varsayılan Anonim</span>
+                            <Switch
+                              checked={formSettings.defaultAnonymous}
+                              onCheckedChange={(v) => updateFormSetting('defaultAnonymous', v)}
+                              data-testid="switch-default-anonymous"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <span>Konum Doğrulama Zorunlu</span>
+                            <Switch
+                              checked={formSettings.requireLocationVerification}
+                              onCheckedChange={(v) => updateFormSetting('requireLocationVerification', v)}
+                              data-testid="switch-require-location"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <span>Form Aktif</span>
+                            <Switch
+                              checked={formSettings.isActive}
+                              onCheckedChange={(v) => updateFormSetting('isActive', v)}
+                              data-testid="switch-form-active"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Maksimum Uzaklık (metre)</Label>
+                          <Input
+                            type="number"
+                            value={formSettings.maxDistanceFromBranch}
+                            onChange={(e) => updateFormSetting('maxDistanceFromBranch', parseInt(e.target.value) || 500)}
+                            data-testid="input-max-distance"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Varsayılan Dil</Label>
+                          <Select
+                            value={formSettings.defaultLanguage}
+                            onValueChange={(v) => updateFormSetting('defaultLanguage', v)}
+                          >
+                            <SelectTrigger data-testid="select-default-language">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="tr">Türkçe</SelectItem>
+                              <SelectItem value="en">English</SelectItem>
+                              <SelectItem value="de">Deutsch</SelectItem>
+                              <SelectItem value="ar">العربية</SelectItem>
+                              <SelectItem value="zh">中文</SelectItem>
+                              <SelectItem value="ko">한국어</SelectItem>
+                              <SelectItem value="fr">Français</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Settings className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Şube Seçin</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Form ayarlarını düzenlemek için soldaki listeden bir şube seçin
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
