@@ -3083,6 +3083,74 @@ export type InsertFeedbackResponse = z.infer<typeof insertFeedbackResponseSchema
 export type FeedbackResponse = typeof feedbackResponses.$inferSelect;
 
 // ========================================
+// FEEDBACK FORM SETTINGS (Form Özelleştirme)
+// ========================================
+
+export const feedbackFormSettings = pgTable("feedback_form_settings", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Banner / Visual customization
+  bannerUrl: text("banner_url"), // Custom banner image URL
+  logoUrl: text("logo_url"), // Custom logo URL
+  primaryColor: varchar("primary_color", { length: 20 }).default("#7c3aed"), // Primary theme color
+  backgroundColor: varchar("background_color", { length: 20 }).default("#1e1b4b"), // Background color
+  
+  // Welcome message customization (per language)
+  welcomeMessageTr: text("welcome_message_tr").default("Geri bildiriminiz bizim için çok değerli"),
+  welcomeMessageEn: text("welcome_message_en").default("Your feedback is very valuable to us"),
+  welcomeMessageZh: text("welcome_message_zh").default("您的意见对我们非常宝贵"),
+  welcomeMessageAr: text("welcome_message_ar").default("رأيك مهم جداً بالنسبة لنا"),
+  welcomeMessageDe: text("welcome_message_de").default("Ihre Meinung ist uns sehr wichtig"),
+  welcomeMessageKo: text("welcome_message_ko").default("귀하의 의견은 저희에게 매우 소중합니다"),
+  welcomeMessageFr: text("welcome_message_fr").default("Votre avis nous est très précieux"),
+  
+  // Question visibility toggles
+  showServiceRating: boolean("show_service_rating").notNull().default(true),
+  showCleanlinessRating: boolean("show_cleanliness_rating").notNull().default(true),
+  showProductRating: boolean("show_product_rating").notNull().default(true),
+  showStaffRating: boolean("show_staff_rating").notNull().default(true),
+  showStaffSelection: boolean("show_staff_selection").notNull().default(true), // Allow selecting specific staff
+  
+  // Feature toggles
+  showPhotoUpload: boolean("show_photo_upload").notNull().default(true),
+  showFeedbackTypeSelection: boolean("show_feedback_type_selection").notNull().default(true), // Feedback vs Complaint
+  showContactPreference: boolean("show_contact_preference").notNull().default(true), // Requires contact checkbox
+  showCommentField: boolean("show_comment_field").notNull().default(true),
+  requireComment: boolean("require_comment").notNull().default(false), // Make comment mandatory
+  
+  // Anonymous settings
+  allowAnonymous: boolean("allow_anonymous").notNull().default(true),
+  defaultAnonymous: boolean("default_anonymous").notNull().default(true), // Default state of anonymous checkbox
+  
+  // Location verification
+  requireLocationVerification: boolean("require_location_verification").notNull().default(false),
+  maxDistanceFromBranch: integer("max_distance_from_branch").default(500), // meters
+  
+  // Language settings
+  availableLanguages: text("available_languages").array().default(["tr", "en"]),
+  defaultLanguage: varchar("default_language", { length: 5 }).default("tr"),
+  
+  // Active status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedById: varchar("updated_by_id").references(() => users.id),
+}, (table) => [
+  index("feedback_form_settings_branch_idx").on(table.branchId),
+]);
+
+export const insertFeedbackFormSettingsSchema = createInsertSchema(feedbackFormSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFeedbackFormSettings = z.infer<typeof insertFeedbackFormSettingsSchema>;
+export type FeedbackFormSettings = typeof feedbackFormSettings.$inferSelect;
+
+// ========================================
 // MAINTENANCE SCHEDULES (Proaktif Bakım)
 // ========================================
 
