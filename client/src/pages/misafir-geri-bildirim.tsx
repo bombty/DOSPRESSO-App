@@ -18,6 +18,38 @@ interface BranchInfo {
   staff: { id: string; firstName: string; lastName: string }[];
 }
 
+interface FormSettings {
+  branchId: number;
+  bannerUrl: string | null;
+  logoUrl: string | null;
+  primaryColor: string;
+  backgroundColor: string;
+  welcomeMessageTr: string;
+  welcomeMessageEn: string;
+  welcomeMessageZh: string;
+  welcomeMessageAr: string;
+  welcomeMessageDe: string;
+  welcomeMessageKo: string;
+  welcomeMessageFr: string;
+  showServiceRating: boolean;
+  showCleanlinessRating: boolean;
+  showProductRating: boolean;
+  showStaffRating: boolean;
+  showStaffSelection: boolean;
+  showPhotoUpload: boolean;
+  showFeedbackTypeSelection: boolean;
+  showContactPreference: boolean;
+  showCommentField: boolean;
+  requireComment: boolean;
+  allowAnonymous: boolean;
+  defaultAnonymous: boolean;
+  requireLocationVerification: boolean;
+  maxDistanceFromBranch: number;
+  availableLanguages: string[];
+  defaultLanguage: string;
+  isActive: boolean;
+}
+
 // Translations for 7 languages
 const translations: Record<string, Record<string, string>> = {
   tr: {
@@ -449,6 +481,34 @@ export default function MisafirGeriBildirim() {
     enabled: !!token,
   });
 
+  // Fetch form settings for this branch
+  const { data: formSettings } = useQuery<FormSettings | null>({
+    queryKey: ['/api/feedback-form-settings/public', branchInfo?.branch.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/feedback-form-settings/public/${branchInfo?.branch.id}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!branchInfo?.branch.id,
+  });
+
+  // Apply default settings from formSettings
+  useEffect(() => {
+    if (formSettings?.defaultLanguage) {
+      setLang(formSettings.defaultLanguage);
+    }
+    // When allowAnonymous is false, force isAnonymous to false
+    if (formSettings?.allowAnonymous === false) {
+      setIsAnonymous(false);
+    } else if (formSettings?.defaultAnonymous !== undefined) {
+      setIsAnonymous(formSettings.defaultAnonymous);
+    }
+    // Skip location verification when disabled
+    if (formSettings?.requireLocationVerification === false) {
+      setLocationStatus('skipped');
+    }
+  }, [formSettings]);
+
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await fetch('/api/feedback/submit', {
@@ -520,7 +580,8 @@ export default function MisafirGeriBildirim() {
             branchInfo.branch.latitude, branchInfo.branch.longitude
           );
           
-          if (distance <= 500) {
+          const maxDistance = formSettings?.maxDistanceFromBranch || 500;
+          if (distance <= maxDistance) {
             setLocationStatus('verified');
           } else {
             setLocationStatus('failed');
@@ -705,12 +766,30 @@ export default function MisafirGeriBildirim() {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-amber-100 via-orange-50 to-amber-200 p-4 py-6 ${lang === 'ar' ? 'rtl' : 'ltr'}`}>
+    <div 
+      className={`min-h-screen p-4 py-6 ${lang === 'ar' ? 'rtl' : 'ltr'}`}
+      style={{ 
+        background: formSettings?.backgroundColor 
+          ? formSettings.backgroundColor 
+          : 'linear-gradient(to bottom right, #fef3c7, #ffedd5, #fde68a)' 
+      }}
+    >
       <div className="max-w-lg mx-auto">
+        {/* Banner Image */}
+        {formSettings?.bannerUrl && (
+          <div className="mb-4 rounded-xl overflow-hidden shadow-lg">
+            <img 
+              src={formSettings.bannerUrl} 
+              alt="Banner" 
+              className="w-full h-32 object-cover"
+            />
+          </div>
+        )}
+
         {/* Header with Logo */}
         <div className="text-center mb-6">
           <img 
-            src={logoImage} 
+            src={formSettings?.logoUrl || logoImage} 
             alt="DOSPRESSO" 
             className="h-28 mx-auto mb-4 drop-shadow-lg"
           />
@@ -728,20 +807,38 @@ export default function MisafirGeriBildirim() {
         <LanguageSelector />
 
         <Card className="shadow-xl border-0 overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-amber-500 to-orange-500 text-white pb-4">
+          <CardHeader 
+            className="text-white pb-4"
+            style={{ 
+              background: formSettings?.primaryColor 
+                ? `linear-gradient(to right, ${formSettings.primaryColor}, ${formSettings.primaryColor}dd)` 
+                : 'linear-gradient(to right, #f59e0b, #ea580c)' 
+            }}
+          >
             <CardTitle className="text-xl flex items-center gap-2">
               <Globe className="h-5 w-5" />
               {t.title}
             </CardTitle>
             <CardDescription className="text-amber-100">
-              {t.subtitle}
+              {(() => {
+                if (!formSettings) return t.subtitle;
+                switch (lang) {
+                  case 'en': return formSettings.welcomeMessageEn || t.subtitle;
+                  case 'de': return formSettings.welcomeMessageDe || t.subtitle;
+                  case 'ar': return formSettings.welcomeMessageAr || t.subtitle;
+                  case 'zh': return formSettings.welcomeMessageZh || t.subtitle;
+                  case 'ko': return formSettings.welcomeMessageKo || t.subtitle;
+                  case 'fr': return formSettings.welcomeMessageFr || t.subtitle;
+                  default: return formSettings.welcomeMessageTr || t.subtitle;
+                }
+              })()}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Location Status */}
-              {locationStatus === 'pending' && branchInfo.branch.latitude && (
+              {formSettings?.requireLocationVerification !== false && locationStatus === 'pending' && branchInfo.branch.latitude && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <Navigation className="h-5 w-5 text-blue-500 mt-0.5" />
@@ -783,33 +880,35 @@ export default function MisafirGeriBildirim() {
               )}
 
               {/* Feedback Type Selection */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2 text-sm font-medium">
-                  {t.feedbackTypeLabel}
-                </Label>
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant={feedbackType === 'feedback' ? 'default' : 'outline'}
-                    className={`flex-1 ${feedbackType === 'feedback' ? 'bg-amber-600 hover:bg-amber-700' : ''}`}
-                    onClick={() => setFeedbackType('feedback')}
-                    data-testid="button-feedback-type-feedback"
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    {t.feedbackOption}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={feedbackType === 'complaint' ? 'default' : 'outline'}
-                    className={`flex-1 ${feedbackType === 'complaint' ? 'bg-red-600 hover:bg-red-700' : ''}`}
-                    onClick={() => setFeedbackType('complaint')}
-                    data-testid="button-feedback-type-complaint"
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    {t.complaintOption}
-                  </Button>
+              {(formSettings?.showFeedbackTypeSelection !== false) && (
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    {t.feedbackTypeLabel}
+                  </Label>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant={feedbackType === 'feedback' ? 'default' : 'outline'}
+                      className={`flex-1 ${feedbackType === 'feedback' ? 'bg-amber-600 hover:bg-amber-700' : ''}`}
+                      onClick={() => setFeedbackType('feedback')}
+                      data-testid="button-feedback-type-feedback"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      {t.feedbackOption}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={feedbackType === 'complaint' ? 'default' : 'outline'}
+                      className={`flex-1 ${feedbackType === 'complaint' ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                      onClick={() => setFeedbackType('complaint')}
+                      data-testid="button-feedback-type-complaint"
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      {t.complaintOption}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Overall Rating */}
               <div className="bg-amber-50/50 rounded-xl p-4 border border-amber-100">
@@ -823,41 +922,52 @@ export default function MisafirGeriBildirim() {
               </div>
 
               {/* Detailed Ratings */}
-              <div className="border-t pt-4">
-                <p className="text-sm text-muted-foreground mb-4 flex items-center gap-2">
-                  {t.detailedRating} 
-                  <Badge variant="outline" className="text-xs">{t.optional}</Badge>
-                </p>
-                <div className="grid gap-4">
-                  <StarRating
-                    value={serviceRating}
-                    onChange={setServiceRating}
-                    label={t.serviceQuality}
-                    icon={Sparkles}
-                  />
-                  <StarRating
-                    value={cleanlinessRating}
-                    onChange={setCleanlinessRating}
-                    label={t.cleanliness}
-                    icon={Brush}
-                  />
-                  <StarRating
-                    value={productRating}
-                    onChange={setProductRating}
-                    label={t.productQuality}
-                    icon={Package}
-                  />
-                  <StarRating
-                    value={staffRating}
-                    onChange={setStaffRating}
-                    label={t.staff}
-                    icon={User}
-                  />
+              {(formSettings?.showServiceRating !== false || formSettings?.showCleanlinessRating !== false || 
+                formSettings?.showProductRating !== false || formSettings?.showStaffRating !== false) && (
+                <div className="border-t pt-4">
+                  <p className="text-sm text-muted-foreground mb-4 flex items-center gap-2">
+                    {t.detailedRating} 
+                    <Badge variant="outline" className="text-xs">{t.optional}</Badge>
+                  </p>
+                  <div className="grid gap-4">
+                    {(formSettings?.showServiceRating !== false) && (
+                      <StarRating
+                        value={serviceRating}
+                        onChange={setServiceRating}
+                        label={t.serviceQuality}
+                        icon={Sparkles}
+                      />
+                    )}
+                    {(formSettings?.showCleanlinessRating !== false) && (
+                      <StarRating
+                        value={cleanlinessRating}
+                        onChange={setCleanlinessRating}
+                        label={t.cleanliness}
+                        icon={Brush}
+                      />
+                    )}
+                    {(formSettings?.showProductRating !== false) && (
+                      <StarRating
+                        value={productRating}
+                        onChange={setProductRating}
+                        label={t.productQuality}
+                        icon={Package}
+                      />
+                    )}
+                    {(formSettings?.showStaffRating !== false) && (
+                      <StarRating
+                        value={staffRating}
+                        onChange={setStaffRating}
+                        label={t.staff}
+                        icon={User}
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Staff Selection */}
-              {branchInfo.staff.length > 0 && (
+              {branchInfo.staff.length > 0 && (formSettings?.showStaffSelection !== false) && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <User className="h-4 w-4 text-amber-600" />
@@ -881,107 +991,119 @@ export default function MisafirGeriBildirim() {
               )}
 
               {/* Comment */}
-              <div className="space-y-2">
-                <Label htmlFor="comment">{t.yourComment}</Label>
-                <Textarea
-                  id="comment"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder={t.commentPlaceholder}
-                  className="min-h-[100px]"
-                  data-testid="input-comment"
-                />
-              </div>
+              {(formSettings?.showCommentField !== false) && (
+                <div className="space-y-2">
+                  <Label htmlFor="comment">
+                    {t.yourComment}
+                    {formSettings?.requireComment && <span className="text-red-500 ml-1">*</span>}
+                  </Label>
+                  <Textarea
+                    id="comment"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder={t.commentPlaceholder}
+                    className="min-h-[100px]"
+                    data-testid="input-comment"
+                    required={formSettings?.requireComment}
+                  />
+                </div>
+              )}
 
               {/* Photo Upload */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2">
-                  <Camera className="h-4 w-4 text-amber-600" />
-                  {t.addPhotos}
-                  <Badge variant="outline" className="text-xs">{t.maxPhotos}</Badge>
-                </Label>
-                
-                {photos.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {photos.map((photo, index) => (
-                      <div key={index} className="relative">
-                        <img 
-                          src={photo.preview} 
-                          alt={`Photo ${index + 1}`}
-                          className="w-20 h-20 object-cover rounded-lg border"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removePhoto(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {(formSettings?.showPhotoUpload !== false) && (
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <Camera className="h-4 w-4 text-amber-600" />
+                    {t.addPhotos}
+                    <Badge variant="outline" className="text-xs">{t.maxPhotos}</Badge>
+                  </Label>
+                  
+                  {photos.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {photos.map((photo, index) => (
+                        <div key={index} className="relative">
+                          <img 
+                            src={photo.preview} 
+                            alt={`Photo ${index + 1}`}
+                            className="w-20 h-20 object-cover rounded-lg border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                {photos.length < 3 && (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handlePhotoUpload}
-                      className="hidden"
-                      id="photo-upload"
-                      disabled={uploadingPhoto}
-                    />
-                    <label htmlFor="photo-upload">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="cursor-pointer"
+                  {photos.length < 3 && (
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        id="photo-upload"
                         disabled={uploadingPhoto}
-                        asChild
-                      >
-                        <span>
-                          {uploadingPhoto ? (
-                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Yükleniyor...</>
-                          ) : (
-                            <><Camera className="h-4 w-4 mr-2" /> {t.addPhotos}</>
-                          )}
-                        </span>
-                      </Button>
-                    </label>
-                  </div>
-                )}
-              </div>
+                      />
+                      <label htmlFor="photo-upload">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="cursor-pointer"
+                          disabled={uploadingPhoto}
+                          asChild
+                        >
+                          <span>
+                            {uploadingPhoto ? (
+                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Yükleniyor...</>
+                            ) : (
+                              <><Camera className="h-4 w-4 mr-2" /> {t.addPhotos}</>
+                            )}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Anonymous Checkbox */}
-              <div className="flex items-center space-x-2 bg-gray-50 p-3 rounded-lg">
-                <Checkbox
-                  id="anonymous"
-                  checked={isAnonymous}
-                  onCheckedChange={(checked) => setIsAnonymous(!!checked)}
-                  data-testid="checkbox-anonymous"
-                />
-                <Label htmlFor="anonymous" className="text-sm cursor-pointer">
-                  {t.anonymous}
-                </Label>
-              </div>
+              {(formSettings?.allowAnonymous !== false) && (
+                <div className="flex items-center space-x-2 bg-gray-50 p-3 rounded-lg">
+                  <Checkbox
+                    id="anonymous"
+                    checked={isAnonymous}
+                    onCheckedChange={(checked) => setIsAnonymous(!!checked)}
+                    data-testid="checkbox-anonymous"
+                  />
+                  <Label htmlFor="anonymous" className="text-sm cursor-pointer">
+                    {t.anonymous}
+                  </Label>
+                </div>
+              )}
 
               {/* Requires Contact Checkbox */}
-              <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                <Checkbox
-                  id="requiresContact"
-                  checked={requiresContact}
-                  onCheckedChange={(checked) => setRequiresContact(!!checked)}
-                  data-testid="checkbox-requires-contact"
-                />
-                <div className="flex flex-col">
-                  <Label htmlFor="requiresContact" className="text-sm cursor-pointer font-medium text-blue-800">
-                    {t.requiresContact}
-                  </Label>
-                  <span className="text-xs text-blue-600">{t.requiresContactDesc}</span>
+              {(formSettings?.showContactPreference !== false) && (
+                <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <Checkbox
+                    id="requiresContact"
+                    checked={requiresContact}
+                    onCheckedChange={(checked) => setRequiresContact(!!checked)}
+                    data-testid="checkbox-requires-contact"
+                  />
+                  <div className="flex flex-col">
+                    <Label htmlFor="requiresContact" className="text-sm cursor-pointer font-medium text-blue-800">
+                      {t.requiresContact}
+                    </Label>
+                    <span className="text-xs text-blue-600">{t.requiresContactDesc}</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Contact Info (if not anonymous) */}
               {!isAnonymous && (
