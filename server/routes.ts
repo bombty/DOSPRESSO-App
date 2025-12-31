@@ -194,6 +194,8 @@ import {
   insertSalaryDeductionTypeSchema,
   insertSalaryDeductionSchema,
   insertMonthlyPayrollSchema,
+  feedbackFormSettings,
+  insertFeedbackFormSettingsSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -23337,6 +23339,261 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error checking SLA:", error);
       res.status(500).json({ message: "SLA kontrolü başarısız" });
+    }
+  });
+
+  // ========================================
+  // FEEDBACK FORM SETTINGS (Form Özelleştirme)
+  // ========================================
+
+  // Get feedback form settings for a branch (public - for guest form)
+  app.get('/api/feedback-form-settings/branch/:branchId', async (req, res) => {
+    try {
+      const { branchId } = req.params;
+      const branchIdNum = parseInt(branchId);
+      
+      if (isNaN(branchIdNum)) {
+        return res.status(400).json({ message: "Geçersiz şube ID'si" });
+      }
+
+      const settings = await db.select()
+        .from(feedbackFormSettings)
+        .where(eq(feedbackFormSettings.branchId, branchIdNum))
+        .limit(1);
+
+      if (settings.length === 0) {
+        // Return default settings if none exist
+        return res.json({
+          branchId: branchIdNum,
+          bannerUrl: null,
+          logoUrl: null,
+          primaryColor: "#7c3aed",
+          backgroundColor: "#1e1b4b",
+          welcomeMessageTr: "Geri bildiriminiz bizim için çok değerli",
+          welcomeMessageEn: "Your feedback is very valuable to us",
+          welcomeMessageZh: "您的意见对我们非常宝贵",
+          welcomeMessageAr: "رأيك مهم جداً بالنسبة لنا",
+          welcomeMessageDe: "Ihre Meinung ist uns sehr wichtig",
+          welcomeMessageKo: "귀하의 의견은 저희에게 매우 소중합니다",
+          welcomeMessageFr: "Votre avis nous est très précieux",
+          showServiceRating: true,
+          showCleanlinessRating: true,
+          showProductRating: true,
+          showStaffRating: true,
+          showStaffSelection: true,
+          showPhotoUpload: true,
+          showFeedbackTypeSelection: true,
+          showContactPreference: true,
+          showCommentField: true,
+          requireComment: false,
+          allowAnonymous: true,
+          defaultAnonymous: true,
+          requireLocationVerification: false,
+          maxDistanceFromBranch: 500,
+          availableLanguages: ["tr", "en"],
+          defaultLanguage: "tr",
+          isActive: true,
+        });
+      }
+
+      res.json(settings[0]);
+    } catch (error: any) {
+      console.error("Error fetching feedback form settings:", error);
+      res.status(500).json({ message: "Form ayarları yüklenemedi" });
+    }
+  });
+
+  // Get feedback form settings by token (for guest form using QR token)
+  app.get('/api/feedback-form-settings/token/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+
+      // Find branch by token
+      const branch = await db.select()
+        .from(branches)
+        .where(eq(branches.feedbackQrToken, token))
+        .limit(1);
+
+      if (branch.length === 0) {
+        return res.status(404).json({ message: "Geçersiz QR kod" });
+      }
+
+      const branchId = branch[0].id;
+
+      const settings = await db.select()
+        .from(feedbackFormSettings)
+        .where(eq(feedbackFormSettings.branchId, branchId))
+        .limit(1);
+
+      if (settings.length === 0) {
+        // Return default settings
+        return res.json({
+          branchId,
+          branchName: branch[0].name,
+          bannerUrl: null,
+          logoUrl: null,
+          primaryColor: "#7c3aed",
+          backgroundColor: "#1e1b4b",
+          welcomeMessageTr: "Geri bildiriminiz bizim için çok değerli",
+          welcomeMessageEn: "Your feedback is very valuable to us",
+          welcomeMessageZh: "您的意见对我们非常宝贵",
+          welcomeMessageAr: "رأيك مهم جداً بالنسبة لنا",
+          welcomeMessageDe: "Ihre Meinung ist uns sehr wichtig",
+          welcomeMessageKo: "귀하의 의견은 저희에게 매우 소중합니다",
+          welcomeMessageFr: "Votre avis nous est très précieux",
+          showServiceRating: true,
+          showCleanlinessRating: true,
+          showProductRating: true,
+          showStaffRating: true,
+          showStaffSelection: true,
+          showPhotoUpload: true,
+          showFeedbackTypeSelection: true,
+          showContactPreference: true,
+          showCommentField: true,
+          requireComment: false,
+          allowAnonymous: true,
+          defaultAnonymous: true,
+          requireLocationVerification: false,
+          maxDistanceFromBranch: 500,
+          availableLanguages: ["tr", "en"],
+          defaultLanguage: "tr",
+          isActive: true,
+        });
+      }
+
+      res.json({ ...settings[0], branchName: branch[0].name });
+    } catch (error: any) {
+      console.error("Error fetching feedback form settings by token:", error);
+      res.status(500).json({ message: "Form ayarları yüklenemedi" });
+    }
+  });
+
+  // Get all feedback form settings (admin)
+  app.get('/api/feedback-form-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+
+      if (!hasPermission(userRole, 'customer_satisfaction', 'view')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      let query = db.select({
+        id: feedbackFormSettings.id,
+        branchId: feedbackFormSettings.branchId,
+        branchName: branches.name,
+        bannerUrl: feedbackFormSettings.bannerUrl,
+        logoUrl: feedbackFormSettings.logoUrl,
+        primaryColor: feedbackFormSettings.primaryColor,
+        backgroundColor: feedbackFormSettings.backgroundColor,
+        showServiceRating: feedbackFormSettings.showServiceRating,
+        showCleanlinessRating: feedbackFormSettings.showCleanlinessRating,
+        showProductRating: feedbackFormSettings.showProductRating,
+        showStaffRating: feedbackFormSettings.showStaffRating,
+        showStaffSelection: feedbackFormSettings.showStaffSelection,
+        showPhotoUpload: feedbackFormSettings.showPhotoUpload,
+        showFeedbackTypeSelection: feedbackFormSettings.showFeedbackTypeSelection,
+        showContactPreference: feedbackFormSettings.showContactPreference,
+        showCommentField: feedbackFormSettings.showCommentField,
+        requireComment: feedbackFormSettings.requireComment,
+        isActive: feedbackFormSettings.isActive,
+        updatedAt: feedbackFormSettings.updatedAt,
+      })
+      .from(feedbackFormSettings)
+      .leftJoin(branches, eq(feedbackFormSettings.branchId, branches.id));
+
+      // Branch users can only see their own branch settings
+      if (isBranchRole(userRole) && userBranchId) {
+        const result = await query.where(eq(feedbackFormSettings.branchId, userBranchId));
+        return res.json(result);
+      }
+
+      const result = await query;
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching feedback form settings:", error);
+      res.status(500).json({ message: "Form ayarları yüklenemedi" });
+    }
+  });
+
+  // Create or update feedback form settings for a branch
+  app.put('/api/feedback-form-settings/:branchId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { branchId } = req.params;
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      const userBranchId = req.user?.branchId;
+
+      const branchIdNum = parseInt(branchId);
+      if (isNaN(branchIdNum)) {
+        return res.status(400).json({ message: "Geçersiz şube ID'si" });
+      }
+
+      if (!hasPermission(userRole, 'customer_satisfaction', 'edit')) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      // Branch users can only edit their own branch
+      if (isBranchRole(userRole) && userBranchId !== branchIdNum) {
+        return res.status(403).json({ message: "Sadece kendi şubenizi düzenleyebilirsiniz" });
+      }
+
+      // Check if settings exist
+      const existing = await db.select()
+        .from(feedbackFormSettings)
+        .where(eq(feedbackFormSettings.branchId, branchIdNum))
+        .limit(1);
+
+      const settingsData = {
+        branchId: branchIdNum,
+        bannerUrl: req.body.bannerUrl || null,
+        logoUrl: req.body.logoUrl || null,
+        primaryColor: req.body.primaryColor || "#7c3aed",
+        backgroundColor: req.body.backgroundColor || "#1e1b4b",
+        welcomeMessageTr: req.body.welcomeMessageTr || "Geri bildiriminiz bizim için çok değerli",
+        welcomeMessageEn: req.body.welcomeMessageEn || "Your feedback is very valuable to us",
+        welcomeMessageZh: req.body.welcomeMessageZh || "您的意见对我们非常宝贵",
+        welcomeMessageAr: req.body.welcomeMessageAr || "رأيك مهم جداً بالنسبة لنا",
+        welcomeMessageDe: req.body.welcomeMessageDe || "Ihre Meinung ist uns sehr wichtig",
+        welcomeMessageKo: req.body.welcomeMessageKo || "귀하의 의견은 저희에게 매우 소중합니다",
+        welcomeMessageFr: req.body.welcomeMessageFr || "Votre avis nous est très précieux",
+        showServiceRating: req.body.showServiceRating ?? true,
+        showCleanlinessRating: req.body.showCleanlinessRating ?? true,
+        showProductRating: req.body.showProductRating ?? true,
+        showStaffRating: req.body.showStaffRating ?? true,
+        showStaffSelection: req.body.showStaffSelection ?? true,
+        showPhotoUpload: req.body.showPhotoUpload ?? true,
+        showFeedbackTypeSelection: req.body.showFeedbackTypeSelection ?? true,
+        showContactPreference: req.body.showContactPreference ?? true,
+        showCommentField: req.body.showCommentField ?? true,
+        requireComment: req.body.requireComment ?? false,
+        allowAnonymous: req.body.allowAnonymous ?? true,
+        defaultAnonymous: req.body.defaultAnonymous ?? true,
+        requireLocationVerification: req.body.requireLocationVerification ?? false,
+        maxDistanceFromBranch: req.body.maxDistanceFromBranch ?? 500,
+        availableLanguages: req.body.availableLanguages || ["tr", "en"],
+        defaultLanguage: req.body.defaultLanguage || "tr",
+        isActive: req.body.isActive ?? true,
+        updatedById: userId,
+        updatedAt: new Date(),
+      };
+
+      let result;
+      if (existing.length === 0) {
+        // Create new settings
+        [result] = await db.insert(feedbackFormSettings).values(settingsData).returning();
+      } else {
+        // Update existing settings
+        [result] = await db.update(feedbackFormSettings)
+          .set(settingsData)
+          .where(eq(feedbackFormSettings.branchId, branchIdNum))
+          .returning();
+      }
+
+      res.json({ success: true, settings: result });
+    } catch (error: any) {
+      console.error("Error saving feedback form settings:", error);
+      res.status(500).json({ message: "Form ayarları kaydedilemedi" });
     }
   });
 
