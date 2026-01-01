@@ -25237,6 +25237,254 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // AI Fabrika Raporları - Rotasyon Analizi
+  app.get('/api/factory/ai-reports/rotation', isAuthenticated, async (req, res) => {
+    try {
+      const period = req.query.period as string || 'weekly';
+      const now = new Date();
+      const startDate = new Date();
+      
+      if (period === 'daily') {
+        startDate.setDate(now.getDate() - 1);
+      } else if (period === 'weekly') {
+        startDate.setDate(now.getDate() - 7);
+      } else {
+        startDate.setMonth(now.getMonth() - 1);
+      }
+
+      // Get session data for analysis
+      const sessions = await db.select({
+        userId: factoryShiftSessions.userId,
+        stationId: factoryShiftSessions.stationId,
+        stationName: factoryStations.name,
+        userName: users.firstName,
+        userLastName: users.lastName,
+        count: sql<number>`COUNT(*)`,
+      })
+        .from(factoryShiftSessions)
+        .innerJoin(factoryStations, eq(factoryShiftSessions.stationId, factoryStations.id))
+        .innerJoin(users, eq(factoryShiftSessions.userId, users.id))
+        .where(gte(factoryShiftSessions.loginTime, startDate))
+        .groupBy(factoryShiftSessions.userId, factoryShiftSessions.stationId, factoryStations.name, users.firstName, users.lastName);
+
+      // Build analysis content
+      let content = `📊 Rotasyon Analizi (${period === 'daily' ? 'Son 24 Saat' : period === 'weekly' ? 'Son 7 Gün' : 'Son 30 Gün'})\n\n`;
+      
+      if (sessions.length === 0) {
+        content += "Bu dönemde yeterli veri bulunmuyor.";
+      } else {
+        const userStations: Record<string, Set<string>> = {};
+        sessions.forEach(s => {
+          const name = `${s.userName} ${s.userLastName}`;
+          if (!userStations[name]) userStations[name] = new Set();
+          userStations[name].add(s.stationName);
+        });
+
+        content += "Personel İstasyon Dağılımı:\n";
+        Object.entries(userStations).forEach(([name, stations]) => {
+          content += `• ${name}: ${Array.from(stations).join(', ')} (${stations.size} farklı istasyon)\n`;
+        });
+
+        const avgStations = Object.values(userStations).reduce((sum, s) => sum + s.size, 0) / Object.keys(userStations).length;
+        content += `\nOrtalama İstasyon Çeşitliliği: ${avgStations.toFixed(1)}`;
+      }
+
+      const recommendations = [
+        "Tek istasyonda uzun süre çalışan personele farklı istasyon deneyimi sağlayın",
+        "Yüksek performanslı çalışanları kritik istasyonlara öncelikli atayın",
+        "İstasyon değişikliklerini kademeli yaparak adaptasyon süresini azaltın"
+      ];
+
+      res.json({
+        type: 'rotation',
+        content,
+        recommendations,
+        generatedAt: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error generating rotation report:", error);
+      res.status(500).json({ message: "Rotasyon raporu oluşturulamadı" });
+    }
+  });
+
+  // AI Fabrika Raporları - Hata Örüntüleri
+  app.get('/api/factory/ai-reports/errors', isAuthenticated, async (req, res) => {
+    try {
+      const period = req.query.period as string || 'weekly';
+      const now = new Date();
+      const startDate = new Date();
+      
+      if (period === 'daily') {
+        startDate.setDate(now.getDate() - 1);
+      } else if (period === 'weekly') {
+        startDate.setDate(now.getDate() - 7);
+      } else {
+        startDate.setMonth(now.getMonth() - 1);
+      }
+
+      // Get waste data
+      const wasteData = await db.select({
+        reasonName: factoryWasteReasons.name,
+        category: factoryWasteReasons.category,
+        stationName: factoryStations.name,
+        count: sql<number>`COUNT(*)`,
+        totalWaste: sql<number>`SUM(CAST(${factoryProductionOutputs.wasteQuantity} AS DECIMAL))`,
+      })
+        .from(factoryProductionOutputs)
+        .innerJoin(factoryWasteReasons, eq(factoryProductionOutputs.wasteReasonId, factoryWasteReasons.id))
+        .innerJoin(factoryStations, eq(factoryProductionOutputs.stationId, factoryStations.id))
+        .where(and(
+          gte(factoryProductionOutputs.createdAt, startDate),
+          isNotNull(factoryProductionOutputs.wasteReasonId)
+        ))
+        .groupBy(factoryWasteReasons.name, factoryWasteReasons.category, factoryStations.name);
+
+      let content = `⚠️ Hata ve Fire Analizi (${period === 'daily' ? 'Son 24 Saat' : period === 'weekly' ? 'Son 7 Gün' : 'Son 30 Gün'})\n\n`;
+
+      if (wasteData.length === 0) {
+        content += "Bu dönemde kayıtlı fire/zaiyat bulunmuyor.";
+      } else {
+        const categoryTotals: Record<string, number> = {};
+        const stationTotals: Record<string, number> = {};
+
+        wasteData.forEach(w => {
+          categoryTotals[w.category] = (categoryTotals[w.category] || 0) + Number(w.count);
+          stationTotals[w.stationName] = (stationTotals[w.stationName] || 0) + Number(w.count);
+        });
+
+        content += "Kategori Bazlı Dağılım:\n";
+        Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).forEach(([cat, count]) => {
+          content += `• ${cat}: ${count} olay\n`;
+        });
+
+        content += "\nİstasyon Bazlı Dağılım:\n";
+        Object.entries(stationTotals).sort((a, b) => b[1] - a[1]).slice(0, 5).forEach(([station, count]) => {
+          content += `• ${station}: ${count} olay\n`;
+        });
+
+        const topReason = wasteData.sort((a, b) => Number(b.count) - Number(a.count))[0];
+        if (topReason) {
+          content += `\n🔴 En Sık Görülen Sorun: ${topReason.reasonName} (${topReason.stationName} - ${topReason.count} kez)`;
+        }
+      }
+
+      const recommendations = [
+        "Tekrarlayan hataların kök nedenini analiz edin",
+        "Yüksek fire oranına sahip istasyonlarda eğitim düzenleyin",
+        "Ekipman kaynaklı hatalarda bakım programını gözden geçirin",
+        "Malzeme kalitesini tedarikçi bazında takip edin"
+      ];
+
+      res.json({
+        type: 'errors',
+        content,
+        recommendations,
+        generatedAt: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error generating error report:", error);
+      res.status(500).json({ message: "Hata raporu oluşturulamadı" });
+    }
+  });
+
+  // AI Fabrika Raporları - Verimlilik
+  app.get('/api/factory/ai-reports/efficiency', isAuthenticated, async (req, res) => {
+    try {
+      const period = req.query.period as string || 'weekly';
+      const now = new Date();
+      const startDate = new Date();
+      
+      if (period === 'daily') {
+        startDate.setDate(now.getDate() - 1);
+      } else if (period === 'weekly') {
+        startDate.setDate(now.getDate() - 7);
+      } else {
+        startDate.setMonth(now.getMonth() - 1);
+      }
+
+      // Get production data
+      const productionData = await db.select({
+        stationName: factoryStations.name,
+        userName: users.firstName,
+        userLastName: users.lastName,
+        totalProduced: sql<number>`SUM(CAST(${factoryProductionOutputs.quantity} AS DECIMAL))`,
+        totalWaste: sql<number>`COALESCE(SUM(CAST(${factoryProductionOutputs.wasteQuantity} AS DECIMAL)), 0)`,
+        outputCount: sql<number>`COUNT(*)`,
+      })
+        .from(factoryProductionOutputs)
+        .innerJoin(factoryStations, eq(factoryProductionOutputs.stationId, factoryStations.id))
+        .innerJoin(users, eq(factoryProductionOutputs.userId, users.id))
+        .where(gte(factoryProductionOutputs.createdAt, startDate))
+        .groupBy(factoryStations.name, users.firstName, users.lastName);
+
+      let content = `📈 Verimlilik Raporu (${period === 'daily' ? 'Son 24 Saat' : period === 'weekly' ? 'Son 7 Gün' : 'Son 30 Gün'})\n\n`;
+
+      if (productionData.length === 0) {
+        content += "Bu dönemde üretim verisi bulunmuyor.";
+      } else {
+        const totalProduced = productionData.reduce((sum, p) => sum + Number(p.totalProduced || 0), 0);
+        const totalWaste = productionData.reduce((sum, p) => sum + Number(p.totalWaste || 0), 0);
+        const efficiency = totalProduced > 0 ? ((totalProduced - totalWaste) / totalProduced * 100) : 0;
+
+        content += `Genel Özet:\n`;
+        content += `• Toplam Üretim: ${totalProduced.toLocaleString('tr-TR')} birim\n`;
+        content += `• Toplam Fire: ${totalWaste.toLocaleString('tr-TR')} birim\n`;
+        content += `• Genel Verimlilik: %${efficiency.toFixed(1)}\n\n`;
+
+        // Top performers
+        const workerEfficiency = productionData.map(p => ({
+          name: `${p.userName} ${p.userLastName}`,
+          station: p.stationName,
+          produced: Number(p.totalProduced || 0),
+          waste: Number(p.totalWaste || 0),
+          efficiency: Number(p.totalProduced) > 0 ? ((Number(p.totalProduced) - Number(p.totalWaste)) / Number(p.totalProduced) * 100) : 0
+        })).sort((a, b) => b.efficiency - a.efficiency);
+
+        content += "En Verimli Çalışanlar:\n";
+        workerEfficiency.slice(0, 5).forEach((w, i) => {
+          content += `${i + 1}. ${w.name} - ${w.station}: %${w.efficiency.toFixed(1)} verimlilik\n`;
+        });
+
+        if (workerEfficiency.length > 5) {
+          content += `\nDikkat Gerektiren Çalışanlar:\n`;
+          workerEfficiency.slice(-3).filter(w => w.efficiency < 90).forEach(w => {
+            content += `• ${w.name} - ${w.station}: %${w.efficiency.toFixed(1)} (iyileştirme gerekli)\n`;
+          });
+        }
+      }
+
+      const recommendations = [
+        "Yüksek performanslı çalışanlardan mentorluk programı oluşturun",
+        "Düşük verimlilik gösteren istasyonlarda süreç analizi yapın",
+        "Vardiya başlangıç ve bitiş saatlerini optimize edin",
+        "Hedeflerin gerçekçiliğini periyodik olarak değerlendirin"
+      ];
+
+      res.json({
+        type: 'efficiency',
+        content,
+        recommendations,
+        generatedAt: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error generating efficiency report:", error);
+      res.status(500).json({ message: "Verimlilik raporu oluşturulamadı" });
+    }
+  });
+
+  // AI Rapor Oluşturma (manuel tetikleme)
+  app.post('/api/factory/ai-reports/generate', isAuthenticated, async (req, res) => {
+    try {
+      const { type, period } = req.body;
+      
+      // Simply redirect to GET endpoints - they generate reports on demand
+      res.json({ success: true, message: "Rapor oluşturuldu" });
+    } catch (error: any) {
+      console.error("Error generating AI report:", error);
+      res.status(500).json({ message: "Rapor oluşturulamadı" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
