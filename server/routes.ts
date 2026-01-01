@@ -25237,9 +25237,17 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // AI Fabrika Raporları - Rotasyon Analizi
+  // AI Fabrika Raporları - Rotasyon Analizi (HQ Only)
   app.get('/api/factory/ai-reports/rotation', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      const role = user?.role || '';
+      
+      // Only true HQ roles can access cross-branch analytics
+      if (!isHQRole(role as UserRoleType) && role !== 'admin') {
+        return res.status(403).json({ message: "Bu rapora erişim yetkiniz yok" });
+      }
+      
       const period = req.query.period as string || 'weekly';
       const now = new Date();
       const startDate = new Date();
@@ -25307,9 +25315,17 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // AI Fabrika Raporları - Hata Örüntüleri
+  // AI Fabrika Raporları - Hata Örüntüleri (HQ Only)
   app.get('/api/factory/ai-reports/errors', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      const role = user?.role || '';
+      
+      // Only true HQ roles can access cross-branch analytics
+      if (!isHQRole(role as UserRoleType) && role !== 'admin') {
+        return res.status(403).json({ message: "Bu rapora erişim yetkiniz yok" });
+      }
+      
       const period = req.query.period as string || 'weekly';
       const now = new Date();
       const startDate = new Date();
@@ -25387,9 +25403,17 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // AI Fabrika Raporları - Verimlilik
+  // AI Fabrika Raporları - Verimlilik (HQ Only)
   app.get('/api/factory/ai-reports/efficiency', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      const role = user?.role || '';
+      
+      // Only true HQ roles can access cross-branch analytics
+      if (!isHQRole(role as UserRoleType) && role !== 'admin') {
+        return res.status(403).json({ message: "Bu rapora erişim yetkiniz yok" });
+      }
+      
       const period = req.query.period as string || 'weekly';
       const now = new Date();
       const startDate = new Date();

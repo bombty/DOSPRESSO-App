@@ -75,7 +75,7 @@ const ROLE_GROUPS = {
     roles: ["muhasebe", "teknik", "destek", "coach", "satinalma", "yatirimci_hq"],
     scope: "hq"
   },
-  fabrika: { label: "Fabrika", color: "bg-orange-500", roles: ["fabrika"], scope: "hq" },
+  fabrika: { label: "Fabrika", color: "bg-orange-500", roles: ["fabrika", "fabrika_mudur", "fabrika_operator"], scope: "hq" },
   sube: { label: "Şube Rolleri", color: "bg-green-500", roles: ["supervisor", "supervisor_buddy", "barista", "bar_buddy", "stajyer", "yatirimci_branch"], scope: "branch" },
 };
 
@@ -87,7 +87,9 @@ const ROLE_LABELS: Record<string, string> = {
   coach: "Coach",
   satinalma: "Satın Alma",
   yatirimci_hq: "Yatırımcı HQ",
-  fabrika: "Fabrika",
+  fabrika: "Fabrika Personeli",
+  fabrika_mudur: "Fabrika Müdür",
+  fabrika_operator: "Fabrika Operatör",
   supervisor: "Supervisor",
   supervisor_buddy: "Supervisor Buddy",
   barista: "Barista",
@@ -184,6 +186,20 @@ const MODULE_GROUPS = [
     modules: [
       { key: "projects", label: "Projeler" },
       { key: "new_branch_projects", label: "Yeni Şube Açılış" },
+    ]
+  },
+  {
+    name: "Fabrika",
+    icon: Package,
+    modules: [
+      { key: "factory_kiosk", label: "Fabrika Kiosk" },
+      { key: "factory_dashboard", label: "Fabrika Dashboard" },
+      { key: "factory_quality", label: "Kalite Kontrol" },
+      { key: "factory_analytics", label: "Performans Analitik" },
+      { key: "factory_ai_reports", label: "AI Raporlar" },
+      { key: "factory_stations", label: "İstasyon Yönetimi" },
+      { key: "factory_waste_reasons", label: "Fire Sebepleri" },
+      { key: "factory_pins", label: "PIN Yönetimi" },
     ]
   },
   {
