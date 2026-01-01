@@ -6954,3 +6954,395 @@ export const insertFactoryDailyTargetSchema = createInsertSchema(factoryDailyTar
 
 export type InsertFactoryDailyTarget = z.infer<typeof insertFactoryDailyTargetSchema>;
 export type FactoryDailyTarget = typeof factoryDailyTargets.$inferSelect;
+
+// ========================================
+// FABRIKA GELIŞMIŞ TABLOLAR
+// ========================================
+
+// Fire/Zayiat Sebepleri
+export const factoryWasteReasons = pgTable("factory_waste_reasons", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 20 }).notNull().unique(),
+  name: text("name").notNull(),
+  category: varchar("category", { length: 50 }), // makine, malzeme, insan, ortam
+  description: text("description"),
+  severityScore: integer("severity_score").default(1), // 1-5 ciddiyet puanı
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertFactoryWasteReasonSchema = createInsertSchema(factoryWasteReasons).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFactoryWasteReason = z.infer<typeof insertFactoryWasteReasonSchema>;
+export type FactoryWasteReason = typeof factoryWasteReasons.$inferSelect;
+
+// Vardiya Olay Kaydı (her aksiyon loglanır)
+export const factorySessionEvents = pgTable("factory_session_events", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => factoryShiftSessions.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id),
+  stationId: integer("station_id").references(() => factoryStations.id),
+  
+  eventType: varchar("event_type", { length: 30 }).notNull(), // start, pause, resume, assist, special_break, complete_task, station_change, logout, auto_logout
+  
+  // Mola/ara detayları
+  breakReason: varchar("break_reason", { length: 30 }), // mola, yardim, ozel_ihtiyac, gorev_bitis
+  breakDurationMinutes: integer("break_duration_minutes"),
+  
+  // Üretim verileri (görev sonlandırmada)
+  producedQuantity: numeric("produced_quantity", { precision: 10, scale: 2 }),
+  producedUnit: varchar("produced_unit", { length: 20 }), // adet, kg, litre
+  wasteQuantity: numeric("waste_quantity", { precision: 10, scale: 2 }),
+  wasteUnit: varchar("waste_unit", { length: 20 }),
+  wasteReasonId: integer("waste_reason_id").references(() => factoryWasteReasons.id),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("factory_session_events_session_idx").on(table.sessionId),
+  index("factory_session_events_user_idx").on(table.userId),
+  index("factory_session_events_type_idx").on(table.eventType),
+  index("factory_session_events_date_idx").on(table.createdAt),
+]);
+
+export const insertFactorySessionEventSchema = createInsertSchema(factorySessionEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFactorySessionEvent = z.infer<typeof insertFactorySessionEventSchema>;
+export type FactorySessionEvent = typeof factorySessionEvents.$inferSelect;
+
+// Mola Kayıtları (detaylı izleme)
+export const factoryBreakLogs = pgTable("factory_break_logs", {
+  id: serial("id").primaryKey(),
+  sessionEventId: integer("session_event_id").references(() => factorySessionEvents.id),
+  userId: text("user_id").notNull().references(() => users.id),
+  sessionId: integer("session_id").notNull().references(() => factoryShiftSessions.id, { onDelete: "cascade" }),
+  
+  breakReason: varchar("break_reason", { length: 30 }).notNull(), // mola, yardim, ozel_ihtiyac, gorev_bitis
+  targetStationId: integer("target_station_id").references(() => factoryStations.id), // yardım için gidilen istasyon
+  
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
+  durationMinutes: integer("duration_minutes"),
+  
+  autoFlagged: boolean("auto_flagged").default(false), // çok uzun/sık mola uyarısı
+  notes: text("notes"),
+}, (table) => [
+  index("factory_break_logs_user_idx").on(table.userId),
+  index("factory_break_logs_session_idx").on(table.sessionId),
+  index("factory_break_logs_reason_idx").on(table.breakReason),
+  index("factory_break_logs_date_idx").on(table.startedAt),
+]);
+
+export const insertFactoryBreakLogSchema = createInsertSchema(factoryBreakLogs).omit({
+  id: true,
+});
+
+export type InsertFactoryBreakLog = z.infer<typeof insertFactoryBreakLogSchema>;
+export type FactoryBreakLog = typeof factoryBreakLogs.$inferSelect;
+
+// İstasyon Hedefleri (günlük/haftalık/aylık)
+export const factoryStationTargets = pgTable("factory_station_targets", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "cascade" }),
+  
+  periodType: varchar("period_type", { length: 20 }).notNull(), // daily, weekly, monthly
+  targetQuantity: numeric("target_quantity", { precision: 10, scale: 2 }).notNull(),
+  targetUnit: varchar("target_unit", { length: 20 }).notNull(), // adet, kg, litre
+  
+  effectiveFrom: date("effective_from").notNull(),
+  effectiveTo: date("effective_to"),
+  
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("factory_station_targets_station_idx").on(table.stationId),
+  index("factory_station_targets_period_idx").on(table.periodType),
+]);
+
+export const insertFactoryStationTargetSchema = createInsertSchema(factoryStationTargets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryStationTarget = z.infer<typeof insertFactoryStationTargetSchema>;
+export type FactoryStationTarget = typeof factoryStationTargets.$inferSelect;
+
+// Personel Performans Skorları
+export const factoryWorkerScores = pgTable("factory_worker_scores", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  
+  periodDate: date("period_date").notNull(), // günlük skor
+  periodType: varchar("period_type", { length: 20 }).default("daily"), // daily, weekly, monthly
+  
+  // Skor bileşenleri
+  productionScore: numeric("production_score", { precision: 5, scale: 2 }), // üretim puanı
+  wasteScore: numeric("waste_score", { precision: 5, scale: 2 }), // fire puanı (düşük = iyi)
+  qualityScore: numeric("quality_score", { precision: 5, scale: 2 }), // kalite puanı
+  attendanceScore: numeric("attendance_score", { precision: 5, scale: 2 }), // devam puanı
+  breakScore: numeric("break_score", { precision: 5, scale: 2 }), // mola davranış puanı
+  
+  totalScore: numeric("total_score", { precision: 5, scale: 2 }), // toplam puan
+  
+  // İstatistikler
+  totalProduced: numeric("total_produced", { precision: 10, scale: 2 }),
+  totalWaste: numeric("total_waste", { precision: 10, scale: 2 }),
+  totalBreakMinutes: integer("total_break_minutes"),
+  specialBreakCount: integer("special_break_count").default(0), // özel ihtiyaç sayısı
+  
+  generatedAt: timestamp("generated_at").defaultNow(),
+}, (table) => [
+  index("factory_worker_scores_user_idx").on(table.userId),
+  index("factory_worker_scores_date_idx").on(table.periodDate),
+  unique("factory_worker_scores_user_date_unique").on(table.userId, table.periodDate, table.periodType),
+]);
+
+export const insertFactoryWorkerScoreSchema = createInsertSchema(factoryWorkerScores).omit({
+  id: true,
+  generatedAt: true,
+});
+
+export type InsertFactoryWorkerScore = z.infer<typeof insertFactoryWorkerScoreSchema>;
+export type FactoryWorkerScore = typeof factoryWorkerScores.$inferSelect;
+
+// Üretim Çıktıları (her görev sonlandırmada)
+export const factoryProductionOutputs = pgTable("factory_production_outputs", {
+  id: serial("id").primaryKey(),
+  sessionEventId: integer("session_event_id").references(() => factorySessionEvents.id),
+  sessionId: integer("session_id").notNull().references(() => factoryShiftSessions.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id),
+  stationId: integer("station_id").notNull().references(() => factoryStations.id),
+  
+  // Ürün bilgisi
+  productId: integer("product_id").references(() => factoryProducts.id),
+  productName: text("product_name"),
+  
+  // Üretim
+  producedQuantity: numeric("produced_quantity", { precision: 10, scale: 2 }).notNull(),
+  producedUnit: varchar("produced_unit", { length: 20 }).notNull(),
+  
+  // Fire/Zayiat
+  wasteQuantity: numeric("waste_quantity", { precision: 10, scale: 2 }).default("0"),
+  wasteUnit: varchar("waste_unit", { length: 20 }),
+  wasteReasonId: integer("waste_reason_id").references(() => factoryWasteReasons.id),
+  wasteNotes: text("waste_notes"),
+  
+  // Süre
+  durationMinutes: integer("duration_minutes"),
+  
+  // Kalite kontrol durumu
+  qualityStatus: varchar("quality_status", { length: 20 }).default("pending"), // pending, approved, rejected
+  qualityCheckedBy: text("quality_checked_by").references(() => users.id),
+  qualityCheckedAt: timestamp("quality_checked_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("factory_production_outputs_session_idx").on(table.sessionId),
+  index("factory_production_outputs_user_idx").on(table.userId),
+  index("factory_production_outputs_station_idx").on(table.stationId),
+  index("factory_production_outputs_quality_idx").on(table.qualityStatus),
+  index("factory_production_outputs_date_idx").on(table.createdAt),
+]);
+
+export const insertFactoryProductionOutputSchema = createInsertSchema(factoryProductionOutputs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFactoryProductionOutput = z.infer<typeof insertFactoryProductionOutputSchema>;
+export type FactoryProductionOutput = typeof factoryProductionOutputs.$inferSelect;
+
+// ========================================
+// FABRIKA KALİTE KONTROL TABLOLARI
+// ========================================
+
+// Kalite Kontrol Kriterleri (her istasyon/ürün için)
+export const factoryQualitySpecs = pgTable("factory_quality_specs", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "cascade" }),
+  productId: integer("product_id").references(() => factoryProducts.id),
+  
+  name: text("name").notNull(), // Kriter adı
+  description: text("description"),
+  
+  // Ölçüm türü
+  measurementType: varchar("measurement_type", { length: 30 }).notNull(), // numeric, boolean, text
+  unit: varchar("unit", { length: 20 }), // °C, kg, adet, cm vs.
+  
+  // Tolerans aralıkları (numeric için)
+  minValue: numeric("min_value", { precision: 10, scale: 2 }),
+  maxValue: numeric("max_value", { precision: 10, scale: 2 }),
+  targetValue: numeric("target_value", { precision: 10, scale: 2 }),
+  
+  // Ayarlar
+  isRequired: boolean("is_required").default(true),
+  requirePhoto: boolean("require_photo").default(false),
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("factory_quality_specs_station_idx").on(table.stationId),
+  index("factory_quality_specs_product_idx").on(table.productId),
+]);
+
+export const insertFactoryQualitySpecSchema = createInsertSchema(factoryQualitySpecs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryQualitySpec = z.infer<typeof insertFactoryQualitySpecSchema>;
+export type FactoryQualitySpec = typeof factoryQualitySpecs.$inferSelect;
+
+// Kalite Kontrol Sorumlusu Atamaları
+export const factoryQualityAssignments = pgTable("factory_quality_assignments", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  
+  // Yetki kapsamı
+  assignedStations: integer("assigned_stations").array(), // null = tüm istasyonlar
+  
+  assignedBy: text("assigned_by").notNull().references(() => users.id),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true),
+  
+  notes: text("notes"),
+}, (table) => [
+  index("factory_quality_assignments_user_idx").on(table.userId),
+  unique("factory_quality_assignments_user_unique").on(table.userId),
+]);
+
+export const insertFactoryQualityAssignmentSchema = createInsertSchema(factoryQualityAssignments).omit({
+  id: true,
+  assignedAt: true,
+});
+
+export type InsertFactoryQualityAssignment = z.infer<typeof insertFactoryQualityAssignmentSchema>;
+export type FactoryQualityAssignment = typeof factoryQualityAssignments.$inferSelect;
+
+// Kalite Kontrol Kayıtları
+export const factoryQualityChecks = pgTable("factory_quality_checks", {
+  id: serial("id").primaryKey(),
+  productionOutputId: integer("production_output_id").notNull().references(() => factoryProductionOutputs.id),
+  
+  // Kontrol yapan
+  inspectorId: text("inspector_id").notNull().references(() => users.id),
+  
+  // Üreten personel
+  producerId: text("producer_id").notNull().references(() => users.id),
+  
+  stationId: integer("station_id").notNull().references(() => factoryStations.id),
+  
+  // Karar
+  decision: varchar("decision", { length: 20 }).notNull(), // approved, rejected
+  decisionReason: text("decision_reason"),
+  
+  // Genel notlar
+  notes: text("notes"),
+  
+  checkedAt: timestamp("checked_at").defaultNow(),
+}, (table) => [
+  index("factory_quality_checks_output_idx").on(table.productionOutputId),
+  index("factory_quality_checks_inspector_idx").on(table.inspectorId),
+  index("factory_quality_checks_producer_idx").on(table.producerId),
+  index("factory_quality_checks_date_idx").on(table.checkedAt),
+]);
+
+export const insertFactoryQualityCheckSchema = createInsertSchema(factoryQualityChecks).omit({
+  id: true,
+  checkedAt: true,
+});
+
+export type InsertFactoryQualityCheck = z.infer<typeof insertFactoryQualityCheckSchema>;
+export type FactoryQualityCheck = typeof factoryQualityChecks.$inferSelect;
+
+// Kalite Ölçümleri (her kriter için)
+export const factoryQualityMeasurements = pgTable("factory_quality_measurements", {
+  id: serial("id").primaryKey(),
+  qualityCheckId: integer("quality_check_id").notNull().references(() => factoryQualityChecks.id, { onDelete: "cascade" }),
+  specId: integer("spec_id").notNull().references(() => factoryQualitySpecs.id),
+  
+  // Ölçüm değeri
+  numericValue: numeric("numeric_value", { precision: 10, scale: 2 }),
+  booleanValue: boolean("boolean_value"),
+  textValue: text("text_value"),
+  
+  // Sonuç
+  passed: boolean("passed").notNull(),
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("factory_quality_measurements_check_idx").on(table.qualityCheckId),
+  index("factory_quality_measurements_spec_idx").on(table.specId),
+]);
+
+export const insertFactoryQualityMeasurementSchema = createInsertSchema(factoryQualityMeasurements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFactoryQualityMeasurement = z.infer<typeof insertFactoryQualityMeasurementSchema>;
+export type FactoryQualityMeasurement = typeof factoryQualityMeasurements.$inferSelect;
+
+// Kalite Kontrol Fotoğrafları
+export const factoryQualityMedia = pgTable("factory_quality_media", {
+  id: serial("id").primaryKey(),
+  qualityCheckId: integer("quality_check_id").notNull().references(() => factoryQualityChecks.id, { onDelete: "cascade" }),
+  
+  mediaType: varchar("media_type", { length: 20 }).notNull(), // photo, video
+  mediaUrl: text("media_url").notNull(),
+  
+  caption: text("caption"),
+  uploadedBy: text("uploaded_by").references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+}, (table) => [
+  index("factory_quality_media_check_idx").on(table.qualityCheckId),
+]);
+
+export const insertFactoryQualityMediaSchema = createInsertSchema(factoryQualityMedia).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertFactoryQualityMedia = z.infer<typeof insertFactoryQualityMediaSchema>;
+export type FactoryQualityMedia = typeof factoryQualityMedia.$inferSelect;
+
+// AI Fabrika Raporları
+export const factoryAiReports = pgTable("factory_ai_reports", {
+  id: serial("id").primaryKey(),
+  
+  reportType: varchar("report_type", { length: 30 }).notNull(), // rotation, waste_pattern, device_errors, performance, custom
+  reportScope: varchar("report_scope", { length: 20 }).notNull(), // hq, manager, worker
+  
+  // Filtreler
+  targetUserId: text("target_user_id").references(() => users.id), // belirli personel için
+  targetStationId: integer("target_station_id").references(() => factoryStations.id),
+  periodStart: date("period_start"),
+  periodEnd: date("period_end"),
+  
+  // Rapor içeriği
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  recommendations: text("recommendations").array(),
+  details: jsonb("details"), // Detaylı veriler
+  
+  generatedBy: text("generated_by").references(() => users.id),
+  generatedAt: timestamp("generated_at").defaultNow(),
+}, (table) => [
+  index("factory_ai_reports_type_idx").on(table.reportType),
+  index("factory_ai_reports_user_idx").on(table.targetUserId),
+  index("factory_ai_reports_date_idx").on(table.generatedAt),
+]);
