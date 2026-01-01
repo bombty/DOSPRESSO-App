@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +24,8 @@ import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import dospressoNavyLogo from "@assets/IMG_5044_1765665383658.jpeg";
+import { useAuth } from "@/hooks/useAuth";
+import { isHQRole, type UserRoleType } from "@shared/schema";
 
 interface Branch {
   id: number;
@@ -72,7 +74,12 @@ interface DetailedReport {
 }
 
 export default function Raporlar() {
-  const [selectedTab, setSelectedTab] = useState("comparison");
+  const { user } = useAuth();
+  const isHQ = user ? isHQRole(user.role as UserRoleType) : false;
+  const userBranchId = user?.branchId;
+  
+  // Branch users don't see comparison tab, default to trends
+  const [selectedTab, setSelectedTab] = useState(() => isHQ ? "comparison" : "trends");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [trendStartDate, setTrendStartDate] = useState<Date>(() => {
     const d = new Date();
@@ -87,10 +94,19 @@ export default function Raporlar() {
     queryKey: ["/api/detailed-reports"],
   });
 
-  // Fetch branches for form
-  const { data: branches = [] } = useQuery<Branch[]>({
+  // Fetch branches for form - all branches for HQ, only user's branch for branch roles
+  const { data: allBranches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
   });
+  
+  // Filter branches based on user role - branch users only see their own branch
+  const branches = useMemo(() => {
+    if (isHQ) {
+      return allBranches;
+    }
+    // Branch users can only see their own branch
+    return allBranches.filter(b => b.id === userBranchId);
+  }, [allBranches, isHQ, userBranchId]);
 
   // Form setup
   const form = useForm<ReportFormData>({
@@ -654,8 +670,9 @@ export default function Raporlar() {
       </div>
 
       <Tabs defaultValue={selectedTab} onValueChange={setSelectedTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="comparison">Şube Karşılaştırması</TabsTrigger>
+        <TabsList className={`grid w-full ${isHQ ? 'grid-cols-4' : 'grid-cols-3'}`}>
+          {/* Şube Karşılaştırması only for HQ users */}
+          {isHQ && <TabsTrigger value="comparison">Şube Karşılaştırması</TabsTrigger>}
           <TabsTrigger value="trends">Trend Analizi</TabsTrigger>
           <TabsTrigger value="quality" data-testid="tab-quality-reports">Kalite Denetim</TabsTrigger>
           <TabsTrigger value="list">Raporlar</TabsTrigger>

@@ -196,6 +196,17 @@ import {
   insertMonthlyPayrollSchema,
   feedbackFormSettings,
   insertFeedbackFormSettingsSchema,
+  // Fabrika Kiosk Sistemi
+  factoryStations,
+  factoryStaffPins,
+  factoryShiftSessions,
+  factoryProductionRuns,
+  factoryDailyTargets,
+  insertFactoryStationSchema,
+  insertFactoryStaffPinSchema,
+  insertFactoryShiftSessionSchema,
+  insertFactoryProductionRunSchema,
+  insertFactoryDailyTargetSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -3917,9 +3928,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/performance', isAuthenticated, async (req, res) => {
     try {
-      const branchId = req.query.branchId && req.query.branchId !== 'all' 
-        ? parseInt(req.query.branchId as string) 
-        : undefined;
+      const user = req.user!;
+      const isHQ = isHQRole(user.role as UserRoleType);
+      
+      // Branch users can only see their own branch performance
+      let branchId: number | undefined;
+      if (isHQ) {
+        // HQ can see all branches or filter by specific branch
+        branchId = req.query.branchId && req.query.branchId !== 'all' 
+          ? parseInt(req.query.branchId as string) 
+          : undefined;
+      } else {
+        // Branch users: force to their own branch only
+        if (!user.branchId) {
+          return res.status(403).json({ message: "Şube ataması yapılmamış" });
+        }
+        branchId = user.branchId;
+      }
       
       // First try stored metrics
       const storedMetrics = await storage.getPerformanceMetrics(branchId);
@@ -24038,6 +24063,458 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error saving feedback form settings:", error);
       res.status(500).json({ message: "Form ayarları kaydedilemedi" });
+    }
+  });
+
+  // ============================================
+  // FABRIKA KIOSK SISTEMI API'leri
+  // ============================================
+
+  // Fabrika istasyonlarını listele
+  app.get('/api/factory/stations', isAuthenticated, async (req, res) => {
+    try {
+      const stations = await db.select().from(factoryStations)
+        .where(eq(factoryStations.isActive, true))
+        .orderBy(factoryStations.sortOrder);
+      res.json(stations);
+    } catch (error: any) {
+      console.error("Error fetching factory stations:", error);
+      res.status(500).json({ message: "İstasyonlar alınamadı" });
+    }
+  });
+
+  // Fabrika personeli listesi (PIN ile giriş için)
+  app.get('/api/factory/staff', async (req, res) => {
+    try {
+      // Get users with factory role or factory branch
+      const factoryStaff = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        avatarUrl: users.avatarUrl,
+        role: users.role,
+      }).from(users)
+        .where(and(
+          eq(users.isActive, true),
+          or(
+            eq(users.role, 'fabrika'),
+            eq(users.role, 'fabrika_mudur'),
+            eq(users.role, 'fabrika_operator'),
+          )
+        ))
+        .orderBy(users.firstName);
+      
+      res.json(factoryStaff);
+    } catch (error: any) {
+      console.error("Error fetching factory staff:", error);
+      res.status(500).json({ message: "Fabrika personeli alınamadı" });
+    }
+  });
+
+  // Kiosk PIN girişi (personel seçip PIN ile giriş)
+  app.post('/api/factory/kiosk/login', async (req, res) => {
+    try {
+      const { userId, pin } = req.body;
+      
+      if (!userId || !pin) {
+        return res.status(400).json({ message: "Kullanıcı ve PIN gerekli" });
+      }
+
+      // Get user's PIN record
+      const [pinRecord] = await db.select().from(factoryStaffPins)
+        .where(and(
+          eq(factoryStaffPins.userId, userId),
+          eq(factoryStaffPins.isActive, true)
+        ))
+        .limit(1);
+
+      if (!pinRecord) {
+        return res.status(404).json({ message: "PIN kaydı bulunamadı. Yöneticinizle iletişime geçin." });
+      }
+
+      // Check if locked
+      if (pinRecord.pinLockedUntil && new Date(pinRecord.pinLockedUntil) > new Date()) {
+        const remainingMinutes = Math.ceil((new Date(pinRecord.pinLockedUntil).getTime() - Date.now()) / 60000);
+        return res.status(423).json({ message: `Hesabınız ${remainingMinutes} dakika kilitli` });
+      }
+
+      // Verify PIN
+      const isValid = await bcrypt.compare(pin, pinRecord.hashedPin);
+      
+      if (!isValid) {
+        // Increment failed attempts
+        const newAttempts = (pinRecord.pinFailedAttempts || 0) + 1;
+        const lockUntil = newAttempts >= 3 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+        
+        await db.update(factoryStaffPins)
+          .set({ 
+            pinFailedAttempts: newAttempts,
+            pinLockedUntil: lockUntil
+          })
+          .where(eq(factoryStaffPins.id, pinRecord.id));
+        
+        return res.status(401).json({ 
+          message: "Hatalı PIN",
+          attemptsRemaining: Math.max(0, 3 - newAttempts)
+        });
+      }
+
+      // Reset failed attempts
+      await db.update(factoryStaffPins)
+        .set({ pinFailedAttempts: 0, pinLockedUntil: null })
+        .where(eq(factoryStaffPins.id, pinRecord.id));
+
+      // Get user details
+      const [user] = await db.select().from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      // Check for active session
+      const [activeSession] = await db.select().from(factoryShiftSessions)
+        .where(and(
+          eq(factoryShiftSessions.userId, userId),
+          eq(factoryShiftSessions.status, 'active')
+        ))
+        .limit(1);
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          avatarUrl: user.avatarUrl,
+          role: user.role,
+        },
+        activeSession: activeSession || null,
+      });
+    } catch (error: any) {
+      console.error("Error in kiosk login:", error);
+      res.status(500).json({ message: "Giriş yapılamadı" });
+    }
+  });
+
+  // Kiosk vardiya başlat (istasyon seçerek)
+  app.post('/api/factory/kiosk/start-shift', async (req, res) => {
+    try {
+      const { userId, stationId } = req.body;
+      
+      if (!userId || !stationId) {
+        return res.status(400).json({ message: "Kullanıcı ve istasyon gerekli" });
+      }
+
+      // Check for existing active session
+      const [existingSession] = await db.select().from(factoryShiftSessions)
+        .where(and(
+          eq(factoryShiftSessions.userId, userId),
+          eq(factoryShiftSessions.status, 'active')
+        ))
+        .limit(1);
+
+      if (existingSession) {
+        return res.status(400).json({ message: "Zaten aktif bir vardiyası var", sessionId: existingSession.id });
+      }
+
+      // Create shift session
+      const [session] = await db.insert(factoryShiftSessions).values({
+        userId,
+        stationId,
+        checkInTime: new Date(),
+        status: 'active',
+      }).returning();
+
+      // Start production run
+      const [productionRun] = await db.insert(factoryProductionRuns).values({
+        sessionId: session.id,
+        userId,
+        stationId,
+        startTime: new Date(),
+        status: 'in_progress',
+      }).returning();
+
+      // Get station info
+      const [station] = await db.select().from(factoryStations)
+        .where(eq(factoryStations.id, stationId))
+        .limit(1);
+
+      res.json({
+        success: true,
+        session,
+        productionRun,
+        station,
+      });
+    } catch (error: any) {
+      console.error("Error starting shift:", error);
+      res.status(500).json({ message: "Vardiya başlatılamadı" });
+    }
+  });
+
+  // Kiosk üretim kaydet ve istasyon değiştir
+  app.post('/api/factory/kiosk/switch-station', async (req, res) => {
+    try {
+      const { sessionId, productionRunId, quantityProduced, quantityWaste, wasteReason, newStationId } = req.body;
+      
+      if (!sessionId || !productionRunId) {
+        return res.status(400).json({ message: "Oturum ve üretim kaydı gerekli" });
+      }
+
+      const now = new Date();
+
+      // Close current production run
+      await db.update(factoryProductionRuns)
+        .set({
+          endTime: now,
+          quantityProduced: quantityProduced || 0,
+          quantityWaste: quantityWaste || 0,
+          wasteReason: wasteReason || null,
+          status: 'completed',
+        })
+        .where(eq(factoryProductionRuns.id, productionRunId));
+
+      // Get session
+      const [session] = await db.select().from(factoryShiftSessions)
+        .where(eq(factoryShiftSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: "Oturum bulunamadı" });
+      }
+
+      // Update session totals
+      await db.update(factoryShiftSessions)
+        .set({
+          totalProduced: (session.totalProduced || 0) + (quantityProduced || 0),
+          totalWaste: (session.totalWaste || 0) + (quantityWaste || 0),
+        })
+        .where(eq(factoryShiftSessions.id, sessionId));
+
+      // If new station selected, start new production run
+      let newProductionRun = null;
+      if (newStationId) {
+        await db.update(factoryShiftSessions)
+          .set({ stationId: newStationId })
+          .where(eq(factoryShiftSessions.id, sessionId));
+
+        [newProductionRun] = await db.insert(factoryProductionRuns).values({
+          sessionId,
+          userId: session.userId,
+          stationId: newStationId,
+          startTime: now,
+          status: 'in_progress',
+        }).returning();
+      }
+
+      // Get new station info
+      const [station] = newStationId ? await db.select().from(factoryStations)
+        .where(eq(factoryStations.id, newStationId))
+        .limit(1) : [null];
+
+      res.json({
+        success: true,
+        newProductionRun,
+        station,
+      });
+    } catch (error: any) {
+      console.error("Error switching station:", error);
+      res.status(500).json({ message: "İstasyon değiştirilemedi" });
+    }
+  });
+
+  // Kiosk vardiya bitir
+  app.post('/api/factory/kiosk/end-shift', async (req, res) => {
+    try {
+      const { sessionId, productionRunId, quantityProduced, quantityWaste, wasteReason } = req.body;
+      
+      if (!sessionId) {
+        return res.status(400).json({ message: "Oturum ID gerekli" });
+      }
+
+      const now = new Date();
+
+      // Close current production run if exists
+      if (productionRunId) {
+        await db.update(factoryProductionRuns)
+          .set({
+            endTime: now,
+            quantityProduced: quantityProduced || 0,
+            quantityWaste: quantityWaste || 0,
+            wasteReason: wasteReason || null,
+            status: 'completed',
+          })
+          .where(eq(factoryProductionRuns.id, productionRunId));
+      }
+
+      // Get session
+      const [session] = await db.select().from(factoryShiftSessions)
+        .where(eq(factoryShiftSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: "Oturum bulunamadı" });
+      }
+
+      // Calculate work minutes
+      const workMinutes = Math.round((now.getTime() - new Date(session.checkInTime).getTime()) / 60000);
+
+      // Update session
+      await db.update(factoryShiftSessions)
+        .set({
+          checkOutTime: now,
+          totalProduced: (session.totalProduced || 0) + (quantityProduced || 0),
+          totalWaste: (session.totalWaste || 0) + (quantityWaste || 0),
+          workMinutes,
+          status: 'completed',
+        })
+        .where(eq(factoryShiftSessions.id, sessionId));
+
+      // Get all production runs for this session
+      const productionRuns = await db.select().from(factoryProductionRuns)
+        .where(eq(factoryProductionRuns.sessionId, sessionId));
+
+      // Calculate totals
+      const totalProduced = productionRuns.reduce((sum, run) => sum + (run.quantityProduced || 0), 0);
+      const totalWaste = productionRuns.reduce((sum, run) => sum + (run.quantityWaste || 0), 0);
+
+      res.json({
+        success: true,
+        summary: {
+          workMinutes,
+          totalProduced,
+          totalWaste,
+          efficiency: totalProduced > 0 ? ((totalProduced - totalWaste) / totalProduced * 100).toFixed(1) : 0,
+          stationsWorked: productionRuns.length,
+        }
+      });
+    } catch (error: any) {
+      console.error("Error ending shift:", error);
+      res.status(500).json({ message: "Vardiya sonlandırılamadı" });
+    }
+  });
+
+  // Kullanıcı PIN oluştur/güncelle
+  app.post('/api/factory/staff/pin', isAuthenticated, async (req, res) => {
+    try {
+      const { userId, pin } = req.body;
+      const user = req.user!;
+      
+      // Only factory managers or admins can set PINs for others
+      const canManage = user.role === 'admin' || user.role === 'fabrika_mudur' || user.id === userId;
+      
+      if (!canManage) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      if (!pin || pin.length < 4 || pin.length > 6) {
+        return res.status(400).json({ message: "PIN 4-6 haneli olmalıdır" });
+      }
+
+      const hashedPin = await bcrypt.hash(pin, 10);
+
+      // Upsert PIN record
+      const existing = await db.select().from(factoryStaffPins)
+        .where(eq(factoryStaffPins.userId, userId))
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db.update(factoryStaffPins)
+          .set({ hashedPin, pinFailedAttempts: 0, pinLockedUntil: null, updatedAt: new Date() })
+          .where(eq(factoryStaffPins.userId, userId));
+      } else {
+        await db.insert(factoryStaffPins).values({
+          userId,
+          hashedPin,
+          isActive: true,
+        });
+      }
+
+      res.json({ success: true, message: "PIN güncellendi" });
+    } catch (error: any) {
+      console.error("Error setting PIN:", error);
+      res.status(500).json({ message: "PIN ayarlanamadı" });
+    }
+  });
+
+  // Fabrika dashboard istatistikleri
+  app.get('/api/factory/dashboard/stats', isAuthenticated, async (req, res) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Get today's sessions
+      const todaySessions = await db.select().from(factoryShiftSessions)
+        .where(gte(factoryShiftSessions.checkInTime, today));
+
+      // Get active sessions
+      const activeSessions = await db.select().from(factoryShiftSessions)
+        .where(eq(factoryShiftSessions.status, 'active'));
+
+      // Get today's production runs
+      const todayRuns = await db.select().from(factoryProductionRuns)
+        .where(gte(factoryProductionRuns.startTime, today));
+
+      const totalProduced = todayRuns.reduce((sum, run) => sum + (run.quantityProduced || 0), 0);
+      const totalWaste = todayRuns.reduce((sum, run) => sum + (run.quantityWaste || 0), 0);
+
+      // Get stations with today's production
+      const stationProduction = await db.select({
+        stationId: factoryProductionRuns.stationId,
+        produced: sql<number>`SUM(${factoryProductionRuns.quantityProduced})`,
+        waste: sql<number>`SUM(${factoryProductionRuns.quantityWaste})`,
+      }).from(factoryProductionRuns)
+        .where(gte(factoryProductionRuns.startTime, today))
+        .groupBy(factoryProductionRuns.stationId);
+
+      res.json({
+        activeWorkers: activeSessions.length,
+        todayShifts: todaySessions.length,
+        totalProduced,
+        totalWaste,
+        efficiency: totalProduced > 0 ? ((totalProduced - totalWaste) / totalProduced * 100).toFixed(1) : 0,
+        stationProduction,
+      });
+    } catch (error: any) {
+      console.error("Error fetching factory dashboard:", error);
+      res.status(500).json({ message: "Dashboard verileri alınamadı" });
+    }
+  });
+
+  // Aktif oturum bilgisi al
+  app.get('/api/factory/kiosk/session/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      const [session] = await db.select().from(factoryShiftSessions)
+        .where(and(
+          eq(factoryShiftSessions.userId, userId),
+          eq(factoryShiftSessions.status, 'active')
+        ))
+        .limit(1);
+
+      if (!session) {
+        return res.json({ session: null });
+      }
+
+      // Get active production run
+      const [productionRun] = await db.select().from(factoryProductionRuns)
+        .where(and(
+          eq(factoryProductionRuns.sessionId, session.id),
+          eq(factoryProductionRuns.status, 'in_progress')
+        ))
+        .limit(1);
+
+      // Get station info
+      const [station] = await db.select().from(factoryStations)
+        .where(eq(factoryStations.id, session.stationId))
+        .limit(1);
+
+      res.json({
+        session,
+        productionRun,
+        station,
+      });
+    } catch (error: any) {
+      console.error("Error fetching session:", error);
+      res.status(500).json({ message: "Oturum bilgisi alınamadı" });
     }
   });
 

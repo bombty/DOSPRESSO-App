@@ -209,8 +209,8 @@ export default function Mesajlar() {
       {/* Left Panel - Thread List */}
       <div className="w-96 border-r flex flex-col">
         {/* Header */}
-        <div className="p-3 border-b grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
-          <div className="flex items-center justify-between">
+        <div className="p-3 border-b space-y-3">
+          <div className="flex items-center justify-between gap-2">
             <h1 className="text-2xl font-bold" data-testid="text-messages-title">Mesajlar</h1>
             <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
               <DialogTrigger asChild>
@@ -235,10 +235,10 @@ export default function Mesajlar() {
           
           {/* Folder Tabs */}
           <Tabs value={folder} onValueChange={(v) => setFolder(v as any)} data-testid="tabs-message-folders">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="inbox" data-testid="tab-inbox">Gelen</TabsTrigger>
-              <TabsTrigger value="sent" data-testid="tab-sent">Gönderilen</TabsTrigger>
-              <TabsTrigger value="unread" data-testid="tab-unread">Okunmamış</TabsTrigger>
+            <TabsList className="w-full">
+              <TabsTrigger value="inbox" className="flex-1" data-testid="tab-inbox">Gelen</TabsTrigger>
+              <TabsTrigger value="sent" className="flex-1" data-testid="tab-sent">Gönderilen</TabsTrigger>
+              <TabsTrigger value="unread" className="flex-1" data-testid="tab-unread">Okunmamış</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

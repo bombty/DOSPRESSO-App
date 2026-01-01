@@ -2,19 +2,39 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { PerformanceMetric, Branch } from "@shared/schema";
+import { isHQRole, type UserRoleType } from "@shared/schema";
 import { TrendingUp, TrendingDown, CheckCircle, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Performance() {
-  const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
+  const { user } = useAuth();
+  const isHQ = user ? isHQRole(user.role as UserRoleType) : false;
+  const userBranchId = user?.branchId;
+  
+  // Branch users can only see their own branch - no "all" option
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+
+  // Set default branch based on user role
+  useEffect(() => {
+    if (!isHQ && userBranchId) {
+      // Branch users: force to their own branch
+      setSelectedBranchId(userBranchId.toString());
+    } else if (isHQ && selectedBranchId === "") {
+      // HQ users: default to "all"
+      setSelectedBranchId("all");
+    }
+  }, [isHQ, userBranchId, selectedBranchId]);
 
   const { data: metrics, isLoading: metricsLoading } = useQuery<PerformanceMetric[]>({
     queryKey: ["/api/performance", selectedBranchId],
+    enabled: selectedBranchId !== "", // Don't fetch until branch is determined
   });
 
   const { data: branches, isLoading: branchesLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    enabled: isHQ, // Only HQ users need the full branch list
   });
 
   const latestMetric = metrics?.[0];
@@ -35,25 +55,28 @@ export default function Performance() {
           <h1 className="text-3xl font-semibold" data-testid="text-page-title">Performans</h1>
           <p className="text-muted-foreground mt-1">Şube performansını izleyin ve KPI'ları analiz edin</p>
         </div>
-        <div className="w-64">
-          {branchesLoading ? (
-            <Skeleton className="h-10 w-full" />
-          ) : (
-            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
-              <SelectTrigger data-testid="select-branch">
-                <SelectValue placeholder="Şube seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tüm Şubeler</SelectItem>
-                {branches?.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id.toString()}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+        {/* Only HQ users can see branch selector */}
+        {isHQ && (
+          <div className="w-64">
+            {branchesLoading ? (
+              <Skeleton className="h-10 w-full" />
+            ) : (
+              <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                <SelectTrigger data-testid="select-branch">
+                  <SelectValue placeholder="Şube seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Şubeler</SelectItem>
+                  {branches?.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id.toString()}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
       </div>
 
       {metricsLoading ? (

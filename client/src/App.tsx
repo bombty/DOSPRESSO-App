@@ -112,6 +112,8 @@ import Raporlar from "@/pages/raporlar";
 import Destek from "@/pages/destek";
 import Muhasebe from "@/pages/muhasebe";
 import Fabrika from "@/pages/fabrika";
+import FabrikaKiosk from "@/pages/fabrika/kiosk";
+import FabrikaDashboard from "@/pages/fabrika/dashboard";
 import CanliTakip from "@/pages/canli-takip";
 import AdminDashboard from "@/pages/admin/index";
 import AdminYetkilendirme from "@/pages/admin/yetkilendirme";
@@ -258,6 +260,8 @@ function Router() {
           <Route path="/performans" component={Performance} />
           <Route path="/muhasebe" component={Muhasebe} />
           <Route path="/fabrika" component={Fabrika} />
+          <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
+          <Route path="/fabrika/dashboard" component={FabrikaDashboard} />
           <Route path="/canli-takip" component={CanliTakip} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
           <Route path="/denetim-sablonlari" component={DenetimSablonlari} />

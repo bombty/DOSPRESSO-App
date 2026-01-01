@@ -6810,3 +6810,147 @@ export const insertFactoryInventorySchema = createInsertSchema(factoryInventory)
 
 export type InsertFactoryInventory = z.infer<typeof insertFactoryInventorySchema>;
 export type FactoryInventory = typeof factoryInventory.$inferSelect;
+
+// ========================================
+// FABRIKA KIOSK SISTEMI
+// ========================================
+
+// Fabrika Üretim İstasyonları
+export const factoryStations = pgTable("factory_stations", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(), // Donut Hamur Hattı, Konsantre Dolum, Cheesecake, Mamabon, Wrapitos, Cookies, Donut Süsleme, Donut Paketleme, Cinnaboom
+  code: varchar("code", { length: 20 }).notNull().unique(), // DONUT_HAMUR, KONSANTRE, CHEESECAKE, etc.
+  description: text("description"),
+  category: varchar("category", { length: 50 }), // hamur, dolum, susleme, paketleme
+  productTypeId: integer("product_type_id").references(() => factoryProducts.id, { onDelete: "set null" }), // Hangi ürünü üretir
+  targetHourlyOutput: integer("target_hourly_output").default(0), // Saatlik hedef üretim
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertFactoryStationSchema = createInsertSchema(factoryStations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFactoryStation = z.infer<typeof insertFactoryStationSchema>;
+export type FactoryStation = typeof factoryStations.$inferSelect;
+
+// Fabrika Personeli PIN Kodları (kiosk girişi için)
+export const factoryStaffPins = pgTable("factory_staff_pins", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  hashedPin: varchar("hashed_pin", { length: 255 }).notNull(), // Bcrypt hash
+  pinFailedAttempts: integer("pin_failed_attempts").default(0),
+  pinLockedUntil: timestamp("pin_locked_until"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("factory_staff_pins_user_unique").on(table.userId),
+]);
+
+export const insertFactoryStaffPinSchema = createInsertSchema(factoryStaffPins).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryStaffPin = z.infer<typeof insertFactoryStaffPinSchema>;
+export type FactoryStaffPin = typeof factoryStaffPins.$inferSelect;
+
+// Fabrika Vardiya Oturumları (kiosk giriş/çıkış)
+export const factoryShiftSessions = pgTable("factory_shift_sessions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "restrict" }),
+  
+  checkInTime: timestamp("check_in_time").notNull().defaultNow(),
+  checkOutTime: timestamp("check_out_time"),
+  
+  // Üretim özeti
+  totalProduced: integer("total_produced").default(0),
+  totalWaste: integer("total_waste").default(0),
+  
+  // Çalışma süresi (dakika)
+  workMinutes: integer("work_minutes").default(0),
+  
+  status: varchar("status", { length: 20 }).default("active").notNull(), // active, completed, abandoned
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("factory_shift_sessions_user_idx").on(table.userId),
+  index("factory_shift_sessions_station_idx").on(table.stationId),
+  index("factory_shift_sessions_date_idx").on(table.checkInTime),
+]);
+
+export const insertFactoryShiftSessionSchema = createInsertSchema(factoryShiftSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFactoryShiftSession = z.infer<typeof insertFactoryShiftSessionSchema>;
+export type FactoryShiftSession = typeof factoryShiftSessions.$inferSelect;
+
+// Fabrika Üretim Kayıtları (her istasyon değişiminde veya vardiya sonunda)
+export const factoryProductionRuns = pgTable("factory_production_runs", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => factoryShiftSessions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "restrict" }),
+  
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  
+  // Üretim detayları
+  quantityProduced: integer("quantity_produced").default(0).notNull(),
+  quantityWaste: integer("quantity_waste").default(0).notNull(), // Zaiyat/Fire
+  wasteReason: text("waste_reason"), // Zaiyat nedeni
+  
+  // Kalite kontrol
+  qualityScore: integer("quality_score"), // 0-100
+  qualityNotes: text("quality_notes"),
+  
+  status: varchar("status", { length: 20 }).default("in_progress").notNull(), // in_progress, completed
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("factory_production_runs_session_idx").on(table.sessionId),
+  index("factory_production_runs_user_idx").on(table.userId),
+  index("factory_production_runs_station_idx").on(table.stationId),
+  index("factory_production_runs_date_idx").on(table.startTime),
+]);
+
+export const insertFactoryProductionRunSchema = createInsertSchema(factoryProductionRuns).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFactoryProductionRun = z.infer<typeof insertFactoryProductionRunSchema>;
+export type FactoryProductionRun = typeof factoryProductionRuns.$inferSelect;
+
+// Fabrika Günlük Üretim Hedefleri
+export const factoryDailyTargets = pgTable("factory_daily_targets", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "cascade" }),
+  targetDate: date("target_date").notNull(),
+  targetQuantity: integer("target_quantity").notNull(),
+  actualQuantity: integer("actual_quantity").default(0),
+  wasteQuantity: integer("waste_quantity").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("factory_daily_targets_station_date_unique").on(table.stationId, table.targetDate),
+]);
+
+export const insertFactoryDailyTargetSchema = createInsertSchema(factoryDailyTargets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryDailyTarget = z.infer<typeof insertFactoryDailyTargetSchema>;
+export type FactoryDailyTarget = typeof factoryDailyTargets.$inferSelect;
