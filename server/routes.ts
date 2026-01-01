@@ -24784,6 +24784,170 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // Fabrika Analitiği - Personel performansı
+  app.get('/api/factory/analytics/workers', async (req, res) => {
+    try {
+      const period = req.query.period as string || 'weekly';
+      
+      // Calculate date range
+      const now = new Date();
+      let startDate = new Date();
+      if (period === 'daily') {
+        startDate.setHours(0, 0, 0, 0);
+      } else if (period === 'weekly') {
+        startDate.setDate(now.getDate() - 7);
+      } else {
+        startDate.setMonth(now.getMonth() - 1);
+      }
+
+      // Get production outputs with user info
+      const outputs = await db.select({
+        userId: factoryProductionOutputs.userId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        stationId: factoryProductionOutputs.stationId,
+        stationName: factoryStations.name,
+        producedQuantity: factoryProductionOutputs.producedQuantity,
+        wasteQuantity: factoryProductionOutputs.wasteQuantity,
+        qualityStatus: factoryProductionOutputs.qualityStatus,
+      })
+        .from(factoryProductionOutputs)
+        .innerJoin(users, eq(factoryProductionOutputs.userId, users.id))
+        .innerJoin(factoryStations, eq(factoryProductionOutputs.stationId, factoryStations.id))
+        .where(gte(factoryProductionOutputs.createdAt, startDate));
+
+      // Aggregate by user
+      const workerMap = new Map<string, any>();
+      
+      for (const output of outputs) {
+        if (!workerMap.has(output.userId)) {
+          workerMap.set(output.userId, {
+            userId: output.userId,
+            firstName: output.firstName,
+            lastName: output.lastName,
+            profileImageUrl: output.profileImageUrl,
+            totalProduced: 0,
+            totalWaste: 0,
+            totalHours: 8, // Estimate
+            qualityApproved: 0,
+            qualityRejected: 0,
+            stationsWorked: new Set<string>(),
+          });
+        }
+        
+        const worker = workerMap.get(output.userId)!;
+        worker.totalProduced += parseFloat(output.producedQuantity || '0');
+        worker.totalWaste += parseFloat(output.wasteQuantity || '0');
+        worker.stationsWorked.add(output.stationName);
+        
+        if (output.qualityStatus === 'approved') worker.qualityApproved++;
+        if (output.qualityStatus === 'rejected') worker.qualityRejected++;
+      }
+
+      const result = Array.from(workerMap.values()).map(w => ({
+        ...w,
+        stationsWorked: Array.from(w.stationsWorked),
+        efficiency: w.totalProduced > 0 
+          ? ((w.totalProduced - w.totalWaste) / w.totalProduced * 100) 
+          : 0,
+        avgProductionPerHour: w.totalHours > 0 ? w.totalProduced / w.totalHours : 0,
+      }));
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching worker analytics:", error);
+      res.status(500).json({ message: "Personel analitiği alınamadı" });
+    }
+  });
+
+  // Fabrika Analitiği - İstasyon performansı
+  app.get('/api/factory/analytics/stations', async (req, res) => {
+    try {
+      const period = req.query.period as string || 'weekly';
+      
+      const now = new Date();
+      let startDate = new Date();
+      if (period === 'daily') {
+        startDate.setHours(0, 0, 0, 0);
+      } else if (period === 'weekly') {
+        startDate.setDate(now.getDate() - 7);
+      } else {
+        startDate.setMonth(now.getMonth() - 1);
+      }
+
+      const stationStats = await db.select({
+        stationId: factoryProductionOutputs.stationId,
+        stationName: factoryStations.name,
+        totalProduced: sql<number>`COALESCE(SUM(CAST(${factoryProductionOutputs.producedQuantity} AS NUMERIC)), 0)`,
+        totalWaste: sql<number>`COALESCE(SUM(CAST(${factoryProductionOutputs.wasteQuantity} AS NUMERIC)), 0)`,
+        workerCount: sql<number>`COUNT(DISTINCT ${factoryProductionOutputs.userId})`,
+      })
+        .from(factoryProductionOutputs)
+        .innerJoin(factoryStations, eq(factoryProductionOutputs.stationId, factoryStations.id))
+        .where(gte(factoryProductionOutputs.createdAt, startDate))
+        .groupBy(factoryProductionOutputs.stationId, factoryStations.name);
+
+      const result = stationStats.map(s => ({
+        ...s,
+        totalProduced: Number(s.totalProduced),
+        totalWaste: Number(s.totalWaste),
+        workerCount: Number(s.workerCount),
+        wastePercentage: s.totalProduced > 0 ? (Number(s.totalWaste) / Number(s.totalProduced) * 100) : 0,
+        avgOutputPerHour: Number(s.totalProduced) / 8, // Estimate 8 hours
+      }));
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching station analytics:", error);
+      res.status(500).json({ message: "İstasyon analitiği alınamadı" });
+    }
+  });
+
+  // Fabrika Analitiği - Zaiyat analizi
+  app.get('/api/factory/analytics/waste', async (req, res) => {
+    try {
+      const period = req.query.period as string || 'weekly';
+      
+      const now = new Date();
+      let startDate = new Date();
+      if (period === 'daily') {
+        startDate.setHours(0, 0, 0, 0);
+      } else if (period === 'weekly') {
+        startDate.setDate(now.getDate() - 7);
+      } else {
+        startDate.setMonth(now.getMonth() - 1);
+      }
+
+      const wasteStats = await db.select({
+        reasonId: factoryWasteReasons.id,
+        reasonName: factoryWasteReasons.name,
+        category: factoryWasteReasons.category,
+        count: sql<number>`COUNT(*)`,
+      })
+        .from(factoryProductionOutputs)
+        .innerJoin(factoryWasteReasons, eq(factoryProductionOutputs.wasteReasonId, factoryWasteReasons.id))
+        .where(and(
+          gte(factoryProductionOutputs.createdAt, startDate),
+          isNotNull(factoryProductionOutputs.wasteReasonId)
+        ))
+        .groupBy(factoryWasteReasons.id, factoryWasteReasons.name, factoryWasteReasons.category);
+
+      const total = wasteStats.reduce((sum, w) => sum + Number(w.count), 0);
+      
+      const result = wasteStats.map(w => ({
+        ...w,
+        count: Number(w.count),
+        percentage: total > 0 ? (Number(w.count) / total * 100) : 0,
+      }));
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching waste analytics:", error);
+      res.status(500).json({ message: "Zaiyat analitiği alınamadı" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
