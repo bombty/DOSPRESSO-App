@@ -12714,12 +12714,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         weekStart
       );
 
-      // Get branch employees with string IDs
+      // Get branch info for operating hours
+      const branch = await storage.getBranch(bid);
+      const branchHours = {
+        openingHours: branch?.openingHours || '08:00',
+        closingHours: branch?.closingHours || '22:00',
+      };
+
+      // Get branch employees with string IDs and employment type
       const allEmployees = await storage.getAllEmployees(bid);
       const employees = allEmployees.map((e: any) => ({
         id: String(e.id), // Ensure string format for AI
         name: e.fullName || `${e.firstName} ${e.lastName}`,
         role: e.role || 'barista',
+        employmentType: e.employmentType || 'fulltime',
+        weeklyHours: e.weeklyHours || (e.employmentType === 'parttime' ? 25 : 45),
       }));
 
       // Format historical shifts for AI
@@ -12742,14 +12751,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Call AI to generate shift plan
+      // Call AI to generate shift plan with branch hours
       const aiPlan = await generateShiftPlan(
         bid,
         weekStart,
         weekEnd,
         formattedHistorical,
         employees,
-        undefined, // workloadMetrics
+        { branchHours }, // workloadMetrics with branch hours
         user.id,
         skipCache
       );

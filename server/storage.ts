@@ -5108,11 +5108,14 @@ export class DatabaseStorage implements IStorage {
 
       // 4. Customer Satisfaction Score (15% weight)
       // Positive feedback (5-star = +5 points, 4-star = +3, 3-star = +1)
+      // Staff Rating (average converted to points)
       // Complaints (each = -10 points)
       const positiveFeedback = await db.select({
         count5: sql<number>`CAST(COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 5) AS INTEGER)`,
         count4: sql<number>`CAST(COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 4) AS INTEGER)`,
         count3: sql<number>`CAST(COUNT(*) FILTER (WHERE ${customerFeedback.rating} = 3) AS INTEGER)`,
+        avgStaffRating: sql<number>`CAST(COALESCE(AVG(${customerFeedback.staffRating}) FILTER (WHERE ${customerFeedback.staffRating} IS NOT NULL), 0) AS NUMERIC(3,1))`,
+        staffRatingCount: sql<number>`CAST(COUNT(*) FILTER (WHERE ${customerFeedback.staffRating} IS NOT NULL) AS INTEGER)`,
       })
         .from(customerFeedback)
         .where(and(
@@ -5134,8 +5137,12 @@ export class DatabaseStorage implements IStorage {
         (positiveFeedback[0]?.count4 ?? 0) * 3 +
         (positiveFeedback[0]?.count3 ?? 0) * 1;
       
+      // Staff rating bonus: avg rating out of 5 converted to bonus points (max +10)
+      const avgStaffRating = positiveFeedback[0]?.avgStaffRating ?? 0;
+      const staffRatingBonus = avgStaffRating > 0 ? (avgStaffRating - 2.5) * 4 : 0; // 5-star = +10, 3-star = +2, 1-star = -6
+      
       const complaintPoints = (complaints[0]?.count ?? 0) * 10;
-      const netPoints = feedbackPoints - complaintPoints;
+      const netPoints = feedbackPoints + staffRatingBonus - complaintPoints;
       
       // Convert to 0-100 scale (assuming max 50 points = 100 score)
       const customerSatisfactionScore = Math.max(0, Math.min(100, 50 + netPoints));

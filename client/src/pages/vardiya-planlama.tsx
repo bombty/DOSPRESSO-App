@@ -40,6 +40,7 @@ function getEmployeeColor(employeeId: string | number): string {
 }
 
 // Draggable Shift Chip Component
+// Entire card is draggable when canEdit is true - hold and drag to move
 function DraggableShiftChip({ shift, employee, canEdit, onClick }: {
   shift: any;
   employee: any;
@@ -55,36 +56,36 @@ function DraggableShiftChip({ shift, employee, canEdit, onClick }: {
   const colorClass = getEmployeeColor(employee?.id || shift.assignedToId);
   const name = employee?.fullName || employee?.firstName || 'Bilinmiyor';
 
+  // Handle click vs drag - only trigger onClick if not dragging
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!isDragging && shift?.id) onClick();
+  };
+
   return (
     <div
       ref={setNodeRef}
+      {...(canEdit ? { ...listeners, ...attributes } : {})}
       style={{
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         opacity: isDragging ? 0.5 : 1,
+        touchAction: 'none',
       }}
+      onClick={handleClick}
       className={`w-full p-1.5 rounded border text-left text-xs transition-all ${colorClass} ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'opacity-60'}`}
       data-testid={`shift-chip-${shift.id}`}
     >
       <div className="flex items-center gap-1">
         {canEdit && (
-          <div {...listeners} {...attributes} className="cursor-grab">
-            <GripVertical className="w-3 h-3 text-muted-foreground" />
-          </div>
+          <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
         )}
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            if (shift?.id) onClick();
-          }} 
-          disabled={!canEdit} 
-          className="flex-1 text-left min-w-0"
-        >
+        <div className="flex-1 min-w-0">
           <div className="font-medium truncate">{name}</div>
           <div className="opacity-70">
             {shift.startTime?.substring(0, 5)}-{shift.endTime?.substring(0, 5)}
           </div>
-        </button>
+        </div>
       </div>
     </div>
   );
@@ -155,6 +156,20 @@ export default function VardiyaPlanlama() {
   const { data: allEmployees } = useQuery({
     queryKey: ['/api/employees'],
   });
+
+  // Fetch branch details for opening/closing hours
+  const { data: branchData } = useQuery({
+    queryKey: ['/api/branches', user?.branchId],
+    enabled: !!user?.branchId,
+  });
+
+  const branchHours = useMemo(() => {
+    if (!branchData) return null;
+    return {
+      openingHours: branchData.openingHours || '08:00',
+      closingHours: branchData.closingHours || '22:00',
+    };
+  }, [branchData]);
 
   const branchEmployees = useMemo(() => {
     if (!allEmployees || !Array.isArray(allEmployees)) return [];
@@ -278,20 +293,32 @@ export default function VardiyaPlanlama() {
     setChecklist3('');
   };
 
-  // Auto-calculate end time when start time changes (fulltime = 8.5 hours, parttime = varies)
+  // Auto-calculate end time AND break time when start time changes
+  // Fulltime = 8.5 hours total (7.5h work + 1h break), parttime = 4 hours (no break required)
+  // Break starts at +4 hours from shift start
   useEffect(() => {
     if (!selectedEmployee || !selectedEmployeeDetails) return;
 
     const isFulltime = selectedEmployeeDetails.employmentType === 'fulltime';
-    const hoursToAdd = isFulltime ? 8.5 : 4; // Fulltime 8:30 saat, parttime 4 saat (for now)
+    const hoursToAdd = isFulltime ? 8.5 : 4; // Fulltime 8:30 saat, parttime 4 saat
 
     const [sH, sM] = startTime.split(':').map(Number);
-    const totalMinutes = sH * 60 + sM + Math.floor(hoursToAdd * 60);
-    const endH = Math.floor(totalMinutes / 60) % 24;
-    const endM = totalMinutes % 60;
+    
+    // Calculate end time: start + hoursToAdd
+    const endMinutes = sH * 60 + sM + Math.floor(hoursToAdd * 60);
+    const endH = Math.floor(endMinutes / 60) % 24;
+    const endM = endMinutes % 60;
     const newEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-
     setEndTime(newEndTime);
+
+    // Calculate break time: start + 4 hours (for fulltime shifts)
+    if (isFulltime) {
+      const breakMinutes = sH * 60 + sM + (4 * 60);
+      const breakH = Math.floor(breakMinutes / 60) % 24;
+      const breakM = breakMinutes % 60;
+      const newBreakTime = `${String(breakH).padStart(2, '0')}:${String(breakM).padStart(2, '0')}`;
+      setBreakTime(newBreakTime);
+    }
   }, [startTime, selectedEmployee, selectedEmployeeDetails]);
 
   // Create shifts mutation for inline form
@@ -461,9 +488,14 @@ export default function VardiyaPlanlama() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Vardiya Planlama</h1>
-          <p className="text-muted-foreground text-sm">
-            {format(weekStart, "d MMM", { locale: tr })} - {format(periodEndDate, "d MMM yyyy", { locale: tr })}
-          </p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{format(weekStart, "d MMM", { locale: tr })} - {format(periodEndDate, "d MMM yyyy", { locale: tr })}</span>
+            {branchHours && (
+              <Badge variant="outline" className="text-[10px] px-1.5" data-testid="badge-branch-hours">
+                {branchHours.openingHours?.substring(0, 5)} - {branchHours.closingHours?.substring(0, 5)}
+              </Badge>
+            )}
+          </div>
         </div>
         
         <div className="flex gap-2 flex-wrap items-center">

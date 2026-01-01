@@ -944,13 +944,18 @@ Samimi ve profesyonel ol.`;
 }
 
 // Generate AI-powered shift plan based on historical data and workload
+// Enhanced with branch hours, break staggering, and fatigue prevention
 export async function generateShiftPlan(
   branchId: number,
   weekStart: string, // YYYY-MM-DD
   weekEnd: string, // YYYY-MM-DD
   historicalShifts: Array<{ shiftDate: string; shiftType: string; assignedToId: string | null; status: string }>,
-  employees: Array<{ id: string; name: string; role: string }>,
-  workloadMetrics?: { averageDailySales?: number; peakHours?: string[] },
+  employees: Array<{ id: string; name: string; role: string; employmentType?: string; weeklyHours?: number }>,
+  workloadMetrics?: { 
+    averageDailySales?: number; 
+    peakHours?: string[];
+    branchHours?: { openingHours: string; closingHours: string };
+  },
   userId?: string,
   skipCache: boolean = false
 ): Promise<ShiftPlanResponse> {
@@ -982,69 +987,104 @@ export async function generateShiftPlan(
       completedShifts: historicalShifts.filter(s => s.status === 'completed').length,
     };
 
-    const employeeList = employees.map(e => `${e.name} (${e.role}) [ID: ${e.id}]`).join('\n');
+    // Extract branch hours from workloadMetrics
+    const openingHours = workloadMetrics?.branchHours?.openingHours || '08:00';
+    const closingHours = workloadMetrics?.branchHours?.closingHours || '22:00';
+    
+    // Parse hours for shift calculations
+    const openH = parseInt(openingHours.split(':')[0]);
+    const closeH = parseInt(closingHours.split(':')[0]);
+    const midShiftH = Math.floor((openH + closeH) / 2);
+
+    // Format employee list with employment type info
+    const employeeList = employees.map(e => {
+      const empType = e.employmentType === 'parttime' ? 'PT' : 'FT';
+      const hours = e.weeklyHours || (e.employmentType === 'parttime' ? 25 : 45);
+      return `${e.name} (${e.role}, ${empType}, ${hours}s/hafta) [ID: ${e.id}]`;
+    }).join('\n');
+
+    // Identify experienced baristas for skill balancing
+    const experiencedRoles = ['barista', 'supervisor', 'supervisor_buddy'];
+    const internRoles = ['intern', 'stajyer'];
 
     const response = await openai.chat.completions.create({
       model: CHAT_MODEL, // gpt-4o for planning
       messages: [
         {
           role: "system",
-          content: `Sen DOSPRESSO kahve dükkanları için bir AI vardiya planlamacısısın. Geçmiş verileri analiz ederek optimal vardiya planları oluşturursun. Her vardiya için en uygun çalışanları öner ve güven skoru ver.`,
+          content: `Sen DOSPRESSO kahve dükkanları için bir AI vardiya planlamacısısın. Şube çalışma saatlerine, personel tipine ve iş yoğunluğuna göre optimal vardiya planları oluşturursun. Mola saatlerini kademeli dağıt ve yorgunluk önleme kurallarına uy.`,
         },
         {
           role: "user",
           content: `DOSPRESSO Şube #${branchId} için ${weekStart} - ${weekEnd} tarihleri arası vardiya planı oluştur.
 
-⚠️ ZORUNLU KURALLAR (KESİNLİKLE UYULMALI):
-1. STAJYER KURALI: Her stajyer (intern) yanında mutlaka en az 1 barista olmalı. Stajyer asla tek başına çalışamaz!
-2. GÜÇ AYRIMI: Aynı kişi aynı gün hem sabah açılış (06:00-14:00) hem akşam kapanış (14:00-22:00) yapmamalı. Supervisor buddy'ler her gün zıt vardiyalarda olmalı (biri açılış, biri kapanış).
-3. YOĞUNLUK DENGESİ: Sabah vardiyaları (06:00-14:00) daha az personel gerektirir (1-2 kişi). Akşam vardiyaları (14:00-22:00) en yoğun saatler - daha fazla personel (3+ kişi). Kapanış vardiyalarında MUTLAKA minimum 3 personel olmalı.
-4. HAFTALİK OFF: Her personele haftada en az 1 gün izin verilmeli. Off günlerini Pazar akşamı, Pazartesi, Salı günlerine konsantre et (zayıf satış günleri).
-5. 45 SAAT LİMİTİ: Fulltime personel haftada 45 saatten fazla çalışmamalı.
-6. MOLA DAĞI™IM: Aynı vardiyada mola saatleri farklı olmalı (15 dakika arayla kademeli molalar). Örn: biri 12:00-13:00, diğeri 13:00-14:00.
-7. HAFTA SONUNA YOĞUNLUK: Hafta sonları (Cuma gece, Cumartesi, Pazar) maximum personel ata. Pazartesi-Salı günlerine minimum personel ata (zayıf satış).
+📍 ŞUBE ÇALIŞMA SAATLERİ (KESİNLİKLE UYULMALI):
+- Açılış: ${openingHours}
+- Kapanış: ${closingHours}
+- Tüm vardiyalar bu saatler arasında olmalı!
+
+⚠️ ZORUNLU KURALLAR:
+1. ŞUBE SAATLERİNE UYUM: Vardiyalar ${openingHours}-${closingHours} arasında olmalı. Açılış vardiyası ${openingHours}'da başlar, kapanış vardiyası ${closingHours}'da biter.
+
+2. VARDİYA SÜRESİ: Fulltime personel 8.5 saat (7.5 saat çalışma + 1 saat mola), Parttime personel 4 saat.
+
+3. MOLA STAGGERING (15dk ARALIK): Aynı vardiyada çalışan personelin molaları farklı saatlerde başlamalı:
+   - İlk kişi: Vardiya başlangıcından 4 saat sonra (ör: ${String(openH + 4).padStart(2,'0')}:00)
+   - İkinci kişi: +15 dakika (ör: ${String(openH + 4).padStart(2,'0')}:15)
+   - Üçüncü kişi: +30 dakika (ör: ${String(openH + 4).padStart(2,'0')}:30)
+   Bu sayede hiçbir zaman tüm personel aynı anda molada olmaz!
+
+4. STAJYER KURALI: Her stajyer/intern yanında mutlaka en az 1 deneyimli barista olmalı. Stajyer tek başına çalışamaz!
+
+5. HER VARDİYADA TECRÜBELİ: Her vardiyada en az 1 tecrbeli personel (barista/supervisor) olmalı (Skill Balancing).
+
+6. YORGUNLUK ÖNLEMİ (FATIGUE PREVENTION): Hiçbir personel ardışık 6 günden fazla çalışmamalı! 5 veya 6 ardışık günden sonra mutlaka OFF verin.
+
+7. HAFTALİK SAAT LİMİTLERİ:
+   - Fulltime (FT): Haftada max 45 saat
+   - Parttime (PT): Haftada max 25 saat
+
+8. ADİL HAFTA SONU DAĞILIMI: Hafta sonu vardiyaları (Cumartesi-Pazar) personeller arasında adil dağıtılmalı. Herkese dönüşümlü hafta sonu atayın.
+
+9. YOĞUNLUK DENGESİ:
+   - Sabah vardiyaları (${openingHours}-${String(midShiftH).padStart(2,'0')}:00): 2-3 personel
+   - Akşam vardiyaları (${String(midShiftH).padStart(2,'0')}:00-${closingHours}): 3-4 personel (daha yoğun)
+   - Kapanışta mutlaka minimum 3 personel
+
+10. OFF GÜN KONSANTRASYONU: İzin günlerini zayıf satış günlerine yoğunlaştır (Pazartesi, Salı).
 
 Geçmiş Vardiya İstatistikleri (son 6 hafta):
-- Toplam vardiya: ${shiftStats.totalShifts}
-- Sabah vardiyası: ${shiftStats.morningShifts}
-- Akşam vardiyası: ${shiftStats.eveningShifts}
-- Gece vardiyası: ${shiftStats.nightShifts}
-- Atanmış vardiya: ${shiftStats.assignedShifts}
-- Tamamlanan vardiya: ${shiftStats.completedShifts}
+- Toplam: ${shiftStats.totalShifts}, Sabah: ${shiftStats.morningShifts}, Akşam: ${shiftStats.eveningShifts}
 
-Mevcut Çalışanlar (rol önemli!):
+Mevcut Çalışanlar (FT=Fulltime, PT=Parttime):
 ${employeeList}
 
-${workloadMetrics ? `Yoğunluk Metrikleri:
-- Ortalama günlük satış: ${workloadMetrics.averageDailySales || 'Bilinmiyor'}
-- Yoğun saatler: ${workloadMetrics.peakHours?.join(', ') || 'Bilinmiyor'}` : ''}
+${workloadMetrics?.averageDailySales ? `Yoğunluk: Günlük ort. ${workloadMetrics.averageDailySales} satış` : ''}
 
-GÖREV: ${weekStart} - ${weekEnd} tarihleri arası her gün için vardiya planı oluştur.
+GÖREV: ${weekStart} - ${weekEnd} tarihleri arası her gün için optimal vardiya planı oluştur.
 
 Vardiya Tipleri:
-- morning: 06:00-14:00 (sabah açılış, daha az personel yeterli)
-- evening: 14:00-22:00 (en yoğun saatler, daha fazla personel)
-- night: 22:00-06:00 (gece vardiyası, orta yoğunluk)
+- morning: ${openingHours}-${String(midShiftH).padStart(2,'0')}:30 (açılış vardiyası)
+- evening: ${String(midShiftH).padStart(2,'0')}:00-${closingHours} (kapanış vardiyası)
 
-Tüm personelleri dengeli şekilde haftaya dağıt. Sabah vardiyası (1-2 kişi), akşam vardiyası (3+ kişi). Stajyerler için aynı vardiyaya barista ekle.
-
-ÖNEMLİ: 
-- Aynı personeli aynı gün birden fazla vardiyaya atama! Sadece 1 vardiya/gün.
-- HER personeli en az 1-2 kez haftada planlama (adaletli dağıtım).
-- Supervisor buddy'leri (supervisor_buddy role) her zaman zıt vardiyalarda planla: biri 06:00-14:00, diğeri 14:00-22:00
-- Intern'leri asla tek başına planlama - yanına barista ekle
-- Hafta sonlarını staffla, zayıf günleri minimize et
-- Personel sayısı: ${employees.length} kişi. Tümünü dengeli kullan.
+⚠️ UYARILAR:
+- Aynı personeli aynı gün birden fazla vardiyaya ATAMA!
+- HER personeli haftada en az 5-6 kez planla (fulltime için).
+- Parttime personeli haftada 3 gün planla.
+- breakStartTime'ları 15dk arayla kademeli ver!
+- Personel: ${employees.length} kişi.
 
 JSON formatında yanıt ver:
 {
   "shifts": [
     {
       "shiftDate": "YYYY-MM-DD",
-      "startTime": "06:00:00",
-      "endTime": "14:00:00",
+      "startTime": "${openingHours}:00",
+      "endTime": "${String(openH + 8).padStart(2,'0')}:30:00",
+      "breakStartTime": "${String(openH + 4).padStart(2,'0')}:00:00",
+      "breakEndTime": "${String(openH + 5).padStart(2,'0')}:00:00",
       "shiftType": "morning",
-      "assignedToId": "user-uuid-here",
+      "assignedToId": "user-id",
       "status": "draft"
     }
   ],

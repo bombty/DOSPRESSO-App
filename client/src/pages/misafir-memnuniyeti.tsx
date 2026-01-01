@@ -48,6 +48,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import { Upload, ImageIcon } from "lucide-react";
 
 interface Feedback {
   id: number;
@@ -834,24 +836,94 @@ export default function MisafirMemnuniyeti() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="bannerUrl">Banner Görseli URL</Label>
-                          <Input
-                            id="bannerUrl"
-                            value={formSettings.bannerUrl || ''}
-                            onChange={(e) => updateFormSetting('bannerUrl', e.target.value || null)}
-                            placeholder="https://example.com/banner.jpg"
-                            data-testid="input-banner-url"
-                          />
+                          <Label htmlFor="bannerUrl">Banner Görseli (16:9)</Label>
+                          <div className="space-y-2">
+                            {formSettings.bannerUrl && (
+                              <div className="relative aspect-video rounded-lg overflow-hidden border bg-muted">
+                                <img 
+                                  src={formSettings.bannerUrl} 
+                                  alt="Banner" 
+                                  className="w-full h-full object-cover"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-2 right-2"
+                                  onClick={() => updateFormSetting('bannerUrl', null)}
+                                  data-testid="button-remove-banner"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                            <ObjectUploader
+                              maxWidthOrHeight={1920}
+                              onGetUploadParameters={async () => {
+                                const res = await fetch('/api/objects/generate-upload-url', {
+                                  method: 'POST',
+                                  credentials: 'include',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ prefix: 'feedback-banners' }),
+                                });
+                                const data = await res.json();
+                                return { method: 'PUT', url: data.uploadUrl };
+                              }}
+                              onComplete={(result) => {
+                                if (result.successful?.[0]?.uploadURL) {
+                                  updateFormSetting('bannerUrl', result.successful[0].uploadURL);
+                                }
+                              }}
+                              buttonClassName="w-full"
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Banner Yükle
+                            </ObjectUploader>
+                          </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="logoUrl">Logo URL</Label>
-                          <Input
-                            id="logoUrl"
-                            value={formSettings.logoUrl || ''}
-                            onChange={(e) => updateFormSetting('logoUrl', e.target.value || null)}
-                            placeholder="https://example.com/logo.png"
-                            data-testid="input-logo-url"
-                          />
+                          <Label htmlFor="logoUrl">Logo</Label>
+                          <div className="space-y-2">
+                            {formSettings.logoUrl && (
+                              <div className="relative w-24 h-24 rounded-lg overflow-hidden border bg-muted mx-auto">
+                                <img 
+                                  src={formSettings.logoUrl} 
+                                  alt="Logo" 
+                                  className="w-full h-full object-contain p-2"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1"
+                                  onClick={() => updateFormSetting('logoUrl', null)}
+                                  data-testid="button-remove-logo"
+                                >
+                                  <XCircle className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                            <ObjectUploader
+                              maxWidthOrHeight={512}
+                              onGetUploadParameters={async () => {
+                                const res = await fetch('/api/objects/generate-upload-url', {
+                                  method: 'POST',
+                                  credentials: 'include',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ prefix: 'feedback-logos' }),
+                                });
+                                const data = await res.json();
+                                return { method: 'PUT', url: data.uploadUrl };
+                              }}
+                              onComplete={(result) => {
+                                if (result.successful?.[0]?.uploadURL) {
+                                  updateFormSetting('logoUrl', result.successful[0].uploadURL);
+                                }
+                              }}
+                              buttonClassName="w-full"
+                            >
+                              <ImageIcon className="h-4 w-4 mr-2" />
+                              Logo Yükle
+                            </ObjectUploader>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="primaryColor">Ana Renk</Label>
