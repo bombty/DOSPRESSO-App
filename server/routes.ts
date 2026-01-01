@@ -24091,7 +24091,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         id: users.id,
         firstName: users.firstName,
         lastName: users.lastName,
-        avatarUrl: users.avatarUrl,
+        profileImageUrl: users.profileImageUrl,
         role: users.role,
       }).from(users)
         .where(and(

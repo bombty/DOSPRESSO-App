@@ -182,6 +182,7 @@ function Router() {
       <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/feedback" component={MusteriFeedbackPublic} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
+      <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
 
       {/* Auth guard - catch-all for unauthenticated users */}
       {!isAuthenticated && <Route component={AuthCatchAllToLogin} />}
@@ -260,7 +261,6 @@ function Router() {
           <Route path="/performans" component={Performance} />
           <Route path="/muhasebe" component={Muhasebe} />
           <Route path="/fabrika" component={Fabrika} />
-          <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
           <Route path="/fabrika/dashboard" component={FabrikaDashboard} />
           <Route path="/canli-takip" component={CanliTakip} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
