@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfWeek, addDays, isToday, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus, Trash2, AlertTriangle, Calendar, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus, Trash2, AlertTriangle, Calendar, GripVertical, ArrowLeftRight, Clock, CheckCircle2, XCircle, CalendarPlus, FileText } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Link } from "wouter";
 
 // Helper function to generate consistent color for each employee
 function getEmployeeColor(employeeId: string | number): string {
@@ -126,6 +130,12 @@ export default function VardiyaPlanlama() {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [periodWeeks, setPeriodWeeks] = useState<1 | 2>(1);
   const [activeShift, setActiveShift] = useState<any>(null);
+  
+  // Shift swap states
+  const [swapModalOpen, setSwapModalOpen] = useState(false);
+  const [swapSourceShift, setSwapSourceShift] = useState<any>(null);
+  const [swapTargetShift, setSwapTargetShift] = useState<any>(null);
+  const [swapReason, setSwapReason] = useState('');
 
   // Inline form states (no more modal)
   const [selectedEmployee, setSelectedEmployee] = useState('');
@@ -145,12 +155,32 @@ export default function VardiyaPlanlama() {
     })
   );
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'schedule' | 'swap-requests'>('schedule');
+
   // Role-based access: Only these roles can edit shifts
   const editableRoles = ['supervisor', 'supervisor_buddy', 'destek', 'muhasebe', 'coach', 'teknik', 'satinalma', 'fabrika', 'yatirimci_hq', 'admin'];
   const canEditShifts = user?.role && editableRoles.includes(user.role);
+  const isSupervisor = user?.role === 'supervisor' || user?.role === 'supervisor_buddy' || ['admin', 'hq_admin', 'hq_staff', 'destek'].includes(user?.role || '');
 
   const { data: shifts, isLoading: shiftsLoading } = useQuery({
     queryKey: ['/api/shifts'],
+  });
+
+  // Fetch pending swap requests for current user (as target)
+  const { data: pendingSwapRequestsForMe } = useQuery({
+    queryKey: ['/api/shift-swap-requests/pending-for-me'],
+  });
+
+  // Fetch all swap requests for the branch
+  const { data: allSwapRequests, refetch: refetchSwapRequests } = useQuery({
+    queryKey: ['/api/shift-swap-requests'],
+  });
+
+  // Fetch pending supervisor approval requests
+  const { data: pendingSuperviorRequests } = useQuery({
+    queryKey: ['/api/shift-swap-requests/pending-supervisor'],
+    enabled: isSupervisor,
   });
 
   const { data: allEmployees } = useQuery({
@@ -432,20 +462,71 @@ export default function VardiyaPlanlama() {
     },
   });
 
-  // Handle drag end
+  // Shift swap request mutation
+  const createSwapRequestMutation = useMutation({
+    mutationFn: async (data: { requesterShiftId: number; targetShiftId: number; targetUserId: string; branchId: number; swapDate: string; reason: string }) => {
+      return apiRequest('POST', '/api/shift-swap-requests', data);
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Takas Talebi Gönderildi", 
+        description: "Karşı tarafın onayı bekleniyor",
+      });
+      setSwapModalOpen(false);
+      setSwapSourceShift(null);
+      setSwapTargetShift(null);
+      setSwapReason('');
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests'] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // Find a shift by its ID
+  const findShiftById = (shiftId: number) => {
+    if (!shifts || !Array.isArray(shifts)) return null;
+    return shifts.find((s: any) => s.id === shiftId);
+  };
+
+  // Find employee by ID
+  const findEmployeeById = (employeeId: string) => {
+    return branchEmployees.find(e => e.id === employeeId);
+  };
+
+  // Handle drag end - now supports shift-to-shift swap
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveShift(null);
     const { active, over } = event;
     
     if (!over || !active.data.current) return;
     
-    const shift = active.data.current.shift;
-    const targetDateStr = over.data.current?.dateStr;
+    const sourceShift = active.data.current.shift;
+    const overId = String(over.id);
     
-    if (!targetDateStr || shift.shiftDate === targetDateStr) return;
+    // Check if dropped on another shift (for swap)
+    if (overId.startsWith('shift-')) {
+      const targetShiftId = parseInt(overId.replace('shift-', ''));
+      const targetShift = findShiftById(targetShiftId);
+      
+      if (targetShift && targetShift.id !== sourceShift.id) {
+        // Different employee's shift - open swap modal
+        if (targetShift.assignedToId !== sourceShift.assignedToId) {
+          setSwapSourceShift(sourceShift);
+          setSwapTargetShift(targetShift);
+          setSwapModalOpen(true);
+          return;
+        }
+      }
+      return;
+    }
+    
+    // Regular day-to-day move
+    const targetDateStr = over.data.current?.dateStr;
+    if (!targetDateStr || sourceShift.shiftDate === targetDateStr) return;
     
     // Check for conflict
-    const conflict = detectConflict(shift.assignedToId, targetDateStr, shift.id);
+    const conflict = detectConflict(sourceShift.assignedToId, targetDateStr, sourceShift.id);
     if (conflict) {
       toast({ 
         title: "Çakışma Tespit Edildi", 
@@ -455,8 +536,78 @@ export default function VardiyaPlanlama() {
       return;
     }
     
-    moveShiftMutation.mutate({ shiftId: shift.id, newDate: targetDateStr });
+    moveShiftMutation.mutate({ shiftId: sourceShift.id, newDate: targetDateStr });
   };
+
+  // Submit swap request
+  const handleSubmitSwapRequest = () => {
+    if (!swapSourceShift || !swapTargetShift || !user?.branchId) return;
+    
+    createSwapRequestMutation.mutate({
+      requesterShiftId: swapSourceShift.id,
+      targetShiftId: swapTargetShift.id,
+      targetUserId: swapTargetShift.assignedToId,
+      branchId: user.branchId,
+      swapDate: swapSourceShift.shiftDate,
+      reason: swapReason,
+    });
+  };
+
+  // Target approve/reject mutations
+  const targetApproveMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      return apiRequest('PATCH', `/api/shift-swap-requests/${requestId}/target-approve`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Onaylandı", description: "Takas talebi onaylandı, yönetici onayı bekleniyor" });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests/pending-for-me'] });
+    },
+    onError: (err: Error) => toast({ title: "Hata", description: err.message, variant: "destructive" }),
+  });
+
+  const targetRejectMutation = useMutation({
+    mutationFn: async ({ requestId, reason }: { requestId: number; reason: string }) => {
+      return apiRequest('PATCH', `/api/shift-swap-requests/${requestId}/target-reject`, { rejectionReason: reason });
+    },
+    onSuccess: () => {
+      toast({ title: "Reddedildi", description: "Takas talebi reddedildi" });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests/pending-for-me'] });
+    },
+    onError: (err: Error) => toast({ title: "Hata", description: err.message, variant: "destructive" }),
+  });
+
+  // Supervisor approve/reject mutations
+  const supervisorApproveMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      return apiRequest('PATCH', `/api/shift-swap-requests/${requestId}/supervisor-approve`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Takas Tamamlandı", description: "Vardiyalar başarıyla takas edildi" });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests/pending-supervisor'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+    },
+    onError: (err: Error) => toast({ title: "Hata", description: err.message, variant: "destructive" }),
+  });
+
+  const supervisorRejectMutation = useMutation({
+    mutationFn: async ({ requestId, reason }: { requestId: number; reason: string }) => {
+      return apiRequest('PATCH', `/api/shift-swap-requests/${requestId}/supervisor-reject`, { rejectionReason: reason });
+    },
+    onSuccess: () => {
+      toast({ title: "Reddedildi", description: "Takas talebi reddedildi" });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-swap-requests/pending-supervisor'] });
+    },
+    onError: (err: Error) => toast({ title: "Hata", description: err.message, variant: "destructive" }),
+  });
+
+  // Pending counts for badge
+  const pendingForMeCount = Array.isArray(pendingSwapRequestsForMe) ? pendingSwapRequestsForMe.length : 0;
+  const pendingSupervisorCount = Array.isArray(pendingSuperviorRequests) ? pendingSuperviorRequests.length : 0;
+  const totalPendingCount = pendingForMeCount + (isSupervisor ? pendingSupervisorCount : 0);
 
   const handleDragStart = (event: DragStartEvent) => {
     if (event.active.data.current) {
@@ -499,47 +650,89 @@ export default function VardiyaPlanlama() {
         </div>
         
         <div className="flex gap-2 flex-wrap items-center">
-          {/* Period Toggle */}
-          <div className="flex border rounded-md overflow-hidden">
-            <button
-              onClick={() => setPeriodWeeks(1)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                periodWeeks === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted hover-elevate'
-              }`}
-              data-testid="toggle-1-week"
-            >
-              1 Hafta
-            </button>
-            <button
-              onClick={() => setPeriodWeeks(2)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                periodWeeks === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted hover-elevate'
-              }`}
-              data-testid="toggle-2-weeks"
-            >
-              2 Hafta
-            </button>
-          </div>
-
-          {canEditShifts && (
+          {activeTab === 'schedule' && (
             <>
-              <Button onClick={() => setAiModalOpen(true)} className="gap-2" data-testid="button-ai-plan">
-                <Wand2 className="w-4 h-4" />
-                AI Planla
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={() => setResetConfirmOpen(true)} 
-                className="gap-2" 
-                data-testid="button-reset-shifts"
-              >
-                <Trash2 className="w-4 h-4" />
-                Sıfırla
-              </Button>
+              {/* Period Toggle */}
+              <div className="flex border rounded-md overflow-hidden">
+                <button
+                  onClick={() => setPeriodWeeks(1)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    periodWeeks === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted hover-elevate'
+                  }`}
+                  data-testid="toggle-1-week"
+                >
+                  1 Hafta
+                </button>
+                <button
+                  onClick={() => setPeriodWeeks(2)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    periodWeeks === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted hover-elevate'
+                  }`}
+                  data-testid="toggle-2-weeks"
+                >
+                  2 Hafta
+                </button>
+              </div>
+
+              {canEditShifts && (
+                <>
+                  <Button onClick={() => setAiModalOpen(true)} className="gap-2" data-testid="button-ai-plan">
+                    <Wand2 className="w-4 h-4" />
+                    AI Planla
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => setResetConfirmOpen(true)} 
+                    className="gap-2" 
+                    data-testid="button-reset-shifts"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Sıfırla
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'schedule' | 'swap-requests')} className="w-full">
+        <div className="flex items-center gap-2 flex-wrap">
+          <TabsList className="grid max-w-md grid-cols-2">
+            <TabsTrigger value="schedule" className="gap-2" data-testid="tab-schedule">
+              <Calendar className="w-4 h-4" />
+              Haftalık Görünüm
+            </TabsTrigger>
+            <TabsTrigger value="swap-requests" className="gap-2 relative" data-testid="tab-swap-requests">
+              <ArrowLeftRight className="w-4 h-4" />
+              Takas Talepleri
+              {totalPendingCount > 0 && (
+                <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+                  {totalPendingCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Quick Links */}
+          <div className="flex gap-2 ml-auto">
+            <Link href="/leave-requests">
+              <Button variant="outline" size="sm" className="gap-2" data-testid="link-leave-requests">
+                <CalendarPlus className="w-4 h-4" />
+                İzin Talepleri
+              </Button>
+            </Link>
+            <Link href="/overtime-requests">
+              <Button variant="outline" size="sm" className="gap-2" data-testid="link-overtime-requests">
+                <Clock className="w-4 h-4" />
+                Mesai Talepleri
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        <TabsContent value="schedule" className="mt-4">
 
       {/* Gap Warning */}
       {gapsInPeriod.length > 0 && (
@@ -869,6 +1062,169 @@ export default function VardiyaPlanlama() {
         </div>
       </div>
 
+        </TabsContent>
+
+        {/* Swap Requests Tab */}
+        <TabsContent value="swap-requests" className="mt-4">
+          <div className="space-y-6">
+            {/* Pending for me - Target approval */}
+            {pendingForMeCount > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ArrowLeftRight className="w-4 h-4" />
+                    Gelen Takas Talepleri
+                    <Badge variant="destructive" className="ml-2">{pendingForMeCount}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {Array.isArray(pendingSwapRequestsForMe) && pendingSwapRequestsForMe.map((req: any) => (
+                    <div key={req.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30" data-testid={`swap-request-${req.id}`}>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">
+                          {findEmployeeById(req.requesterId)?.fullName || 'Personel'} takas talep ediyor
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1 flex gap-3">
+                          <span>Tarih: {req.swapDate ? format(parseISO(req.swapDate), 'd MMM yyyy', { locale: tr }) : '-'}</span>
+                        </div>
+                        {req.reason && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Sebep: {req.reason}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => targetRejectMutation.mutate({ requestId: req.id, reason: '' })}
+                          disabled={targetRejectMutation.isPending}
+                          data-testid={`button-reject-swap-${req.id}`}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Reddet
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => targetApproveMutation.mutate(req.id)}
+                          disabled={targetApproveMutation.isPending}
+                          data-testid={`button-approve-swap-${req.id}`}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                          Onayla
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pending supervisor approval - For supervisors */}
+            {isSupervisor && pendingSupervisorCount > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Yönetici Onayı Bekleyen Talepler
+                    <Badge variant="secondary" className="ml-2">{pendingSupervisorCount}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {Array.isArray(pendingSuperviorRequests) && pendingSuperviorRequests.map((req: any) => (
+                    <div key={req.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30" data-testid={`supervisor-swap-request-${req.id}`}>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm flex items-center gap-2">
+                          <span>{findEmployeeById(req.requesterId)?.fullName || 'Personel'}</span>
+                          <ArrowLeftRight className="w-3 h-3 text-muted-foreground" />
+                          <span>{findEmployeeById(req.targetUserId)?.fullName || 'Personel'}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1 flex gap-3">
+                          <span>Tarih: {req.swapDate ? format(parseISO(req.swapDate), 'd MMM yyyy', { locale: tr }) : '-'}</span>
+                          <Badge variant="outline" className="text-[10px]">Hedef Onayladı</Badge>
+                        </div>
+                        {req.reason && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Sebep: {req.reason}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => supervisorRejectMutation.mutate({ requestId: req.id, reason: '' })}
+                          disabled={supervisorRejectMutation.isPending}
+                          data-testid={`button-supervisor-reject-${req.id}`}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Reddet
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => supervisorApproveMutation.mutate(req.id)}
+                          disabled={supervisorApproveMutation.isPending}
+                          data-testid={`button-supervisor-approve-${req.id}`}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                          Onayla & Takas Et
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* All swap requests history */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Tüm Takas Talepleri</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!allSwapRequests || (Array.isArray(allSwapRequests) && allSwapRequests.length === 0) ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <ArrowLeftRight className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Henüz takas talebi bulunmuyor</p>
+                    <p className="text-xs mt-1">Vardiya takviminizden bir vardiyayı başka bir personelin vardiyasına sürükleyerek takas talebi oluşturabilirsiniz.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {Array.isArray(allSwapRequests) && allSwapRequests.slice(0, 10).map((req: any) => (
+                      <div key={req.id} className="flex items-center justify-between p-2 border rounded text-sm" data-testid={`swap-history-${req.id}`}>
+                        <div className="flex items-center gap-2">
+                          <span>{findEmployeeById(req.requesterId)?.fullName?.split(' ')[0] || '?'}</span>
+                          <ArrowLeftRight className="w-3 h-3 text-muted-foreground" />
+                          <span>{findEmployeeById(req.targetUserId)?.fullName?.split(' ')[0] || '?'}</span>
+                          <span className="text-muted-foreground text-xs">
+                            ({req.swapDate ? format(parseISO(req.swapDate), 'd MMM', { locale: tr }) : '-'})
+                          </span>
+                        </div>
+                        <Badge
+                          variant={
+                            req.status === 'approved' ? 'default' :
+                            req.status === 'pending_target' || req.status === 'pending_supervisor' ? 'secondary' :
+                            'destructive'
+                          }
+                          className="text-[10px]"
+                        >
+                          {req.status === 'approved' ? 'Tamamlandı' :
+                           req.status === 'pending_target' ? 'Hedef Onayı Bekliyor' :
+                           req.status === 'pending_supervisor' ? 'Yönetici Onayı Bekliyor' :
+                           req.status === 'rejected_by_target' ? 'Hedef Reddetti' :
+                           req.status === 'rejected_by_supervisor' ? 'Yönetici Reddetti' :
+                           req.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+
       {/* Edit Shift Modal */}
       {editingShiftId && canEditShifts && (
         <ShiftEditModal
@@ -916,6 +1272,112 @@ export default function VardiyaPlanlama() {
                 </>
               ) : (
                 "Evet, Sıfırla"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Shift Swap Request Modal */}
+      <Dialog open={swapModalOpen} onOpenChange={(o) => { if (!o) { setSwapModalOpen(false); setSwapSourceShift(null); setSwapTargetShift(null); setSwapReason(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5" />
+              Vardiya Takas Talebi
+            </DialogTitle>
+            <DialogDescription>
+              Vardiyayı başka bir personel ile takas etmek için talep oluşturun. Takas, hedef personel ve yönetici onayı gerektirir.
+            </DialogDescription>
+          </DialogHeader>
+
+          {swapSourceShift && swapTargetShift && (
+            <div className="space-y-4">
+              {/* Swap visualization */}
+              <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-lg">
+                {/* Source shift */}
+                <div className="flex-1 text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Sizin Vardiyanız</div>
+                  <div className="font-medium text-sm">
+                    {findEmployeeById(swapSourceShift.assignedToId)?.fullName || 'Siz'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {format(parseISO(swapSourceShift.shiftDate), 'd MMM', { locale: tr })}
+                  </div>
+                  <div className="flex items-center justify-center gap-1 mt-1">
+                    <Clock className="w-3 h-3" />
+                    <span className="text-xs">
+                      {swapSourceShift.startTime?.substring(0, 5)}-{swapSourceShift.endTime?.substring(0, 5)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Arrow */}
+                <ArrowLeftRight className="w-6 h-6 text-muted-foreground flex-shrink-0" />
+
+                {/* Target shift */}
+                <div className="flex-1 text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Takas Edilecek</div>
+                  <div className="font-medium text-sm">
+                    {findEmployeeById(swapTargetShift.assignedToId)?.fullName || 'Personel'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {format(parseISO(swapTargetShift.shiftDate), 'd MMM', { locale: tr })}
+                  </div>
+                  <div className="flex items-center justify-center gap-1 mt-1">
+                    <Clock className="w-3 h-3" />
+                    <span className="text-xs">
+                      {swapTargetShift.startTime?.substring(0, 5)}-{swapTargetShift.endTime?.substring(0, 5)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div className="space-y-2">
+                <Label htmlFor="swap-reason">Takas Nedeni (opsiyonel)</Label>
+                <Textarea
+                  id="swap-reason"
+                  placeholder="Neden takas yapmak istiyorsunuz?"
+                  value={swapReason}
+                  onChange={(e) => setSwapReason(e.target.value)}
+                  className="min-h-[80px]"
+                  data-testid="input-swap-reason"
+                />
+              </div>
+
+              {/* Info box */}
+              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md text-sm">
+                <AlertTriangle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-blue-800 dark:text-blue-200">
+                  <strong>Çift Onay Sistemi:</strong> Takas talebi önce karşı tarafın onayını bekler, ardından yönetici onayı gerekir.
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => { setSwapModalOpen(false); setSwapSourceShift(null); setSwapTargetShift(null); setSwapReason(''); }}
+            >
+              İptal
+            </Button>
+            <Button 
+              onClick={handleSubmitSwapRequest}
+              disabled={createSwapRequestMutation.isPending || !swapSourceShift || !swapTargetShift}
+              data-testid="button-submit-swap"
+            >
+              {createSwapRequestMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Gönderiliyor...
+                </>
+              ) : (
+                <>
+                  <ArrowLeftRight className="w-4 h-4 mr-2" />
+                  Takas Talebi Gönder
+                </>
               )}
             </Button>
           </DialogFooter>

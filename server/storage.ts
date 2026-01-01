@@ -151,6 +151,8 @@ import type {
   InsertBranchOrderItem,
   FactoryInventory,
   InsertFactoryInventory,
+  ShiftSwapRequest,
+  InsertShiftSwapRequest,
 } from "@shared/schema";
 import {
   users,
@@ -281,6 +283,7 @@ import {
   checklistRatings,
   employeeSatisfactionScores,
   recipes,
+  shiftSwapRequests,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -774,6 +777,23 @@ export interface IStorage {
   createExamRequest(request: InsertExamRequest): Promise<ExamRequest>;
   getExamRequests(filters?: { userId?: string; status?: string; targetRoleId?: string }): Promise<ExamRequest[]>;
   updateExamRequest(id: number, updates: Partial<InsertExamRequest>): Promise<ExamRequest | undefined>;
+
+  // Shift Swap Request operations (dual approval system)
+  getShiftSwapRequests(filters: { branchId?: number; requesterId?: string; targetUserId?: string; status?: string }): Promise<ShiftSwapRequest[]>;
+  getShiftSwapRequest(id: number): Promise<ShiftSwapRequest | undefined>;
+  createShiftSwapRequest(data: InsertShiftSwapRequest): Promise<ShiftSwapRequest>;
+  targetApproveSwapRequest(id: number): Promise<ShiftSwapRequest | undefined>;
+  targetRejectSwapRequest(id: number, rejectionReason: string): Promise<ShiftSwapRequest | undefined>;
+  supervisorApproveSwapRequest(id: number, supervisorId: string): Promise<ShiftSwapRequest | undefined>;
+  supervisorRejectSwapRequest(id: number, supervisorId: string, rejectionReason: string): Promise<ShiftSwapRequest | undefined>;
+  executeShiftSwap(id: number): Promise<{ success: boolean; message: string }>;
+  getPendingSwapRequestsForUser(userId: string): Promise<ShiftSwapRequest[]>;
+  getPendingSwapRequestsForSupervisor(branchId: number): Promise<ShiftSwapRequest[]>;
+
+  // Extended Overtime Request operations
+  getOvertimeRequestsByBranch(branchId: number, status?: string): Promise<OvertimeRequest[]>;
+  updateOvertimeRequest(id: number, updates: Partial<InsertOvertimeRequest>): Promise<OvertimeRequest | undefined>;
+  getOvertimeRequestById(id: number): Promise<OvertimeRequest | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -6928,6 +6948,188 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  // ========================================
+  // SHIFT SWAP REQUESTS - Vardiya Takas Talepleri (Çift Onay Sistemi)
+  // ========================================
+
+  async getShiftSwapRequests(filters: { branchId?: number; requesterId?: string; targetUserId?: string; status?: string }): Promise<ShiftSwapRequest[]> {
+    const conditions: SQL[] = [];
+    if (filters.branchId) conditions.push(eq(shiftSwapRequests.branchId, filters.branchId));
+    if (filters.requesterId) conditions.push(eq(shiftSwapRequests.requesterId, filters.requesterId));
+    if (filters.targetUserId) conditions.push(eq(shiftSwapRequests.targetUserId, filters.targetUserId));
+    if (filters.status) conditions.push(eq(shiftSwapRequests.status, filters.status));
+
+    if (conditions.length === 0) {
+      return db.select().from(shiftSwapRequests).orderBy(desc(shiftSwapRequests.createdAt));
+    }
+    return db.select().from(shiftSwapRequests).where(and(...conditions)).orderBy(desc(shiftSwapRequests.createdAt));
+  }
+
+  async getShiftSwapRequest(id: number): Promise<ShiftSwapRequest | undefined> {
+    const [request] = await db.select().from(shiftSwapRequests).where(eq(shiftSwapRequests.id, id));
+    return request;
+  }
+
+  async createShiftSwapRequest(data: InsertShiftSwapRequest): Promise<ShiftSwapRequest> {
+    const [created] = await db.insert(shiftSwapRequests).values({
+      ...data,
+      status: 'pending_target',
+    }).returning();
+    return created;
+  }
+
+  async targetApproveSwapRequest(id: number): Promise<ShiftSwapRequest | undefined> {
+    const [updated] = await db.update(shiftSwapRequests)
+      .set({
+        targetApproved: true,
+        targetApprovedAt: new Date(),
+        status: 'pending_supervisor',
+        updatedAt: new Date(),
+      })
+      .where(eq(shiftSwapRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async targetRejectSwapRequest(id: number, rejectionReason: string): Promise<ShiftSwapRequest | undefined> {
+    const [updated] = await db.update(shiftSwapRequests)
+      .set({
+        targetApproved: false,
+        targetApprovedAt: new Date(),
+        targetRejectionReason: rejectionReason,
+        status: 'rejected_by_target',
+        updatedAt: new Date(),
+      })
+      .where(eq(shiftSwapRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async supervisorApproveSwapRequest(id: number, supervisorId: string): Promise<ShiftSwapRequest | undefined> {
+    const [updated] = await db.update(shiftSwapRequests)
+      .set({
+        supervisorApproved: true,
+        supervisorId: supervisorId,
+        supervisorApprovedAt: new Date(),
+        status: 'approved',
+        updatedAt: new Date(),
+      })
+      .where(eq(shiftSwapRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async supervisorRejectSwapRequest(id: number, supervisorId: string, rejectionReason: string): Promise<ShiftSwapRequest | undefined> {
+    const [updated] = await db.update(shiftSwapRequests)
+      .set({
+        supervisorApproved: false,
+        supervisorId: supervisorId,
+        supervisorApprovedAt: new Date(),
+        supervisorRejectionReason: rejectionReason,
+        status: 'rejected_by_supervisor',
+        updatedAt: new Date(),
+      })
+      .where(eq(shiftSwapRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async executeShiftSwap(id: number): Promise<{ success: boolean; message: string }> {
+    const request = await this.getShiftSwapRequest(id);
+    if (!request) {
+      return { success: false, message: 'Takas talebi bulunamadı' };
+    }
+    if (request.status !== 'approved') {
+      return { success: false, message: 'Takas talebi henüz onaylanmadı' };
+    }
+    if (request.executedAt) {
+      return { success: false, message: 'Bu takas zaten gerçekleştirildi' };
+    }
+
+    try {
+      // Swap the userId fields in both shifts
+      const requesterShift = await db.select().from(shifts).where(eq(shifts.id, request.requesterShiftId));
+      const targetShift = await db.select().from(shifts).where(eq(shifts.id, request.targetShiftId));
+
+      if (requesterShift.length === 0 || targetShift.length === 0) {
+        return { success: false, message: 'Vardiyalar bulunamadı' };
+      }
+
+      // Swap the employee assignments
+      await db.update(shifts)
+        .set({ employeeId: request.targetUserId, updatedAt: new Date() })
+        .where(eq(shifts.id, request.requesterShiftId));
+
+      await db.update(shifts)
+        .set({ employeeId: request.requesterId, updatedAt: new Date() })
+        .where(eq(shifts.id, request.targetShiftId));
+
+      // Swap checklist assignments for those shifts
+      await db.update(shiftChecklists)
+        .set({ assignedToId: request.targetUserId })
+        .where(eq(shiftChecklists.shiftId, request.requesterShiftId));
+
+      await db.update(shiftChecklists)
+        .set({ assignedToId: request.requesterId })
+        .where(eq(shiftChecklists.shiftId, request.targetShiftId));
+
+      // Mark as executed
+      await db.update(shiftSwapRequests)
+        .set({ executedAt: new Date(), updatedAt: new Date() })
+        .where(eq(shiftSwapRequests.id, id));
+
+      return { success: true, message: 'Vardiya takası başarıyla gerçekleştirildi' };
+    } catch (error) {
+      console.error('[ShiftSwap] Error executing swap:', error);
+      return { success: false, message: 'Takas işlemi sırasında hata oluştu' };
+    }
+  }
+
+  async getPendingSwapRequestsForUser(userId: string): Promise<ShiftSwapRequest[]> {
+    return db.select().from(shiftSwapRequests)
+      .where(and(
+        eq(shiftSwapRequests.targetUserId, userId),
+        eq(shiftSwapRequests.status, 'pending_target')
+      ))
+      .orderBy(desc(shiftSwapRequests.createdAt));
+  }
+
+  async getPendingSwapRequestsForSupervisor(branchId: number): Promise<ShiftSwapRequest[]> {
+    return db.select().from(shiftSwapRequests)
+      .where(and(
+        eq(shiftSwapRequests.branchId, branchId),
+        eq(shiftSwapRequests.status, 'pending_supervisor')
+      ))
+      .orderBy(desc(shiftSwapRequests.createdAt));
+  }
+
+  // ========================================
+  // EXTENDED OVERTIME REQUEST OPERATIONS
+  // ========================================
+
+  async getOvertimeRequestsByBranch(branchId: number, status?: string): Promise<OvertimeRequest[]> {
+    const conditions: SQL[] = [eq(overtimeRequests.branchId, branchId)];
+    if (status) {
+      conditions.push(eq(overtimeRequests.status, status));
+    }
+    return db.select().from(overtimeRequests)
+      .where(and(...conditions))
+      .orderBy(desc(overtimeRequests.createdAt));
+  }
+
+  async updateOvertimeRequest(id: number, updates: Partial<InsertOvertimeRequest>): Promise<OvertimeRequest | undefined> {
+    const [updated] = await db.update(overtimeRequests)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(overtimeRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getOvertimeRequestById(id: number): Promise<OvertimeRequest | undefined> {
+    const [request] = await db.select().from(overtimeRequests).where(eq(overtimeRequests.id, id));
+    return request;
   }
 }
 

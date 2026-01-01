@@ -6212,15 +6212,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const now = new Date();
       
+      // Calculate actual working time
+      const checkInTime = new Date(userAttendance.checkInTime);
+      const actualWorkMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / (1000 * 60));
+      
+      // Calculate planned working time from shift
+      let plannedWorkMinutes = 480; // Default 8 hours
+      if (shift.startTime && shift.endTime) {
+        const [startH, startM] = shift.startTime.split(':').map(Number);
+        const [endH, endM] = shift.endTime.split(':').map(Number);
+        plannedWorkMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+        if (plannedWorkMinutes < 0) plannedWorkMinutes += 24 * 60; // Handle overnight shifts
+      }
+      
+      // Calculate overtime (actual - planned)
+      const overtimeMinutes = Math.max(0, actualWorkMinutes - plannedWorkMinutes);
+      
+      // Get approved overtime requests for this shift/attendance
+      let approvedOvertimeMinutes = 0;
+      try {
+        const allOvertimeRequests = await storage.getOvertimeRequests({});
+        const approvedRequests = allOvertimeRequests.filter((req: any) => 
+          req.shiftAttendanceId === userAttendance.id && req.status === 'approved'
+        );
+        approvedOvertimeMinutes = approvedRequests.reduce((sum: number, req: any) => sum + (req.requestedMinutes || 0), 0);
+      } catch (e) {
+        console.log('Could not fetch overtime requests:', e);
+      }
+      
+      // Effective overtime = min(actual overtime, approved overtime)
+      const effectiveOvertimeMinutes = Math.min(overtimeMinutes, approvedOvertimeMinutes);
+      
+      // Total effective work = planned + effective overtime (unapproved overtime doesn't count)
+      const effectiveWorkMinutes = plannedWorkMinutes + effectiveOvertimeMinutes;
+      
+      // Log if there's unapproved overtime
+      const unapprovedOvertimeMinutes = overtimeMinutes - effectiveOvertimeMinutes;
+      if (unapprovedOvertimeMinutes > 0) {
+        console.log(`⚠️ Onaylanmamış mesai: ${unapprovedOvertimeMinutes} dakika (Kullanıcı: ${user.id}, Vardiya: ${shift.id})`);
+      }
+      
       const updated = await storage.updateShiftAttendance(userAttendance.id, {
         checkOutTime: now,
         checkOutPhotoUrl: photoUrl,
         checkOutLatitude: latitude.toString(),
         checkOutLongitude: longitude.toString(),
         status: 'checked_out',
+        totalWorkedMinutes: actualWorkMinutes,
+        effectiveWorkMinutes: effectiveWorkMinutes, // Only approved overtime counts
       });
       
-      res.json(updated);
+      // Return response with overtime info
+      res.json({
+        ...updated,
+        overtimeInfo: {
+          actualWorkMinutes,
+          plannedWorkMinutes,
+          totalOvertimeMinutes: overtimeMinutes,
+          approvedOvertimeMinutes,
+          effectiveOvertimeMinutes,
+          unapprovedOvertimeMinutes,
+          message: unapprovedOvertimeMinutes > 0 
+            ? `Dikkat: ${unapprovedOvertimeMinutes} dakika onaylanmamış mesai puantaja dahil edilmedi.`
+            : undefined,
+        }
+      });
     } catch (error: Error | unknown) {
       console.error("Error checking out:", error);
       if (error.name === 'ZodError') {
@@ -9792,6 +9848,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const updated = await storage.approveOvertimeRequest(requestId, user.id, approvedMinutes);
+      
+      // CRITICAL: Recalculate effectiveWorkMinutes for linked attendance record (retroactive approval)
+      // If this overtime request was for a shift that has already been checked out,
+      // we need to add the approved overtime to effectiveWorkMinutes
+      if (updated && updated.userId && updated.overtimeDate) {
+        try {
+          // Find the shift attendance record for this user on this date
+          const attendanceRecords = await storage.getShiftAttendances({
+            userId: updated.userId,
+          });
+          
+          // Filter to find the attendance for the overtime date that is already checked out
+          const relevantAttendance = attendanceRecords.find((att: any) => {
+            if (att.status !== 'checked_out' || !att.shift) return false;
+            const shiftDate = new Date(att.shift.date);
+            const overtimeDate = new Date(updated.overtimeDate!);
+            return shiftDate.toDateString() === overtimeDate.toDateString();
+          });
+          
+          if (relevantAttendance && relevantAttendance.effectiveWorkMinutes !== null) {
+            // Get all approved overtime for this shift now
+            const allOvertimeForUser = await storage.getOvertimeRequests({ userId: updated.userId });
+            const approvedOvertimeForDate = allOvertimeForUser
+              .filter((ot: any) => 
+                ot.status === 'approved' && 
+                ot.overtimeDate && 
+                new Date(ot.overtimeDate).toDateString() === new Date(updated.overtimeDate!).toDateString()
+              )
+              .reduce((sum: number, ot: any) => sum + (ot.approvedMinutes || 0), 0);
+            
+            // Calculate planned shift duration
+            const shift = relevantAttendance.shift;
+            const shiftStart = new Date(`${shift.date}T${shift.startTime}`);
+            const shiftEnd = new Date(`${shift.date}T${shift.endTime}`);
+            const plannedMinutes = Math.max(0, Math.round((shiftEnd.getTime() - shiftStart.getTime()) / 60000));
+            
+            // Calculate actual worked minutes from attendance record
+            const actualWorkedMinutes = relevantAttendance.totalWorkedMinutes || 0;
+            const actualOvertimeMinutes = Math.max(0, actualWorkedMinutes - plannedMinutes);
+            
+            // Effective overtime is the minimum of actual overtime and approved overtime
+            const effectiveOvertimeMinutes = Math.min(actualOvertimeMinutes, approvedOvertimeForDate);
+            const newEffectiveWorkMinutes = plannedMinutes + effectiveOvertimeMinutes;
+            
+            // Update the attendance record
+            await storage.updateShiftAttendance(relevantAttendance.id, {
+              effectiveWorkMinutes: newEffectiveWorkMinutes,
+            });
+            
+            console.log(`✅ Retroactive overtime approval: Updated attendance ${relevantAttendance.id} effectiveWorkMinutes from ${relevantAttendance.effectiveWorkMinutes} to ${newEffectiveWorkMinutes}`);
+          }
+        } catch (retroError) {
+          console.error("Error updating attendance for retroactive overtime approval:", retroError);
+          // Don't fail the overall request, just log the error
+        }
+      }
+      
       res.json(updated);
     } catch (error: Error | unknown) {
       console.error("Error approving overtime request:", error);
@@ -9823,6 +9936,328 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Mesai talebi reddedilirken hata oluştu" });
+    }
+  });
+
+  // ========================
+  // SHIFT SWAP REQUESTS - Vardiya Takas Talepleri (Çift Onay Sistemi)
+  // ========================
+
+  // Get all shift swap requests (filtered by branch/user/status)
+  app.get('/api/shift-swap-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { branchId, requesterId, targetUserId, status } = req.query;
+      
+      const filters: { branchId?: number; requesterId?: string; targetUserId?: string; status?: string } = {};
+      
+      // Non-HQ users can only see their branch's requests
+      if (!isHQRole(user.role) && user.branchId) {
+        filters.branchId = user.branchId;
+      } else if (branchId) {
+        filters.branchId = parseInt(branchId as string);
+      }
+      
+      if (requesterId) filters.requesterId = requesterId as string;
+      if (targetUserId) filters.targetUserId = targetUserId as string;
+      if (status) filters.status = status as string;
+      
+      const requests = await storage.getShiftSwapRequests(filters);
+      res.json(requests);
+    } catch (error: any) {
+      console.error("Error fetching shift swap requests:", error);
+      res.status(500).json({ message: "Takas talepleri yüklenirken hata oluştu" });
+    }
+  });
+
+  // Get pending swap requests for current user (as target)
+  app.get('/api/shift-swap-requests/pending-for-me', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const requests = await storage.getPendingSwapRequestsForUser(user.id);
+      res.json(requests);
+    } catch (error: any) {
+      console.error("Error fetching pending swap requests:", error);
+      res.status(500).json({ message: "Bekleyen talepler yüklenirken hata oluştu" });
+    }
+  });
+
+  // Get pending swap requests for supervisor approval
+  app.get('/api/shift-swap-requests/pending-supervisor', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role);
+      if (!canApprove) {
+        return res.status(403).json({ message: "Bu talepleri görüntüleme yetkiniz yok" });
+      }
+      
+      const branchId = user.branchId || parseInt(req.query.branchId as string);
+      if (!branchId) {
+        return res.status(400).json({ message: "Şube belirtilmedi" });
+      }
+      
+      const requests = await storage.getPendingSwapRequestsForSupervisor(branchId);
+      res.json(requests);
+    } catch (error: any) {
+      console.error("Error fetching supervisor pending requests:", error);
+      res.status(500).json({ message: "Bekleyen talepler yüklenirken hata oluştu" });
+    }
+  });
+
+  // Create a new shift swap request
+  app.post('/api/shift-swap-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const { requesterShiftId, targetShiftId, targetUserId, branchId, swapDate, reason } = req.body;
+      
+      // Validate required fields
+      if (!requesterShiftId || !targetShiftId || !targetUserId || !branchId || !swapDate) {
+        return res.status(400).json({ message: "Eksik alanlar var" });
+      }
+      
+      // User can only create requests for their own shifts
+      const created = await storage.createShiftSwapRequest({
+        requesterId: user.id,
+        targetUserId,
+        requesterShiftId,
+        targetShiftId,
+        branchId,
+        swapDate,
+        reason: reason || null,
+      });
+
+      // Create notification for target user
+      await storage.createNotification({
+        userId: targetUserId,
+        title: 'Vardiya Takas Talebi',
+        message: `${user.fullName || user.username} sizinle vardiya takas etmek istiyor`,
+        type: 'shift_swap_request',
+        relatedId: created.id,
+        relatedType: 'shift_swap_request',
+      });
+      
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error creating shift swap request:", error);
+      res.status(500).json({ message: "Takas talebi oluşturulurken hata oluştu" });
+    }
+  });
+
+  // Target employee approves the swap request
+  app.patch('/api/shift-swap-requests/:id/target-approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+      
+      const request = await storage.getShiftSwapRequest(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Takas talebi bulunamadı" });
+      }
+      
+      // Only target user can approve
+      if (request.targetUserId !== user.id) {
+        return res.status(403).json({ message: "Bu talebi onaylama yetkiniz yok" });
+      }
+      
+      if (request.status !== 'pending_target') {
+        return res.status(400).json({ message: "Bu talep zaten işlenmiş" });
+      }
+      
+      const updated = await storage.targetApproveSwapRequest(requestId);
+
+      // Notify requester and supervisors
+      await storage.createNotification({
+        userId: request.requesterId,
+        title: 'Takas Talebi Onaylandı',
+        message: `${user.fullName || user.username} takas talebinizi onayladı. Yönetici onayı bekleniyor.`,
+        type: 'shift_swap_approved',
+        relatedId: requestId,
+        relatedType: 'shift_swap_request',
+      });
+
+      // Notify branch supervisors
+      const supervisors = await storage.getUsersByBranchAndRole(request.branchId, 'supervisor');
+      for (const supervisor of supervisors) {
+        await storage.createNotification({
+          userId: supervisor.id,
+          title: 'Yeni Takas Onayı Bekliyor',
+          message: `Bir vardiya takas talebi onayınızı bekliyor`,
+          type: 'shift_swap_pending_supervisor',
+          relatedId: requestId,
+          relatedType: 'shift_swap_request',
+        });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error approving swap request by target:", error);
+      res.status(500).json({ message: "Talep onaylanırken hata oluştu" });
+    }
+  });
+
+  // Target employee rejects the swap request
+  app.patch('/api/shift-swap-requests/:id/target-reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+      const { rejectionReason } = req.body;
+      
+      const request = await storage.getShiftSwapRequest(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Takas talebi bulunamadı" });
+      }
+      
+      if (request.targetUserId !== user.id) {
+        return res.status(403).json({ message: "Bu talebi reddetme yetkiniz yok" });
+      }
+      
+      if (request.status !== 'pending_target') {
+        return res.status(400).json({ message: "Bu talep zaten işlenmiş" });
+      }
+      
+      const updated = await storage.targetRejectSwapRequest(requestId, rejectionReason || 'Takas reddedildi');
+
+      // Notify requester
+      await storage.createNotification({
+        userId: request.requesterId,
+        title: 'Takas Talebi Reddedildi',
+        message: `${user.fullName || user.username} takas talebinizi reddetti: ${rejectionReason || 'Takas reddedildi'}`,
+        type: 'shift_swap_rejected',
+        relatedId: requestId,
+        relatedType: 'shift_swap_request',
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error rejecting swap request by target:", error);
+      res.status(500).json({ message: "Talep reddedilirken hata oluştu" });
+    }
+  });
+
+  // Supervisor approves the swap request
+  app.patch('/api/shift-swap-requests/:id/supervisor-approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+      
+      const canApprove = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role);
+      if (!canApprove) {
+        return res.status(403).json({ message: "Bu talebi onaylama yetkiniz yok" });
+      }
+      
+      const request = await storage.getShiftSwapRequest(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Takas talebi bulunamadı" });
+      }
+      
+      if (request.status !== 'pending_supervisor') {
+        return res.status(400).json({ message: "Bu talep yönetici onayı beklememiyor" });
+      }
+      
+      // Branch restriction for supervisors
+      if (!isHQRole(user.role) && user.branchId !== request.branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubenizin taleplerini onaylayabilirsiniz" });
+      }
+      
+      const updated = await storage.supervisorApproveSwapRequest(requestId, user.id);
+
+      // Execute the swap immediately after approval
+      const swapResult = await storage.executeShiftSwap(requestId);
+
+      // Notify both employees
+      await storage.createNotification({
+        userId: request.requesterId,
+        title: 'Vardiya Takası Tamamlandı',
+        message: `Vardiya takas talebiniz onaylandı ve gerçekleştirildi`,
+        type: 'shift_swap_completed',
+        relatedId: requestId,
+        relatedType: 'shift_swap_request',
+      });
+
+      await storage.createNotification({
+        userId: request.targetUserId,
+        title: 'Vardiya Takası Tamamlandı',
+        message: `Vardiya takası onaylandı ve gerçekleştirildi`,
+        type: 'shift_swap_completed',
+        relatedId: requestId,
+        relatedType: 'shift_swap_request',
+      });
+      
+      res.json({ request: updated, swapResult });
+    } catch (error: any) {
+      console.error("Error approving swap request by supervisor:", error);
+      res.status(500).json({ message: "Talep onaylanırken hata oluştu" });
+    }
+  });
+
+  // Supervisor rejects the swap request
+  app.patch('/api/shift-swap-requests/:id/supervisor-reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+      const { rejectionReason } = req.body;
+      
+      const canReject = user.role === 'supervisor' || user.role === 'supervisor_buddy' || isHQRole(user.role);
+      if (!canReject) {
+        return res.status(403).json({ message: "Bu talebi reddetme yetkiniz yok" });
+      }
+      
+      const request = await storage.getShiftSwapRequest(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Takas talebi bulunamadı" });
+      }
+      
+      if (request.status !== 'pending_supervisor') {
+        return res.status(400).json({ message: "Bu talep yönetici onayı beklememiyor" });
+      }
+      
+      if (!isHQRole(user.role) && user.branchId !== request.branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubenizin taleplerini reddedebilirsiniz" });
+      }
+      
+      const updated = await storage.supervisorRejectSwapRequest(requestId, user.id, rejectionReason || 'Yönetici tarafından reddedildi');
+
+      // Notify both employees
+      await storage.createNotification({
+        userId: request.requesterId,
+        title: 'Vardiya Takası Reddedildi',
+        message: `Vardiya takas talebiniz yönetici tarafından reddedildi: ${rejectionReason || 'Yönetici tarafından reddedildi'}`,
+        type: 'shift_swap_rejected_supervisor',
+        relatedId: requestId,
+        relatedType: 'shift_swap_request',
+      });
+
+      await storage.createNotification({
+        userId: request.targetUserId,
+        title: 'Vardiya Takası Reddedildi',
+        message: `Vardiya takası yönetici tarafından reddedildi`,
+        type: 'shift_swap_rejected_supervisor',
+        relatedId: requestId,
+        relatedType: 'shift_swap_request',
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error rejecting swap request by supervisor:", error);
+      res.status(500).json({ message: "Talep reddedilirken hata oluştu" });
+    }
+  });
+
+  // Get single swap request details
+  app.get('/api/shift-swap-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const request = await storage.getShiftSwapRequest(requestId);
+      
+      if (!request) {
+        return res.status(404).json({ message: "Takas talebi bulunamadı" });
+      }
+      
+      res.json(request);
+    } catch (error: any) {
+      console.error("Error fetching shift swap request:", error);
+      res.status(500).json({ message: "Takas talebi yüklenirken hata oluştu" });
     }
   });
 
