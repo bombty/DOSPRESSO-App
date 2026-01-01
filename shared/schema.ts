@@ -3639,7 +3639,11 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export const overtimeRequests = pgTable("overtime_requests", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
   shiftAttendanceId: integer("shift_attendance_id").references(() => shiftAttendance.id, { onDelete: "set null" }),
+  overtimeDate: date("overtime_date").notNull(), // Date of overtime
+  startTime: varchar("start_time", { length: 5 }).notNull(), // HH:MM format - overtime start
+  endTime: varchar("end_time", { length: 5 }).notNull(), // HH:MM format - overtime end
   requestedMinutes: integer("requested_minutes").notNull(),
   reason: text("reason").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
@@ -3654,6 +3658,8 @@ export const overtimeRequests = pgTable("overtime_requests", {
   index("overtime_requests_user_idx").on(table.userId),
   index("overtime_requests_status_idx").on(table.status),
   index("overtime_requests_period_idx").on(table.appliedToPeriod),
+  index("overtime_requests_date_idx").on(table.overtimeDate),
+  index("overtime_requests_branch_idx").on(table.branchId),
 ]);
 
 export const insertOvertimeRequestSchema = createInsertSchema(overtimeRequests).omit({
@@ -3664,6 +3670,50 @@ export const insertOvertimeRequestSchema = createInsertSchema(overtimeRequests).
 
 export type InsertOvertimeRequest = z.infer<typeof insertOvertimeRequestSchema>;
 export type OvertimeRequest = typeof overtimeRequests.$inferSelect;
+
+// ========================================
+// SHIFT SWAP REQUESTS - Employee shift swap with dual approval
+// ========================================
+
+export const shiftSwapRequests = pgTable("shift_swap_requests", {
+  id: serial("id").primaryKey(),
+  requesterId: varchar("requester_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  targetUserId: varchar("target_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requesterShiftId: integer("requester_shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+  targetShiftId: integer("target_shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  swapDate: date("swap_date").notNull(), // Date of the shift swap
+  reason: text("reason"),
+  // Dual approval system
+  targetApproved: boolean("target_approved"), // null = pending, true = approved, false = rejected
+  targetApprovedAt: timestamp("target_approved_at"),
+  targetRejectionReason: text("target_rejection_reason"),
+  supervisorApproved: boolean("supervisor_approved"), // null = pending, true = approved, false = rejected
+  supervisorId: varchar("supervisor_id").references(() => users.id, { onDelete: "set null" }),
+  supervisorApprovedAt: timestamp("supervisor_approved_at"),
+  supervisorRejectionReason: text("supervisor_rejection_reason"),
+  // Overall status
+  status: varchar("status", { length: 20 }).notNull().default("pending_target"), 
+  // pending_target, pending_supervisor, approved, rejected_by_target, rejected_by_supervisor, cancelled
+  executedAt: timestamp("executed_at"), // When the swap was actually performed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("shift_swap_requester_idx").on(table.requesterId),
+  index("shift_swap_target_idx").on(table.targetUserId),
+  index("shift_swap_status_idx").on(table.status),
+  index("shift_swap_branch_idx").on(table.branchId),
+  index("shift_swap_date_idx").on(table.swapDate),
+]);
+
+export const insertShiftSwapRequestSchema = createInsertSchema(shiftSwapRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertShiftSwapRequest = z.infer<typeof insertShiftSwapRequestSchema>;
+export type ShiftSwapRequest = typeof shiftSwapRequests.$inferSelect;
 
 // ========================================
 // ATTENDANCE PENALTIES - Track all penalties and deductions
