@@ -18,7 +18,8 @@ import {
   ExternalLink,
   RefreshCw,
   Timer,
-  ClipboardCheck
+  ClipboardCheck,
+  BarChart3
 } from "lucide-react";
 
 interface DashboardStats {
@@ -344,6 +345,12 @@ export default function FabrikaDashboard() {
                   <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-quality-control">
                     <ClipboardCheck className="h-8 w-8 text-emerald-500" />
                     <span>Kalite Kontrol</span>
+                  </Button>
+                </Link>
+                <Link href="/fabrika/performans">
+                  <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-performance">
+                    <BarChart3 className="h-8 w-8 text-purple-500" />
+                    <span>Performans Analizi</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika">
