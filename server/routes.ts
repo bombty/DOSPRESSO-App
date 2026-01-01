@@ -24606,13 +24606,87 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // Fire/Zayiat Sebepleri listesi
   app.get('/api/factory/waste-reasons', async (req, res) => {
     try {
+      const showAll = req.query.all === 'true';
       const reasons = await db.select().from(factoryWasteReasons)
-        .where(eq(factoryWasteReasons.isActive, true))
+        .where(showAll ? undefined : eq(factoryWasteReasons.isActive, true))
         .orderBy(factoryWasteReasons.category, factoryWasteReasons.name);
       res.json(reasons);
     } catch (error: any) {
       console.error("Error fetching waste reasons:", error);
       res.status(500).json({ message: "Zaiyat sebepleri alınamadı" });
+    }
+  });
+
+  // Yeni fire sebebi oluştur
+  app.post('/api/factory/waste-reasons', isAuthenticated, async (req, res) => {
+    try {
+      const { name, category, description, isActive, sortOrder } = req.body;
+      
+      if (!name || !category) {
+        return res.status(400).json({ message: "Sebep adı ve kategori gerekli" });
+      }
+
+      const [newReason] = await db.insert(factoryWasteReasons).values({
+        name,
+        category,
+        description: description || null,
+        isActive: isActive !== false,
+        sortOrder: sortOrder || 0,
+      }).returning();
+
+      res.status(201).json(newReason);
+    } catch (error: any) {
+      console.error("Error creating waste reason:", error);
+      res.status(500).json({ message: "Fire sebebi oluşturulamadı" });
+    }
+  });
+
+  // Fire sebebi güncelle
+  app.patch('/api/factory/waste-reasons/:id', isAuthenticated, async (req, res) => {
+    try {
+      const reasonId = parseInt(req.params.id);
+      const { name, category, description, isActive, sortOrder } = req.body;
+
+      const [updated] = await db.update(factoryWasteReasons)
+        .set({
+          name,
+          category,
+          description: description || null,
+          isActive,
+          sortOrder: sortOrder || 0,
+        })
+        .where(eq(factoryWasteReasons.id, reasonId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Fire sebebi bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating waste reason:", error);
+      res.status(500).json({ message: "Fire sebebi güncellenemedi" });
+    }
+  });
+
+  // Fire sebebi sil
+  app.delete('/api/factory/waste-reasons/:id', isAuthenticated, async (req, res) => {
+    try {
+      const reasonId = parseInt(req.params.id);
+
+      const [deleted] = await db.update(factoryWasteReasons)
+        .set({ isActive: false })
+        .where(eq(factoryWasteReasons.id, reasonId))
+        .returning();
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Fire sebebi bulunamadı" });
+      }
+
+      res.json({ success: true, message: "Fire sebebi silindi" });
+    } catch (error: any) {
+      console.error("Error deleting waste reason:", error);
+      res.status(500).json({ message: "Fire sebebi silinemedi" });
     }
   });
 
