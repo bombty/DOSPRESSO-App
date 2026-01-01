@@ -24641,6 +24641,149 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // Kalite Kontrol - Bekleyen üretim çıktıları
+  app.get('/api/factory/quality/pending', async (req, res) => {
+    try {
+      const outputs = await db.select({
+        id: factoryProductionOutputs.id,
+        sessionId: factoryProductionOutputs.sessionId,
+        userId: factoryProductionOutputs.userId,
+        stationId: factoryProductionOutputs.stationId,
+        producedQuantity: factoryProductionOutputs.producedQuantity,
+        producedUnit: factoryProductionOutputs.producedUnit,
+        wasteQuantity: factoryProductionOutputs.wasteQuantity,
+        wasteUnit: factoryProductionOutputs.wasteUnit,
+        qualityStatus: factoryProductionOutputs.qualityStatus,
+        createdAt: factoryProductionOutputs.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        stationName: factoryStations.name,
+      })
+        .from(factoryProductionOutputs)
+        .innerJoin(users, eq(factoryProductionOutputs.userId, users.id))
+        .innerJoin(factoryStations, eq(factoryProductionOutputs.stationId, factoryStations.id))
+        .where(eq(factoryProductionOutputs.qualityStatus, 'pending'))
+        .orderBy(desc(factoryProductionOutputs.createdAt));
+
+      res.json(outputs);
+    } catch (error: any) {
+      console.error("Error fetching pending outputs:", error);
+      res.status(500).json({ message: "Bekleyen çıktılar alınamadı" });
+    }
+  });
+
+  // Kalite Kontrol - Onaylanan üretim çıktıları
+  app.get('/api/factory/quality/approved', async (req, res) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const outputs = await db.select({
+        id: factoryProductionOutputs.id,
+        sessionId: factoryProductionOutputs.sessionId,
+        userId: factoryProductionOutputs.userId,
+        stationId: factoryProductionOutputs.stationId,
+        producedQuantity: factoryProductionOutputs.producedQuantity,
+        producedUnit: factoryProductionOutputs.producedUnit,
+        wasteQuantity: factoryProductionOutputs.wasteQuantity,
+        wasteUnit: factoryProductionOutputs.wasteUnit,
+        qualityStatus: factoryProductionOutputs.qualityStatus,
+        createdAt: factoryProductionOutputs.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        stationName: factoryStations.name,
+      })
+        .from(factoryProductionOutputs)
+        .innerJoin(users, eq(factoryProductionOutputs.userId, users.id))
+        .innerJoin(factoryStations, eq(factoryProductionOutputs.stationId, factoryStations.id))
+        .where(and(
+          eq(factoryProductionOutputs.qualityStatus, 'approved'),
+          gte(factoryProductionOutputs.createdAt, today)
+        ))
+        .orderBy(desc(factoryProductionOutputs.createdAt))
+        .limit(50);
+
+      res.json(outputs);
+    } catch (error: any) {
+      console.error("Error fetching approved outputs:", error);
+      res.status(500).json({ message: "Onaylanan çıktılar alınamadı" });
+    }
+  });
+
+  // Kalite Kontrol - Reddedilen üretim çıktıları
+  app.get('/api/factory/quality/rejected', async (req, res) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const outputs = await db.select({
+        id: factoryProductionOutputs.id,
+        sessionId: factoryProductionOutputs.sessionId,
+        userId: factoryProductionOutputs.userId,
+        stationId: factoryProductionOutputs.stationId,
+        producedQuantity: factoryProductionOutputs.producedQuantity,
+        producedUnit: factoryProductionOutputs.producedUnit,
+        wasteQuantity: factoryProductionOutputs.wasteQuantity,
+        wasteUnit: factoryProductionOutputs.wasteUnit,
+        qualityStatus: factoryProductionOutputs.qualityStatus,
+        createdAt: factoryProductionOutputs.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        stationName: factoryStations.name,
+      })
+        .from(factoryProductionOutputs)
+        .innerJoin(users, eq(factoryProductionOutputs.userId, users.id))
+        .innerJoin(factoryStations, eq(factoryProductionOutputs.stationId, factoryStations.id))
+        .where(and(
+          eq(factoryProductionOutputs.qualityStatus, 'rejected'),
+          gte(factoryProductionOutputs.createdAt, today)
+        ))
+        .orderBy(desc(factoryProductionOutputs.createdAt))
+        .limit(50);
+
+      res.json(outputs);
+    } catch (error: any) {
+      console.error("Error fetching rejected outputs:", error);
+      res.status(500).json({ message: "Reddedilen çıktılar alınamadı" });
+    }
+  });
+
+  // Kalite Kontrol - Onay/Red işlemi
+  app.post('/api/factory/quality/review', async (req, res) => {
+    try {
+      const { outputId, decision, reason } = req.body;
+
+      if (!outputId || !decision || !['approved', 'rejected'].includes(decision)) {
+        return res.status(400).json({ message: "Geçersiz parametreler" });
+      }
+
+      // Update production output status
+      const [updated] = await db.update(factoryProductionOutputs)
+        .set({
+          qualityStatus: decision,
+          qualityCheckedAt: new Date(),
+        })
+        .where(eq(factoryProductionOutputs.id, outputId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Üretim kaydı bulunamadı" });
+      }
+
+      res.json({ 
+        success: true, 
+        output: updated,
+        message: decision === 'approved' ? 'Üretim onaylandı' : 'Üretim reddedildi'
+      });
+    } catch (error: any) {
+      console.error("Error reviewing output:", error);
+      res.status(500).json({ message: "Kalite kontrolü kaydedilemedi" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

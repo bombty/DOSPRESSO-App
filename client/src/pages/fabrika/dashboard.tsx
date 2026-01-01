@@ -17,7 +17,8 @@ import {
   Settings,
   ExternalLink,
   RefreshCw,
-  Timer
+  Timer,
+  ClipboardCheck
 } from "lucide-react";
 
 interface DashboardStats {
@@ -332,11 +333,17 @@ export default function FabrikaDashboard() {
               <CardTitle>Hızlı Erişim</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <Link href="/fabrika/kiosk">
                   <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-kiosk-quick">
                     <Factory className="h-8 w-8 text-amber-500" />
                     <span>Kiosk Modu</span>
+                  </Button>
+                </Link>
+                <Link href="/fabrika/kalite-kontrol">
+                  <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-quality-control">
+                    <ClipboardCheck className="h-8 w-8 text-emerald-500" />
+                    <span>Kalite Kontrol</span>
                   </Button>
                 </Link>
                 <Link href="/fabrika">
