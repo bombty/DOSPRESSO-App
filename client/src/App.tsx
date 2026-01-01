@@ -132,6 +132,7 @@ import AdminKaliteDenetimSablonuDuzenle from "@/pages/admin/kalite-denetim-sablo
 import AdminTopluVeriYonetimi from "@/pages/admin/toplu-veri-yonetimi";
 import AdminFabrikaIstasyonlar from "@/pages/admin/fabrika-istasyonlar";
 import AdminFabrikaFireSebepleri from "@/pages/admin/fabrika-fire-sebepleri";
+import AdminFabrikaPinYonetimi from "@/pages/admin/fabrika-pin-yonetimi";
 import Setup from "@/pages/setup";
 import MisafirGeriBildirimPublic from "@/pages/misafir-geri-bildirim";
 import MisafirMemnuniyeti from "@/pages/misafir-memnuniyeti";
@@ -310,6 +311,7 @@ function Router() {
           <Route path="/admin/toplu-veri-yonetimi" component={AdminTopluVeriYonetimi} />
           <Route path="/admin/fabrika-istasyonlar" component={AdminFabrikaIstasyonlar} />
           <Route path="/admin/fabrika-fire-sebepleri" component={AdminFabrikaFireSebepleri} />
+          <Route path="/admin/fabrika-pin-yonetimi" component={AdminFabrikaPinYonetimi} />
           <Route path="/admin/seed" component={AdminSeed} />
           <Route path="/admin" component={AdminDashboard} />
         </>

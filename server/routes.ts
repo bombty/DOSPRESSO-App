@@ -24168,6 +24168,140 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // Fabrika PIN kayıtlarını listele
+  app.get('/api/factory/pins', isAuthenticated, async (req, res) => {
+    try {
+      const pinRecords = await db.select({
+        id: factoryStaffPins.id,
+        userId: factoryStaffPins.userId,
+        isActive: factoryStaffPins.isActive,
+        pinFailedAttempts: factoryStaffPins.pinFailedAttempts,
+        pinLockedUntil: factoryStaffPins.pinLockedUntil,
+        createdAt: factoryStaffPins.createdAt,
+      }).from(factoryStaffPins)
+        .orderBy(factoryStaffPins.createdAt);
+      res.json(pinRecords);
+    } catch (error: any) {
+      console.error("Error fetching pins:", error);
+      res.status(500).json({ message: "PIN kayıtları alınamadı" });
+    }
+  });
+
+  // Yeni PIN oluştur
+  app.post('/api/factory/pins', isAuthenticated, async (req, res) => {
+    try {
+      const { userId, pin } = req.body;
+      
+      if (!userId || !pin) {
+        return res.status(400).json({ message: "Kullanıcı ID ve PIN gerekli" });
+      }
+
+      if (pin.length !== 4) {
+        return res.status(400).json({ message: "PIN 4 haneli olmalı" });
+      }
+
+      // Check if user already has a PIN
+      const existing = await db.select().from(factoryStaffPins)
+        .where(eq(factoryStaffPins.userId, userId))
+        .limit(1);
+
+      if (existing.length > 0) {
+        return res.status(400).json({ message: "Bu kullanıcının zaten PIN kaydı var" });
+      }
+
+      // Hash the PIN
+      const hashedPin = await bcrypt.hash(pin, 10);
+
+      const [newPin] = await db.insert(factoryStaffPins).values({
+        userId,
+        hashedPin,
+        isActive: true,
+        createdAt: new Date(),
+      }).returning();
+
+      res.status(201).json({ success: true, id: newPin.id });
+    } catch (error: any) {
+      console.error("Error creating PIN:", error);
+      res.status(500).json({ message: "PIN oluşturulamadı" });
+    }
+  });
+
+  // PIN sıfırla
+  app.patch('/api/factory/pins/:userId', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const { pin } = req.body;
+
+      if (!pin || pin.length !== 4) {
+        return res.status(400).json({ message: "4 haneli PIN gerekli" });
+      }
+
+      const hashedPin = await bcrypt.hash(pin, 10);
+
+      const [updated] = await db.update(factoryStaffPins)
+        .set({
+          hashedPin,
+          pinFailedAttempts: 0,
+          pinLockedUntil: null,
+        })
+        .where(eq(factoryStaffPins.userId, userId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "PIN kaydı bulunamadı" });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error resetting PIN:", error);
+      res.status(500).json({ message: "PIN sıfırlanamadı" });
+    }
+  });
+
+  // Hesap kilidini aç
+  app.post('/api/factory/pins/:userId/unlock', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+
+      const [updated] = await db.update(factoryStaffPins)
+        .set({
+          pinFailedAttempts: 0,
+          pinLockedUntil: null,
+        })
+        .where(eq(factoryStaffPins.userId, userId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "PIN kaydı bulunamadı" });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error unlocking account:", error);
+      res.status(500).json({ message: "Hesap kilidi açılamadı" });
+    }
+  });
+
+  // PIN sil
+  app.delete('/api/factory/pins/:userId', isAuthenticated, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+
+      const [deleted] = await db.delete(factoryStaffPins)
+        .where(eq(factoryStaffPins.userId, userId))
+        .returning();
+
+      if (!deleted) {
+        return res.status(404).json({ message: "PIN kaydı bulunamadı" });
+      }
+
+      res.json({ success: true, message: "PIN silindi" });
+    } catch (error: any) {
+      console.error("Error deleting PIN:", error);
+      res.status(500).json({ message: "PIN silinemedi" });
+    }
+  });
+
   // Fabrika personeli listesi (PIN ile giriş için)
   app.get('/api/factory/staff', async (req, res) => {
     try {
