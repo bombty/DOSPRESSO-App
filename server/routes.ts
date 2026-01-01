@@ -24077,13 +24077,94 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // Fabrika istasyonlarını listele
   app.get('/api/factory/stations', isAuthenticated, async (req, res) => {
     try {
+      const showAll = req.query.all === 'true';
       const stations = await db.select().from(factoryStations)
-        .where(eq(factoryStations.isActive, true))
+        .where(showAll ? undefined : eq(factoryStations.isActive, true))
         .orderBy(factoryStations.sortOrder);
       res.json(stations);
     } catch (error: any) {
       console.error("Error fetching factory stations:", error);
       res.status(500).json({ message: "İstasyonlar alınamadı" });
+    }
+  });
+
+  // Yeni istasyon oluştur
+  app.post('/api/factory/stations', isAuthenticated, async (req, res) => {
+    try {
+      const { name, code, description, category, targetHourlyOutput, maxCapacity, isActive, sortOrder } = req.body;
+      
+      if (!name || !code) {
+        return res.status(400).json({ message: "İstasyon adı ve kodu gerekli" });
+      }
+
+      const [newStation] = await db.insert(factoryStations).values({
+        name,
+        code,
+        description: description || null,
+        category: category || null,
+        targetHourlyOutput: targetHourlyOutput || null,
+        maxCapacity: maxCapacity || null,
+        isActive: isActive !== false,
+        sortOrder: sortOrder || 0,
+      }).returning();
+
+      res.status(201).json(newStation);
+    } catch (error: any) {
+      console.error("Error creating station:", error);
+      res.status(500).json({ message: "İstasyon oluşturulamadı" });
+    }
+  });
+
+  // İstasyon güncelle
+  app.patch('/api/factory/stations/:id', isAuthenticated, async (req, res) => {
+    try {
+      const stationId = parseInt(req.params.id);
+      const { name, code, description, category, targetHourlyOutput, maxCapacity, isActive, sortOrder } = req.body;
+
+      const [updated] = await db.update(factoryStations)
+        .set({
+          name,
+          code,
+          description: description || null,
+          category: category || null,
+          targetHourlyOutput: targetHourlyOutput || null,
+          maxCapacity: maxCapacity || null,
+          isActive,
+          sortOrder: sortOrder || 0,
+        })
+        .where(eq(factoryStations.id, stationId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "İstasyon bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating station:", error);
+      res.status(500).json({ message: "İstasyon güncellenemedi" });
+    }
+  });
+
+  // İstasyon sil
+  app.delete('/api/factory/stations/:id', isAuthenticated, async (req, res) => {
+    try {
+      const stationId = parseInt(req.params.id);
+
+      // Soft delete - just set isActive to false
+      const [deleted] = await db.update(factoryStations)
+        .set({ isActive: false })
+        .where(eq(factoryStations.id, stationId))
+        .returning();
+
+      if (!deleted) {
+        return res.status(404).json({ message: "İstasyon bulunamadı" });
+      }
+
+      res.json({ success: true, message: "İstasyon silindi" });
+    } catch (error: any) {
+      console.error("Error deleting station:", error);
+      res.status(500).json({ message: "İstasyon silinemedi" });
     }
   });
 
