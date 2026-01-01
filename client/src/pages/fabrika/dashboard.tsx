@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "wouter";
 import { 
   Factory, 
@@ -14,7 +16,8 @@ import {
   Clock,
   Settings,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Timer
 } from "lucide-react";
 
 interface DashboardStats {
@@ -38,6 +41,18 @@ interface Station {
   targetHourlyOutput: number | null;
 }
 
+interface ActiveWorker {
+  sessionId: number;
+  userId: string;
+  stationId: number;
+  checkInTime: string;
+  firstName: string;
+  lastName: string;
+  profileImageUrl: string | null;
+  stationName: string;
+  stationCode: string;
+}
+
 export default function FabrikaDashboard() {
   const { data: stats, isLoading: loadingStats, refetch } = useQuery<DashboardStats>({
     queryKey: ['/api/factory/dashboard/stats'],
@@ -46,6 +61,11 @@ export default function FabrikaDashboard() {
 
   const { data: stations = [] } = useQuery<Station[]>({
     queryKey: ['/api/factory/stations'],
+  });
+
+  const { data: activeWorkers = [], isLoading: loadingWorkers } = useQuery<ActiveWorker[]>({
+    queryKey: ['/api/factory/active-workers'],
+    refetchInterval: 15000,
   });
 
   const getStationName = (stationId: number) => {
@@ -58,9 +78,18 @@ export default function FabrikaDashboard() {
     return station?.targetHourlyOutput || 0;
   };
 
+  const formatElapsedTime = (checkInTime: string) => {
+    const start = new Date(checkInTime).getTime();
+    const now = Date.now();
+    const seconds = Math.floor((now - start) / 1000);
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}s ${m}dk`;
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Factory className="h-8 w-8 text-amber-500" />
           <div>
@@ -152,6 +181,71 @@ export default function FabrikaDashboard() {
             </Card>
           </div>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-500" />
+                Aktif Çalışanlar
+              </CardTitle>
+              <CardDescription>Şu anda vardiyada olan personel</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingWorkers ? (
+                <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+              ) : activeWorkers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Personel</TableHead>
+                      <TableHead>İstasyon</TableHead>
+                      <TableHead>Giriş Saati</TableHead>
+                      <TableHead>Geçen Süre</TableHead>
+                      <TableHead>Durum</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeWorkers.map((worker) => (
+                      <TableRow key={worker.sessionId} data-testid={`row-worker-${worker.sessionId}`}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={worker.profileImageUrl || undefined} />
+                              <AvatarFallback className="bg-amber-600 text-white text-xs">
+                                {worker.firstName[0]}{worker.lastName[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{worker.firstName} {worker.lastName}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{worker.stationName}</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(worker.checkInTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-amber-600">
+                            <Timer className="h-4 w-4" />
+                            {formatElapsedTime(worker.checkInTime)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-green-600">Çalışıyor</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Şu anda aktif çalışan yok</p>
+                  <p className="text-sm mt-1">Kiosk modundan giriş yapılabilir</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -170,7 +264,7 @@ export default function FabrikaDashboard() {
                     
                     return (
                       <div key={sp.stationId} className="space-y-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
                           <span className="font-medium">{getStationName(sp.stationId)}</span>
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary">{sp.produced} adet</Badge>

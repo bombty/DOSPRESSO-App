@@ -10,7 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { 
   Factory, 
   LogIn, 
@@ -26,10 +28,16 @@ import {
   Settings,
   ArrowRight,
   Clock,
-  Trash2
+  Trash2,
+  Coffee,
+  HandHelping,
+  CircleUser,
+  StopCircle,
+  CheckCircle2
 } from "lucide-react";
 
-type KioskStep = 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'end-shift-summary';
+type KioskStep = 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout';
+type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis';
 
 interface StaffMember {
   id: string;
@@ -45,6 +53,13 @@ interface Station {
   code: string;
   category: string | null;
   targetHourlyOutput: number | null;
+}
+
+interface WasteReason {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
 }
 
 interface Session {
@@ -66,8 +81,16 @@ interface ProductionRun {
   quantityWaste: number;
 }
 
+const BREAK_OPTIONS = [
+  { value: 'mola' as BreakReason, label: 'Mola', icon: Coffee, description: 'Kısa ara (yemek, dinlenme)', color: 'bg-blue-600' },
+  { value: 'yardim' as BreakReason, label: 'Başka İstasyonda Yardım', icon: HandHelping, description: 'Farklı istasyonda destek', color: 'bg-purple-600' },
+  { value: 'ozel_ihtiyac' as BreakReason, label: 'Özel İhtiyaç', icon: CircleUser, description: 'WC, kişisel ihtiyaç', color: 'bg-orange-500' },
+  { value: 'gorev_bitis' as BreakReason, label: 'Görev Sonlandırma', icon: CheckCircle2, description: 'Bu istasyondaki işi bitir', color: 'bg-green-600' },
+];
+
 export default function FactoryKiosk() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [step, setStep] = useState<KioskStep>('select-user');
   const [selectedUser, setSelectedUser] = useState<StaffMember | null>(null);
   const [pinInput, setPinInput] = useState('');
@@ -76,10 +99,16 @@ export default function FactoryKiosk() {
   const [currentProductionRun, setCurrentProductionRun] = useState<ProductionRun | null>(null);
   const [currentStationInfo, setCurrentStationInfo] = useState<Station | null>(null);
   const [quantityProduced, setQuantityProduced] = useState('');
+  const [producedUnit, setProducedUnit] = useState('adet');
   const [quantityWaste, setQuantityWaste] = useState('');
-  const [wasteReason, setWasteReason] = useState('');
+  const [wasteUnit, setWasteUnit] = useState('adet');
+  const [selectedWasteReason, setSelectedWasteReason] = useState<number | null>(null);
+  const [wasteNotes, setWasteNotes] = useState('');
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [selectedBreakReason, setSelectedBreakReason] = useState<BreakReason | null>(null);
+  const [targetStationId, setTargetStationId] = useState<number | null>(null);
+  const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(10);
 
   const { data: staffList = [], isLoading: loadingStaff } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
@@ -87,6 +116,10 @@ export default function FactoryKiosk() {
 
   const { data: stations = [], isLoading: loadingStations } = useQuery<Station[]>({
     queryKey: ['/api/factory/stations'],
+  });
+
+  const { data: wasteReasons = [] } = useQuery<WasteReason[]>({
+    queryKey: ['/api/factory/waste-reasons'],
   });
 
   const loginMutation = useMutation({
@@ -127,34 +160,52 @@ export default function FactoryKiosk() {
     },
   });
 
-  const switchStationMutation = useMutation({
-    mutationFn: async (data: { sessionId: number; productionRunId: number; quantityProduced: number; quantityWaste: number; wasteReason?: string; newStationId?: number }) => {
-      const res = await apiRequest('POST', '/api/factory/kiosk/switch-station', data);
+  const logBreakMutation = useMutation({
+    mutationFn: async (data: {
+      sessionId: number;
+      breakReason: BreakReason;
+      targetStationId?: number;
+      producedQuantity?: number;
+      producedUnit?: string;
+      wasteQuantity?: number;
+      wasteUnit?: string;
+      wasteReasonId?: number;
+      wasteNotes?: string;
+    }) => {
+      const res = await apiRequest('POST', '/api/factory/kiosk/log-break', data);
       return res.json();
     },
     onSuccess: (data, variables) => {
-      if (data.newProductionRun) {
-        setCurrentProductionRun(data.newProductionRun);
-        setCurrentStationInfo(data.station);
-        toast({ title: "İstasyon değiştirildi", description: `${data.station.name} istasyonuna geçtin` });
+      if (variables.breakReason === 'gorev_bitis') {
+        toast({ title: "Görev tamamlandı", description: "Üretim kaydedildi" });
+      } else {
+        toast({ title: "Mola kaydedildi", description: "İyi dinlenmeler!" });
       }
-      setQuantityProduced('');
-      setQuantityWaste('');
-      setWasteReason('');
+      startAutoLogout();
     },
     onError: (error: any) => {
-      toast({ title: "İstasyon değiştirilemedi", description: error.message, variant: "destructive" });
+      toast({ title: "İşlem başarısız", description: error.message, variant: "destructive" });
     },
   });
 
   const endShiftMutation = useMutation({
-    mutationFn: async (data: { sessionId: number; productionRunId?: number; quantityProduced?: number; quantityWaste?: number; wasteReason?: string }) => {
+    mutationFn: async (data: { 
+      sessionId: number; 
+      productionRunId?: number; 
+      quantityProduced?: number;
+      producedUnit?: string;
+      quantityWaste?: number;
+      wasteUnit?: string;
+      wasteReasonId?: number;
+      wasteNotes?: string;
+    }) => {
       const res = await apiRequest('POST', '/api/factory/kiosk/end-shift', data);
       return res.json();
     },
     onSuccess: (data) => {
       setShiftSummary(data.summary);
       setStep('end-shift-summary');
+      startAutoLogout();
       toast({ title: "Vardiya tamamlandı" });
     },
     onError: (error: any) => {
@@ -175,6 +226,28 @@ export default function FactoryKiosk() {
       console.error("Error fetching session:", error);
     }
   };
+
+  const startAutoLogout = () => {
+    setStep('auto-logout');
+    setAutoLogoutCountdown(10);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (step === 'auto-logout') {
+      interval = setInterval(() => {
+        setAutoLogoutCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setLocation('/fabrika/dashboard');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [step, setLocation]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -213,27 +286,60 @@ export default function FactoryKiosk() {
     startShiftMutation.mutate({ userId: selectedUser.id, stationId: selectedStation });
   };
 
-  const handleSwitchStation = (newStationId: number) => {
-    if (!currentSession || !currentProductionRun) return;
-    switchStationMutation.mutate({
-      sessionId: currentSession.id,
-      productionRunId: currentProductionRun.id,
-      quantityProduced: parseInt(quantityProduced) || 0,
-      quantityWaste: parseInt(quantityWaste) || 0,
-      wasteReason: wasteReason || undefined,
-      newStationId,
-    });
+  const handleStopClick = () => {
+    setQuantityProduced('');
+    setProducedUnit('adet');
+    setQuantityWaste('');
+    setWasteUnit('adet');
+    setSelectedWasteReason(null);
+    setWasteNotes('');
+    setTargetStationId(null);
+    setSelectedBreakReason(null);
+    setStep('stop-options');
   };
 
-  const handleEndShift = () => {
-    if (!currentSession) return;
-    endShiftMutation.mutate({
-      sessionId: currentSession.id,
-      productionRunId: currentProductionRun?.id,
-      quantityProduced: parseInt(quantityProduced) || 0,
-      quantityWaste: parseInt(quantityWaste) || 0,
-      wasteReason: wasteReason || undefined,
-    });
+  const handleBreakReasonSelect = (reason: BreakReason) => {
+    setSelectedBreakReason(reason);
+    if (reason === 'gorev_bitis') {
+      setStep('production-entry');
+    } else if (reason === 'yardim') {
+      setStep('production-entry');
+    } else {
+      if (!currentSession) return;
+      logBreakMutation.mutate({
+        sessionId: currentSession.id,
+        breakReason: reason,
+      });
+    }
+  };
+
+  const handleProductionSubmit = () => {
+    if (!currentSession || !selectedBreakReason) return;
+
+    if (selectedBreakReason === 'gorev_bitis') {
+      endShiftMutation.mutate({
+        sessionId: currentSession.id,
+        productionRunId: currentProductionRun?.id,
+        quantityProduced: parseFloat(quantityProduced) || 0,
+        producedUnit,
+        quantityWaste: parseFloat(quantityWaste) || 0,
+        wasteUnit,
+        wasteReasonId: selectedWasteReason || undefined,
+        wasteNotes: wasteNotes || undefined,
+      });
+    } else {
+      logBreakMutation.mutate({
+        sessionId: currentSession.id,
+        breakReason: selectedBreakReason,
+        targetStationId: targetStationId || undefined,
+        producedQuantity: parseFloat(quantityProduced) || 0,
+        producedUnit,
+        wasteQuantity: parseFloat(quantityWaste) || 0,
+        wasteUnit,
+        wasteReasonId: selectedWasteReason || undefined,
+        wasteNotes: wasteNotes || undefined,
+      });
+    }
   };
 
   const resetKiosk = () => {
@@ -245,10 +351,16 @@ export default function FactoryKiosk() {
     setCurrentProductionRun(null);
     setCurrentStationInfo(null);
     setQuantityProduced('');
+    setProducedUnit('adet');
     setQuantityWaste('');
-    setWasteReason('');
+    setWasteUnit('adet');
+    setSelectedWasteReason(null);
+    setWasteNotes('');
     setShiftSummary(null);
     setElapsedTime(0);
+    setSelectedBreakReason(null);
+    setTargetStationId(null);
+    setAutoLogoutCountdown(10);
   };
 
   return (
@@ -453,84 +565,211 @@ export default function FactoryKiosk() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Üretim Adedi</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={quantityProduced}
-                    onChange={(e) => setQuantityProduced(e.target.value)}
-                    className="bg-slate-700 border-slate-600 text-xl h-14 text-center"
-                    min="0"
-                    data-testid="input-quantity-produced"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-300 flex items-center gap-2">
-                    <Trash2 className="h-4 w-4 text-red-400" />
-                    Zaiyat
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={quantityWaste}
-                    onChange={(e) => setQuantityWaste(e.target.value)}
-                    className="bg-slate-700 border-slate-600 text-xl h-14 text-center"
-                    min="0"
-                    data-testid="input-quantity-waste"
-                  />
-                </div>
-              </div>
-
-              {parseInt(quantityWaste) > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Zaiyat Nedeni</Label>
-                  <Textarea
-                    placeholder="Zaiyat nedenini açıklayın..."
-                    value={wasteReason}
-                    onChange={(e) => setWasteReason(e.target.value)}
-                    className="bg-slate-700 border-slate-600 resize-none"
-                    rows={2}
-                    data-testid="input-waste-reason"
-                  />
-                </div>
-              )}
-
-              <Separator className="bg-slate-700" />
-
-              <div className="space-y-3">
-                <p className="text-sm text-slate-400">İstasyon Değiştir (Mevcut üretimi kaydeder)</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {stations
-                    .filter(s => s.id !== currentStationInfo.id)
-                    .slice(0, 6)
-                    .map((station) => (
-                      <Button
-                        key={station.id}
-                        variant="outline"
-                        size="sm"
-                        className="border-slate-600 hover:bg-slate-600"
-                        onClick={() => handleSwitchStation(station.id)}
-                        disabled={switchStationMutation.isPending}
-                        data-testid={`button-switch-station-${station.id}`}
-                      >
-                        <ArrowRight className="h-3 w-3 mr-1" />
-                        {station.name}
-                      </Button>
-                    ))}
-                </div>
-              </div>
-
               <div className="pt-4">
                 <Button
-                  className="w-full bg-red-600 hover:bg-red-700 h-14 text-lg"
-                  onClick={handleEndShift}
-                  disabled={endShiftMutation.isPending}
-                  data-testid="button-end-shift"
+                  className="w-full bg-red-600 hover:bg-red-700 h-16 text-xl"
+                  onClick={handleStopClick}
+                  data-testid="button-stop"
                 >
-                  <LogOut className="h-5 w-5 mr-2" />
-                  {endShiftMutation.isPending ? "Sonlandırılıyor..." : "Vardiyayı Bitir"}
+                  <StopCircle className="h-6 w-6 mr-2" />
+                  STOP - Ara Ver / Bitir
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 'stop-options' && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-center text-slate-200">Ne yapmak istiyorsunuz?</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {BREAK_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <Button
+                      key={option.value}
+                      variant="outline"
+                      className={`h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 hover:border-amber-500 transition-all`}
+                      onClick={() => handleBreakReasonSelect(option.value)}
+                      disabled={logBreakMutation.isPending}
+                      data-testid={`break-option-${option.value}`}
+                    >
+                      <div className={`p-3 rounded-full ${option.color}`}>
+                        <Icon className="h-8 w-8 text-white" />
+                      </div>
+                      <span className="text-slate-200 font-semibold">{option.label}</span>
+                      <span className="text-slate-400 text-xs text-center">{option.description}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                className="w-full border-slate-600"
+                onClick={() => setStep('working')}
+                data-testid="button-cancel-stop"
+              >
+                İptal - Çalışmaya Devam Et
+              </Button>
+            </div>
+          )}
+
+          {step === 'production-entry' && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-center text-slate-200">
+                {selectedBreakReason === 'gorev_bitis' ? 'Görev Sonlandırma' : 'Yardım Öncesi Kayıt'}
+              </h3>
+              <p className="text-center text-slate-400">
+                {selectedBreakReason === 'gorev_bitis' 
+                  ? 'Üretim ve zaiyat bilgilerini girin' 
+                  : 'Mevcut üretimi kaydedin'}
+              </p>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Üretim Miktarı</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={quantityProduced}
+                      onChange={(e) => setQuantityProduced(e.target.value)}
+                      className="bg-slate-700 border-slate-600 text-xl h-14 text-center"
+                      min="0"
+                      step="0.01"
+                      data-testid="input-quantity-produced"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Birim</Label>
+                    <Select value={producedUnit} onValueChange={setProducedUnit}>
+                      <SelectTrigger className="bg-slate-700 border-slate-600 h-14">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="adet">Adet</SelectItem>
+                        <SelectItem value="kg">Kilogram</SelectItem>
+                        <SelectItem value="litre">Litre</SelectItem>
+                        <SelectItem value="paket">Paket</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Separator className="bg-slate-700" />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300 flex items-center gap-2">
+                      <Trash2 className="h-4 w-4 text-red-400" />
+                      Zaiyat/Fire
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={quantityWaste}
+                      onChange={(e) => setQuantityWaste(e.target.value)}
+                      className="bg-slate-700 border-slate-600 text-xl h-14 text-center"
+                      min="0"
+                      step="0.01"
+                      data-testid="input-quantity-waste"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Birim</Label>
+                    <Select value={wasteUnit} onValueChange={setWasteUnit}>
+                      <SelectTrigger className="bg-slate-700 border-slate-600 h-14">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="adet">Adet</SelectItem>
+                        <SelectItem value="kg">Kilogram</SelectItem>
+                        <SelectItem value="litre">Litre</SelectItem>
+                        <SelectItem value="paket">Paket</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {parseFloat(quantityWaste) > 0 && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Zaiyat Nedeni</Label>
+                      <Select 
+                        value={selectedWasteReason?.toString() || ''} 
+                        onValueChange={(v) => setSelectedWasteReason(parseInt(v))}
+                      >
+                        <SelectTrigger className="bg-slate-700 border-slate-600">
+                          <SelectValue placeholder="Neden seçin..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wasteReasons.map((reason) => (
+                            <SelectItem key={reason.id} value={reason.id.toString()}>
+                              {reason.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Açıklama (Opsiyonel)</Label>
+                      <Textarea
+                        placeholder="Zaiyat hakkında ek bilgi..."
+                        value={wasteNotes}
+                        onChange={(e) => setWasteNotes(e.target.value)}
+                        className="bg-slate-700 border-slate-600 resize-none"
+                        rows={2}
+                        data-testid="input-waste-notes"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedBreakReason === 'yardim' && (
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Yardıma Gidilen İstasyon</Label>
+                    <Select 
+                      value={targetStationId?.toString() || ''} 
+                      onValueChange={(v) => setTargetStationId(parseInt(v))}
+                    >
+                      <SelectTrigger className="bg-slate-700 border-slate-600">
+                        <SelectValue placeholder="İstasyon seçin..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stations
+                          .filter(s => s.id !== currentStationInfo?.id)
+                          .map((station) => (
+                            <SelectItem key={station.id} value={station.id.toString()}>
+                              {station.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-slate-600"
+                  onClick={() => setStep('stop-options')}
+                  data-testid="button-back-production"
+                >
+                  Geri
+                </Button>
+                <Button
+                  className={`flex-1 ${selectedBreakReason === 'gorev_bitis' ? 'bg-green-600 hover:bg-green-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                  onClick={handleProductionSubmit}
+                  disabled={endShiftMutation.isPending || logBreakMutation.isPending}
+                  data-testid="button-submit-production"
+                >
+                  {endShiftMutation.isPending || logBreakMutation.isPending 
+                    ? "Kaydediliyor..." 
+                    : selectedBreakReason === 'gorev_bitis' 
+                      ? "Görevi Tamamla" 
+                      : "Kaydet ve Devam Et"}
                 </Button>
               </div>
             </div>
@@ -586,14 +825,27 @@ export default function FactoryKiosk() {
                   </CardContent>
                 </Card>
               </div>
+            </div>
+          )}
+
+          {step === 'auto-logout' && (
+            <div className="space-y-6 text-center">
+              <div className="w-24 h-24 bg-amber-600 rounded-full flex items-center justify-center mx-auto">
+                <span className="text-4xl font-bold text-white">{autoLogoutCountdown}</span>
+              </div>
+              
+              <h3 className="text-2xl font-semibold text-slate-200">İşlem Tamamlandı</h3>
+              <p className="text-slate-400">
+                {autoLogoutCountdown} saniye sonra ana ekrana dönülecek...
+              </p>
               
               <Button
                 className="w-full bg-amber-600 hover:bg-amber-700 h-14 text-lg"
-                onClick={resetKiosk}
-                data-testid="button-new-shift"
+                onClick={() => setLocation('/fabrika/dashboard')}
+                data-testid="button-immediate-logout"
               >
-                <LogIn className="h-5 w-5 mr-2" />
-                Yeni Vardiya Başlat
+                <LogOut className="h-5 w-5 mr-2" />
+                Hemen Çıkış Yap
               </Button>
             </div>
           )}

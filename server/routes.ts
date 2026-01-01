@@ -202,6 +202,10 @@ import {
   factoryShiftSessions,
   factoryProductionRuns,
   factoryDailyTargets,
+  factoryWasteReasons,
+  factorySessionEvents,
+  factoryBreakLogs,
+  factoryProductionOutputs,
   insertFactoryStationSchema,
   insertFactoryStaffPinSchema,
   insertFactoryShiftSessionSchema,
@@ -24515,6 +24519,125 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error fetching session:", error);
       res.status(500).json({ message: "Oturum bilgisi alınamadı" });
+    }
+  });
+
+  // Fire/Zayiat Sebepleri listesi
+  app.get('/api/factory/waste-reasons', async (req, res) => {
+    try {
+      const reasons = await db.select().from(factoryWasteReasons)
+        .where(eq(factoryWasteReasons.isActive, true))
+        .orderBy(factoryWasteReasons.category, factoryWasteReasons.name);
+      res.json(reasons);
+    } catch (error: any) {
+      console.error("Error fetching waste reasons:", error);
+      res.status(500).json({ message: "Zaiyat sebepleri alınamadı" });
+    }
+  });
+
+  // Mola / Ara kaydet
+  app.post('/api/factory/kiosk/log-break', async (req, res) => {
+    try {
+      const { 
+        sessionId, 
+        breakReason, 
+        targetStationId,
+        producedQuantity,
+        producedUnit,
+        wasteQuantity,
+        wasteUnit,
+        wasteReasonId,
+        wasteNotes
+      } = req.body;
+
+      // Parse quantities safely
+      const parsedProduced = parseFloat(producedQuantity) || 0;
+      const parsedWaste = parseFloat(wasteQuantity) || 0;
+
+      // Get session
+      const [session] = await db.select().from(factoryShiftSessions)
+        .where(eq(factoryShiftSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: "Oturum bulunamadı" });
+      }
+
+      // Log event
+      const [event] = await db.insert(factorySessionEvents).values({
+        sessionId,
+        userId: session.userId,
+        stationId: session.stationId,
+        eventType: breakReason === 'gorev_bitis' ? 'complete_task' : 'pause',
+        breakReason,
+        producedQuantity: parsedProduced > 0 ? parsedProduced.toString() : null,
+        producedUnit: parsedProduced > 0 ? (producedUnit || 'adet') : null,
+        wasteQuantity: parsedWaste > 0 ? parsedWaste.toString() : null,
+        wasteUnit: parsedWaste > 0 ? (wasteUnit || 'adet') : null,
+        wasteReasonId: parsedWaste > 0 ? wasteReasonId : null,
+        notes: wasteNotes || null,
+      }).returning();
+
+      // Log break
+      await db.insert(factoryBreakLogs).values({
+        sessionEventId: event.id,
+        userId: session.userId,
+        sessionId,
+        breakReason,
+        targetStationId: targetStationId || null,
+        startedAt: new Date(),
+      });
+
+      // If production data provided, save output
+      if (parsedProduced > 0 || parsedWaste > 0) {
+        await db.insert(factoryProductionOutputs).values({
+          sessionEventId: event.id,
+          sessionId,
+          userId: session.userId,
+          stationId: session.stationId,
+          producedQuantity: parsedProduced.toString(),
+          producedUnit: producedUnit || 'adet',
+          wasteQuantity: parsedWaste.toString(),
+          wasteUnit: wasteUnit || 'adet',
+          wasteReasonId: parsedWaste > 0 ? wasteReasonId : null,
+          wasteNotes: wasteNotes || null,
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        event,
+        message: breakReason === 'gorev_bitis' ? 'Görev tamamlandı' : 'Mola kaydedildi'
+      });
+    } catch (error: any) {
+      console.error("Error logging break:", error);
+      res.status(500).json({ message: "Mola kaydedilemedi" });
+    }
+  });
+
+  // Aktif çalışanlar listesi (dashboard için)
+  app.get('/api/factory/active-workers', async (req, res) => {
+    try {
+      const activeSessions = await db.select({
+        sessionId: factoryShiftSessions.id,
+        userId: factoryShiftSessions.userId,
+        stationId: factoryShiftSessions.stationId,
+        checkInTime: factoryShiftSessions.checkInTime,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        stationName: factoryStations.name,
+        stationCode: factoryStations.code,
+      })
+        .from(factoryShiftSessions)
+        .innerJoin(users, eq(factoryShiftSessions.userId, users.id))
+        .innerJoin(factoryStations, eq(factoryShiftSessions.stationId, factoryStations.id))
+        .where(eq(factoryShiftSessions.status, 'active'));
+
+      res.json(activeSessions);
+    } catch (error: any) {
+      console.error("Error fetching active workers:", error);
+      res.status(500).json({ message: "Aktif çalışanlar alınamadı" });
     }
   });
 
