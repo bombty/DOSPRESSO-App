@@ -24841,6 +24841,453 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  // ========================================
+  // KALİTE KRİTERLERİ API
+  // ========================================
+
+  // Kalite kriterleri listesi
+  app.get('/api/factory/quality-specs', isAuthenticated, async (req, res) => {
+    try {
+      const specs = await db.select().from(factoryQualitySpecs)
+        .orderBy(factoryQualitySpecs.stationId, factoryQualitySpecs.sortOrder);
+      res.json(specs);
+    } catch (error: any) {
+      console.error("Error fetching quality specs:", error);
+      res.status(500).json({ message: "Kalite kriterleri alınamadı" });
+    }
+  });
+
+  // Yeni kalite kriteri oluştur
+  app.post('/api/factory/quality-specs', isAuthenticated, async (req, res) => {
+    try {
+      const { stationId, productId, name, description, measurementType, unit, minValue, maxValue, targetValue, isRequired, requirePhoto, sortOrder, isActive } = req.body;
+
+      const [spec] = await db.insert(factoryQualitySpecs).values({
+        stationId,
+        productId: productId || null,
+        name,
+        description: description || null,
+        measurementType,
+        unit: unit || null,
+        minValue: minValue || null,
+        maxValue: maxValue || null,
+        targetValue: targetValue || null,
+        isRequired: isRequired ?? true,
+        requirePhoto: requirePhoto ?? false,
+        sortOrder: sortOrder || 0,
+        isActive: isActive ?? true,
+        createdBy: req.user?.id,
+      }).returning();
+
+      res.json(spec);
+    } catch (error: any) {
+      console.error("Error creating quality spec:", error);
+      res.status(500).json({ message: "Kalite kriteri oluşturulamadı" });
+    }
+  });
+
+  // Kalite kriteri güncelle
+  app.patch('/api/factory/quality-specs/:id', isAuthenticated, async (req, res) => {
+    try {
+      const specId = parseInt(req.params.id);
+      const { stationId, productId, name, description, measurementType, unit, minValue, maxValue, targetValue, isRequired, requirePhoto, sortOrder, isActive } = req.body;
+
+      const [updated] = await db.update(factoryQualitySpecs)
+        .set({
+          stationId,
+          productId: productId || null,
+          name,
+          description: description || null,
+          measurementType,
+          unit: unit || null,
+          minValue: minValue || null,
+          maxValue: maxValue || null,
+          targetValue: targetValue || null,
+          isRequired,
+          requirePhoto,
+          sortOrder: sortOrder || 0,
+          isActive,
+          updatedAt: new Date(),
+        })
+        .where(eq(factoryQualitySpecs.id, specId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Kalite kriteri bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating quality spec:", error);
+      res.status(500).json({ message: "Kalite kriteri güncellenemedi" });
+    }
+  });
+
+  // Kalite kriteri sil
+  app.delete('/api/factory/quality-specs/:id', isAuthenticated, async (req, res) => {
+    try {
+      const specId = parseInt(req.params.id);
+
+      const [deleted] = await db.update(factoryQualitySpecs)
+        .set({ isActive: false })
+        .where(eq(factoryQualitySpecs.id, specId))
+        .returning();
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Kalite kriteri bulunamadı" });
+      }
+
+      res.json({ success: true, message: "Kalite kriteri silindi" });
+    } catch (error: any) {
+      console.error("Error deleting quality spec:", error);
+      res.status(500).json({ message: "Kalite kriteri silinemedi" });
+    }
+  });
+
+  // İstasyon bazlı kalite kriterleri (kalite kontrol formu için)
+  app.get('/api/factory/quality-specs/station/:stationId', isAuthenticated, async (req, res) => {
+    try {
+      const stationId = parseInt(req.params.stationId);
+      const productId = req.query.productId ? parseInt(req.query.productId as string) : null;
+
+      const specs = await db.select().from(factoryQualitySpecs)
+        .where(and(
+          eq(factoryQualitySpecs.stationId, stationId),
+          eq(factoryQualitySpecs.isActive, true),
+          productId ? or(eq(factoryQualitySpecs.productId, productId), isNull(factoryQualitySpecs.productId)) : isNull(factoryQualitySpecs.productId)
+        ))
+        .orderBy(factoryQualitySpecs.sortOrder);
+
+      res.json(specs);
+    } catch (error: any) {
+      console.error("Error fetching station quality specs:", error);
+      res.status(500).json({ message: "İstasyon kalite kriterleri alınamadı" });
+    }
+  });
+
+  // ========================================
+  // TAKIM YÖNETİMİ API
+  // ========================================
+
+  // Takımlar listesi
+  app.get('/api/factory/teams', isAuthenticated, async (req, res) => {
+    try {
+      const teams = await db.select({
+        id: factoryTeams.id,
+        name: factoryTeams.name,
+        stationId: factoryTeams.stationId,
+        leaderId: factoryTeams.leaderId,
+        isActive: factoryTeams.isActive,
+        createdAt: factoryTeams.createdAt,
+        stationName: factoryStations.name,
+      })
+      .from(factoryTeams)
+      .leftJoin(factoryStations, eq(factoryTeams.stationId, factoryStations.id))
+      .orderBy(factoryTeams.name);
+      res.json(teams);
+    } catch (error: any) {
+      console.error("Error fetching teams:", error);
+      res.status(500).json({ message: "Takımlar alınamadı" });
+    }
+  });
+
+  // Yeni takım oluştur
+  app.post('/api/factory/teams', isAuthenticated, async (req, res) => {
+    try {
+      const { name, stationId, leaderId } = req.body;
+      const [team] = await db.insert(factoryTeams).values({
+        name,
+        stationId,
+        leaderId,
+      }).returning();
+      res.json(team);
+    } catch (error: any) {
+      console.error("Error creating team:", error);
+      res.status(500).json({ message: "Takım oluşturulamadı" });
+    }
+  });
+
+  // Takım üyeleri
+  app.get('/api/factory/teams/:teamId/members', isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const members = await db.select({
+        id: factoryTeamMembers.id,
+        teamId: factoryTeamMembers.teamId,
+        userId: factoryTeamMembers.userId,
+        role: factoryTeamMembers.role,
+        isActive: factoryTeamMembers.isActive,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(factoryTeamMembers)
+      .innerJoin(users, eq(factoryTeamMembers.userId, users.id))
+      .where(and(eq(factoryTeamMembers.teamId, teamId), eq(factoryTeamMembers.isActive, true)));
+      res.json(members);
+    } catch (error: any) {
+      console.error("Error fetching team members:", error);
+      res.status(500).json({ message: "Takım üyeleri alınamadı" });
+    }
+  });
+
+  // Takıma üye ekle
+  app.post('/api/factory/teams/:teamId/members', isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const { userId, role } = req.body;
+      const [member] = await db.insert(factoryTeamMembers).values({
+        teamId,
+        userId,
+        role: role || 'member',
+      }).returning();
+      res.json(member);
+    } catch (error: any) {
+      console.error("Error adding team member:", error);
+      res.status(500).json({ message: "Üye eklenemedi" });
+    }
+  });
+
+  // ========================================
+  // ÜRETİM PLANLAMA API
+  // ========================================
+
+  // Üretim planları listesi
+  app.get('/api/factory/production-plans', isAuthenticated, async (req, res) => {
+    try {
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+      
+      let query = db.select({
+        id: factoryProductionPlans.id,
+        productId: factoryProductionPlans.productId,
+        stationId: factoryProductionPlans.stationId,
+        plannedDate: factoryProductionPlans.plannedDate,
+        targetQuantity: factoryProductionPlans.targetQuantity,
+        actualQuantity: factoryProductionPlans.actualQuantity,
+        status: factoryProductionPlans.status,
+        notes: factoryProductionPlans.notes,
+        productName: factoryProducts.name,
+        stationName: factoryStations.name,
+      })
+      .from(factoryProductionPlans)
+      .leftJoin(factoryProducts, eq(factoryProductionPlans.productId, factoryProducts.id))
+      .leftJoin(factoryStations, eq(factoryProductionPlans.stationId, factoryStations.id))
+      .orderBy(factoryProductionPlans.plannedDate);
+
+      const plans = await query;
+      res.json(plans);
+    } catch (error: any) {
+      console.error("Error fetching production plans:", error);
+      res.status(500).json({ message: "Üretim planları alınamadı" });
+    }
+  });
+
+  // Yeni üretim planı oluştur
+  app.post('/api/factory/production-plans', isAuthenticated, async (req, res) => {
+    try {
+      const { productId, stationId, plannedDate, targetQuantity, notes } = req.body;
+      const [plan] = await db.insert(factoryProductionPlans).values({
+        productId,
+        stationId,
+        plannedDate: new Date(plannedDate),
+        targetQuantity,
+        notes,
+        createdBy: req.user?.id,
+      }).returning();
+      res.json(plan);
+    } catch (error: any) {
+      console.error("Error creating production plan:", error);
+      res.status(500).json({ message: "Üretim planı oluşturulamadı" });
+    }
+  });
+
+  // ========================================
+  // FABRIKA ANALİTİK API (HQ)
+  // ========================================
+
+  // Fabrika istatistikleri
+  app.get('/api/factory/analytics/stats', isAuthenticated, async (req, res) => {
+    try {
+      const period = req.query.period as string || 'week';
+      
+      const now = new Date();
+      let startDate = new Date();
+      if (period === 'today') {
+        startDate.setHours(0, 0, 0, 0);
+      } else if (period === 'week') {
+        startDate.setDate(startDate.getDate() - 7);
+      } else if (period === 'month') {
+        startDate.setMonth(startDate.getMonth() - 1);
+      }
+
+      const outputs = await db.select()
+        .from(factorySessionEvents)
+        .where(and(
+          gte(factorySessionEvents.createdAt, startDate),
+          or(
+            eq(factorySessionEvents.eventType, 'complete_task'),
+            eq(factorySessionEvents.eventType, 'pause')
+          )
+        ));
+
+      let totalProduced = 0;
+      let totalWaste = 0;
+      
+      outputs.forEach(output => {
+        totalProduced += parseFloat(output.producedQuantity || '0');
+        totalWaste += parseFloat(output.wasteQuantity || '0');
+      });
+
+      const qualityOutputs = await db.select()
+        .from(factoryProductionOutputs)
+        .where(gte(factoryProductionOutputs.createdAt, startDate));
+
+      const approved = qualityOutputs.filter(o => o.qualityStatus === 'approved').length;
+      const rejected = qualityOutputs.filter(o => o.qualityStatus === 'rejected').length;
+      const total = approved + rejected;
+      
+      const approvalRate = total > 0 ? (approved / total * 100).toFixed(1) : 0;
+      const rejectionRate = total > 0 ? (rejected / total * 100).toFixed(1) : 0;
+      
+      const efficiency = totalProduced > 0 ? ((totalProduced - totalWaste) / totalProduced * 100).toFixed(1) : 0;
+
+      res.json({
+        totalProduced: Math.round(totalProduced),
+        totalWaste: Math.round(totalWaste),
+        approvalRate: parseFloat(approvalRate as string) || 0,
+        rejectionRate: parseFloat(rejectionRate as string) || 0,
+        avgEfficiency: parseFloat(efficiency as string) || 0,
+      });
+    } catch (error: any) {
+      console.error("Error fetching factory analytics stats:", error);
+      res.status(500).json({ message: "İstatistikler alınamadı" });
+    }
+  });
+
+  // İstasyon performansı
+  app.get('/api/factory/analytics/station-performance', isAuthenticated, async (req, res) => {
+    try {
+      const period = req.query.period as string || 'week';
+      
+      const now = new Date();
+      let startDate = new Date();
+      if (period === 'today') {
+        startDate.setHours(0, 0, 0, 0);
+      } else if (period === 'week') {
+        startDate.setDate(startDate.getDate() - 7);
+      } else if (period === 'month') {
+        startDate.setMonth(startDate.getMonth() - 1);
+      }
+
+      const stationStats = await db.select({
+        stationId: factorySessionEvents.stationId,
+        stationName: factoryStations.name,
+        produced: sql<number>`COALESCE(SUM(CAST(${factorySessionEvents.producedQuantity} AS NUMERIC)), 0)`,
+        waste: sql<number>`COALESCE(SUM(CAST(${factorySessionEvents.wasteQuantity} AS NUMERIC)), 0)`,
+      })
+      .from(factorySessionEvents)
+      .leftJoin(factoryStations, eq(factorySessionEvents.stationId, factoryStations.id))
+      .where(gte(factorySessionEvents.createdAt, startDate))
+      .groupBy(factorySessionEvents.stationId, factoryStations.name);
+
+      const performance = stationStats.map(stat => ({
+        stationName: stat.stationName || 'Bilinmiyor',
+        produced: Math.round(stat.produced),
+        waste: Math.round(stat.waste),
+        efficiency: stat.produced > 0 ? Math.round((stat.produced - stat.waste) / stat.produced * 100) : 0,
+      }));
+
+      res.json(performance);
+    } catch (error: any) {
+      console.error("Error fetching station performance:", error);
+      res.status(500).json({ message: "İstasyon performansı alınamadı" });
+    }
+  });
+
+  // Günlük üretim
+  app.get('/api/factory/analytics/daily-production', isAuthenticated, async (req, res) => {
+    try {
+      const period = req.query.period as string || 'week';
+      
+      let days = 7;
+      if (period === 'today') days = 1;
+      else if (period === 'month') days = 30;
+
+      const result = [];
+      const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const dayData = await db.select({
+          produced: sql<number>`COALESCE(SUM(CAST(${factorySessionEvents.producedQuantity} AS NUMERIC)), 0)`,
+          waste: sql<number>`COALESCE(SUM(CAST(${factorySessionEvents.wasteQuantity} AS NUMERIC)), 0)`,
+        })
+        .from(factorySessionEvents)
+        .where(and(
+          gte(factorySessionEvents.createdAt, startOfDay),
+          lte(factorySessionEvents.createdAt, endOfDay)
+        ));
+
+        result.push({
+          day: dayNames[date.getDay()],
+          date: date.toISOString().split('T')[0],
+          produced: Math.round(dayData[0]?.produced || 0),
+          waste: Math.round(dayData[0]?.waste || 0),
+        });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching daily production:", error);
+      res.status(500).json({ message: "Günlük üretim verileri alınamadı" });
+    }
+  });
+
+  // Üretim planı güncelle
+  app.patch('/api/factory/production-plans/:id', isAuthenticated, async (req, res) => {
+    try {
+      const planId = parseInt(req.params.id);
+      const { productId, stationId, plannedDate, targetQuantity, actualQuantity, status, notes } = req.body;
+      const [updated] = await db.update(factoryProductionPlans)
+        .set({
+          productId,
+          stationId,
+          plannedDate: plannedDate ? new Date(plannedDate) : undefined,
+          targetQuantity,
+          actualQuantity,
+          status,
+          notes,
+          updatedAt: new Date(),
+        })
+        .where(eq(factoryProductionPlans.id, planId))
+        .returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating production plan:", error);
+      res.status(500).json({ message: "Üretim planı güncellenemedi" });
+    }
+  });
+
+  // Fabrika ürünleri listesi (duplicate kaldırıldı - yukarıda mevcut)
+  app.get('/api/factory/catalog/products', async (req, res) => {
+    try {
+      const products = await db.select().from(factoryProducts)
+        .where(eq(factoryProducts.isActive, true))
+        .orderBy(factoryProducts.category, factoryProducts.name);
+      res.json(products);
+    } catch (error: any) {
+      console.error("Error fetching factory products:", error);
+      res.status(500).json({ message: "Ürünler alınamadı" });
+    }
+  });
+
   // Mola / Ara kaydet
   app.post('/api/factory/kiosk/log-break', async (req, res) => {
     try {

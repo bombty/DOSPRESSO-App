@@ -117,6 +117,8 @@ import FabrikaDashboard from "@/pages/fabrika/dashboard";
 import FabrikaKaliteKontrol from "@/pages/fabrika/kalite-kontrol";
 import FabrikaPerformans from "@/pages/fabrika/performans";
 import FabrikaAIRaporlar from "@/pages/fabrika/ai-raporlar";
+import FabrikaUretimPlanlama from "@/pages/fabrika/uretim-planlama";
+import HQFabrikaAnalitik from "@/pages/hq-fabrika-analitik";
 import CanliTakip from "@/pages/canli-takip";
 import AdminDashboard from "@/pages/admin/index";
 import AdminYetkilendirme from "@/pages/admin/yetkilendirme";
@@ -134,6 +136,7 @@ import AdminTopluVeriYonetimi from "@/pages/admin/toplu-veri-yonetimi";
 import AdminFabrikaIstasyonlar from "@/pages/admin/fabrika-istasyonlar";
 import AdminFabrikaFireSebepleri from "@/pages/admin/fabrika-fire-sebepleri";
 import AdminFabrikaPinYonetimi from "@/pages/admin/fabrika-pin-yonetimi";
+import AdminFabrikaKaliteKriterleri from "@/pages/admin/fabrika-kalite-kriterleri";
 import Setup from "@/pages/setup";
 import MisafirGeriBildirimPublic from "@/pages/misafir-geri-bildirim";
 import MisafirMemnuniyeti from "@/pages/misafir-memnuniyeti";
@@ -271,6 +274,8 @@ function Router() {
           <Route path="/fabrika/kalite-kontrol" component={FabrikaKaliteKontrol} />
           <Route path="/fabrika/performans" component={FabrikaPerformans} />
           <Route path="/fabrika/ai-raporlar" component={FabrikaAIRaporlar} />
+          <Route path="/fabrika/uretim-planlama" component={FabrikaUretimPlanlama} />
+          <Route path="/hq-fabrika-analitik" component={HQFabrikaAnalitik} />
           <Route path="/canli-takip" component={CanliTakip} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />
           <Route path="/denetim-sablonlari" component={DenetimSablonlari} />
@@ -314,6 +319,7 @@ function Router() {
           <Route path="/admin/fabrika-istasyonlar" component={AdminFabrikaIstasyonlar} />
           <Route path="/admin/fabrika-fire-sebepleri" component={AdminFabrikaFireSebepleri} />
           <Route path="/admin/fabrika-pin-yonetimi" component={AdminFabrikaPinYonetimi} />
+          <Route path="/admin/fabrika-kalite-kriterleri" component={AdminFabrikaKaliteKriterleri} />
           <Route path="/admin/seed" component={AdminSeed} />
           <Route path="/admin" component={AdminDashboard} />
         </>

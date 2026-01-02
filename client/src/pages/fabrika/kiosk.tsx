@@ -36,12 +36,13 @@ import {
   CheckCircle2,
   Camera,
   ImageIcon,
-  X
+  X,
+  CalendarOff
 } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
 type KioskStep = 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout';
-type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis';
+type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis' | 'vardiya_kapat';
 
 interface StaffMember {
   id: string;
@@ -90,6 +91,7 @@ const BREAK_OPTIONS = [
   { value: 'yardim' as BreakReason, label: 'Başka İstasyonda Yardım', icon: HandHelping, description: 'Farklı istasyonda destek', color: 'bg-purple-600' },
   { value: 'ozel_ihtiyac' as BreakReason, label: 'Özel İhtiyaç', icon: CircleUser, description: 'WC, kişisel ihtiyaç', color: 'bg-orange-500' },
   { value: 'gorev_bitis' as BreakReason, label: 'Görev Sonlandırma', icon: CheckCircle2, description: 'Bu istasyondaki işi bitir', color: 'bg-green-600' },
+  { value: 'vardiya_kapat' as BreakReason, label: 'Vardiya Kapat', icon: CalendarOff, description: 'Günün vardiyasını sonlandır', color: 'bg-red-600' },
 ];
 
 export default function FactoryKiosk() {
@@ -309,7 +311,7 @@ export default function FactoryKiosk() {
 
   const handleBreakReasonSelect = (reason: BreakReason) => {
     setSelectedBreakReason(reason);
-    if (reason === 'gorev_bitis') {
+    if (reason === 'gorev_bitis' || reason === 'vardiya_kapat') {
       setStep('production-entry');
     } else if (reason === 'yardim') {
       setStep('production-entry');
@@ -325,7 +327,7 @@ export default function FactoryKiosk() {
   const handleProductionSubmit = () => {
     if (!currentSession || !selectedBreakReason) return;
 
-    if (selectedBreakReason === 'gorev_bitis') {
+    if (selectedBreakReason === 'gorev_bitis' || selectedBreakReason === 'vardiya_kapat') {
       endShiftMutation.mutate({
         sessionId: currentSession.id,
         productionRunId: currentProductionRun?.id,
@@ -833,7 +835,7 @@ export default function FactoryKiosk() {
                   Geri
                 </Button>
                 <Button
-                  className={`flex-1 ${selectedBreakReason === 'gorev_bitis' ? 'bg-green-600 hover:bg-green-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                  className={`flex-1 ${selectedBreakReason === 'gorev_bitis' ? 'bg-green-600 hover:bg-green-700' : selectedBreakReason === 'vardiya_kapat' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
                   onClick={handleProductionSubmit}
                   disabled={endShiftMutation.isPending || logBreakMutation.isPending}
                   data-testid="button-submit-production"
@@ -841,8 +843,10 @@ export default function FactoryKiosk() {
                   {endShiftMutation.isPending || logBreakMutation.isPending 
                     ? "Kaydediliyor..." 
                     : selectedBreakReason === 'gorev_bitis' 
-                      ? "Görevi Tamamla" 
-                      : "Kaydet ve Devam Et"}
+                      ? "Görevi Tamamla"
+                      : selectedBreakReason === 'vardiya_kapat'
+                        ? "Vardiyayı Sonlandır"
+                        : "Kaydet ve Devam Et"}
                 </Button>
               </div>
             </div>

@@ -6652,11 +6652,17 @@ export type RoleTemplate = typeof roleTemplates.$inferSelect;
 
 // Ürün Kategorileri
 export const ProductionCategory = {
-  KAHVE_CEKIRDEGI: 'kahve_cekirdegi',
-  SIROP: 'sirop',
-  SUT_URUNLERI: 'sut_urunleri',
-  TATLI: 'tatli',
-  AMBALAJ: 'ambalaj',
+  DONUT: 'donut',
+  CINNABOOM: 'cinnaboom',
+  QUESADILLA: 'quesadilla',
+  MAMABON: 'mamabon',
+  COOKIE: 'cookie',
+  CAKE: 'cake',
+  CHEESECAKE: 'cheesecake',
+  BROWNIE: 'brownie',
+  KRUVASAN: 'kruvasan',
+  SIRUP: 'sirup',
+  SOS: 'sos',
   DIGER: 'diger',
 } as const;
 
@@ -7351,3 +7357,152 @@ export const factoryAiReports = pgTable("factory_ai_reports", {
   index("factory_ai_reports_user_idx").on(table.targetUserId),
   index("factory_ai_reports_date_idx").on(table.generatedAt),
 ]);
+
+export const insertFactoryAiReportSchema = createInsertSchema(factoryAiReports).omit({
+  id: true,
+  generatedAt: true,
+});
+
+export type InsertFactoryAiReport = z.infer<typeof insertFactoryAiReportSchema>;
+export type FactoryAiReport = typeof factoryAiReports.$inferSelect;
+
+// ========================================
+// ÜRETİM PLANLAMA VE TAKVİM
+// ========================================
+
+// Üretim Planları (Günlük/Haftalık)
+export const factoryProductionPlans = pgTable("factory_production_plans", {
+  id: serial("id").primaryKey(),
+  
+  planDate: date("plan_date").notNull(), // Hangi gün için plan
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  stationId: integer("station_id").references(() => factoryStations.id, { onDelete: "set null" }),
+  
+  targetQuantity: integer("target_quantity").notNull(), // Hedef üretim miktarı
+  unit: varchar("unit", { length: 20 }).default("adet"),
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  
+  // Gerçekleşen
+  actualQuantity: integer("actual_quantity").default(0),
+  status: varchar("status", { length: 20 }).default("planned"), // planned, in_progress, completed, cancelled
+  
+  notes: text("notes"),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("factory_production_plans_date_idx").on(table.planDate),
+  index("factory_production_plans_product_idx").on(table.productId),
+  index("factory_production_plans_status_idx").on(table.status),
+]);
+
+export const insertFactoryProductionPlanSchema = createInsertSchema(factoryProductionPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryProductionPlan = z.infer<typeof insertFactoryProductionPlanSchema>;
+export type FactoryProductionPlan = typeof factoryProductionPlans.$inferSelect;
+
+// ========================================
+// TAKIM ÇALIŞMASI (Aynı istasyonda birden fazla kişi)
+// ========================================
+
+// Takım/Ekip Tanımları
+export const factoryTeams = pgTable("factory_teams", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  stationId: integer("station_id").references(() => factoryStations.id, { onDelete: "set null" }),
+  leaderId: text("leader_id").references(() => users.id, { onDelete: "set null" }), // Ekip lideri
+  
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("factory_teams_station_idx").on(table.stationId),
+]);
+
+export const insertFactoryTeamSchema = createInsertSchema(factoryTeams).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFactoryTeam = z.infer<typeof insertFactoryTeamSchema>;
+export type FactoryTeam = typeof factoryTeams.$inferSelect;
+
+// Takım Üyeleri
+export const factoryTeamMembers = pgTable("factory_team_members", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull().references(() => factoryTeams.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  role: varchar("role", { length: 30 }).default("member"), // leader, member
+  joinedAt: timestamp("joined_at").defaultNow(),
+  leftAt: timestamp("left_at"),
+  isActive: boolean("is_active").default(true),
+}, (table) => [
+  index("factory_team_members_team_idx").on(table.teamId),
+  index("factory_team_members_user_idx").on(table.userId),
+  unique("factory_team_members_team_user_unique").on(table.teamId, table.userId),
+]);
+
+export const insertFactoryTeamMemberSchema = createInsertSchema(factoryTeamMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export type InsertFactoryTeamMember = z.infer<typeof insertFactoryTeamMemberSchema>;
+export type FactoryTeamMember = typeof factoryTeamMembers.$inferSelect;
+
+// Takım Vardiya Oturumları (Birlikte çalışma kaydı)
+export const factoryTeamSessions = pgTable("factory_team_sessions", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").notNull().references(() => factoryStations.id),
+  
+  startTime: timestamp("start_time").notNull().defaultNow(),
+  endTime: timestamp("end_time"),
+  
+  // Toplam takım üretimi
+  totalProduced: integer("total_produced").default(0),
+  totalWaste: integer("total_waste").default(0),
+  
+  status: varchar("status", { length: 20 }).default("active"), // active, completed
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("factory_team_sessions_station_idx").on(table.stationId),
+  index("factory_team_sessions_date_idx").on(table.startTime),
+]);
+
+export const insertFactoryTeamSessionSchema = createInsertSchema(factoryTeamSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFactoryTeamSession = z.infer<typeof insertFactoryTeamSessionSchema>;
+export type FactoryTeamSession = typeof factoryTeamSessions.$inferSelect;
+
+// Takım Oturum Üyeleri (O anda hangi kişiler takımda)
+export const factoryTeamSessionMembers = pgTable("factory_team_session_members", {
+  id: serial("id").primaryKey(),
+  teamSessionId: integer("team_session_id").notNull().references(() => factoryTeamSessions.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  shiftSessionId: integer("shift_session_id").references(() => factoryShiftSessions.id, { onDelete: "set null" }),
+  
+  role: varchar("role", { length: 30 }).default("member"), // leader, member
+  contributionPercent: integer("contribution_percent").default(100), // Katkı yüzdesi (eşit paylaşım için 100/kişi sayısı)
+  
+  joinedAt: timestamp("joined_at").defaultNow(),
+  leftAt: timestamp("left_at"),
+}, (table) => [
+  index("factory_team_session_members_session_idx").on(table.teamSessionId),
+  index("factory_team_session_members_user_idx").on(table.userId),
+]);
+
+export const insertFactoryTeamSessionMemberSchema = createInsertSchema(factoryTeamSessionMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export type InsertFactoryTeamSessionMember = z.infer<typeof insertFactoryTeamSessionMemberSchema>;
+export type FactoryTeamSessionMember = typeof factoryTeamSessionMembers.$inferSelect;
