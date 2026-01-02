@@ -35,8 +35,13 @@ import {
   Megaphone,
   UserCheck,
   MapPin,
-  Database
+  Database,
+  Clock,
+  Timer,
+  TrendingDown,
+  Sparkles
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface ModuleCard {
   id: string;
@@ -105,6 +110,21 @@ export function CardGridHub() {
     enabled: !!user,
   });
   const pendingChecksCount = pendingChecks.length;
+
+  // Factory roles check - explicit list
+  const FACTORY_ROLES = ['fabrika', 'fabrika_mudur', 'fabrika_kalite', 'fabrika_personel'];
+  const isFactoryWorker = user?.role && FACTORY_ROLES.includes(user.role);
+
+  // Fetch shift compliance warnings for factory workers
+  const { data: complianceWarnings } = useQuery<any>({
+    queryKey: ['/api/factory', 'shift-compliance', 'my-warnings'],
+    queryFn: async () => {
+      const res = await fetch('/api/factory/shift-compliance/my-warnings');
+      if (!res.ok) return { warnings: [], complianceScore: 100 };
+      return res.json();
+    },
+    enabled: !!user && isFactoryWorker,
+  });
 
   // Module definitions - different for HQ vs Branch users
   const branchModules: ModuleCard[] = [
@@ -657,6 +677,67 @@ export function CardGridHub() {
       {/* Analytics Card - Branch supervisors + HQ roles */}
       {(isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) && <EnhancedAnalyticsCard />}
       {isHQ && <EnhancedAnalyticsCard />}
+
+      {/* Factory Shift Compliance Warnings */}
+      {isFactoryWorker && complianceWarnings?.warnings && complianceWarnings.warnings.length > 0 && (
+        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <Clock className="h-4 w-4" />
+              Vardiya Uyumluluk Uyarıları
+              <Badge variant="outline" className="ml-auto bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs">
+                Skor: {complianceWarnings.complianceScore || 100}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {complianceWarnings.warnings.map((warning: any, idx: number) => (
+              <div 
+                key={idx} 
+                className={`p-2 rounded-lg border text-xs ${
+                  warning.severity === 'high' 
+                    ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800' 
+                    : warning.severity === 'medium'
+                    ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'
+                    : 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  {warning.type === 'late' && <Timer className="h-3 w-3 text-red-500" />}
+                  {warning.type === 'early_leave' && <TrendingDown className="h-3 w-3 text-orange-500" />}
+                  {warning.type === 'break_overage' && <Coffee className="h-3 w-3 text-amber-500" />}
+                  {warning.type === 'weekly_missing' && <Clock className="h-3 w-3 text-blue-500" />}
+                  <span className="font-medium">{warning.title}</span>
+                  <Badge 
+                    variant={warning.severity === 'high' ? 'destructive' : 'outline'} 
+                    className="ml-auto text-[10px] px-1.5 py-0"
+                  >
+                    {warning.minutes} dk
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground">{warning.message}</p>
+                {warning.aiSuggestion && (
+                  <div className="mt-2 p-2 bg-background/50 rounded border border-primary/20">
+                    <div className="flex items-center gap-1 text-primary mb-1">
+                      <Sparkles className="h-3 w-3" />
+                      <span className="font-medium text-[10px]">AI Öneri</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">{warning.aiSuggestion}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+            {complianceWarnings.weeklySummary && (
+              <div className="mt-2 p-2 bg-background/50 rounded border">
+                <p className="text-xs text-muted-foreground">
+                  Bu hafta: {Math.floor((complianceWarnings.weeklySummary.actualTotalMinutes || 0) / 60)} saat 
+                  / 45 saat hedef
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Equipment Health Alert */}
       {criticalEquipment.length > 0 && (

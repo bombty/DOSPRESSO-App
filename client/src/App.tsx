@@ -118,6 +118,7 @@ import FabrikaKaliteKontrol from "@/pages/fabrika/kalite-kontrol";
 import FabrikaPerformans from "@/pages/fabrika/performans";
 import FabrikaAIRaporlar from "@/pages/fabrika/ai-raporlar";
 import FabrikaUretimPlanlama from "@/pages/fabrika/uretim-planlama";
+import FabrikaVardiyaUyumluluk from "@/pages/fabrika/vardiya-uyumluluk";
 import HQFabrikaAnalitik from "@/pages/hq-fabrika-analitik";
 import CanliTakip from "@/pages/canli-takip";
 import AdminDashboard from "@/pages/admin/index";
@@ -275,6 +276,7 @@ function Router() {
           <Route path="/fabrika/performans" component={FabrikaPerformans} />
           <Route path="/fabrika/ai-raporlar" component={FabrikaAIRaporlar} />
           <Route path="/fabrika/uretim-planlama" component={FabrikaUretimPlanlama} />
+          <Route path="/fabrika/vardiya-uyumluluk" component={FabrikaVardiyaUyumluluk} />
           <Route path="/hq-fabrika-analitik" component={HQFabrikaAnalitik} />
           <Route path="/canli-takip" component={CanliTakip} />
           <Route path="/kalite-denetimi" component={KaliteDenetimi} />

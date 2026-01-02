@@ -24560,6 +24560,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       const now = new Date();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
       // Close current production run if exists
       if (productionRunId) {
@@ -24622,6 +24624,148 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const totalProduced = productionRuns.reduce((sum, run) => sum + (run.quantityProduced || 0), 0);
       const totalWaste = productionRuns.reduce((sum, run) => sum + (run.quantityWaste || 0), 0);
 
+      // ===== SHIFT COMPLIANCE TRACKING =====
+      // Fabrika çalışma saatleri: 08:00 - 18:00, 1 saat mola
+      const PLANNED_START_HOUR = 8;
+      const PLANNED_END_HOUR = 18;
+      const PLANNED_BREAK_MINUTES = 60;
+      const PLANNED_WORK_MINUTES = (PLANNED_END_HOUR - PLANNED_START_HOUR) * 60 - PLANNED_BREAK_MINUTES; // 540 dakika
+
+      const checkInTime = new Date(session.checkInTime);
+      const plannedStartTime = new Date(checkInTime);
+      plannedStartTime.setHours(PLANNED_START_HOUR, 0, 0, 0);
+      
+      const plannedEndTime = new Date(checkInTime);
+      plannedEndTime.setHours(PLANNED_END_HOUR, 0, 0, 0);
+
+      // Geç kalma hesapla
+      let latenessMinutes = 0;
+      if (checkInTime > plannedStartTime) {
+        latenessMinutes = Math.round((checkInTime.getTime() - plannedStartTime.getTime()) / 60000);
+      }
+
+      // Erken çıkış hesapla
+      let earlyLeaveMinutes = 0;
+      if (now < plannedEndTime) {
+        earlyLeaveMinutes = Math.round((plannedEndTime.getTime() - now.getTime()) / 60000);
+      }
+
+      // Mola aşımı hesapla (session'daki break events'den)
+      const breakEvents = await db.select().from(factorySessionEvents)
+        .where(and(
+          eq(factorySessionEvents.sessionId, sessionId),
+          eq(factorySessionEvents.eventType, 'break')
+        ));
+      
+      const totalBreakMinutes = breakEvents.reduce((sum, evt) => {
+        if (evt.eventStartTime && evt.eventEndTime) {
+          return sum + Math.round((new Date(evt.eventEndTime).getTime() - new Date(evt.eventStartTime).getTime()) / 60000);
+        }
+        return sum;
+      }, 0);
+      
+      const breakOverageMinutes = Math.max(0, totalBreakMinutes - PLANNED_BREAK_MINUTES);
+
+      // Eksik dakika hesapla
+      const effectiveWorkedMinutes = workMinutes - totalBreakMinutes;
+      const missingMinutes = Math.max(0, PLANNED_WORK_MINUTES - effectiveWorkedMinutes);
+      const overtimeMinutes = Math.max(0, effectiveWorkedMinutes - PLANNED_WORK_MINUTES);
+
+      // Uyumluluk skoru hesapla (100 üzerinden)
+      let complianceScore = 100;
+      if (latenessMinutes > 0) complianceScore -= Math.min(30, latenessMinutes * 2);
+      if (earlyLeaveMinutes > 0) complianceScore -= Math.min(30, earlyLeaveMinutes);
+      if (breakOverageMinutes > 0) complianceScore -= Math.min(20, breakOverageMinutes * 2);
+      complianceScore = Math.max(0, complianceScore);
+
+      // Uyumluluk durumu belirle
+      let complianceStatus = 'compliant';
+      if (complianceScore < 50) complianceStatus = 'critical';
+      else if (complianceScore < 70) complianceStatus = 'warning';
+      else if (complianceScore < 90) complianceStatus = 'minor_issue';
+
+      // Uyumluluk kaydı oluştur
+      try {
+        await db.insert(factoryShiftCompliance).values({
+          userId: session.userId,
+          factorySessionId: sessionId,
+          plannedStartTime: plannedStartTime,
+          plannedEndTime: plannedEndTime,
+          plannedBreakMinutes: PLANNED_BREAK_MINUTES,
+          actualStartTime: checkInTime,
+          actualEndTime: now,
+          actualBreakMinutes: totalBreakMinutes,
+          latenessMinutes,
+          earlyLeaveMinutes,
+          breakOverageMinutes,
+          totalWorkedMinutes: workMinutes,
+          effectiveWorkedMinutes,
+          overtimeMinutes,
+          missingMinutes,
+          complianceScore,
+          complianceStatus,
+          workDate: today.toISOString().split('T')[0],
+        });
+      } catch (complianceError) {
+        console.error("Error creating compliance record:", complianceError);
+      }
+
+      // Haftalık özet güncelle
+      try {
+        const weekStart = new Date(today);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Pazartesi
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const weekNumber = Math.ceil((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+
+        // Mevcut haftalık özeti al veya oluştur
+        const [existingSummary] = await db.select()
+          .from(factoryWeeklyAttendanceSummary)
+          .where(and(
+            eq(factoryWeeklyAttendanceSummary.userId, session.userId),
+            eq(factoryWeeklyAttendanceSummary.weekStartDate, weekStart.toISOString().split('T')[0])
+          ))
+          .limit(1);
+
+        if (existingSummary) {
+          const newActualTotal = (existingSummary.actualTotalMinutes || 0) + effectiveWorkedMinutes;
+          const newOvertime = (existingSummary.overtimeMinutes || 0) + overtimeMinutes;
+          const newMissing = Math.max(0, 2700 - newActualTotal); // 45 saat = 2700 dakika
+          const newWorkDays = (existingSummary.workDaysCount || 0) + 1;
+          const newLateDays = (existingSummary.lateDaysCount || 0) + (latenessMinutes > 0 ? 1 : 0);
+          
+          await db.update(factoryWeeklyAttendanceSummary)
+            .set({
+              actualTotalMinutes: newActualTotal,
+              overtimeMinutes: newOvertime,
+              missingMinutes: newMissing,
+              workDaysCount: newWorkDays,
+              lateDaysCount: newLateDays,
+              weeklyComplianceScore: Math.round((complianceScore + (existingSummary.weeklyComplianceScore || 100)) / 2),
+              updatedAt: new Date(),
+            })
+            .where(eq(factoryWeeklyAttendanceSummary.id, existingSummary.id));
+        } else {
+          await db.insert(factoryWeeklyAttendanceSummary).values({
+            userId: session.userId,
+            weekStartDate: weekStart.toISOString().split('T')[0],
+            weekEndDate: weekEnd.toISOString().split('T')[0],
+            weekNumber,
+            year: today.getFullYear(),
+            plannedTotalMinutes: 2700, // 45 saat
+            actualTotalMinutes: effectiveWorkedMinutes,
+            overtimeMinutes,
+            missingMinutes: Math.max(0, 2700 - effectiveWorkedMinutes),
+            workDaysCount: 1,
+            absentDaysCount: 0,
+            lateDaysCount: latenessMinutes > 0 ? 1 : 0,
+            weeklyComplianceScore: complianceScore,
+          });
+        }
+      } catch (weeklyError) {
+        console.error("Error updating weekly summary:", weeklyError);
+      }
+
       res.json({
         success: true,
         summary: {
@@ -24630,6 +24774,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           totalWaste,
           efficiency: totalProduced > 0 ? ((totalProduced - totalWaste) / totalProduced * 100).toFixed(1) : 0,
           stationsWorked: productionRuns.length,
+        },
+        compliance: {
+          latenessMinutes,
+          earlyLeaveMinutes,
+          breakOverageMinutes,
+          missingMinutes,
+          complianceScore,
+          complianceStatus,
         }
       });
     } catch (error: any) {
