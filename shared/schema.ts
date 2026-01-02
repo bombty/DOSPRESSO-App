@@ -146,6 +146,7 @@ export type PermissionModule =
   | 'checklists'
   | 'equipment'
   | 'equipment_faults'
+  | 'faults'
   | 'knowledge_base'
   | 'ai_assistant'
   | 'performance'
@@ -164,7 +165,24 @@ export type PermissionModule =
   | 'admin_settings'
   | 'bulk_data'
   | 'accounting'
-  | 'customer_satisfaction'; // Misafir Geri Bildirim modülü
+  | 'customer_satisfaction'
+  // New modules for proper permission mapping
+  | 'lost_found'
+  | 'lost_found_hq'
+  | 'projects'
+  | 'reports'
+  | 'support'
+  | 'notifications'
+  | 'quality_audit'
+  | 'shifts'
+  | 'settings'
+  // Factory modules
+  | 'factory_kiosk'
+  | 'factory_dashboard'
+  | 'factory_quality'
+  | 'factory_analytics'
+  | 'factory_stations'
+  | 'factory_compliance';
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -175,6 +193,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view', 'create', 'edit', 'delete'],
     equipment: ['view', 'create', 'edit', 'delete'],
     equipment_faults: ['view', 'create', 'edit', 'delete', 'approve'],
+    faults: ['view', 'create', 'edit', 'delete', 'approve'],
     knowledge_base: ['view', 'create', 'edit', 'delete', 'approve'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -194,6 +213,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: ['view', 'edit'],
     accounting: ['view', 'create', 'edit', 'delete'],
     customer_satisfaction: ['view', 'create', 'edit', 'delete', 'approve'],
+    // New modules
+    lost_found: ['view', 'create', 'edit', 'delete'],
+    lost_found_hq: ['view', 'create', 'edit', 'delete'],
+    projects: ['view', 'create', 'edit', 'delete', 'approve'],
+    reports: ['view'],
+    support: ['view', 'create', 'edit', 'delete'],
+    notifications: ['view'],
+    quality_audit: ['view', 'create', 'edit', 'delete', 'approve'],
+    shifts: ['view', 'create', 'edit', 'delete'],
+    settings: ['view', 'edit'],
+    factory_kiosk: ['view'],
+    factory_dashboard: ['view'],
+    factory_quality: ['view', 'create', 'edit', 'delete', 'approve'],
+    factory_analytics: ['view'],
+    factory_stations: ['view', 'create', 'edit', 'delete'],
+    factory_compliance: ['view', 'edit', 'approve'],
   },
   // HQ ROLES
   muhasebe: {
@@ -202,6 +237,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view'],
     equipment: ['view'],
     equipment_faults: ['view'],
+    faults: ['view'],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -221,6 +257,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: ['view', 'edit'],
     accounting: ['view', 'create', 'edit', 'delete'],
     customer_satisfaction: ['view'],
+    // New modules
+    lost_found: ['view'],
+    lost_found_hq: ['view'],
+    projects: ['view'],
+    reports: ['view'],
+    support: ['view'],
+    notifications: ['view'],
+    quality_audit: ['view'],
+    shifts: ['view'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
   satinalma: {
     dashboard: ['view'],
@@ -228,6 +280,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view'],
     equipment: ['view', 'create', 'edit'],
     equipment_faults: ['view', 'edit', 'approve'],
+    faults: ['view', 'edit', 'approve'],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -247,6 +300,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: [],
+    // New modules
+    lost_found: [],
+    lost_found_hq: [],
+    projects: ['view'],
+    reports: ['view'],
+    support: ['view'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: ['view'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
   coach: {
     dashboard: ['view'],
@@ -254,6 +323,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view', 'create', 'edit'],
     equipment: ['view'],
     equipment_faults: ['view'],
+    faults: ['view'],
     knowledge_base: ['view', 'create', 'edit', 'approve'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -273,6 +343,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: ['view', 'edit'],
     accounting: [],
     customer_satisfaction: ['view', 'create', 'edit', 'approve'],
+    // New modules
+    lost_found: ['view', 'create', 'edit'],
+    lost_found_hq: ['view'],
+    projects: ['view', 'create', 'edit', 'approve'],
+    reports: ['view'],
+    support: ['view', 'create', 'edit'],
+    notifications: ['view'],
+    quality_audit: ['view', 'create', 'edit', 'approve'],
+    shifts: ['view', 'create', 'edit'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: ['view'],
+    factory_quality: ['view'],
+    factory_analytics: ['view'],
+    factory_stations: [],
+    factory_compliance: ['view'],
   },
   teknik: {
     dashboard: ['view'],
@@ -280,6 +366,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view'],
     equipment: ['view', 'edit'],
     equipment_faults: ['view', 'edit', 'approve'],
+    faults: ['view', 'edit', 'approve'],
     knowledge_base: ['view', 'create', 'edit'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -299,6 +386,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: ['view', 'edit'],
     accounting: [],
     customer_satisfaction: [],
+    // New modules
+    lost_found: ['view'],
+    lost_found_hq: ['view'],
+    projects: ['view'],
+    reports: ['view'],
+    support: ['view', 'create', 'edit'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: ['view'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
   destek: {
     dashboard: ['view'],
@@ -306,6 +409,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view'],
     equipment: ['view'],
     equipment_faults: ['view', 'create', 'edit'],
+    faults: ['view', 'create', 'edit'],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -325,6 +429,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: ['view', 'create', 'edit'],
+    // New modules
+    lost_found: ['view', 'create', 'edit'],
+    lost_found_hq: ['view'],
+    projects: ['view'],
+    reports: ['view'],
+    support: ['view', 'create', 'edit', 'approve'],
+    notifications: ['view'],
+    quality_audit: ['view'],
+    shifts: ['view'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
   fabrika: {
     dashboard: ['view'],
@@ -332,6 +452,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view'],
     equipment: ['view'],
     equipment_faults: ['view'],
+    faults: ['view'],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -351,6 +472,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: [],
+    // New modules - Factory roles have full factory access
+    lost_found: [],
+    lost_found_hq: [],
+    projects: [],
+    reports: ['view'],
+    support: ['view', 'create'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: ['view'],
+    settings: [],
+    factory_kiosk: ['view', 'create', 'edit'],
+    factory_dashboard: ['view'],
+    factory_quality: ['view', 'create', 'edit'],
+    factory_analytics: ['view'],
+    factory_stations: ['view'],
+    factory_compliance: ['view'],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -358,6 +495,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: [],
     equipment: [],
     equipment_faults: [],
+    faults: [],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -377,6 +515,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: ['view'],
+    // New modules
+    lost_found: [],
+    lost_found_hq: ['view'],
+    projects: ['view'],
+    reports: ['view'],
+    support: ['view'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: [],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: ['view'],
+    factory_quality: [],
+    factory_analytics: ['view'],
+    factory_stations: [],
+    factory_compliance: [],
   },
   // BRANCH ROLES
   supervisor: {
@@ -385,6 +539,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view', 'create', 'edit', 'approve'],
     equipment: ['view'],
     equipment_faults: ['view', 'create', 'edit'],
+    faults: ['view', 'create', 'edit'],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -404,6 +559,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: ['view', 'create', 'edit'],
+    // New modules
+    lost_found: ['view', 'create', 'edit'],
+    lost_found_hq: [],
+    projects: [],
+    reports: ['view'],
+    support: ['view', 'create'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: ['view', 'create', 'edit'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -411,6 +582,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view'],
     equipment: ['view'],
     equipment_faults: ['view', 'create', 'edit'],
+    faults: ['view', 'create', 'edit'],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -430,6 +602,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: ['view'],
+    // New modules
+    lost_found: ['view', 'create'],
+    lost_found_hq: [],
+    projects: [],
+    reports: ['view'],
+    support: ['view', 'create'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: ['view'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
   barista: {
     dashboard: ['view'],
@@ -437,6 +625,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view', 'edit'],
     equipment: ['view'],
     equipment_faults: ['view', 'create'],
+    faults: ['view', 'create'],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -456,6 +645,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: [],
+    // New modules
+    lost_found: ['view', 'create'],
+    lost_found_hq: [],
+    projects: [],
+    reports: [],
+    support: ['view', 'create'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: ['view'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -463,6 +668,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view', 'edit'],
     equipment: ['view'],
     equipment_faults: ['view', 'create'],
+    faults: ['view', 'create'],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: [],
@@ -482,6 +688,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: [],
+    // New modules
+    lost_found: ['view', 'create'],
+    lost_found_hq: [],
+    projects: [],
+    reports: [],
+    support: ['view', 'create'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: ['view'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
   stajyer: {
     dashboard: ['view'],
@@ -489,6 +711,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: ['view'],
     equipment: [],
     equipment_faults: [],
+    faults: [],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: [],
@@ -508,6 +731,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: [],
+    // New modules
+    lost_found: [],
+    lost_found_hq: [],
+    projects: [],
+    reports: [],
+    support: ['view'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: ['view'],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
   yatirimci_branch: {
     dashboard: ['view'],
@@ -515,6 +754,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     checklists: [],
     equipment: [],
     equipment_faults: [],
+    faults: [],
     knowledge_base: ['view'],
     ai_assistant: ['view'],
     performance: ['view'],
@@ -534,6 +774,22 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     bulk_data: [],
     accounting: [],
     customer_satisfaction: ['view'],
+    // New modules
+    lost_found: [],
+    lost_found_hq: [],
+    projects: [],
+    reports: ['view'],
+    support: ['view'],
+    notifications: ['view'],
+    quality_audit: [],
+    shifts: [],
+    settings: [],
+    factory_kiosk: [],
+    factory_dashboard: [],
+    factory_quality: [],
+    factory_analytics: [],
+    factory_stations: [],
+    factory_compliance: [],
   },
 };
 
