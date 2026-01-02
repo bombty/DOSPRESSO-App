@@ -206,11 +206,19 @@ import {
   factorySessionEvents,
   factoryBreakLogs,
   factoryProductionOutputs,
+  factoryQualitySpecs,
+  factoryProductionPlans,
+  factoryTeams,
+  factoryTeamMembers,
   insertFactoryStationSchema,
   insertFactoryStaffPinSchema,
   insertFactoryShiftSessionSchema,
   insertFactoryProductionRunSchema,
   insertFactoryDailyTargetSchema,
+  insertFactoryQualitySpecSchema,
+  insertFactoryProductionPlanSchema,
+  insertFactoryTeamSchema,
+  insertFactoryTeamMemberSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
