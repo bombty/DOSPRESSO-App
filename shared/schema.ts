@@ -7138,10 +7138,15 @@ export const factoryProductionOutputs = pgTable("factory_production_outputs", {
   // Süre
   durationMinutes: integer("duration_minutes"),
   
+  // Fotoğraf doğrulama
+  photoUrl: text("photo_url"), // Üretim kanıtı fotoğrafı
+  photoVerified: boolean("photo_verified").default(false), // Fotoğraf kontrol edildi mi
+  
   // Kalite kontrol durumu
   qualityStatus: varchar("quality_status", { length: 20 }).default("pending"), // pending, approved, rejected
   qualityCheckedBy: text("quality_checked_by").references(() => users.id),
   qualityCheckedAt: timestamp("quality_checked_at"),
+  qualityNotes: text("quality_notes"), // Kalite kontrol notları
   
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [

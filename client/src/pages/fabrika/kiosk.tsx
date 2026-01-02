@@ -33,8 +33,12 @@ import {
   HandHelping,
   CircleUser,
   StopCircle,
-  CheckCircle2
+  CheckCircle2,
+  Camera,
+  ImageIcon,
+  X
 } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 type KioskStep = 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout';
 type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis';
@@ -109,6 +113,8 @@ export default function FactoryKiosk() {
   const [selectedBreakReason, setSelectedBreakReason] = useState<BreakReason | null>(null);
   const [targetStationId, setTargetStationId] = useState<number | null>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(10);
+  const [productionPhotoUrl, setProductionPhotoUrl] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const { data: staffList = [], isLoading: loadingStaff } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
@@ -171,6 +177,7 @@ export default function FactoryKiosk() {
       wasteUnit?: string;
       wasteReasonId?: number;
       wasteNotes?: string;
+      photoUrl?: string;
     }) => {
       const res = await apiRequest('POST', '/api/factory/kiosk/log-break', data);
       return res.json();
@@ -198,6 +205,7 @@ export default function FactoryKiosk() {
       wasteUnit?: string;
       wasteReasonId?: number;
       wasteNotes?: string;
+      photoUrl?: string;
     }) => {
       const res = await apiRequest('POST', '/api/factory/kiosk/end-shift', data);
       return res.json();
@@ -295,6 +303,7 @@ export default function FactoryKiosk() {
     setWasteNotes('');
     setTargetStationId(null);
     setSelectedBreakReason(null);
+    setProductionPhotoUrl(null);
     setStep('stop-options');
   };
 
@@ -326,6 +335,7 @@ export default function FactoryKiosk() {
         wasteUnit,
         wasteReasonId: selectedWasteReason || undefined,
         wasteNotes: wasteNotes || undefined,
+        photoUrl: productionPhotoUrl || undefined,
       });
     } else {
       logBreakMutation.mutate({
@@ -338,6 +348,7 @@ export default function FactoryKiosk() {
         wasteUnit,
         wasteReasonId: selectedWasteReason || undefined,
         wasteNotes: wasteNotes || undefined,
+        photoUrl: productionPhotoUrl || undefined,
       });
     }
   };
@@ -361,6 +372,8 @@ export default function FactoryKiosk() {
     setSelectedBreakReason(null);
     setTargetStationId(null);
     setAutoLogoutCountdown(10);
+    setProductionPhotoUrl(null);
+    setIsUploadingPhoto(false);
   };
 
   return (
@@ -748,6 +761,66 @@ export default function FactoryKiosk() {
                     </Select>
                   </div>
                 )}
+
+                <Separator className="bg-slate-700" />
+
+                <div className="space-y-2">
+                  <Label className="text-slate-300 flex items-center gap-2">
+                    <Camera className="h-4 w-4 text-amber-400" />
+                    Üretim Fotoğrafı (Opsiyonel)
+                  </Label>
+                  {productionPhotoUrl ? (
+                    <div className="relative">
+                      <img 
+                        src={productionPhotoUrl} 
+                        alt="Üretim fotoğrafı" 
+                        className="w-full h-40 object-cover rounded-lg border border-slate-600"
+                      />
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        className="absolute top-2 right-2 h-8 w-8"
+                        onClick={() => setProductionPhotoUrl(null)}
+                        data-testid="button-remove-photo"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <ObjectUploader
+                      onGetUploadParameters={async () => {
+                        const res = await fetch("/api/objects/generate-upload-url", {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ 
+                            prefix: "factory-production",
+                            visibility: "public"
+                          }),
+                        });
+                        const data = await res.json();
+                        return { method: "PUT", url: data.uploadUrl };
+                      }}
+                      onComplete={(result) => {
+                        if (result.successful.length > 0) {
+                          setProductionPhotoUrl(result.successful[0].uploadURL);
+                          toast({ title: "Fotoğraf yüklendi" });
+                        }
+                      }}
+                      buttonClassName="w-full"
+                    >
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-24 bg-slate-700/50 border-slate-600 border-dashed hover:bg-slate-600 hover:border-amber-500 flex flex-col gap-2"
+                        data-testid="button-upload-photo"
+                      >
+                        <ImageIcon className="h-8 w-8 text-slate-400" />
+                        <span className="text-slate-300">Fotoğraf Yükle</span>
+                      </Button>
+                    </ObjectUploader>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">

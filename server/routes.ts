@@ -24542,7 +24542,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // Kiosk vardiya bitir
   app.post('/api/factory/kiosk/end-shift', async (req, res) => {
     try {
-      const { sessionId, productionRunId, quantityProduced, quantityWaste, wasteReason } = req.body;
+      const { sessionId, productionRunId, quantityProduced, producedUnit, quantityWaste, wasteUnit, wasteReasonId, wasteNotes, wasteReason, photoUrl } = req.body;
       
       if (!sessionId) {
         return res.status(400).json({ message: "Oturum ID gerekli" });
@@ -24570,6 +24570,23 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       if (!session) {
         return res.status(404).json({ message: "Oturum bulunamadı" });
+      }
+
+      // Create production output record with photo if provided
+      if (quantityProduced > 0 || photoUrl) {
+        await db.insert(factoryProductionOutputs).values({
+          sessionId,
+          userId: session.userId,
+          stationId: session.stationId,
+          producedQuantity: String(quantityProduced || 0),
+          producedUnit: producedUnit || 'adet',
+          wasteQuantity: String(quantityWaste || 0),
+          wasteUnit: wasteUnit || 'adet',
+          wasteReasonId: wasteReasonId || null,
+          wasteNotes: wasteNotes || null,
+          photoUrl: photoUrl || null,
+          qualityStatus: 'pending',
+        });
       }
 
       // Calculate work minutes
@@ -24836,7 +24853,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         wasteQuantity,
         wasteUnit,
         wasteReasonId,
-        wasteNotes
+        wasteNotes,
+        photoUrl
       } = req.body;
 
       // Parse quantities safely
@@ -24877,8 +24895,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         startedAt: new Date(),
       });
 
-      // If production data provided, save output
-      if (parsedProduced > 0 || parsedWaste > 0) {
+      // If production data provided, save output with photo
+      if (parsedProduced > 0 || parsedWaste > 0 || photoUrl) {
         await db.insert(factoryProductionOutputs).values({
           sessionEventId: event.id,
           sessionId,
@@ -24890,6 +24908,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           wasteUnit: wasteUnit || 'adet',
           wasteReasonId: parsedWaste > 0 ? wasteReasonId : null,
           wasteNotes: wasteNotes || null,
+          photoUrl: photoUrl || null,
+          qualityStatus: 'pending',
         });
       }
 
