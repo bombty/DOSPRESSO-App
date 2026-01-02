@@ -7506,3 +7506,123 @@ export const insertFactoryTeamSessionMemberSchema = createInsertSchema(factoryTe
 
 export type InsertFactoryTeamSessionMember = z.infer<typeof insertFactoryTeamSessionMemberSchema>;
 export type FactoryTeamSessionMember = typeof factoryTeamSessionMembers.$inferSelect;
+
+// ========================================
+// FABRİKA VARDİYA UYUMLULUK SİSTEMİ
+// ========================================
+
+// Fabrika Vardiya Uyumluluk - Fabrika oturumlarını ana vardiya sistemiyle bağlar
+export const factoryShiftCompliance = pgTable("factory_shift_compliance", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  factorySessionId: integer("factory_session_id").references(() => factoryShiftSessions.id, { onDelete: "set null" }),
+  shiftAttendanceId: integer("shift_attendance_id").references(() => shiftAttendance.id, { onDelete: "set null" }),
+  
+  // Planlanan çalışma saatleri (fabrika için: 08:00 - 18:00)
+  plannedStartTime: timestamp("planned_start_time").notNull(),
+  plannedEndTime: timestamp("planned_end_time").notNull(),
+  plannedBreakMinutes: integer("planned_break_minutes").default(60), // 1 saat mola
+  
+  // Gerçekleşen saatler
+  actualStartTime: timestamp("actual_start_time"),
+  actualEndTime: timestamp("actual_end_time"),
+  actualBreakMinutes: integer("actual_break_minutes").default(0),
+  
+  // Uyumluluk metrikleri
+  latenessMinutes: integer("lateness_minutes").default(0), // Geç kalma
+  earlyLeaveMinutes: integer("early_leave_minutes").default(0), // Erken çıkış
+  breakOverageMinutes: integer("break_overage_minutes").default(0), // Mola aşımı
+  unauthorizedBreakMinutes: integer("unauthorized_break_minutes").default(0), // İzinsiz mola
+  
+  // Toplam çalışma
+  totalWorkedMinutes: integer("total_worked_minutes").default(0),
+  effectiveWorkedMinutes: integer("effective_worked_minutes").default(0), // Net çalışma (cezalar düşülmüş)
+  overtimeMinutes: integer("overtime_minutes").default(0), // Mesai (yönetici onayı gerekli)
+  missingMinutes: integer("missing_minutes").default(0), // Eksik saat
+  
+  // Uyumluluk durumu
+  complianceScore: integer("compliance_score").default(100), // 0-100
+  complianceStatus: varchar("compliance_status", { length: 30 }).default("compliant"), // compliant, late, early_leave, break_overage, absent, needs_review
+  
+  // Onay durumu (mesai için)
+  overtimeApproved: boolean("overtime_approved").default(false),
+  overtimeApprovedBy: text("overtime_approved_by").references(() => users.id),
+  overtimeApprovedAt: timestamp("overtime_approved_at"),
+  
+  // Muhasebe bildirimi
+  reportedToAccounting: boolean("reported_to_accounting").default(false),
+  reportedToAccountingAt: timestamp("reported_to_accounting_at"),
+  
+  // AI öneri
+  aiSuggestion: text("ai_suggestion"), // Telafi önerisi
+  aiSuggestionGeneratedAt: timestamp("ai_suggestion_generated_at"),
+  
+  // Notlar
+  notes: text("notes"),
+  
+  // Tarih
+  workDate: date("work_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("factory_shift_compliance_user_idx").on(table.userId),
+  index("factory_shift_compliance_date_idx").on(table.workDate),
+  index("factory_shift_compliance_session_idx").on(table.factorySessionId),
+  index("factory_shift_compliance_status_idx").on(table.complianceStatus),
+]);
+
+export const insertFactoryShiftComplianceSchema = createInsertSchema(factoryShiftCompliance).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryShiftCompliance = z.infer<typeof insertFactoryShiftComplianceSchema>;
+export type FactoryShiftCompliance = typeof factoryShiftCompliance.$inferSelect;
+
+// Haftalık Çalışma Özeti (45 saat takibi)
+export const factoryWeeklyAttendanceSummary = pgTable("factory_weekly_attendance_summary", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Hafta bilgisi
+  weekStartDate: date("week_start_date").notNull(),
+  weekEndDate: date("week_end_date").notNull(),
+  weekNumber: integer("week_number").notNull(),
+  year: integer("year").notNull(),
+  
+  // Çalışma saatleri
+  plannedTotalMinutes: integer("planned_total_minutes").default(2700), // 45 saat = 2700 dk
+  actualTotalMinutes: integer("actual_total_minutes").default(0),
+  overtimeMinutes: integer("overtime_minutes").default(0),
+  missingMinutes: integer("missing_minutes").default(0), // Eksik saat
+  
+  // Günlük dağılım
+  workDaysCount: integer("work_days_count").default(0),
+  absentDaysCount: integer("absent_days_count").default(0),
+  lateDaysCount: integer("late_days_count").default(0),
+  
+  // Uyumluluk
+  weeklyComplianceScore: integer("weekly_compliance_score").default(100),
+  
+  // Muhasebe bildirimi
+  reportedToAccounting: boolean("reported_to_accounting").default(false),
+  reportedToAccountingAt: timestamp("reported_to_accounting_at"),
+  accountingNotes: text("accounting_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("factory_weekly_summary_user_idx").on(table.userId),
+  index("factory_weekly_summary_week_idx").on(table.weekStartDate),
+  unique("factory_weekly_summary_user_week_unique").on(table.userId, table.weekStartDate),
+]);
+
+export const insertFactoryWeeklyAttendanceSummarySchema = createInsertSchema(factoryWeeklyAttendanceSummary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryWeeklyAttendanceSummary = z.infer<typeof insertFactoryWeeklyAttendanceSummarySchema>;
+export type FactoryWeeklyAttendanceSummary = typeof factoryWeeklyAttendanceSummary.$inferSelect;

@@ -708,12 +708,7 @@ export function CardGridHub() {
 
       {/* Card Grid */}
       <div className="grid grid-cols-3 gap-2">
-        {modules.filter((module: any) => {
-          if (module.roles && module.roles.length > 0) {
-            return module.roles.includes(user?.role || '');
-          }
-          return true;
-        }).map((module: any) => {
+        {modules.map((module: any) => {
           const Icon = module.icon;
           return (
             <button

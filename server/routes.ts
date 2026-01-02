@@ -219,6 +219,9 @@ import {
   insertFactoryProductionPlanSchema,
   insertFactoryTeamSchema,
   insertFactoryTeamMemberSchema,
+  factoryShiftCompliance,
+  factoryWeeklyAttendanceSummary,
+  insertFactoryShiftComplianceSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -25094,6 +25097,17 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // Yeni üretim planı oluştur
   app.post('/api/factory/production-plans', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      // Fabrika müdürü, HQ veya admin izni kontrolü
+      const canCreate = user.role === 'admin' || 
+                        user.role === 'fabrika_mudur' || 
+                        isHQRole(user.role) ||
+                        hasPermission(user, 'factory_planning' as any, 'create');
+      
+      if (!canCreate) {
+        return res.status(403).json({ message: "Üretim planı oluşturma yetkiniz yok" });
+      }
+      
       const { productId, stationId, plannedDate, targetQuantity, notes } = req.body;
       const [plan] = await db.insert(factoryProductionPlans).values({
         productId,
@@ -25261,6 +25275,17 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   // Üretim planı güncelle
   app.patch('/api/factory/production-plans/:id', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      // Fabrika müdürü, HQ veya admin izni kontrolü
+      const canEdit = user.role === 'admin' || 
+                      user.role === 'fabrika_mudur' || 
+                      isHQRole(user.role) ||
+                      hasPermission(user, 'factory_planning' as any, 'edit');
+      
+      if (!canEdit) {
+        return res.status(403).json({ message: "Üretim planı düzenleme yetkiniz yok" });
+      }
+      
       const planId = parseInt(req.params.id);
       const { productId, stationId, plannedDate, targetQuantity, actualQuantity, status, notes } = req.body;
       const [updated] = await db.update(factoryProductionPlans)
@@ -25280,6 +25305,252 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error updating production plan:", error);
       res.status(500).json({ message: "Üretim planı güncellenemedi" });
+    }
+  });
+
+  // ========================================
+  // FABRİKA VARDİYA UYUMLULUK API
+  // ========================================
+
+  // Personelin günlük vardiya uyumluluk uyarıları
+  app.get('/api/factory/shift-compliance/my-warnings', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Bugünkü uyumluluk kaydını al
+      const [todayCompliance] = await db.select()
+        .from(factoryShiftCompliance)
+        .where(and(
+          eq(factoryShiftCompliance.userId, user.id),
+          gte(factoryShiftCompliance.workDate, today.toISOString().split('T')[0])
+        ))
+        .limit(1);
+
+      // Bu haftaki özeti al
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Pazartesi
+      
+      const [weeklySummary] = await db.select()
+        .from(factoryWeeklyAttendanceSummary)
+        .where(and(
+          eq(factoryWeeklyAttendanceSummary.userId, user.id),
+          eq(factoryWeeklyAttendanceSummary.weekStartDate, weekStart.toISOString().split('T')[0])
+        ))
+        .limit(1);
+
+      const warnings: any[] = [];
+      
+      if (todayCompliance) {
+        if (todayCompliance.latenessMinutes && todayCompliance.latenessMinutes > 0) {
+          warnings.push({
+            type: 'late',
+            severity: todayCompliance.latenessMinutes > 15 ? 'high' : 'medium',
+            title: 'Geç Kalma',
+            message: `Bugün ${todayCompliance.latenessMinutes} dakika geç kaldınız.`,
+            minutes: todayCompliance.latenessMinutes,
+            aiSuggestion: todayCompliance.aiSuggestion,
+          });
+        }
+        
+        if (todayCompliance.earlyLeaveMinutes && todayCompliance.earlyLeaveMinutes > 0) {
+          warnings.push({
+            type: 'early_leave',
+            severity: todayCompliance.earlyLeaveMinutes > 30 ? 'high' : 'medium',
+            title: 'Erken Çıkış',
+            message: `${todayCompliance.earlyLeaveMinutes} dakika erken çıkış yaptınız.`,
+            minutes: todayCompliance.earlyLeaveMinutes,
+          });
+        }
+        
+        if (todayCompliance.breakOverageMinutes && todayCompliance.breakOverageMinutes > 0) {
+          warnings.push({
+            type: 'break_overage',
+            severity: todayCompliance.breakOverageMinutes > 15 ? 'high' : 'low',
+            title: 'Mola Aşımı',
+            message: `Mola sürenizi ${todayCompliance.breakOverageMinutes} dakika aştınız.`,
+            minutes: todayCompliance.breakOverageMinutes,
+          });
+        }
+      }
+
+      // Haftalık eksik saat uyarısı
+      if (weeklySummary && weeklySummary.missingMinutes && weeklySummary.missingMinutes > 0) {
+        const missingHours = Math.floor(weeklySummary.missingMinutes / 60);
+        const missingMins = weeklySummary.missingMinutes % 60;
+        warnings.push({
+          type: 'weekly_missing',
+          severity: weeklySummary.missingMinutes > 120 ? 'high' : 'medium',
+          title: 'Haftalık Eksik Saat',
+          message: `Bu hafta ${missingHours} saat ${missingMins} dakika eksik çalışmanız var. (45 saat hedefi)`,
+          minutes: weeklySummary.missingMinutes,
+          weeklyActual: weeklySummary.actualTotalMinutes,
+          weeklyTarget: 2700, // 45 saat
+        });
+      }
+
+      res.json({
+        warnings,
+        todayCompliance: todayCompliance || null,
+        weeklySummary: weeklySummary || null,
+        complianceScore: todayCompliance?.complianceScore || 100,
+      });
+    } catch (error: any) {
+      console.error("Error fetching shift compliance warnings:", error);
+      res.status(500).json({ message: "Vardiya uyumluluk verileri alınamadı" });
+    }
+  });
+
+  // AI ile telafi önerisi oluştur
+  app.post('/api/factory/shift-compliance/:id/generate-suggestion', isAuthenticated, async (req, res) => {
+    try {
+      const complianceId = parseInt(req.params.id);
+      
+      const [compliance] = await db.select()
+        .from(factoryShiftCompliance)
+        .where(eq(factoryShiftCompliance.id, complianceId))
+        .limit(1);
+
+      if (!compliance) {
+        return res.status(404).json({ message: "Kayıt bulunamadı" });
+      }
+
+      // AI ile öneri oluştur
+      let suggestion = "";
+      
+      if (compliance.latenessMinutes && compliance.latenessMinutes > 0) {
+        suggestion = `Bugün ${compliance.latenessMinutes} dakika geç kaldınız. Bu durumu telafi etmek için bugün ${compliance.latenessMinutes} dakika fazla çalışabilir veya yöneticinizden izin talep edebilirsiniz. Haftalık 45 saat hedefinize ulaşmak için kalan günlerdeki çalışma saatlerinizi kontrol edin.`;
+      } else if (compliance.earlyLeaveMinutes && compliance.earlyLeaveMinutes > 0) {
+        suggestion = `${compliance.earlyLeaveMinutes} dakika erken çıktınız. Bu eksikliği telafi etmek için yarın ${compliance.earlyLeaveMinutes} dakika erken gelebilir veya başka bir gün mesai yapabilirsiniz. Yönetici onayı ile bu süre mesai olarak sayılabilir.`;
+      } else if (compliance.breakOverageMinutes && compliance.breakOverageMinutes > 0) {
+        suggestion = `Mola sürenizi ${compliance.breakOverageMinutes} dakika aştınız. Bir sonraki molada daha dikkatli olun. Bu süre haftalık çalışma saatinizden düşülecektir.`;
+      } else {
+        suggestion = "Vardiya uyumluluğunuz mükemmel! Böyle devam edin.";
+      }
+
+      await db.update(factoryShiftCompliance)
+        .set({
+          aiSuggestion: suggestion,
+          aiSuggestionGeneratedAt: new Date(),
+        })
+        .where(eq(factoryShiftCompliance.id, complianceId));
+
+      res.json({ suggestion });
+    } catch (error: any) {
+      console.error("Error generating compliance suggestion:", error);
+      res.status(500).json({ message: "Öneri oluşturulamadı" });
+    }
+  });
+
+  // HQ - Fabrika vardiya uyumluluk listesi
+  app.get('/api/factory/shift-compliance', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'fabrika_mudur') {
+        return res.status(403).json({ message: "Bu sayfaya erişim yetkiniz yok" });
+      }
+
+      const dateFilter = req.query.date as string;
+      const statusFilter = req.query.status as string;
+
+      let query = db.select({
+        compliance: factoryShiftCompliance,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profilePhotoUrl: users.profilePhotoUrl,
+        }
+      })
+      .from(factoryShiftCompliance)
+      .leftJoin(users, eq(factoryShiftCompliance.userId, users.id));
+
+      if (dateFilter) {
+        query = query.where(eq(factoryShiftCompliance.workDate, dateFilter)) as any;
+      }
+
+      const records = await query;
+
+      const filtered = statusFilter 
+        ? records.filter((r: any) => r.compliance.complianceStatus === statusFilter)
+        : records;
+
+      res.json(filtered);
+    } catch (error: any) {
+      console.error("Error fetching shift compliance list:", error);
+      res.status(500).json({ message: "Liste alınamadı" });
+    }
+  });
+
+  // HQ - Haftalık özet listesi
+  app.get('/api/factory/weekly-summaries', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'fabrika_mudur' && user.role !== 'muhasebe') {
+        return res.status(403).json({ message: "Bu sayfaya erişim yetkiniz yok" });
+      }
+
+      const weekStart = req.query.weekStart as string;
+
+      let query = db.select({
+        summary: factoryWeeklyAttendanceSummary,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }
+      })
+      .from(factoryWeeklyAttendanceSummary)
+      .leftJoin(users, eq(factoryWeeklyAttendanceSummary.userId, users.id));
+
+      if (weekStart) {
+        query = query.where(eq(factoryWeeklyAttendanceSummary.weekStartDate, weekStart)) as any;
+      }
+
+      const summaries = await query;
+
+      // Eksik saati olanları filtrele
+      const withMissing = summaries.filter((s: any) => 
+        s.summary.missingMinutes && s.summary.missingMinutes > 0
+      );
+
+      res.json({
+        all: summaries,
+        withMissingHours: withMissing,
+        totalMissingMinutes: withMissing.reduce((sum: number, s: any) => 
+          sum + (s.summary.missingMinutes || 0), 0
+        ),
+      });
+    } catch (error: any) {
+      console.error("Error fetching weekly summaries:", error);
+      res.status(500).json({ message: "Haftalık özetler alınamadı" });
+    }
+  });
+
+  // Muhasebe - Eksik saat bildirimi
+  app.post('/api/factory/report-to-accounting', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'fabrika_mudur') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { summaryIds, notes } = req.body;
+
+      await db.update(factoryWeeklyAttendanceSummary)
+        .set({
+          reportedToAccounting: true,
+          reportedToAccountingAt: new Date(),
+          accountingNotes: notes,
+          updatedAt: new Date(),
+        })
+        .where(inArray(factoryWeeklyAttendanceSummary.id, summaryIds));
+
+      res.json({ success: true, message: "Muhasebe bildirimi gönderildi" });
+    } catch (error: any) {
+      console.error("Error reporting to accounting:", error);
+      res.status(500).json({ message: "Bildirim gönderilemedi" });
     }
   });
 
