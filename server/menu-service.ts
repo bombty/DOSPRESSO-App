@@ -96,7 +96,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       {
         id: "factory-analytics",
         titleTr: "Performans Analitik",
-        path: "/fabrika/analitik",
+        path: "/fabrika/performans",
         icon: "BarChart3",
         moduleKey: "factory_analytics",
         scope: "hq",
