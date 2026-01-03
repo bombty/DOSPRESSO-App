@@ -38,6 +38,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **New Shop Opening Management System**: A 7-phase workflow tracking for franchise openings with hierarchical tasks, RACI assignments, and procurement/bidding.
 - **Admin Features**: Email settings (SMTP), banner management with photo upload, AI settings, project task detail pages, and milestone management.
 - **Global Search & Calendar View**: Functionality for finding information across the platform and visualizing tasks/milestones.
+- **Unified Dashboard Alert System**: Real-time alerts for both branch and factory dashboards via `dashboard_alerts` table. Supports 12 trigger types (late clock-in, quality issues, production delays, missing staff, etc.) with severity levels (critical/warning/info) and visual feedback (color-coded cards, pulsing banners for critical). API endpoints at `/api/alerts/:context/:contextId` for CRUD operations with acknowledge/resolve/dismiss workflows.
 
 ### System Design Choices
 - **Health Score Calculation**: Real-time scores based on recent faults and compliance.
@@ -55,6 +56,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries (OpenAI gpt-4o-mini), and conditional alerts.
 - **Checklist Scoring**: 40% weight in compositeScore, max score 4/5 if not on-time, scored by supervisor, daily reminders active.
 - **Reminder System**: 5-minute interval checks for task reminders, overdue notifications, maintenance alerts, and checklist completion reminders.
+- **Branch Dashboard**: Comprehensive dashboard at `/sube/dashboard` with real-time stats (active staff, breaks, total work time), alert management, kiosk mode access, tabs for shifts/tasks/checklists/daily summary, and quick access buttons. Supports both regular user authentication and branch-specific login sessions via sessionStorage.
 
 ## External Dependencies
 ### Third-Party Services

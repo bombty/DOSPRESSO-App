@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { Link, useLocation } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Users, 
   Clock, 
@@ -17,9 +21,18 @@ import {
   Calendar,
   TrendingUp,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   RefreshCw,
-  ChevronRight
+  ChevronRight,
+  Monitor,
+  ClipboardList,
+  ListTodo,
+  Bell,
+  BellRing,
+  XCircle,
+  Eye,
+  Check
 } from "lucide-react";
 
 interface ActiveSession {
@@ -61,11 +74,67 @@ interface DailySummary {
   };
 }
 
+interface Alert {
+  id: number;
+  context: string;
+  contextId: number;
+  triggerType: string;
+  severity: 'critical' | 'warning' | 'info';
+  status: string;
+  title: string;
+  message: string;
+  occurredAt: string;
+  relatedUserId?: string;
+}
+
+interface BranchDashboardData {
+  branch: {
+    id: number;
+    name: string;
+    city: string;
+    address: string;
+  };
+  stats: {
+    activeStaff: number;
+    totalShifts: number;
+    completedTasks: number;
+    pendingTasks: number;
+    completedChecklists: number;
+    pendingChecklists: number;
+    activeAlerts: number;
+    criticalAlerts: number;
+  };
+  alerts: Alert[];
+  todayShifts: any[];
+  todayTasks: any[];
+  todayChecklists: any[];
+}
+
 export default function SubeDashboard() {
-  const { user } = useAuth();
-  const branchId = user?.branchId || 1;
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  
+  // Check for branch auth from sessionStorage (branch login)
+  const branchAuthStr = typeof window !== 'undefined' ? sessionStorage.getItem('branchAuth') : null;
+  const branchAuth = branchAuthStr ? JSON.parse(branchAuthStr) : null;
+  
+  // Use branchAuth.id if available (branch login), otherwise use user.branchId
+  const branchId = branchAuth?.id || user?.branchId || 1;
+  const currentUserId = user?.id || 'branch-user';
+
+  const { data: dashboardData, isLoading: loadingDashboard, refetch } = useQuery<BranchDashboardData>({
+    queryKey: ['/api/branch-dashboard', branchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/branch-dashboard/${branchId}`);
+      if (!res.ok) throw new Error("Dashboard verisi alınamadı");
+      return res.json();
+    },
+    refetchInterval: autoRefresh ? 30000 : false,
+    enabled: !!branchId,
+  });
 
   const { data: activeSessions = [], isLoading: loadingActive, refetch: refetchActive } = useQuery<ActiveSession[]>({
     queryKey: ['/api/branches', branchId, 'kiosk', 'active-shifts'],
@@ -81,6 +150,26 @@ export default function SubeDashboard() {
     queryFn: async () => {
       const res = await fetch(`/api/branches/${branchId}/attendance/daily?date=${selectedDate}`);
       return res.json();
+    },
+  });
+
+  const acknowledgeAlertMutation = useMutation({
+    mutationFn: async (alertId: number) => {
+      return apiRequest('PATCH', `/api/alerts/${alertId}/acknowledge`, { userId: currentUserId });
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: "Uyarı onaylandı" });
+    },
+  });
+
+  const dismissAlertMutation = useMutation({
+    mutationFn: async (alertId: number) => {
+      return apiRequest('PATCH', `/api/alerts/${alertId}/dismiss`, {});
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: "Uyarı kapatıldı" });
     },
   });
 
@@ -108,92 +197,210 @@ export default function SubeDashboard() {
   const onBreakCount = activeSessions.filter(s => s.session.status === 'on_break').length;
   const totalActiveMinutes = dailySummaries.reduce((sum, s) => sum + (s.summary.netWorkMinutes || 0), 0);
 
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'bg-red-500/20 text-red-600 border-red-500';
+      case 'warning': return 'bg-amber-500/20 text-amber-600 border-amber-500';
+      case 'info': return 'bg-blue-500/20 text-blue-600 border-blue-500';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+      case 'critical': return <AlertCircle className="h-5 w-5 text-red-500" />;
+      case 'warning': return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+      case 'info': return <Bell className="h-5 w-5 text-blue-500" />;
+      default: return <Bell className="h-5 w-5" />;
+    }
+  };
+
+  const criticalAlerts = dashboardData?.alerts.filter(a => a.severity === 'critical') || [];
+  const hasCriticalAlerts = criticalAlerts.length > 0;
+
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Şube Vardiya Takibi</h1>
-          <p className="text-muted-foreground">Gerçek zamanlı personel durumu</p>
+      {hasCriticalAlerts && (
+        <div className="bg-red-500/10 border-l-4 border-red-500 p-4 rounded-r-lg animate-pulse">
+          <div className="flex items-center gap-3">
+            <BellRing className="h-6 w-6 text-red-500 animate-bounce" />
+            <div className="flex-1">
+              <p className="font-semibold text-red-600">Kritik Uyarı!</p>
+              <p className="text-sm text-red-500">{criticalAlerts[0]?.message}</p>
+            </div>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="border-red-500 text-red-500"
+              onClick={() => acknowledgeAlertMutation.mutate(criticalAlerts[0].id)}
+              data-testid="button-ack-critical"
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Görüldü
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+      )}
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900">
+            <Coffee className="h-8 w-8 text-amber-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Şube Dashboard</h1>
+            <p className="text-muted-foreground">{dashboardData?.branch?.name || 'Yükleniyor...'}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/sube/kiosk">
+            <Button variant="default" className="gap-2" data-testid="button-kiosk-mode">
+              <Monitor className="h-4 w-4" />
+              Kiosk Modu
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refetchActive()}
+            onClick={() => { refetch(); refetchActive(); }}
             data-testid="button-refresh"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Yenile
           </Button>
-          <Badge variant={autoRefresh ? "default" : "secondary"}>
+          <Badge 
+            variant={autoRefresh ? "default" : "secondary"} 
+            className="cursor-pointer"
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            data-testid="badge-auto-refresh"
+          >
             {autoRefresh ? "Otomatik yenileme açık" : "Otomatik yenileme kapalı"}
           </Badge>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="hover-elevate">
+          <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-full bg-green-100 dark:bg-green-900">
-                <Play className="h-5 w-5 text-green-600" />
+              <div className="p-3 bg-green-500/20 rounded-lg">
+                <Play className="h-6 w-6 text-green-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{activeCount}</p>
                 <p className="text-sm text-muted-foreground">Aktif Çalışan</p>
+                <p className="text-2xl font-bold" data-testid="text-active-count">{activeCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="hover-elevate">
+          <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900">
-                <Coffee className="h-5 w-5 text-amber-600" />
+              <div className="p-3 bg-amber-500/20 rounded-lg">
+                <Coffee className="h-6 w-6 text-amber-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{onBreakCount}</p>
                 <p className="text-sm text-muted-foreground">Molada</p>
+                <p className="text-2xl font-bold" data-testid="text-break-count">{onBreakCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="hover-elevate">
+          <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
-                <Users className="h-5 w-5 text-blue-600" />
+              <div className="p-3 bg-blue-500/20 rounded-lg">
+                <Timer className="h-6 w-6 text-blue-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{activeSessions.length}</p>
-                <p className="text-sm text-muted-foreground">Toplam Vardiyada</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
-                <Timer className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{formatMinutes(totalActiveMinutes)}</p>
                 <p className="text-sm text-muted-foreground">Bugün Toplam</p>
+                <p className="text-2xl font-bold" data-testid="text-total-time">{formatMinutes(totalActiveMinutes)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`hover-elevate ${(dashboardData?.stats.activeAlerts || 0) > 0 ? 'border-amber-500' : ''}`}>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-lg ${(dashboardData?.stats.criticalAlerts || 0) > 0 ? 'bg-red-500/20' : 'bg-muted'}`}>
+                <Bell className={`h-6 w-6 ${(dashboardData?.stats.criticalAlerts || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Uyarılar</p>
+                <p className="text-2xl font-bold" data-testid="text-alert-count">
+                  {dashboardData?.stats.activeAlerts || 0}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {(dashboardData?.alerts.length || 0) > 0 && (
+        <Card className="border-l-4 border-l-amber-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <BellRing className="h-5 w-5 text-amber-500" />
+              Aktif Uyarılar
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {dashboardData?.alerts.map((alert) => (
+              <div 
+                key={alert.id} 
+                className={`flex items-center gap-3 p-3 rounded-lg border ${getSeverityColor(alert.severity)}`}
+                data-testid={`alert-item-${alert.id}`}
+              >
+                {getSeverityIcon(alert.severity)}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">{alert.title}</p>
+                  <p className="text-xs opacity-80 truncate">{alert.message}</p>
+                  <p className="text-xs opacity-60">{formatTime(alert.occurredAt)}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-8 w-8"
+                    onClick={() => acknowledgeAlertMutation.mutate(alert.id)}
+                    disabled={acknowledgeAlertMutation.isPending}
+                    data-testid={`button-ack-${alert.id}`}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-8 w-8"
+                    onClick={() => dismissAlertMutation.mutate(alert.id)}
+                    disabled={dismissAlertMutation.isPending}
+                    data-testid={`button-dismiss-${alert.id}`}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="active" className="space-y-4">
         <TabsList>
           <TabsTrigger value="active" data-testid="tab-active">
             <Play className="h-4 w-4 mr-2" />
             Aktif Vardiyalar
+          </TabsTrigger>
+          <TabsTrigger value="tasks" data-testid="tab-tasks">
+            <ListTodo className="h-4 w-4 mr-2" />
+            Görevler
+          </TabsTrigger>
+          <TabsTrigger value="checklists" data-testid="tab-checklists">
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Checklistler
           </TabsTrigger>
           <TabsTrigger value="daily" data-testid="tab-daily">
             <Calendar className="h-4 w-4 mr-2" />
@@ -203,14 +410,16 @@ export default function SubeDashboard() {
 
         <TabsContent value="active">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Şu An Vardiyada Olanlar
-              </CardTitle>
-              <CardDescription>
-                Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Şu An Vardiyada Olanlar
+                </CardTitle>
+                <CardDescription>
+                  Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingActive ? (
@@ -227,7 +436,7 @@ export default function SubeDashboard() {
                   {activeSessions.map(({ session, user }) => (
                     <div
                       key={session.id}
-                      className="flex items-center gap-4 p-4 rounded-lg border bg-card"
+                      className="flex items-center gap-4 p-4 rounded-lg border bg-card hover-elevate"
                       data-testid={`active-session-${session.id}`}
                     >
                       <Avatar className="h-12 w-12">
@@ -274,6 +483,111 @@ export default function SubeDashboard() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="tasks">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ListTodo className="h-5 w-5" />
+                  Bugünkü Görevler
+                </CardTitle>
+                <CardDescription>
+                  {dashboardData?.stats.completedTasks || 0} / {(dashboardData?.stats.completedTasks || 0) + (dashboardData?.stats.pendingTasks || 0)} tamamlandı
+                </CardDescription>
+              </div>
+              <Progress 
+                value={dashboardData?.stats.completedTasks && dashboardData?.stats.pendingTasks 
+                  ? (dashboardData.stats.completedTasks / (dashboardData.stats.completedTasks + dashboardData.stats.pendingTasks)) * 100 
+                  : 0} 
+                className="w-32 h-2"
+              />
+            </CardHeader>
+            <CardContent>
+              {dashboardData?.todayTasks && dashboardData.todayTasks.length > 0 ? (
+                <div className="space-y-2">
+                  {dashboardData.todayTasks.map((task: any) => (
+                    <div 
+                      key={task.id} 
+                      className="flex items-center gap-3 p-3 rounded-lg border"
+                      data-testid={`task-item-${task.id}`}
+                    >
+                      {task.status === 'completed' ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                          {task.title}
+                        </p>
+                      </div>
+                      <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
+                        {task.status === 'completed' ? 'Tamamlandı' : 'Bekliyor'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <ListTodo className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Bugün henüz görev yok</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="checklists">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  Bugünkü Checklistler
+                </CardTitle>
+                <CardDescription>
+                  {dashboardData?.stats.completedChecklists || 0} / {(dashboardData?.stats.completedChecklists || 0) + (dashboardData?.stats.pendingChecklists || 0)} tamamlandı
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {dashboardData?.todayChecklists && dashboardData.todayChecklists.length > 0 ? (
+                <div className="space-y-2">
+                  {dashboardData.todayChecklists.map((checklist: any) => (
+                    <div 
+                      key={checklist.id} 
+                      className="flex items-center gap-3 p-3 rounded-lg border"
+                      data-testid={`checklist-item-${checklist.id}`}
+                    >
+                      {checklist.status === 'completed' ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <ClipboardList className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium">{checklist.title}</p>
+                        {checklist.firstName && (
+                          <p className="text-xs text-muted-foreground">
+                            Atanan: {checklist.firstName} {checklist.lastName}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant={checklist.status === 'completed' ? 'default' : 'secondary'}>
+                        {checklist.status === 'completed' ? 'Tamamlandı' : 'Bekliyor'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Bugün henüz checklist yok</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="daily">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
@@ -306,21 +620,21 @@ export default function SubeDashboard() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium">Personel</th>
-                        <th className="text-center py-3 px-4 font-medium">Giriş</th>
-                        <th className="text-center py-3 px-4 font-medium">Çıkış</th>
-                        <th className="text-center py-3 px-4 font-medium">Toplam</th>
-                        <th className="text-center py-3 px-4 font-medium">Mola</th>
-                        <th className="text-center py-3 px-4 font-medium">Net</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Personel</TableHead>
+                        <TableHead className="text-center">Giriş</TableHead>
+                        <TableHead className="text-center">Çıkış</TableHead>
+                        <TableHead className="text-center">Toplam</TableHead>
+                        <TableHead className="text-center">Mola</TableHead>
+                        <TableHead className="text-center">Net</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {dailySummaries.map(({ summary, user }) => (
-                        <tr key={summary.id} className="border-b last:border-0" data-testid={`summary-row-${summary.id}`}>
-                          <td className="py-3 px-4">
+                        <TableRow key={summary.id} data-testid={`summary-row-${summary.id}`}>
+                          <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-8 w-8">
                                 <AvatarFallback className="text-xs bg-amber-100 text-amber-700">
@@ -332,37 +646,71 @@ export default function SubeDashboard() {
                                 <p className="text-xs text-muted-foreground">{user?.role}</p>
                               </div>
                             </div>
-                          </td>
-                          <td className="text-center py-3 px-4 text-sm">
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
                             {summary.firstCheckIn ? formatTime(summary.firstCheckIn) : '-'}
-                          </td>
-                          <td className="text-center py-3 px-4 text-sm">
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
                             {summary.lastCheckOut ? formatTime(summary.lastCheckOut) : '-'}
-                          </td>
-                          <td className="text-center py-3 px-4 text-sm">
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
                             {formatMinutes(summary.totalWorkMinutes || 0)}
-                          </td>
-                          <td className="text-center py-3 px-4 text-sm">
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
                             {formatMinutes(summary.totalBreakMinutes || 0)}
-                          </td>
-                          <td className="text-center py-3 px-4">
+                          </TableCell>
+                          <TableCell className="text-center">
                             <Badge variant={
                               (summary.netWorkMinutes || 0) >= 450 ? 'default' : 
                               (summary.netWorkMinutes || 0) >= 360 ? 'secondary' : 'destructive'
                             }>
                               {formatMinutes(summary.netWorkMinutes || 0)}
                             </Badge>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Hızlı Erişim</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Link href="/sube/kiosk">
+              <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-kiosk-quick">
+                <Monitor className="h-8 w-8 text-amber-500" />
+                <span>Kiosk Modu</span>
+              </Button>
+            </Link>
+            <Link href="/gorevler">
+              <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-tasks">
+                <ListTodo className="h-8 w-8 text-blue-500" />
+                <span>Görevler</span>
+              </Button>
+            </Link>
+            <Link href="/checklist">
+              <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-checklists">
+                <ClipboardList className="h-8 w-8 text-green-500" />
+                <span>Checklistler</span>
+              </Button>
+            </Link>
+            <Link href="/vardiya-planlama">
+              <Button variant="outline" className="w-full h-auto p-4 flex flex-col items-center gap-2" data-testid="link-shifts">
+                <Calendar className="h-8 w-8 text-purple-500" />
+                <span>Vardiya Planı</span>
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

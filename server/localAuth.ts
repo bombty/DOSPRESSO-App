@@ -6,6 +6,9 @@ import connectPg from "connect-pg-simple";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { storage } from "./storage";
+import { db } from "./db";
+import { branches } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Kullanıcı adı zorunludur"),
@@ -102,8 +105,42 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  // Login endpoint with validation
-  app.post("/api/login", (req, res, next) => {
+  // Şube kimlik bilgileri kontrolü için yardımcı fonksiyon
+  const normalizeTurkish = (s: string) => s.toLowerCase()
+    .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
+
+  const tryBranchLogin = async (username: string, password: string) => {
+    try {
+      // Tüm şubeleri çek ve kioskUsername ile eşleştir
+      const allBranches = await db.select({
+        id: branches.id,
+        name: branches.name,
+        kioskUsername: branches.kioskUsername,
+        kioskPassword: branches.kioskPassword,
+      }).from(branches);
+      
+      const normalizedInput = normalizeTurkish(username);
+      
+      // Şube bul
+      const branch = allBranches.find(b => 
+        b.kioskUsername && normalizeTurkish(b.kioskUsername) === normalizedInput
+      );
+      
+      if (!branch) return null;
+      
+      // Şifre kontrolü
+      if (branch.kioskPassword !== password) return null;
+      
+      return branch;
+    } catch (error) {
+      console.error("[Auth] Branch login error:", error);
+      return null;
+    }
+  };
+
+  // Login endpoint with validation (supports both user and branch login)
+  app.post("/api/login", async (req, res, next) => {
     // Validate request body
     const validationResult = loginSchema.safeParse(req.body);
     
@@ -114,22 +151,57 @@ export async function setupAuth(app: Express) {
       });
     }
 
-    passport.authenticate("local", (err: unknown, user: unknown, info: any) => {
+    const { username, password } = validationResult.data;
+
+    // İlk önce normal kullanıcı girişini dene
+    passport.authenticate("local", async (err: unknown, user: unknown, info: any) => {
       if (err) {
         return res.status(500).json({ error: "Sunucu hatası" });
       }
       
-      if (!user) {
-        return res.status(401).json({ error: info?.message || "Giriş başarısız" });
+      // Normal kullanıcı girişi başarılı
+      if (user) {
+        req.login(user, (err) => {
+          if (err) {
+            console.error("[Auth] Login error:", err);
+            return res.status(500).json({ error: "Giriş işlemi başarısız" });
+          }
+          
+          req.session.save((saveErr) => {
+            if (saveErr) {
+              console.error("[Auth] Session save error:", saveErr);
+              return res.status(500).json({ error: "Oturum kaydedilemedi" });
+            }
+            
+            return res.json({ 
+              success: true,
+              authType: 'user',
+              user: {
+                id: (user as any).id,
+                username: (user as any).username,
+                firstName: (user as any).firstName,
+                lastName: (user as any).lastName,
+                role: (user as any).role,
+                branchId: (user as any).branchId,
+              }
+            });
+          });
+        });
+        return;
       }
-
-      req.login(user, (err) => {
-        if (err) {
-          console.error("[Auth] Login error:", err);
-          return res.status(500).json({ error: "Giriş işlemi başarısız" });
-        }
+      
+      // Kullanıcı bulunamadı - şube kimlik bilgilerini dene
+      const branch = await tryBranchLogin(username, password);
+      
+      if (branch) {
+        // Şube girişi başarılı - session'a şube bilgilerini kaydet
+        (req.session as any).branchAuth = {
+          authType: 'branch',
+          branchId: branch.id,
+          branchName: branch.name,
+          loginTime: new Date().toISOString(),
+        };
         
-        // Explicitly save session to ensure cookie is set
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error("[Auth] Session save error:", saveErr);
@@ -138,17 +210,19 @@ export async function setupAuth(app: Express) {
           
           return res.json({ 
             success: true,
-            user: {
-              id: user.id,
-              username: user.username,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              role: user.role,
-              branchId: user.branchId,
-            }
+            authType: 'branch',
+            branch: {
+              id: branch.id,
+              name: branch.name,
+            },
+            redirectTo: '/sube-dashboard'
           });
         });
-      });
+        return;
+      }
+      
+      // Her iki giriş de başarısız
+      return res.status(401).json({ error: info?.message || "Kullanıcı adı veya şifre hatalı" });
     })(req, res, next);
   });
 

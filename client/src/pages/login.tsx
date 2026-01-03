@@ -65,7 +65,24 @@ export default function Login() {
       return response.json();
     },
     onSuccess: async (data) => {
-      // Manually set user in cache to avoid race condition
+      // Şube girişi kontrolü
+      if (data.authType === 'branch') {
+        // Şube girişi - session storage'a şube bilgilerini kaydet
+        sessionStorage.setItem('branchAuth', JSON.stringify(data.branch));
+        
+        toast({
+          title: "Şube girişi başarılı",
+          description: `${data.branch.name} şubesine hoş geldiniz!`,
+        });
+        
+        // Şube dashboard'a yönlendir
+        setTimeout(() => {
+          navigate(data.redirectTo || '/sube-dashboard');
+        }, 100);
+        return;
+      }
+      
+      // Normal kullanıcı girişi
       if (data.user) {
         queryClient.setQueryData(["/api/auth/user"], data.user);
       }

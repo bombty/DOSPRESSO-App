@@ -8218,3 +8218,111 @@ export const insertBranchKioskSettingsSchema = createInsertSchema(branchKioskSet
 
 export type InsertBranchKioskSettings = z.infer<typeof insertBranchKioskSettingsSchema>;
 export type BranchKioskSettings = typeof branchKioskSettings.$inferSelect;
+
+// ========================================
+// BİRLEŞİK UYARI SİSTEMİ (Dashboard Alerts)
+// Hem Şube hem Fabrika için ortak uyarı altyapısı
+// ========================================
+
+// Uyarı konteksti - hangi dashboard için
+export const ALERT_CONTEXT = {
+  BRANCH: "branch",
+  FACTORY: "factory",
+} as const;
+
+export type AlertContextType = typeof ALERT_CONTEXT[keyof typeof ALERT_CONTEXT];
+
+// Uyarı türleri
+export const ALERT_TRIGGER_TYPE = {
+  // Şube uyarıları
+  LATE_CLOCK_IN: "late_clock_in",           // Geç giriş
+  EARLY_CLOCK_OUT: "early_clock_out",       // Erken çıkış
+  MISSING_STAFF: "missing_staff",           // Eksik personel (vardiyaya gelmedi)
+  CHECKLIST_OVERDUE: "checklist_overdue",   // Checklist gecikmesi
+  NEGATIVE_FEEDBACK: "negative_feedback",   // Olumsuz müşteri geri bildirimi
+  SHIFT_GAP: "shift_gap",                   // Vardiya boşluğu
+  
+  // Fabrika uyarıları
+  QUALITY_ISSUE: "quality_issue",           // Kalite kontrol uyumsuzluğu
+  PRODUCTION_DELAY: "production_delay",     // Üretim hedefi gecikmesi
+  STATION_MALFUNCTION: "station_malfunction", // İstasyon arızası
+  HIGH_WASTE_RATE: "high_waste_rate",       // Yüksek fire oranı
+  EQUIPMENT_FAILURE: "equipment_failure",   // Ekipman arızası
+  LOW_INVENTORY: "low_inventory",           // Düşük stok
+} as const;
+
+export type AlertTriggerType = typeof ALERT_TRIGGER_TYPE[keyof typeof ALERT_TRIGGER_TYPE];
+
+// Uyarı seviyeleri
+export const ALERT_SEVERITY = {
+  CRITICAL: "critical",   // Kırmızı - acil müdahale gerekir
+  WARNING: "warning",     // Turuncu - dikkat edilmeli
+  INFO: "info",           // Sarı - bilgilendirme
+} as const;
+
+export type AlertSeverityType = typeof ALERT_SEVERITY[keyof typeof ALERT_SEVERITY];
+
+// Uyarı durumları
+export const ALERT_STATUS = {
+  ACTIVE: "active",           // Aktif - henüz işlenmedi
+  ACKNOWLEDGED: "acknowledged", // Görüldü/Onaylandı
+  DISMISSED: "dismissed",     // Kapatıldı
+  RESOLVED: "resolved",       // Çözüldü
+  EXPIRED: "expired",         // Süresi doldu (auto-clear)
+} as const;
+
+export type AlertStatusType = typeof ALERT_STATUS[keyof typeof ALERT_STATUS];
+
+// Birleşik Uyarılar Tablosu
+export const dashboardAlerts = pgTable("dashboard_alerts", {
+  id: serial("id").primaryKey(),
+  
+  // Kontekst - hangi dashboard için (branch/factory)
+  context: varchar("context", { length: 20 }).notNull(), // AlertContextType
+  contextId: integer("context_id").notNull(), // branchId veya factoryId (şimdilik hep 1)
+  
+  // Uyarı bilgileri
+  triggerType: varchar("trigger_type", { length: 50 }).notNull(), // AlertTriggerType
+  severity: varchar("severity", { length: 20 }).notNull().default("warning"), // AlertSeverityType
+  status: varchar("status", { length: 20 }).notNull().default("active"), // AlertStatusType
+  
+  // Uyarı içeriği
+  title: varchar("title", { length: 200 }).notNull(),
+  message: text("message"),
+  
+  // İlgili veri (JSON formatında)
+  payload: text("payload"), // { userId, shiftId, checklistId, etc. }
+  
+  // İlişkili kayıtlar (opsiyonel)
+  relatedUserId: varchar("related_user_id").references(() => users.id, { onDelete: "set null" }),
+  relatedShiftId: integer("related_shift_id"),
+  relatedChecklistId: integer("related_checklist_id"),
+  
+  // Zamanlama
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"), // Otomatik expire için
+  
+  // Onay bilgileri
+  acknowledgedAt: timestamp("acknowledged_at"),
+  acknowledgedByUserId: varchar("acknowledged_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  
+  // Çözüm bilgileri
+  resolvedAt: timestamp("resolved_at"),
+  resolvedByUserId: varchar("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  resolutionNote: text("resolution_note"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("dashboard_alerts_context_idx").on(table.context, table.contextId),
+  index("dashboard_alerts_status_idx").on(table.status),
+  index("dashboard_alerts_severity_idx").on(table.severity),
+  index("dashboard_alerts_occurred_at_idx").on(table.occurredAt),
+]);
+
+export const insertDashboardAlertSchema = createInsertSchema(dashboardAlerts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDashboardAlert = z.infer<typeof insertDashboardAlertSchema>;
+export type DashboardAlert = typeof dashboardAlerts.$inferSelect;

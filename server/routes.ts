@@ -106,6 +106,7 @@ import {
   handoverLostFoundItemSchema,
   shifts,
   tasks,
+  checklists,
   equipmentFaults,
   equipment,
   users,
@@ -239,6 +240,7 @@ import {
   insertBranchWeeklyAttendanceSummarySchema,
   insertBranchMonthlyPayrollSummarySchema,
   insertBranchKioskSettingsSchema,
+  dashboardAlerts,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -27925,6 +27927,247 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error fetching overall compliance:", error);
       res.status(500).json({ message: "Genel uyum özeti alınamadı" });
+    }
+  });
+
+  // ========================================
+  // DASHBOARD ALERTS API
+  // Birleşik uyarı sistemi (Şube + Fabrika)
+  // ========================================
+
+  // Uyarıları getir (context bazlı)
+  app.get('/api/alerts/:context/:contextId', async (req, res) => {
+    try {
+      const { context, contextId } = req.params;
+      const { status, severity, limit: limitParam } = req.query;
+      const limitVal = parseInt(limitParam as string) || 50;
+      
+      const alerts = await db.select().from(dashboardAlerts)
+        .where(and(
+          eq(dashboardAlerts.context, context),
+          eq(dashboardAlerts.contextId, parseInt(contextId))
+        ))
+        .orderBy(desc(dashboardAlerts.occurredAt))
+        .limit(limitVal);
+      
+      let filteredAlerts = alerts;
+      if (status) {
+        filteredAlerts = filteredAlerts.filter(a => a.status === status);
+      }
+      if (severity) {
+        filteredAlerts = filteredAlerts.filter(a => a.severity === severity);
+      }
+      
+      res.json(filteredAlerts);
+    } catch (error: any) {
+      console.error("Error fetching alerts:", error);
+      res.status(500).json({ message: "Uyarılar alınamadı" });
+    }
+  });
+
+  // Aktif uyarı sayısını getir
+  app.get('/api/alerts/:context/:contextId/counts', async (req, res) => {
+    try {
+      const { context, contextId } = req.params;
+      
+      const alerts = await db.select().from(dashboardAlerts)
+        .where(and(
+          eq(dashboardAlerts.context, context),
+          eq(dashboardAlerts.contextId, parseInt(contextId)),
+          eq(dashboardAlerts.status, 'active')
+        ));
+      
+      const counts = {
+        total: alerts.length,
+        critical: alerts.filter(a => a.severity === 'critical').length,
+        warning: alerts.filter(a => a.severity === 'warning').length,
+        info: alerts.filter(a => a.severity === 'info').length,
+      };
+      
+      res.json(counts);
+    } catch (error: any) {
+      console.error("Error fetching alert counts:", error);
+      res.status(500).json({ message: "Uyarı sayıları alınamadı" });
+    }
+  });
+
+  // Yeni uyarı oluştur
+  app.post('/api/alerts', async (req, res) => {
+    try {
+      const alertData = req.body;
+      
+      const [newAlert] = await db.insert(dashboardAlerts).values({
+        context: alertData.context,
+        contextId: alertData.contextId,
+        triggerType: alertData.triggerType,
+        severity: alertData.severity || 'warning',
+        status: 'active',
+        title: alertData.title,
+        message: alertData.message,
+        payload: alertData.payload ? JSON.stringify(alertData.payload) : null,
+        relatedUserId: alertData.relatedUserId,
+        relatedShiftId: alertData.relatedShiftId,
+        relatedChecklistId: alertData.relatedChecklistId,
+        occurredAt: new Date(),
+        expiresAt: alertData.expiresAt ? new Date(alertData.expiresAt) : null,
+      }).returning();
+      
+      res.json(newAlert);
+    } catch (error: any) {
+      console.error("Error creating alert:", error);
+      res.status(500).json({ message: "Uyarı oluşturulamadı" });
+    }
+  });
+
+  app.patch('/api/alerts/:id/acknowledge', async (req, res) => {
+    try {
+      const alertId = parseInt(req.params.id);
+      const userId = req.body.userId;
+      
+      // Only set acknowledgedByUserId if it looks like a valid UUID
+      const isValidUUID = userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      
+      const [updated] = await db.update(dashboardAlerts)
+        .set({
+          status: 'acknowledged',
+          acknowledgedAt: new Date(),
+          ...(isValidUUID ? { acknowledgedByUserId: userId } : {}),
+        })
+        .where(eq(dashboardAlerts.id, alertId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error acknowledging alert:", error);
+      res.status(500).json({ message: "Uyarı onaylanamadı" });
+    }
+  });
+
+  // Uyarıyı çöz (resolve)
+  app.patch('/api/alerts/:id/resolve', async (req, res) => {
+    try {
+      const alertId = parseInt(req.params.id);
+      const { userId, note } = req.body;
+      
+      // Only set resolvedByUserId if it looks like a valid UUID
+      const isValidUUID = userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      
+      const [updated] = await db.update(dashboardAlerts)
+        .set({
+          status: 'resolved',
+          resolvedAt: new Date(),
+          ...(isValidUUID ? { resolvedByUserId: userId } : {}),
+          resolutionNote: note,
+        })
+        .where(eq(dashboardAlerts.id, alertId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error resolving alert:", error);
+      res.status(500).json({ message: "Uyarı çözülemedi" });
+    }
+  });
+
+  // Uyarıyı kapat (dismiss)
+  app.patch('/api/alerts/:id/dismiss', async (req, res) => {
+    try {
+      const alertId = parseInt(req.params.id);
+      
+      const [updated] = await db.update(dashboardAlerts)
+        .set({ status: 'dismissed' })
+        .where(eq(dashboardAlerts.id, alertId))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error dismissing alert:", error);
+      res.status(500).json({ message: "Uyarı kapatılamadı" });
+    }
+  });
+
+  // Şube dashboard verileri - tek endpoint
+  app.get('/api/branch-dashboard/:branchId', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      
+      // Şube bilgisi
+      const [branch] = await db.select().from(branches)
+        .where(eq(branches.id, branchId))
+        .limit(1);
+      
+      if (!branch) {
+        return res.status(404).json({ message: "Şube bulunamadı" });
+      }
+      
+      // Aktif uyarılar
+      const activeAlerts = await db.select().from(dashboardAlerts)
+        .where(and(
+          eq(dashboardAlerts.context, 'branch'),
+          eq(dashboardAlerts.contextId, branchId),
+          eq(dashboardAlerts.status, 'active')
+        ))
+        .orderBy(desc(dashboardAlerts.occurredAt))
+        .limit(10);
+      
+      // Bugünkü vardiyalar
+      const todayShifts = await db.select({
+        id: branchShiftSessions.id,
+        userId: branchShiftSessions.userId,
+        checkInTime: branchShiftSessions.checkInTime,
+        checkOutTime: branchShiftSessions.checkOutTime,
+        status: branchShiftSessions.status,
+        workMinutes: branchShiftSessions.workMinutes,
+        breakMinutes: branchShiftSessions.breakMinutes,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      }).from(branchShiftSessions)
+        .leftJoin(users, eq(branchShiftSessions.userId, users.id))
+        .where(and(
+          eq(branchShiftSessions.branchId, branchId),
+          gte(branchShiftSessions.checkInTime, startOfDay),
+          lte(branchShiftSessions.checkInTime, endOfDay)
+        ))
+        .orderBy(branchShiftSessions.checkInTime);
+      
+      // Bugünkü görevler
+      const todayTasks = await db.select().from(tasks)
+        .where(and(
+          eq(tasks.branchId, branchId),
+          gte(tasks.createdAt, startOfDay)
+        ))
+        .orderBy(desc(tasks.createdAt))
+        .limit(10);
+      
+      // Bugünkü checklistler - TODO: implement proper checklist tracking
+      const todayChecklists: any[] = [];
+      
+      // İstatistikler
+      const stats = {
+        activeStaff: todayShifts.filter(s => s.checkInTime && !s.checkOutTime).length,
+        totalShifts: todayShifts.length,
+        completedTasks: todayTasks.filter(t => t.status === 'completed').length,
+        pendingTasks: todayTasks.filter(t => t.status !== 'completed').length,
+        completedChecklists: todayChecklists.filter(c => c.status === 'completed').length,
+        pendingChecklists: todayChecklists.filter(c => c.status !== 'completed').length,
+        activeAlerts: activeAlerts.length,
+        criticalAlerts: activeAlerts.filter(a => a.severity === 'critical').length,
+      };
+      
+      res.json({
+        branch,
+        stats,
+        alerts: activeAlerts,
+        todayShifts,
+        todayTasks,
+        todayChecklists,
+      });
+    } catch (error: any) {
+      console.error("Error fetching branch dashboard:", error);
+      res.status(500).json({ message: "Şube dashboard verileri alınamadı" });
     }
   });
   const httpServer = createServer(app);
