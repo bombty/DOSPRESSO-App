@@ -222,6 +222,23 @@ import {
   factoryShiftCompliance,
   factoryWeeklyAttendanceSummary,
   insertFactoryShiftComplianceSchema,
+  // Şube Kiosk Sistemi
+  branchStaffPins,
+  branchShiftSessions,
+  branchShiftEvents,
+  branchBreakLogs,
+  branchShiftDailySummary,
+  branchWeeklyAttendanceSummary,
+  branchMonthlyPayrollSummary,
+  branchKioskSettings,
+  insertBranchStaffPinSchema,
+  insertBranchShiftSessionSchema,
+  insertBranchShiftEventSchema,
+  insertBranchBreakLogSchema,
+  insertBranchShiftDailySummarySchema,
+  insertBranchWeeklyAttendanceSummarySchema,
+  insertBranchMonthlyPayrollSummarySchema,
+  insertBranchKioskSettingsSchema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -26404,6 +26421,707 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     } catch (error: any) {
       console.error("Error generating AI report:", error);
       res.status(500).json({ message: "Rapor oluşturulamadı" });
+    }
+  });
+
+  // ========================================
+  // ŞUBE KIOSK SİSTEMİ API'LERİ
+  // ========================================
+
+  // Şube kiosk ayarlarını getir veya oluştur
+  app.get('/api/branches/:branchId/kiosk/settings', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      
+      let [settings] = await db.select().from(branchKioskSettings)
+        .where(eq(branchKioskSettings.branchId, branchId))
+        .limit(1);
+      
+      // Yoksa varsayılan oluştur
+      if (!settings) {
+        [settings] = await db.insert(branchKioskSettings).values({
+          branchId,
+          kioskPassword: '0000',
+        }).returning();
+      }
+      
+      res.json(settings);
+    } catch (error: any) {
+      console.error("Error getting kiosk settings:", error);
+      res.status(500).json({ message: "Kiosk ayarları alınamadı" });
+    }
+  });
+
+  // Kiosk parolası doğrula
+  app.post('/api/branches/:branchId/kiosk/verify-password', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { password } = req.body;
+      
+      const [settings] = await db.select().from(branchKioskSettings)
+        .where(eq(branchKioskSettings.branchId, branchId))
+        .limit(1);
+      
+      // Varsayılan parola 0000
+      const correctPassword = settings?.kioskPassword || '0000';
+      
+      if (password !== correctPassword) {
+        return res.status(401).json({ message: "Hatalı parola" });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error verifying kiosk password:", error);
+      res.status(500).json({ message: "Parola doğrulanamadı" });
+    }
+  });
+
+  // Şube personeli listesi (kiosk için)
+  app.get('/api/branches/:branchId/kiosk/staff', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      
+      // Get active staff for this branch
+      const staff = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        role: users.role,
+      }).from(users)
+        .where(and(
+          eq(users.isActive, true),
+          eq(users.branchId, branchId)
+        ))
+        .orderBy(users.firstName);
+      
+      // Check if they have PIN set
+      const staffWithPinStatus = await Promise.all(staff.map(async (s) => {
+        const [pin] = await db.select({ id: branchStaffPins.id })
+          .from(branchStaffPins)
+          .where(and(
+            eq(branchStaffPins.userId, s.id),
+            eq(branchStaffPins.branchId, branchId),
+            eq(branchStaffPins.isActive, true)
+          ))
+          .limit(1);
+        
+        return {
+          ...s,
+          hasPin: !!pin
+        };
+      }));
+      
+      res.json(staffWithPinStatus);
+    } catch (error: any) {
+      console.error("Error fetching branch staff:", error);
+      res.status(500).json({ message: "Şube personeli alınamadı" });
+    }
+  });
+
+  // Şube kiosk PIN ile giriş
+  app.post('/api/branches/:branchId/kiosk/login', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { userId, pin } = req.body;
+      
+      if (!userId || !pin) {
+        return res.status(400).json({ message: "Kullanıcı ve PIN gerekli" });
+      }
+
+      // Get user's PIN record for this branch
+      const [pinRecord] = await db.select().from(branchStaffPins)
+        .where(and(
+          eq(branchStaffPins.userId, userId),
+          eq(branchStaffPins.branchId, branchId),
+          eq(branchStaffPins.isActive, true)
+        ))
+        .limit(1);
+
+      if (!pinRecord) {
+        return res.status(404).json({ message: "PIN kaydı bulunamadı. Yöneticinizle iletişime geçin." });
+      }
+
+      // Check if locked
+      if (pinRecord.pinLockedUntil && new Date(pinRecord.pinLockedUntil) > new Date()) {
+        const remainingMinutes = Math.ceil((new Date(pinRecord.pinLockedUntil).getTime() - Date.now()) / 60000);
+        return res.status(423).json({ message: `Hesabınız ${remainingMinutes} dakika kilitli` });
+      }
+
+      // Verify PIN
+      const isValid = await bcrypt.compare(pin, pinRecord.hashedPin);
+      
+      if (!isValid) {
+        // Increment failed attempts
+        const newAttempts = (pinRecord.pinFailedAttempts || 0) + 1;
+        const lockUntil = newAttempts >= 3 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+        
+        await db.update(branchStaffPins)
+          .set({ 
+            pinFailedAttempts: newAttempts,
+            pinLockedUntil: lockUntil
+          })
+          .where(eq(branchStaffPins.id, pinRecord.id));
+        
+        return res.status(401).json({ 
+          message: "Hatalı PIN",
+          attemptsRemaining: Math.max(0, 3 - newAttempts)
+        });
+      }
+
+      // Reset failed attempts
+      await db.update(branchStaffPins)
+        .set({ pinFailedAttempts: 0, pinLockedUntil: null })
+        .where(eq(branchStaffPins.id, pinRecord.id));
+
+      // Get user details
+      const [user] = await db.select().from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      // Check for active session
+      const [activeSession] = await db.select().from(branchShiftSessions)
+        .where(and(
+          eq(branchShiftSessions.userId, userId),
+          eq(branchShiftSessions.branchId, branchId),
+          or(
+            eq(branchShiftSessions.status, 'active'),
+            eq(branchShiftSessions.status, 'on_break')
+          )
+        ))
+        .limit(1);
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl,
+          role: user.role,
+        },
+        activeSession: activeSession || null,
+      });
+    } catch (error: any) {
+      console.error("Error in branch kiosk login:", error);
+      res.status(500).json({ message: "Giriş yapılamadı" });
+    }
+  });
+
+  // Şube vardiya başlat
+  app.post('/api/branches/:branchId/kiosk/shift-start', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: "Kullanıcı gerekli" });
+      }
+
+      // Check for existing active session
+      const [existingSession] = await db.select().from(branchShiftSessions)
+        .where(and(
+          eq(branchShiftSessions.userId, userId),
+          eq(branchShiftSessions.branchId, branchId),
+          or(
+            eq(branchShiftSessions.status, 'active'),
+            eq(branchShiftSessions.status, 'on_break')
+          )
+        ))
+        .limit(1);
+
+      if (existingSession) {
+        return res.status(400).json({ message: "Zaten aktif bir vardiyası var", session: existingSession });
+      }
+
+      const now = new Date();
+
+      // Create shift session
+      const [session] = await db.insert(branchShiftSessions).values({
+        userId,
+        branchId,
+        checkInTime: now,
+        status: 'active',
+      }).returning();
+
+      // Log event
+      await db.insert(branchShiftEvents).values({
+        sessionId: session.id,
+        userId,
+        branchId,
+        eventType: 'check_in',
+        eventTime: now,
+      });
+
+      res.json({
+        success: true,
+        session,
+      });
+    } catch (error: any) {
+      console.error("Error starting branch shift:", error);
+      res.status(500).json({ message: "Vardiya başlatılamadı" });
+    }
+  });
+
+  // Şube mola başlat
+  app.post('/api/branches/:branchId/kiosk/break-start', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { sessionId, breakType } = req.body;
+      
+      if (!sessionId) {
+        return res.status(400).json({ message: "Oturum gerekli" });
+      }
+
+      const [session] = await db.select().from(branchShiftSessions)
+        .where(eq(branchShiftSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: "Oturum bulunamadı" });
+      }
+
+      if (session.status !== 'active') {
+        return res.status(400).json({ message: "Vardiya aktif değil" });
+      }
+
+      const now = new Date();
+
+      // Update session status
+      await db.update(branchShiftSessions)
+        .set({ status: 'on_break' })
+        .where(eq(branchShiftSessions.id, sessionId));
+
+      // Create break log
+      const [breakLog] = await db.insert(branchBreakLogs).values({
+        sessionId,
+        userId: session.userId,
+        branchId,
+        breakStartTime: now,
+        breakType: breakType || 'regular',
+      }).returning();
+
+      // Log event
+      await db.insert(branchShiftEvents).values({
+        sessionId,
+        userId: session.userId,
+        branchId,
+        eventType: 'break_start',
+        eventTime: now,
+      });
+
+      res.json({
+        success: true,
+        breakLog,
+      });
+    } catch (error: any) {
+      console.error("Error starting break:", error);
+      res.status(500).json({ message: "Mola başlatılamadı" });
+    }
+  });
+
+  // Şube mola bitir
+  app.post('/api/branches/:branchId/kiosk/break-end', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { sessionId } = req.body;
+      
+      if (!sessionId) {
+        return res.status(400).json({ message: "Oturum gerekli" });
+      }
+
+      const [session] = await db.select().from(branchShiftSessions)
+        .where(eq(branchShiftSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: "Oturum bulunamadı" });
+      }
+
+      if (session.status !== 'on_break') {
+        return res.status(400).json({ message: "Şu anda molada değil" });
+      }
+
+      const now = new Date();
+
+      // Find active break
+      const [activeBreak] = await db.select().from(branchBreakLogs)
+        .where(and(
+          eq(branchBreakLogs.sessionId, sessionId),
+          isNull(branchBreakLogs.breakEndTime)
+        ))
+        .orderBy(desc(branchBreakLogs.breakStartTime))
+        .limit(1);
+
+      if (activeBreak) {
+        const breakDuration = Math.floor((now.getTime() - new Date(activeBreak.breakStartTime).getTime()) / 60000);
+        
+        // Update break log
+        await db.update(branchBreakLogs)
+          .set({ 
+            breakEndTime: now,
+            breakDurationMinutes: breakDuration
+          })
+          .where(eq(branchBreakLogs.id, activeBreak.id));
+
+        // Update session total break minutes
+        await db.update(branchShiftSessions)
+          .set({ 
+            status: 'active',
+            breakMinutes: (session.breakMinutes || 0) + breakDuration
+          })
+          .where(eq(branchShiftSessions.id, sessionId));
+      } else {
+        await db.update(branchShiftSessions)
+          .set({ status: 'active' })
+          .where(eq(branchShiftSessions.id, sessionId));
+      }
+
+      // Log event
+      await db.insert(branchShiftEvents).values({
+        sessionId,
+        userId: session.userId,
+        branchId,
+        eventType: 'break_end',
+        eventTime: now,
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error ending break:", error);
+      res.status(500).json({ message: "Mola bitirilemedi" });
+    }
+  });
+
+  // Şube vardiya bitir
+  app.post('/api/branches/:branchId/kiosk/shift-end', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { sessionId, notes } = req.body;
+      
+      if (!sessionId) {
+        return res.status(400).json({ message: "Oturum gerekli" });
+      }
+
+      const [session] = await db.select().from(branchShiftSessions)
+        .where(eq(branchShiftSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: "Oturum bulunamadı" });
+      }
+
+      const now = new Date();
+      const checkInTime = new Date(session.checkInTime);
+      const totalWorkMinutes = Math.floor((now.getTime() - checkInTime.getTime()) / 60000);
+      const netWorkMinutes = totalWorkMinutes - (session.breakMinutes || 0);
+
+      // If on break, end it first
+      if (session.status === 'on_break') {
+        const [activeBreak] = await db.select().from(branchBreakLogs)
+          .where(and(
+            eq(branchBreakLogs.sessionId, sessionId),
+            isNull(branchBreakLogs.breakEndTime)
+          ))
+          .limit(1);
+
+        if (activeBreak) {
+          const breakDuration = Math.floor((now.getTime() - new Date(activeBreak.breakStartTime).getTime()) / 60000);
+          await db.update(branchBreakLogs)
+            .set({ breakEndTime: now, breakDurationMinutes: breakDuration })
+            .where(eq(branchBreakLogs.id, activeBreak.id));
+        }
+      }
+
+      // Update session
+      const [updatedSession] = await db.update(branchShiftSessions)
+        .set({
+          checkOutTime: now,
+          workMinutes: totalWorkMinutes,
+          netWorkMinutes: netWorkMinutes,
+          status: 'completed',
+          notes: notes || null,
+        })
+        .where(eq(branchShiftSessions.id, sessionId))
+        .returning();
+
+      // Log event
+      await db.insert(branchShiftEvents).values({
+        sessionId,
+        userId: session.userId,
+        branchId,
+        eventType: 'check_out',
+        eventTime: now,
+      });
+
+      // Update daily summary
+      const workDate = checkInTime.toISOString().split('T')[0];
+      const [existingSummary] = await db.select().from(branchShiftDailySummary)
+        .where(and(
+          eq(branchShiftDailySummary.userId, session.userId),
+          eq(branchShiftDailySummary.workDate, workDate)
+        ))
+        .limit(1);
+
+      if (existingSummary) {
+        await db.update(branchShiftDailySummary)
+          .set({
+            sessionCount: (existingSummary.sessionCount || 0) + 1,
+            lastCheckOut: now,
+            totalWorkMinutes: (existingSummary.totalWorkMinutes || 0) + totalWorkMinutes,
+            totalBreakMinutes: (existingSummary.totalBreakMinutes || 0) + (session.breakMinutes || 0),
+            netWorkMinutes: (existingSummary.netWorkMinutes || 0) + netWorkMinutes,
+            updatedAt: now,
+          })
+          .where(eq(branchShiftDailySummary.id, existingSummary.id));
+      } else {
+        await db.insert(branchShiftDailySummary).values({
+          userId: session.userId,
+          branchId,
+          workDate,
+          sessionCount: 1,
+          firstCheckIn: checkInTime,
+          lastCheckOut: now,
+          totalWorkMinutes: totalWorkMinutes,
+          totalBreakMinutes: session.breakMinutes || 0,
+          netWorkMinutes: netWorkMinutes,
+        });
+      }
+
+      res.json({
+        success: true,
+        session: updatedSession,
+        summary: {
+          totalWorkMinutes,
+          breakMinutes: session.breakMinutes || 0,
+          netWorkMinutes,
+        }
+      });
+    } catch (error: any) {
+      console.error("Error ending branch shift:", error);
+      res.status(500).json({ message: "Vardiya bitirilemedi" });
+    }
+  });
+
+  // Aktif oturum bilgisi
+  app.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const userId = req.params.userId;
+      
+      const [session] = await db.select().from(branchShiftSessions)
+        .where(and(
+          eq(branchShiftSessions.userId, userId),
+          eq(branchShiftSessions.branchId, branchId),
+          or(
+            eq(branchShiftSessions.status, 'active'),
+            eq(branchShiftSessions.status, 'on_break')
+          )
+        ))
+        .limit(1);
+
+      if (!session) {
+        return res.json({ activeSession: null });
+      }
+
+      // Get user's tasks
+      const userTasks = await db.select().from(tasks)
+        .where(and(
+          eq(tasks.assignedTo, userId),
+          or(
+            eq(tasks.status, 'pending'),
+            eq(tasks.status, 'in_progress')
+          )
+        ))
+        .orderBy(tasks.dueDate);
+
+      res.json({
+        activeSession: session,
+        tasks: userTasks,
+      });
+    } catch (error: any) {
+      console.error("Error getting session:", error);
+      res.status(500).json({ message: "Oturum bilgisi alınamadı" });
+    }
+  });
+
+  // Şube personeli PIN ayarla/güncelle
+  app.post('/api/branches/:branchId/kiosk/set-pin', isAuthenticated, async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { userId, pin } = req.body;
+      
+      if (!userId || !pin || pin.length !== 4) {
+        return res.status(400).json({ message: "4 haneli PIN gerekli" });
+      }
+
+      const hashedPin = await bcrypt.hash(pin, 10);
+
+      // Check if exists
+      const [existing] = await db.select().from(branchStaffPins)
+        .where(and(
+          eq(branchStaffPins.userId, userId),
+          eq(branchStaffPins.branchId, branchId)
+        ))
+        .limit(1);
+
+      if (existing) {
+        await db.update(branchStaffPins)
+          .set({ 
+            hashedPin,
+            pinFailedAttempts: 0,
+            pinLockedUntil: null,
+            isActive: true,
+            updatedAt: new Date()
+          })
+          .where(eq(branchStaffPins.id, existing.id));
+      } else {
+        await db.insert(branchStaffPins).values({
+          userId,
+          branchId,
+          hashedPin,
+          isActive: true,
+        });
+      }
+
+      res.json({ success: true, message: "PIN ayarlandı" });
+    } catch (error: any) {
+      console.error("Error setting PIN:", error);
+      res.status(500).json({ message: "PIN ayarlanamadı" });
+    }
+  });
+
+  // Şube aktif vardiyaları listele (dashboard için)
+  app.get('/api/branches/:branchId/kiosk/active-shifts', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      
+      const activeSessions = await db.select({
+        session: branchShiftSessions,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          role: users.role,
+        }
+      }).from(branchShiftSessions)
+        .leftJoin(users, eq(branchShiftSessions.userId, users.id))
+        .where(and(
+          eq(branchShiftSessions.branchId, branchId),
+          or(
+            eq(branchShiftSessions.status, 'active'),
+            eq(branchShiftSessions.status, 'on_break')
+          )
+        ))
+        .orderBy(branchShiftSessions.checkInTime);
+
+      res.json(activeSessions);
+    } catch (error: any) {
+      console.error("Error fetching active shifts:", error);
+      res.status(500).json({ message: "Aktif vardiyalar alınamadı" });
+    }
+  });
+
+  // Şube günlük puantaj özeti
+  app.get('/api/branches/:branchId/attendance/daily', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { date } = req.query;
+      const targetDate = date ? String(date) : new Date().toISOString().split('T')[0];
+      
+      const summaries = await db.select({
+        summary: branchShiftDailySummary,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+        }
+      }).from(branchShiftDailySummary)
+        .leftJoin(users, eq(branchShiftDailySummary.userId, users.id))
+        .where(and(
+          eq(branchShiftDailySummary.branchId, branchId),
+          eq(branchShiftDailySummary.workDate, targetDate)
+        ))
+        .orderBy(users.firstName);
+
+      res.json(summaries);
+    } catch (error: any) {
+      console.error("Error fetching daily attendance:", error);
+      res.status(500).json({ message: "Günlük puantaj alınamadı" });
+    }
+  });
+
+  // Şube haftalık puantaj özeti
+  app.get('/api/branches/:branchId/attendance/weekly', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { weekStart } = req.query;
+      
+      // Default to current week
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const defaultWeekStart = new Date(now);
+      defaultWeekStart.setDate(now.getDate() + mondayOffset);
+      
+      const targetWeekStart = weekStart ? String(weekStart) : defaultWeekStart.toISOString().split('T')[0];
+      
+      const summaries = await db.select({
+        summary: branchWeeklyAttendanceSummary,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+        }
+      }).from(branchWeeklyAttendanceSummary)
+        .leftJoin(users, eq(branchWeeklyAttendanceSummary.userId, users.id))
+        .where(and(
+          eq(branchWeeklyAttendanceSummary.branchId, branchId),
+          eq(branchWeeklyAttendanceSummary.weekStartDate, targetWeekStart)
+        ))
+        .orderBy(users.firstName);
+
+      res.json(summaries);
+    } catch (error: any) {
+      console.error("Error fetching weekly attendance:", error);
+      res.status(500).json({ message: "Haftalık puantaj alınamadı" });
+    }
+  });
+
+  // Şube aylık puantaj özeti
+  app.get('/api/branches/:branchId/attendance/monthly', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const { month, year } = req.query;
+      
+      const now = new Date();
+      const targetMonth = month ? parseInt(String(month)) : now.getMonth() + 1;
+      const targetYear = year ? parseInt(String(year)) : now.getFullYear();
+      
+      const summaries = await db.select({
+        summary: branchMonthlyPayrollSummary,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+        }
+      }).from(branchMonthlyPayrollSummary)
+        .leftJoin(users, eq(branchMonthlyPayrollSummary.userId, users.id))
+        .where(and(
+          eq(branchMonthlyPayrollSummary.branchId, branchId),
+          eq(branchMonthlyPayrollSummary.month, targetMonth),
+          eq(branchMonthlyPayrollSummary.year, targetYear)
+        ))
+        .orderBy(users.firstName);
+
+      res.json(summaries);
+    } catch (error: any) {
+      console.error("Error fetching monthly payroll:", error);
+      res.status(500).json({ message: "Aylık puantaj alınamadı" });
     }
   });
 

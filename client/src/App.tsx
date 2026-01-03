@@ -119,6 +119,8 @@ import FabrikaPerformans from "@/pages/fabrika/performans";
 import FabrikaAIRaporlar from "@/pages/fabrika/ai-raporlar";
 import FabrikaUretimPlanlama from "@/pages/fabrika/uretim-planlama";
 import FabrikaVardiyaUyumluluk from "@/pages/fabrika/vardiya-uyumluluk";
+import SubeKiosk from "@/pages/sube/kiosk";
+import SubeDashboard from "@/pages/sube/dashboard";
 import HQFabrikaAnalitik from "@/pages/hq-fabrika-analitik";
 import CanliTakip from "@/pages/canli-takip";
 import AdminDashboard from "@/pages/admin/index";
@@ -193,6 +195,8 @@ function Router() {
       <Route path="/feedback" component={MusteriFeedbackPublic} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
       <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
+      <Route path="/sube/kiosk/:branchId" component={SubeKiosk} />
+      <Route path="/sube/kiosk" component={SubeKiosk} />
 
       {/* Auth guard - catch-all for unauthenticated users */}
       {!isAuthenticated && <Route component={AuthCatchAllToLogin} />}
@@ -215,6 +219,7 @@ function Router() {
           <Route path="/nfc-giris" component={NFCGiris} />
           <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
           <Route path="/devam-takibi" component={Attendance} />
+          <Route path="/sube-vardiya-takibi" component={SubeDashboard} />
           <Route path="/gorevler" component={Tasks} />
           <Route path="/gorev-detay/:id" component={GorevDetay} />
           <Route path="/sube-gorevler/:id" component={SubeGorevler} />

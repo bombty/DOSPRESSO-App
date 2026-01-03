@@ -7882,3 +7882,320 @@ export const insertFactoryWeeklyAttendanceSummarySchema = createInsertSchema(fac
 
 export type InsertFactoryWeeklyAttendanceSummary = z.infer<typeof insertFactoryWeeklyAttendanceSummarySchema>;
 export type FactoryWeeklyAttendanceSummary = typeof factoryWeeklyAttendanceSummary.$inferSelect;
+
+// ========================================
+// ŞUBE KIOSK SİSTEMİ
+// ========================================
+
+// Şube Personeli PIN Kodları (kiosk girişi için)
+export const branchStaffPins = pgTable("branch_staff_pins", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  hashedPin: varchar("hashed_pin", { length: 255 }).notNull(), // Bcrypt hash - 4 haneli PIN
+  pinFailedAttempts: integer("pin_failed_attempts").default(0),
+  pinLockedUntil: timestamp("pin_locked_until"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("branch_staff_pins_user_branch_unique").on(table.userId, table.branchId),
+  index("branch_staff_pins_branch_idx").on(table.branchId),
+]);
+
+export const insertBranchStaffPinSchema = createInsertSchema(branchStaffPins).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBranchStaffPin = z.infer<typeof insertBranchStaffPinSchema>;
+export type BranchStaffPin = typeof branchStaffPins.$inferSelect;
+
+// Şube Vardiya Oturumları (kiosk giriş/çıkış)
+export const branchShiftSessions = pgTable("branch_shift_sessions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Vardiya zamanları
+  checkInTime: timestamp("check_in_time").notNull().defaultNow(),
+  checkOutTime: timestamp("check_out_time"),
+  
+  // Çalışma ve mola süreleri (dakika)
+  workMinutes: integer("work_minutes").default(0),
+  breakMinutes: integer("break_minutes").default(0), // Toplam mola süresi
+  netWorkMinutes: integer("net_work_minutes").default(0), // workMinutes - breakMinutes
+  
+  // Durum
+  status: varchar("status", { length: 20 }).default("active").notNull(), // active, on_break, completed, abandoned
+  
+  // shiftAttendance ile bağlantı
+  shiftAttendanceId: integer("shift_attendance_id").references(() => shiftAttendance.id, { onDelete: "set null" }),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("branch_shift_sessions_user_idx").on(table.userId),
+  index("branch_shift_sessions_branch_idx").on(table.branchId),
+  index("branch_shift_sessions_date_idx").on(table.checkInTime),
+  index("branch_shift_sessions_status_idx").on(table.status),
+]);
+
+export const insertBranchShiftSessionSchema = createInsertSchema(branchShiftSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBranchShiftSession = z.infer<typeof insertBranchShiftSessionSchema>;
+export type BranchShiftSession = typeof branchShiftSessions.$inferSelect;
+
+// Şube Vardiya Olayları (check-in, check-out, break-start, break-end)
+export const branchShiftEvents = pgTable("branch_shift_events", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => branchShiftSessions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Olay tipi
+  eventType: varchar("event_type", { length: 30 }).notNull(), // check_in, check_out, break_start, break_end
+  eventTime: timestamp("event_time").notNull().defaultNow(),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("branch_shift_events_session_idx").on(table.sessionId),
+  index("branch_shift_events_user_idx").on(table.userId),
+  index("branch_shift_events_time_idx").on(table.eventTime),
+  index("branch_shift_events_type_idx").on(table.eventType),
+]);
+
+export const insertBranchShiftEventSchema = createInsertSchema(branchShiftEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBranchShiftEvent = z.infer<typeof insertBranchShiftEventSchema>;
+export type BranchShiftEvent = typeof branchShiftEvents.$inferSelect;
+
+// Şube Mola Kayıtları (her mola ayrı kaydedilir)
+export const branchBreakLogs = pgTable("branch_break_logs", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => branchShiftSessions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  breakStartTime: timestamp("break_start_time").notNull(),
+  breakEndTime: timestamp("break_end_time"),
+  breakDurationMinutes: integer("break_duration_minutes").default(0),
+  
+  breakType: varchar("break_type", { length: 30 }).default("regular"), // regular, lunch, prayer
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("branch_break_logs_session_idx").on(table.sessionId),
+  index("branch_break_logs_user_idx").on(table.userId),
+]);
+
+export const insertBranchBreakLogSchema = createInsertSchema(branchBreakLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBranchBreakLog = z.infer<typeof insertBranchBreakLogSchema>;
+export type BranchBreakLog = typeof branchBreakLogs.$inferSelect;
+
+// Şube Günlük Çalışma Özeti (puantaj için)
+export const branchShiftDailySummary = pgTable("branch_shift_daily_summary", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  workDate: date("work_date").notNull(),
+  
+  // Vardiya detayları
+  sessionCount: integer("session_count").default(0), // Gün içi toplam oturum
+  firstCheckIn: timestamp("first_check_in"),
+  lastCheckOut: timestamp("last_check_out"),
+  
+  // Süre hesaplamaları (dakika)
+  totalWorkMinutes: integer("total_work_minutes").default(0),
+  totalBreakMinutes: integer("total_break_minutes").default(0),
+  netWorkMinutes: integer("net_work_minutes").default(0),
+  
+  // Planlanan vs gerçekleşen
+  plannedWorkMinutes: integer("planned_work_minutes").default(540), // 9 saat = 540 dk
+  overtimeMinutes: integer("overtime_minutes").default(0),
+  missingMinutes: integer("missing_minutes").default(0),
+  
+  // Durum
+  isLate: boolean("is_late").default(false),
+  lateMinutes: integer("late_minutes").default(0),
+  isEarlyLeave: boolean("is_early_leave").default(false),
+  earlyLeaveMinutes: integer("early_leave_minutes").default(0),
+  
+  // Onay durumu
+  approvalStatus: varchar("approval_status", { length: 20 }).default("pending"), // pending, approved, rejected
+  approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("branch_daily_summary_user_idx").on(table.userId),
+  index("branch_daily_summary_branch_idx").on(table.branchId),
+  index("branch_daily_summary_date_idx").on(table.workDate),
+  unique("branch_daily_summary_user_date_unique").on(table.userId, table.workDate),
+]);
+
+export const insertBranchShiftDailySummarySchema = createInsertSchema(branchShiftDailySummary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBranchShiftDailySummary = z.infer<typeof insertBranchShiftDailySummarySchema>;
+export type BranchShiftDailySummary = typeof branchShiftDailySummary.$inferSelect;
+
+// Şube Haftalık Çalışma Özeti (45 saat takibi)
+export const branchWeeklyAttendanceSummary = pgTable("branch_weekly_attendance_summary", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Hafta bilgisi
+  weekStartDate: date("week_start_date").notNull(),
+  weekEndDate: date("week_end_date").notNull(),
+  weekNumber: integer("week_number").notNull(),
+  year: integer("year").notNull(),
+  
+  // Çalışma saatleri
+  plannedTotalMinutes: integer("planned_total_minutes").default(2700), // 45 saat = 2700 dk
+  actualTotalMinutes: integer("actual_total_minutes").default(0),
+  overtimeMinutes: integer("overtime_minutes").default(0),
+  missingMinutes: integer("missing_minutes").default(0),
+  
+  // Günlük dağılım
+  workDaysCount: integer("work_days_count").default(0),
+  absentDaysCount: integer("absent_days_count").default(0),
+  lateDaysCount: integer("late_days_count").default(0),
+  
+  // Uyumluluk
+  weeklyComplianceScore: integer("weekly_compliance_score").default(100),
+  
+  // Muhasebe bildirimi
+  reportedToAccounting: boolean("reported_to_accounting").default(false),
+  reportedToAccountingAt: timestamp("reported_to_accounting_at"),
+  accountingNotes: text("accounting_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("branch_weekly_summary_user_idx").on(table.userId),
+  index("branch_weekly_summary_branch_idx").on(table.branchId),
+  index("branch_weekly_summary_week_idx").on(table.weekStartDate),
+  unique("branch_weekly_summary_user_week_unique").on(table.userId, table.weekStartDate),
+]);
+
+export const insertBranchWeeklyAttendanceSummarySchema = createInsertSchema(branchWeeklyAttendanceSummary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBranchWeeklyAttendanceSummary = z.infer<typeof insertBranchWeeklyAttendanceSummarySchema>;
+export type BranchWeeklyAttendanceSummary = typeof branchWeeklyAttendanceSummary.$inferSelect;
+
+// Şube Aylık Puantaj Özeti (İK raporlama için)
+export const branchMonthlyPayrollSummary = pgTable("branch_monthly_payroll_summary", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Ay bilgisi
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(),
+  
+  // Toplam çalışma
+  totalWorkDays: integer("total_work_days").default(0),
+  totalWorkMinutes: integer("total_work_minutes").default(0),
+  totalBreakMinutes: integer("total_break_minutes").default(0),
+  totalNetWorkMinutes: integer("total_net_work_minutes").default(0),
+  
+  // Fazla mesai / eksik saat
+  totalOvertimeMinutes: integer("total_overtime_minutes").default(0),
+  totalMissingMinutes: integer("total_missing_minutes").default(0),
+  
+  // Devamsızlık
+  absentDays: integer("absent_days").default(0),
+  lateDays: integer("late_days").default(0),
+  earlyLeaveDays: integer("early_leave_days").default(0),
+  
+  // İzinler
+  paidLeaveDays: integer("paid_leave_days").default(0),
+  unpaidLeaveDays: integer("unpaid_leave_days").default(0),
+  sickLeaveDays: integer("sick_leave_days").default(0),
+  
+  // Resmi tatil
+  publicHolidayDays: integer("public_holiday_days").default(0),
+  
+  // Onay ve export
+  status: varchar("status", { length: 20 }).default("draft"), // draft, finalized, exported
+  finalizedById: varchar("finalized_by_id").references(() => users.id, { onDelete: "set null" }),
+  finalizedAt: timestamp("finalized_at"),
+  exportedAt: timestamp("exported_at"),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("branch_monthly_payroll_user_idx").on(table.userId),
+  index("branch_monthly_payroll_branch_idx").on(table.branchId),
+  index("branch_monthly_payroll_month_idx").on(table.month, table.year),
+  unique("branch_monthly_payroll_user_month_unique").on(table.userId, table.month, table.year),
+]);
+
+export const insertBranchMonthlyPayrollSummarySchema = createInsertSchema(branchMonthlyPayrollSummary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBranchMonthlyPayrollSummary = z.infer<typeof insertBranchMonthlyPayrollSummarySchema>;
+export type BranchMonthlyPayrollSummary = typeof branchMonthlyPayrollSummary.$inferSelect;
+
+// Şube Kiosk Ayarları (şube bazlı yapılandırma)
+export const branchKioskSettings = pgTable("branch_kiosk_settings", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }).unique(),
+  
+  // Kiosk erişim parolası
+  kioskPassword: varchar("kiosk_password", { length: 50 }).default("0000").notNull(),
+  
+  // Çalışma saatleri (varsayılan vardiya)
+  defaultShiftStartTime: varchar("default_shift_start_time", { length: 5 }).default("08:00"), // HH:mm
+  defaultShiftEndTime: varchar("default_shift_end_time", { length: 5 }).default("18:00"),
+  
+  // Mola ayarları
+  defaultBreakMinutes: integer("default_break_minutes").default(60), // 1 saat mola
+  maxBreakMinutes: integer("max_break_minutes").default(90), // Maksimum mola
+  
+  // Tolerans ayarları
+  lateToleranceMinutes: integer("late_tolerance_minutes").default(15), // 15 dk tolerans
+  earlyLeaveToleranceMinutes: integer("early_leave_tolerance_minutes").default(15),
+  
+  // Aktiflik
+  isKioskEnabled: boolean("is_kiosk_enabled").default(true).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBranchKioskSettingsSchema = createInsertSchema(branchKioskSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBranchKioskSettings = z.infer<typeof insertBranchKioskSettingsSchema>;
+export type BranchKioskSettings = typeof branchKioskSettings.$inferSelect;
