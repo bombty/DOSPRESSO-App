@@ -65,6 +65,7 @@ export default function BranchKiosk() {
   
   const [step, setStep] = useState<KioskStep>('password');
   const [kioskPassword, setKioskPassword] = useState('');
+  const [kioskUsername, setKioskUsername] = useState('');
   const [selectedUser, setSelectedUser] = useState<StaffMember | null>(null);
   const [pinInput, setPinInput] = useState('');
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
@@ -83,8 +84,8 @@ export default function BranchKiosk() {
   });
 
   const verifyPasswordMutation = useMutation({
-    mutationFn: async (password: string) => {
-      const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/verify-password`, { password });
+    mutationFn: async (data: { username: string; password: string }) => {
+      const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/verify-password`, { username: data.username, password: data.password });
       return res.json();
     },
     onSuccess: () => {
@@ -95,6 +96,7 @@ export default function BranchKiosk() {
     onError: (error: any) => {
       toast({ title: "Hatalı parola", description: error.message, variant: "destructive" });
       setKioskPassword('');
+    setKioskUsername('');
     },
   });
 
@@ -224,6 +226,7 @@ export default function BranchKiosk() {
   const resetKiosk = () => {
     setStep('password');
     setKioskPassword('');
+    setKioskUsername('');
     setSelectedUser(null);
     setPinInput('');
     setCurrentSession(null);
@@ -269,24 +272,43 @@ export default function BranchKiosk() {
             <Store className="h-12 w-12 text-amber-600" />
           </div>
           <CardTitle className="text-2xl">Şube Kiosk</CardTitle>
-          <CardDescription>Kiosk parolasını girin</CardDescription>
+          <CardDescription>Şube kullanıcı adı ve parolasını girin</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex justify-center gap-2">
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-2xl font-bold ${
-                    kioskPassword.length > i
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/50'
-                      : 'border-muted'
-                  }`}
-                >
-                  {kioskPassword[i] ? '•' : ''}
-                </div>
-              ))}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Şube Kullanıcı Adı</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="örn: ışıklar"
+                  value={kioskUsername}
+                  onChange={(e) => setKioskUsername(e.target.value)}
+                  className="pl-10 h-12 text-lg"
+                  data-testid="input-kiosk-username"
+                />
+              </div>
             </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Parola (4 haneli)</label>
+              <div className="flex justify-center gap-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-2xl font-bold ${
+                      kioskPassword.length > i
+                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/50'
+                        : 'border-muted'
+                    }`}
+                  >
+                    {kioskPassword[i] ? '•' : ''}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
             <div className="grid grid-cols-3 gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, 'del'].map((num, idx) => (
                 <Button
@@ -294,7 +316,7 @@ export default function BranchKiosk() {
                   variant={num === '' ? 'ghost' : 'outline'}
                   size="lg"
                   className="h-14 text-xl"
-                  disabled={num === ''}
+                  disabled={num === '' || !kioskUsername.trim()}
                   data-testid={`keypad-${num}`}
                   onClick={() => {
                     if (num === 'del') {
@@ -302,8 +324,8 @@ export default function BranchKiosk() {
                     } else if (typeof num === 'number' && kioskPassword.length < 4) {
                       const newPass = kioskPassword + num;
                       setKioskPassword(newPass);
-                      if (newPass.length === 4) {
-                        verifyPasswordMutation.mutate(newPass);
+                      if (newPass.length === 4 && kioskUsername.trim()) {
+                        verifyPasswordMutation.mutate({ username: kioskUsername, password: newPass });
                       }
                     }
                   }}
@@ -312,12 +334,17 @@ export default function BranchKiosk() {
                 </Button>
               ))}
             </div>
+            
+            {!kioskUsername.trim() && (
+              <p className="text-sm text-muted-foreground text-center">
+                Lütfen önce şube kullanıcı adını girin
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
     </div>
   );
-
   const renderSelectUserStep = () => (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="flex items-center gap-4 mb-6">

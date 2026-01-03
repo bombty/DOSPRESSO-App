@@ -26452,12 +26452,43 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // Kiosk parolası doğrula
+  // Kiosk parolası doğrula (username + password)
   app.post('/api/branches/:branchId/kiosk/verify-password', async (req, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
-      const { password } = req.body;
+      const { username, password } = req.body;
       
+      // Önce branches tablosundan kiosk bilgilerini al
+      const [branch] = await db.select({
+        kioskUsername: branches.kioskUsername,
+        kioskPassword: branches.kioskPassword,
+        name: branches.name,
+      }).from(branches)
+        .where(eq(branches.id, branchId))
+        .limit(1);
+      
+      // Eğer branches tablosunda kiosk bilgileri varsa kullan
+      if (branch?.kioskUsername && branch?.kioskPassword) {
+        // Kullanıcı adı kontrolü (case-insensitive, normalize Turkish chars)
+        const normalizeStr = (s: string) => s.toLowerCase()
+          .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+          .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
+        
+        const inputUsername = normalizeStr(username || '');
+        const storedUsername = normalizeStr(branch.kioskUsername);
+        
+        if (inputUsername !== storedUsername) {
+          return res.status(401).json({ message: "Hatalı kullanıcı adı" });
+        }
+        
+        if (password !== branch.kioskPassword) {
+          return res.status(401).json({ message: "Hatalı parola" });
+        }
+        
+        return res.json({ success: true, branchName: branch.name });
+      }
+      
+      // Fallback: branchKioskSettings tablosundan kontrol et
       const [settings] = await db.select().from(branchKioskSettings)
         .where(eq(branchKioskSettings.branchId, branchId))
         .limit(1);
@@ -26475,7 +26506,33 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Parola doğrulanamadı" });
     }
   });
-
+  
+  // Şube kiosk bilgilerini getir (username göstermek için)
+  app.get('/api/branches/:branchId/kiosk/info', async (req, res) => {
+    try {
+      const branchId = parseInt(req.params.branchId);
+      const [branch] = await db.select({
+        id: branches.id,
+        name: branches.name,
+        kioskUsername: branches.kioskUsername,
+      }).from(branches)
+        .where(eq(branches.id, branchId))
+        .limit(1);
+      
+      if (!branch) {
+        return res.status(404).json({ message: "Şube bulunamadı" });
+      }
+      
+      res.json({ 
+        branchId: branch.id,
+        branchName: branch.name,
+        hasKioskCredentials: !!branch.kioskUsername,
+      });
+    } catch (error: any) {
+      console.error("Error getting kiosk info:", error);
+      res.status(500).json({ message: "Bilgiler alınamadı" });
+    }
+  });
   // Şube personeli listesi (kiosk için)
   app.get('/api/branches/:branchId/kiosk/staff', async (req, res) => {
     try {
