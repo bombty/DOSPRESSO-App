@@ -27719,6 +27719,157 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Compliance özeti alınamadı" });
     }
   });
+
+  // Şube oturumlarını shiftAttendance ile senkronize et
+  app.post('/api/branches/:branchId/attendance/sync-shift-attendance', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      const branchId = parseInt(req.params.branchId);
+      
+      // Yetki kontrolü - HQ veya kendi şubesinin supervisor'ı
+      if (!isHQRole(role) && role !== 'supervisor') {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      
+      // Supervisor sadece kendi şubesini senkronize edebilir
+      if (role === 'supervisor' && user.branchId !== branchId) {
+        return res.status(403).json({ message: "Sadece kendi şubeniz için senkronizasyon yapabilirsiniz" });
+      }
+
+      const { date } = req.body;
+      const targetDate = date ? new Date(date) : new Date();
+      const dateStr = targetDate.toISOString().split('T')[0];
+
+      // O gün için branchShiftSessions'ları al
+      const sessions = await db.select()
+        .from(branchShiftSessions)
+        .where(and(
+          eq(branchShiftSessions.branchId, branchId),
+          sql`DATE(${branchShiftSessions.checkInTime}) = ${dateStr}`
+        ));
+
+      let syncedCount = 0;
+      for (const session of sessions) {
+        // shiftAttendance kaydı yoksa veya güncellenmesi gerekiyorsa
+        if (!session.shiftAttendanceId && session.checkOutTime) {
+          // Yeni shiftAttendance kaydı oluştur
+          const [newAttendance] = await db.insert(shiftAttendance).values({
+            userId: session.userId,
+            branchId: branchId,
+            date: targetDate,
+            scheduledStartTime: session.checkInTime,
+            scheduledEndTime: session.checkOutTime,
+            actualStartTime: session.checkInTime,
+            actualEndTime: session.checkOutTime,
+            status: 'present',
+            checkMethod: 'kiosk',
+            isLate: session.isLate || false,
+            lateMinutes: session.lateMinutes || 0,
+            isEarlyLeave: false,
+            earlyLeaveMinutes: 0,
+            totalWorkMinutes: session.netWorkMinutes,
+            totalBreakMinutes: session.breakDuration,
+            isApproved: true,
+            approvedBy: user.id,
+            approvedAt: new Date(),
+          }).returning();
+
+          // branchShiftSessions'a referans ekle
+          await db.update(branchShiftSessions)
+            .set({ shiftAttendanceId: newAttendance.id })
+            .where(eq(branchShiftSessions.id, session.id));
+          
+          syncedCount++;
+        }
+      }
+
+      res.json({ 
+        message: `${syncedCount} kayıt senkronize edildi`,
+        date: dateStr,
+        totalSessions: sessions.length,
+        syncedCount
+      });
+    } catch (error: any) {
+      console.error("Error syncing shift attendance:", error);
+      res.status(500).json({ message: "Senkronizasyon başarısız" });
+    }
+  });
+
+  // Fabrika ve şube için ortak compliance özeti
+  app.get('/api/compliance/overall-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as UserRoleType;
+      
+      // Sadece HQ
+      if (!isHQRole(role)) {
+        return res.status(403).json({ message: "Bu rapor için HQ yetkisi gerekli" });
+      }
+
+      const { month, year } = req.query;
+      const targetMonth = month ? parseInt(String(month)) : new Date().getMonth() + 1;
+      const targetYear = year ? parseInt(String(year)) : new Date().getFullYear();
+
+      // Şube compliance verileri
+      const branchData = await db.select({
+        branchId: branchMonthlyPayrollSummary.branchId,
+        staffCount: sql<number>`COUNT(*)`,
+        totalWorkMinutes: sql<number>`SUM(${branchMonthlyPayrollSummary.totalNetWorkMinutes})`,
+        totalOvertimeMinutes: sql<number>`SUM(${branchMonthlyPayrollSummary.totalOvertimeMinutes})`,
+        totalMissingMinutes: sql<number>`SUM(${branchMonthlyPayrollSummary.totalMissingMinutes})`,
+      }).from(branchMonthlyPayrollSummary)
+        .where(and(
+          eq(branchMonthlyPayrollSummary.month, targetMonth),
+          eq(branchMonthlyPayrollSummary.year, targetYear)
+        ))
+        .groupBy(branchMonthlyPayrollSummary.branchId);
+
+      // Fabrika compliance verileri
+      const factoryData = await db.select({
+        staffCount: sql<number>`COUNT(DISTINCT ${factoryShiftSessions.userId})`,
+        totalWorkMinutes: sql<number>`SUM(${factoryShiftSessions.netWorkMinutes})`,
+      }).from(factoryShiftSessions)
+        .where(and(
+          sql`EXTRACT(MONTH FROM ${factoryShiftSessions.checkInTime}) = ${targetMonth}`,
+          sql`EXTRACT(YEAR FROM ${factoryShiftSessions.checkInTime}) = ${targetYear}`
+        ));
+
+      const branchStats = {
+        type: 'branch',
+        totalBranches: branchData.length,
+        totalStaff: branchData.reduce((sum, b) => sum + (b.staffCount || 0), 0),
+        totalWorkHours: Math.round(branchData.reduce((sum, b) => sum + (b.totalWorkMinutes || 0), 0) / 60 * 10) / 10,
+        totalOvertimeHours: Math.round(branchData.reduce((sum, b) => sum + (b.totalOvertimeMinutes || 0), 0) / 60 * 10) / 10,
+        totalMissingHours: Math.round(branchData.reduce((sum, b) => sum + (b.totalMissingMinutes || 0), 0) / 60 * 10) / 10,
+      };
+
+      const factoryStats = {
+        type: 'factory',
+        totalStaff: factoryData[0]?.staffCount || 0,
+        totalWorkHours: Math.round((factoryData[0]?.totalWorkMinutes || 0) / 60 * 10) / 10,
+      };
+
+      // 45 saat/hafta = 180 saat/ay hedefi üzerinden uyum oranı
+      const targetMonthlyHours = 180;
+      const branchComplianceRate = branchStats.totalStaff > 0
+        ? Math.min(100, Math.round((branchStats.totalWorkHours / (branchStats.totalStaff * targetMonthlyHours)) * 100))
+        : 0;
+
+      res.json({
+        month: targetMonth,
+        year: targetYear,
+        branches: branchStats,
+        factory: factoryStats,
+        overallComplianceRate: branchComplianceRate,
+        targetHoursPerMonth: targetMonthlyHours,
+        note: "45 saat/hafta = yaklaşık 180 saat/ay hedefi baz alınmıştır"
+      });
+    } catch (error: any) {
+      console.error("Error fetching overall compliance:", error);
+      res.status(500).json({ message: "Genel uyum özeti alınamadı" });
+    }
+  });
   const httpServer = createServer(app);
   return httpServer;
 }
