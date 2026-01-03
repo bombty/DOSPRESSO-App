@@ -848,6 +848,9 @@ export const branches = pgTable("branches", {
   feedbackQrToken: varchar("feedback_qr_token", { length: 64 }), // Unique token for customer feedback QR
   googleMapsUrl: text("google_maps_url"), // Google Maps/Business URL for review aggregation
   instagramHandle: varchar("instagram_handle", { length: 100 }), // Instagram handle for review tracking
+  // Kiosk Authentication
+  kioskUsername: varchar("kiosk_username", { length: 50 }), // Şube kiosk giriş kullanıcı adı
+  kioskPassword: varchar("kiosk_password", { length: 100 }), // Şube kiosk şifresi (plain text veya hash)
 });
 
 export const insertBranchSchema = createInsertSchema(branches).omit({
