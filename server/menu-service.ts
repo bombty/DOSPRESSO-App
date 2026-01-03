@@ -12,10 +12,13 @@ import {
 // ========================================
 // STATIC MENU BLUEPRINT
 // Single source of truth for all menu items
+// Konsolide edilmiş 10 ana kategori yapısı
 // ========================================
 
 const MENU_BLUEPRINT: SidebarMenuSection[] = [
-  // HQ-Only: Dashboard
+  // ========================================
+  // 1. KONTROL PANELİ (Dashboard)
+  // ========================================
   {
     id: "dashboard-hq",
     titleTr: "Kontrol Paneli",
@@ -32,7 +35,6 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
     ],
   },
-  // Branch-Only: Dashboard
   {
     id: "dashboard-branch",
     titleTr: "",
@@ -49,33 +51,79 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
     ],
   },
-  // HQ-Only: Branches
+
+  // ========================================
+  // 2. FABRİKA OPERASYONLARİ (Tek grup altında)
+  // ========================================
   {
-    id: "branches",
-    titleTr: "Şubeler",
-    icon: "Building2",
+    id: "fabrika",
+    titleTr: "Fabrika Operasyonları",
+    icon: "Factory",
     scope: "hq",
     items: [
       {
-        id: "branches-list",
-        titleTr: "Şubeler",
-        path: "/subeler",
-        icon: "Building2",
-        moduleKey: "branches",
+        id: "factory-dashboard",
+        titleTr: "Fabrika Paneli",
+        path: "/fabrika/dashboard",
+        icon: "LayoutDashboard",
+        moduleKey: "factory_dashboard",
+        scope: "hq",
+      },
+      {
+        id: "factory-kiosk",
+        titleTr: "Giriş/Çıkış Kiosk",
+        path: "/fabrika/kiosk",
+        icon: "Tablet",
+        moduleKey: "factory_kiosk",
+        scope: "hq",
+      },
+      {
+        id: "factory-quality",
+        titleTr: "Kalite Kontrol",
+        path: "/fabrika/kalite-kontrol",
+        icon: "Shield",
+        moduleKey: "factory_quality",
+        scope: "hq",
+      },
+      {
+        id: "factory-stations",
+        titleTr: "Üretim İstasyonları",
+        path: "/fabrika/istasyonlar",
+        icon: "Grid",
+        moduleKey: "factory_stations",
+        scope: "hq",
+      },
+      {
+        id: "factory-analytics",
+        titleTr: "Performans Analitik",
+        path: "/fabrika/analitik",
+        icon: "BarChart3",
+        moduleKey: "factory_analytics",
+        scope: "hq",
+      },
+      {
+        id: "factory-compliance",
+        titleTr: "Vardiya Uyumluluk",
+        path: "/fabrika/vardiya-uyumluluk",
+        icon: "Clock",
+        moduleKey: "factory_compliance",
         scope: "hq",
       },
     ],
   },
-  // Both: Operations
+
+  // ========================================
+  // 3. EKİPMAN & BAKIM (Ekipman + Arıza + Bakım birleşik)
+  // ========================================
   {
-    id: "operations",
-    titleTr: "Operasyon",
+    id: "equipment-maintenance",
+    titleTr: "Ekipman & Bakım",
     icon: "Wrench",
     scope: "both",
     items: [
       {
         id: "equipment",
-        titleTr: "Ekipman",
+        titleTr: "Ekipman Listesi",
         path: "/ekipman",
         icon: "Wrench",
         moduleKey: "equipment",
@@ -97,28 +145,35 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "equipment",
         scope: "both",
       },
+    ],
+  },
+
+  // ========================================
+  // 4. ŞUBE YÖNETİMİ
+  // ========================================
+  {
+    id: "branch-management",
+    titleTr: "Şube Yönetimi",
+    icon: "Building2",
+    scope: "hq",
+    items: [
       {
-        id: "lost-found",
-        titleTr: "Lost&Found",
-        path: "/kayip-esya",
-        icon: "Briefcase",
-        moduleKey: "lost_found",
-        scope: "branch",
-      },
-      {
-        id: "lost-found-hq",
-        titleTr: "Lost&Found (Tüm Şubeler)",
-        path: "/kayip-esya-hq",
-        icon: "Briefcase",
-        moduleKey: "lost_found_hq",
+        id: "branches-list",
+        titleTr: "Şubeler",
+        path: "/subeler",
+        icon: "Building2",
+        moduleKey: "branches",
         scope: "hq",
       },
     ],
   },
-  // Both: Tasks
+
+  // ========================================
+  // 5. OPERASYON YÖNETİMİ (Görevler, Checklistler, Lost&Found)
+  // ========================================
   {
-    id: "tasks",
-    titleTr: "Görevler",
+    id: "operations",
+    titleTr: "Operasyon Yönetimi",
     icon: "CheckSquare",
     scope: "both",
     items: [
@@ -138,12 +193,75 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "checklists",
         scope: "both",
       },
+      {
+        id: "lost-found",
+        titleTr: "Lost & Found",
+        path: "/kayip-esya",
+        icon: "Briefcase",
+        moduleKey: "lost_found",
+        scope: "branch",
+      },
+      {
+        id: "lost-found-hq",
+        titleTr: "Lost & Found (Tüm Şubeler)",
+        path: "/kayip-esya-hq",
+        icon: "Briefcase",
+        moduleKey: "lost_found_hq",
+        scope: "hq",
+      },
     ],
   },
-  // Both: Training & Knowledge
+
+  // ========================================
+  // 6. İK & VARDİYA (HR, Vardiya, Puantaj birleşik)
+  // ========================================
   {
-    id: "training",
-    titleTr: "Eğitim & Bilgi",
+    id: "hr-shifts",
+    titleTr: "İK & Vardiya",
+    icon: "Users",
+    scope: "both",
+    items: [
+      {
+        id: "hr",
+        titleTr: "İK Yönetimi",
+        path: "/ik",
+        icon: "Users",
+        moduleKey: "hr",
+        scope: "both",
+      },
+      {
+        id: "shifts",
+        titleTr: "Vardiya Planlama",
+        path: "/vardiyalar",
+        icon: "Calendar",
+        moduleKey: "shifts",
+        scope: "both",
+      },
+      {
+        id: "branch-shift-tracking",
+        titleTr: "Şube Puantaj",
+        path: "/sube-vardiya-takibi",
+        icon: "Timer",
+        moduleKey: "branch_shift_tracking",
+        scope: "both",
+      },
+      {
+        id: "attendance",
+        titleTr: "Devam Takibi",
+        path: "/devam-takibi",
+        icon: "UserCheck",
+        moduleKey: "attendance",
+        scope: "both",
+      },
+    ],
+  },
+
+  // ========================================
+  // 7. EĞİTİM & AKADEMİ
+  // ========================================
+  {
+    id: "training-academy",
+    titleTr: "Eğitim & Akademi",
     icon: "GraduationCap",
     scope: "both",
     items: [
@@ -165,43 +283,13 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
     ],
   },
-  // Both: HR & Shifts
+
+  // ========================================
+  // 8. ANALİTİK & RAPORLAR
+  // ========================================
   {
-    id: "hr-shifts",
-    titleTr: "İK & Vardiya",
-    icon: "Users",
-    scope: "both",
-    items: [
-      {
-        id: "hr",
-        titleTr: "İK Yönetimi",
-        path: "/ik",
-        icon: "Users",
-        moduleKey: "hr",
-        scope: "both",
-      },
-      {
-        id: "shifts",
-        titleTr: "Vardiyalar",
-        path: "/vardiyalar",
-        icon: "Calendar",
-        moduleKey: "shifts",
-        scope: "both",
-      },
-      {
-        id: "branch-shift-tracking",
-        titleTr: "Şube Vardiya Takibi",
-        path: "/sube-vardiya-takibi",
-        icon: "Timer",
-        moduleKey: "branch_shift_tracking",
-        scope: "both",
-      },
-    ],
-  },
-  // Both: Performance
-  {
-    id: "performance",
-    titleTr: "Performans",
+    id: "analytics-reports",
+    titleTr: "Analitik & Raporlar",
     icon: "BarChart3",
     scope: "both",
     items: [
@@ -221,29 +309,23 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "reports",
         scope: "both",
       },
-    ],
-  },
-  // Both: Accounting (Muhasebe)
-  {
-    id: "accounting",
-    titleTr: "Muhasebe",
-    icon: "Calculator",
-    scope: "both",
-    items: [
       {
-        id: "accounting-main",
-        titleTr: "Muhasebe",
-        path: "/muhasebe",
-        icon: "Calculator",
-        moduleKey: "accounting",
-        scope: "both",
+        id: "ai-chat",
+        titleTr: "AI Asistan",
+        path: "/ai-asistan",
+        icon: "Bot",
+        moduleKey: "ai_assistant",
+        scope: "hq",
       },
     ],
   },
-  // HQ-Only: Quality
+
+  // ========================================
+  // 9. KALİTE & MÜŞTERİ DENEYİMİ
+  // ========================================
   {
-    id: "quality",
-    titleTr: "Kalite & Gelişim",
+    id: "quality-customer",
+    titleTr: "Kalite & Misafir",
     icon: "Star",
     scope: "hq",
     items: [
@@ -265,24 +347,30 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
     ],
   },
-  // HQ-Only: AI Assistant
+
+  // ========================================
+  // 10. FİNANS & MUHASEBE
+  // ========================================
   {
-    id: "ai-assistant",
-    titleTr: "AI Asistan",
-    icon: "Bot",
-    scope: "hq",
+    id: "finance",
+    titleTr: "Finans & Muhasebe",
+    icon: "Calculator",
+    scope: "both",
     items: [
       {
-        id: "ai-chat",
-        titleTr: "AI Asistan",
-        path: "/ai-asistan",
-        icon: "Bot",
-        moduleKey: "ai_assistant",
-        scope: "hq",
+        id: "accounting-main",
+        titleTr: "Muhasebe",
+        path: "/muhasebe",
+        icon: "Calculator",
+        moduleKey: "accounting",
+        scope: "both",
       },
     ],
   },
-  // HQ-Only: Projects
+
+  // ========================================
+  // 11. PROJELER
+  // ========================================
   {
     id: "projects",
     titleTr: "Projeler",
@@ -291,7 +379,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     items: [
       {
         id: "project-list",
-        titleTr: "Projeler",
+        titleTr: "Yeni Açılışlar",
         path: "/projeler",
         icon: "FolderKanban",
         moduleKey: "projects",
@@ -299,111 +387,24 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
     ],
   },
-  // HQ-Only: Fabrika (Factory)
-  {
-    id: "fabrika",
-    titleTr: "Fabrika",
-    icon: "Factory",
-    scope: "hq",
-    items: [
-      {
-        id: "factory-kiosk",
-        titleTr: "Fabrika Kiosk",
-        path: "/fabrika/kiosk",
-        icon: "Tablet",
-        moduleKey: "factory_kiosk",
-        scope: "hq",
-      },
-      {
-        id: "factory-dashboard",
-        titleTr: "Fabrika Dashboard",
-        path: "/fabrika/dashboard",
-        icon: "LayoutDashboard",
-        moduleKey: "factory_dashboard",
-        scope: "hq",
-      },
-      {
-        id: "factory-quality",
-        titleTr: "Kalite Kontrol",
-        path: "/fabrika/kalite-kontrol",
-        icon: "Shield",
-        moduleKey: "factory_quality",
-        scope: "hq",
-      },
-      {
-        id: "factory-analytics",
-        titleTr: "Performans Analitik",
-        path: "/fabrika/analitik",
-        icon: "BarChart3",
-        moduleKey: "factory_analytics",
-        scope: "hq",
-      },
-      {
-        id: "factory-stations",
-        titleTr: "İstasyonlar",
-        path: "/fabrika/istasyonlar",
-        icon: "Grid",
-        moduleKey: "factory_stations",
-        scope: "hq",
-      },
-      {
-        id: "factory-compliance",
-        titleTr: "Vardiya Uyumluluk",
-        path: "/fabrika/vardiya-uyumluluk",
-        icon: "Clock",
-        moduleKey: "factory_compliance",
-        scope: "hq",
-      },
-    ],
-  },
-  // HQ-Only: Management
-  {
-    id: "management",
-    titleTr: "Yönetim / Ayarlar",
-    icon: "Settings",
-    scope: "hq",
-    items: [
-      {
-        id: "announcements",
-        titleTr: "Duyurular",
-        path: "/admin/duyurular",
-        icon: "Megaphone",
-        moduleKey: "admin_settings",
-        scope: "hq",
-      },
-      {
-        id: "bulk-data",
-        titleTr: "Toplu Veri Yönetimi",
-        path: "/admin/toplu-veri-yonetimi",
-        icon: "Database",
-        moduleKey: "admin_settings",
-        scope: "hq",
-      },
-      {
-        id: "users",
-        titleTr: "Kullanıcılar",
-        path: "/yonetim/kullanicilar",
-        icon: "Users",
-        moduleKey: "users",
-        scope: "hq",
-      },
-      {
-        id: "settings",
-        titleTr: "Ayarlar",
-        path: "/yonetim/ayarlar",
-        icon: "Settings",
-        moduleKey: "settings",
-        scope: "hq",
-      },
-    ],
-  },
-  // Both: Communication (standalone items style)
+
+  // ========================================
+  // 12. DESTEK & BİLDİRİMLER
+  // ========================================
   {
     id: "communication",
-    titleTr: "İletişim",
+    titleTr: "Destek & İletişim",
     icon: "MessageSquare",
     scope: "both",
     items: [
+      {
+        id: "hq-support",
+        titleTr: "HQ Destek",
+        path: "/hq-destek",
+        icon: "Headphones",
+        moduleKey: "support",
+        scope: "both",
+      },
       {
         id: "notifications",
         titleTr: "Bildirimler",
@@ -422,13 +423,49 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "both",
         badge: "messages",
       },
+    ],
+  },
+
+  // ========================================
+  // 13. YÖNETİM & AYARLAR (Admin only)
+  // ========================================
+  {
+    id: "management",
+    titleTr: "Yönetim & Ayarlar",
+    icon: "Settings",
+    scope: "hq",
+    items: [
       {
-        id: "hq-support",
-        titleTr: "HQ Destek",
-        path: "/hq-destek",
-        icon: "Wrench",
-        moduleKey: "support",
-        scope: "both",
+        id: "users",
+        titleTr: "Kullanıcılar",
+        path: "/yonetim/kullanicilar",
+        icon: "Users",
+        moduleKey: "users",
+        scope: "hq",
+      },
+      {
+        id: "announcements",
+        titleTr: "Duyurular",
+        path: "/admin/duyurular",
+        icon: "Megaphone",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      {
+        id: "bulk-data",
+        titleTr: "Toplu Veri Yönetimi",
+        path: "/admin/toplu-veri-yonetimi",
+        icon: "Database",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      {
+        id: "settings",
+        titleTr: "Sistem Ayarları",
+        path: "/yonetim/ayarlar",
+        icon: "Settings",
+        moduleKey: "settings",
+        scope: "hq",
       },
     ],
   },
@@ -533,49 +570,5 @@ export function buildMenuForUser(
   };
 }
 
-// Session-based memoization (optional performance optimization)
-const menuCache = new Map<string, { data: SidebarMenuResponse; expires: number }>();
-const CACHE_TTL = 60 * 1000; // 1 minute
-
-export function getCachedMenuForUser(
-  user: { id: string; role: UserRoleType },
-  badges: Record<string, number> = {}
-): SidebarMenuResponse {
-  const cacheKey = `${user.id}:${user.role}`;
-  const cached = menuCache.get(cacheKey);
-  
-  // Check if valid cache exists (without badges - badges always fresh)
-  if (cached && cached.expires > Date.now()) {
-    // Update badges in cached response
-    return {
-      ...cached.data,
-      badges,
-      meta: {
-        ...cached.data.meta,
-        timestamp: Date.now(),
-      },
-    };
-  }
-  
-  // Build fresh menu
-  const menu = buildMenuForUser(user, badges);
-  
-  // Cache it
-  menuCache.set(cacheKey, {
-    data: menu,
-    expires: Date.now() + CACHE_TTL,
-  });
-  
-  return menu;
-}
-
-// Clear cache for a specific user (call after role change)
-export function invalidateMenuCache(userId: string): void {
-  const keysToDelete = Array.from(menuCache.keys()).filter(key => key.startsWith(userId + ':'));
-  keysToDelete.forEach(key => menuCache.delete(key));
-}
-
-// Clear all menu cache
-export function clearAllMenuCache(): void {
-  menuCache.clear();
-}
+// Export menu blueprint for seeding
+export { MENU_BLUEPRINT };
