@@ -9,6 +9,12 @@ import { ShiftStatusCard } from "@/components/shift-status-card";
 import { ShiftChecklistCard } from "@/components/shift-checklist-card";
 import { EnhancedAnalyticsCard } from "@/components/enhanced-analytics-card";
 import { AnnouncementBannerCarousel } from "@/components/AnnouncementBannerCarousel";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { 
   GraduationCap, 
   Wrench, 
@@ -39,7 +45,16 @@ import {
   Clock,
   Timer,
   TrendingDown,
-  Sparkles
+  Sparkles,
+  LayoutDashboard,
+  Factory,
+  Grid,
+  Home,
+  QrCode,
+  Bell,
+  Headphones,
+  Tablet,
+  ChevronRight
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -67,7 +82,24 @@ export function CardGridHub() {
     enabled: !!user,
   });
   
-  // Flatten sections.items into a single array of modules
+  // Keep sections grouped (13 categories from menu blueprint)
+  const menuSections = (menuResponse?.sections || [])
+    .filter((section: any) => section.titleTr && section.items?.length > 0)
+    .map((section: any) => ({
+      id: section.id,
+      title: section.titleTr,
+      icon: section.icon,
+      items: section.items?.filter((item: any) => item.path !== '/' && item.path !== '/sube/dashboard')?.map((item: any) => ({
+        id: item.id,
+        label: item.titleTr,
+        path: item.path,
+        description: item.description,
+        moduleKey: item.moduleKey,
+      })) || [],
+    }))
+    .filter((section: any) => section.items.length > 0);
+
+  // Also keep flattened for backward compatibility
   const menuModules = menuResponse?.sections?.flatMap((section: any) => 
     section.items?.map((item: any) => ({
       id: item.id,
@@ -632,9 +664,58 @@ export function CardGridHub() {
     return 'unknown-module';
   };
 
+  // Get section icon from icon name string
+  const getSectionIcon = (iconName: string | undefined) => {
+    if (!iconName) return Coffee;
+    const sectionIconMap: Record<string, any> = {
+      "LayoutDashboard": LayoutDashboard,
+      "Home": Home,
+      "Factory": Factory,
+      "Wrench": Wrench,
+      "Building2": Building2,
+      "CheckSquare": CheckSquare,
+      "Users": Users,
+      "GraduationCap": GraduationCap,
+      "BarChart3": BarChart3,
+      "Star": Star,
+      "Calculator": Calculator,
+      "FolderKanban": FolderKanban,
+      "MessageSquare": MessageSquare,
+      "Settings": Settings,
+      "Clock": Clock,
+      "Timer": Timer,
+      "Grid": Grid,
+      "Shield": Shield,
+      "Tablet": Tablet,
+      "QrCode": QrCode,
+      "AlertTriangle": AlertTriangle,
+      "Calendar": Calendar,
+      "BookOpen": BookOpen,
+      "Bot": Bot,
+      "Bell": Bell,
+      "Headphones": Headphones,
+      "Megaphone": Megaphone,
+      "Database": Database,
+      "Briefcase": Briefcase,
+      "ClipboardList": ClipboardList,
+    };
+    return sectionIconMap[iconName] || Coffee;
+  };
+
+  // Get aggregate badge count for a section's items
+  const getSectionBadge = (items: any[]): number => {
+    let total = 0;
+    for (const item of items) {
+      const key = normalizeModuleKey(item);
+      const badge = getBadge(key);
+      if (badge) total += badge;
+    }
+    return total;
+  };
+
   const baseModules = menuModules && menuModules.length > 0 
     ? menuModules
-        .filter((m: any) => m.path !== '/' && m.path !== '/sube-dashboard')
+        .filter((m: any) => m.path !== '/' && m.path !== '/sube/dashboard')
         .map((m: any) => {
           const moduleKey = normalizeModuleKey(m);
           return {
@@ -787,42 +868,93 @@ export function CardGridHub() {
         } />
       </div>
 
-      {/* Card Grid */}
-      <div className="grid grid-cols-3 gap-2">
-        {modules.map((module: any) => {
-          const Icon = module.icon;
-          return (
-            <button
-              key={module.id}
-              onClick={() => setLocation(module.path)}
-              className="relative flex flex-col items-center justify-center p-3 rounded-lg bg-card border border-border hover:border-primary/50 hover:shadow-sm transition-all active:scale-[0.98] min-h-[80px]"
-              data-testid={`module-card-${module.id}`}
-            >
-              {/* Badge */}
-              {module.badge && module.badge > 0 && (
-                <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
-                  {module.badge > 99 ? "99+" : module.badge}
-                </span>
-              )}
-              
-              {/* Icon */}
-              <div className={`w-10 h-10 rounded-lg ${module.color} flex items-center justify-center mb-1`}>
-                <Icon className="w-5 h-5 text-white" />
-              </div>
-              
-              {/* Label */}
-              <span className="text-xs font-semibold text-center leading-tight">{module.label}</span>
-              
-              {/* Description - Hidden on compact */}
-              {module.description && (
-                <span className="hidden text-[9px] text-muted-foreground mt-0.5">
-                  {module.description}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {/* Grouped Modules with Accordion */}
+      {menuSections && menuSections.length > 0 ? (
+        <Accordion type="multiple" defaultValue={menuSections.slice(0, 3).map((s: any) => s.id)} className="space-y-2">
+          {menuSections.map((section: any) => {
+            const SectionIcon = getSectionIcon(section.icon);
+            const sectionBadge = getSectionBadge(section.items);
+            
+            return (
+              <AccordionItem key={section.id} value={section.id} className="border rounded-lg bg-card overflow-hidden">
+                <AccordionTrigger 
+                  className="px-3 py-2 hover:no-underline hover:bg-muted/50 [&[data-state=open]>svg]:rotate-90"
+                  data-testid={`accordion-section-${section.id}`}
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <SectionIcon className="w-4 h-4 text-primary" />
+                    </div>
+                    <span className="text-sm font-medium">{section.title}</span>
+                    {sectionBadge > 0 && (
+                      <Badge variant="destructive" className="ml-auto mr-2 text-xs">
+                        {sectionBadge > 99 ? "99+" : sectionBadge}
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="ml-auto mr-2 text-xs">
+                      {section.items.length}
+                    </Badge>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-3 pb-3 pt-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {section.items.map((item: any) => {
+                      const moduleKey = normalizeModuleKey(item);
+                      const ModuleIcon = getIcon(moduleKey);
+                      const moduleColor = getColor(moduleKey);
+                      const moduleBadge = getBadge(moduleKey);
+                      
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => setLocation(item.path)}
+                          className="relative flex flex-col items-center justify-center p-3 rounded-lg bg-background border border-border hover:border-primary/50 hover:shadow-sm transition-all active:scale-[0.98] min-h-[70px]"
+                          data-testid={`module-card-${item.id}`}
+                        >
+                          {moduleBadge && moduleBadge > 0 && (
+                            <span className="absolute top-1 right-1 min-w-[18px] h-4 px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                              {moduleBadge > 99 ? "99+" : moduleBadge}
+                            </span>
+                          )}
+                          <div className={`w-9 h-9 rounded-lg ${moduleColor} flex items-center justify-center mb-1`}>
+                            <ModuleIcon className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="text-xs font-medium text-center leading-tight">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
+      ) : (
+        /* Fallback flat grid for backward compatibility */
+        <div className="grid grid-cols-3 gap-2">
+          {modules.map((module: any) => {
+            const Icon = module.icon;
+            return (
+              <button
+                key={module.id}
+                onClick={() => setLocation(module.path)}
+                className="relative flex flex-col items-center justify-center p-3 rounded-lg bg-card border border-border hover:border-primary/50 hover:shadow-sm transition-all active:scale-[0.98] min-h-[80px]"
+                data-testid={`module-card-${module.id}`}
+              >
+                {module.badge && module.badge > 0 && (
+                  <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                    {module.badge > 99 ? "99+" : module.badge}
+                  </span>
+                )}
+                <div className={`w-10 h-10 rounded-lg ${module.color} flex items-center justify-center mb-1`}>
+                  <Icon className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xs font-semibold text-center leading-tight">{module.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Quick Stats - Optional */}
       {(pendingTasks > 0 || openFaults > 0) && (

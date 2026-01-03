@@ -215,7 +215,7 @@ export async function setupAuth(app: Express) {
               id: branch.id,
               name: branch.name,
             },
-            redirectTo: '/sube-dashboard'
+            redirectTo: '/sube/dashboard'
           });
         });
         return;

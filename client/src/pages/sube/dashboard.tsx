@@ -111,20 +111,46 @@ interface BranchDashboardData {
 }
 
 export default function SubeDashboard() {
-  const { user, isAuthenticated } = useAuth();
+  // All hooks must be at the top - before any conditional returns
+  const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [branchAuth, setBranchAuth] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Initialize branch auth from sessionStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const branchAuthStr = sessionStorage.getItem('branchAuth');
+      if (branchAuthStr) {
+        try {
+          setBranchAuth(JSON.parse(branchAuthStr));
+        } catch (e) {
+          console.error('Failed to parse branchAuth', e);
+        }
+      }
+      setAuthChecked(true);
+    }
+  }, []);
   
-  // Check for branch auth from sessionStorage (branch login)
-  const branchAuthStr = typeof window !== 'undefined' ? sessionStorage.getItem('branchAuth') : null;
-  const branchAuth = branchAuthStr ? JSON.parse(branchAuthStr) : null;
+  // Branch-level authentication check: either branchAuth from sessionStorage or user with branchId
+  const hasBranchAccess = branchAuth || user?.branchId;
   
   // Use branchAuth.id if available (branch login), otherwise use user.branchId
   const branchId = branchAuth?.id || user?.branchId || 1;
+  const branchName = branchAuth?.name || '';
   const currentUserId = user?.id || 'branch-user';
 
+  // Redirect to login if no branch access (only after auth check is complete)
+  useEffect(() => {
+    if (authChecked && !hasBranchAccess) {
+      setLocation('/login');
+    }
+  }, [authChecked, hasBranchAccess, setLocation]);
+
+  // All data queries - must be before any conditional returns
   const { data: dashboardData, isLoading: loadingDashboard, refetch } = useQuery<BranchDashboardData>({
     queryKey: ['/api/branch-dashboard', branchId],
     queryFn: async () => {
@@ -133,7 +159,7 @@ export default function SubeDashboard() {
       return res.json();
     },
     refetchInterval: autoRefresh ? 30000 : false,
-    enabled: !!branchId,
+    enabled: !!branchId && authChecked,
   });
 
   const { data: activeSessions = [], isLoading: loadingActive, refetch: refetchActive } = useQuery<ActiveSession[]>({
@@ -143,6 +169,7 @@ export default function SubeDashboard() {
       return res.json();
     },
     refetchInterval: autoRefresh ? 30000 : false,
+    enabled: authChecked,
   });
 
   const { data: dailySummaries = [], isLoading: loadingDaily } = useQuery<DailySummary[]>({
@@ -151,6 +178,7 @@ export default function SubeDashboard() {
       const res = await fetch(`/api/branches/${branchId}/attendance/daily?date=${selectedDate}`);
       return res.json();
     },
+    enabled: authChecked,
   });
 
   const acknowledgeAlertMutation = useMutation({
@@ -172,6 +200,15 @@ export default function SubeDashboard() {
       toast({ title: "Uyarı kapatıldı" });
     },
   });
+
+  // Show loading while checking auth - this is after all hooks
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });

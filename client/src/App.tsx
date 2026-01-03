@@ -152,7 +152,10 @@ const PUBLIC_PATH_PREFIXES = [
   "/reset-password", 
   "/feedback", 
   "/misafir-geri-bildirim",
-  "/setup"
+  "/setup",
+  "/sube/dashboard",
+  "/sube/kiosk",
+  "/fabrika/kiosk"
 ];
 
 function isPublicPath(path: string) {
@@ -175,8 +178,12 @@ function AuthCatchAllToLogin() {
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
+  const [location] = useLocation();
+  
+  // Don't show loading spinner for public paths - they should render immediately
+  const isPublic = isPublicPath(location);
+  
+  if (isLoading && !isPublic) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -197,6 +204,7 @@ function Router() {
       <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
       <Route path="/sube/kiosk/:branchId" component={SubeKiosk} />
       <Route path="/sube/kiosk" component={SubeKiosk} />
+      <Route path="/sube/dashboard" component={SubeDashboard} />
 
       {/* Auth guard - catch-all for unauthenticated users */}
       {!isAuthenticated && <Route component={AuthCatchAllToLogin} />}

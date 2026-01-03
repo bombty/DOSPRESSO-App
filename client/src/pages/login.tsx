@@ -77,7 +77,7 @@ export default function Login() {
         
         // Şube dashboard'a yönlendir
         setTimeout(() => {
-          navigate(data.redirectTo || '/sube-dashboard');
+          navigate(data.redirectTo || '/sube/dashboard');
         }, 100);
         return;
       }
