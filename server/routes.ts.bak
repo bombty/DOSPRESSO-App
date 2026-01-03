@@ -27125,6 +27125,9 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  const httpServer = createServer(app);
+  return httpServer;
+}
 
 
   // ========================================
@@ -27370,18 +27373,18 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           await db.update(branchMonthlyPayrollSummary)
             .set(summaryData)
             .where(eq(branchMonthlyPayrollSummary.id, existing.id));
-          results.push({ ...summaryData, id: existing.id, userName: `${staff.firstName} ${staff.lastName}`, updated: true });
+          results.push({ ...summaryData, id: existing.id, userName: \`\${staff.firstName} \${staff.lastName}\`, updated: true });
         } else {
           const [inserted] = await db.insert(branchMonthlyPayrollSummary)
             .values(summaryData)
             .returning();
-          results.push({ ...inserted, userName: `${staff.firstName} ${staff.lastName}`, updated: false });
+          results.push({ ...inserted, userName: \`\${staff.firstName} \${staff.lastName}\`, updated: false });
         }
       }
 
       res.json({ 
         success: true, 
-        message: `${results.length} personel için aylık puantaj hesaplandı`,
+        message: \`\${results.length} personel için aylık puantaj hesaplandı\`,
         summaries: results,
         monthInfo: { month: targetMonth, year: targetYear }
       });
@@ -27468,257 +27471,3 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Puantaj onaylanamadı" });
     }
   });
-
-
-  // İK Aylık Puantaj Excel Export
-  app.get('/api/branches/:branchId/attendance/export-monthly', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const role = user.role as UserRoleType;
-      const branchId = parseInt(req.params.branchId);
-      
-      // Yetki kontrolü
-      if (!isHQRole(role) && role !== 'supervisor') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
-      }
-      
-      if (role === 'supervisor' && user.branchId !== branchId) {
-        return res.status(403).json({ message: "Sadece kendi şubeniz için export yapabilirsiniz" });
-      }
-
-      const { month, year } = req.query;
-      const targetMonth = month ? parseInt(String(month)) : new Date().getMonth() + 1;
-      const targetYear = year ? parseInt(String(year)) : new Date().getFullYear();
-
-      // Şube bilgisi
-      const branch = await storage.getBranch(branchId);
-      if (!branch) {
-        return res.status(404).json({ message: "Şube bulunamadı" });
-      }
-
-      // Aylık özetleri al
-      const summaries = await db.select({
-        summary: branchMonthlyPayrollSummary,
-        user: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          role: users.role,
-        }
-      }).from(branchMonthlyPayrollSummary)
-        .leftJoin(users, eq(branchMonthlyPayrollSummary.userId, users.id))
-        .where(and(
-          eq(branchMonthlyPayrollSummary.branchId, branchId),
-          eq(branchMonthlyPayrollSummary.month, targetMonth),
-          eq(branchMonthlyPayrollSummary.year, targetYear)
-        ))
-        .orderBy(users.firstName);
-
-      // Excel verisi hazırla
-      const excelData = summaries.map((s, index) => ({
-        'Sıra': index + 1,
-        'Ad Soyad': s.user ? `${s.user.firstName} ${s.user.lastName}` : 'Bilinmiyor',
-        'Pozisyon': s.user?.role || '',
-        'Çalışılan Gün': s.summary.totalWorkDays || 0,
-        'Toplam Çalışma (Saat)': Math.round((s.summary.totalNetWorkMinutes || 0) / 60 * 10) / 10,
-        'Fazla Mesai (Saat)': Math.round((s.summary.totalOvertimeMinutes || 0) / 60 * 10) / 10,
-        'Eksik Saat': Math.round((s.summary.totalMissingMinutes || 0) / 60 * 10) / 10,
-        'Devamsızlık': s.summary.absentDays || 0,
-        'Geç Kalma': s.summary.lateDays || 0,
-        'Erken Çıkış': s.summary.earlyLeaveDays || 0,
-        'Ücretli İzin': s.summary.paidLeaveDays || 0,
-        'Ücretsiz İzin': s.summary.unpaidLeaveDays || 0,
-        'Sağlık İzni': s.summary.sickLeaveDays || 0,
-        'Resmi Tatil': s.summary.publicHolidayDays || 0,
-        'Durum': s.summary.calculationStatus === 'approved' ? 'Onaylı' : s.summary.calculationStatus === 'rejected' ? 'Reddedildi' : 'Beklemede',
-      }));
-
-      // Excel oluştur
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
-
-      // Sütun genişlikleri
-      ws['!cols'] = [
-        { wch: 5 },  // Sıra
-        { wch: 25 }, // Ad Soyad
-        { wch: 15 }, // Pozisyon
-        { wch: 12 }, // Çalışılan Gün
-        { wch: 18 }, // Toplam Çalışma
-        { wch: 15 }, // Fazla Mesai
-        { wch: 12 }, // Eksik Saat
-        { wch: 12 }, // Devamsızlık
-        { wch: 10 }, // Geç Kalma
-        { wch: 12 }, // Erken Çıkış
-        { wch: 12 }, // Ücretli İzin
-        { wch: 12 }, // Ücretsiz İzin
-        { wch: 12 }, // Sağlık İzni
-        { wch: 12 }, // Resmi Tatil
-        { wch: 12 }, // Durum
-      ];
-
-      const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-      const sheetName = `${monthNames[targetMonth - 1]} ${targetYear}`;
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
-      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=puantaj_${branch.name.replace(/\s+/g, '_')}_${targetYear}_${targetMonth}.xlsx`);
-      res.send(buffer);
-    } catch (error: any) {
-      console.error("Error exporting monthly payroll:", error);
-      res.status(500).json({ message: "Excel export başarısız" });
-    }
-  });
-
-  // İK Haftalık Eksik Saat Raporu
-  app.get('/api/branches/:branchId/attendance/missing-hours-report', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const role = user.role as UserRoleType;
-      const branchId = parseInt(req.params.branchId);
-      
-      // Yetki kontrolü
-      if (!isHQRole(role) && role !== 'supervisor') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
-      }
-
-      const { weekStartDate } = req.query;
-      if (!weekStartDate) {
-        return res.status(400).json({ message: "Hafta başlangıç tarihi gerekli" });
-      }
-
-      // Eksik saati olan personelleri al
-      const summaries = await db.select({
-        summary: branchWeeklyAttendanceSummary,
-        user: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          role: users.role,
-        }
-      }).from(branchWeeklyAttendanceSummary)
-        .leftJoin(users, eq(branchWeeklyAttendanceSummary.userId, users.id))
-        .where(and(
-          eq(branchWeeklyAttendanceSummary.branchId, branchId),
-          eq(branchWeeklyAttendanceSummary.weekStartDate, String(weekStartDate)),
-          gt(branchWeeklyAttendanceSummary.missingMinutes, 0)
-        ))
-        .orderBy(desc(branchWeeklyAttendanceSummary.missingMinutes));
-
-      const report = summaries.map(s => ({
-        userId: s.user?.id,
-        userName: s.user ? `${s.user.firstName} ${s.user.lastName}` : 'Bilinmiyor',
-        role: s.user?.role,
-        weekNumber: s.summary.weekNumber,
-        plannedMinutes: s.summary.plannedTotalMinutes,
-        actualMinutes: s.summary.actualTotalMinutes,
-        missingMinutes: s.summary.missingMinutes,
-        missingHours: Math.round((s.summary.missingMinutes || 0) / 60 * 10) / 10,
-        workDays: s.summary.workDays,
-        complianceStatus: s.summary.complianceStatus,
-      }));
-
-      res.json({
-        weekStartDate,
-        totalStaffWithMissingHours: report.length,
-        totalMissingHours: Math.round(report.reduce((sum, r) => sum + (r.missingMinutes || 0), 0) / 60 * 10) / 10,
-        details: report,
-      });
-    } catch (error: any) {
-      console.error("Error fetching missing hours report:", error);
-      res.status(500).json({ message: "Eksik saat raporu alınamadı" });
-    }
-  });
-
-  // Tüm şubeler için özet compliance raporu (HQ için)
-  app.get('/api/attendance/compliance-summary', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const role = user.role as UserRoleType;
-      
-      // Sadece HQ
-      if (!isHQRole(role)) {
-        return res.status(403).json({ message: "Bu rapor için HQ yetkisi gerekli" });
-      }
-
-      const { month, year } = req.query;
-      const targetMonth = month ? parseInt(String(month)) : new Date().getMonth() + 1;
-      const targetYear = year ? parseInt(String(year)) : new Date().getFullYear();
-
-      // Tüm şubelerin aylık özetlerini al
-      const allSummaries = await db.select({
-        branchId: branchMonthlyPayrollSummary.branchId,
-        totalWorkMinutes: branchMonthlyPayrollSummary.totalNetWorkMinutes,
-        overtimeMinutes: branchMonthlyPayrollSummary.totalOvertimeMinutes,
-        missingMinutes: branchMonthlyPayrollSummary.totalMissingMinutes,
-        absentDays: branchMonthlyPayrollSummary.absentDays,
-        lateDays: branchMonthlyPayrollSummary.lateDays,
-        status: branchMonthlyPayrollSummary.calculationStatus,
-      }).from(branchMonthlyPayrollSummary)
-        .where(and(
-          eq(branchMonthlyPayrollSummary.month, targetMonth),
-          eq(branchMonthlyPayrollSummary.year, targetYear)
-        ));
-
-      // Şube bazında grupla
-      const branchStats: Record<number, any> = {};
-      for (const s of allSummaries) {
-        if (!branchStats[s.branchId]) {
-          branchStats[s.branchId] = {
-            branchId: s.branchId,
-            staffCount: 0,
-            totalWorkHours: 0,
-            totalOvertimeHours: 0,
-            totalMissingHours: 0,
-            totalAbsentDays: 0,
-            totalLateDays: 0,
-            approvedCount: 0,
-            pendingCount: 0,
-          };
-        }
-        branchStats[s.branchId].staffCount++;
-        branchStats[s.branchId].totalWorkHours += (s.totalWorkMinutes || 0) / 60;
-        branchStats[s.branchId].totalOvertimeHours += (s.overtimeMinutes || 0) / 60;
-        branchStats[s.branchId].totalMissingHours += (s.missingMinutes || 0) / 60;
-        branchStats[s.branchId].totalAbsentDays += s.absentDays || 0;
-        branchStats[s.branchId].totalLateDays += s.lateDays || 0;
-        if (s.status === 'approved') branchStats[s.branchId].approvedCount++;
-        else branchStats[s.branchId].pendingCount++;
-      }
-
-      // Şube isimlerini ekle
-      const branchList = await db.select().from(branches).where(eq(branches.isActive, true));
-      const branchMap = new Map(branchList.map(b => [b.id, b.name]));
-
-      const report = Object.values(branchStats).map((stat: any) => ({
-        ...stat,
-        branchName: branchMap.get(stat.branchId) || 'Bilinmiyor',
-        totalWorkHours: Math.round(stat.totalWorkHours * 10) / 10,
-        totalOvertimeHours: Math.round(stat.totalOvertimeHours * 10) / 10,
-        totalMissingHours: Math.round(stat.totalMissingHours * 10) / 10,
-        complianceRate: stat.staffCount > 0 
-          ? Math.round((1 - stat.totalMissingHours / (stat.staffCount * 180)) * 100) // 180 saat = aylık hedef
-          : 100,
-      }));
-
-      res.json({
-        month: targetMonth,
-        year: targetYear,
-        totalBranches: report.length,
-        overallStats: {
-          totalStaff: report.reduce((sum, r) => sum + r.staffCount, 0),
-          totalWorkHours: Math.round(report.reduce((sum, r) => sum + r.totalWorkHours, 0) * 10) / 10,
-          totalOvertimeHours: Math.round(report.reduce((sum, r) => sum + r.totalOvertimeHours, 0) * 10) / 10,
-          totalMissingHours: Math.round(report.reduce((sum, r) => sum + r.totalMissingHours, 0) * 10) / 10,
-        },
-        branches: report.sort((a, b) => b.complianceRate - a.complianceRate),
-      });
-    } catch (error: any) {
-      console.error("Error fetching compliance summary:", error);
-      res.status(500).json({ message: "Compliance özeti alınamadı" });
-    }
-  });
-  const httpServer = createServer(app);
-  return httpServer;
-}
