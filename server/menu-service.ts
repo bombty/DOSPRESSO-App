@@ -188,6 +188,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "shifts",
         scope: "both",
       },
+      {
+        id: "branch-shift-tracking",
+        titleTr: "Şube Vardiya Takibi",
+        path: "/sube-vardiya-takibi",
+        icon: "Timer",
+        moduleKey: "branch_shift_tracking",
+        scope: "both",
+      },
     ],
   },
   // Both: Performance

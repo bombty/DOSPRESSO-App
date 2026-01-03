@@ -182,7 +182,9 @@ export type PermissionModule =
   | 'factory_quality'
   | 'factory_analytics'
   | 'factory_stations'
-  | 'factory_compliance';
+  | 'factory_compliance'
+  // Branch shift tracking
+  | 'branch_shift_tracking';
 
 // Permission Matrix: Define what each role can do
 export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, PermissionAction[]>> = {
@@ -229,6 +231,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view', 'create', 'edit', 'delete'],
     factory_compliance: ['view', 'edit', 'approve'],
+    branch_shift_tracking: ['view', 'edit'],
   },
   // HQ ROLES
   muhasebe: {
@@ -273,6 +276,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: ['view'],
   },
   satinalma: {
     dashboard: ['view'],
@@ -316,6 +320,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: [],
   },
   coach: {
     dashboard: ['view'],
@@ -359,6 +364,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: [],
     factory_compliance: ['view'],
+    branch_shift_tracking: ['view', 'edit'],
   },
   teknik: {
     dashboard: ['view'],
@@ -402,6 +408,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: [],
   },
   destek: {
     dashboard: ['view'],
@@ -445,6 +452,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: [],
   },
   fabrika: {
     dashboard: ['view'],
@@ -488,6 +496,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: ['view'],
     factory_compliance: ['view'],
+    branch_shift_tracking: [],
   },
   yatirimci_hq: {
     dashboard: ['view'],
@@ -531,6 +540,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: ['view'],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: [],
   },
   // BRANCH ROLES
   supervisor: {
@@ -575,6 +585,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: ['view', 'edit'],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -618,6 +629,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: ['view'],
   },
   barista: {
     dashboard: ['view'],
@@ -661,6 +673,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: ['view'],
   },
   bar_buddy: {
     dashboard: ['view'],
@@ -704,6 +717,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: ['view'],
   },
   stajyer: {
     dashboard: ['view'],
@@ -747,6 +761,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: ['view'],
   },
   yatirimci_branch: {
     dashboard: ['view'],
@@ -790,6 +805,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     factory_analytics: [],
     factory_stations: [],
     factory_compliance: [],
+    branch_shift_tracking: ['view'],
   },
 };
 
