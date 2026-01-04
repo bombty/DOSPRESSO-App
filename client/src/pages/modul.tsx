@@ -356,6 +356,7 @@ export default function MegaModulePage() {
       "settings", "settings-hq", "settings-section",
       "support", "support-hq", "support-section",
       "system", "system-section",
+      "management", "management-hq", "management-section",
       // Turkish DB slugs
       "yonetim", "ayarlar", "destek", "ai"
     ],
