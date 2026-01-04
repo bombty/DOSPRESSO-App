@@ -686,6 +686,133 @@ export async function seedAdminMenu() {
       sortOrder: 70,
     });
 
+    // Admin Panel sayfaları
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Yetkilendirme',
+      path: '/admin/yetkilendirme',
+      icon: 'Shield',
+      moduleKey: 'admin_settings',
+      scope: 'hq',
+      sortOrder: 80,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Aktivite Logları',
+      path: '/admin/aktivite-loglari',
+      icon: 'FileText',
+      moduleKey: 'admin_settings',
+      scope: 'hq',
+      sortOrder: 90,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Yedekleme',
+      path: '/admin/yedekleme',
+      icon: 'Database',
+      moduleKey: 'admin_settings',
+      scope: 'hq',
+      sortOrder: 100,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Email Ayarları',
+      path: '/admin/email-ayarlari',
+      icon: 'Mail',
+      moduleKey: 'admin_settings',
+      scope: 'hq',
+      sortOrder: 110,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Servis Mail Ayarları',
+      path: '/admin/servis-mail-ayarlari',
+      icon: 'Mail',
+      moduleKey: 'admin_settings',
+      scope: 'hq',
+      sortOrder: 120,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Banner Yönetimi',
+      path: '/admin/bannerlar',
+      icon: 'Image',
+      moduleKey: 'admin_settings',
+      scope: 'hq',
+      sortOrder: 130,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Duyurular',
+      path: '/admin/duyurular',
+      icon: 'Megaphone',
+      moduleKey: 'admin_settings',
+      scope: 'hq',
+      sortOrder: 140,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Yapay Zeka Ayarları',
+      path: '/admin/yapay-zeka-ayarlari',
+      icon: 'Bot',
+      moduleKey: 'admin_settings',
+      scope: 'hq',
+      sortOrder: 150,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Kalite Denetim Şablonları',
+      path: '/admin/kalite-denetim-sablonlari',
+      icon: 'Star',
+      moduleKey: 'quality',
+      scope: 'hq',
+      sortOrder: 160,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Toplu Veri Yönetimi',
+      path: '/admin/toplu-veri-yonetimi',
+      icon: 'Database',
+      moduleKey: 'admin_settings',
+      scope: 'hq',
+      sortOrder: 170,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Fabrika İstasyonları',
+      path: '/admin/fabrika-istasyonlar',
+      icon: 'Factory',
+      moduleKey: 'factory',
+      scope: 'hq',
+      sortOrder: 180,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Fabrika Fire Sebepleri',
+      path: '/admin/fabrika-fire-sebepleri',
+      icon: 'AlertTriangle',
+      moduleKey: 'factory',
+      scope: 'hq',
+      sortOrder: 190,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Fabrika PIN Yönetimi',
+      path: '/admin/fabrika-pin-yonetimi',
+      icon: 'Key',
+      moduleKey: 'factory',
+      scope: 'hq',
+      sortOrder: 200,
+    });
+
+    await insertMenuItem(yonetimSection.id, {
+      titleTr: 'Fabrika Kalite Kriterleri',
+      path: '/admin/fabrika-kalite-kriterleri',
+      icon: 'Star',
+      moduleKey: 'factory',
+      scope: 'hq',
+      sortOrder: 210,
+    });
+
     console.log(`✅ Simplified admin menu seed completed:`);
     console.log(`   - Sections processed: ${sectionsInserted}`);
     console.log(`   - Menu items inserted: ${itemsInserted}`);
