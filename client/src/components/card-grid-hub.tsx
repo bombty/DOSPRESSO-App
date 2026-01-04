@@ -83,21 +83,119 @@ export function CardGridHub() {
   });
   
   // Keep sections grouped (13 categories from menu blueprint)
+  // Don't filter out empty sections - keep metadata for mega-module grouping
   const menuSections = (menuResponse?.sections || [])
-    .filter((section: any) => section.titleTr && section.items?.length > 0)
+    .filter((section: any) => section.titleTr || section.id)
     .map((section: any) => ({
       id: section.id,
       title: section.titleTr,
       icon: section.icon,
-      items: section.items?.filter((item: any) => item.path !== '/' && item.path !== '/sube/dashboard')?.map((item: any) => ({
-        id: item.id,
-        label: item.titleTr,
-        path: item.path,
-        description: item.description,
-        moduleKey: item.moduleKey,
-      })) || [],
-    }))
-    .filter((section: any) => section.items.length > 0);
+      items: (section.items || [])
+        .filter((item: any) => item.path !== '/' && item.path !== '/sube/dashboard')
+        .map((item: any) => ({
+          id: item.id,
+          label: item.titleTr,
+          path: item.path,
+          description: item.description,
+          moduleKey: item.moduleKey,
+        })),
+    }));
+    // Don't filter by items.length - preserve section metadata
+
+  // 8 Mega-module definitions - comprehensive mapping of ALL known section IDs
+  const MEGA_MODULE_MAPPING: Record<string, string[]> = {
+    "operations": [
+      "tasks", "tasks-hq", "tasks-branch", "tasks-section", "operations", "operations-hq", "operations-branch",
+      "checklists", "checklists-hq", "checklists-branch", "checklists-section",
+      "dashboard-branch", "dashboard-hq", "dashboard"
+    ],
+    "equipment": [
+      "equipment", "equipment-hq", "equipment-branch", "equipment-section",
+      "faults", "faults-hq", "faults-branch", "faults-section",
+      "maintenance", "maintenance-hq", "maintenance-section"
+    ],
+    "hr": [
+      "hr", "hr-hq", "hr-branch", "hr-section", "personel", "personel-section",
+      "shifts", "shifts-hq", "shifts-branch", "shifts-section", "vardiya", "vardiyalar",
+      "attendance", "attendance-section", "payroll", "payroll-section"
+    ],
+    "training": [
+      "training", "training-hq", "training-branch", "training-section",
+      "academy", "academy-hq", "academy-branch", "academy-section", "akademi",
+      "education", "education-section"
+    ],
+    "kitchen": [
+      "kitchen", "kitchen-hq", "kitchen-branch", "kitchen-section",
+      "recipes", "recipes-hq", "recipes-branch", "recipes-section", "tarifler",
+      "menu", "menu-section"
+    ],
+    "reports": [
+      "reports", "reports-hq", "reports-branch", "reports-section", "raporlar",
+      "analytics", "analytics-hq", "analytics-section",
+      "quality", "quality-hq", "quality-branch", "quality-section", "kalite"
+    ],
+    "newshop": [
+      "projects", "projects-hq", "projects-section", "projeler",
+      "newshop", "newshop-section", "new-shop", "new-shop-opening"
+    ],
+    "admin": [
+      "admin", "admin-hq", "admin-section", "yonetim",
+      "settings", "settings-hq", "settings-section", "ayarlar",
+      "support", "support-hq", "support-section", "destek",
+      "system", "system-section"
+    ],
+  };
+
+  const MEGA_MODULE_CONFIG = [
+    { id: "operations", title: "Operasyonlar", icon: "ClipboardList", color: "bg-green-500" },
+    { id: "equipment", title: "Ekipman & Bakım", icon: "Wrench", color: "bg-orange-500" },
+    { id: "hr", title: "Personel & İK", icon: "Users", color: "bg-pink-500" },
+    { id: "training", title: "Eğitim & Akademi", icon: "GraduationCap", color: "bg-blue-500" },
+    { id: "kitchen", title: "Mutfak & Reçeteler", icon: "Coffee", color: "bg-amber-600" },
+    { id: "reports", title: "Raporlar & Analitik", icon: "BarChart3", color: "bg-cyan-500" },
+    { id: "newshop", title: "Yeni Mağaza Açılışı", icon: "FolderKanban", color: "bg-violet-600" },
+    { id: "admin", title: "Yönetim & Ayarlar", icon: "Shield", color: "bg-slate-600" },
+  ];
+
+  // Helper: check if a section ID matches any of the mapped IDs
+  const matchesMegaModule = (sectionId: string, mappedIds: string[]): boolean => {
+    const normalizedId = sectionId.toLowerCase().trim();
+    return mappedIds.some((mapped) => {
+      const normalizedMapped = mapped.toLowerCase().trim();
+      // Exact match or prefix/suffix match
+      return normalizedId === normalizedMapped || 
+             normalizedId.startsWith(normalizedMapped + "-") ||
+             normalizedId.endsWith("-" + normalizedMapped) ||
+             normalizedId.includes(normalizedMapped);
+    });
+  };
+
+  // Group menu sections into 8 mega-modules (always show all 8)
+  const megaModules = MEGA_MODULE_CONFIG.map((megaConfig) => {
+    const mappedSectionIds = MEGA_MODULE_MAPPING[megaConfig.id] || [];
+    
+    // Find matching sections from menu API
+    const matchedSections = menuSections.filter((s: any) => 
+      matchesMegaModule(s.id, mappedSectionIds)
+    );
+    
+    // Collect all items from matched sections
+    const allItems = matchedSections.flatMap((s: any) => s.items || []);
+    
+    // Deduplicate items by path
+    const uniqueItems = allItems.filter((item: any, index: number, self: any[]) =>
+      index === self.findIndex((t) => t.path === item.path)
+    );
+    
+    return {
+      id: megaConfig.id,
+      title: megaConfig.title,
+      icon: megaConfig.icon,
+      color: megaConfig.color,
+      items: uniqueItems,
+      isEmpty: uniqueItems.length === 0,
+    };
+  }); // Don't filter - always show all 8 mega-modules
 
   // Also keep flattened for backward compatibility
   const menuModules = menuResponse?.sections?.flatMap((section: any) => 
@@ -702,6 +800,47 @@ export function CardGridHub() {
     return sectionIconMap[iconName] || Coffee;
   };
 
+  // Get section color based on section ID
+  const getSectionColor = (sectionId: string | undefined): string => {
+    if (!sectionId) return "bg-slate-500";
+    const colorMap: Record<string, string> = {
+      "dashboard-hq": "bg-indigo-500",
+      "dashboard-branch": "bg-indigo-500",
+      "operations": "bg-green-500",
+      "equipment": "bg-orange-500",
+      "equipment-section": "bg-orange-500",
+      "hr": "bg-pink-500",
+      "hr-section": "bg-pink-500",
+      "training": "bg-blue-500",
+      "training-section": "bg-blue-500",
+      "academy": "bg-blue-500",
+      "academy-section": "bg-blue-500",
+      "kitchen": "bg-amber-600",
+      "recipes": "bg-amber-600",
+      "reports": "bg-cyan-500",
+      "reports-section": "bg-cyan-500",
+      "analytics": "bg-cyan-500",
+      "newshop": "bg-violet-600",
+      "projects": "bg-violet-600",
+      "projects-section": "bg-violet-600",
+      "admin": "bg-red-600",
+      "admin-section": "bg-red-600",
+      "settings": "bg-slate-600",
+      "settings-section": "bg-slate-600",
+      "support": "bg-rose-500",
+      "support-section": "bg-rose-500",
+      "quality": "bg-amber-500",
+      "quality-section": "bg-amber-500",
+      "factory": "bg-emerald-600",
+      "factory-section": "bg-emerald-600",
+      "checklists": "bg-teal-500",
+      "checklists-section": "bg-teal-500",
+      "tasks": "bg-green-500",
+      "tasks-section": "bg-green-500",
+    };
+    return colorMap[sectionId.toLowerCase()] || "bg-primary";
+  };
+
   // Get aggregate badge count for a section's items
   const getSectionBadge = (items: any[]): number => {
     let total = 0;
@@ -868,67 +1007,44 @@ export function CardGridHub() {
         } />
       </div>
 
-      {/* Grouped Modules with Accordion */}
-      {menuSections && menuSections.length > 0 ? (
-        <Accordion type="multiple" defaultValue={menuSections.slice(0, 3).map((s: any) => s.id)} className="space-y-2">
-          {menuSections.map((section: any) => {
-            const SectionIcon = getSectionIcon(section.icon);
-            const sectionBadge = getSectionBadge(section.items);
+      {/* Mega Module Cards - 8 grouped categories with direct navigation */}
+      {megaModules && megaModules.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {megaModules.map((megaModule: any) => {
+            const MegaIcon = getSectionIcon(megaModule.icon);
+            const moduleBadge = getSectionBadge(megaModule.items);
+            const isEmpty = megaModule.isEmpty;
+            
+            // Navigate to mega-module page (even if empty)
+            const megaModulePath = `/modul/${megaModule.id}`;
             
             return (
-              <AccordionItem key={section.id} value={section.id} className="border rounded-lg bg-card overflow-hidden">
-                <AccordionTrigger 
-                  className="px-3 py-2 hover:no-underline hover:bg-muted/50 [&[data-state=open]>svg]:rotate-90"
-                  data-testid={`accordion-section-${section.id}`}
-                >
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <SectionIcon className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="text-sm font-medium">{section.title}</span>
-                    {sectionBadge > 0 && (
-                      <Badge variant="destructive" className="ml-auto mr-2 text-xs">
-                        {sectionBadge > 99 ? "99+" : sectionBadge}
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="ml-auto mr-2 text-xs">
-                      {section.items.length}
-                    </Badge>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-3 pb-3 pt-1">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {section.items.map((item: any) => {
-                      const moduleKey = normalizeModuleKey(item);
-                      const ModuleIcon = getIcon(moduleKey);
-                      const moduleColor = getColor(moduleKey);
-                      const moduleBadge = getBadge(moduleKey);
-                      
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => setLocation(item.path)}
-                          className="relative flex flex-col items-center justify-center p-3 rounded-lg bg-background border border-border hover:border-primary/50 hover:shadow-sm transition-all active:scale-[0.98] min-h-[70px]"
-                          data-testid={`module-card-${item.id}`}
-                        >
-                          {moduleBadge && moduleBadge > 0 && (
-                            <span className="absolute top-1 right-1 min-w-[18px] h-4 px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                              {moduleBadge > 99 ? "99+" : moduleBadge}
-                            </span>
-                          )}
-                          <div className={`w-9 h-9 rounded-lg ${moduleColor} flex items-center justify-center mb-1`}>
-                            <ModuleIcon className="w-4 h-4 text-white" />
-                          </div>
-                          <span className="text-xs font-medium text-center leading-tight">{item.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
+              <button
+                key={megaModule.id}
+                onClick={() => setLocation(megaModulePath)}
+                className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all active:scale-[0.98] min-h-[100px] ${
+                  isEmpty 
+                    ? "bg-muted/50 border-border/50 opacity-60" 
+                    : "bg-card border-border hover:border-primary/50 hover:shadow-md"
+                }`}
+                data-testid={`mega-module-${megaModule.id}`}
+              >
+                {moduleBadge > 0 && (
+                  <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+                    {moduleBadge > 99 ? "99+" : moduleBadge}
+                  </span>
+                )}
+                <div className={`w-12 h-12 rounded-xl ${isEmpty ? "bg-muted" : megaModule.color} flex items-center justify-center mb-2`}>
+                  <MegaIcon className={`w-6 h-6 ${isEmpty ? "text-muted-foreground" : "text-white"}`} />
+                </div>
+                <span className={`text-sm font-medium text-center leading-tight ${isEmpty ? "text-muted-foreground" : ""}`}>{megaModule.title}</span>
+                <span className="text-xs text-muted-foreground mt-0.5">
+                  {isEmpty ? "Erişim yok" : `${megaModule.items.length} modül`}
+                </span>
+              </button>
             );
           })}
-        </Accordion>
+        </div>
       ) : (
         /* Fallback flat grid for backward compatibility */
         <div className="grid grid-cols-3 gap-2">

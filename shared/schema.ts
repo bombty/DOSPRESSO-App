@@ -8326,3 +8326,62 @@ export const insertDashboardAlertSchema = createInsertSchema(dashboardAlerts).om
 
 export type InsertDashboardAlert = z.infer<typeof insertDashboardAlertSchema>;
 export type DashboardAlert = typeof dashboardAlerts.$inferSelect;
+
+// ============ MEGA-MODULE CONFIGURATION ============
+// Allows admin to configure mega-module groupings
+
+export const megaModuleConfig = pgTable("mega_module_config", {
+  id: serial("id").primaryKey(),
+  megaModuleId: varchar("mega_module_id", { length: 50 }).notNull(), // e.g., "operations", "equipment", "hr"
+  megaModuleName: varchar("mega_module_name", { length: 100 }).notNull(), // Display name
+  megaModuleNameTr: varchar("mega_module_name_tr", { length: 100 }).notNull(), // Turkish name
+  icon: varchar("icon", { length: 50 }).notNull(), // Lucide icon name
+  color: varchar("color", { length: 50 }).notNull(), // Tailwind color class
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMegaModuleConfigSchema = createInsertSchema(megaModuleConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMegaModuleConfig = z.infer<typeof insertMegaModuleConfigSchema>;
+export type MegaModuleConfig = typeof megaModuleConfig.$inferSelect;
+
+// Sub-module assignments to mega-modules
+export const megaModuleItems = pgTable("mega_module_items", {
+  id: serial("id").primaryKey(),
+  megaModuleId: varchar("mega_module_id", { length: 50 }).notNull(), // FK to mega_module_config
+  subModuleId: varchar("sub_module_id", { length: 100 }).notNull(), // Original module ID from menu blueprint
+  subModulePath: varchar("sub_module_path", { length: 255 }).notNull(), // Route path
+  subModuleName: varchar("sub_module_name", { length: 100 }).notNull(), // Display name
+  subModuleNameTr: varchar("sub_module_name_tr", { length: 100 }).notNull(), // Turkish name
+  icon: varchar("icon", { length: 50 }), // Optional override icon
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMegaModuleItemSchema = createInsertSchema(megaModuleItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMegaModuleItem = z.infer<typeof insertMegaModuleItemSchema>;
+export type MegaModuleItem = typeof megaModuleItems.$inferSelect;
+
+// Default mega-module definitions (8 main categories)
+export const DEFAULT_MEGA_MODULES = [
+  { id: "operations", name: "Operations", nameTr: "Operasyonlar", icon: "ClipboardList", color: "bg-green-500" },
+  { id: "equipment", name: "Equipment & Maintenance", nameTr: "Ekipman & Bakım", icon: "Wrench", color: "bg-orange-500" },
+  { id: "hr", name: "Personnel & HR", nameTr: "Personel & İK", icon: "Users", color: "bg-pink-500" },
+  { id: "training", name: "Training & Academy", nameTr: "Eğitim & Akademi", icon: "GraduationCap", color: "bg-blue-500" },
+  { id: "kitchen", name: "Kitchen & Recipes", nameTr: "Mutfak & Tarifler", icon: "Coffee", color: "bg-amber-600" },
+  { id: "reports", name: "Reports & Analytics", nameTr: "Raporlar & Analiz", icon: "BarChart3", color: "bg-cyan-500" },
+  { id: "newshop", name: "New Shop Opening", nameTr: "Yeni Şube Açılış", icon: "Building2", color: "bg-violet-600" },
+  { id: "admin", name: "Management & Settings", nameTr: "Yönetim & Ayarlar", icon: "Settings", color: "bg-slate-600" },
+] as const;

@@ -144,6 +144,7 @@ import Setup from "@/pages/setup";
 import MisafirGeriBildirimPublic from "@/pages/misafir-geri-bildirim";
 import MisafirMemnuniyeti from "@/pages/misafir-memnuniyeti";
 import NotFound from "@/pages/not-found";
+import MegaModulePage from "@/pages/modul";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -213,6 +214,7 @@ function Router() {
       {isAuthenticated && (
         <>
           <Route path="/" component={Dashboard} />
+          <Route path="/modul/:moduleId" component={MegaModulePage} />
           <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
           <Route path="/subeler/:id" component={SubeDetay} />
           <Route path="/subeler" component={Subeler} />

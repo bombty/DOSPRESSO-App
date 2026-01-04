@@ -51,7 +51,7 @@ The frontend utilizes React 18+ with TypeScript and Vite, employing Shadcn/ui (N
 - **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
 - **Gamification**: Integrated badges, career progression, leaderboards, team competitions, adaptive difficulty, certificates, and daily learning streak tracker.
 - **Layout System**: Responsive flex-based layouts with standardized gaps.
-- **Dashboard Hub**: `CardGridHub` displays role-based module cards with alerts and quick actions.
+- **Dashboard Hub**: `CardGridHub` displays 8 mega-module cards organized into: Operations, Equipment & Maintenance, Personnel & HR, Training & Academy, Kitchen & Recipes, Reports & Analytics, New Shop Opening, and Management & Settings. Each mega-module groups related menu sections and navigates to `/modul/:moduleId` for sub-module access. Empty mega-modules display with muted styling.
 - **Shift Scheduling**: Fair algorithm ensuring full-time employees work minimum 6 days/week at 45 hours, part-time 3 days/25 hours.
 - **Analytics Architecture**: Three-period tabbed interface with real-time metric aggregation, AI-powered summaries (OpenAI gpt-4o-mini), and conditional alerts.
 - **Checklist Scoring**: 40% weight in compositeScore, max score 4/5 if not on-time, scored by supervisor, daily reminders active.
