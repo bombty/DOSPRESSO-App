@@ -314,8 +314,9 @@ export function CardGridHub() {
   
   // Filter shifts for today
   const todayShifts = myShifts.filter((shift: any) => {
-    const shiftDate = new Date(shift.date).toISOString().split('T')[0];
-    return shiftDate === todayStr;
+    if (!shift.shiftDate) return false;
+    const shiftDateStr = new Date(shift.shiftDate).toISOString().split('T')[0];
+    return shiftDateStr === todayStr;
   });
 
   // Fetch user's assigned checklists

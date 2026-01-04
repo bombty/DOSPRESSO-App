@@ -448,34 +448,8 @@ export function QuickTaskModal({ trigger }: QuickTaskModalProps) {
               )}
             />
 
-            {/* Onboarding Task Checkbox */}
-            <FormField
-              control={form.control}
-              name="isOnboarding"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-is-onboarding"
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel className="flex items-center gap-1 cursor-pointer">
-                      <GraduationCap className="h-4 w-4" />
-                      Onboarding Görevi
-                    </FormLabel>
-                    <p className="text-xs text-muted-foreground">
-                      Bu görev yeni personel eğitimi için mi?
-                    </p>
-                  </div>
-                </FormItem>
-              )}
-            />
-
-            {/* Checker Selection - shown when isOnboarding is true or assignee is selected */}
-            {(form.watch("isOnboarding") || form.watch("assignedToId")) && availableCheckers.length > 0 && (
+            {/* Checker Selection - shown when assignee is selected */}
+            {form.watch("assignedToId") && availableCheckers.length > 0 && (
               <FormField
                 control={form.control}
                 name="checkerId"
