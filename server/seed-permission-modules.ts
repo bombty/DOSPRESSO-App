@@ -62,6 +62,8 @@ export async function seedPermissionModules() {
     { moduleKey: 'content_management', moduleName: 'İçerik Yönetimi', category: 'admin', description: 'İçerik yönetimi' },
     { moduleKey: 'admin_panel', moduleName: 'Admin Panel', category: 'admin', description: 'Admin paneli erişimi' },
     { moduleKey: 'authorization', moduleName: 'Yetkilendirme', category: 'admin', description: 'Rol ve yetki yönetimi' },
+    { moduleKey: 'admin_settings', moduleName: 'Admin Ayarları', category: 'admin', description: 'Admin sistem ayarları' },
+    { moduleKey: 'bulk_data', moduleName: 'Toplu Veri', category: 'admin', description: 'Toplu veri yönetimi' },
     // Akademi Paketi - Alt Modüller
     { moduleKey: 'academy.general', moduleName: 'Genel Akademi', category: 'academy', description: 'Temel akademi erişimi ve modüller' },
     { moduleKey: 'academy.hq', moduleName: 'HQ Akademi', category: 'academy', description: 'Merkez eğitim yönetimi' },

@@ -223,7 +223,20 @@ export function CardGridHub() {
     });
   };
 
-  // Group menu sections into 8 mega-modules (always show all 8)
+  // Fallback admin items for admin users if API doesn't return management section
+  const ADMIN_FALLBACK_ITEMS = [
+    { id: "admin-panel", label: "Admin Panel", path: "/admin", moduleKey: "admin_settings" },
+    { id: "users", label: "Kullanıcı Yönetimi", path: "/yonetim/kullanicilar", moduleKey: "users" },
+    { id: "authorization", label: "Yetkilendirme", path: "/admin/yetkilendirme", moduleKey: "admin_settings" },
+    { id: "settings", label: "Sistem Ayarları", path: "/yonetim/ayarlar", moduleKey: "settings" },
+    { id: "announcements", label: "Duyurular", path: "/admin/duyurular", moduleKey: "announcements" },
+    { id: "banners", label: "Banner Yönetimi", path: "/admin/bannerlar", moduleKey: "admin_settings" },
+    { id: "email-settings", label: "Email Ayarları", path: "/admin/email-ayarlari", moduleKey: "admin_settings" },
+    { id: "ai-settings", label: "Yapay Zeka Ayarları", path: "/admin/yapay-zeka-ayarlari", moduleKey: "ai_assistant" },
+    { id: "backup", label: "Yedekleme", path: "/admin/yedekleme", moduleKey: "admin_settings" },
+  ];
+
+  // Group menu sections into 9 mega-modules (always show all 9)
   const megaModules = MEGA_MODULE_CONFIG.map((megaConfig) => {
     const mappedSectionIds = MEGA_MODULE_MAPPING[megaConfig.id] || [];
     
@@ -233,7 +246,12 @@ export function CardGridHub() {
     );
     
     // Collect all items from matched sections
-    const allItems = matchedSections.flatMap((s: any) => s.items || []);
+    let allItems = matchedSections.flatMap((s: any) => s.items || []);
+    
+    // For admin mega-module: if no items from API and user is admin, use fallback items
+    if (megaConfig.id === "admin" && allItems.length === 0 && user?.role === "admin") {
+      allItems = ADMIN_FALLBACK_ITEMS;
+    }
     
     // Deduplicate items by path
     const uniqueItems = allItems.filter((item: any, index: number, self: any[]) =>
@@ -248,7 +266,7 @@ export function CardGridHub() {
       items: uniqueItems,
       isEmpty: uniqueItems.length === 0,
     };
-  }); // Don't filter - always show all 8 mega-modules
+  }); // Don't filter - always show all 9 mega-modules
 
   // Also keep flattened for backward compatibility
   const menuModules = menuResponse?.sections?.flatMap((section: any) => 
