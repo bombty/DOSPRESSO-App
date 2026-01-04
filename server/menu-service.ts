@@ -332,7 +332,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       {
         id: "quality-control",
         titleTr: "Kalite Kontrol",
-        path: "/kalite",
+        path: "/kalite-denetimi",
         icon: "Star",
         moduleKey: "quality_audit",
         scope: "hq",
