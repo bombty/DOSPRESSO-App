@@ -12937,6 +12937,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${shift.shiftDate} tarihinde ${shift.startTime?.substring(0, 5)} - ${shift.endTime?.substring(0, 5)} vardiyası atandı.`,
             link: '/vardiyalarim',
           });
+          
+          // Send email notification
+          const assignedUser = await storage.getUser(shift.assignedToId);
+          if (assignedUser?.email) {
+            const { sendNotificationEmail } = await import('./email');
+            sendNotificationEmail(
+              assignedUser.email,
+              'Yeni Vardiya Atandı - DOSPRESSO',
+              `Merhaba ${assignedUser.firstName || 'Değerli Çalışan'},\n\n` +
+              `${shift.shiftDate} tarihinde saat ${shift.startTime?.substring(0, 5)} - ${shift.endTime?.substring(0, 5)} arasında vardiyaya atandınız.\n\n` +
+              `İyi çalışmalar dileriz.\n\nDOSPRESSO`,
+              'info'
+            ).catch(err => console.error("Background shift email error:", err));
+          }
         } catch (notifErr) {
           console.error("Shift notification error:", notifErr);
         }
@@ -13024,6 +13038,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : `${firstDate} - ${lastDate} arasında ${empShifts.length} vardiya atandı.`,
             link: '/vardiyalarim',
           });
+          
+          // Send email notification
+          const employee = await storage.getUser(employeeId);
+          if (employee?.email) {
+            const { sendNotificationEmail } = await import('./email');
+            const msg = empShifts.length === 1 
+              ? `${firstDate} tarihinde vardiyaya atandınız.`
+              : `${firstDate} - ${lastDate} arasında ${empShifts.length} vardiya atandı.`;
+            sendNotificationEmail(
+              employee.email,
+              'Yeni Vardiya Planı - DOSPRESSO',
+              `Merhaba ${employee.firstName || 'Değerli Çalışan'},\n\n${msg}\n\nİyi çalışmalar dileriz.\n\nDOSPRESSO`,
+              'info'
+            ).catch(err => console.error("Background bulk shift email error:", err));
+          }
         } catch (notifErr) {
           console.error("Bulk shift notification error:", notifErr);
         }
@@ -26979,9 +27008,32 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         ))
         .orderBy(tasks.dueDate);
 
+      // Get user's checklist assignments for today
+      const today = new Date().toISOString().split('T')[0];
+      const userChecklists = [];
+      const allChecklists = await storage.getChecklists();
+      for (const checklist of allChecklists) {
+        const checklistTasks = await storage.getChecklistTasks(checklist.id);
+        const isAssigned = checklistTasks.some((t: any) => 
+          t.assignedBaristaId === userId || t.assignedSupervisorId === userId
+        );
+        if (isAssigned) {
+          const pendingTasks = checklistTasks.filter((t: any) => !t.completedAt).length;
+          const completedTasks = checklistTasks.filter((t: any) => t.completedAt).length;
+          userChecklists.push({
+            id: checklist.id,
+            name: checklist.name,
+            pendingTasks,
+            completedTasks,
+            totalTasks: checklistTasks.length
+          });
+        }
+      }
+
       res.json({
         activeSession: session,
         tasks: userTasks,
+        checklists: userChecklists,
       });
     } catch (error: any) {
       console.error("Error getting session:", error);
@@ -27168,11 +27220,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Aylık puantaj alınamadı" });
     }
   });
-
-  const httpServer = createServer(app);
-  return httpServer;
-}
-
 
   // ========================================
   // ŞUBE PUANTAJ HESAPLAMA API'LERİ
@@ -27515,3 +27562,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Puantaj onaylanamadı" });
     }
   });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}

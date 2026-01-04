@@ -59,6 +59,14 @@ interface Session {
   status: string;
 }
 
+interface Checklist {
+  id: number;
+  name: string;
+  pendingTasks: number;
+  completedTasks: number;
+  totalTasks: number;
+}
+
 interface Task {
   id: number;
   title: string;
@@ -104,6 +112,7 @@ export default function BranchKiosk() {
   const [pinInput, setPinInput] = useState('');
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [userTasks, setUserTasks] = useState<Task[]>([]);
+  const [userChecklists, setUserChecklists] = useState<Checklist[]>([]);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
@@ -229,6 +238,9 @@ export default function BranchKiosk() {
       }
       if (data.tasks) {
         setUserTasks(data.tasks);
+      }
+      if (data.checklists) {
+        setUserChecklists(data.checklists);
       }
     } catch (error) {
       console.error("Error fetching session details:", error);
@@ -715,6 +727,46 @@ export default function BranchKiosk() {
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Checklistlerim
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {userChecklists.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                <p>Atanmış checklist yok</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {userChecklists.map((checklist) => (
+                  <div
+                    key={checklist.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border bg-card"
+                    data-testid={`checklist-item-${checklist.id}`}
+                  >
+                    <div className="p-2 rounded-full bg-green-100 text-green-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{checklist.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {checklist.completedTasks}/{checklist.totalTasks} tamamlandı
+                      </p>
+                    </div>
+                    <Badge variant={checklist.pendingTasks === 0 ? 'default' : 'secondary'}>
+                      {checklist.pendingTasks === 0 ? 'Tamamlandı' : `${checklist.pendingTasks} bekliyor`}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -890,3 +942,4 @@ export default function BranchKiosk() {
     </>
   );
 }
+
