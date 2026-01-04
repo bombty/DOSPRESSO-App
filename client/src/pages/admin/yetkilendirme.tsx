@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -292,6 +292,7 @@ function DraggableModuleItem({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(label);
+  const hasSavedRef = useRef(false);
   const {
     attributes,
     listeners,
@@ -307,12 +308,14 @@ function DraggableModuleItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const handleSave = () => {
-    if (editValue.trim() && onLabelChange) {
+  const handleSave = useCallback(() => {
+    if (hasSavedRef.current) return;
+    hasSavedRef.current = true;
+    if (editValue.trim() && editValue.trim() !== label && onLabelChange) {
       onLabelChange(id, editValue.trim());
     }
     setIsEditing(false);
-  };
+  }, [editValue, label, id, onLabelChange]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -321,6 +324,12 @@ function DraggableModuleItem({
       setEditValue(label);
       setIsEditing(false);
     }
+  };
+
+  const startEditing = () => {
+    setEditValue(label); // Reset to current label when starting edit
+    hasSavedRef.current = false;
+    setIsEditing(true);
   };
 
   return (
@@ -348,6 +357,7 @@ function DraggableModuleItem({
             size="icon" 
             variant="ghost" 
             className="h-5 w-5"
+            onMouseDown={(e) => e.preventDefault()} // Prevent blur from firing
             onClick={handleSave}
             data-testid={`button-save-module-${id}`}
           >
@@ -364,7 +374,7 @@ function DraggableModuleItem({
               className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsEditing(true);
+                startEditing();
               }}
               data-testid={`button-edit-module-${id}`}
             >
@@ -395,6 +405,7 @@ function DroppableMegaModule({
 }) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(customTitle || megaModule.title);
+  const hasSavedRef = useRef(false);
   const { setNodeRef, isOver } = useDroppable({
     id: megaModule.id,
   });
@@ -402,12 +413,14 @@ function DroppableMegaModule({
   const Icon = megaModule.icon;
   const displayTitle = customTitle || megaModule.title;
 
-  const handleSaveTitle = () => {
-    if (titleValue.trim() && onTitleChange) {
+  const handleSaveTitle = useCallback(() => {
+    if (hasSavedRef.current) return;
+    hasSavedRef.current = true;
+    if (titleValue.trim() && titleValue.trim() !== displayTitle && onTitleChange) {
       onTitleChange(megaModule.id, titleValue.trim());
     }
     setIsEditingTitle(false);
-  };
+  }, [titleValue, displayTitle, megaModule.id, onTitleChange]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -416,6 +429,12 @@ function DroppableMegaModule({
       setTitleValue(displayTitle);
       setIsEditingTitle(false);
     }
+  };
+
+  const startEditing = () => {
+    setTitleValue(displayTitle); // Reset to current title when starting edit
+    hasSavedRef.current = false;
+    setIsEditingTitle(true);
   };
 
   return (
@@ -445,6 +464,7 @@ function DroppableMegaModule({
                   size="icon" 
                   variant="ghost" 
                   className="h-6 w-6"
+                  onMouseDown={(e) => e.preventDefault()} // Prevent blur from firing
                   onClick={handleSaveTitle}
                   data-testid={`button-save-mega-title-${megaModule.id}`}
                 >
@@ -459,10 +479,7 @@ function DroppableMegaModule({
                     size="icon"
                     variant="ghost"
                     className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                    onClick={() => {
-                      setTitleValue(displayTitle);
-                      setIsEditingTitle(true);
-                    }}
+                    onClick={startEditing}
                     data-testid={`button-edit-mega-title-${megaModule.id}`}
                   >
                     <Pencil className="h-3 w-3" />
