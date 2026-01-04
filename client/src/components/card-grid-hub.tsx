@@ -103,64 +103,91 @@ export function CardGridHub() {
     // Don't filter by items.length - preserve section metadata
 
   // 8 Mega-module definitions - comprehensive mapping of ALL known section IDs
-  // Database section slugs: dashboard, ai, subeler, operasyon, vardiya, finans, ik, kalite, akademi, bilgi-bankasi, destek, projeler, yonetim
+  // MENU_BLUEPRINT Section IDs: dashboard-hq, dashboard-branch, fabrika, equipment-maintenance, 
+  // branch-management, operations, hr-shifts, training-academy, analytics-reports, 
+  // quality-customer, finance, projects, communication, management
   const MEGA_MODULE_MAPPING: Record<string, string[]> = {
     "operations": [
+      // MENU_BLUEPRINT section IDs
+      "dashboard-hq", "dashboard-branch", "operations", "branch-management",
       // English variations
-      "tasks", "tasks-hq", "tasks-branch", "tasks-section", "operations", "operations-hq", "operations-branch",
+      "tasks", "tasks-hq", "tasks-branch", "tasks-section", "operations-hq", "operations-branch",
       "checklists", "checklists-hq", "checklists-branch", "checklists-section",
-      "dashboard-branch", "dashboard-hq", "dashboard",
+      "dashboard", "lost-found", "lost-found-hq",
       // Turkish DB slugs
       "operasyon", "subeler"
     ],
     "equipment": [
+      // MENU_BLUEPRINT section IDs
+      "equipment-maintenance",
+      // English variations
       "equipment", "equipment-hq", "equipment-branch", "equipment-section",
       "faults", "faults-hq", "faults-branch", "faults-section",
-      "maintenance", "maintenance-hq", "maintenance-section"
+      "maintenance", "maintenance-hq", "maintenance-section",
+      "qr-scan"
     ],
     "hr": [
+      // MENU_BLUEPRINT section IDs
+      "hr-shifts", "finance",
       // English variations
       "hr", "hr-hq", "hr-branch", "hr-section", "personel", "personel-section",
       "shifts", "shifts-hq", "shifts-branch", "shifts-section",
       "attendance", "attendance-section", "payroll", "payroll-section",
+      "branch-shift-tracking",
       // Turkish DB slugs  
       "vardiya", "vardiyalar", "ik", "finans"
     ],
     "training": [
+      // MENU_BLUEPRINT section IDs
+      "training-academy",
       // English variations
       "training", "training-hq", "training-branch", "training-section",
       "academy", "academy-hq", "academy-branch", "academy-section",
-      "education", "education-section",
+      "education", "education-section", "knowledge-base",
       // Turkish DB slugs
       "akademi", "bilgi-bankasi"
     ],
     "kitchen": [
+      // MENU_BLUEPRINT section IDs
+      "fabrika",
+      // English variations
       "kitchen", "kitchen-hq", "kitchen-branch", "kitchen-section",
       "recipes", "recipes-hq", "recipes-branch", "recipes-section", "tarifler",
-      "menu", "menu-section"
+      "menu", "menu-section",
+      "factory", "factory-dashboard", "factory-kiosk", "factory-quality", 
+      "factory-stations", "factory-analytics", "factory-compliance"
     ],
     "reports": [
+      // MENU_BLUEPRINT section IDs
+      "analytics-reports", "quality-customer",
       // English variations
       "reports", "reports-hq", "reports-branch", "reports-section", "raporlar",
       "analytics", "analytics-hq", "analytics-section",
       "quality", "quality-hq", "quality-branch", "quality-section",
+      "performance-dashboard", "ai-chat", "quality-control", "customer-satisfaction",
       // Turkish DB slugs
       "kalite"
     ],
     "newshop": [
+      // MENU_BLUEPRINT section IDs
+      "projects",
       // English variations
-      "projects", "projects-hq", "projects-section",
+      "projects-hq", "projects-section", "project-list",
       "newshop", "newshop-section", "new-shop", "new-shop-opening",
       // Turkish DB slugs
       "projeler"
     ],
     "admin": [
+      // MENU_BLUEPRINT section IDs
+      "management", "communication",
       // English variations
       "admin", "admin-hq", "admin-section",
       "settings", "settings-hq", "settings-section",
       "support", "support-hq", "support-section",
       "system", "system-section",
-      "management", "management-hq", "management-section",
+      "management-hq", "management-section",
+      "users", "announcements", "bulk-data",
+      "hq-support", "notifications", "messages",
       // Turkish DB slugs
       "yonetim", "ayarlar", "destek", "ai"
     ],
