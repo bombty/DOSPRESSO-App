@@ -103,11 +103,15 @@ export function CardGridHub() {
     // Don't filter by items.length - preserve section metadata
 
   // 8 Mega-module definitions - comprehensive mapping of ALL known section IDs
+  // Database section slugs: dashboard, ai, subeler, operasyon, vardiya, finans, ik, kalite, akademi, bilgi-bankasi, destek, projeler, yonetim
   const MEGA_MODULE_MAPPING: Record<string, string[]> = {
     "operations": [
+      // English variations
       "tasks", "tasks-hq", "tasks-branch", "tasks-section", "operations", "operations-hq", "operations-branch",
       "checklists", "checklists-hq", "checklists-branch", "checklists-section",
-      "dashboard-branch", "dashboard-hq", "dashboard"
+      "dashboard-branch", "dashboard-hq", "dashboard",
+      // Turkish DB slugs
+      "operasyon", "subeler"
     ],
     "equipment": [
       "equipment", "equipment-hq", "equipment-branch", "equipment-section",
@@ -115,14 +119,20 @@ export function CardGridHub() {
       "maintenance", "maintenance-hq", "maintenance-section"
     ],
     "hr": [
+      // English variations
       "hr", "hr-hq", "hr-branch", "hr-section", "personel", "personel-section",
-      "shifts", "shifts-hq", "shifts-branch", "shifts-section", "vardiya", "vardiyalar",
-      "attendance", "attendance-section", "payroll", "payroll-section"
+      "shifts", "shifts-hq", "shifts-branch", "shifts-section",
+      "attendance", "attendance-section", "payroll", "payroll-section",
+      // Turkish DB slugs  
+      "vardiya", "vardiyalar", "ik", "finans"
     ],
     "training": [
+      // English variations
       "training", "training-hq", "training-branch", "training-section",
-      "academy", "academy-hq", "academy-branch", "academy-section", "akademi",
-      "education", "education-section"
+      "academy", "academy-hq", "academy-branch", "academy-section",
+      "education", "education-section",
+      // Turkish DB slugs
+      "akademi", "bilgi-bankasi"
     ],
     "kitchen": [
       "kitchen", "kitchen-hq", "kitchen-branch", "kitchen-section",
@@ -130,19 +140,28 @@ export function CardGridHub() {
       "menu", "menu-section"
     ],
     "reports": [
+      // English variations
       "reports", "reports-hq", "reports-branch", "reports-section", "raporlar",
       "analytics", "analytics-hq", "analytics-section",
-      "quality", "quality-hq", "quality-branch", "quality-section", "kalite"
+      "quality", "quality-hq", "quality-branch", "quality-section",
+      // Turkish DB slugs
+      "kalite"
     ],
     "newshop": [
-      "projects", "projects-hq", "projects-section", "projeler",
-      "newshop", "newshop-section", "new-shop", "new-shop-opening"
+      // English variations
+      "projects", "projects-hq", "projects-section",
+      "newshop", "newshop-section", "new-shop", "new-shop-opening",
+      // Turkish DB slugs
+      "projeler"
     ],
     "admin": [
-      "admin", "admin-hq", "admin-section", "yonetim",
-      "settings", "settings-hq", "settings-section", "ayarlar",
-      "support", "support-hq", "support-section", "destek",
-      "system", "system-section"
+      // English variations
+      "admin", "admin-hq", "admin-section",
+      "settings", "settings-hq", "settings-section",
+      "support", "support-hq", "support-section",
+      "system", "system-section",
+      // Turkish DB slugs
+      "yonetim", "ayarlar", "destek", "ai"
     ],
   };
 
