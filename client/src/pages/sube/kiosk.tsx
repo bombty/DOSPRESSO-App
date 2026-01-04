@@ -61,7 +61,30 @@ export default function BranchKiosk() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const params = useParams();
-  const branchId = params.branchId ? parseInt(params.branchId) : 1;
+  
+  // Check for existing branch auth from sessionStorage (from branch dashboard login)
+  const [branchAuth, setBranchAuth] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const branchAuthStr = sessionStorage.getItem('branchAuth');
+      if (branchAuthStr) {
+        try {
+          const parsed = JSON.parse(branchAuthStr);
+          setBranchAuth(parsed);
+          // If branch auth exists, skip password step and go directly to user selection
+          setStep('select-user');
+        } catch (e) {
+          console.error('Failed to parse branchAuth', e);
+        }
+      }
+      setAuthChecked(true);
+    }
+  }, []);
+  
+  // Use branchAuth.id if available, otherwise fall back to route params or default
+  const branchId = branchAuth?.id || (params.branchId ? parseInt(params.branchId) : 1);
   
   const [step, setStep] = useState<KioskStep>('password');
   const [kioskPassword, setKioskPassword] = useState('');
