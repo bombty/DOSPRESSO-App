@@ -106,7 +106,6 @@ import {
   handoverLostFoundItemSchema,
   shifts,
   tasks,
-  checklists,
   equipmentFaults,
   equipment,
   users,
@@ -240,7 +239,6 @@ import {
   insertBranchWeeklyAttendanceSummarySchema,
   insertBranchMonthlyPayrollSummarySchema,
   insertBranchKioskSettingsSchema,
-  dashboardAlerts,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray, lte, gte } from "drizzle-orm";
@@ -1156,6 +1154,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/tasks/my - Get tasks assigned to current user
+  app.get('/api/tasks/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const allTasks = await storage.getTasks();
+      const myTasks = allTasks.filter((task: any) => task.assignedToId === user.id);
+      res.json(myTasks);
+    } catch (error: any) {
+      console.error('Error getting my tasks:', error);
+      res.status(500).json({ message: 'Görevler alınamadı' });
+    }
+  });
+
   app.get('/api/tasks/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
@@ -1506,22 +1517,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================
-  // GET /api/tasks/my - Get tasks assigned to current user
-  app.get('/api/tasks/my', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      
-      // Get all tasks assigned to current user
-      const allTasks = await storage.getTasks();
-      const myTasks = allTasks.filter((task: any) => task.assignedToId === user.id);
-      
-      res.json(myTasks);
-    } catch (error: any) {
-      console.error("Error getting my tasks:", error);
-      res.status(500).json({ message: "Görevler alınamadı" });
-    }
-  });
-
   // ONBOARDING CHECKER ENDPOINTS
   // =============================================
 
@@ -2495,7 +2490,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-// GET /api/checklists/my-assignments - Get checklists assigned to current user  app.get('/api/checklists/my-assignments', isAuthenticated, async (req: any, res) => {    try {      const user = req.user!;            // Get all checklists      const allChecklists = await storage.getChecklists();            // Filter checklists where user is assigned (as barista, supervisor, etc in any task)      const myChecklists = [];      for (const checklist of allChecklists) {        const tasks = await storage.getChecklistTasks(checklist.id);        const isAssigned = tasks.some((task: any) =>           task.assignedBaristaId === user.id ||           task.assignedSupervisorId === user.id ||           task.verifiedByUserId === user.id        );        if (isAssigned) {          myChecklists.push({            ...checklist,            checklistTitle: checklist.name,            pendingTasks: tasks.filter((t: any) => !t.completedAt).length,            completedTasks: tasks.filter((t: any) => t.completedAt).length          });        }      }            res.json(myChecklists);    } catch (error: any) {      console.error('Error getting my checklist assignments:', error);      res.status(500).json({ message: 'Checklist atamaları alınamadı' });    }  });
+  // GET /api/checklists/my-assignments - Get checklists assigned to current user
+  app.get('/api/checklists/my-assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const allChecklists = await storage.getChecklists();
+      const myChecklists = [];
+      
+      for (const checklist of allChecklists) {
+        const tasks = await storage.getChecklistTasks(checklist.id);
+        const isAssigned = tasks.some((task: any) => 
+          task.assignedBaristaId === user.id || 
+          task.assignedSupervisorId === user.id || 
+          task.verifiedByUserId === user.id
+        );
+        if (isAssigned) {
+          myChecklists.push({
+            ...checklist,
+            checklistTitle: checklist.name,
+            pendingTasks: tasks.filter((t: any) => !t.completedAt).length,
+            completedTasks: tasks.filter((t: any) => t.completedAt).length
+          });
+        }
+      }
+      
+      res.json(myChecklists);
+    } catch (error: any) {
+      console.error('Error getting my checklist assignments:', error);
+      res.status(500).json({ message: 'Checklist atamaları alınamadı' });
+    }
+  });
+
   app.get('/api/checklists/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
@@ -12897,21 +12922,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Sadece kendi şubeniz için vardiya oluşturabilirsiniz" });
       }
       
-      // Check for duplicate shift - same employee on same day
-      if (validated.assignedToId) {
-        const existingShifts = await storage.getShifts(validated.branchId);
-        const duplicateShift = existingShifts.find(s => 
-          s.assignedToId === validated.assignedToId && 
-          s.shiftDate === validated.shiftDate
-        );
-        if (duplicateShift) {
-          return res.status(400).json({ 
-            message: "Bu personel aynı gün için zaten vardiyaya atanmış",
-            existingShiftId: duplicateShift.id 
-          });
-        }
-      }
-
       const shift = await storage.createShift({
         ...validated,
         createdById: user.id,
@@ -12985,32 +12995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createdShifts = [];
       const notifiedEmployees = new Set<string>();
       
-      // Get existing shifts for duplicate checking
-      const branchIds = [...new Set(shiftsData.map(s => s.branchId))];
-      const allExistingShifts: any[] = [];
-      for (const bId of branchIds) {
-        const branchShifts = await storage.getShifts(bId);
-        allExistingShifts.push(...branchShifts);
-      }
-      
-      const skippedDuplicates: string[] = [];
-      
       for (const shiftData of shiftsData) {
-        // Check for duplicate shift - same employee on same day
-        if (shiftData.assignedToId) {
-          const isDuplicate = allExistingShifts.some(s => 
-            s.assignedToId === shiftData.assignedToId && 
-            s.shiftDate === shiftData.shiftDate
-          ) || createdShifts.some(s => 
-            s.assignedToId === shiftData.assignedToId && 
-            s.shiftDate === shiftData.shiftDate
-          );
-          if (isDuplicate) {
-            skippedDuplicates.push(`${shiftData.shiftDate} - ${shiftData.assignedToId}`);
-            continue; // Skip this shift
-          }
-        }
-        
         const shift = await storage.createShift({
           ...shiftData,
           createdById: user.id,
@@ -26511,43 +26496,12 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
-  // Kiosk parolası doğrula (username + password)
+  // Kiosk parolası doğrula
   app.post('/api/branches/:branchId/kiosk/verify-password', async (req, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
-      const { username, password } = req.body;
+      const { password } = req.body;
       
-      // Önce branches tablosundan kiosk bilgilerini al
-      const [branch] = await db.select({
-        kioskUsername: branches.kioskUsername,
-        kioskPassword: branches.kioskPassword,
-        name: branches.name,
-      }).from(branches)
-        .where(eq(branches.id, branchId))
-        .limit(1);
-      
-      // Eğer branches tablosunda kiosk bilgileri varsa kullan
-      if (branch?.kioskUsername && branch?.kioskPassword) {
-        // Kullanıcı adı kontrolü (case-insensitive, normalize Turkish chars)
-        const normalizeStr = (s: string) => s.toLowerCase()
-          .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
-          .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
-        
-        const inputUsername = normalizeStr(username || '');
-        const storedUsername = normalizeStr(branch.kioskUsername);
-        
-        if (inputUsername !== storedUsername) {
-          return res.status(401).json({ message: "Hatalı kullanıcı adı" });
-        }
-        
-        if (password !== branch.kioskPassword) {
-          return res.status(401).json({ message: "Hatalı parola" });
-        }
-        
-        return res.json({ success: true, branchName: branch.name });
-      }
-      
-      // Fallback: branchKioskSettings tablosundan kontrol et
       const [settings] = await db.select().from(branchKioskSettings)
         .where(eq(branchKioskSettings.branchId, branchId))
         .limit(1);
@@ -26565,33 +26519,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Parola doğrulanamadı" });
     }
   });
-  
-  // Şube kiosk bilgilerini getir (username göstermek için)
-  app.get('/api/branches/:branchId/kiosk/info', async (req, res) => {
-    try {
-      const branchId = parseInt(req.params.branchId);
-      const [branch] = await db.select({
-        id: branches.id,
-        name: branches.name,
-        kioskUsername: branches.kioskUsername,
-      }).from(branches)
-        .where(eq(branches.id, branchId))
-        .limit(1);
-      
-      if (!branch) {
-        return res.status(404).json({ message: "Şube bulunamadı" });
-      }
-      
-      res.json({ 
-        branchId: branch.id,
-        branchName: branch.name,
-        hasKioskCredentials: !!branch.kioskUsername,
-      });
-    } catch (error: any) {
-      console.error("Error getting kiosk info:", error);
-      res.status(500).json({ message: "Bilgiler alınamadı" });
-    }
-  });
+
   // Şube personeli listesi (kiosk için)
   app.get('/api/branches/:branchId/kiosk/staff', async (req, res) => {
     try {
@@ -26768,72 +26696,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         eventType: 'check_in',
         eventTime: now,
       });
-
-      // Check for scheduled shift and lateness
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
-      
-      // Find today's scheduled shift for this user
-      const [scheduledShift] = await db.select({
-        id: shiftAttendance.id,
-        scheduledStartTime: shiftAttendance.scheduledStartTime,
-        shiftId: shiftAttendance.shiftId,
-      }).from(shiftAttendance)
-        .where(and(
-          eq(shiftAttendance.userId, userId),
-          gte(shiftAttendance.scheduledStartTime, startOfDay),
-          lte(shiftAttendance.scheduledStartTime, endOfDay)
-        ))
-        .limit(1);
-      
-      if (scheduledShift && scheduledShift.scheduledStartTime) {
-        const scheduledTime = new Date(scheduledShift.scheduledStartTime);
-        const latenessMinutes = Math.max(0, Math.floor((now.getTime() - scheduledTime.getTime()) / 60000));
-        
-        // If more than 5 minutes late, create warning alert
-        if (latenessMinutes > 5) {
-          const userInfo = await db.select({ firstName: users.firstName, lastName: users.lastName })
-            .from(users).where(eq(users.id, userId)).limit(1);
-          const userName = userInfo[0] ? `${userInfo[0].firstName} ${userInfo[0].lastName}` : userId;
-          
-          await db.insert(dashboardAlerts).values({
-            context: 'branch',
-            contextId: branchId,
-            triggerType: 'late_clock_in',
-            severity: latenessMinutes > 30 ? 'critical' : 'warning',
-            status: 'active',
-            title: 'Geç Giriş Uyarısı',
-            message: `${userName} vardiyasına ${latenessMinutes} dakika geç başladı.`,
-            relatedUserId: userId,
-            relatedShiftId: scheduledShift.shiftId,
-          });
-        }
-        
-        // Update shiftAttendance with actual check-in time
-        await db.update(shiftAttendance)
-          .set({ 
-            checkInTime: now,
-            latenessMinutes: latenessMinutes,
-          })
-          .where(eq(shiftAttendance.id, scheduledShift.id));
-      } else {
-        // No scheduled shift - create info alert
-        const userInfo = await db.select({ firstName: users.firstName, lastName: users.lastName })
-          .from(users).where(eq(users.id, userId)).limit(1);
-        const userName = userInfo[0] ? `${userInfo[0].firstName} ${userInfo[0].lastName}` : userId;
-        
-        await db.insert(dashboardAlerts).values({
-          context: 'branch',
-          contextId: branchId,
-          triggerType: 'unscheduled_clock_in',
-          severity: 'info',
-          status: 'active',
-          title: 'Planlanmamış Giriş',
-          message: `${userName} vardiya planlamasında olmadan giriş yaptı.`,
-          relatedUserId: userId,
-        });
-      }
 
       res.json({
         success: true,
@@ -27307,6 +27169,9 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  const httpServer = createServer(app);
+  return httpServer;
+}
 
 
   // ========================================
@@ -27650,671 +27515,3 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       res.status(500).json({ message: "Puantaj onaylanamadı" });
     }
   });
-
-
-  // İK Aylık Puantaj Excel Export
-  app.get('/api/branches/:branchId/attendance/export-monthly', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const role = user.role as UserRoleType;
-      const branchId = parseInt(req.params.branchId);
-      
-      // Yetki kontrolü
-      if (!isHQRole(role) && role !== 'supervisor') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
-      }
-      
-      if (role === 'supervisor' && user.branchId !== branchId) {
-        return res.status(403).json({ message: "Sadece kendi şubeniz için export yapabilirsiniz" });
-      }
-
-      const { month, year } = req.query;
-      const targetMonth = month ? parseInt(String(month)) : new Date().getMonth() + 1;
-      const targetYear = year ? parseInt(String(year)) : new Date().getFullYear();
-
-      // Şube bilgisi
-      const branch = await storage.getBranch(branchId);
-      if (!branch) {
-        return res.status(404).json({ message: "Şube bulunamadı" });
-      }
-
-      // Aylık özetleri al
-      const summaries = await db.select({
-        summary: branchMonthlyPayrollSummary,
-        user: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          role: users.role,
-        }
-      }).from(branchMonthlyPayrollSummary)
-        .leftJoin(users, eq(branchMonthlyPayrollSummary.userId, users.id))
-        .where(and(
-          eq(branchMonthlyPayrollSummary.branchId, branchId),
-          eq(branchMonthlyPayrollSummary.month, targetMonth),
-          eq(branchMonthlyPayrollSummary.year, targetYear)
-        ))
-        .orderBy(users.firstName);
-
-      // Excel verisi hazırla
-      const excelData = summaries.map((s, index) => ({
-        'Sıra': index + 1,
-        'Ad Soyad': s.user ? `${s.user.firstName} ${s.user.lastName}` : 'Bilinmiyor',
-        'Pozisyon': s.user?.role || '',
-        'Çalışılan Gün': s.summary.totalWorkDays || 0,
-        'Toplam Çalışma (Saat)': Math.round((s.summary.totalNetWorkMinutes || 0) / 60 * 10) / 10,
-        'Fazla Mesai (Saat)': Math.round((s.summary.totalOvertimeMinutes || 0) / 60 * 10) / 10,
-        'Eksik Saat': Math.round((s.summary.totalMissingMinutes || 0) / 60 * 10) / 10,
-        'Devamsızlık': s.summary.absentDays || 0,
-        'Geç Kalma': s.summary.lateDays || 0,
-        'Erken Çıkış': s.summary.earlyLeaveDays || 0,
-        'Ücretli İzin': s.summary.paidLeaveDays || 0,
-        'Ücretsiz İzin': s.summary.unpaidLeaveDays || 0,
-        'Sağlık İzni': s.summary.sickLeaveDays || 0,
-        'Resmi Tatil': s.summary.publicHolidayDays || 0,
-        'Durum': s.summary.calculationStatus === 'approved' ? 'Onaylı' : s.summary.calculationStatus === 'rejected' ? 'Reddedildi' : 'Beklemede',
-      }));
-
-      // Excel oluştur
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
-
-      // Sütun genişlikleri
-      ws['!cols'] = [
-        { wch: 5 },  // Sıra
-        { wch: 25 }, // Ad Soyad
-        { wch: 15 }, // Pozisyon
-        { wch: 12 }, // Çalışılan Gün
-        { wch: 18 }, // Toplam Çalışma
-        { wch: 15 }, // Fazla Mesai
-        { wch: 12 }, // Eksik Saat
-        { wch: 12 }, // Devamsızlık
-        { wch: 10 }, // Geç Kalma
-        { wch: 12 }, // Erken Çıkış
-        { wch: 12 }, // Ücretli İzin
-        { wch: 12 }, // Ücretsiz İzin
-        { wch: 12 }, // Sağlık İzni
-        { wch: 12 }, // Resmi Tatil
-        { wch: 12 }, // Durum
-      ];
-
-      const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-      const sheetName = `${monthNames[targetMonth - 1]} ${targetYear}`;
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
-      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=puantaj_${branch.name.replace(/\s+/g, '_')}_${targetYear}_${targetMonth}.xlsx`);
-      res.send(buffer);
-    } catch (error: any) {
-      console.error("Error exporting monthly payroll:", error);
-      res.status(500).json({ message: "Excel export başarısız" });
-    }
-  });
-
-  // İK Haftalık Eksik Saat Raporu
-  app.get('/api/branches/:branchId/attendance/missing-hours-report', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const role = user.role as UserRoleType;
-      const branchId = parseInt(req.params.branchId);
-      
-      // Yetki kontrolü
-      if (!isHQRole(role) && role !== 'supervisor') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
-      }
-
-      const { weekStartDate } = req.query;
-      if (!weekStartDate) {
-        return res.status(400).json({ message: "Hafta başlangıç tarihi gerekli" });
-      }
-
-      // Eksik saati olan personelleri al
-      const summaries = await db.select({
-        summary: branchWeeklyAttendanceSummary,
-        user: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          role: users.role,
-        }
-      }).from(branchWeeklyAttendanceSummary)
-        .leftJoin(users, eq(branchWeeklyAttendanceSummary.userId, users.id))
-        .where(and(
-          eq(branchWeeklyAttendanceSummary.branchId, branchId),
-          eq(branchWeeklyAttendanceSummary.weekStartDate, String(weekStartDate)),
-          gt(branchWeeklyAttendanceSummary.missingMinutes, 0)
-        ))
-        .orderBy(desc(branchWeeklyAttendanceSummary.missingMinutes));
-
-      const report = summaries.map(s => ({
-        userId: s.user?.id,
-        userName: s.user ? `${s.user.firstName} ${s.user.lastName}` : 'Bilinmiyor',
-        role: s.user?.role,
-        weekNumber: s.summary.weekNumber,
-        plannedMinutes: s.summary.plannedTotalMinutes,
-        actualMinutes: s.summary.actualTotalMinutes,
-        missingMinutes: s.summary.missingMinutes,
-        missingHours: Math.round((s.summary.missingMinutes || 0) / 60 * 10) / 10,
-        workDays: s.summary.workDays,
-        complianceStatus: s.summary.complianceStatus,
-      }));
-
-      res.json({
-        weekStartDate,
-        totalStaffWithMissingHours: report.length,
-        totalMissingHours: Math.round(report.reduce((sum, r) => sum + (r.missingMinutes || 0), 0) / 60 * 10) / 10,
-        details: report,
-      });
-    } catch (error: any) {
-      console.error("Error fetching missing hours report:", error);
-      res.status(500).json({ message: "Eksik saat raporu alınamadı" });
-    }
-  });
-
-  // Tüm şubeler için özet compliance raporu (HQ için)
-  app.get('/api/attendance/compliance-summary', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const role = user.role as UserRoleType;
-      
-      // Sadece HQ
-      if (!isHQRole(role)) {
-        return res.status(403).json({ message: "Bu rapor için HQ yetkisi gerekli" });
-      }
-
-      const { month, year } = req.query;
-      const targetMonth = month ? parseInt(String(month)) : new Date().getMonth() + 1;
-      const targetYear = year ? parseInt(String(year)) : new Date().getFullYear();
-
-      // Tüm şubelerin aylık özetlerini al
-      const allSummaries = await db.select({
-        branchId: branchMonthlyPayrollSummary.branchId,
-        totalWorkMinutes: branchMonthlyPayrollSummary.totalNetWorkMinutes,
-        overtimeMinutes: branchMonthlyPayrollSummary.totalOvertimeMinutes,
-        missingMinutes: branchMonthlyPayrollSummary.totalMissingMinutes,
-        absentDays: branchMonthlyPayrollSummary.absentDays,
-        lateDays: branchMonthlyPayrollSummary.lateDays,
-        status: branchMonthlyPayrollSummary.calculationStatus,
-      }).from(branchMonthlyPayrollSummary)
-        .where(and(
-          eq(branchMonthlyPayrollSummary.month, targetMonth),
-          eq(branchMonthlyPayrollSummary.year, targetYear)
-        ));
-
-      // Şube bazında grupla
-      const branchStats: Record<number, any> = {};
-      for (const s of allSummaries) {
-        if (!branchStats[s.branchId]) {
-          branchStats[s.branchId] = {
-            branchId: s.branchId,
-            staffCount: 0,
-            totalWorkHours: 0,
-            totalOvertimeHours: 0,
-            totalMissingHours: 0,
-            totalAbsentDays: 0,
-            totalLateDays: 0,
-            approvedCount: 0,
-            pendingCount: 0,
-          };
-        }
-        branchStats[s.branchId].staffCount++;
-        branchStats[s.branchId].totalWorkHours += (s.totalWorkMinutes || 0) / 60;
-        branchStats[s.branchId].totalOvertimeHours += (s.overtimeMinutes || 0) / 60;
-        branchStats[s.branchId].totalMissingHours += (s.missingMinutes || 0) / 60;
-        branchStats[s.branchId].totalAbsentDays += s.absentDays || 0;
-        branchStats[s.branchId].totalLateDays += s.lateDays || 0;
-        if (s.status === 'approved') branchStats[s.branchId].approvedCount++;
-        else branchStats[s.branchId].pendingCount++;
-      }
-
-      // Şube isimlerini ekle
-      const branchList = await db.select().from(branches).where(eq(branches.isActive, true));
-      const branchMap = new Map(branchList.map(b => [b.id, b.name]));
-
-      const report = Object.values(branchStats).map((stat: any) => ({
-        ...stat,
-        branchName: branchMap.get(stat.branchId) || 'Bilinmiyor',
-        totalWorkHours: Math.round(stat.totalWorkHours * 10) / 10,
-        totalOvertimeHours: Math.round(stat.totalOvertimeHours * 10) / 10,
-        totalMissingHours: Math.round(stat.totalMissingHours * 10) / 10,
-        complianceRate: stat.staffCount > 0 
-          ? Math.round((1 - stat.totalMissingHours / (stat.staffCount * 180)) * 100) // 180 saat = aylık hedef
-          : 100,
-      }));
-
-      res.json({
-        month: targetMonth,
-        year: targetYear,
-        totalBranches: report.length,
-        overallStats: {
-          totalStaff: report.reduce((sum, r) => sum + r.staffCount, 0),
-          totalWorkHours: Math.round(report.reduce((sum, r) => sum + r.totalWorkHours, 0) * 10) / 10,
-          totalOvertimeHours: Math.round(report.reduce((sum, r) => sum + r.totalOvertimeHours, 0) * 10) / 10,
-          totalMissingHours: Math.round(report.reduce((sum, r) => sum + r.totalMissingHours, 0) * 10) / 10,
-        },
-        branches: report.sort((a, b) => b.complianceRate - a.complianceRate),
-      });
-    } catch (error: any) {
-      console.error("Error fetching compliance summary:", error);
-      res.status(500).json({ message: "Compliance özeti alınamadı" });
-    }
-  });
-
-  // Şube oturumlarını shiftAttendance ile senkronize et
-  app.post('/api/branches/:branchId/attendance/sync-shift-attendance', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const role = user.role as UserRoleType;
-      const branchId = parseInt(req.params.branchId);
-      
-      // Yetki kontrolü - HQ veya kendi şubesinin supervisor'ı
-      if (!isHQRole(role) && role !== 'supervisor') {
-        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
-      }
-      
-      // Supervisor sadece kendi şubesini senkronize edebilir
-      if (role === 'supervisor' && user.branchId !== branchId) {
-        return res.status(403).json({ message: "Sadece kendi şubeniz için senkronizasyon yapabilirsiniz" });
-      }
-
-      const { date } = req.body;
-      const targetDate = date ? new Date(date) : new Date();
-      const dateStr = targetDate.toISOString().split('T')[0];
-
-      // O gün için branchShiftSessions'ları al
-      const sessions = await db.select()
-        .from(branchShiftSessions)
-        .where(and(
-          eq(branchShiftSessions.branchId, branchId),
-          sql`DATE(${branchShiftSessions.checkInTime}) = ${dateStr}`
-        ));
-
-      let syncedCount = 0;
-      for (const session of sessions) {
-        // shiftAttendance kaydı yoksa veya güncellenmesi gerekiyorsa
-        if (!session.shiftAttendanceId && session.checkOutTime) {
-          // Yeni shiftAttendance kaydı oluştur
-          const [newAttendance] = await db.insert(shiftAttendance).values({
-            userId: session.userId,
-            branchId: branchId,
-            date: targetDate,
-            scheduledStartTime: session.checkInTime,
-            scheduledEndTime: session.checkOutTime,
-            actualStartTime: session.checkInTime,
-            actualEndTime: session.checkOutTime,
-            status: 'present',
-            checkMethod: 'kiosk',
-            isLate: session.isLate || false,
-            lateMinutes: session.lateMinutes || 0,
-            isEarlyLeave: false,
-            earlyLeaveMinutes: 0,
-            totalWorkMinutes: session.netWorkMinutes,
-            totalBreakMinutes: session.breakDuration,
-            isApproved: true,
-            approvedBy: user.id,
-            approvedAt: new Date(),
-          }).returning();
-
-          // branchShiftSessions'a referans ekle
-          await db.update(branchShiftSessions)
-            .set({ shiftAttendanceId: newAttendance.id })
-            .where(eq(branchShiftSessions.id, session.id));
-          
-          syncedCount++;
-        }
-      }
-
-      res.json({ 
-        message: `${syncedCount} kayıt senkronize edildi`,
-        date: dateStr,
-        totalSessions: sessions.length,
-        syncedCount
-      });
-    } catch (error: any) {
-      console.error("Error syncing shift attendance:", error);
-      res.status(500).json({ message: "Senkronizasyon başarısız" });
-    }
-  });
-
-  // Fabrika ve şube için ortak compliance özeti
-  app.get('/api/compliance/overall-summary', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user!;
-      const role = user.role as UserRoleType;
-      
-      // Sadece HQ
-      if (!isHQRole(role)) {
-        return res.status(403).json({ message: "Bu rapor için HQ yetkisi gerekli" });
-      }
-
-      const { month, year } = req.query;
-      const targetMonth = month ? parseInt(String(month)) : new Date().getMonth() + 1;
-      const targetYear = year ? parseInt(String(year)) : new Date().getFullYear();
-
-      // Şube compliance verileri
-      const branchData = await db.select({
-        branchId: branchMonthlyPayrollSummary.branchId,
-        staffCount: sql<number>`COUNT(*)`,
-        totalWorkMinutes: sql<number>`SUM(${branchMonthlyPayrollSummary.totalNetWorkMinutes})`,
-        totalOvertimeMinutes: sql<number>`SUM(${branchMonthlyPayrollSummary.totalOvertimeMinutes})`,
-        totalMissingMinutes: sql<number>`SUM(${branchMonthlyPayrollSummary.totalMissingMinutes})`,
-      }).from(branchMonthlyPayrollSummary)
-        .where(and(
-          eq(branchMonthlyPayrollSummary.month, targetMonth),
-          eq(branchMonthlyPayrollSummary.year, targetYear)
-        ))
-        .groupBy(branchMonthlyPayrollSummary.branchId);
-
-      // Fabrika compliance verileri
-      const factoryData = await db.select({
-        staffCount: sql<number>`COUNT(DISTINCT ${factoryShiftSessions.userId})`,
-        totalWorkMinutes: sql<number>`SUM(${factoryShiftSessions.netWorkMinutes})`,
-      }).from(factoryShiftSessions)
-        .where(and(
-          sql`EXTRACT(MONTH FROM ${factoryShiftSessions.checkInTime}) = ${targetMonth}`,
-          sql`EXTRACT(YEAR FROM ${factoryShiftSessions.checkInTime}) = ${targetYear}`
-        ));
-
-      const branchStats = {
-        type: 'branch',
-        totalBranches: branchData.length,
-        totalStaff: branchData.reduce((sum, b) => sum + (b.staffCount || 0), 0),
-        totalWorkHours: Math.round(branchData.reduce((sum, b) => sum + (b.totalWorkMinutes || 0), 0) / 60 * 10) / 10,
-        totalOvertimeHours: Math.round(branchData.reduce((sum, b) => sum + (b.totalOvertimeMinutes || 0), 0) / 60 * 10) / 10,
-        totalMissingHours: Math.round(branchData.reduce((sum, b) => sum + (b.totalMissingMinutes || 0), 0) / 60 * 10) / 10,
-      };
-
-      const factoryStats = {
-        type: 'factory',
-        totalStaff: factoryData[0]?.staffCount || 0,
-        totalWorkHours: Math.round((factoryData[0]?.totalWorkMinutes || 0) / 60 * 10) / 10,
-      };
-
-      // 45 saat/hafta = 180 saat/ay hedefi üzerinden uyum oranı
-      const targetMonthlyHours = 180;
-      const branchComplianceRate = branchStats.totalStaff > 0
-        ? Math.min(100, Math.round((branchStats.totalWorkHours / (branchStats.totalStaff * targetMonthlyHours)) * 100))
-        : 0;
-
-      res.json({
-        month: targetMonth,
-        year: targetYear,
-        branches: branchStats,
-        factory: factoryStats,
-        overallComplianceRate: branchComplianceRate,
-        targetHoursPerMonth: targetMonthlyHours,
-        note: "45 saat/hafta = yaklaşık 180 saat/ay hedefi baz alınmıştır"
-      });
-    } catch (error: any) {
-      console.error("Error fetching overall compliance:", error);
-      res.status(500).json({ message: "Genel uyum özeti alınamadı" });
-    }
-  });
-
-  // ========================================
-  // DASHBOARD ALERTS API
-  // Birleşik uyarı sistemi (Şube + Fabrika)
-  // ========================================
-
-  // Uyarıları getir (context bazlı)
-  app.get('/api/alerts/:context/:contextId', async (req, res) => {
-    try {
-      const { context, contextId } = req.params;
-      const { status, severity, limit: limitParam } = req.query;
-      const limitVal = parseInt(limitParam as string) || 50;
-      
-      const alerts = await db.select().from(dashboardAlerts)
-        .where(and(
-          eq(dashboardAlerts.context, context),
-          eq(dashboardAlerts.contextId, parseInt(contextId))
-        ))
-        .orderBy(desc(dashboardAlerts.occurredAt))
-        .limit(limitVal);
-      
-      let filteredAlerts = alerts;
-      if (status) {
-        filteredAlerts = filteredAlerts.filter(a => a.status === status);
-      }
-      if (severity) {
-        filteredAlerts = filteredAlerts.filter(a => a.severity === severity);
-      }
-      
-      res.json(filteredAlerts);
-    } catch (error: any) {
-      console.error("Error fetching alerts:", error);
-      res.status(500).json({ message: "Uyarılar alınamadı" });
-    }
-  });
-
-  // Aktif uyarı sayısını getir
-  app.get('/api/alerts/:context/:contextId/counts', async (req, res) => {
-    try {
-      const { context, contextId } = req.params;
-      
-      const alerts = await db.select().from(dashboardAlerts)
-        .where(and(
-          eq(dashboardAlerts.context, context),
-          eq(dashboardAlerts.contextId, parseInt(contextId)),
-          eq(dashboardAlerts.status, 'active')
-        ));
-      
-      const counts = {
-        total: alerts.length,
-        critical: alerts.filter(a => a.severity === 'critical').length,
-        warning: alerts.filter(a => a.severity === 'warning').length,
-        info: alerts.filter(a => a.severity === 'info').length,
-      };
-      
-      res.json(counts);
-    } catch (error: any) {
-      console.error("Error fetching alert counts:", error);
-      res.status(500).json({ message: "Uyarı sayıları alınamadı" });
-    }
-  });
-
-  // Yeni uyarı oluştur
-  app.post('/api/alerts', async (req, res) => {
-    try {
-      const alertData = req.body;
-      
-      const [newAlert] = await db.insert(dashboardAlerts).values({
-        context: alertData.context,
-        contextId: alertData.contextId,
-        triggerType: alertData.triggerType,
-        severity: alertData.severity || 'warning',
-        status: 'active',
-        title: alertData.title,
-        message: alertData.message,
-        payload: alertData.payload ? JSON.stringify(alertData.payload) : null,
-        relatedUserId: alertData.relatedUserId,
-        relatedShiftId: alertData.relatedShiftId,
-        relatedChecklistId: alertData.relatedChecklistId,
-        occurredAt: new Date(),
-        expiresAt: alertData.expiresAt ? new Date(alertData.expiresAt) : null,
-      }).returning();
-      
-      res.json(newAlert);
-    } catch (error: any) {
-      console.error("Error creating alert:", error);
-      res.status(500).json({ message: "Uyarı oluşturulamadı" });
-    }
-  });
-
-  app.patch('/api/alerts/:id/acknowledge', async (req, res) => {
-    try {
-      const alertId = parseInt(req.params.id);
-      const userId = req.body.userId;
-      
-      // Only set acknowledgedByUserId if it looks like a valid UUID
-      const isValidUUID = userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-      
-      const [updated] = await db.update(dashboardAlerts)
-        .set({
-          status: 'acknowledged',
-          acknowledgedAt: new Date(),
-          ...(isValidUUID ? { acknowledgedByUserId: userId } : {}),
-        })
-        .where(eq(dashboardAlerts.id, alertId))
-        .returning();
-      
-      res.json(updated);
-    } catch (error: any) {
-      console.error("Error acknowledging alert:", error);
-      res.status(500).json({ message: "Uyarı onaylanamadı" });
-    }
-  });
-
-  // Uyarıyı çöz (resolve)
-  app.patch('/api/alerts/:id/resolve', async (req, res) => {
-    try {
-      const alertId = parseInt(req.params.id);
-      const { userId, note } = req.body;
-      
-      // Only set resolvedByUserId if it looks like a valid UUID
-      const isValidUUID = userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-      
-      const [updated] = await db.update(dashboardAlerts)
-        .set({
-          status: 'resolved',
-          resolvedAt: new Date(),
-          ...(isValidUUID ? { resolvedByUserId: userId } : {}),
-          resolutionNote: note,
-        })
-        .where(eq(dashboardAlerts.id, alertId))
-        .returning();
-      
-      res.json(updated);
-    } catch (error: any) {
-      console.error("Error resolving alert:", error);
-      res.status(500).json({ message: "Uyarı çözülemedi" });
-    }
-  });
-
-  // Uyarıyı kapat (dismiss)
-  app.patch('/api/alerts/:id/dismiss', async (req, res) => {
-    try {
-      const alertId = parseInt(req.params.id);
-      
-      const [updated] = await db.update(dashboardAlerts)
-        .set({ status: 'dismissed' })
-        .where(eq(dashboardAlerts.id, alertId))
-        .returning();
-      
-      res.json(updated);
-    } catch (error: any) {
-      console.error("Error dismissing alert:", error);
-      res.status(500).json({ message: "Uyarı kapatılamadı" });
-    }
-  });
-
-  // Şube dashboard verileri - tek endpoint
-  app.get('/api/branch-dashboard/:branchId', async (req, res) => {
-    try {
-      const branchId = parseInt(req.params.branchId);
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
-      
-      // Şube bilgisi
-      const [branch] = await db.select().from(branches)
-        .where(eq(branches.id, branchId))
-        .limit(1);
-      
-      if (!branch) {
-        return res.status(404).json({ message: "Şube bulunamadı" });
-      }
-      
-      // Aktif uyarılar
-      const activeAlerts = await db.select().from(dashboardAlerts)
-        .where(and(
-          eq(dashboardAlerts.context, 'branch'),
-          eq(dashboardAlerts.contextId, branchId),
-          eq(dashboardAlerts.status, 'active')
-        ))
-        .orderBy(desc(dashboardAlerts.occurredAt))
-        .limit(10);
-      
-      // Bugünkü vardiyalar
-      const todayShifts = await db.select({
-        id: branchShiftSessions.id,
-        userId: branchShiftSessions.userId,
-        checkInTime: branchShiftSessions.checkInTime,
-        checkOutTime: branchShiftSessions.checkOutTime,
-        status: branchShiftSessions.status,
-        workMinutes: branchShiftSessions.workMinutes,
-        breakMinutes: branchShiftSessions.breakMinutes,
-        firstName: users.firstName,
-        lastName: users.lastName,
-      }).from(branchShiftSessions)
-        .leftJoin(users, eq(branchShiftSessions.userId, users.id))
-        .where(and(
-          eq(branchShiftSessions.branchId, branchId),
-          gte(branchShiftSessions.checkInTime, startOfDay),
-          lte(branchShiftSessions.checkInTime, endOfDay)
-        ))
-        .orderBy(branchShiftSessions.checkInTime);
-      
-      // Bugünkü görevler - hem bugün oluşturulan hem de bekleyen tüm görevler
-      const todayTasks = await db.select().from(tasks)
-        .where(and(
-          eq(tasks.branchId, branchId),
-          or(
-            gte(tasks.createdAt, startOfDay),
-            sql`${tasks.status} NOT IN ('completed', 'onaylandi')`
-          )
-        ))
-        .orderBy(desc(tasks.createdAt))
-        .limit(20);
-      
-      // Bugünkü checklistler - checklist'lerden oluşturulmuş görevler
-      const todayChecklists = await db.select({
-        id: tasks.id,
-        title: tasks.description,
-        status: tasks.status,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        checklistId: tasks.checklistId,
-        dueDate: tasks.dueDate,
-      }).from(tasks)
-        .leftJoin(users, eq(tasks.assignedToId, users.id))
-        .where(and(
-          eq(tasks.branchId, branchId),
-          isNotNull(tasks.checklistId),
-          or(
-            gte(tasks.createdAt, startOfDay),
-            sql`${tasks.status} NOT IN ('completed', 'onaylandi')`
-          )
-        ))
-        .orderBy(desc(tasks.createdAt))
-        .limit(20);
-      
-      // İstatistikler
-      const stats = {
-        activeStaff: todayShifts.filter(s => s.checkInTime && !s.checkOutTime).length,
-        totalShifts: todayShifts.length,
-        completedTasks: todayTasks.filter(t => t.status === 'completed').length,
-        pendingTasks: todayTasks.filter(t => t.status !== 'completed').length,
-        completedChecklists: todayChecklists.filter(c => c.status === 'completed').length,
-        pendingChecklists: todayChecklists.filter(c => c.status !== 'completed').length,
-        activeAlerts: activeAlerts.length,
-        criticalAlerts: activeAlerts.filter(a => a.severity === 'critical').length,
-      };
-      
-      res.json({
-        branch,
-        stats,
-        alerts: activeAlerts,
-        todayShifts,
-        todayTasks,
-        todayChecklists,
-      });
-    } catch (error: any) {
-      console.error("Error fetching branch dashboard:", error);
-      res.status(500).json({ message: "Şube dashboard verileri alınamadı" });
-    }
-  });
-  const httpServer = createServer(app);
-  return httpServer;
-}
