@@ -36,7 +36,7 @@ import {
   Users, 
   ArrowLeft, 
   Building2, 
-  Coffee, 
+  Coffee,
   Save,
   LayoutDashboard,
   ClipboardList,
@@ -250,25 +250,27 @@ const MODULE_GROUPS = [
   },
 ];
 
-// 8 Mega Module Konfigürasyonu - Dashboard kartları için
+// 9 Mega Module Konfigürasyonu - Dashboard kartları için (Fabrika ayrı)
 const MEGA_MODULE_CONFIG = [
   { id: "operations", title: "Operasyonlar", icon: ClipboardList, color: "bg-green-500" },
   { id: "equipment", title: "Ekipman & Bakım", icon: Wrench, color: "bg-orange-500" },
   { id: "hr", title: "Personel & İK", icon: Users, color: "bg-pink-500" },
   { id: "training", title: "Eğitim & Akademi", icon: GraduationCap, color: "bg-blue-500" },
-  { id: "kitchen", title: "Mutfak & Fabrika", icon: Factory, color: "bg-amber-600" },
+  { id: "kitchen", title: "Mutfak & Reçeteler", icon: Coffee, color: "bg-amber-600" },
+  { id: "factory", title: "Fabrika & Üretim", icon: Factory, color: "bg-indigo-600" },
   { id: "reports", title: "Raporlar & Analitik", icon: BarChart3, color: "bg-cyan-500" },
   { id: "newshop", title: "Yeni Mağaza Açılışı", icon: FolderKanban, color: "bg-violet-600" },
   { id: "admin", title: "Yönetim & Ayarlar", icon: Shield, color: "bg-slate-600" },
 ];
 
-// Varsayılan modül-mega modül eşleştirmeleri
+// Varsayılan modül-mega modül eşleştirmeleri (9 mega modül)
 const DEFAULT_MODULE_MEGA_MAPPING: Record<string, string[]> = {
   "operations": ["dashboard", "tasks", "checklists", "branches", "lost_found", "lost_found_hq"],
   "equipment": ["equipment", "faults", "equipment_analytics"],
   "hr": ["shifts", "shift_planning", "hr", "attendance", "leave_requests", "accounting"],
   "training": ["academy.general", "academy.hq", "academy.analytics", "academy.badges", "academy.certificates", "academy.leaderboard", "academy.quizzes", "academy.learning_paths", "academy.ai", "academy.social", "academy.supervisor"],
-  "kitchen": ["factory_kiosk", "factory_dashboard", "factory_quality", "factory_analytics", "factory_ai_reports", "factory_stations", "factory_waste_reasons", "factory_pins"],
+  "kitchen": ["recipes", "menu", "tarifler"],
+  "factory": ["factory_kiosk", "factory_dashboard", "factory_quality", "factory_analytics", "factory_ai_reports", "factory_stations", "factory_waste_reasons", "factory_pins", "factory_compliance"],
   "reports": ["reports", "e2e_reports", "cash_reports", "hr_reports", "quality_audit", "audit_templates", "capa"],
   "newshop": ["projects", "new_branch_projects"],
   "admin": ["settings", "bulk_data", "users", "menu_management", "content_management", "admin_panel", "authorization", "support", "notifications", "announcements", "messages"],

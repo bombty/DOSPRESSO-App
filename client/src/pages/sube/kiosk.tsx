@@ -9,6 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useParams } from "wouter";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Store, 
   LogIn, 
@@ -22,7 +32,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ListTodo,
-  ChevronLeft
+  ChevronLeft,
+  AlertTriangle
 } from "lucide-react";
 
 type KioskStep = 'password' | 'select-user' | 'enter-pin' | 'working' | 'end-shift-summary';
@@ -96,6 +107,12 @@ export default function BranchKiosk() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
+  
+  // Double confirmation dialogs state
+  const [showEndShiftConfirm1, setShowEndShiftConfirm1] = useState(false);
+  const [showEndShiftConfirm2, setShowEndShiftConfirm2] = useState(false);
+  const [showBreakConfirm1, setShowBreakConfirm1] = useState(false);
+  const [showBreakConfirm2, setShowBreakConfirm2] = useState(false);
 
   const { data: staffList = [], isLoading: loadingStaff, refetch: refetchStaff } = useQuery<StaffMember[]>({
     queryKey: ['/api/branches', branchId, 'kiosk', 'staff'],
@@ -290,6 +307,40 @@ export default function BranchKiosk() {
   const handleStartShift = () => {
     if (selectedUser) {
       startShiftMutation.mutate(selectedUser.id);
+    }
+  };
+  
+  // Double confirmation handlers for shift end
+  const handleEndShiftClick = () => {
+    setShowEndShiftConfirm1(true);
+  };
+  
+  const handleEndShiftFirstConfirm = () => {
+    setShowEndShiftConfirm1(false);
+    setShowEndShiftConfirm2(true);
+  };
+  
+  const handleEndShiftFinalConfirm = () => {
+    setShowEndShiftConfirm2(false);
+    if (currentSession) {
+      endShiftMutation.mutate(currentSession.id);
+    }
+  };
+  
+  // Double confirmation handlers for break start
+  const handleBreakStartClick = () => {
+    setShowBreakConfirm1(true);
+  };
+  
+  const handleBreakFirstConfirm = () => {
+    setShowBreakConfirm1(false);
+    setShowBreakConfirm2(true);
+  };
+  
+  const handleBreakFinalConfirm = () => {
+    setShowBreakConfirm2(false);
+    if (currentSession) {
+      breakStartMutation.mutate(currentSession.id);
     }
   };
 
@@ -581,7 +632,7 @@ export default function BranchKiosk() {
                     <Button
                       size="lg"
                       variant="secondary"
-                      onClick={() => breakStartMutation.mutate(currentSession.id)}
+                      onClick={handleBreakStartClick}
                       disabled={breakStartMutation.isPending}
                       data-testid="button-start-break"
                     >
@@ -592,7 +643,7 @@ export default function BranchKiosk() {
                   <Button
                     size="lg"
                     variant="destructive"
-                    onClick={() => endShiftMutation.mutate(currentSession.id)}
+                    onClick={handleEndShiftClick}
                     disabled={endShiftMutation.isPending || currentSession.status === 'on_break'}
                     data-testid="button-end-shift"
                   >
@@ -716,18 +767,126 @@ export default function BranchKiosk() {
     </div>
   );
 
-  switch (step) {
-    case 'password':
-      return renderPasswordStep();
-    case 'select-user':
-      return renderSelectUserStep();
-    case 'enter-pin':
-      return renderEnterPinStep();
-    case 'working':
-      return renderWorkingStep();
-    case 'end-shift-summary':
-      return renderEndShiftSummary();
-    default:
-      return renderPasswordStep();
-  }
+  const renderContent = () => {
+    switch (step) {
+      case 'password':
+        return renderPasswordStep();
+      case 'select-user':
+        return renderSelectUserStep();
+      case 'enter-pin':
+        return renderEnterPinStep();
+      case 'working':
+        return renderWorkingStep();
+      case 'end-shift-summary':
+        return renderEndShiftSummary();
+      default:
+        return renderPasswordStep();
+    }
+  };
+  
+  return (
+    <>
+      {renderContent()}
+      
+      {/* First confirmation dialog for ending shift */}
+      <AlertDialog open={showEndShiftConfirm1} onOpenChange={setShowEndShiftConfirm1}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Vardiya Sonlandırma
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Vardiyayı sonlandırmak istediğinizden emin misiniz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-end-shift-1">İptal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleEndShiftFirstConfirm}
+              className="bg-amber-600 hover:bg-amber-700"
+              data-testid="button-confirm-end-shift-1"
+            >
+              Evet, Devam Et
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Second confirmation dialog for ending shift */}
+      <AlertDialog open={showEndShiftConfirm2} onOpenChange={setShowEndShiftConfirm2}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Son Onay
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-medium">
+              Bu işlem geri alınamaz! Vardiyayı kesinlikle sonlandırmak istiyor musunuz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-end-shift-2">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleEndShiftFinalConfirm}
+              className="bg-destructive hover:bg-destructive/90"
+              data-testid="button-confirm-end-shift-2"
+            >
+              Evet, Vardiyayı Bitir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* First confirmation dialog for break start */}
+      <AlertDialog open={showBreakConfirm1} onOpenChange={setShowBreakConfirm1}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Coffee className="h-5 w-5 text-blue-500" />
+              Mola Başlatma
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Molaya çıkmak istediğinizden emin misiniz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-break-1">İptal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBreakFirstConfirm}
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="button-confirm-break-1"
+            >
+              Evet, Devam Et
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Second confirmation dialog for break start */}
+      <AlertDialog open={showBreakConfirm2} onOpenChange={setShowBreakConfirm2}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-blue-600">
+              <Coffee className="h-5 w-5" />
+              Son Onay
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-medium">
+              Mola süreniz kayıt altına alınacaktır. Molaya çıkmak istiyor musunuz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-break-2">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBreakFinalConfirm}
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="button-confirm-break-2"
+            >
+              Evet, Molaya Çık
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 }

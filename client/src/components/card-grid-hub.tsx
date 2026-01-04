@@ -148,14 +148,19 @@ export function CardGridHub() {
       "akademi", "bilgi-bankasi"
     ],
     "kitchen": [
-      // MENU_BLUEPRINT section IDs
-      "fabrika",
-      // English variations
+      // MENU_BLUEPRINT section IDs - Sadece mutfak ve tarifler
       "kitchen", "kitchen-hq", "kitchen-branch", "kitchen-section",
       "recipes", "recipes-hq", "recipes-branch", "recipes-section", "tarifler",
-      "menu", "menu-section",
+      "menu", "menu-section"
+    ],
+    "factory": [
+      // MENU_BLUEPRINT section IDs - Fabrika & Üretim
+      "fabrika",
+      // English variations
       "factory", "factory-dashboard", "factory-kiosk", "factory-quality", 
-      "factory-stations", "factory-analytics", "factory-compliance"
+      "factory-stations", "factory-analytics", "factory-compliance",
+      "factory-pins", "factory-waste", "factory-ai-reports",
+      "production", "production-section", "uretim"
     ],
     "reports": [
       // MENU_BLUEPRINT section IDs
@@ -199,6 +204,7 @@ export function CardGridHub() {
     { id: "hr", title: "Personel & İK", icon: "Users", color: "bg-pink-500" },
     { id: "training", title: "Eğitim & Akademi", icon: "GraduationCap", color: "bg-blue-500" },
     { id: "kitchen", title: "Mutfak & Reçeteler", icon: "Coffee", color: "bg-amber-600" },
+    { id: "factory", title: "Fabrika & Üretim", icon: "Factory", color: "bg-indigo-600" },
     { id: "reports", title: "Raporlar & Analitik", icon: "BarChart3", color: "bg-cyan-500" },
     { id: "newshop", title: "Yeni Mağaza Açılışı", icon: "FolderKanban", color: "bg-violet-600" },
     { id: "admin", title: "Yönetim & Ayarlar", icon: "Shield", color: "bg-slate-600" },

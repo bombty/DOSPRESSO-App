@@ -26752,6 +26752,72 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         eventTime: now,
       });
 
+      // Check for scheduled shift and lateness
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      
+      // Find today's scheduled shift for this user
+      const [scheduledShift] = await db.select({
+        id: shiftAttendance.id,
+        scheduledStartTime: shiftAttendance.scheduledStartTime,
+        shiftId: shiftAttendance.shiftId,
+      }).from(shiftAttendance)
+        .where(and(
+          eq(shiftAttendance.userId, userId),
+          gte(shiftAttendance.scheduledStartTime, startOfDay),
+          lte(shiftAttendance.scheduledStartTime, endOfDay)
+        ))
+        .limit(1);
+      
+      if (scheduledShift && scheduledShift.scheduledStartTime) {
+        const scheduledTime = new Date(scheduledShift.scheduledStartTime);
+        const latenessMinutes = Math.max(0, Math.floor((now.getTime() - scheduledTime.getTime()) / 60000));
+        
+        // If more than 5 minutes late, create warning alert
+        if (latenessMinutes > 5) {
+          const userInfo = await db.select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(eq(users.id, userId)).limit(1);
+          const userName = userInfo[0] ? `${userInfo[0].firstName} ${userInfo[0].lastName}` : userId;
+          
+          await db.insert(dashboardAlerts).values({
+            context: 'branch',
+            contextId: branchId,
+            triggerType: 'late_clock_in',
+            severity: latenessMinutes > 30 ? 'critical' : 'warning',
+            status: 'active',
+            title: 'Geç Giriş Uyarısı',
+            message: `${userName} vardiyasına ${latenessMinutes} dakika geç başladı.`,
+            relatedUserId: userId,
+            relatedShiftId: scheduledShift.shiftId,
+          });
+        }
+        
+        // Update shiftAttendance with actual check-in time
+        await db.update(shiftAttendance)
+          .set({ 
+            checkInTime: now,
+            latenessMinutes: latenessMinutes,
+          })
+          .where(eq(shiftAttendance.id, scheduledShift.id));
+      } else {
+        // No scheduled shift - create info alert
+        const userInfo = await db.select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(eq(users.id, userId)).limit(1);
+        const userName = userInfo[0] ? `${userInfo[0].firstName} ${userInfo[0].lastName}` : userId;
+        
+        await db.insert(dashboardAlerts).values({
+          context: 'branch',
+          contextId: branchId,
+          triggerType: 'unscheduled_clock_in',
+          severity: 'info',
+          status: 'active',
+          title: 'Planlanmamış Giriş',
+          message: `${userName} vardiya planlamasında olmadan giriş yaptı.`,
+          relatedUserId: userId,
+        });
+      }
+
       res.json({
         success: true,
         session,
@@ -28173,17 +28239,39 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         ))
         .orderBy(branchShiftSessions.checkInTime);
       
-      // Bugünkü görevler
+      // Bugünkü görevler - hem bugün oluşturulan hem de bekleyen tüm görevler
       const todayTasks = await db.select().from(tasks)
         .where(and(
           eq(tasks.branchId, branchId),
-          gte(tasks.createdAt, startOfDay)
+          or(
+            gte(tasks.createdAt, startOfDay),
+            sql`${tasks.status} NOT IN ('completed', 'onaylandi')`
+          )
         ))
         .orderBy(desc(tasks.createdAt))
-        .limit(10);
+        .limit(20);
       
-      // Bugünkü checklistler - TODO: implement proper checklist tracking
-      const todayChecklists: any[] = [];
+      // Bugünkü checklistler - checklist'lerden oluşturulmuş görevler
+      const todayChecklists = await db.select({
+        id: tasks.id,
+        title: tasks.description,
+        status: tasks.status,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        checklistId: tasks.checklistId,
+        dueDate: tasks.dueDate,
+      }).from(tasks)
+        .leftJoin(users, eq(tasks.assignedToId, users.id))
+        .where(and(
+          eq(tasks.branchId, branchId),
+          isNotNull(tasks.checklistId),
+          or(
+            gte(tasks.createdAt, startOfDay),
+            sql`${tasks.status} NOT IN ('completed', 'onaylandi')`
+          )
+        ))
+        .orderBy(desc(tasks.createdAt))
+        .limit(20);
       
       // İstatistikler
       const stats = {
