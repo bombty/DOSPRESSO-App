@@ -54,7 +54,9 @@ import {
   Bell,
   Headphones,
   Tablet,
-  ChevronRight
+  ChevronRight,
+  CheckCircle,
+  ListChecks
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -299,6 +301,44 @@ export function CardGridHub() {
 
   const openFaults = faults.filter((f) => f.currentStage !== "kapatildi").length;
   const pendingTasks = tasks.filter((t) => t.status === "beklemede").length;
+
+  // Fetch current user's shifts for today
+  const { data: myShifts = [] } = useQuery<any[]>({
+    queryKey: ["/api/shifts/my"],
+    enabled: !!user,
+  });
+
+  // Today's date for filtering
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  
+  // Filter shifts for today
+  const todayShifts = myShifts.filter((shift: any) => {
+    const shiftDate = new Date(shift.date).toISOString().split('T')[0];
+    return shiftDate === todayStr;
+  });
+
+  // Fetch user's assigned checklists
+  const { data: myChecklists = [] } = useQuery<any[]>({
+    queryKey: ["/api/checklists/my-assignments"],
+    queryFn: async () => {
+      const res = await fetch("/api/checklists/my-assignments");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  // Fetch user's assigned tasks
+  const { data: myAssignedTasks = [] } = useQuery<any[]>({
+    queryKey: ["/api/tasks/my"],
+    queryFn: async () => {
+      const res = await fetch("/api/tasks/my");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user,
+  });
 
   // Fetch pending checks for current user (checker role)
   const { data: pendingChecks = [] } = useQuery<any[]>({
@@ -969,6 +1009,110 @@ export function CardGridHub() {
       {(isBranch && (user?.role === 'supervisor' || user?.role === 'supervisor_buddy')) && <EnhancedAnalyticsCard />}
       {isHQ && <EnhancedAnalyticsCard />}
 
+      {/* Today's Shift Card - Show assigned shifts for today */}
+      {todayShifts.length > 0 && (
+        <Card className="border-primary/30 bg-primary/5 dark:bg-primary/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              Bugünkü Vardiyam
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {todayShifts.map((shift: any) => (
+              <div 
+                key={shift.id} 
+                className="flex items-center justify-between text-sm p-3 bg-background/80 rounded-lg border"
+              >
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    shift.shiftType === 'sabah' ? 'bg-amber-500' : 
+                    shift.shiftType === 'aksam' ? 'bg-indigo-500' : 
+                    shift.shiftType === 'gece' ? 'bg-slate-700' : 'bg-green-500'
+                  }`} />
+                  <span className="font-medium capitalize">{shift.shiftType || 'Tam Gün'}</span>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold text-primary">
+                    {shift.startTime?.slice(0,5) || '09:00'} - {shift.endTime?.slice(0,5) || '18:00'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {shift.branchName || 'Şube'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* My Tasks & Checklists Card */}
+      {(myAssignedTasks.length > 0 || myChecklists.length > 0) && (
+        <Card className="border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-green-600" />
+              Bugünkü Görevlerim
+              {(myAssignedTasks.filter((t: any) => t.status !== 'tamamlandi').length + myChecklists.filter((c: any) => !c.completedAt).length) > 0 && (
+                <Badge variant="secondary" className="ml-auto bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
+                  {myAssignedTasks.filter((t: any) => t.status !== 'tamamlandi').length + myChecklists.filter((c: any) => !c.completedAt).length} bekliyor
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {/* Tasks */}
+            {myAssignedTasks.slice(0, 3).map((task: any) => (
+              <div 
+                key={task.id} 
+                className="flex items-center justify-between text-xs p-2 bg-background/50 rounded border hover-elevate cursor-pointer"
+                onClick={() => setLocation(`/gorevler?id=${task.id}`)}
+                data-testid={`my-task-${task.id}`}
+              >
+                <div className="flex items-center gap-2">
+                  <CheckCircle className={`h-3 w-3 ${task.status === 'tamamlandi' ? 'text-green-500' : 'text-muted-foreground'}`} />
+                  <span className="font-medium truncate max-w-[180px]">{task.title}</span>
+                </div>
+                <Badge variant={task.status === 'tamamlandi' ? 'secondary' : task.status === 'devam_ediyor' ? 'default' : 'outline'} className="text-[10px]">
+                  {task.status === 'tamamlandi' ? 'Tamamlandı' : task.status === 'devam_ediyor' ? 'Devam' : 'Bekliyor'}
+                </Badge>
+              </div>
+            ))}
+            {/* Checklists */}
+            {myChecklists.slice(0, 2).map((checklist: any) => (
+              <div 
+                key={checklist.id} 
+                className="flex items-center justify-between text-xs p-2 bg-background/50 rounded border hover-elevate cursor-pointer"
+                onClick={() => setLocation(`/checklistler?id=${checklist.checklistId || checklist.id}`)}
+                data-testid={`my-checklist-${checklist.id}`}
+              >
+                <div className="flex items-center gap-2">
+                  <ListChecks className="h-3 w-3 text-blue-500" />
+                  <span className="font-medium truncate max-w-[180px]">{checklist.checklistTitle || checklist.title}</span>
+                </div>
+                <Badge variant={checklist.completedAt ? 'secondary' : 'outline'} className="text-[10px]">
+                  {checklist.completedAt ? 'Tamamlandı' : 'Bekliyor'}
+                </Badge>
+              </div>
+            ))}
+            {(myAssignedTasks.length > 3 || myChecklists.length > 2) && (
+              <p className="text-xs text-muted-foreground text-center">
+                +{Math.max(0, myAssignedTasks.length - 3) + Math.max(0, myChecklists.length - 2)} daha...
+              </p>
+            )}
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="w-full mt-2 h-8"
+              onClick={() => setLocation("/gorevler")}
+              data-testid="button-view-all-tasks"
+            >
+              Tüm Görevleri Gör
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Factory Shift Compliance Warnings */}
       {isFactoryWorker && complianceWarnings?.warnings && complianceWarnings.warnings.length > 0 && (
         <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
@@ -1078,26 +1222,23 @@ export function CardGridHub() {
         } />
       </div>
 
-      {/* Mega Module Cards - 8 grouped categories with direct navigation */}
-      {megaModules && megaModules.length > 0 ? (
+      {/* Mega Module Cards - Only show modules user has access to */}
+      {megaModules && megaModules.filter((m: any) => !m.isEmpty).length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {megaModules.map((megaModule: any) => {
+          {megaModules
+            .filter((megaModule: any) => !megaModule.isEmpty) // Hide modules with no access
+            .map((megaModule: any) => {
             const MegaIcon = getSectionIcon(megaModule.icon);
             const moduleBadge = getSectionBadge(megaModule.items);
-            const isEmpty = megaModule.isEmpty;
             
-            // Navigate to mega-module page (even if empty)
+            // Navigate to mega-module page
             const megaModulePath = `/modul/${megaModule.id}`;
             
             return (
               <button
                 key={megaModule.id}
                 onClick={() => setLocation(megaModulePath)}
-                className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all active:scale-[0.98] min-h-[100px] ${
-                  isEmpty 
-                    ? "bg-muted/50 border-border/50 opacity-60" 
-                    : "bg-card border-border hover:border-primary/50 hover:shadow-md"
-                }`}
+                className="relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all active:scale-[0.98] min-h-[100px] bg-card border-border hover:border-primary/50 hover:shadow-md"
                 data-testid={`mega-module-${megaModule.id}`}
               >
                 {moduleBadge > 0 && (
@@ -1105,12 +1246,12 @@ export function CardGridHub() {
                     {moduleBadge > 99 ? "99+" : moduleBadge}
                   </span>
                 )}
-                <div className={`w-12 h-12 rounded-xl ${isEmpty ? "bg-muted" : megaModule.color} flex items-center justify-center mb-2`}>
-                  <MegaIcon className={`w-6 h-6 ${isEmpty ? "text-muted-foreground" : "text-white"}`} />
+                <div className={`w-12 h-12 rounded-xl ${megaModule.color} flex items-center justify-center mb-2`}>
+                  <MegaIcon className="w-6 h-6 text-white" />
                 </div>
-                <span className={`text-sm font-medium text-center leading-tight ${isEmpty ? "text-muted-foreground" : ""}`}>{megaModule.title}</span>
+                <span className="text-sm font-medium text-center leading-tight">{megaModule.title}</span>
                 <span className="text-xs text-muted-foreground mt-0.5">
-                  {isEmpty ? "Erişim yok" : `${megaModule.items.length} modül`}
+                  {megaModule.items.length} modül
                 </span>
               </button>
             );

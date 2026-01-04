@@ -1506,6 +1506,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================
+  // GET /api/tasks/my - Get tasks assigned to current user
+  app.get('/api/tasks/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      
+      // Get all tasks assigned to current user
+      const allTasks = await storage.getTasks();
+      const myTasks = allTasks.filter((task: any) => task.assignedToId === user.id);
+      
+      res.json(myTasks);
+    } catch (error: any) {
+      console.error("Error getting my tasks:", error);
+      res.status(500).json({ message: "Görevler alınamadı" });
+    }
+  });
+
   // ONBOARDING CHECKER ENDPOINTS
   // =============================================
 
@@ -2479,6 +2495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+// GET /api/checklists/my-assignments - Get checklists assigned to current user  app.get('/api/checklists/my-assignments', isAuthenticated, async (req: any, res) => {    try {      const user = req.user!;            // Get all checklists      const allChecklists = await storage.getChecklists();            // Filter checklists where user is assigned (as barista, supervisor, etc in any task)      const myChecklists = [];      for (const checklist of allChecklists) {        const tasks = await storage.getChecklistTasks(checklist.id);        const isAssigned = tasks.some((task: any) =>           task.assignedBaristaId === user.id ||           task.assignedSupervisorId === user.id ||           task.verifiedByUserId === user.id        );        if (isAssigned) {          myChecklists.push({            ...checklist,            checklistTitle: checklist.name,            pendingTasks: tasks.filter((t: any) => !t.completedAt).length,            completedTasks: tasks.filter((t: any) => t.completedAt).length          });        }      }            res.json(myChecklists);    } catch (error: any) {      console.error('Error getting my checklist assignments:', error);      res.status(500).json({ message: 'Checklist atamaları alınamadı' });    }  });
   app.get('/api/checklists/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
