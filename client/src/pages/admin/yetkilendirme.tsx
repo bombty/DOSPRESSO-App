@@ -58,7 +58,9 @@ import {
   Globe,
   GripVertical,
   Factory,
-  Star
+  Star,
+  Pencil,
+  Check
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -276,8 +278,20 @@ const DEFAULT_MODULE_MEGA_MAPPING: Record<string, string[]> = {
   "admin": ["settings", "bulk_data", "users", "menu_management", "content_management", "admin_panel", "authorization", "support", "notifications", "announcements", "messages"],
 };
 
-// Draggable Module Item Component
-function DraggableModuleItem({ id, label, megaModuleId }: { id: string; label: string; megaModuleId: string }) {
+// Draggable Module Item Component with inline edit
+function DraggableModuleItem({ 
+  id, 
+  label, 
+  megaModuleId,
+  onLabelChange 
+}: { 
+  id: string; 
+  label: string; 
+  megaModuleId: string;
+  onLabelChange?: (id: string, newLabel: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(label);
   const {
     attributes,
     listeners,
@@ -293,36 +307,116 @@ function DraggableModuleItem({ id, label, megaModuleId }: { id: string; label: s
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const handleSave = () => {
+    if (editValue.trim() && onLabelChange) {
+      onLabelChange(id, editValue.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setEditValue(label);
+      setIsEditing(false);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-background text-xs cursor-move hover-elevate"
-      {...attributes}
-      {...listeners}
+      className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-background text-xs cursor-move hover-elevate group"
       data-testid={`draggable-module-${id}`}
     >
-      <GripVertical className="h-3 w-3 text-muted-foreground" />
-      <span className="truncate">{label}</span>
+      <div {...attributes} {...listeners}>
+        <GripVertical className="h-3 w-3 text-muted-foreground" />
+      </div>
+      {isEditing ? (
+        <div className="flex items-center gap-1 flex-1">
+          <Input
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleSave}
+            className="h-5 text-xs py-0 px-1"
+            autoFocus
+            data-testid={`input-edit-module-${id}`}
+          />
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-5 w-5"
+            onClick={handleSave}
+            data-testid={`button-save-module-${id}`}
+          >
+            <Check className="h-3 w-3" />
+          </Button>
+        </div>
+      ) : (
+        <>
+          <span className="truncate flex-1">{label}</span>
+          {onLabelChange && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(true);
+              }}
+              data-testid={`button-edit-module-${id}`}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-// Droppable Mega Module Container
+// Droppable Mega Module Container with title editing
 function DroppableMegaModule({ 
   megaModule, 
   modules, 
-  allModuleLabels 
+  allModuleLabels,
+  customTitle,
+  onTitleChange,
+  onModuleLabelChange
 }: { 
   megaModule: typeof MEGA_MODULE_CONFIG[0]; 
   modules: string[];
   allModuleLabels: Record<string, string>;
+  customTitle?: string;
+  onTitleChange?: (megaModuleId: string, newTitle: string) => void;
+  onModuleLabelChange?: (moduleId: string, newLabel: string) => void;
 }) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState(customTitle || megaModule.title);
   const { setNodeRef, isOver } = useDroppable({
     id: megaModule.id,
   });
 
   const Icon = megaModule.icon;
+  const displayTitle = customTitle || megaModule.title;
+
+  const handleSaveTitle = () => {
+    if (titleValue.trim() && onTitleChange) {
+      onTitleChange(megaModule.id, titleValue.trim());
+    }
+    setIsEditingTitle(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveTitle();
+    } else if (e.key === 'Escape') {
+      setTitleValue(displayTitle);
+      setIsEditingTitle(false);
+    }
+  };
 
   return (
     <Card 
@@ -331,12 +425,51 @@ function DroppableMegaModule({
       data-testid={`droppable-mega-${megaModule.id}`}
     >
       <CardHeader className="pb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 group">
           <div className={`p-1.5 rounded-md ${megaModule.color}`}>
             <Icon className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <CardTitle className="text-sm">{megaModule.title}</CardTitle>
+          <div className="flex-1 min-w-0">
+            {isEditingTitle ? (
+              <div className="flex items-center gap-1">
+                <Input
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onBlur={handleSaveTitle}
+                  className="h-6 text-sm font-semibold py-0 px-1"
+                  autoFocus
+                  data-testid={`input-edit-mega-title-${megaModule.id}`}
+                />
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="h-6 w-6"
+                  onClick={handleSaveTitle}
+                  data-testid={`button-save-mega-title-${megaModule.id}`}
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <CardTitle className="text-sm truncate">{displayTitle}</CardTitle>
+                {onTitleChange && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    onClick={() => {
+                      setTitleValue(displayTitle);
+                      setIsEditingTitle(true);
+                    }}
+                    data-testid={`button-edit-mega-title-${megaModule.id}`}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            )}
             <CardDescription className="text-xs">{modules.length} modül</CardDescription>
           </div>
         </div>
@@ -350,6 +483,7 @@ function DroppableMegaModule({
                 id={moduleId}
                 label={allModuleLabels[moduleId] || moduleId}
                 megaModuleId={megaModule.id}
+                onLabelChange={onModuleLabelChange}
               />
             ))}
           </SortableContext>
@@ -387,6 +521,18 @@ export default function AdminYetkilendirme() {
     return saved ? JSON.parse(saved) : DEFAULT_MODULE_MEGA_MAPPING;
   });
   
+  // Custom mega module titles (overrides default titles)
+  const [megaModuleTitles, setMegaModuleTitles] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem("megaModuleTitles");
+    return saved ? JSON.parse(saved) : {};
+  });
+  
+  // Custom module labels (overrides default labels)
+  const [customModuleLabels, setCustomModuleLabels] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem("customModuleLabels");
+    return saved ? JSON.parse(saved) : {};
+  });
+  
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -397,16 +543,43 @@ export default function AdminYetkilendirme() {
     useSensor(KeyboardSensor)
   );
   
-  // Build all module labels from MODULE_GROUPS
+  // Build all module labels from MODULE_GROUPS, merged with custom overrides
   const allModuleLabels = useMemo(() => {
     const labels: Record<string, string> = {};
     MODULE_GROUPS.forEach(group => {
       group.modules.forEach(mod => {
-        labels[mod.key] = mod.label;
+        // Use custom label if exists, otherwise use default
+        labels[mod.key] = customModuleLabels[mod.key] || mod.label;
       });
     });
     return labels;
-  }, []);
+  }, [customModuleLabels]);
+  
+  // Handler for mega module title change
+  const handleMegaTitleChange = (megaModuleId: string, newTitle: string) => {
+    setMegaModuleTitles(prev => {
+      const updated = { ...prev, [megaModuleId]: newTitle };
+      localStorage.setItem("megaModuleTitles", JSON.stringify(updated));
+      return updated;
+    });
+    toast({
+      title: "Başlık güncellendi",
+      description: `"${newTitle}" olarak kaydedildi`,
+    });
+  };
+  
+  // Handler for module label change
+  const handleModuleLabelChange = (moduleId: string, newLabel: string) => {
+    setCustomModuleLabels(prev => {
+      const updated = { ...prev, [moduleId]: newLabel };
+      localStorage.setItem("customModuleLabels", JSON.stringify(updated));
+      return updated;
+    });
+    toast({
+      title: "Modül adı güncellendi",
+      description: `"${newLabel}" olarak kaydedildi`,
+    });
+  };
   
   // Handle drag end - move or reorder modules
   const handleDragEnd = (event: DragEndEvent) => {
@@ -492,11 +665,15 @@ export default function AdminYetkilendirme() {
     setActiveModuleId(event.active.id as string);
   };
   
-  // Reset mappings to default
+  // Reset mappings to default (also resets titles and labels)
   const handleResetMappings = () => {
     setModuleMappings(DEFAULT_MODULE_MEGA_MAPPING);
+    setMegaModuleTitles({});
+    setCustomModuleLabels({});
     localStorage.setItem("megaModuleMappings", JSON.stringify(DEFAULT_MODULE_MEGA_MAPPING));
-    toast({ title: "Varsayılana sıfırlandı" });
+    localStorage.removeItem("megaModuleTitles");
+    localStorage.removeItem("customModuleLabels");
+    toast({ title: "Varsayılana sıfırlandı", description: "Tüm başlıklar ve modül isimleri sıfırlandı" });
   };
 
   // Fetch all granular permission actions grouped by module
@@ -977,6 +1154,9 @@ export default function AdminYetkilendirme() {
                   megaModule={megaModule}
                   modules={moduleMappings[megaModule.id] || []}
                   allModuleLabels={allModuleLabels}
+                  customTitle={megaModuleTitles[megaModule.id]}
+                  onTitleChange={handleMegaTitleChange}
+                  onModuleLabelChange={handleModuleLabelChange}
                 />
               ))}
             </div>
