@@ -12880,6 +12880,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Sadece kendi şubeniz için vardiya oluşturabilirsiniz" });
       }
       
+      // Check for duplicate shift - same employee on same day
+      if (validated.assignedToId) {
+        const existingShifts = await storage.getShifts(validated.branchId);
+        const duplicateShift = existingShifts.find(s => 
+          s.assignedToId === validated.assignedToId && 
+          s.shiftDate === validated.shiftDate
+        );
+        if (duplicateShift) {
+          return res.status(400).json({ 
+            message: "Bu personel aynı gün için zaten vardiyaya atanmış",
+            existingShiftId: duplicateShift.id 
+          });
+        }
+      }
+
       const shift = await storage.createShift({
         ...validated,
         createdById: user.id,
@@ -12953,7 +12968,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createdShifts = [];
       const notifiedEmployees = new Set<string>();
       
+      // Get existing shifts for duplicate checking
+      const branchIds = [...new Set(shiftsData.map(s => s.branchId))];
+      const allExistingShifts: any[] = [];
+      for (const bId of branchIds) {
+        const branchShifts = await storage.getShifts(bId);
+        allExistingShifts.push(...branchShifts);
+      }
+      
+      const skippedDuplicates: string[] = [];
+      
       for (const shiftData of shiftsData) {
+        // Check for duplicate shift - same employee on same day
+        if (shiftData.assignedToId) {
+          const isDuplicate = allExistingShifts.some(s => 
+            s.assignedToId === shiftData.assignedToId && 
+            s.shiftDate === shiftData.shiftDate
+          ) || createdShifts.some(s => 
+            s.assignedToId === shiftData.assignedToId && 
+            s.shiftDate === shiftData.shiftDate
+          );
+          if (isDuplicate) {
+            skippedDuplicates.push(`${shiftData.shiftDate} - ${shiftData.assignedToId}`);
+            continue; // Skip this shift
+          }
+        }
+        
         const shift = await storage.createShift({
           ...shiftData,
           createdById: user.id,

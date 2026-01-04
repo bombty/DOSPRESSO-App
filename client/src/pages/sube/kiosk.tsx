@@ -247,6 +247,12 @@ export default function BranchKiosk() {
   }, [step]);
 
   const resetKiosk = () => {
+    // If we came from branch dashboard (branchAuth exists), go back to dashboard
+    if (branchAuth) {
+      setLocation('/sube/dashboard');
+      return;
+    }
+    // Otherwise, reset to password step
     setStep('password');
     setKioskPassword('');
     setKioskUsername('');
