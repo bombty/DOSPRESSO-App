@@ -290,7 +290,7 @@ export function CardGridHub() {
 
   // Factory roles check - explicit list
   const FACTORY_ROLES = ['fabrika', 'fabrika_mudur', 'fabrika_kalite', 'fabrika_personel'];
-  const isFactoryWorker = user?.role && FACTORY_ROLES.includes(user.role);
+  const isFactoryWorker = Boolean(user?.role && FACTORY_ROLES.includes(user.role));
 
   // Fetch shift compliance warnings for factory workers
   const { data: complianceWarnings } = useQuery<any>({

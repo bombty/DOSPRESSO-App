@@ -427,7 +427,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   },
 
   // ========================================
-  // 13. YÖNETİM & AYARLAR (Admin only)
+  // 13. YÖNETİM & AYARLAR (Admin only - Tüm admin modülleri)
   // ========================================
   {
     id: "management",
@@ -435,14 +435,98 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     icon: "Settings",
     scope: "hq",
     items: [
+      // Kullanıcı & Yetki Yönetimi
       {
         id: "users",
-        titleTr: "Kullanıcılar",
+        titleTr: "Kullanıcı Yönetimi",
         path: "/yonetim/kullanicilar",
         icon: "Users",
         moduleKey: "users",
         scope: "hq",
       },
+      {
+        id: "role-permissions",
+        titleTr: "Rol ve Yetki Yönetimi",
+        path: "/yonetim/rol-yetkileri",
+        icon: "Shield",
+        moduleKey: "users",
+        scope: "hq",
+      },
+      {
+        id: "authorization",
+        titleTr: "Yetkilendirme",
+        path: "/admin/yetkilendirme",
+        icon: "Lock",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      // Sistem Yönetimi
+      {
+        id: "settings",
+        titleTr: "Sistem Ayarları",
+        path: "/yonetim/ayarlar",
+        icon: "Settings",
+        moduleKey: "settings",
+        scope: "hq",
+      },
+      {
+        id: "menu-management",
+        titleTr: "Menü Yönetimi",
+        path: "/yonetim/menu",
+        icon: "LayoutDashboard",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      {
+        id: "content-management",
+        titleTr: "İçerik Yönetimi",
+        path: "/yonetim/icerik",
+        icon: "FileText",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      // Operasyon Yönetimi
+      {
+        id: "checklist-management",
+        titleTr: "Checklist Yönetimi",
+        path: "/yonetim/checklistler",
+        icon: "ListChecks",
+        moduleKey: "checklists",
+        scope: "hq",
+      },
+      {
+        id: "academy-management",
+        titleTr: "Akademi Yönetimi",
+        path: "/yonetim/akademi",
+        icon: "GraduationCap",
+        moduleKey: "training",
+        scope: "hq",
+      },
+      {
+        id: "equipment-service",
+        titleTr: "Ekipman Servis",
+        path: "/yonetim/ekipman-servis",
+        icon: "Wrench",
+        moduleKey: "equipment",
+        scope: "hq",
+      },
+      {
+        id: "equipment-management",
+        titleTr: "Ekipman Yönetimi",
+        path: "/yonetim/ekipman-yonetimi",
+        icon: "Settings2",
+        moduleKey: "equipment",
+        scope: "hq",
+      },
+      {
+        id: "service-requests",
+        titleTr: "Servis Talepleri",
+        path: "/yonetim/servis-talepleri",
+        icon: "ClipboardList",
+        moduleKey: "equipment",
+        scope: "hq",
+      },
+      // İletişim & Duyurular
       {
         id: "announcements",
         titleTr: "Duyurular",
@@ -452,6 +536,58 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
       },
       {
+        id: "banners",
+        titleTr: "Banner Yönetimi",
+        path: "/admin/bannerlar",
+        icon: "Image",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      // Email & Bildirimler
+      {
+        id: "email-settings",
+        titleTr: "Email Ayarları",
+        path: "/admin/email-ayarlari",
+        icon: "Mail",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      {
+        id: "service-mail-settings",
+        titleTr: "Servis Mail Ayarları",
+        path: "/admin/servis-mail-ayarlari",
+        icon: "MailCheck",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      // AI & Maliyet
+      {
+        id: "ai-settings",
+        titleTr: "Yapay Zeka Ayarları",
+        path: "/admin/yapay-zeka-ayarlari",
+        icon: "Bot",
+        moduleKey: "ai_assistant",
+        scope: "hq",
+      },
+      {
+        id: "ai-costs",
+        titleTr: "AI Maliyet Yönetimi",
+        path: "/yonetim/ai-maliyetler",
+        icon: "DollarSign",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      // Kalite & Denetim
+      {
+        id: "quality-templates",
+        titleTr: "Kalite Denetim Şablonları",
+        path: "/admin/kalite-denetim-sablonlari",
+        icon: "Star",
+        moduleKey: "quality_audit",
+        scope: "hq",
+      },
+      // Veri & Yedekleme
+      {
         id: "bulk-data",
         titleTr: "Toplu Veri Yönetimi",
         path: "/admin/toplu-veri-yonetimi",
@@ -460,11 +596,52 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
       },
       {
-        id: "settings",
-        titleTr: "Sistem Ayarları",
-        path: "/yonetim/ayarlar",
-        icon: "Settings",
-        moduleKey: "settings",
+        id: "backup",
+        titleTr: "Yedekleme",
+        path: "/admin/yedekleme",
+        icon: "HardDrive",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      {
+        id: "activity-logs",
+        titleTr: "Aktivite Logları",
+        path: "/admin/aktivite-loglari",
+        icon: "FileText",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      // Fabrika Ayarları
+      {
+        id: "factory-stations-admin",
+        titleTr: "Fabrika İstasyonları",
+        path: "/admin/fabrika-istasyonlar",
+        icon: "Grid",
+        moduleKey: "factory_stations",
+        scope: "hq",
+      },
+      {
+        id: "factory-waste-reasons",
+        titleTr: "Fabrika Fire Sebepleri",
+        path: "/admin/fabrika-fire-sebepleri",
+        icon: "Trash2",
+        moduleKey: "factory_quality",
+        scope: "hq",
+      },
+      {
+        id: "factory-pin-management",
+        titleTr: "Fabrika Pin Yönetimi",
+        path: "/admin/fabrika-pin-yonetimi",
+        icon: "Key",
+        moduleKey: "factory_kiosk",
+        scope: "hq",
+      },
+      {
+        id: "factory-quality-criteria",
+        titleTr: "Fabrika Kalite Kriterleri",
+        path: "/admin/fabrika-kalite-kriterleri",
+        icon: "CheckCircle",
+        moduleKey: "factory_quality",
         scope: "hq",
       },
     ],

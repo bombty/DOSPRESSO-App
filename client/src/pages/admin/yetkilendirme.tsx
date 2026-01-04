@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -11,6 +11,26 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  DndContext, 
+  closestCenter, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  useDroppable
+} from "@dnd-kit/core";
+import { 
+  useSortable, 
+  SortableContext, 
+  verticalListSortingStrategy,
+  arrayMove 
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { 
   Shield, 
   Users, 
@@ -35,7 +55,10 @@ import {
   X,
   Eye,
   Lock,
-  Globe
+  Globe,
+  GripVertical,
+  Factory,
+  Star
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -227,6 +250,118 @@ const MODULE_GROUPS = [
   },
 ];
 
+// 8 Mega Module Konfigürasyonu - Dashboard kartları için
+const MEGA_MODULE_CONFIG = [
+  { id: "operations", title: "Operasyonlar", icon: ClipboardList, color: "bg-green-500" },
+  { id: "equipment", title: "Ekipman & Bakım", icon: Wrench, color: "bg-orange-500" },
+  { id: "hr", title: "Personel & İK", icon: Users, color: "bg-pink-500" },
+  { id: "training", title: "Eğitim & Akademi", icon: GraduationCap, color: "bg-blue-500" },
+  { id: "kitchen", title: "Mutfak & Fabrika", icon: Factory, color: "bg-amber-600" },
+  { id: "reports", title: "Raporlar & Analitik", icon: BarChart3, color: "bg-cyan-500" },
+  { id: "newshop", title: "Yeni Mağaza Açılışı", icon: FolderKanban, color: "bg-violet-600" },
+  { id: "admin", title: "Yönetim & Ayarlar", icon: Shield, color: "bg-slate-600" },
+];
+
+// Varsayılan modül-mega modül eşleştirmeleri
+const DEFAULT_MODULE_MEGA_MAPPING: Record<string, string[]> = {
+  "operations": ["dashboard", "tasks", "checklists", "branches", "lost_found", "lost_found_hq"],
+  "equipment": ["equipment", "faults", "equipment_analytics"],
+  "hr": ["shifts", "shift_planning", "hr", "attendance", "leave_requests", "accounting"],
+  "training": ["academy.general", "academy.hq", "academy.analytics", "academy.badges", "academy.certificates", "academy.leaderboard", "academy.quizzes", "academy.learning_paths", "academy.ai", "academy.social", "academy.supervisor"],
+  "kitchen": ["factory_kiosk", "factory_dashboard", "factory_quality", "factory_analytics", "factory_ai_reports", "factory_stations", "factory_waste_reasons", "factory_pins"],
+  "reports": ["reports", "e2e_reports", "cash_reports", "hr_reports", "quality_audit", "audit_templates", "capa"],
+  "newshop": ["projects", "new_branch_projects"],
+  "admin": ["settings", "bulk_data", "users", "menu_management", "content_management", "admin_panel", "authorization", "support", "notifications", "announcements", "messages"],
+};
+
+// Draggable Module Item Component
+function DraggableModuleItem({ id, label, megaModuleId }: { id: string; label: string; megaModuleId: string }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, data: { megaModuleId } });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-background text-xs cursor-move hover-elevate"
+      {...attributes}
+      {...listeners}
+      data-testid={`draggable-module-${id}`}
+    >
+      <GripVertical className="h-3 w-3 text-muted-foreground" />
+      <span className="truncate">{label}</span>
+    </div>
+  );
+}
+
+// Droppable Mega Module Container
+function DroppableMegaModule({ 
+  megaModule, 
+  modules, 
+  allModuleLabels 
+}: { 
+  megaModule: typeof MEGA_MODULE_CONFIG[0]; 
+  modules: string[];
+  allModuleLabels: Record<string, string>;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: megaModule.id,
+  });
+
+  const Icon = megaModule.icon;
+
+  return (
+    <Card 
+      ref={setNodeRef}
+      className={`transition-all ${isOver ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+      data-testid={`droppable-mega-${megaModule.id}`}
+    >
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-md ${megaModule.color}`}>
+            <Icon className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <CardTitle className="text-sm">{megaModule.title}</CardTitle>
+            <CardDescription className="text-xs">{modules.length} modül</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="space-y-1.5 min-h-[100px]">
+          <SortableContext items={modules} strategy={verticalListSortingStrategy}>
+            {modules.map((moduleId) => (
+              <DraggableModuleItem
+                key={moduleId}
+                id={moduleId}
+                label={allModuleLabels[moduleId] || moduleId}
+                megaModuleId={megaModule.id}
+              />
+            ))}
+          </SortableContext>
+          {modules.length === 0 && (
+            <div className="flex items-center justify-center h-[80px] text-xs text-muted-foreground border border-dashed rounded-md">
+              Modül sürükleyip bırakın
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 type PermissionState = Record<string, { view: boolean; edit: boolean }>;
 
 export default function AdminYetkilendirme() {
@@ -241,6 +376,126 @@ export default function AdminYetkilendirme() {
   const [newRoleScope, setNewRoleScope] = useState<"admin" | "hq" | "branch">("hq");
   const [newRoleDescription, setNewRoleDescription] = useState("");
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("permissions");
+  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  
+  // Mega module mappings state (loaded from localStorage initially, will sync with API later)
+  const [moduleMappings, setModuleMappings] = useState<Record<string, string[]>>(() => {
+    const saved = localStorage.getItem("megaModuleMappings");
+    return saved ? JSON.parse(saved) : DEFAULT_MODULE_MEGA_MAPPING;
+  });
+  
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
+  
+  // Build all module labels from MODULE_GROUPS
+  const allModuleLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    MODULE_GROUPS.forEach(group => {
+      group.modules.forEach(mod => {
+        labels[mod.key] = mod.label;
+      });
+    });
+    return labels;
+  }, []);
+  
+  // Handle drag end - move or reorder modules
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveModuleId(null);
+    
+    if (!over) return;
+    
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    
+    // Find source mega module
+    let actualSourceId: string | null = null;
+    for (const [megaId, modules] of Object.entries(moduleMappings)) {
+      if (modules.includes(activeId)) {
+        actualSourceId = megaId;
+        break;
+      }
+    }
+    
+    if (!actualSourceId) return;
+    
+    // Determine target mega module
+    let targetMegaId: string | null = null;
+    
+    // Check if dropping directly on a mega module container
+    if (MEGA_MODULE_CONFIG.find(m => m.id === overId)) {
+      targetMegaId = overId;
+    } else {
+      // Check over.data for megaModuleId
+      const overData = over.data.current as { megaModuleId?: string } | undefined;
+      if (overData?.megaModuleId) {
+        targetMegaId = overData.megaModuleId;
+      } else {
+        // Search through mappings
+        for (const [megaId, modules] of Object.entries(moduleMappings)) {
+          if (modules.includes(overId)) {
+            targetMegaId = megaId;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (!targetMegaId) return;
+    
+    // Same mega module - reorder within
+    if (actualSourceId === targetMegaId) {
+      const modules = moduleMappings[actualSourceId];
+      const oldIndex = modules.indexOf(activeId);
+      const newIndex = modules.indexOf(overId);
+      
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        setModuleMappings(prev => {
+          const newMappings = { ...prev };
+          newMappings[actualSourceId] = arrayMove(prev[actualSourceId], oldIndex, newIndex);
+          localStorage.setItem("megaModuleMappings", JSON.stringify(newMappings));
+          return newMappings;
+        });
+      }
+      return;
+    }
+    
+    // Move module from source to target
+    setModuleMappings(prev => {
+      const newMappings = { ...prev };
+      newMappings[actualSourceId] = prev[actualSourceId].filter(id => id !== activeId);
+      newMappings[targetMegaId!] = [...prev[targetMegaId!], activeId];
+      
+      // Save to localStorage
+      localStorage.setItem("megaModuleMappings", JSON.stringify(newMappings));
+      
+      return newMappings;
+    });
+    
+    toast({
+      title: "Modül taşındı",
+      description: `${allModuleLabels[activeId] || activeId} başarıyla taşındı`,
+    });
+  };
+  
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveModuleId(event.active.id as string);
+  };
+  
+  // Reset mappings to default
+  const handleResetMappings = () => {
+    setModuleMappings(DEFAULT_MODULE_MEGA_MAPPING);
+    localStorage.setItem("megaModuleMappings", JSON.stringify(DEFAULT_MODULE_MEGA_MAPPING));
+    toast({ title: "Varsayılana sıfırlandı" });
+  };
 
   // Fetch all granular permission actions grouped by module
   const { data: permissionActions = {} } = useQuery<Record<string, PermissionAction[]>>({
@@ -430,245 +685,311 @@ export default function AdminYetkilendirme() {
   };
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col md:flex-row">
-      {/* Rol Listesi - Mobilde tam ekran, masaüstünde sidebar */}
-      <div className={`${showPermissions ? 'hidden md:block' : 'block'} w-full md:w-56 md:border-r bg-muted/30 p-3 space-y-4 md:h-full`}>
-        <div className="flex items-center gap-2 justify-between">
-          <div className="flex items-center gap-2">
-            <Link href="/admin">
-              <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-back-admin">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <h2 className="font-semibold text-sm">Roller</h2>
-          </div>
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-8 w-8"
-            onClick={() => setIsNewRoleDialogOpen(true)}
-            data-testid="button-new-role"
-            title="Yeni Rol Ekle"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+    <div className="h-[calc(100vh-120px)] flex flex-col">
+      {/* Tab Header */}
+      <div className="p-3 border-b flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Link href="/admin">
+            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-back-admin">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="font-semibold">Yetkilendirme & Modül Yönetimi</h1>
         </div>
-
-        <ScrollArea className="h-[calc(100vh-200px)] md:h-[calc(100%-60px)]">
-          <div className="space-y-4">
-            {Object.entries(ROLE_GROUPS).map(([groupKey, group]) => (
-              <div key={groupKey}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-2 h-2 rounded-full ${group.color}`} />
-                  <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
-                </div>
-                <div className="space-y-1">
-                  {group.roles.map(role => (
-                    <button
-                      key={role}
-                      onClick={() => handleRoleSelect(role)}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
-                        selectedRole === role 
-                          ? "bg-primary text-primary-foreground" 
-                          : "hover:bg-muted"
-                      }`}
-                      data-testid={`button-role-${role}`}
-                    >
-                      <span>{ROLE_LABELS[role] || role}</span>
-                      <ChevronRight className="h-4 w-4 md:hidden" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+          <TabsList>
+            <TabsTrigger value="permissions" data-testid="tab-permissions">
+              <Shield className="h-4 w-4 mr-1.5" />
+              Rol Yetkileri
+            </TabsTrigger>
+            <TabsTrigger value="modules" data-testid="tab-modules">
+              <LayoutDashboard className="h-4 w-4 mr-1.5" />
+              Modül Düzenleme
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
-
-      {/* İzin Ayarları - Mobilde tam ekran, masaüstünde ana alan */}
-      <div className={`${showPermissions ? 'block' : 'hidden md:block'} flex-1 p-4 overflow-auto`}>
-        {selectedRole ? (
-          <>
-            <div className="flex items-center justify-between mb-4 gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 md:hidden flex-shrink-0" 
-                  onClick={handleBackToRoles}
-                  data-testid="button-back-roles"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div className="min-w-0">
-                  <h1 className="text-lg md:text-xl font-semibold flex items-center gap-2">
-                    <Shield className="h-5 w-5 flex-shrink-0 hidden md:block" />
-                    <span className="truncate">{ROLE_LABELS[selectedRole]} Yetkileri</span>
-                  </h1>
-                  <p className="text-xs md:text-sm text-muted-foreground hidden md:block">
-                    Bu rol için sayfa ve modül erişim izinlerini ayarlayın
-                  </p>
-                </div>
-              </div>
-              {hasChanges && (
-                <Button 
-                  onClick={handleSave} 
-                  disabled={saveMutation.isPending} 
-                  size="sm"
-                  className="flex-shrink-0"
-                  data-testid="button-save-permissions"
-                >
-                  <Save className="h-4 w-4 mr-1 md:mr-2" />
-                  <span className="hidden md:inline">{saveMutation.isPending ? "Kaydediliyor..." : "Kaydet"}</span>
-                  <span className="md:hidden">Kaydet</span>
-                </Button>
-              )}
+      
+      {/* Permissions Tab Content */}
+      {activeTab === "permissions" && (
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          {/* Rol Listesi - Mobilde tam ekran, masaüstünde sidebar */}
+          <div className={`${showPermissions ? 'hidden md:block' : 'block'} w-full md:w-56 md:border-r bg-muted/30 p-3 space-y-4 md:h-full overflow-auto`}>
+            <div className="flex items-center gap-2 justify-between">
+              <h2 className="font-semibold text-sm">Roller</h2>
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-8 w-8"
+                onClick={() => setIsNewRoleDialogOpen(true)}
+                data-testid="button-new-role"
+                title="Yeni Rol Ekle"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
 
-            <div className="space-y-3">
-              {MODULE_GROUPS.map((group) => (
-                <Card key={group.name}>
-                  <CardHeader className="py-2 md:py-3">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <group.icon className="h-4 w-4" />
-                      {group.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0 pb-2 md:pb-4">
-                    <div className="space-y-1 md:space-y-2">
-                      {group.modules.map((module, idx) => (
-                        <div key={module.key}>
-                          {idx > 0 && <Separator className="my-1 md:my-2" />}
-                          <div className="flex items-center justify-between py-1">
-                            <span className="text-xs md:text-sm">{module.label}</span>
-                            <div className="flex items-center gap-2 md:gap-4">
-                              <div className="flex items-center gap-1 md:gap-2">
-                                <span className="text-[10px] md:text-xs text-muted-foreground">Gör</span>
-                                <Switch
-                                  checked={getPermission(module.key, "view")}
-                                  onCheckedChange={() => handleToggle(module.key, "view")}
-                                  className="scale-75 md:scale-100"
-                                  data-testid={`switch-${module.key}-view`}
-                                />
-                              </div>
-                              <div className="flex items-center gap-1 md:gap-2">
-                                <span className="text-[10px] md:text-xs text-muted-foreground">Düz</span>
-                                <Switch
-                                  checked={getPermission(module.key, "edit")}
-                                  onCheckedChange={() => handleToggle(module.key, "edit")}
-                                  disabled={!getPermission(module.key, "view")}
-                                  className="scale-75 md:scale-100"
-                                  data-testid={`switch-${module.key}-edit`}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Detaylı İzinler Accordion */}
-                          {hasGranularActions(module.key) && (
-                            <Accordion type="single" collapsible className="mt-1">
-                              <AccordionItem value={module.key} className="border-none">
-                                <AccordionTrigger className="py-1 text-xs text-muted-foreground hover:no-underline" data-testid={`accordion-${module.key}`}>
-                                  <div className="flex items-center gap-1">
-                                    <Eye className="h-3 w-3" />
-                                    Detaylı İzinler ({permissionActions[module.key]?.length || 0})
-                                  </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="pb-1 pt-2">
-                                  <div className="space-y-2 pl-2 border-l-2 border-muted">
-                                    {permissionActions[module.key]?.map((action) => {
-                                      const grant = getActionGrant(action.id);
-                                      return (
-                                        <div key={action.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-muted/30">
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium truncate">{action.labelTr}</p>
-                                            {action.description && (
-                                              <p className="text-[10px] text-muted-foreground truncate">{action.description}</p>
-                                            )}
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            {grant ? (
-                                              <>
-                                                <RadioGroup
-                                                  value={grant.scope}
-                                                  onValueChange={(v) => handleScopeChange(action.id, v)}
-                                                  className="flex gap-1"
-                                                >
-                                                  {Object.entries(SCOPE_LABELS).map(([scope, { label, icon: Icon, color }]) => (
-                                                    <div key={scope} className="flex items-center">
-                                                      <RadioGroupItem
-                                                        value={scope}
-                                                        id={`${action.id}-${scope}`}
-                                                        className="peer sr-only"
-                                                      />
-                                                      <Label
-                                                        htmlFor={`${action.id}-${scope}`}
-                                                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] cursor-pointer border transition-colors ${
-                                                          grant.scope === scope 
-                                                            ? `${color} border-current bg-current/10` 
-                                                            : "border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground"
-                                                        }`}
-                                                        data-testid={`scope-${action.actionKey}-${scope}`}
-                                                      >
-                                                        <Icon className="h-2.5 w-2.5" />
-                                                        <span className="hidden sm:inline">{label}</span>
-                                                      </Label>
-                                                    </div>
-                                                  ))}
-                                                </RadioGroup>
-                                                <Button
-                                                  size="icon"
-                                                  variant="ghost"
-                                                  className="h-5 w-5 text-destructive hover:text-destructive"
-                                                  onClick={() => handleRemoveGrant(action.id)}
-                                                  data-testid={`remove-grant-${action.actionKey}`}
-                                                >
-                                                  <X className="h-3 w-3" />
-                                                </Button>
-                                              </>
-                                            ) : (
-                                              <div className="flex gap-1">
-                                                {Object.entries(SCOPE_LABELS).map(([scope, { label, icon: Icon, color }]) => (
-                                                  <Button
-                                                    key={scope}
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="h-5 px-1.5 text-[10px]"
-                                                    onClick={() => handleScopeChange(action.id, scope)}
-                                                    data-testid={`add-grant-${action.actionKey}-${scope}`}
-                                                  >
-                                                    <Icon className={`h-2.5 w-2.5 mr-0.5 ${color}`} />
-                                                    <span className="hidden sm:inline">{label}</span>
-                                                  </Button>
-                                                ))}
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </AccordionContent>
-                              </AccordionItem>
-                            </Accordion>
-                          )}
-                        </div>
+            <ScrollArea className="h-[calc(100vh-200px)] md:h-[calc(100%-60px)]">
+              <div className="space-y-4">
+                {Object.entries(ROLE_GROUPS).map(([groupKey, group]) => (
+                  <div key={groupKey}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-2 h-2 rounded-full ${group.color}`} />
+                      <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {group.roles.map(role => (
+                        <button
+                          key={role}
+                          onClick={() => handleRoleSelect(role)}
+                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
+                            selectedRole === role 
+                              ? "bg-primary text-primary-foreground" 
+                              : "hover:bg-muted"
+                          }`}
+                          data-testid={`button-role-${role}`}
+                        >
+                          <span>{ROLE_LABELS[role] || role}</span>
+                          <ChevronRight className="h-4 w-4 md:hidden" />
+                        </button>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* İzin Ayarları - Mobilde tam ekran, masaüstünde ana alan */}
+          <div className={`${showPermissions ? 'block' : 'hidden md:block'} flex-1 p-4 overflow-auto`}>
+          {selectedRole ? (
+            <>
+              <div className="flex items-center justify-between mb-4 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 md:hidden flex-shrink-0" 
+                    onClick={handleBackToRoles}
+                    data-testid="button-back-roles"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="min-w-0">
+                    <h1 className="text-lg md:text-xl font-semibold flex items-center gap-2">
+                      <Shield className="h-5 w-5 flex-shrink-0 hidden md:block" />
+                      <span className="truncate">{ROLE_LABELS[selectedRole]} Yetkileri</span>
+                    </h1>
+                    <p className="text-xs md:text-sm text-muted-foreground hidden md:block">
+                      Bu rol için sayfa ve modül erişim izinlerini ayarlayın
+                    </p>
+                  </div>
+                </div>
+                {hasChanges && (
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={saveMutation.isPending} 
+                    size="sm"
+                    className="flex-shrink-0"
+                    data-testid="button-save-permissions"
+                  >
+                    <Save className="h-4 w-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">{saveMutation.isPending ? "Kaydediliyor..." : "Kaydet"}</span>
+                    <span className="md:hidden">Kaydet</span>
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {MODULE_GROUPS.map((group) => (
+                  <Card key={group.name}>
+                    <CardHeader className="py-2 md:py-3">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <group.icon className="h-4 w-4" />
+                        {group.name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0 pb-2 md:pb-4">
+                      <div className="space-y-1 md:space-y-2">
+                        {group.modules.map((module, idx) => (
+                          <div key={module.key}>
+                            {idx > 0 && <Separator className="my-1 md:my-2" />}
+                            <div className="flex items-center justify-between py-1">
+                              <span className="text-xs md:text-sm">{module.label}</span>
+                              <div className="flex items-center gap-2 md:gap-4">
+                                <div className="flex items-center gap-1 md:gap-2">
+                                  <span className="text-[10px] md:text-xs text-muted-foreground">Gör</span>
+                                  <Switch
+                                    checked={getPermission(module.key, "view")}
+                                    onCheckedChange={() => handleToggle(module.key, "view")}
+                                    className="scale-75 md:scale-100"
+                                    data-testid={`switch-${module.key}-view`}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1 md:gap-2">
+                                  <span className="text-[10px] md:text-xs text-muted-foreground">Düz</span>
+                                  <Switch
+                                    checked={getPermission(module.key, "edit")}
+                                    onCheckedChange={() => handleToggle(module.key, "edit")}
+                                    disabled={!getPermission(module.key, "view")}
+                                    className="scale-75 md:scale-100"
+                                    data-testid={`switch-${module.key}-edit`}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          
+                            {/* Detaylı İzinler Accordion */}
+                            {hasGranularActions(module.key) && (
+                              <Accordion type="single" collapsible className="mt-1">
+                                <AccordionItem value={module.key} className="border-none">
+                                  <AccordionTrigger className="py-1 text-xs text-muted-foreground hover:no-underline" data-testid={`accordion-${module.key}`}>
+                                    <div className="flex items-center gap-1">
+                                      <Eye className="h-3 w-3" />
+                                      Detaylı İzinler ({permissionActions[module.key]?.length || 0})
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="pb-1 pt-2">
+                                    <div className="space-y-2 pl-2 border-l-2 border-muted">
+                                      {permissionActions[module.key]?.map((action) => {
+                                        const grant = getActionGrant(action.id);
+                                        return (
+                                          <div key={action.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-muted/30">
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-xs font-medium truncate">{action.labelTr}</p>
+                                              {action.description && (
+                                                <p className="text-[10px] text-muted-foreground truncate">{action.description}</p>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              {grant ? (
+                                                <>
+                                                  <RadioGroup
+                                                    value={grant.scope}
+                                                    onValueChange={(v) => handleScopeChange(action.id, v)}
+                                                    className="flex gap-1"
+                                                  >
+                                                    {Object.entries(SCOPE_LABELS).map(([scope, { label, icon: Icon, color }]) => (
+                                                      <div key={scope} className="flex items-center">
+                                                        <RadioGroupItem
+                                                          value={scope}
+                                                          id={`${action.id}-${scope}`}
+                                                          className="peer sr-only"
+                                                        />
+                                                        <Label
+                                                          htmlFor={`${action.id}-${scope}`}
+                                                          className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] cursor-pointer border transition-colors ${
+                                                            grant.scope === scope 
+                                                              ? `${color} border-current bg-current/10` 
+                                                              : "border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground"
+                                                          }`}
+                                                          data-testid={`scope-${action.actionKey}-${scope}`}
+                                                        >
+                                                          <Icon className="h-2.5 w-2.5" />
+                                                          <span className="hidden sm:inline">{label}</span>
+                                                        </Label>
+                                                      </div>
+                                                    ))}
+                                                  </RadioGroup>
+                                                  <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-5 w-5 text-destructive hover:text-destructive"
+                                                    onClick={() => handleRemoveGrant(action.id)}
+                                                    data-testid={`remove-grant-${action.actionKey}`}
+                                                  >
+                                                    <X className="h-3 w-3" />
+                                                  </Button>
+                                                </>
+                                              ) : (
+                                                <div className="flex gap-1">
+                                                  {Object.entries(SCOPE_LABELS).map(([scope, { label, icon: Icon, color }]) => (
+                                                    <Button
+                                                      key={scope}
+                                                      size="sm"
+                                                      variant="outline"
+                                                      className="h-5 px-1.5 text-[10px]"
+                                                      onClick={() => handleScopeChange(action.id, scope)}
+                                                      data-testid={`add-grant-${action.actionKey}-${scope}`}
+                                                    >
+                                                      <Icon className={`h-2.5 w-2.5 mr-0.5 ${color}`} />
+                                                      <span className="hidden sm:inline">{label}</span>
+                                                    </Button>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              </Accordion>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="hidden md:flex h-full items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <Shield className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p>Yetkileri düzenlemek için bir rol seçin</p>
+              </div>
+            </div>
+          )}
+          </div>
+        </div>
+      )}
+      
+      {/* Modules Tab Content - Drag & Drop Mega Module Management */}
+      {activeTab === "modules" && (
+        <div className="flex-1 overflow-auto p-4">
+          <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <h2 className="text-lg font-semibold">Mega Modül Düzenleme</h2>
+              <p className="text-sm text-muted-foreground">
+                Modülleri sürükleyerek farklı mega modüller arasında taşıyabilirsiniz
+              </p>
+            </div>
+            <Button variant="outline" onClick={handleResetMappings} data-testid="button-reset-mappings">
+              Varsayılana Sıfırla
+            </Button>
+          </div>
+          
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+            onDragStart={handleDragStart}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {MEGA_MODULE_CONFIG.map((megaModule) => (
+                <DroppableMegaModule
+                  key={megaModule.id}
+                  megaModule={megaModule}
+                  modules={moduleMappings[megaModule.id] || []}
+                  allModuleLabels={allModuleLabels}
+                />
               ))}
             </div>
-          </>
-        ) : (
-          <div className="hidden md:flex h-full items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <Shield className="h-12 w-12 mx-auto mb-4 opacity-30" />
-              <p>Yetkileri düzenlemek için bir rol seçin</p>
-            </div>
-          </div>
-        )}
-      </div>
+            
+            <DragOverlay>
+              {activeModuleId ? (
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-background text-xs shadow-lg">
+                  <GripVertical className="h-3 w-3 text-muted-foreground" />
+                  <span>{allModuleLabels[activeModuleId] || activeModuleId}</span>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </div>
+      )}
 
       {/* Rol Ekle Modal */}
       <Dialog open={isNewRoleDialogOpen} onOpenChange={setIsNewRoleDialogOpen}>

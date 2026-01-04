@@ -4502,6 +4502,37 @@ export type UpdateRoleModulePermission = z.infer<typeof updateRoleModulePermissi
 export type RoleModulePermission = typeof roleModulePermissions.$inferSelect;
 
 // ========================================
+// MEGA MODULE MAPPINGS - Modül-Mega Modül Eşleştirmeleri
+// Dashboard kartlarındaki modüllerin hangi mega-modüle ait olduğu
+// ========================================
+
+export const megaModuleMappings = pgTable("mega_module_mappings", {
+  id: serial("id").primaryKey(),
+  moduleId: varchar("module_id", { length: 100 }).notNull(), // menu-service'deki item.id (equipment, faults, etc.)
+  megaModuleId: varchar("mega_module_id", { length: 50 }).notNull(), // operations, equipment, hr, training, kitchen, reports, newshop, admin
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("mega_module_mappings_module_idx").on(table.moduleId),
+  index("mega_module_mappings_mega_idx").on(table.megaModuleId),
+  unique("mega_module_mappings_unique").on(table.moduleId),
+]);
+
+export const insertMegaModuleMappingSchema = createInsertSchema(megaModuleMappings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateMegaModuleMappingSchema = insertMegaModuleMappingSchema.partial();
+
+export type InsertMegaModuleMapping = z.infer<typeof insertMegaModuleMappingSchema>;
+export type UpdateMegaModuleMapping = z.infer<typeof updateMegaModuleMappingSchema>;
+export type MegaModuleMapping = typeof megaModuleMappings.$inferSelect;
+
+// ========================================
 // BACKUP RECORDS - Yedekleme Kayıtları
 // ========================================
 
