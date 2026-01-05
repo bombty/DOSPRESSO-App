@@ -120,7 +120,7 @@ export default function AICostDashboard() {
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              {data && data.remainingBudget < 2 ? '⚠️ Bütçe azalıyor' : 'Bütçe durumu iyi'}
+              {data && data.remainingBudget < 2 ? 'Bütçe azalıyor' : 'Bütçe durumu iyi'}
             </p>
           </CardContent>
         </Card>

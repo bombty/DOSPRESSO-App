@@ -200,7 +200,7 @@ export default function AcademyAchievements() {
           </CardTitle>
         </CardHeader>
         <CardContent className="w-full space-y-2 sm:space-y-3 gap-2 text-sm">
-          <p>🎯 Düzenli olarak sınavlara katıl - her sınav ilerlemenizi arttırır</p>
+          <p>Düzenli olarak sınavlara katıl - her sınav ilerlemenizi arttırır</p>
           <p>⭐ Mükemmel puanlar almaya çalış - 100 puan başarısını açmak mümkün</p>
           <p>🔥 Tutarlı kal - haftada birden fazla sınav tamamla</p>
           <p>🏆 Kariyeri ilerlet - her seviyeye ulaştığında yeni başarılar açılır</p>

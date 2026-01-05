@@ -183,9 +183,9 @@ export default function AcademyStreakTracker() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-2 text-sm">
           <p>🔥 Her gün en az bir sınav tamamla</p>
-          <p>📊 30 günlük seriyi tuttuğunda özel rozet kazan</p>
+          <p>30 günlük seriyi tuttuğunda özel rozet kazan</p>
           <p>⏰ Aynı saatte pratik yapmak alışkanlık oluşturur</p>
-          <p>🎯 Seri kırılırsa endişelenme - yeniden başlamak hiç geç değil!</p>
+          <p>Seri kırılırsa endişelenme - yeniden başlamak hiç geç değil!</p>
         </CardContent>
       </Card>
     </div>

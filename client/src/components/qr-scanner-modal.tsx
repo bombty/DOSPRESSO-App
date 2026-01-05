@@ -142,7 +142,7 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
               });
 
               toast({
-                title: "✅ Giriş Başarılı",
+                title: "Giriş Başarılı",
                 description: "Vardiyaya giriş yapıldı",
               });
               queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });

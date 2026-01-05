@@ -245,7 +245,7 @@ export default function VardiyaCheckin() {
     },
     onSuccess: (data) => {
       toast({
-        title: "✅ Giriş Başarılı",
+        title: "Giriş Başarılı",
         description: "Vardiyaya giriş yapıldı. Dress code analizi yapılıyor...",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
@@ -286,7 +286,7 @@ export default function VardiyaCheckin() {
     },
     onSuccess: () => {
       toast({
-        title: "✅ Çıkış Başarılı",
+        title: "Çıkış Başarılı",
         description: "Vardiyadan çıkış yapıldı",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });

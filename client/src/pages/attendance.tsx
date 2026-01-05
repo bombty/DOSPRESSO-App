@@ -109,7 +109,7 @@ export default function AttendancePage() {
       const isCompliant = analysisResult?.isCompliant ?? true;
       
       toast({
-        title: isCompliant ? "✅ Giriş Başarılı" : "⚠️ Giriş Yapıldı - Uyarı",
+        title: isCompliant ? "Giriş Başarılı" : "Giriş Yapıldı - Uyarı",
         description: isCompliant 
           ? "Dress code uyumlu. Vardiyaya giriş yapıldı." 
           : "Dress code uyumsuzluk tespit edildi. Supervisor ile görüşün.",

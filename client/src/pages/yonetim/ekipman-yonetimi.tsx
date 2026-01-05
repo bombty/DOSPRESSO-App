@@ -443,7 +443,7 @@ export default function EquipmentManagement() {
             <div className="text-2xl font-bold">{stats.pending}</div>
             {stats.critical > 0 && (
               <div className="text-xs text-destructive dark:text-destructive mt-1 font-semibold">
-                ⚠️ {stats.critical} Kritik
+                {stats.critical} Kritik
               </div>
             )}
           </CardContent>

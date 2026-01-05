@@ -517,8 +517,9 @@ export default function ChecklistExecutionPage() {
             <AlertDialogDescription>
               Tüm görevler tamamlandı! Checklistı göndermek istediğinize emin misiniz?
               {completion.isLate && (
-                <span className="block mt-2 text-amber-600">
-                  ⚠️ Checklist geç tamamlandı. Bu puanınızı etkileyebilir.
+                <span className="mt-2 text-amber-600 flex items-center gap-1">
+                  <AlertTriangle className="h-4 w-4" />
+                  Checklist geç tamamlandı. Bu puanınızı etkileyebilir.
                 </span>
               )}
             </AlertDialogDescription>

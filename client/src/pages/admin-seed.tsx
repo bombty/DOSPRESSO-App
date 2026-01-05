@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Database } from "lucide-react";
+import { Loader2, Database, Package, BookOpen, Users, CheckCircle2 } from "lucide-react";
 
 export default function AdminSeedPage() {
   const [isSeeding, setIsSeeding] = useState(false);
@@ -30,12 +30,12 @@ export default function AdminSeedPage() {
 
       setResult(data);
       toast({
-        title: "✅ Başarılı",
+        title: "Başarılı",
         description: "Ekipman, eğitim ve personel verileri eklendi",
       });
     } catch (error) {
       toast({
-        title: "❌ Hata",
+        title: "Hata",
         description: error.message,
         variant: "destructive",
       });
@@ -83,7 +83,9 @@ export default function AdminSeedPage() {
 
           {result && (
             <div className="p-3 rounded-lg bg-muted grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-              <p className="font-semibold text-success">✅ İşlem Başarılı</p>
+              <p className="font-semibold text-success flex items-center gap-1">
+                <CheckCircle2 className="h-4 w-4" /> İşlem Başarılı
+              </p>
               <div className="text-sm space-y-1">
                 <p>
                   <strong>Ekipman:</strong> {result.data?.equipment?.created} eklendi,{' '}
@@ -109,7 +111,9 @@ export default function AdminSeedPage() {
         </CardHeader>
         <CardContent className="w-full space-y-2 sm:space-y-3">
           <div>
-            <h3 className="font-semibold mb-2">📦 Ekipman</h3>
+            <h3 className="font-semibold mb-2 flex items-center gap-2">
+              <Package className="h-4 w-4" /> Ekipman
+            </h3>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
               <li>Her şube için: La Marzocco Linea PB espresso makinesi</li>
               <li>Mahlkonig grinder</li>
@@ -118,7 +122,9 @@ export default function AdminSeedPage() {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2">📚 Eğitim Modülleri</h3>
+            <h3 className="font-semibold mb-2 flex items-center gap-2">
+              <BookOpen className="h-4 w-4" /> Eğitim Modülleri
+            </h3>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
               <li>Espresso Hazırlama Temelleri</li>
               <li>Süt Köpürtme Teknikleri</li>
@@ -129,7 +135,9 @@ export default function AdminSeedPage() {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2">👥 Personel</h3>
+            <h3 className="font-semibold mb-2 flex items-center gap-2">
+              <Users className="h-4 w-4" /> Personel
+            </h3>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
               <li>Her şube için 1 supervisor</li>
               <li>Her şube için 2 barista</li>

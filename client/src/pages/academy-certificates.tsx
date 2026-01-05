@@ -223,10 +223,10 @@ export default function AcademyCertificates() {
           <CardTitle className="text-base">Sertifikalar Hakkında</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-2 text-sm">
-          <p>✅ Her kariyer seviyesinde resmi sertifika kazanın</p>
-          <p>✅ Sertifikaları PDF olarak indirip paylaşın</p>
-          <p>✅ LinkedIn ve diğer platformlarda gösterin</p>
-          <p>✅ DOSPRESSO Akademi tarafından onaylanmış belgeler</p>
+          <p>Her kariyer seviyesinde resmi sertifika kazanın</p>
+          <p>Sertifikaları PDF olarak indirip paylaşın</p>
+          <p>LinkedIn ve diğer platformlarda gösterin</p>
+          <p>DOSPRESSO Akademi tarafından onaylanmış belgeler</p>
         </CardContent>
       </Card>
     </div>

@@ -22,7 +22,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertChecklistSchema, updateChecklistSchema, type Checklist, type InsertChecklist, type ChecklistTask, type UpdateChecklist, type UserRoleType } from "@shared/schema";
 import { z } from "zod";
-import { FileText, Plus, Camera, ChevronDown, Sparkles, Edit, Trash2, MoveUp, MoveDown } from "lucide-react";
+import { FileText, Plus, Camera, ChevronDown, Sparkles, Edit, Trash2, MoveUp, MoveDown, AlertTriangle } from "lucide-react";
 
 const EditChecklistFormSchema = z.object({
   title: z.string().min(1, "Başlık gerekli"),
@@ -521,8 +521,9 @@ export default function Checklists() {
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit((data) => updateMutation.mutate(data))} className="w-full space-y-2 sm:space-y-3">
               {editingChecklist && !(editingChecklist.isEditable ?? true) && !isCoach && (
-                <div className="bg-warning/10 dark:bg-warning/5/20 border border-warning/30 dark:border-warning/40 rounded-md p-3 text-sm text-warning dark:text-warning">
-                  ⚠️ Bu checklist düzenlenemez olarak işaretlenmiş. Sadece HQ Coach yetkisi ile düzenlenebilir.
+                <div className="bg-warning/10 dark:bg-warning/5/20 border border-warning/30 dark:border-warning/40 rounded-md p-3 text-sm text-warning dark:text-warning flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>Bu checklist düzenlenemez olarak işaretlenmiş. Sadece HQ Coach yetkisi ile düzenlenebilir.</span>
                 </div>
               )}
 

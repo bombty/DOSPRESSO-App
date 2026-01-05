@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { Star, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -106,7 +106,9 @@ export function StarRating({
       {penaltyApplied && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="ml-1 text-orange-500 text-xs">⚠️</span>
+            <span className="ml-1">
+              <AlertTriangle className="w-3 h-3 text-orange-500" />
+            </span>
           </TooltipTrigger>
           <TooltipContent>
             <p className="text-xs">Geç teslim cezası uygulandı</p>

@@ -279,9 +279,9 @@ export default function AcademyCohortAnalytics() {
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-2 text-sm">
-          <p>📈 Tamamlama oranı Eylül'den bu yana %27 artış göstermiş</p>
+          <p>Tamamlama oranı Eylül'den bu yana %27 artış göstermiş</p>
           <p>⭐ Supervisor seviyesindeki öğrenciler 89% ortalama puan alıyor</p>
-          <p>🎯 45 öğrenci yüksek katılım gösteriyor, %30 oranında bırakıyor</p>
+          <p>45 öğrenci yüksek katılım gösteriyor, %30 oranında bırakıyor</p>
           <p>🚀 Her seviyeye gelen öğrenci sayısı %15 oranında azalıyor (beklenen eğilim)</p>
         </CardContent>
       </Card>

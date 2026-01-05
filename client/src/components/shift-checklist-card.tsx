@@ -67,13 +67,13 @@ export function ShiftChecklistCard() {
     onSuccess: (_, checklistId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/shifts/my"] });
       toast({
-        title: "✅ Checklist güncellendi",
+        title: "Checklist güncellendi",
         description: "Durum başarıyla kaydedildi",
       });
     },
     onError: () => {
       toast({
-        title: "❌ Hata",
+        title: "Hata",
         description: "Checklist güncellenirken hata oluştu",
         variant: "destructive",
       });
@@ -155,7 +155,7 @@ export function ShiftChecklistCard() {
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1 text-center">
-              {completedCount === totalCount ? "✅ Tamamlandı" : `${totalCount - completedCount} beklemede`}
+              {completedCount === totalCount ? "Tamamlandı" : `${totalCount - completedCount} beklemede`}
             </p>
           </div>
         )}

@@ -1057,7 +1057,7 @@ export default function GorevDetay() {
                     />
                     <span className="font-medium">{ratingData.finalRating}/5</span>
                     {ratingData.penaltyApplied === 1 && (
-                      <span className="text-orange-500">⚠️</span>
+                      <AlertTriangle className="h-3 w-3 text-orange-500" />
                     )}
                   </div>
                 ) : (
@@ -1189,8 +1189,9 @@ export default function GorevDetay() {
             <DialogDescription>
               Görevin tamamlanma kalitesini değerlendirin (1-5 yıldız).
               {ratingData?.isLate && (
-                <span className="block mt-2 text-orange-500 text-sm">
-                  ⚠️ Görev geç teslim edildi.
+                <span className="mt-2 text-orange-500 text-sm flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Görev geç teslim edildi.
                 </span>
               )}
             </DialogDescription>

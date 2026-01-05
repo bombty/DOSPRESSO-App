@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon, Download, Plus, QrCode, AlertTriangle, ClipboardList } from 'lucide-react';
+import { Loader2, Filter, X, MapPin, Wrench, Calendar, AlertCircle, CheckCircle2, Clock, History, User, Upload, Image as ImageIcon, Download, Plus, QrCode, AlertTriangle, ClipboardList, Sparkles, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Branch } from '@shared/schema';
 import { format, parseISO } from 'date-fns';
@@ -363,7 +363,7 @@ export default function EkipmanServis() {
       toast({
         title: 'Başarılı',
         description: isPriorityCritical 
-          ? `🚨 ${priority === 'kritik' ? 'KRİTİK' : 'Yüksek Öncelikli'} Servis Talebi oluşturuldu - HQ personeli bilgilendirildi`
+          ? `${priority === 'kritik' ? 'KRİTİK' : 'Yüksek Öncelikli'} Servis Talebi oluşturuldu - HQ personeli bilgilendirildi`
           : createType === 'fault' ? 'Arıza raporu oluşturuldu' : 'Servis talebi oluşturuldu',
       });
       setCreateDialogOpen(false);
@@ -550,8 +550,8 @@ export default function EkipmanServis() {
                     <CardDescription>{req.equipmentName} • {req.branchName || `Şube #${req.branchId}`}</CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Badge variant={req.type === 'fault' ? 'outline' : 'default'}>
-                      {req.type === 'fault' ? '⚠️ Arıza' : '📋 Talep'}
+                    <Badge variant={req.type === 'fault' ? 'outline' : 'default'} className="flex items-center gap-1">
+                      {req.type === 'fault' ? <><AlertTriangle className="h-3 w-3" /> Arıza</> : <><ClipboardList className="h-3 w-3" /> Talep</>}
                     </Badge>
                     {req.type === 'fault' && (
                       <Badge className={req.faultStatus === 'acik' ? 'bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive' : 'bg-success/10 text-success dark:bg-success/5 dark:text-success'}>
@@ -716,8 +716,8 @@ export default function EkipmanServis() {
                       className="w-full mt-2"
                       data-testid="button-ai-diagnose"
                     >
-                      {loadingAiDiagnosis && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                      ✨ AI Analiz Yap
+                      {loadingAiDiagnosis ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                      AI Analiz Yap
                     </Button>
                   )}
                 </div>
@@ -795,17 +795,18 @@ export default function EkipmanServis() {
                     <SelectContent>
                       <SelectItem value="düşük">Düşük</SelectItem>
                       <SelectItem value="orta">Orta</SelectItem>
-                      <SelectItem value="yüksek">⚠️ Yüksek</SelectItem>
-                      <SelectItem value="kritik">🚨 Kritik</SelectItem>
+                      <SelectItem value="yüksek">Yüksek</SelectItem>
+                      <SelectItem value="kritik">Kritik</SelectItem>
                     </SelectContent>
                   </Select>
                   {(priority === 'yüksek' || priority === 'kritik') && (
-                    <div className={`text-xs p-2 rounded ${
+                    <div className={`text-xs p-2 rounded flex items-center gap-1 ${
                       priority === 'kritik' 
                         ? 'bg-destructive/10 dark:bg-destructive/5/30 text-destructive dark:text-destructive' 
                         : 'bg-warning/10 dark:bg-warning/5/30 text-warning dark:text-warning'
                     }`}>
-                      ℹ️ HQ personeli otomatik olarak bilgilendirilecek
+                      <Info className="h-3 w-3" />
+                      HQ personeli otomatik olarak bilgilendirilecek
                     </div>
                   )}
                 </div>
