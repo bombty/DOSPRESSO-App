@@ -2494,30 +2494,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/checklists/my-assignments', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user!;
-      const allChecklists = await storage.getChecklists();
-      const myChecklists = [];
       
-      for (const checklist of allChecklists) {
-        const tasks = await storage.getChecklistTasks(checklist.id);
-        const isAssigned = tasks.some((task: any) => 
-          task.assignedBaristaId === user.id || 
-          task.assignedSupervisorId === user.id || 
-          task.verifiedByUserId === user.id
-        );
-        if (isAssigned) {
-          myChecklists.push({
-            ...checklist,
-            checklistTitle: checklist.name,
-            pendingTasks: tasks.filter((t: any) => !t.completedAt).length,
-            completedTasks: tasks.filter((t: any) => t.completedAt).length
-          });
-        }
-      }
+      // Use the new assignment-based method
+      const myAssignments = await storage.getMyChecklistAssignments(
+        user.id,
+        user.branchId || undefined,
+        user.role || undefined
+      );
       
-      res.json(myChecklists);
+      // Format response with task counts
+      const result = myAssignments.map(checklist => ({
+        id: checklist.id,
+        title: checklist.title,
+        description: checklist.description,
+        frequency: checklist.frequency,
+        category: checklist.category,
+        timeWindowStart: checklist.timeWindowStart,
+        timeWindowEnd: checklist.timeWindowEnd,
+        isActive: checklist.isActive,
+        assignment: checklist.assignment,
+        tasks: checklist.tasks,
+        totalTasks: checklist.tasks.length,
+        pendingTasks: checklist.tasks.length,
+        completedTasks: 0
+      }));
+      
+      res.json(result);
     } catch (error: any) {
       console.error('Error getting my checklist assignments:', error);
       res.status(500).json({ message: 'Checklist atamaları alınamadı' });
+    }
+  });
+
+  // ========================================
+  // CHECKLIST ASSIGNMENT ROUTES
+  // ========================================
+
+  // GET /api/checklist-assignments - Get all assignments (admin/supervisor)
+  app.get('/api/checklist-assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'view');
+      const checklistId = req.query.checklistId ? parseInt(req.query.checklistId) : undefined;
+      const assignments = await storage.getChecklistAssignments(checklistId);
+      res.json(assignments);
+    } catch (error: any) {
+      console.error('Error getting checklist assignments:', error);
+      res.status(500).json({ message: 'Atamalar alınamadı' });
+    }
+  });
+
+  // POST /api/checklist-assignments - Create new assignment
+  app.post('/api/checklist-assignments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'edit');
+      
+      const { checklistId, scope, assignedUserId, branchId, role, shiftId, effectiveFrom, effectiveTo } = req.body;
+      
+      if (!checklistId || !scope) {
+        return res.status(400).json({ message: 'checklistId ve scope zorunludur' });
+      }
+      
+      if (!['user', 'branch', 'role'].includes(scope)) {
+        return res.status(400).json({ message: 'Geçersiz scope. user, branch veya role olmalıdır' });
+      }
+      
+      if (scope === 'user' && !assignedUserId) {
+        return res.status(400).json({ message: 'Kullanıcı ataması için assignedUserId zorunludur' });
+      }
+      
+      if ((scope === 'branch' || scope === 'role') && !branchId) {
+        return res.status(400).json({ message: 'Şube/rol ataması için branchId zorunludur' });
+      }
+      
+      if (scope === 'role' && !role) {
+        return res.status(400).json({ message: 'Rol ataması için role zorunludur' });
+      }
+      
+      const assignment = await storage.createChecklistAssignment({
+        checklistId,
+        scope,
+        assignedUserId: scope === 'user' ? assignedUserId : null,
+        branchId: (scope === 'branch' || scope === 'role') ? branchId : null,
+        role: scope === 'role' ? role : null,
+        shiftId: shiftId || null,
+        effectiveFrom: effectiveFrom || null,
+        effectiveTo: effectiveTo || null,
+        isActive: true,
+        createdById: user.id
+      });
+      
+      res.status(201).json(assignment);
+    } catch (error: any) {
+      console.error('Error creating checklist assignment:', error);
+      res.status(500).json({ message: 'Atama oluşturulamadı' });
+    }
+  });
+
+  // PATCH /api/checklist-assignments/:id - Update assignment
+  app.patch('/api/checklist-assignments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'edit');
+      
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const updated = await storage.updateChecklistAssignment(id, updates);
+      if (!updated) {
+        return res.status(404).json({ message: 'Atama bulunamadı' });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating checklist assignment:', error);
+      res.status(500).json({ message: 'Atama güncellenemedi' });
+    }
+  });
+
+  // DELETE /api/checklist-assignments/:id - Delete assignment
+  app.delete('/api/checklist-assignments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'checklists', 'delete');
+      
+      const id = parseInt(req.params.id);
+      await storage.deleteChecklistAssignment(id);
+      
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('Error deleting checklist assignment:', error);
+      res.status(500).json({ message: 'Atama silinemedi' });
     }
   });
 
