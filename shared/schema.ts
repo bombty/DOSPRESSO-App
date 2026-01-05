@@ -1060,6 +1060,45 @@ export const updateChecklistSchema = z.object({
 export type UpdateChecklist = z.infer<typeof updateChecklistSchema>;
 
 // ========================================
+// CHECKLIST ASSIGNMENTS TABLE
+// ========================================
+
+// Assignment scope enum: user = specific user, branch = all users in branch, role = all users with specific role in branch
+export const checklistAssignmentScopeEnum = ["user", "branch", "role"] as const;
+export type ChecklistAssignmentScope = typeof checklistAssignmentScopeEnum[number];
+
+// Checklist assignments table - links checklists to users/branches/roles
+export const checklistAssignments = pgTable("checklist_assignments", {
+  id: serial("id").primaryKey(),
+  checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+  scope: varchar("scope", { length: 20 }).notNull(), // 'user' | 'branch' | 'role'
+  assignedUserId: varchar("assigned_user_id").references(() => users.id, { onDelete: "cascade" }), // For scope='user'
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }), // For scope='branch' or 'role'
+  role: varchar("role", { length: 50 }), // For scope='role' - specific role in branch
+  shiftId: integer("shift_id").references(() => shifts.id, { onDelete: "set null" }), // Optional: link to specific shift
+  effectiveFrom: date("effective_from"), // Optional: when assignment starts
+  effectiveTo: date("effective_to"), // Optional: when assignment ends (null = permanent)
+  isActive: boolean("is_active").default(true),
+  createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  checklistIdx: index("checklist_assignments_checklist_idx").on(table.checklistId),
+  userIdx: index("checklist_assignments_user_idx").on(table.assignedUserId),
+  branchIdx: index("checklist_assignments_branch_idx").on(table.branchId),
+  activeIdx: index("checklist_assignments_active_idx").on(table.isActive),
+}));
+
+export const insertChecklistAssignmentSchema = createInsertSchema(checklistAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertChecklistAssignment = z.infer<typeof insertChecklistAssignmentSchema>;
+export type ChecklistAssignment = typeof checklistAssignments.$inferSelect;
+
+// ========================================
 // TASK MANAGEMENT TABLES
 // ========================================
 
