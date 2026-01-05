@@ -6695,6 +6695,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // ===== USER PERSONAL DASHBOARD ENDPOINT =====
+  
+  // GET /api/me/dashboard-summary - Personal dashboard summary for the authenticated user
+  app.get('/api/me/dashboard-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user!;
+      const userId = user.id;
+      const branchId = user.branchId;
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Fetch user's personal data in parallel
+      const [
+        myTasks,
+        myChecklists,
+        myShifts,
+        unreadNotifications,
+        performanceScore
+      ] = await Promise.all([
+        // Get user's tasks
+        storage.getTasks(branchId).then(tasks => 
+          tasks.filter((t: any) => t.assignedToId === userId)
+        ),
+        // Get user's assigned checklists
+        storage.getMyChecklistAssignments(userId, branchId, user.role),
+        // Get user's shifts
+        storage.getShiftsByUser(userId),
+        // Get unread notifications count
+        storage.getUnreadNotificationCount(userId),
+        // Get performance score (if exists)
+        storage.getDailyPerformanceScore(userId, branchId, today).catch(() => null)
+      ]);
+      
+      // Calculate task stats
+      const completedTasks = myTasks.filter((t: any) => t.status === 'completed' || t.status === 'done').length;
+      const pendingTasks = myTasks.filter((t: any) => t.status !== 'completed' && t.status !== 'done').length;
+      
+      // Calculate checklist stats
+      const totalChecklists = myChecklists.length;
+      const completedChecklists = myChecklists.filter((c: any) => 
+        c.tasks?.every((t: any) => t.completed)
+      ).length;
+      
+      // Get today's shift
+      const todayShift = myShifts.find((s: any) => 
+        s.shiftDate === today
+      );
+      
+      const summary = {
+        user: {
+          id: userId,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          branchId: branchId
+        },
+        stats: {
+          completedTasks,
+          pendingTasks,
+          totalTasks: completedTasks + pendingTasks,
+          completedChecklists,
+          pendingChecklists: totalChecklists - completedChecklists,
+          totalChecklists,
+          unreadNotifications
+        },
+        todayShift: todayShift ? {
+          startTime: todayShift.startTime,
+          endTime: todayShift.endTime,
+          shiftType: todayShift.shiftType
+        } : null,
+        performanceScore: performanceScore?.compositeScore || null,
+        date: today
+      };
+      
+      res.json(summary);
+    } catch (error: any) {
+      console.error('Error getting personal dashboard summary:', error);
+      res.status(500).json({ message: 'Dashboard özeti alınamadı' });
+    }
+  });
+
   // ===== MENU MANAGEMENT ENDPOINTS =====
   
   // GET /api/me/menu - User-scoped menu endpoint (v2 - static blueprint based)
