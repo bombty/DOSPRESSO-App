@@ -84,6 +84,7 @@ import Settings from "@/pages/yonetim/ayarlar";
 import UserCRM from "@/pages/yonetim/kullanicilar";
 import AICostDashboard from "@/pages/yonetim/ai-maliyetler";
 import AdminChecklistManagement from "@/pages/yonetim/checklistler";
+import ChecklistTrackingPage from "@/pages/yonetim/checklist-takip";
 import ServiceRequestsManagement from "@/pages/yonetim/servis-talepleri";
 import EquipmentManagement from "@/pages/yonetim/ekipman-yonetimi";
 import EkipmanServis from "@/pages/yonetim/ekipman-servis";
@@ -314,6 +315,7 @@ function Router() {
           <Route path="/yonetim/kullanicilar" component={UserCRM} />
           <Route path="/yonetim/ai-maliyetler" component={AICostDashboard} />
           <Route path="/yonetim/checklistler" component={AdminChecklistManagement} />
+          <Route path="/yonetim/checklist-takip" component={ChecklistTrackingPage} />
           <Route path="/yonetim/ekipman-servis" component={EkipmanServis} />
           <Route path="/yonetim/servis-talepleri" component={ServiceRequestsManagement} />
           <Route path="/yonetim/ekipman-yonetimi" component={EquipmentManagement} />
