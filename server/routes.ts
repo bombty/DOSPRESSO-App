@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./localAuth";
+import { setupAuth, isAuthenticated, createKioskSession, isKioskAuthenticated, deleteKioskSession, updateKioskStation } from "./localAuth";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode";
 import { sanitizeUser, sanitizeUsers, sanitizeUserForRole, sanitizeUsersForRole } from "./security";
@@ -24879,6 +24879,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         ))
         .limit(1);
 
+      const kioskToken = createKioskSession(userId);
       res.json({
         success: true,
         user: {
@@ -24889,6 +24890,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           role: user.role,
         },
         activeSession: activeSession || null,
+        kioskToken,
       });
     } catch (error: any) {
       console.error("Error in kiosk login:", error);
@@ -24897,7 +24899,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   });
 
   // Kiosk vardiya başlat (istasyon seçerek)
-  app.post('/api/factory/kiosk/start-shift', async (req, res) => {
+  app.post('/api/factory/kiosk/start-shift', isKioskAuthenticated, async (req, res) => {
     try {
       const { userId, stationId } = req.body;
       
@@ -24952,7 +24954,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   });
 
   // Kiosk üretim kaydet ve istasyon değiştir
-  app.post('/api/factory/kiosk/switch-station', async (req, res) => {
+  app.post('/api/factory/kiosk/switch-station', isKioskAuthenticated, async (req, res) => {
     try {
       const { sessionId, productionRunId, quantityProduced, quantityWaste, wasteReason, newStationId } = req.body;
       
@@ -25023,7 +25025,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   });
 
   // Kiosk vardiya bitir
-  app.post('/api/factory/kiosk/end-shift', async (req, res) => {
+  app.post('/api/factory/kiosk/end-shift', isKioskAuthenticated, async (req, res) => {
     try {
       const { sessionId, productionRunId, quantityProduced, producedUnit, quantityWaste, wasteUnit, wasteReasonId, wasteNotes, wasteReason, photoUrl } = req.body;
       
@@ -25350,7 +25352,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   });
 
   // Aktif oturum bilgisi al
-  app.get('/api/factory/kiosk/session/:userId', async (req, res) => {
+  app.get('/api/factory/kiosk/session/:userId', isKioskAuthenticated, async (req, res) => {
     try {
       const { userId } = req.params;
 
@@ -27056,6 +27058,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
           role: user.role,
         },
         activeSession: activeSession || null,
+        kioskToken,
       });
     } catch (error: any) {
       console.error("Error in branch kiosk login:", error);

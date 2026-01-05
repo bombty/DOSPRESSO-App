@@ -274,3 +274,50 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
   next();
 };
+
+const kioskSessions = new Map<string, { userId: string; expiresAt: Date; stationId?: number }>();
+const KIOSK_SESSION_TTL = 8 * 60 * 60 * 1000;
+
+export function createKioskSession(userId: string): string {
+  const token = crypto.randomUUID();
+  kioskSessions.set(token, {
+    userId,
+    expiresAt: new Date(Date.now() + KIOSK_SESSION_TTL),
+  });
+  return token;
+}
+
+export function validateKioskSession(token: string): { userId: string; stationId?: number } | null {
+  const session = kioskSessions.get(token);
+  if (!session) return null;
+  if (session.expiresAt < new Date()) {
+    kioskSessions.delete(token);
+    return null;
+  }
+  return { userId: session.userId, stationId: session.stationId };
+}
+
+export function updateKioskStation(token: string, stationId: number): void {
+  const session = kioskSessions.get(token);
+  if (session) {
+    session.stationId = stationId;
+  }
+}
+
+export function deleteKioskSession(token: string): void {
+  kioskSessions.delete(token);
+}
+
+export const isKioskAuthenticated: RequestHandler = (req, res, next) => {
+  const token = req.headers['x-kiosk-token'] as string;
+  if (!token) {
+    return res.status(401).json({ message: "Kiosk oturumu gerekli" });
+  }
+  const session = validateKioskSession(token);
+  if (!session) {
+    return res.status(401).json({ message: "Geçersiz veya süresi dolmuş oturum" });
+  }
+  (req as any).kioskUserId = session.userId;
+  (req as any).kioskStationId = session.stationId;
+  next();
+};
