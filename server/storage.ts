@@ -12,6 +12,8 @@ import type {
   UpdateChecklist,
   ChecklistTask,
   InsertChecklistTask,
+  ChecklistAssignment,
+  InsertChecklistAssignment,
   Equipment,
   InsertEquipment,
   EquipmentFault,
@@ -160,6 +162,7 @@ import {
   tasks,
   checklists,
   checklistTasks,
+  checklistAssignments,
   equipment,
   equipmentFaults,
   faultStageTransitions,
@@ -387,6 +390,14 @@ export interface IStorage {
   createChecklistTask(task: InsertChecklistTask): Promise<ChecklistTask>;
   updateChecklistTask(id: number, updates: Partial<InsertChecklistTask>): Promise<ChecklistTask | undefined>;
   deleteChecklistTask(id: number): Promise<void>;
+  
+  // Checklist Assignment operations
+  getChecklistAssignments(checklistId?: number): Promise<ChecklistAssignment[]>;
+  getChecklistAssignment(id: number): Promise<ChecklistAssignment | undefined>;
+  createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment>;
+  updateChecklistAssignment(id: number, updates: Partial<InsertChecklistAssignment>): Promise<ChecklistAssignment | undefined>;
+  deleteChecklistAssignment(id: number): Promise<void>;
+  getMyChecklistAssignments(userId: string, branchId?: number, role?: string): Promise<Array<Checklist & { assignment: ChecklistAssignment; tasks: ChecklistTask[] }>>;
   
   // Equipment operations
   getEquipment(branchId?: number): Promise<Equipment[]>;
@@ -1325,6 +1336,151 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChecklist(id: number): Promise<void> {
     await db.delete(checklists).where(eq(checklists.id, id));
+  }
+
+  // Checklist Assignment operations
+  async getChecklistAssignments(checklistId?: number): Promise<ChecklistAssignment[]> {
+    if (checklistId) {
+      return db.select().from(checklistAssignments).where(eq(checklistAssignments.checklistId, checklistId)).orderBy(desc(checklistAssignments.createdAt));
+    }
+    return db.select().from(checklistAssignments).orderBy(desc(checklistAssignments.createdAt));
+  }
+
+  async getChecklistAssignment(id: number): Promise<ChecklistAssignment | undefined> {
+    const [assignment] = await db.select().from(checklistAssignments).where(eq(checklistAssignments.id, id));
+    return assignment;
+  }
+
+  async createChecklistAssignment(assignment: InsertChecklistAssignment): Promise<ChecklistAssignment> {
+    const [created] = await db.insert(checklistAssignments).values(assignment).returning();
+    return created;
+  }
+
+  async updateChecklistAssignment(id: number, updates: Partial<InsertChecklistAssignment>): Promise<ChecklistAssignment | undefined> {
+    const [updated] = await db
+      .update(checklistAssignments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(checklistAssignments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteChecklistAssignment(id: number): Promise<void> {
+    await db.delete(checklistAssignments).where(eq(checklistAssignments.id, id));
+  }
+
+  async getMyChecklistAssignments(userId: string, branchId?: number, role?: string): Promise<Array<Checklist & { assignment: ChecklistAssignment; tasks: ChecklistTask[] }>> {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Build conditions for matching assignments
+    const conditions: SQL[] = [
+      eq(checklistAssignments.isActive, true),
+    ];
+
+    // Date range check (null means permanent)
+    conditions.push(
+      or(
+        sql`${checklistAssignments.effectiveFrom} IS NULL`,
+        lte(checklistAssignments.effectiveFrom, today)
+      )!
+    );
+    conditions.push(
+      or(
+        sql`${checklistAssignments.effectiveTo} IS NULL`,
+        gte(checklistAssignments.effectiveTo, today)
+      )!
+    );
+
+    // Scope-based matching: user, branch, or role
+    const scopeConditions: SQL[] = [];
+    
+    // Direct user assignment
+    scopeConditions.push(
+      and(
+        eq(checklistAssignments.scope, 'user'),
+        eq(checklistAssignments.assignedUserId, userId)
+      )!
+    );
+    
+    // Branch-wide assignment (all users in branch)
+    if (branchId) {
+      scopeConditions.push(
+        and(
+          eq(checklistAssignments.scope, 'branch'),
+          eq(checklistAssignments.branchId, branchId)
+        )!
+      );
+      
+      // Role-based assignment in branch
+      if (role) {
+        scopeConditions.push(
+          and(
+            eq(checklistAssignments.scope, 'role'),
+            eq(checklistAssignments.branchId, branchId),
+            eq(checklistAssignments.role, role)
+          )!
+        );
+      }
+    }
+
+    if (scopeConditions.length > 0) {
+      conditions.push(or(...scopeConditions)!);
+    }
+
+    // Get matching assignments
+    const assignments = await db
+      .select()
+      .from(checklistAssignments)
+      .where(and(...conditions))
+      .orderBy(checklistAssignments.checklistId);
+
+    if (assignments.length === 0) {
+      return [];
+    }
+
+    // Get unique checklist IDs
+    const checklistIds = [...new Set(assignments.map(a => a.checklistId))];
+
+    // Fetch checklists
+    const checklistList = await db
+      .select()
+      .from(checklists)
+      .where(and(
+        inArray(checklists.id, checklistIds),
+        eq(checklists.isActive, true)
+      ));
+
+    // Fetch checklist tasks
+    const allTasks = await db
+      .select()
+      .from(checklistTasks)
+      .where(inArray(checklistTasks.checklistId, checklistIds))
+      .orderBy(checklistTasks.order);
+
+    // Group tasks by checklist
+    const tasksByChecklist = new Map<number, ChecklistTask[]>();
+    for (const task of allTasks) {
+      if (!tasksByChecklist.has(task.checklistId)) {
+        tasksByChecklist.set(task.checklistId, []);
+      }
+      tasksByChecklist.get(task.checklistId)!.push(task);
+    }
+
+    // Build result - match each checklist with its assignment and tasks
+    const result: Array<Checklist & { assignment: ChecklistAssignment; tasks: ChecklistTask[] }> = [];
+    
+    for (const checklist of checklistList) {
+      const assignment = assignments.find(a => a.checklistId === checklist.id);
+      if (assignment) {
+        result.push({
+          ...checklist,
+          assignment,
+          tasks: tasksByChecklist.get(checklist.id) || []
+        });
+      }
+    }
+
+    return result;
   }
 
   // Health Score Calculation (0-100)
